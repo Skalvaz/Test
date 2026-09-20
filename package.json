@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview --port 4173"
+    "preview": "vite preview --port 4173",
+    "build:single": "SINGLE=1 vite build && node scripts/bundle-single.mjs"
   },
   "repository": {
     "type": "git",

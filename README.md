@@ -9,6 +9,25 @@ olarak üretilir.
 
 ## Çalıştırma
 
+### Hiçbir şey kurmadan (tek dosya)
+
+Depodaki **`turbofan.html`** kendi kendine yeten tek bir dosyadır: three.js,
+stiller ve bütün kod içine gömülüdür. İndirip **çift tıklamak yeterli** —
+Node.js, sunucu, internet ya da editör gerekmez. Modern bir tarayıcı
+(Chrome, Edge, Firefox, Safari) ve WebGL destekli bir ekran kartı yeterlidir.
+
+Dosya paylaşırken not: bazı mesajlaşma uygulamaları `.html` uzantısını
+engeller. O durumda dosyayı zip'leyip gönderin, karşı taraf çıkarıp açsın.
+
+Bu dosyayı kaynaktan yeniden üretmek için:
+
+```bash
+npm install
+npm run build:single    # → turbofan.html
+```
+
+### Geliştirme kipi
+
 ```bash
 npm install
 npm run dev        # http://localhost:5173
@@ -102,6 +121,7 @@ Ortam değişkenleri: `SHOT_W`, `SHOT_H`, `SHOT_FORMAT`, `SHOT_QUALITY`,
 ## Dosya düzeni
 
 ```
+turbofan.html             kurulum gerektirmeyen tek dosyalık sürüm (derleme çıktısı)
 src/
   main.js                 uygulama girişi, çizim döngüsü, kesit ve kamera geçişleri
   core/environment.js     gökyüzü, güneş, PMREM ortam haritası, zemin, hazır ortamlar
@@ -118,6 +138,8 @@ src/
   engine/index.js         montaj, mil dinamiği ve telemetri
   ui/gui.js, ui/hud.js    kontrol paneli ve telemetri göstergesi
 scripts/shoot.mjs         headless render aracı
+scripts/bundle-single.mjs tek dosyalık HTML paketleyici
+vite.config.js            normal ve tek dosya derleme kipleri
 ```
 
 ## Notlar
@@ -125,6 +147,9 @@ scripts/shoot.mjs         headless render aracı
 - Performans için: gölge çözünürlüğü, GTAO ve SMAA en pahalı kalemlerdir;
   panelden kapatılabilir. Yazılım rasterleştirici (SwiftShader) üzerinde
   yavaştır, gerçek GPU'da akıcı çalışır.
+- Tek dosya kipinde paket ES modülü yerine IIFE olarak derlenir; tarayıcılar
+  `file://` üzerinden modül yüklemeyi engellediği için klasik script etiketi
+  şarttır.
 - Motor jenerik bir yüksek baypas turbofandır; herhangi bir üreticinin
   markası, logosu veya tescilli tasarımı kullanılmamıştır. Ölçüler
   (2.77 m fan çapı, ~340 kN itki, 9.2 baypas oranı) sınıfın tipik

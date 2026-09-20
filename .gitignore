@@ -3,3 +3,4 @@ dist/
 *.log
 *.tmp.mjs
 .DS_Store
+dist-single/

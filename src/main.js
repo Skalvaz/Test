@@ -37,7 +37,7 @@ async function init() {
   renderer.toneMapping = THREE.AgXToneMapping;
   renderer.toneMappingExposure = 0.85;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.localClippingEnabled = true;
   container.appendChild(renderer.domElement);
 
@@ -196,11 +196,14 @@ async function init() {
   }
 
   /* ---------------- döngü ---------------- */
-  const clock = new THREE.Clock();
+  let lastFrame = performance.now();
 
   function animate() {
     requestAnimationFrame(animate);
-    const dt = Math.min(clock.getDelta(), 0.1);
+    const now = performance.now();
+    // Sekme arka plandayken biriken süre fiziği patlatmasın diye sınırlanır
+    const dt = Math.min((now - lastFrame) / 1000, 0.1);
+    lastFrame = now;
 
     if (camAnim.active) {
       camAnim.t += dt / camAnim.duration;
