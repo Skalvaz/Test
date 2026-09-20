@@ -1,0 +1,31 @@
+{
+  "name": "hyperreal-turbofan",
+  "version": "1.0.0",
+  "description": "Gerçek zamanlı, fiziksel tabanlı render edilmiş hiper gerçekçi turbofan jet motoru",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Skalvaz/Test.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Skalvaz/Test/issues"
+  },
+  "homepage": "https://github.com/Skalvaz/Test#readme",
+  "dependencies": {
+    "lil-gui": "^0.21.0",
+    "three": "^0.186.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0",
+    "vite": "^8.3.0"
+  },
+  "private": true,
+  "type": "module"
+}

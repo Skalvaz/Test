@@ -1,0 +1,191 @@
+:root {
+  --ink: #e8eef5;
+  --muted: #8b98a7;
+  --panel: rgba(10, 14, 19, 0.72);
+  --edge: rgba(150, 175, 200, 0.18);
+  --accent: #58d1c9;
+  --warn: #ff5f4d;
+  --font: 'SF Mono', 'JetBrains Mono', 'Roboto Mono', ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #05070a;
+  color: var(--ink);
+  font-family: 'Helvetica Neue', Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app { position: fixed; inset: 0; }
+#app canvas { display: block; width: 100%; height: 100%; }
+
+/* ---------------- başlık ---------------- */
+.titlebar {
+  position: fixed;
+  top: 22px;
+  left: 26px;
+  pointer-events: none;
+  z-index: 5;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.75);
+}
+.titlebar h1 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: 0.30em;
+  font-weight: 200;
+}
+.titlebar p {
+  margin: 6px 0 0;
+  font-family: var(--font);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------------- telemetri ---------------- */
+.hud {
+  position: fixed;
+  left: 26px;
+  bottom: 26px;
+  width: 310px;
+  padding: 16px 18px 14px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  font-family: var(--font);
+  z-index: 5;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+.hud-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.hud-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.hud-row {
+  display: grid;
+  grid-template-columns: 46px 1fr 80px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.hud-label { font-size: 10px; letter-spacing: 0.12em; color: var(--muted); }
+.hud-bar {
+  position: relative;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.hud-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #2f8f88, var(--accent));
+  transition: width 0.12s linear;
+}
+.hud-bar i.over { background: linear-gradient(90deg, #a33, var(--warn)); }
+.hud-value { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+.hud-value em { font-style: normal; font-size: 9px; color: var(--muted); margin-left: 3px; }
+
+.hud-foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid var(--edge);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+#hud-mode { color: var(--accent); }
+
+/* ---------------- istatistik ---------------- */
+.stats {
+  position: fixed;
+  right: 26px;
+  bottom: 22px;
+  font-family: var(--font);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  z-index: 5;
+  text-shadow: 0 1px 8px #000;
+}
+
+/* ---------------- yükleme ---------------- */
+#loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: radial-gradient(circle at 50% 45%, #10161d 0%, #05070a 70%);
+  z-index: 40;
+  font-family: var(--font);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  transition: opacity 0.6s ease;
+}
+#loading.hidden { opacity: 0; pointer-events: none; }
+.spinner {
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-hint { font-size: 10px; opacity: 0.55; }
+
+/* ---------------- lil-gui uyarlaması ---------------- */
+.lil-gui.root {
+  --background-color: rgba(10, 14, 19, 0.78);
+  --widget-color: rgba(255, 255, 255, 0.08);
+  --title-background-color: rgba(255, 255, 255, 0.05);
+  --focus-color: #58d1c9;
+  --hover-color: rgba(255, 255, 255, 0.14);
+  --font-family: var(--font);
+  --font-size: 11px;
+  --width: 296px;
+  top: 18px;
+  right: 18px;
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 760px) {
+  .hud { width: calc(100vw - 40px); left: 20px; bottom: 20px; }
+  .titlebar h1 { font-size: 22px; }
+  .lil-gui.root { --width: 240px; }
+}
