@@ -1,156 +1,137 @@
-# Hiper Gerçekçi Turbofan
+# Turbofan Akademi
 
-Yüksek baypas oranlı sivil bir jet motorunun **tarayıcıda gerçek zamanlı,
-fiziksel tabanlı (PBR)** görselleştirmesi. Hazır bir 3B model dosyası
-kullanılmaz; bütün geometri, dokular ve aydınlatma kod içinde prosedürel
-olarak üretilir.
+Gerçek termodinamikle çalışan bir turbofan jet motorunu parça parça tanıdığın,
+kokpitten çalıştırdığın ve sınırlarına kadar zorladığın **etkileşimli eğitim
+oyunu**. Ekrandaki her gösterge — N1, N2, EGT, yakıt akışı, itki, surge payı —
+bir fizik modelinden hesaplanır; hiçbiri önceden kaydedilmiş bir animasyon
+değildir.
 
-![Üç çeyrek görünüm](renders/01-uc-ceyrek.jpg)
+![Ana menü](renders/01-menu.jpg)
 
-## Çalıştırma
+## Hemen oyna (kurulum yok)
 
-### Hiçbir şey kurmadan (tek dosya)
+Depodaki **`turbofan.html`** kendi kendine yeten tek bir dosyadır. İndirip çift
+tıklamak yeterli: Node.js, sunucu, internet gerekmez. Modern bir tarayıcı ve
+WebGL destekli bir ekran kartı yeterli. Dosyayı mesajlaşma uygulamasıyla
+gönderirken uygulama `.html` uzantısını engellerse zip'leyip gönderin.
 
-Depodaki **`turbofan.html`** kendi kendine yeten tek bir dosyadır: three.js,
-stiller ve bütün kod içine gömülüdür. İndirip **çift tıklamak yeterli** —
-Node.js, sunucu, internet ya da editör gerekmez. Modern bir tarayıcı
-(Chrome, Edge, Firefox, Safari) ve WebGL destekli bir ekran kartı yeterlidir.
+## Neler var
 
-Dosya paylaşırken not: bazı mesajlaşma uygulamaları `.html` uzantısını
-engeller. O durumda dosyayı zip'leyip gönderin, karşı taraf çıkarıp açsın.
+**Akademi — 7 ders**
 
-Bu dosyayı kaynaktan yeniden üretmek için:
+| # | Ders | Konu |
+| --- | --- | --- |
+| 1 | Turbofan'ın anatomisi | Havanın yolu; kesit görünümünde parçaları 3B'de bulma sınavı |
+| 2 | Motoru çalıştırmak | APU bleed → marş → ateşleme → %20 N2'de yakıt → light-off → rölanti |
+| 3 | Brayton çevrimi | Canlı T–s diyagramı, basınç oranı, itkinin fan/çekirdek paylaşımı |
+| 4 | Gaz kolu ve FADEC | Spool gecikmesi, 5 saniye kuralı, hassas N1 kontrolü |
+| 5 | Kompresör stall'u | FADEC kapalıyken elle yakıt vererek surge'ü bizzat yaşamak |
+| 6 | İrtifa ve sıcak günler | 11 km'de itki kaybı, ram direnci, ISA+30'da EGT sınırlaması |
+| 7 | Kuş çarpması | Belirtileri tanıma ve motoru güvenle kapatma |
+
+Dersler adım adım ilerler: okunacak açıklama, simülasyona karşı denetlenen
+hedefler (ör. "N1'i %78–82'de 5 saniye tut"), quiz'ler ve 3B parça seçme
+görevleri. Yanlış prosedür (ör. yakıtı çok erken vermek) adımı başarısız sayar
+ve tekrarlatır. Her ders yıldızla puanlanır ve ilerleme tarayıcıda saklanır.
+
+**Test hücresi** — serbest mod: bütün anahtarlar, FADEC'i manuele alma, irtifa /
+Mach / sıcaklık, simülasyon hızı (¼×–4×), arıza enjeksiyonu (kuş çarpması,
+kompresör/türbin aşınması, marş ve ateşleyici arızası).
+
+**Kokpit** — Boeing tarzı EICAS (N1/EGT/N2 kadranları, FADEC'in magenta hedef
+imleci, CAS uyarı mesajları), overhead tarzı çalıştırma paneli, kademeli gaz kolu.
+
+**Motorun içi paneli** — sıcaklığa göre renklenen istasyon şeması (üzerine
+gelince 3B'de parça yanar), canlı T–s diyagramı, istasyon tablosu, OPR, BPR,
+TSFC, surge payı.
+
+**Ses** — tamamen sentezlenmiş: fan kanat geçiş tonu, süpersonik fan ucunun
+"buzz-saw" sesi, çekirdek ıslığı, jet gürlemesi, marş türbini, ateşleyici
+tıkırtısı, surge patlaması. Kamera öndeyse fan, arkadaysa jet baskın duyulur.
+
+![Çalıştırma dersi](renders/03-start-lightoff.jpg)
+
+## Fizik modeli
+
+`src/sim/` görselden tamamen bağımsız, saf TypeScript bir sıfır boyutlu,
+iki milli turbofan modelidir:
+
+- **ISA atmosfer** ve ram etkisi; SAE istasyon numaralandırması
+  (0, 2, 13, 19, 21, 25, 3, 4, 45, 5, 9)
+- **Tasarım noktası** çevrim analizi donanımı boyutlandırır: lüle alanları, HP
+  türbin akış kapasitesi, türbin basınç oranları
+- **Tasarım dışı** hesap iki eşleşme problemi çözer: HP kompresörün hız hattı
+  üzerindeki konumu HP türbin statorunun akış kapasitesine, LP türbin çıkış
+  basıncı çekirdek lülesinin akışına göre bulunur. Yakıt ani artınca T4
+  yükselir, çalışma noktası fiziksel olarak surge hattına kayar.
+- **Mil dinamiği**: türbin–kompresör tork farkı, hava türbinli marş motoru,
+  aksesuar yükü, sürtünme
+- **FADEC**: N1 izleme, N2 rölanti, N2 azami ve EGT sınırı döngüleri (hız
+  biçimli PI, min/max seçimli), surge korumalı ivmelenme ve sönme korumalı
+  yavaşlama sınırları, surge'de otomatik yeniden ateşleme
+- **Olaylar**: light-off, marş ayrılması, sıcak/takılı/ıslak çalıştırma,
+  torching, surge, flameout, aşırı devir, EGT kırmızı çizgi, kalıcı türbin
+  hasarı, kuş çarpması
+
+Doğrulanan değerler (jenerik 2.77 m fanlı, GEnx sınıfı bir motor):
+
+| Büyüklük | Model | Bu sınıf için tipik |
+| --- | --- | --- |
+| Kalkış itkisi (SLS, ISA) | 319 kN | 280–340 kN |
+| TSFC (kalkış) | 8.5 g/(kN·s) | 8–9 |
+| Toplam basınç oranı | 46 | 40–50 |
+| Rölanti | N1 %22, N2 %62, ~7 kN | N1 ~%20, N2 ~%60–65 |
+| Çalıştırma süresi / EGT tepe | ~40 s / ~630 °C | 30–60 s / limit 725–750 °C |
+| Rölantiden %95 itkiye | ~5 s | ≤ 5 s (FAR/CS 33.73) |
+| 10.7 km, M0.8 azami itki | SLS'nin %16'sı | %15–20 |
+
+## Geliştirme
 
 ```bash
 npm install
-npm run build:single    # → turbofan.html
+npm run dev          # http://localhost:5173
+npm test             # simülasyon birim testleri (vitest)
+npm run typecheck    # TypeScript denetimi
+npm run build:single # → turbofan.html (tek dosya)
 ```
 
-### Geliştirme kipi
+Otomatik oynanış testi bütün dersleri gerçek arayüz etkileşimleriyle
+(anahtarlara tıklama, klavyeyle gaz kolu, quiz, 3B parça seçme) oynar:
 
 ```bash
-npm install
-npm run dev        # http://localhost:5173
+npm run build && npx vite preview --port 4173 &
+node scripts/playtest.mjs ekran-goruntuleri/
 ```
 
-Üretim derlemesi ve önizleme:
-
-```bash
-npm run build
-npm run preview    # http://localhost:4173
-```
-
-Kontroller: **sürükle** döndürür, **tekerlek** yakınlaştırır, **sağ tık
-sürükle** kaydırır. Sağ üstteki panelden gaz kolu, ortam, kamera açısı,
-kesit görünümü ve görüntü işleme ayarları değiştirilir.
-
-## Ne modellendi
-
-| Bölüm | İçerik |
-| --- | --- |
-| Hava girişi | Parlatılmış alüminyum dudak, boğaz daralması, akustik astarlı kanal |
-| Fan | 22 adet geniş kordlu, pala uçları öne kıvrımlı titanyum kanat; sarmal işaretli burun konisi |
-| Baypas | Fan çıkış yönlendirici kanatları (44), 8 yapısal çerçeve kolu, çevrikli (chevron) lüle |
-| Çekirdek | 3 kademe booster, 9 kademe HP kompresör, halka yanma odası + 20 enjektör, 2 kademe HP türbin, 5 kademe LP türbin |
-| Egzoz | Türbin arka çerçevesi, is kaplı kanal, birincil lüle, tavlanmış inconel egzoz konisi |
-| Dış donanım | Pilon ve motor bağlantı mahmuzları, aksesuar dişli kutusu, yakıt/hidrolik hatları, kaporta kilitleri, drenaj mastı |
-
-İki ayrı mil grubu bağımsız döner: **LP** (fan + booster + LP türbin) ve
-**HP** (HP kompresör + HP türbin).
-
-## Gerçekçiliği taşıyan teknikler
-
-**Geometri.** Bütün kanatlar NACA 4-haneli kalınlık dağılımı ve dairesel
-kamber çizgisinden kesit kesit üretilip kök→uç boyunca burulma, ok açısı,
-yana yatma ve kord değişimiyle loft edilir (`src/engine/airfoil.js`). Fan
-kanadı bu sayede gerçek bir geniş kordlu tasarım gibi kökte ~62°, uçta ~16°
-burulmaya ve pala ucunda öne kıvrıma sahiptir. Gövdeler Catmull-Rom ile
-yumuşatılmış profillerin döndürülmesiyle (lathe) elde edilir.
-
-**Dokular.** Albedo / pürüzlülük / normal haritaları çalışma anında canvas
-üzerinde fbm gürültüsüyle üretilir (`src/materials/textures.js`): panel
-derzleri, perçin sıraları, fırça izleri, arkaya doğru artan kurum, hücum
-kenarı aşınması, jenerik havacılık ikaz yazıları. Yazılar lathe UV'sine
-göre gövdenin sağ ve sol yüzüne ayrı ayrı, doğru yönde basılır.
-
-**Malzemeler.** Boyalı kaporta için clearcoat (vernik) katmanı, fan kanadı
-için anizotropik titanyum, egzoz konisi için ince film girişimli (tavlanmış)
-inconel, yanma odası için EGT ile renk değiştiren ışıyan yüzey.
-
-**Aydınlatma.** Preetham fiziksel gökyüzü modeli her karede PMREM ile ortam
-haritasına dönüştürülür; metaller gerçekten gökyüzünü ve zemini yansıtır.
-Buna yönlü güneş (4096² gölge haritası), dikdörtgen alan ışıkları ve dört
-hazır ortam eşlik eder: altın saat, öğle güneşi, kapalı hava, gece apronu.
-
-**Görüntü işleme.** GTAO → ton eşleme (AgX) → bloom → kamera derecelendirmesi
-→ SMAA. Derecelendirme aşaması sıcak egzozun arkasındaki görüntüyü ekran
-uzayında kıvıran ısı kırılmasını, lens renk sapmasını, vinyeti ve sensör
-grenini uygular.
-
-**Çalışma modeli.** Gaz kolu bir hedef N1 belirler; N1 birinci dereceden
-gecikmeyle bu hedefe yaklaşır (gaz alırken yavaş, keserken hızlı), N2 N1'i
-daha çabuk takip eder, EGT ise N2'nin gerisinden gelir. Telemetri paneli
-N1/N2/EGT/itki/yakıt akışı ve pala ucu Mach sayısını canlı gösterir. Devir
-yükseldikçe kanatların üzerine hareket bulanıklığı diski bindirilir.
-
-## Görünümler
-
-Kesit modu, kırpma düzlemiyle motoru boydan boya açar:
-
-![Kesit](renders/06-kesit.jpg)
-
-| | |
-| --- | --- |
-| ![Fan detayı](renders/03-fan-detay.jpg) | ![Egzoz](renders/05-egzoz.jpg) |
-| ![Gece apronu](renders/07-gece.jpg) | |
-
-## Kaynaktan kare almak
-
-`scripts/shoot.mjs`, headless Chromium ile hazır kamera açılarından render
-alır (bu depodaki görseller de böyle üretildi):
-
-```bash
-npm run build && npm run preview &
-node scripts/shoot.mjs renders                       # PNG
-SHOT_FORMAT=jpeg SHOT_W=1440 SHOT_H=810 node scripts/shoot.mjs renders
-```
-
-Ortam değişkenleri: `SHOT_W`, `SHOT_H`, `SHOT_FORMAT`, `SHOT_QUALITY`,
-`SHOT_FILTER` (örn. `01,06`), `SHOT_URL`, `PW_CHROMIUM`.
-
-## Dosya düzeni
+### Dosya düzeni
 
 ```
-turbofan.html             kurulum gerektirmeyen tek dosyalık sürüm (derleme çıktısı)
 src/
-  main.js                 uygulama girişi, çizim döngüsü, kesit ve kamera geçişleri
-  core/environment.js     gökyüzü, güneş, PMREM ortam haritası, zemin, hazır ortamlar
-  core/postfx.js          post-process zinciri ve kamera derecelendirme shader'ı
-  materials/textures.js   prosedürel doku üretimi (fbm, panel derzi, normal harita)
-  materials/library.js    PBR malzeme kütüphanesi ve kesit kırpması
-  engine/geom.js          profil/lathe/dizi yardımcıları
-  engine/airfoil.js       NACA kesitleri ve kanat loft üreteci
-  engine/nacelle.js       hava girişi, kaporta, baypas kanalı, chevron lüle
-  engine/fan.js           burun konisi, fan diski, kanatlar, hareket bulanıklığı
-  engine/core.js          booster, HP kompresör, yanma odası, türbinler, egzoz
-  engine/pylon.js         pilon, bağlantı mahmuzları, kanat kökü
-  engine/exhaust.js       egzoz akışı shader'ı
-  engine/index.js         montaj, mil dinamiği ve telemetri
-  ui/gui.js, ui/hud.js    kontrol paneli ve telemetri göstergesi
-scripts/shoot.mjs         headless render aracı
-scripts/bundle-single.mjs tek dosyalık HTML paketleyici
-vite.config.js            normal ve tek dosya derleme kipleri
+  sim/        termodinamik model, FADEC, olaylar (+ testler)
+  engine/     prosedürel 3B motor; visual.ts simülasyonu görselleştirir
+  app/        uygulama çekirdeği, kamera, 3B parça seçici
+  ui/         EICAS, kokpit, motor içi paneli, ders paneli, menüler
+  game/       ders motoru, ders içerikleri, parça bilgileri, bilgi bankası
+  audio/      prosedürel motor sesi (Web Audio)
+  core/       gökyüzü/ışık ortamı, görüntü işleme zinciri
+  materials/  prosedürel dokular ve PBR malzemeler
+scripts/      tek dosya paketleyici, otomatik oynanış testi
 ```
 
-## Notlar
+İleriye dönük plan (motor tasarım atölyesi, uçak tasarımı, Blender varlık
+hattı) için bkz. **[ROADMAP.md](ROADMAP.md)**.
 
-- Performans için: gölge çözünürlüğü, GTAO ve SMAA en pahalı kalemlerdir;
-  panelden kapatılabilir. Yazılım rasterleştirici (SwiftShader) üzerinde
-  yavaştır, gerçek GPU'da akıcı çalışır.
-- Tek dosya kipinde paket ES modülü yerine IIFE olarak derlenir; tarayıcılar
-  `file://` üzerinden modül yüklemeyi engellediği için klasik script etiketi
-  şarttır.
-- Motor jenerik bir yüksek baypas turbofandır; herhangi bir üreticinin
-  markası, logosu veya tescilli tasarımı kullanılmamıştır. Ölçüler
-  (2.77 m fan çapı, ~340 kN itki, 9.2 baypas oranı) sınıfın tipik
-  değerlerine yakın seçilmiştir.
+## Daha fazla okuma
+
+- FAA, *Aviation Maintenance Technician Handbook — Powerplant* (FAA-H-8083-32),
+  kamu malı
+- NASA Glenn Research Center, *Beginner's Guide to Propulsion*
+- H. Saravanamuttoo ve ark., *Gas Turbine Theory*
+- P. Walsh, P. Fletcher, *Gas Turbine Performance*
+- J. Mattingly, *Elements of Propulsion: Gas Turbines and Rockets*
+
+## Not
+
+Motor jeneriktir; hiçbir üreticinin markası, logosu ya da tescilli tasarımı
+kullanılmamıştır. Prosedürler eğitim amaçlı basitleştirilmiştir ve gerçek uçak
+kontrol listelerinin yerini tutmaz.

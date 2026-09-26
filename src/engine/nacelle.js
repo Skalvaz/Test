@@ -9,7 +9,7 @@
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, radialInstances } from './geom.js';
+import { smoothProfile, latheFromProfile, radialInstances, tagPart } from './geom.js';
 
 const SEG = 256;
 
@@ -80,7 +80,7 @@ export function buildNacelle(materials, dims) {
   lip.name = 'inlet-lip';
   lip.castShadow = true;
   lip.receiveShadow = true;
-  group.add(lip);
+  group.add(tagPart(lip, 'inlet'));
 
   /* ---------------- dış kaporta (boyalı) ---------------- */
   const cowlProfile = smoothProfile(
@@ -101,7 +101,7 @@ export function buildNacelle(materials, dims) {
   cowl.name = 'fan-cowl';
   cowl.castShadow = true;
   cowl.receiveShadow = true;
-  group.add(cowl);
+  group.add(tagPart(cowl, 'nacelle'));
 
   /* ---------------- baypas kanalı iç duvarı (akustik astar) ---------------- */
   const ductProfile = smoothProfile(
@@ -121,7 +121,7 @@ export function buildNacelle(materials, dims) {
   const duct = new THREE.Mesh(latheFromProfile(ductProfile, SEG), materials.acousticLiner);
   duct.name = 'bypass-duct';
   duct.receiveShadow = true;
-  group.add(duct);
+  group.add(tagPart(duct, 'bypassDuct'));
 
   /* ---------------- fan muhafazası (kesitte görünür) ---------------- */
   const caseProfile = smoothProfile(
@@ -137,7 +137,7 @@ export function buildNacelle(materials, dims) {
   );
   const fanCase = new THREE.Mesh(latheFromProfile(caseProfile, 160), materials.composite);
   fanCase.name = 'fan-containment-case';
-  group.add(fanCase);
+  group.add(tagPart(fanCase, 'fanCase'));
 
   /* ---------------- baypas lülesi: çevrikli arka kenar ---------------- */
   const outerChevrons = new THREE.Mesh(
@@ -146,14 +146,14 @@ export function buildNacelle(materials, dims) {
   );
   outerChevrons.name = 'bypass-chevrons-outer';
   outerChevrons.castShadow = true;
-  group.add(outerChevrons);
+  group.add(tagPart(outerChevrons, 'bypassNozzle'));
 
   const innerChevrons = new THREE.Mesh(
     chevronBand({ startR: 1.344, startZ: 1.52, endR: 1.382, endZ: 1.70, count: 18 }),
     materials.acousticLiner,
   );
   innerChevrons.name = 'bypass-chevrons-inner';
-  group.add(innerChevrons);
+  group.add(tagPart(innerChevrons, 'bypassNozzle'));
 
   // Lüle arka kenarını kapatan ince halka
   const nozzleRing = new THREE.Mesh(
@@ -163,15 +163,15 @@ export function buildNacelle(materials, dims) {
     ),
     materials.composite,
   );
-  group.add(nozzleRing);
+  group.add(tagPart(nozzleRing, 'bypassNozzle'));
 
   /* ---------------- cıvata ve kilit detayları ---------------- */
   const boltGeo = new THREE.CylinderGeometry(0.018, 0.020, 0.016, 12);
   boltGeo.rotateX(Math.PI / 2);
   const boltMat = materials.machinery;
 
-  group.add(radialInstances(boltGeo, boltMat, 48, 1.756, -0.02));
-  group.add(radialInstances(boltGeo, boltMat, 36, 1.60, 1.10));
+  group.add(tagPart(radialInstances(boltGeo, boltMat, 48, 1.756, -0.02), 'nacelle'));
+  group.add(tagPart(radialInstances(boltGeo, boltMat, 36, 1.60, 1.10), 'nacelle'));
 
   // İtiş çevirici aktüatör muhafazaları (kaporta üzerinde hafif kabartılar)
   const fairingShape = new THREE.CapsuleGeometry(0.075, 0.52, 6, 14);
@@ -180,7 +180,7 @@ export function buildNacelle(materials, dims) {
     phase: Math.PI / 2 + 0.45,
   });
   actuatorFairings.name = 'tr-actuator-fairings';
-  group.add(actuatorFairings);
+  group.add(tagPart(actuatorFairings, 'nacelle'));
 
   // Alt kaporta kilitleri
   const latchGeo = new THREE.BoxGeometry(0.16, 0.05, 0.10);
@@ -196,7 +196,7 @@ export function buildNacelle(materials, dims) {
     latches.setMatrixAt(i, m);
   });
   latches.instanceMatrix.needsUpdate = true;
-  group.add(latches);
+  group.add(tagPart(latches, 'nacelle'));
 
   // Drenaj mastı
   const mast = new THREE.Mesh(
@@ -206,7 +206,7 @@ export function buildNacelle(materials, dims) {
   mast.position.set(0, -1.85, 0.95);
   mast.rotation.x = -0.12;
   mast.castShadow = true;
-  group.add(mast);
+  group.add(tagPart(mast, 'nacelle'));
 
   return group;
 }

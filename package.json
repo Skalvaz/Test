@@ -1,14 +1,15 @@
 {
-  "name": "hyperreal-turbofan",
+  "name": "turbofan-akademi",
   "version": "1.0.0",
-  "description": "Gerçek zamanlı, fiziksel tabanlı render edilmiş hiper gerçekçi turbofan jet motoru",
+  "description": "Gerçek termodinamik modelle çalışan etkileşimli turbofan jet motoru eğitim oyunu",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --port 4173",
     "build:single": "SINGLE=1 vite build && node scripts/bundle-single.mjs",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p ."
+    "typecheck": "tsc --noEmit -p .",
+    "playtest": "node scripts/playtest.mjs playtest-output"
   },
   "repository": {
     "type": "git",
@@ -22,7 +23,6 @@
   },
   "homepage": "https://github.com/Skalvaz/Test#readme",
   "dependencies": {
-    "lil-gui": "^0.21.0",
     "three": "^0.186.0"
   },
   "devDependencies": {

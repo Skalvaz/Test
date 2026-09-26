@@ -208,7 +208,7 @@ export function createMaterials(renderer) {
     side: THREE.DoubleSide,
   });
 
-  return {
+  const library = {
     cowlPaint,
     polishedLip,
     acousticLiner,
@@ -228,6 +228,9 @@ export function createMaterials(renderer) {
     tarmac: tarmacMat,
     cutawayFace,
   };
+  // İsimler, parça başına klonlanan malzemelerin kaynağını tanımak için
+  for (const [name, mat] of Object.entries(library)) mat.name = name;
+  return library;
 }
 
 /** Kesit (cutaway) kırpma düzlemlerini bütün malzemelere uygular. */

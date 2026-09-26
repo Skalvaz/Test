@@ -127,3 +127,14 @@ export function pipeAlong(points, radius = 0.02, radialSegments = 10) {
   const curve = new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p)));
   return new THREE.TubeGeometry(curve, Math.max(24, points.length * 8), radius, radialSegments, false);
 }
+
+/**
+ * Bir nesneyi (ve alt nesnelerini) bir motor parçası kimliğiyle etiketler.
+ * Etiket; ders içinde parça seçme, vurgulama ve bilgi kartları için kullanılır.
+ */
+export function tagPart(obj, part) {
+  obj.traverse((o) => {
+    o.userData.part = part;
+  });
+  return obj;
+}

@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, bladeRow } from './geom.js';
+import { smoothProfile, latheFromProfile, bladeRow, tagPart } from './geom.js';
 import { createBladeGeometry } from './airfoil.js';
 import { createBlurDiscTexture } from '../materials/textures.js';
 
@@ -33,7 +33,7 @@ export function buildFan(materials) {
   spinner.name = 'spinner';
   spinner.castShadow = true;
   spinner.receiveShadow = true;
-  group.add(spinner);
+  group.add(tagPart(spinner, 'spinner'));
 
   /* ---------------- fan diski ve kanat platformları ---------------- */
   const platformProfile = smoothProfile(
@@ -52,7 +52,7 @@ export function buildFan(materials) {
   platform.name = 'fan-platform';
   platform.castShadow = true;
   platform.receiveShadow = true;
-  group.add(platform);
+  group.add(tagPart(platform, 'fan'));
 
   // Kanat kökü yuvaları arasındaki ayırıcı contalar
   const sealGeo = new THREE.BoxGeometry(0.035, 0.05, 0.62);
@@ -63,7 +63,7 @@ export function buildFan(materials) {
   // InstancedMesh yalnızca dönüş uygular; contaları yarıçapa taşımak için
   // geometriyi önceden ötelemek gerekir.
   sealGeo.translate(0, 0.462, 0);
-  group.add(seals);
+  group.add(tagPart(seals, 'fan'));
 
   /* ---------------- geniş kordlu fan kanatları ---------------- */
   const bladeGeo = createBladeGeometry({
@@ -86,7 +86,7 @@ export function buildFan(materials) {
 
   const blades = bladeRow(bladeGeo, materials.titanium, FAN_BLADE_COUNT, { z: -0.28 });
   blades.name = 'fan-blades';
-  group.add(blades);
+  group.add(tagPart(blades, 'fan'));
 
   /* ---------------- hareket bulanıklığı diski ---------------- */
   const blurTex = createBlurDiscTexture(1024, FAN_BLADE_COUNT);

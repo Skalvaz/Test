@@ -185,8 +185,8 @@ export function createStageBladeGeometry(hubR, tipR, opts = {}) {
   return createBladeGeometry({
     hubRadius: hubR,
     tipRadius: tipR,
-    sections: opts.sections ?? 10,
-    samples: opts.samples ?? 40,
+    sections: opts.sections ?? 7,
+    samples: opts.samples ?? 26,
     chord: opts.chord ?? [0.2, 0.17],
     twist: opts.twist ?? [THREE.MathUtils.degToRad(48), THREE.MathUtils.degToRad(22)],
     thickness: opts.thickness ?? [0.12, 0.07],

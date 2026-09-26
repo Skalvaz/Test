@@ -87,7 +87,7 @@ export const LIMITS = {
   leanBlowoutFar: 0.0042,
   /** Bu gerçek sıcaklığın üstünde kalınan süre türbine kalıcı hasar verir */
   egtDamage: 1150, // °C
-  egtDamageSeconds: 1.5,
+  egtDamageSeconds: 4,
   ignitionMinFar: 0.0055,
 };
 
@@ -127,6 +127,12 @@ export interface SimSnapshot {
   controls: Readonly<Controls>;
   fuelPuddle: number;
   surgeCount: number;
+  /** FADEC'in N1 hedefi (EICAS'ta magenta imleç) — manuel modda null */
+  n1Command: number | null;
+  egtLimited: boolean;
+  turbineDamaged: boolean;
+  /** Yakıt açık ama alev yok ve motor yavaşlıyor */
+  flamedOut: boolean;
 }
 
 type Listener = (e: SimEvent) => void;
@@ -154,6 +160,8 @@ export class EngineSim {
   turbineDamaged = false;
   /** FADEC şu an EGT sınırlaması yapıyor mu */
   egtLimited = false;
+  /** FADEC'in son N1 hedefi */
+  n1Command: number | null = null;
 
   time = 0;
   N1 = 0;
@@ -514,6 +522,7 @@ export class EngineSim {
       return;
     }
 
+    if (c.fadec === 'manual' || !this.lit) this.n1Command = null;
     if (c.fadec === 'manual') {
       // Doğrudan dozaj valfi: koruma yok, yalnızca valf hız sınırı
       const target = clamp(c.manualFuel, 0, 1) * wfMax;
@@ -540,12 +549,14 @@ export class EngineSim {
       const slew = 0.25 * dt;
       this.wf += clamp(target - this.wf, -slew, slew);
       this.governing = false;
+      this.n1Command = null;
       return;
     }
 
     // --- Yönetim (governing): hız biçimli PI döngüleri, min/max seçimi ---
     const theta2 = Math.sqrt(this.amb.T2 / r.T2);
     const n1Target = lerp(0.18, 1.0, clamp(c.throttle, 0, 1)) * theta2;
+    this.n1Command = Math.min(n1Target, LIMITS.n1Redline - 0.02);
     const e1 = Math.min(n1Target, LIMITS.n1Redline - 0.02) - this.N1;
     const e2 = LIMITS.idleN2 - this.N2;
     const eN2max = LIMITS.n2Redline - 0.015 - this.N2;
@@ -680,6 +691,10 @@ export class EngineSim {
       controls: { ...this.controls },
       fuelPuddle: this.fuelPuddle,
       surgeCount: this.surgeCount,
+      n1Command: this.n1Command,
+      egtLimited: this.egtLimited,
+      turbineDamaged: this.turbineDamaged,
+      flamedOut: !this.lit && this.controls.fuelRun && this.phase === 'spooldown' && this.N2 > 0.25,
     };
   }
 

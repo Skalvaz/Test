@@ -7,6 +7,7 @@
 
 import * as THREE from 'three';
 import { createBladeGeometry } from './airfoil.js';
+import { tagPart } from './geom.js';
 
 export function buildPylon(materials) {
   const group = new THREE.Group();
@@ -83,5 +84,7 @@ export function buildPylon(materials) {
   wing.visible = false;
   group.add(wing);
 
+  tagPart(group, 'pylon');
+  tagPart(wing, 'wing');
   return { group, wing };
 }
