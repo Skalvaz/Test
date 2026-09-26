@@ -6,7 +6,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --port 4173",
-    "build:single": "SINGLE=1 vite build && node scripts/bundle-single.mjs"
+    "build:single": "SINGLE=1 vite build && node scripts/bundle-single.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
   },
   "repository": {
     "type": "git",
@@ -24,8 +26,11 @@
     "three": "^0.186.0"
   },
   "devDependencies": {
+    "@types/three": "^0.186.0",
     "playwright": "^1.63.0",
-    "vite": "^8.3.0"
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.2"
   },
   "private": true,
   "type": "module"
