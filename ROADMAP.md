@@ -48,8 +48,15 @@ ortamı (Blender), (2) el yapımı detay dokuları, (3) HDRI ortam ışığı.
 - 7 ders, test hücresi, EICAS, T–s diyagramı, prosedürel ses
 - Otomatik oynanış testi (bütün dersler gerçek arayüz tıklamalarıyla)
 
-### Faz 2 — İçerik ve cila
-- Blender test hücresi ortamı, detay dokuları, HDRI
+### Faz 2 — İçerik ve cila (sürüyor)
+- ✅ Blender test hücresi ortamı: kodla modellenir, Cycles ile ışık pişirilir,
+  glTF olarak yüklenir; motorun yansıma haritası da hücreden alınır
+  (`blender/testcell.py`)
+- ✅ Kaporta detay dokuları: yüksek poligonlu perçin/vida/kapak modelinden
+  normal + ORM pişirme (`blender/nacelle_details.py`)
+- Sıradaki varlıklar: çekirdek kaporta ve pilon detay dokuları, fan kanadı
+  aşınma dokusu, kontrol odası iç mekânı (kamera oraya girebilsin), KTX2 doku
+  sıkıştırma
 - Yeni dersler: itki çevirici, buz önleme ve bleed hava, yağ sistemi, uçuşta
   yeniden çalıştırma (windmilling relight), ateşleyici arızasıyla çalıştırma
 - Turbojet / turboprop / turbofan karşılaştırması (aynı model, farklı tasarım)

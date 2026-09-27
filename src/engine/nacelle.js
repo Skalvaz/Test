@@ -9,7 +9,7 @@
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, radialInstances, tagPart } from './geom.js';
+import { smoothProfile, latheFromProfile, arcLengthV, radialInstances, tagPart } from './geom.js';
 
 const SEG = 256;
 
@@ -97,7 +97,10 @@ export function buildNacelle(materials, dims) {
     ],
     180,
   );
-  const cowl = new THREE.Mesh(latheFromProfile(cowlProfile, SEG), materials.cowlPaint);
+  const cowl = new THREE.Mesh(
+    arcLengthV(latheFromProfile(cowlProfile, SEG), cowlProfile),
+    materials.cowlDetail,
+  );
   cowl.name = 'fan-cowl';
   cowl.castShadow = true;
   cowl.receiveShadow = true;
@@ -165,38 +168,21 @@ export function buildNacelle(materials, dims) {
   );
   group.add(tagPart(nozzleRing, 'bypassNozzle'));
 
-  /* ---------------- cıvata ve kilit detayları ---------------- */
-  const boltGeo = new THREE.CylinderGeometry(0.018, 0.020, 0.016, 12);
-  boltGeo.rotateX(Math.PI / 2);
-  const boltMat = materials.machinery;
-
-  group.add(tagPart(radialInstances(boltGeo, boltMat, 48, 1.756, -0.02), 'nacelle'));
-  group.add(tagPart(radialInstances(boltGeo, boltMat, 36, 1.60, 1.10), 'nacelle'));
+  /* ---------------- kaporta üstü detaylar ---------------- */
+  // Perçin, vida ve kapaklar kaporta dokusuna pişirildi; burada yalnız
+  // yüzeyden belirgin taşan parçalar geometri olarak kalır.
 
   // İtiş çevirici aktüatör muhafazaları (kaporta üzerinde hafif kabartılar)
   const fairingShape = new THREE.CapsuleGeometry(0.075, 0.52, 6, 14);
   fairingShape.rotateX(Math.PI / 2);
-  const actuatorFairings = radialInstances(fairingShape, materials.cowlPaint, 3, 1.775, 0.30, {
+  const actuatorFairings = radialInstances(fairingShape, materials.fairingPaint, 3, 1.775, 0.30, {
     phase: Math.PI / 2 + 0.45,
   });
   actuatorFairings.name = 'tr-actuator-fairings';
   group.add(tagPart(actuatorFairings, 'nacelle'));
 
-  // Alt kaporta kilitleri
-  const latchGeo = new THREE.BoxGeometry(0.16, 0.05, 0.10);
-  const latches = new THREE.InstancedMesh(latchGeo, materials.machinery, 3);
-  const m = new THREE.Matrix4();
-  [-0.55, 0.05, 0.65].forEach((z, i) => {
-    const a = -Math.PI / 2;
-    m.compose(
-      new THREE.Vector3(Math.cos(a) * 1.77, Math.sin(a) * 1.77, z),
-      new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, a)),
-      new THREE.Vector3(1, 1, 1),
-    );
-    latches.setMatrixAt(i, m);
-  });
-  latches.instanceMatrix.needsUpdate = true;
-  group.add(tagPart(latches, 'nacelle'));
+  // Alt kaporta kilitleri, kapaklar ve perçinler kaporta dokusuna pişirildi
+  // (blender/nacelle_details.py).
 
   // Drenaj mastı
   const mast = new THREE.Mesh(

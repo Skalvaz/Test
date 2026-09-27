@@ -36,6 +36,7 @@ export interface Settings {
   quality: 'low' | 'medium' | 'high';
   volume: number;
   muted: boolean;
+  environment: string;
 }
 
 export function loadSettings(): Partial<Settings> {

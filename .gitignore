@@ -6,3 +6,4 @@ dist/
 dist-single/
 scratch/
 playtest-output/
+__pycache__/

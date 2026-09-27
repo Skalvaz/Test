@@ -38,6 +38,24 @@ export function latheFromProfile(profile, segments = 256, phiStart = 0, phiLengt
   return geo;
 }
 
+/**
+ * Lathe gövdesinin v koordinatını profil boyunca yay uzunluğuna göre yeniden
+ * dağıtır. LatheGeometry v'yi nokta indeksine göre verir; spline örnekleri
+ * eşit aralıklı olmadığından doku eksen boyunca yer yer gerilir, perçinler
+ * elipsleşirdi. Pişirilmiş detay haritaları metre ölçeğinde olduğu için
+ * v = s / L gerekir.
+ */
+export function arcLengthV(geometry, profile) {
+  const n = profile.length;
+  const cum = new Float32Array(n);
+  for (let j = 1; j < n; j++) cum[j] = cum[j - 1] + profile[j].distanceTo(profile[j - 1]);
+  const total = cum[n - 1] || 1;
+  const uv = geometry.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setY(i, cum[i % n] / total);
+  uv.needsUpdate = true;
+  return geometry;
+}
+
 /** Basit halka (disk) — iki yarıçap arasında, sabit eksenel konumda. */
 export function annulusGeometry(inner, outer, z, segments = 128, flip = false) {
   const geo = new THREE.RingGeometry(inner, outer, segments, 1);

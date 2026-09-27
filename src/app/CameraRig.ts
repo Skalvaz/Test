@@ -39,6 +39,8 @@ export class CameraRig {
   readonly camera: THREE.PerspectiveCamera;
   readonly controls: OrbitControls;
   autoRotate = false;
+  /** Kapalı ortamda (test hücresi) kameranın çıkamayacağı sınırlar */
+  bounds: THREE.Box3 | null = null;
   onCutaway?: (on: boolean) => void;
   current: ViewName = 'front';
 
@@ -149,6 +151,7 @@ export class CameraRig {
     this.controls.autoRotate = this.autoRotate && !a.active;
     this.controls.autoRotateSpeed = 0.35;
     this.controls.update();
+    if (this.bounds) this.camera.position.clamp(this.bounds.min, this.bounds.max);
     this.applyOffset();
 
     if (shake > 0.001) {

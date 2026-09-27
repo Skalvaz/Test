@@ -1,0 +1,27 @@
+{
+  "_": "Fan kaportası panel yerleşimi. Tek kaynak: blender/nacelle_details.py yüksek poligon modeli bununla kurar, src/materials/textures.js albedo derzlerini bununla çizer. u: yarım kaporta çevresi (0 = alt kilit hattı, 1 = üst menteşe hattı; doku aynalı iki kez sarılır), v: profil boyunca yay uzunluğu (0 = ön, 1 = arka). w/h/d metre cinsindendir.",
+  "halfCircumference": 5.41,
+  "length": 3.264,
+  "seamsU": [0, 0.5, 1],
+  "ringsV": [0.1, 0.22, 0.37, 0.518, 0.66, 0.87, 0.94],
+  "bandV": [0.735, 0.8],
+  "latches": [
+    { "v": 0.295, "h": 0.34 },
+    { "v": 0.444, "h": 0.34 },
+    { "v": 0.765, "h": 0.34 }
+  ],
+  "doors": [
+    { "kind": "oil", "u": 0.63, "v": 0.444, "w": 0.34, "h": 0.24 },
+    { "kind": "relief", "u": 0.3, "v": 0.589, "w": 0.46, "h": 0.36 }
+  ],
+  "grilles": [{ "u": 0.12, "v": 0.589, "w": 0.3, "h": 0.22, "slats": 7 }],
+  "plugs": [
+    { "u": 0.8, "v": 0.295, "d": 0.09 },
+    { "u": 0.4, "v": 0.295, "d": 0.09 }
+  ],
+  "hinges": [
+    { "v": 0.295 },
+    { "v": 0.444 },
+    { "v": 0.765 }
+  ]
+}

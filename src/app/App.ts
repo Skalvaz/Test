@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { EngineAudio } from '../audio/EngineAudio';
 import { createEnvironment, PRESETS } from '../core/environment.js';
 import { createComposer } from '../core/postfx.js';
+import { CELL_BOUNDS, loadTestCell, type TestCell } from '../core/testCell';
 import { EngineVisual, type PartId } from '../engine/visual';
 import { LessonRunner, type LessonResult } from '../game/LessonRunner';
 import { LESSONS } from '../game/lessons';
@@ -14,6 +15,7 @@ import type { Lesson, StepUi } from '../game/lessons/types';
 import { PARTS } from '../game/parts';
 import { loadProgress, loadSettings, saveLessonResult, saveSettings, type Settings } from '../game/progress';
 import { createMaterials } from '../materials/library.js';
+import { loadNacelleDetail } from '../materials/textures.js';
 import { EngineSim, LIMITS, type SimEvent } from '../sim';
 import { Cockpit, type SwitchId } from '../ui/Cockpit';
 import { CycleDiagram } from '../ui/CycleDiagram';
@@ -36,6 +38,9 @@ const QUALITY = {
   high: { pixelRatio: 2, shadow: 4096, gtao: true, bloom: true },
 } as const;
 
+/** Blender'da pişirilmiş kapalı test hücresi ortamının adı */
+const TEST_CELL = 'Test hücresi';
+
 const step = (onText: (t: string) => void, text: string) =>
   new Promise<void>((resolve) => {
     onText(text);
@@ -53,6 +58,7 @@ export class App {
   timeScale = 1;
 
   private env!: ReturnType<typeof createEnvironment>;
+  private cell: TestCell | null = null;
   private fx!: ReturnType<typeof createComposer>;
   private picker!: Picker;
   private cockpit!: Cockpit;
@@ -82,7 +88,7 @@ export class App {
   private stepHighlight: PartId | null = null;
   private autoStart = false;
   private settings: Settings;
-  private envName = 'Altın saat';
+  private envName = TEST_CELL;
   private last = performance.now();
   private sandboxAcc = 0;
   private hazeA = new THREE.Vector3();
@@ -94,7 +100,9 @@ export class App {
       quality: s.quality ?? 'medium',
       volume: s.volume ?? 0.7,
       muted: s.muted ?? false,
+      environment: s.environment ?? TEST_CELL,
     };
+    this.envName = this.settings.environment;
   }
 
   async init(onProgress: (t: string) => void) {
@@ -117,10 +125,23 @@ export class App {
     this.rig.onCutaway = (on) => this.setCutaway(on);
 
     await step(onProgress, 'Yüzey dokuları üretiliyor…');
-    const materials = createMaterials(renderer);
+    const detail = await loadNacelleDetail().catch((err) => {
+      console.error('Kaporta detay dokuları yüklenemedi', err);
+      return null;
+    });
+    const materials = createMaterials(renderer, detail);
 
     await step(onProgress, 'Gökyüzü ve ortam ışığı hesaplanıyor…');
     this.env = createEnvironment(renderer, this.scene, materials);
+
+    await step(onProgress, 'Test hücresi yükleniyor…');
+    try {
+      this.cell = await loadTestCell(renderer);
+      this.scene.add(this.cell.root);
+    } catch (err) {
+      console.error('Test hücresi yüklenemedi, açık hava ortamı kullanılacak', err);
+      this.cell = null;
+    }
 
     await step(onProgress, 'Motor geometrisi oluşturuluyor…');
     this.visual = new EngineVisual(materials);
@@ -138,6 +159,7 @@ export class App {
     this.picker.onHover = (p) => this.onHover(p);
 
     this.buildUi();
+    this.applyEnvironment(this.envName);
     this.applyQuality(this.settings.quality);
     this.audio.volume = this.settings.volume;
     this.audio.muted = this.settings.muted;
@@ -403,7 +425,7 @@ export class App {
     this.openOverlay(
       settingsModal(
         this.settings,
-        Object.keys(PRESETS),
+        this.environmentNames(),
         this.envName,
         {
           onQuality: (q) => {
@@ -423,13 +445,58 @@ export class App {
             this.refreshChrome();
           },
           onEnvironment: (name) => {
-            this.envName = name;
-            this.env.setPreset(name);
+            this.applyEnvironment(name);
+            this.settings.environment = name;
+            saveSettings(this.settings);
           },
         },
         () => this.afterModal(),
       ),
     );
+  }
+
+  private environmentNames(): string[] {
+    return [...(this.cell ? [TEST_CELL] : []), ...Object.keys(PRESETS)];
+  }
+
+  /**
+   * Ortamı değiştirir. Test hücresinde gökyüzü, zemin ve sis kapanır; motoru
+   * aydınlatan çalışma zamanı ışıkları hücrenin pişirilmiş ışığına uyacak
+   * şekilde tavan armatürlerinin altına taşınır; yansımalar hücreden gelir.
+   */
+  private applyEnvironment(name: string) {
+    const env = this.env;
+    const inCell = name === TEST_CELL && !!this.cell;
+    this.envName = inCell ? TEST_CELL : PRESETS[name as keyof typeof PRESETS] ? name : 'Altın saat';
+    if (this.cell) this.cell.root.visible = inCell;
+    env.sky.visible = !inCell;
+    env.ground.visible = !inCell;
+    this.rig.bounds = inCell ? CELL_BOUNDS : null;
+    this.rig.controls.maxDistance = inCell ? 18 : 40;
+    if (!inCell) {
+      env.setPreset(this.envName);
+      return;
+    }
+    const cell = this.cell!;
+    this.scene.environment = cell.envMap;
+    this.scene.background = new THREE.Color(0x040506);
+    if (this.scene.fog) (this.scene.fog as THREE.FogExp2).density = 0;
+    // Tavandaki armatür sırasının hemen altından, hafif önden gelen ana ışık (gölgeli)
+    env.sun.visible = true;
+    env.sun.color.setHex(0xfff3e6);
+    env.sun.intensity = 2.4;
+    env.sun.position.set(2.5, 14, -3.5);
+    env.sun.target.position.set(0, 0, 0.3);
+    env.ambient.intensity = 0.12;
+    env.keyPanel.color.setHex(0xf2f5ff);
+    env.keyPanel.intensity = 2.2;
+    env.keyPanel.position.set(-4.5, 7.6, -1.5);
+    env.keyPanel.lookAt(0, 0, 0.3);
+    env.rimPanel.color.setHex(0xfff0e0);
+    env.rimPanel.intensity = 1.6;
+    env.rimPanel.position.set(4.5, 7.6, 3);
+    env.rimPanel.lookAt(0, 0, 0.5);
+    this.renderer.toneMappingExposure = 0.95;
   }
 
   private afterModal() {

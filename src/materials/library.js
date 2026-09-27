@@ -12,9 +12,15 @@ import {
   createBladeMaps,
   createSpinnerTexture,
   createTarmacMaps,
+  albedoWithCavity,
 } from './textures.js';
 
-export function createMaterials(renderer) {
+/**
+ * @param {THREE.WebGLRenderer} renderer
+ * @param {{ normal: THREE.Texture, orm: THREE.Texture } | null} [detail]
+ *   Blender'da pişirilmiş kaporta detayları (bkz. loadNacelleDetail).
+ */
+export function createMaterials(renderer, detail = null) {
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
   const nacelleMaps = createNacelleMaps({ size: 2048 });
   const bladeMaps = createBladeMaps({ size: 1024 });
@@ -36,6 +42,33 @@ export function createMaterials(renderer) {
     clearcoatRoughness: 0.12,
     envMapIntensity: 1.15,
     side: THREE.DoubleSide,
+  });
+
+  /* --- fan kaportası: aynı boya + pişirilmiş derz/perçin/kapak detayı --- */
+  const cowlDetail = cowlPaint.clone();
+  if (detail) {
+    for (const tex of Object.values(detail)) tex.anisotropy = maxAniso;
+    cowlDetail.map = albedoWithCavity(nacelleMaps.map, detail.orm);
+    cowlDetail.normalMap = detail.normal;
+    cowlDetail.normalScale = new THREE.Vector2(1, 1);
+    cowlDetail.clearcoatNormalMap = detail.normal;
+    cowlDetail.clearcoatNormalScale = new THREE.Vector2(0.8, 0.8);
+    cowlDetail.roughnessMap = detail.orm;
+    cowlDetail.metalnessMap = detail.orm;
+    cowlDetail.aoMap = detail.orm;
+    cowlDetail.roughness = 1;
+    cowlDetail.metalness = 1;
+    cowlDetail.aoMapIntensity = 1;
+  }
+
+  /* --- küçük kabartılar (aktüatör muhafazaları): dokusuz aynı boya --- */
+  const fairingPaint = new THREE.MeshPhysicalMaterial({
+    color: 0xe4e6e8,
+    metalness: 0.1,
+    roughness: 0.2,
+    clearcoat: 0.85,
+    clearcoatRoughness: 0.12,
+    envMapIntensity: 1.15,
   });
 
   /* --- giriş ağzı: parlatılmış alüminyum halka --- */
@@ -210,6 +243,8 @@ export function createMaterials(renderer) {
 
   const library = {
     cowlPaint,
+    cowlDetail,
+    fairingPaint,
     polishedLip,
     acousticLiner,
     titanium,

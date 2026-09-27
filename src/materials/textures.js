@@ -8,6 +8,9 @@
  */
 
 import * as THREE from 'three';
+import layout from './nacelleLayout.json';
+import nacelleNormalUrl from '../assets/nacelle_normal.webp?url';
+import nacelleOrmUrl from '../assets/nacelle_orm.webp?url';
 
 /* ------------------------------------------------------------------ */
 /* Gürültü (value noise + fbm)                                         */
@@ -207,59 +210,32 @@ export function createNacelleMaps(opts = {}) {
   ctx.fillStyle = tint;
   ctx.fillRect(0, 0, w, h);
 
-  // Boylamasına kaporta ayrım hatları (kapak menteşeleri / kilit hatları)
-  const seams = [0.0, 0.25, 0.5, 0.75];
-  ctx.lineWidth = Math.max(2, w / 900);
+  // Panel derzleri nacelleLayout.json'dan: aynı yerleşimle Blender'da pişirilen
+  // kabartma (perçin, vida, kapak) haritaları bunların üzerine oturur.
+  // Yerleşim yarım çevre içindir ve aynalı iki kez sarılır; canvas'ta v ekseni
+  // ters (üst satır = v 1, kaportanın arka ucu).
+  const seams = [...new Set(layout.seamsU.flatMap((s) => [s / 2, (1 - s / 2) % 1]))];
+  ctx.lineWidth = Math.max(1.5, w / 1200);
+  ctx.strokeStyle = 'rgba(70,80,90,0.5)';
   for (const s of seams) {
-    const x = s * w;
-    ctx.strokeStyle = 'rgba(70,80,90,0.55)';
     ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    ctx.beginPath();
-    ctx.moveTo(x + ctx.lineWidth, 0);
-    ctx.lineTo(x + ctx.lineWidth, h);
+    ctx.moveTo(s * w, 0);
+    ctx.lineTo(s * w, h);
     ctx.stroke();
   }
-
-  // Çevresel panel derzleri
-  const rings = [0.08, 0.17, 0.34, 0.52, 0.63, 0.78, 0.9];
+  const rings = layout.ringsV.map((v) => 1 - v);
+  ctx.strokeStyle = 'rgba(88,98,110,0.45)';
   for (const r of rings) {
-    const y = r * h;
-    ctx.strokeStyle = 'rgba(88,98,110,0.5)';
-    ctx.lineWidth = Math.max(1.5, w / 1400);
     ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
+    ctx.moveTo(0, r * h);
+    ctx.lineTo(w, r * h);
     ctx.stroke();
-  }
-
-  // Perçin sıraları
-  const rivet = (x, y, r) => {
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(110,120,130,0.45)';
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(x - r * 0.25, y - r * 0.25, r * 0.55, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.fill();
-  };
-  const rr = Math.max(1.6, w / 1100);
-  for (const r of rings) {
-    const y = r * h;
-    for (let x = rr * 6; x < w; x += rr * 12) rivet(x, y + rr * 3, rr);
-  }
-  for (const s of seams) {
-    const x = s * w;
-    for (let y = rr * 6; y < h; y += rr * 12) rivet(x + rr * 3.5, y, rr);
   }
 
   // Aksan bandı (kuşak boyası) — jenerik, marka içermez
-  const bandTop = 0.2 * h;
-  const bandH = 0.055 * h;
+  const [band0, band1] = layout.bandV;
+  const bandH = ((band1 - band0) * h) / 1.18;
+  const bandTop = (1 - band1) * h;
   ctx.fillStyle = accent;
   ctx.fillRect(0, bandTop, w, bandH);
   ctx.fillStyle = 'rgba(214,168,60,0.95)';
@@ -323,41 +299,10 @@ export function createNacelleMaps(opts = {}) {
     return base + aft + scr + soot * 0.2;
   });
 
-  /* --- normal --- */
-  const bump = new Float32Array(w * h);
+  /* --- normal: yalnız boya yüzeyi dalgası (derz ve perçin kabartması
+     pişirilmiş haritadan gelir, bkz. loadNacelleDetail) --- */
   const surface = fbm2D(w, h, { octaves: 5, frequency: 24, seed: seed + 3 });
-  for (let i = 0; i < bump.length; i++) bump[i] = surface[i] * 0.12;
-  // Panel derzlerini yükseklik alanına da işle (gerçek oyuk hissi)
-  const bctx = makeCanvas(w, h).getContext('2d');
-  bctx.fillStyle = '#7f7f7f';
-  bctx.fillRect(0, 0, w, h);
-  bctx.strokeStyle = '#141414';
-  bctx.lineWidth = Math.max(2, w / 900);
-  for (const s of seams) {
-    bctx.beginPath();
-    bctx.moveTo(s * w, 0);
-    bctx.lineTo(s * w, h);
-    bctx.stroke();
-  }
-  for (const r of rings) {
-    bctx.beginPath();
-    bctx.moveTo(0, r * h);
-    bctx.lineTo(w, r * h);
-    bctx.stroke();
-  }
-  bctx.fillStyle = '#d8d8d8';
-  for (const r of rings) {
-    for (let x = rr * 6; x < w; x += rr * 12) {
-      bctx.beginPath();
-      bctx.arc(x, r * h + rr * 3, rr, 0, Math.PI * 2);
-      bctx.fill();
-    }
-  }
-  const seamData = bctx.getImageData(0, 0, w, h).data;
-  for (let i = 0; i < bump.length; i++) {
-    bump[i] = bump[i] * 0.35 + (seamData[i * 4] / 255) * 0.65;
-  }
-  const normalCanvas = heightToNormalTexture(bump, w, h, 2.6);
+  const normalCanvas = heightToNormalTexture(surface, w, h, 0.9);
 
   return {
     map: toTexture(canvas, { srgb: true }),
@@ -562,4 +507,69 @@ export function createNoiseTexture(size = 512, seed = 99) {
   }
   ctx.putImageData(img, 0, 0);
   return toTexture(canvas);
+}
+
+/* ------------------------------------------------------------------ */
+/* Blender'da pişirilmiş kaporta detayları                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * blender/nacelle_details.py çıktısını yükler: tanjant uzayı normal haritası
+ * ve ORM (R ortam kapanması, G pürüzlülük, B metallik). Haritalar yarım
+ * kaporta içindir; çevre boyunca aynalı iki tekrar (sol/sağ kapak) sarılır.
+ */
+export async function loadNacelleDetail() {
+  const loader = new THREE.TextureLoader();
+  const [normal, orm] = await Promise.all([
+    loader.loadAsync(nacelleNormalUrl),
+    loader.loadAsync(nacelleOrmUrl),
+  ]);
+  for (const tex of [normal, orm]) {
+    tex.wrapS = THREE.MirroredRepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.repeat.set(2, 1);
+    tex.colorSpace = THREE.NoColorSpace;
+  }
+  return { normal, orm };
+}
+
+/**
+ * Albedo'nun kopyasına pişirilmiş boşluk gölgesini (derz, perçin çevresi)
+ * ve metal bağlantı elemanlarının koyuluğunu işler. AO haritası three.js'te
+ * yalnız dolaylı ışığı karartır; doğrudan ışıkta da derzlerin okunması için
+ * albedo'ya hafif bir boşluk karartması eklenir.
+ */
+export function albedoWithCavity(albedo, orm) {
+  const src = albedo.image;
+  const w = src.width;
+  const h = src.height;
+  const img = orm.image;
+  const tmp = makeCanvas(img.width, img.height);
+  const tctx = tmp.getContext('2d', { willReadFrequently: true });
+  tctx.drawImage(img, 0, 0);
+  const data = tctx.getImageData(0, 0, img.width, img.height);
+  const px = data.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const ao = px[i] / 255;
+    const metal = px[i + 2] / 255;
+    const v = 255 * (1 - 0.6 * (1 - ao)) * (1 - 0.3 * metal);
+    px[i] = v;
+    px[i + 1] = v;
+    px[i + 2] = v;
+    px[i + 3] = 255;
+  }
+  tctx.putImageData(data, 0, 0);
+
+  const canvas = makeCanvas(w, h);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(src, 0, 0);
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(tmp, 0, 0, w / 2, h);
+  ctx.save();
+  ctx.translate(w, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(tmp, 0, 0, w / 2, h);
+  ctx.restore();
+  return toTexture(canvas, { srgb: true, aniso: albedo.anisotropy });
 }

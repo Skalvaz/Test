@@ -34,7 +34,17 @@ hedefler (ör. "N1'i %78–82'de 5 saniye tut"), quiz'ler ve 3B parça seçme
 görevleri. Yanlış prosedür (ör. yakıtı çok erken vermek) adımı başarısız sayar
 ve tekrarlatır. Her ders yıldızla puanlanır ve ilerleme tarayıcıda saklanır.
 
-**Test hücresi** — serbest mod: bütün anahtarlar, FADEC'i manuele alma, irtifa /
+**Test hücresi ortamı** — Blender'da modellenip Cycles ile ışığı pişirilmiş
+kapalı motor test hücresi: ses yutucu panelli duvarlar, hava girişi susturucusu,
+arkada egzoz augmenter'ı, itki ölçüm çerçevesi ve yük hücresi, kontrol odası
+camı, bakım platformu, zemin işaretleri. Motorun yansımaları da bu hücreden
+alınır. Ayarlardan açık hava (pist) ortamına geçilebilir.
+
+**Kaporta detayı** — perçin sıraları, vidalar, kamlok bağlantılar, yağ servis
+kapağı, basınç tahliye kapağı, alt kilit yuvaları ve havalandırma panjuru
+Blender'da yüksek poligonlu olarak modellenip normal + AO haritasına pişirilir.
+
+**Serbest mod** — test hücresinde bütün anahtarlar, FADEC'i manuele alma, irtifa /
 Mach / sıcaklık, simülasyon hızı (¼×–4×), arıza enjeksiyonu (kuş çarpması,
 kompresör/türbin aşınması, marş ve ateşleyici arızası).
 
@@ -103,6 +113,24 @@ npm run build && npx vite preview --port 4173 &
 node scripts/playtest.mjs ekran-goruntuleri/
 ```
 
+### Blender varlık hattı
+
+Blender varlıkları elle düzenlenmiş `.blend` dosyası olmadan, tamamen kodla
+üretilir; her değişiklik incelenebilir ve yeniden üretilebilir. Blender 4.5,
+Python paketi olarak kurulabilir (`pip install bpy==4.5.*`, Python 3.11):
+
+```bash
+# Test hücresi: modelleme + Cycles ışık pişirme → glb (4 çekirdekte ~1 saat)
+python blender/testcell.py --bake --out src/assets/testcell.glb
+python blender/testcell.py --bake --size 1024 --samples 48 --out /tmp/taslak.glb  # hızlı taslak
+
+# Kaporta detayları: yüksek poligon → normal + ORM haritaları
+python blender/nacelle_details.py --out src/assets
+```
+
+Kaporta panel yerleşimi `src/materials/nacelleLayout.json` dosyasındadır;
+Blender modeli ve oyundaki albedo derzleri aynı dosyadan beslenir.
+
 ### Dosya düzeni
 
 ```
@@ -114,7 +142,9 @@ src/
   game/       ders motoru, ders içerikleri, parça bilgileri, bilgi bankası
   audio/      prosedürel motor sesi (Web Audio)
   core/       gökyüzü/ışık ortamı, görüntü işleme zinciri
-  materials/  prosedürel dokular ve PBR malzemeler
+  materials/  prosedürel dokular, PBR malzemeler, kaporta yerleşimi
+  assets/     Blender çıktıları (test hücresi glb, kaporta detay dokuları)
+blender/      Blender betikleri (test hücresi, kaporta detayları)
 scripts/      tek dosya paketleyici, otomatik oynanış testi
 ```
 
