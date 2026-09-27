@@ -1,0 +1,71 @@
+{
+  "_": "Pişirilmiş panel detaylarının yerleşimi. Tek kaynak: blender/panel_details.py yüksek poligon modeli bununla kurar, oyun albedo derzlerini bununla çizer. Her parça düz bir levha olarak modellenir: u levha genişliği (width, m), v levha boyu (length, m). Döner gövdelerde (kaportalar) levha yarım çevredir: u 0 = alt kilit hattı, 1 = üst menteşe hattı, doku aynalı iki kez sarılır; v profil boyunca yay uzunluğudur (0 ön, 1 arka). Pilonda u 0 = firar kenarı, 1 = hücum kenarı (iki yüz aynalı), v 0 = kök, 1 = uç. Kapak/tapa w, h, d ölçüleri metredir.",
+  "nacelle": {
+    "width": 5.41,
+    "length": 3.264,
+    "texture": [4096, 2048],
+    "seamsU": [0, 0.5, 1],
+    "ringsV": [0.1, 0.22, 0.37, 0.518, 0.66, 0.87, 0.94],
+    "bandV": [0.735, 0.8],
+    "seamFastener": "rivet",
+    "surface": { "paint": true, "rough": 0.15, "roughVar": 0.07, "aftSoot": 0.08, "fastenerRough": 0.36 },
+    "latches": [
+      { "v": 0.295, "h": 0.34 },
+      { "v": 0.444, "h": 0.34 },
+      { "v": 0.765, "h": 0.34 }
+    ],
+    "doors": [
+      { "kind": "oil", "u": 0.63, "v": 0.444, "w": 0.34, "h": 0.24 },
+      { "kind": "relief", "u": 0.3, "v": 0.589, "w": 0.46, "h": 0.36 }
+    ],
+    "grilles": [{ "u": 0.12, "v": 0.589, "w": 0.3, "h": 0.22, "slats": 7 }],
+    "plugs": [
+      { "u": 0.8, "v": 0.295, "d": 0.09 },
+      { "u": 0.4, "v": 0.295, "d": 0.09 }
+    ],
+    "hinges": [{ "v": 0.295 }, { "v": 0.444 }, { "v": 0.765 }]
+  },
+  "core": {
+    "width": 2.472,
+    "length": 3.101,
+    "texture": [2048, 2048],
+    "seamsU": [0, 0.5, 1],
+    "ringsV": [0.12, 0.45, 0.78],
+    "seamFastener": "screw",
+    "surface": { "paint": false, "rough": 0.42, "roughVar": 0.14, "aftSoot": 0.18, "fastenerRough": 0.3 },
+    "latches": [
+      { "v": 0.3, "h": 0.24 },
+      { "v": 0.62, "h": 0.24 }
+    ],
+    "doors": [
+      { "kind": "access", "u": 0.33, "v": 0.3, "w": 0.3, "h": 0.2 },
+      { "kind": "access", "u": 0.72, "v": 0.62, "w": 0.34, "h": 0.22 }
+    ],
+    "grilles": [{ "u": 0.25, "v": 0.9, "w": 0.26, "h": 0.12, "slats": 5 }],
+    "plugs": [
+      { "u": 0.6, "v": 0.22, "d": 0.055 },
+      { "u": 0.6, "v": 0.36, "d": 0.055 },
+      { "u": 0.4, "v": 0.55, "d": 0.055 },
+      { "u": 0.4, "v": 0.68, "d": 0.055 }
+    ],
+    "hinges": []
+  },
+  "pylon": {
+    "width": 2.8,
+    "length": 1.53,
+    "texture": [2048, 1024],
+    "edgeSeams": false,
+    "seamsU": [0, 0.36, 0.72, 1],
+    "ringsV": [0.24, 0.66],
+    "seamFastener": "screw",
+    "surface": { "paint": true, "rough": 0.2, "roughVar": 0.06, "aftSoot": 0.0, "fastenerRough": 0.36 },
+    "latches": [],
+    "doors": [
+      { "kind": "access", "u": 0.54, "v": 0.45, "w": 0.52, "h": 0.3 },
+      { "kind": "access", "u": 0.18, "v": 0.46, "w": 0.34, "h": 0.28 }
+    ],
+    "grilles": [{ "u": 0.2, "v": 0.83, "w": 0.26, "h": 0.12, "slats": 5 }],
+    "plugs": [{ "u": 0.86, "v": 0.45, "d": 0.08 }],
+    "hinges": []
+  }
+}

@@ -8,9 +8,15 @@
  */
 
 import * as THREE from 'three';
-import layout from './nacelleLayout.json';
+import layouts from './panelLayouts.json';
 import nacelleNormalUrl from '../assets/nacelle_normal.webp?url';
 import nacelleOrmUrl from '../assets/nacelle_orm.webp?url';
+import coreNormalUrl from '../assets/core_normal.webp?url';
+import coreOrmUrl from '../assets/core_orm.webp?url';
+import pylonNormalUrl from '../assets/pylon_normal.webp?url';
+import pylonOrmUrl from '../assets/pylon_orm.webp?url';
+
+const layout = layouts.nacelle;
 
 /* ------------------------------------------------------------------ */
 /* Gürültü (value noise + fbm)                                         */
@@ -210,7 +216,7 @@ export function createNacelleMaps(opts = {}) {
   ctx.fillStyle = tint;
   ctx.fillRect(0, 0, w, h);
 
-  // Panel derzleri nacelleLayout.json'dan: aynı yerleşimle Blender'da pişirilen
+  // Panel derzleri panelLayouts.json'dan: aynı yerleşimle Blender'da pişirilen
   // kabartma (perçin, vida, kapak) haritaları bunların üzerine oturur.
   // Yerleşim yarım çevre içindir ve aynalı iki kez sarılır; canvas'ta v ekseni
   // ters (üst satır = v 1, kaportanın arka ucu).
@@ -300,7 +306,7 @@ export function createNacelleMaps(opts = {}) {
   });
 
   /* --- normal: yalnız boya yüzeyi dalgası (derz ve perçin kabartması
-     pişirilmiş haritadan gelir, bkz. loadNacelleDetail) --- */
+     pişirilmiş haritadan gelir, bkz. loadPanelDetails) --- */
   const surface = fbm2D(w, h, { octaves: 5, frequency: 24, seed: seed + 3 });
   const normalCanvas = heightToNormalTexture(surface, w, h, 0.9);
 
@@ -510,44 +516,51 @@ export function createNoiseTexture(size = 512, seed = 99) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Blender'da pişirilmiş kaporta detayları                             */
+/* Blender'da pişirilmiş panel detayları                               */
 /* ------------------------------------------------------------------ */
 
+const PANEL_URLS = {
+  nacelle: [nacelleNormalUrl, nacelleOrmUrl],
+  core: [coreNormalUrl, coreOrmUrl],
+  pylon: [pylonNormalUrl, pylonOrmUrl],
+};
+
 /**
- * blender/nacelle_details.py çıktısını yükler: tanjant uzayı normal haritası
- * ve ORM (R ortam kapanması, G pürüzlülük, B metallik). Haritalar yarım
- * kaporta içindir; çevre boyunca aynalı iki tekrar (sol/sağ kapak) sarılır.
+ * blender/panel_details.py çıktılarını yükler: her parça için tanjant uzayı
+ * normal haritası ve ORM (R ortam kapanması, G pürüzlülük, B metallik).
+ * Haritalar parçanın yarısı içindir (kaportada yarım çevre, pilonda tek yüz);
+ * u yönünde aynalı iki tekrar sarılır.
+ * @returns {Promise<Record<'nacelle'|'core'|'pylon', {normal: THREE.Texture, orm: THREE.Texture}>>}
  */
-export async function loadNacelleDetail() {
+export async function loadPanelDetails() {
   const loader = new THREE.TextureLoader();
-  const [normal, orm] = await Promise.all([
-    loader.loadAsync(nacelleNormalUrl),
-    loader.loadAsync(nacelleOrmUrl),
-  ]);
-  for (const tex of [normal, orm]) {
-    tex.wrapS = THREE.MirroredRepeatWrapping;
-    tex.wrapT = THREE.ClampToEdgeWrapping;
-    tex.repeat.set(2, 1);
-    tex.colorSpace = THREE.NoColorSpace;
-  }
-  return { normal, orm };
+  const entries = await Promise.all(
+    Object.entries(PANEL_URLS).map(async ([part, urls]) => {
+      const [normal, orm] = await Promise.all(urls.map((u) => loader.loadAsync(u)));
+      for (const tex of [normal, orm]) {
+        tex.wrapS = THREE.MirroredRepeatWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.repeat.set(2, 1);
+        tex.colorSpace = THREE.NoColorSpace;
+      }
+      return [part, { normal, orm }];
+    }),
+  );
+  return Object.fromEntries(entries);
 }
 
 /**
- * Albedo'nun kopyasına pişirilmiş boşluk gölgesini (derz, perçin çevresi)
- * ve metal bağlantı elemanlarının koyuluğunu işler. AO haritası three.js'te
- * yalnız dolaylı ışığı karartır; doğrudan ışıkta da derzlerin okunması için
- * albedo'ya hafif bir boşluk karartması eklenir.
+ * ORM'den boşluk karartması: derz ve perçin çevresi koyulaşır, metal bağlantı
+ * elemanları biraz daha koyu görünür. AO haritası three.js'te yalnız dolaylı
+ * ışığı etkiler; doğrudan ışıkta da derzlerin okunması için bu değer albedo
+ * ile çarpılır.
  */
-export function albedoWithCavity(albedo, orm) {
-  const src = albedo.image;
-  const w = src.width;
-  const h = src.height;
+function cavityCanvas(orm) {
   const img = orm.image;
-  const tmp = makeCanvas(img.width, img.height);
-  const tctx = tmp.getContext('2d', { willReadFrequently: true });
-  tctx.drawImage(img, 0, 0);
-  const data = tctx.getImageData(0, 0, img.width, img.height);
+  const canvas = makeCanvas(img.width, img.height);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0);
+  const data = ctx.getImageData(0, 0, img.width, img.height);
   const px = data.data;
   for (let i = 0; i < px.length; i += 4) {
     const ao = px[i] / 255;
@@ -558,18 +571,38 @@ export function albedoWithCavity(albedo, orm) {
     px[i + 2] = v;
     px[i + 3] = 255;
   }
-  tctx.putImageData(data, 0, 0);
+  ctx.putImageData(data, 0, 0);
+  return canvas;
+}
 
+/** Dokusuz (düz renkli) malzemeler için boşluk haritası; ORM ile aynı sarım. */
+export function cavityTexture(orm) {
+  const tex = toTexture(cavityCanvas(orm), { srgb: true, aniso: orm.anisotropy });
+  tex.wrapS = orm.wrapS;
+  tex.wrapT = orm.wrapT;
+  tex.repeat.copy(orm.repeat);
+  return tex;
+}
+
+/**
+ * Tam çevreye sarılan albedo'nun kopyasına boşluk karartmasını işler
+ * (yarım çevre haritası iki kez, ikincisi aynalı çizilir).
+ */
+export function albedoWithCavity(albedo, orm) {
+  const src = albedo.image;
+  const w = src.width;
+  const h = src.height;
+  const cav = cavityCanvas(orm);
   const canvas = makeCanvas(w, h);
   const ctx = canvas.getContext('2d');
   ctx.drawImage(src, 0, 0);
   ctx.globalCompositeOperation = 'multiply';
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(tmp, 0, 0, w / 2, h);
+  ctx.drawImage(cav, 0, 0, w / 2, h);
   ctx.save();
   ctx.translate(w, 0);
   ctx.scale(-1, 1);
-  ctx.drawImage(tmp, 0, 0, w / 2, h);
+  ctx.drawImage(cav, 0, 0, w / 2, h);
   ctx.restore();
   return toTexture(canvas, { srgb: true, aniso: albedo.anisotropy });
 }

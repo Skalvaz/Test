@@ -6,8 +6,8 @@
  */
 
 import * as THREE from 'three';
-import { createBladeGeometry } from './airfoil.js';
-import { tagPart } from './geom.js';
+import { airfoilSection, createBladeGeometry } from './airfoil.js';
+import { arcLengthU, tagPart } from './geom.js';
 
 export function buildPylon(materials) {
   const group = new THREE.Group();
@@ -27,7 +27,10 @@ export function buildPylon(materials) {
     chordAnchor: 0.42,
     tipRound: 0.02,
   });
-  const pylon = new THREE.Mesh(pylonGeo, materials.pylonSkin);
+  // u: firar kenarı → hücum kenarı → firar kenarı; pişirilmiş panel dokusu
+  // metre ölçeğinde olduğu için yay uzunluğuna göre dağıtılır
+  arcLengthU(pylonGeo, airfoilSection(64, 0.1, 0).length, 22);
+  const pylon = new THREE.Mesh(pylonGeo, materials.pylonDetail);
   pylon.name = 'pylon-strut';
   pylon.castShadow = true;
   pylon.receiveShadow = true;

@@ -13,14 +13,38 @@ import {
   createSpinnerTexture,
   createTarmacMaps,
   albedoWithCavity,
+  cavityTexture,
 } from './textures.js';
 
 /**
- * @param {THREE.WebGLRenderer} renderer
- * @param {{ normal: THREE.Texture, orm: THREE.Texture } | null} [detail]
- *   Blender'da pişirilmiş kaporta detayları (bkz. loadNacelleDetail).
+ * Pişirilmiş panel detayını (normal + ORM) malzemeye bağlar. Pürüzlülük ve
+ * metallik tamamen haritadan gelir; vernik katmanı da kabartmayı izler.
  */
-export function createMaterials(renderer, detail = null) {
+function applyPanelDetail(mat, detail) {
+  mat.normalMap = detail.normal;
+  mat.normalScale = new THREE.Vector2(1, 1);
+  if (mat.clearcoat > 0) {
+    mat.clearcoatNormalMap = detail.normal;
+    mat.clearcoatNormalScale = new THREE.Vector2(0.8, 0.8);
+  }
+  mat.roughnessMap = detail.orm;
+  mat.metalnessMap = detail.orm;
+  mat.aoMap = detail.orm;
+  mat.roughness = 1;
+  mat.metalness = 1;
+  mat.aoMapIntensity = 1;
+}
+
+/**
+ * @param {THREE.WebGLRenderer} renderer
+ * @param {Record<'nacelle'|'core'|'pylon', { normal: THREE.Texture, orm: THREE.Texture }> | null} [details]
+ *   Blender'da pişirilmiş panel detayları (bkz. loadPanelDetails).
+ */
+export function createMaterials(renderer, details = null) {
+  const maxAnisoAll = renderer.capabilities.getMaxAnisotropy();
+  for (const d of Object.values(details ?? {})) {
+    for (const tex of Object.values(d)) tex.anisotropy = maxAnisoAll;
+  }
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
   const nacelleMaps = createNacelleMaps({ size: 2048 });
   const bladeMaps = createBladeMaps({ size: 1024 });
@@ -46,19 +70,9 @@ export function createMaterials(renderer, detail = null) {
 
   /* --- fan kaportası: aynı boya + pişirilmiş derz/perçin/kapak detayı --- */
   const cowlDetail = cowlPaint.clone();
-  if (detail) {
-    for (const tex of Object.values(detail)) tex.anisotropy = maxAniso;
-    cowlDetail.map = albedoWithCavity(nacelleMaps.map, detail.orm);
-    cowlDetail.normalMap = detail.normal;
-    cowlDetail.normalScale = new THREE.Vector2(1, 1);
-    cowlDetail.clearcoatNormalMap = detail.normal;
-    cowlDetail.clearcoatNormalScale = new THREE.Vector2(0.8, 0.8);
-    cowlDetail.roughnessMap = detail.orm;
-    cowlDetail.metalnessMap = detail.orm;
-    cowlDetail.aoMap = detail.orm;
-    cowlDetail.roughness = 1;
-    cowlDetail.metalness = 1;
-    cowlDetail.aoMapIntensity = 1;
+  if (details) {
+    cowlDetail.map = albedoWithCavity(nacelleMaps.map, details.nacelle.orm);
+    applyPanelDetail(cowlDetail, details.nacelle);
   }
 
   /* --- küçük kabartılar (aktüatör muhafazaları): dokusuz aynı boya --- */
@@ -222,6 +236,16 @@ export function createMaterials(renderer, detail = null) {
     side: THREE.DoubleSide,
   });
 
+  /* --- pişirilmiş panel detaylı çekirdek kaportası ve pilon --- */
+  const coreDetail = heatedSteel.clone();
+  const pylonDetail = pylonSkin.clone();
+  if (details) {
+    coreDetail.map = cavityTexture(details.core.orm);
+    applyPanelDetail(coreDetail, details.core);
+    pylonDetail.map = cavityTexture(details.pylon.orm);
+    applyPanelDetail(pylonDetail, details.pylon);
+  }
+
   /* --- zemin --- */
   const tarmacMat = new THREE.MeshStandardMaterial({
     map: tarmac.map,
@@ -260,6 +284,8 @@ export function createMaterials(renderer, detail = null) {
     hose,
     brassFitting,
     pylonSkin,
+    pylonDetail,
+    coreDetail,
     tarmac: tarmacMat,
     cutawayFace,
   };

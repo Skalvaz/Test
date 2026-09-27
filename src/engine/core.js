@@ -12,7 +12,7 @@
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, bladeRow, radialInstances, pipeAlong, tagPart } from './geom.js';
+import { smoothProfile, latheFromProfile, arcLengthV, bladeRow, radialInstances, pipeAlong, tagPart } from './geom.js';
 import { createStageBladeGeometry } from './airfoil.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -45,7 +45,10 @@ export function buildCore(materials) {
     ],
     170,
   );
-  const coreCowl = new THREE.Mesh(latheFromProfile(coreCowlProfile, 200), materials.heatedSteel);
+  const coreCowl = new THREE.Mesh(
+    arcLengthV(latheFromProfile(coreCowlProfile, 200), coreCowlProfile),
+    materials.coreDetail,
+  );
   coreCowl.name = 'core-cowl';
   coreCowl.castShadow = true;
   coreCowl.receiveShadow = true;

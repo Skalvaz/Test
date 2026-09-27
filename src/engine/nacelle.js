@@ -182,7 +182,7 @@ export function buildNacelle(materials, dims) {
   group.add(tagPart(actuatorFairings, 'nacelle'));
 
   // Alt kaporta kilitleri, kapaklar ve perçinler kaporta dokusuna pişirildi
-  // (blender/nacelle_details.py).
+  // (blender/panel_details.py).
 
   // Drenaj mastı
   const mast = new THREE.Mesh(

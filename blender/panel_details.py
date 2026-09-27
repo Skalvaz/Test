@@ -1,21 +1,21 @@
 """
-Fan kaportası detay dokuları — Blender'da yüksek poligonlu modelden pişirme.
+Panel detay dokuları — Blender'da yüksek poligonlu modelden pişirme.
 
-Kaportanın yarım çevresi düz bir levha olarak modellenir: panel derzleri
-(pahlı kenarlı oluklar), perçin başları, vidalar, kamlok bağlantılar, yağ
-servis kapağı, basınç tahliye kapağı, alt kilit yuvaları, havalandırma
-panjuru, menteşe takviye plakaları. Cycles bu yüksek poligonlu modeli düz bir
-alçak poligonlu levhaya "seçiliden aktife" pişirir:
+Motorun boyalı/metal gövde parçalarının yüzeyi düz bir levha olarak
+modellenir: panel derzleri (pahlı kenarlı oluklar), perçin başları, vidalar,
+kamlok bağlantılar, servis kapakları, kilit yuvaları, havalandırma panjurları,
+boroskop tapaları, menteşe takviye plakaları. Cycles bu yüksek poligonlu
+modeli düz bir alçak poligonlu levhaya "seçiliden aktife" pişirir:
 
-    <out>/nacelle_normal.webp   tanjant uzayı normal haritası (OpenGL, Y+)
-    <out>/nacelle_orm.webp      R = ortam kapanması, G = pürüzlülük, B = metallik
+    <out>/<parça>_normal.webp   tanjant uzayı normal haritası (OpenGL, Y+)
+    <out>/<parça>_orm.webp      R = ortam kapanması, G = pürüzlülük, B = metallik
 
-Oyun bu iki haritayı yalnızca fan kaportasına, çevre boyunca aynalı iki tekrar
-halinde uygular (sol ve sağ kaporta kapakları birbirinin aynası).
-Yerleşim src/materials/nacelleLayout.json dosyasından okunur; albedo
-derzleri de aynı dosyadan çizildiği için renk ve kabartma birebir örtüşür.
+Parçalar ve yerleşimleri src/materials/panelLayouts.json dosyasındadır
+(nacelle = fan kaportası, core = çekirdek kaportası, pylon = pilon). Oyun
+albedo derzlerini de aynı dosyadan çizdiği için renk ve kabartma örtüşür.
 
-    /home/user/bpyenv/bin/python blender/nacelle_details.py --out src/assets
+    /home/user/bpyenv/bin/python blender/panel_details.py --out src/assets
+    /home/user/bpyenv/bin/python blender/panel_details.py --part core --scale 0.5   # taslak
 """
 
 import argparse
@@ -31,10 +31,20 @@ import numpy as np
 from mathutils import Matrix, Vector
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LAYOUT = json.load(open(os.path.join(ROOT, 'src/materials/nacelleLayout.json'), encoding='utf8'))
+LAYOUTS = json.load(open(os.path.join(ROOT, 'src/materials/panelLayouts.json'), encoding='utf8'))
 
-HALF = LAYOUT['halfCircumference']   # levha genişliği (X, çevre yönü)
-LEN = LAYOUT['length']               # levha boyu (Y, eksen yönü)
+# Etkin parçanın yerleşimi (use_layout ile seçilir)
+LAYOUT = {}
+HALF = 1.0   # levha genişliği (X; kaportada çevre, pilonda kord yönü)
+LEN = 1.0    # levha boyu (Y; kaportada eksen, pilonda açıklık yönü)
+
+
+def use_layout(part):
+    global LAYOUT, HALF, LEN
+    LAYOUT = {'latches': [], 'doors': [], 'grilles': [], 'plugs': [], 'hinges': [],
+              'edgeSeams': True, 'seamFastener': 'rivet', **LAYOUTS[part]}
+    HALF = LAYOUT['width']
+    LEN = LAYOUT['length']
 
 GAP = 0.005          # panel derzi üst genişliği (doku çözünürlüğüne göre hafif abartılı)
 BEVEL = 0.0016       # panel kenar yuvarlatması
@@ -139,8 +149,11 @@ def cross(cx, cy, size, width):
 
 
 def slab(name, shapes, top, mat, half=0.002, bevel=BEVEL):
-    """Doldurulmuş 2B eğriyi pahlı levhaya çevirir. Üst yüzün kenarı tam olarak
+    """Boş şekil listesi için None döner.
+    Doldurulmuş 2B eğriyi pahlı levhaya çevirir. Üst yüzün kenarı tam olarak
     eğri üzerindedir; pah dışa doğru taşar. İç içe şekiller delik olur."""
+    if not shapes:
+        return None
     cu = bpy.data.curves.new(name, 'CURVE')
     cu.dimensions = '2D'
     cu.fill_mode = 'BOTH'
@@ -231,12 +244,16 @@ def build(mt):
         u0, u1 = u_edges[ui], u_edges[ui + 1]
         for vi in range(len(v_edges) - 1):
             v0, v1 = v_edges[vi], v_edges[vi + 1]
-            x0, x1 = X(u0) + g, X(u1) - g
+            # Levhanın dış kenarları (u = 0 / 1) aynalanan derz hatlarıdır;
+            # pilonda ise hücum/firar kenarıdır, orada derz açılmaz.
+            edge = LAYOUT['edgeSeams']
+            x0 = X(u0) + (g if (ui > 0 or edge) else -0.03)
+            x1 = X(u1) - (g if (ui < len(u_edges) - 2 or edge) else -0.03)
             y0 = Y(v0) + (g if vi > 0 else 0)
             y1 = Y(v1) - (g if vi < len(v_edges) - 2 else 0)
             # Dış çevre: alt kilit hattında (u = 0) kilit yuvası çentikleri
             left = [(x0, y0)]
-            if u0 == 0:
+            if u0 == 0 and edge:
                 for (ly, lh) in latches:
                     a, b = ly - lh / 2, ly + lh / 2
                     if y0 < a and b < y1:
@@ -277,7 +294,7 @@ def build(mt):
                 for sy in (-1, 1):
                     screws.append((cx + sx * (w / 2 - 0.028), cy + sy * (h / 2 - 0.028), 0.020, 'slot'))
             door_shapes.append(rrect(cx, cy, 0.07, 0.03, 0.012))   # düğme çukuru (delik)
-        else:
+        elif d['kind'] == 'relief':
             # Tahliye kapağı: ön kenarda menteşe perçinleri
             for sx in np.arange(-w / 2 + 0.02, w / 2 - 0.01, 0.03):
                 rivets.append((cx + sx, cy - h / 2 + 0.018))
@@ -325,6 +342,11 @@ def build(mt):
     for p in LAYOUT['plugs']:
         cx, cy, r = X(p['u']), Y(p['v']), p['d'] / 2
         plug_shapes.append(circle(cx, cy, r, 48))
+        if r < 0.035:
+            # Boroskop tapası: altıgen baş, çevre vidası yok
+            plug_shapes.append([(cx + 0.011 * math.cos(math.pi / 3 * k), cy + 0.011 * math.sin(math.pi / 3 * k))
+                                for k in range(6)])
+            continue
         plug_shapes.append(cross(cx, cy, 0.026, 0.006))
         for k in range(4):
             a = math.pi / 4 + k * math.pi / 2
@@ -341,8 +363,10 @@ def build(mt):
                 screws.append((cx + sx, hy + sy, 0.010, 'cross'))
     objs.append(slab('hinge_plates', hinge_shapes, 0.0014, paint, half=0.0012, bevel=0.0008))
 
-    # --- Perçin sıraları ---
-    PITCH = 0.04
+    # --- Derz boyunca bağlantı elemanı sıraları (perçin ya da vida) ---
+    use_screws = LAYOUT['seamFastener'] == 'screw'
+    PITCH = 0.06 if use_screws else 0.04
+    row = []
     OFF = g + 0.011
     def free(x, y):
         for (ly, lh) in latches:
@@ -358,8 +382,10 @@ def build(mt):
             y = Y(v) + side * OFF
             for x in np.arange(0.02, HALF - 0.01, PITCH):
                 if free(x, y):
-                    rivets.append((x, y))
-    for u in LAYOUT['seamsU']:
+                    row.append((x, y))
+    for ui, u in enumerate(LAYOUT['seamsU']):
+        if not LAYOUT['edgeSeams'] and ui in (0, len(LAYOUT['seamsU']) - 1):
+            continue
         for side in (-1, 1):
             x = X(u) + side * OFF
             if not (0 < x < HALF):
@@ -368,11 +394,16 @@ def build(mt):
                 if min(abs(y - Y(v)) for v in LAYOUT['ringsV']) < 0.03:
                     continue
                 if free(x, y):
-                    rivets.append((x, y))
+                    row.append((x, y))
+    if use_screws:
+        screws.extend((x, y, 0.009, 'cross') for (x, y) in row)
+    else:
+        rivets.extend(row)
 
     # Yuvarlak başlı perçin: 7.5 mm çap, 1.4 mm yükseklik (küre kapağı)
     R = 0.0057
-    objs.append(instanced('rivets', rivets, 0.0014 - R, R, metal))
+    if rivets:
+        objs.append(instanced('rivets', rivets, 0.0014 - R, R, metal))
 
     # --- Vida başları (hafif çıkık; yarık/yıldız oyuğu delik olarak) ---
     heads = []
@@ -385,7 +416,7 @@ def build(mt):
     objs.append(slab('screw_heads', heads, 0.0005, metal, half=0.0008, bevel=0.0004))
 
     print(f'perçin: {len(rivets)}, vida: {len(screws)}', flush=True)
-    return objs
+    return [o for o in objs if o is not None]
 
 
 # ---------------------------------------------------------------------------
@@ -460,20 +491,18 @@ def save(arr, path, w, h, quality):
     print(f'  yazıldı {path} ({os.path.getsize(path) / 1024:.0f} KB)', flush=True)
 
 
-def main():
-    argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
-    ap = argparse.ArgumentParser()
-    ap.add_argument('--out', default='src/assets')
-    ap.add_argument('--width', type=int, default=4096)
-    ap.add_argument('--samples', type=int, default=32)
-    ap.add_argument('--quality', type=int, default=92)
-    args = ap.parse_args(argv)
-    w, h = args.width, args.width // 2
+def bake_part(part, out, scale, samples, quality):
+    use_layout(part)
+    w, h = (max(64, int(n * scale)) for n in LAYOUT['texture'])
+    surf = LAYOUT['surface']
+    print(f'== {part}: {HALF} x {LEN} m, {w} x {h} px', flush=True)
 
     t0 = time.time()
-    scn = reset()
+    reset()
+    base = 'paint' if surf['paint'] else 'bare'
     mt = {
-        'paint': material('paint', 0.0, bump=0.08),
+        # Boyada portakal kabuğu dalgası; çıplak metalde daha ince taşlama izi
+        'paint': material(base, 0.0, bump=0.08 if surf['paint'] else 0.04),
         'metal': material('metal', 1.0),
         'dark': material('dark', 0.0),
     }
@@ -482,37 +511,48 @@ def main():
     print(f'model kuruldu: {time.time() - t0:.1f} s', flush=True)
 
     # Doku renk uzayı: veriler doğrusal kalmalı (normal/ORM sRGB değildir)
-    normal_img = bpy.data.images.new('normal', w, h, float_buffer=True, alpha=False)
-    normal_img.colorspace_settings.name = 'Non-Color'
-    ao_img = bpy.data.images.new('ao', w, h, float_buffer=True, alpha=False)
-    ao_img.colorspace_settings.name = 'Non-Color'
-    emit_img = bpy.data.images.new('emit', w, h, float_buffer=True, alpha=False)
-    emit_img.colorspace_settings.name = 'Non-Color'
+    imgs = {}
+    for k in ('normal', 'ao', 'emit'):
+        imgs[k] = bpy.data.images.new(k, w, h, float_buffer=True, alpha=False)
+        imgs[k].colorspace_settings.name = 'Non-Color'
+    bake(low, highs, imgs['normal'], 'NORMAL', 8, normal_space='TANGENT')
+    bake(low, highs, imgs['ao'], 'AO', samples)
+    bake(low, highs, imgs['emit'], 'EMIT', 2)
 
-    bake(low, highs, normal_img, 'NORMAL', 8, normal_space='TANGENT')
-    bake(low, highs, ao_img, 'AO', args.samples)
-    bake(low, highs, emit_img, 'EMIT', 2)
+    normal = image_array(imgs['normal'])[..., :3]
+    ao = image_array(imgs['ao'])[..., 0]
+    fastener = np.clip(image_array(imgs['emit'])[..., 0], 0, 1)
 
-    normal = image_array(normal_img)[..., :3]
-    ao = image_array(ao_img)[..., 0]
-    metal = np.clip(image_array(emit_img)[..., 0], 0, 1)
-
-    # Pürüzlülük: boya 0.16 civarı, bölgesel dalgalanma, arkaya doğru is/yağ
-    # filmiyle artış; metal bağlantı elemanları daha mat
+    # Pürüzlülük: bölgesel dalgalanma, arkaya doğru is/yağ filmiyle artış,
+    # bağlantı elemanları ayrı değerde; oyuk diplerinde toz birikir
     v = np.linspace(0, 1, h, dtype=np.float32)[:, None]
     n = smooth_noise(h, w, 6, 7) * 0.6 + smooth_noise(h, w, 24, 11) * 0.4
-    paint_r = 0.15 + 0.07 * n + 0.08 * np.clip((v - 0.55) / 0.45, 0, 1) ** 2
-    rough = paint_r * (1 - metal) + 0.36 * metal
-    # Oyuk diplerinde toz birikir: kapalı bölgeler daha pürüzlü
-    rough = rough + (1 - ao) * 0.25
+    body_r = surf['rough'] + surf['roughVar'] * n + surf['aftSoot'] * np.clip((v - 0.55) / 0.45, 0, 1) ** 2
+    rough = body_r * (1 - fastener) + surf['fastenerRough'] * fastener + (1 - ao) * 0.25
+    # Metallik: boyalı gövdede yalnız bağlantı elemanları, çıplak gövdede her yer
+    metal = fastener if surf['paint'] else np.ones_like(fastener)
 
-    os.makedirs(args.out, exist_ok=True)
+    os.makedirs(out, exist_ok=True)
     # Blender pikselleri alt satırdan başlar; görüntü kaydı bunu dosyada
     # yukarı-aşağı doğru sıraya çevirir (UV v = 0 alt kenar).
-    save(normal, os.path.join(args.out, 'nacelle_normal.webp'), w, h, args.quality)
+    save(normal, os.path.join(out, f'{part}_normal.webp'), w, h, quality)
     orm = np.stack([ao, rough, metal], axis=2).astype(np.float32)
-    save(orm, os.path.join(args.out, 'nacelle_orm.webp'), w, h, args.quality)
-    print(f'toplam: {time.time() - t0:.1f} s', flush=True)
+    save(orm, os.path.join(out, f'{part}_orm.webp'), w, h, quality)
+    print(f'{part} toplam: {time.time() - t0:.1f} s', flush=True)
+
+
+def main():
+    argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else sys.argv[1:]
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--part', default=','.join(k for k in LAYOUTS if not k.startswith('_')),
+                    help='virgülle ayrılmış parça listesi')
+    ap.add_argument('--out', default='src/assets')
+    ap.add_argument('--scale', type=float, default=1.0, help='doku boyutu çarpanı (taslak için 0.5)')
+    ap.add_argument('--samples', type=int, default=32)
+    ap.add_argument('--quality', type=int, default=92)
+    args = ap.parse_args(argv)
+    for part in args.part.split(','):
+        bake_part(part, args.out, args.scale, args.samples, args.quality)
 
 
 if __name__ == '__main__':

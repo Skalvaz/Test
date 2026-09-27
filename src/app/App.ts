@@ -15,7 +15,7 @@ import type { Lesson, StepUi } from '../game/lessons/types';
 import { PARTS } from '../game/parts';
 import { loadProgress, loadSettings, saveLessonResult, saveSettings, type Settings } from '../game/progress';
 import { createMaterials } from '../materials/library.js';
-import { loadNacelleDetail } from '../materials/textures.js';
+import { loadPanelDetails } from '../materials/textures.js';
 import { EngineSim, LIMITS, type SimEvent } from '../sim';
 import { Cockpit, type SwitchId } from '../ui/Cockpit';
 import { CycleDiagram } from '../ui/CycleDiagram';
@@ -125,11 +125,11 @@ export class App {
     this.rig.onCutaway = (on) => this.setCutaway(on);
 
     await step(onProgress, 'Yüzey dokuları üretiliyor…');
-    const detail = await loadNacelleDetail().catch((err) => {
-      console.error('Kaporta detay dokuları yüklenemedi', err);
+    const details = await loadPanelDetails().catch((err) => {
+      console.error('Panel detay dokuları yüklenemedi', err);
       return null;
     });
-    const materials = createMaterials(renderer, detail);
+    const materials = createMaterials(renderer, details);
 
     await step(onProgress, 'Gökyüzü ve ortam ışığı hesaplanıyor…');
     this.env = createEnvironment(renderer, this.scene, materials);

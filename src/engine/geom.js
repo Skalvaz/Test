@@ -56,6 +56,33 @@ export function arcLengthV(geometry, profile) {
   return geometry;
 }
 
+/**
+ * Kesit halkalarından örülmüş gövdelerde (kanat/pilon loft'u) u koordinatını
+ * her kesitin çevresi boyunca yay uzunluğuna göre yeniden dağıtır. Profil
+ * noktaları hücum kenarında sıklaştığı için indeks tabanlı u orada dokuyu
+ * sıkıştırırdı. İlk `rings × ringSize` köşe halkalardır; sonrakiler (uç
+ * kapakları) olduğu gibi kalır.
+ */
+export function arcLengthU(geometry, ringSize, rings) {
+  const pos = geometry.attributes.position;
+  const uv = geometry.attributes.uv;
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const cum = new Float32Array(ringSize);
+  for (let r = 0; r < rings; r++) {
+    const base = r * ringSize;
+    for (let i = 1; i < ringSize; i++) {
+      a.fromBufferAttribute(pos, base + i - 1);
+      b.fromBufferAttribute(pos, base + i);
+      cum[i] = cum[i - 1] + a.distanceTo(b);
+    }
+    const total = cum[ringSize - 1] || 1;
+    for (let i = 0; i < ringSize; i++) uv.setX(base + i, cum[i] / total);
+  }
+  uv.needsUpdate = true;
+  return geometry;
+}
+
 /** Basit halka (disk) — iki yarıçap arasında, sabit eksenel konumda. */
 export function annulusGeometry(inner, outer, z, segments = 128, flip = false) {
   const geo = new THREE.RingGeometry(inner, outer, segments, 1);

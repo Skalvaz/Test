@@ -40,9 +40,10 @@ arkada egzoz augmenter'ı, itki ölçüm çerçevesi ve yük hücresi, kontrol o
 camı, bakım platformu, zemin işaretleri. Motorun yansımaları da bu hücreden
 alınır. Ayarlardan açık hava (pist) ortamına geçilebilir.
 
-**Kaporta detayı** — perçin sıraları, vidalar, kamlok bağlantılar, yağ servis
-kapağı, basınç tahliye kapağı, alt kilit yuvaları ve havalandırma panjuru
-Blender'da yüksek poligonlu olarak modellenip normal + AO haritasına pişirilir.
+**Panel detayı** — fan kaportası, çekirdek kaportası ve pilon: perçin ve vida
+sıraları, kamlok bağlantılar, yağ servis ve basınç tahliye kapakları, alt kilit
+yuvaları, havalandırma panjurları, boroskop tapaları. Blender'da yüksek
+poligonlu olarak modellenip normal + AO haritalarına pişirilir.
 
 **Serbest mod** — test hücresinde bütün anahtarlar, FADEC'i manuele alma, irtifa /
 Mach / sıcaklık, simülasyon hızı (¼×–4×), arıza enjeksiyonu (kuş çarpması,
@@ -124,12 +125,13 @@ Python paketi olarak kurulabilir (`pip install bpy==4.5.*`, Python 3.11):
 python blender/testcell.py --bake --out src/assets/testcell.glb
 python blender/testcell.py --bake --size 1024 --samples 48 --out /tmp/taslak.glb  # hızlı taslak
 
-# Kaporta detayları: yüksek poligon → normal + ORM haritaları
-python blender/nacelle_details.py --out src/assets
+# Panel detayları (fan kaportası, çekirdek kaportası, pilon): yüksek poligon → normal + ORM
+python blender/panel_details.py --out src/assets
+python blender/panel_details.py --part core --scale 0.5 --out /tmp   # hızlı taslak
 ```
 
-Kaporta panel yerleşimi `src/materials/nacelleLayout.json` dosyasındadır;
-Blender modeli ve oyundaki albedo derzleri aynı dosyadan beslenir.
+Panel yerleşimleri (derzler, kapaklar, kilitler, tapalar) `src/materials/panelLayouts.json`
+dosyasındadır; Blender modeli ve oyundaki albedo derzleri aynı dosyadan beslenir.
 
 ### Dosya düzeni
 
@@ -143,8 +145,8 @@ src/
   audio/      prosedürel motor sesi (Web Audio)
   core/       gökyüzü/ışık ortamı, görüntü işleme zinciri
   materials/  prosedürel dokular, PBR malzemeler, kaporta yerleşimi
-  assets/     Blender çıktıları (test hücresi glb, kaporta detay dokuları)
-blender/      Blender betikleri (test hücresi, kaporta detayları)
+  assets/     Blender çıktıları (test hücresi glb, panel detay dokuları)
+blender/      Blender betikleri (test hücresi, panel detayları)
 scripts/      tek dosya paketleyici, otomatik oynanış testi
 ```
 
