@@ -345,8 +345,11 @@ export function computeCycle(input: CycleInput): CycleResult {
     const oxyLeft = Math.max(0, FAR_STOICH * W2 - wfBurned);
     wfAbBurned = input.lit ? Math.min(Math.max(0, input.wfAb ?? 0), oxyLeft) : 0;
     abFraction = r.wfAbMax > 0 ? wfAbBurned / r.wfAbMax : 0;
+    // Tamamen duran motorda akış sıfırdır: karışım sıcaklığı tanımsız kalmasın
     const T7 =
-      (mix.W * GAS.cp * mix.T + ab.eta * wfAbBurned * LHV) / ((mix.W + wfAbBurned) * GAS.cp);
+      mix.W + wfAbBurned > 1e-9
+        ? (mix.W * GAS.cp * mix.T + ab.eta * wfAbBurned * LHV) / ((mix.W + wfAbBurned) * GAS.cp)
+        : mix.T;
     const dp = ab.dpDry + (ab.dpLit - ab.dpDry) * Math.min(1, abFraction);
     const P7 = mix.P * (1 - dp);
     const W7 = mix.W + wfAbBurned;

@@ -46,6 +46,8 @@ export async function loadTestCell(renderer: THREE.WebGLRenderer): Promise<TestC
       // Parlayan yüzey: yayım rengi × şiddet, tonemap sonrası bloom eşiğini aşar
       const c = src.emissive.clone().multiplyScalar(Math.max(1, src.emissiveIntensity) * 1.4);
       mat = new THREE.MeshBasicMaterial({ color: c, fog: false });
+      mat.name = name;
+      mat.userData.emit = true;
     } else if (name.startsWith('GLASS')) {
       mat = new THREE.MeshPhysicalMaterial({
         color: 0x0b1318,
@@ -62,6 +64,7 @@ export async function loadTestCell(renderer: THREE.WebGLRenderer): Promise<TestC
         map.anisotropy = renderer.capabilities.getMaxAnisotropy();
       }
       mat = new THREE.MeshBasicMaterial({ map, color: new THREE.Color(BAKE_GAIN, BAKE_GAIN, BAKE_GAIN), fog: false });
+      mat.userData.baked = true;
     }
     src.dispose();
     mesh.material = mat;
@@ -89,3 +92,26 @@ export async function loadTestCell(renderer: THREE.WebGLRenderer): Promise<TestC
 
   return { root, envMap: rt.texture, shadowCatcher };
 }
+
+/**
+ * Hücre ışıkları: 1 = açık, 0 = kapalı (gece). Pişirilmiş aydınlatma
+ * haritaları ölçeklenir; armatürlerin kendileri ışık kapandıkça söner,
+ * yalnız acil çıkış ve monitörler yanık kalır.
+ */
+export function setCellLights(cell: TestCell, level: number) {
+  const k = Math.max(0, Math.min(1, level));
+  cell.root.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const mat = mesh.material as THREE.MeshBasicMaterial;
+    if (mat.userData?.baked) {
+      // Tamamen karanlık olmasın: kontrol odası ve acil aydınlatma kalır
+      mat.color.setScalar(BAKE_GAIN * (0.035 + 0.965 * k));
+    } else if (mat.userData?.emit) {
+      if (!mat.userData.base) mat.userData.base = mat.color.clone();
+      const keep = /exit|monitor/i.test(mesh.name + (mat.name ?? '')) ? 1 : k;
+      mat.color.copy(mat.userData.base).multiplyScalar(0.05 + 0.95 * keep);
+    }
+  });
+}
+

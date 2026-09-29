@@ -9,10 +9,24 @@
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, bladeRow, radialInstances, pipeAlong, tagPart } from './geom.js';
+import { smoothProfile, latheFromProfile, bladeRow, radialInstances, tagPart } from './geom.js';
 import { createStageBladeGeometry } from './airfoil.js';
 import { buildGasPath } from './gaspath.js';
 import { buildStandYoke } from './stand.js';
+import { createBlurDiscTexture } from '../materials/textures.js';
+import {
+  radiusProfile,
+  hugPipe,
+  harness,
+  vsvStage,
+  vsvActuator,
+  fuelManifold,
+  igniters,
+  borescopePorts,
+  accessoryGearbox,
+  oilTank,
+  controlUnit,
+} from './externals.js';
 
 const deg = THREE.MathUtils.degToRad;
 
@@ -23,9 +37,9 @@ const VARIANTS = {
     throat: 0.465,
     intakeZ: -2.2,
     noseLen: 0.36,
-    igv: 22,
+    igv: 0,
     gas: {
-      lpc: { part: 'fan', stages: 3, z0: -2.02, z1: -1.62, hub: [0.19, 0.26], tip: [0.46, 0.43], blades: [34, 46] },
+      lpc: { part: 'fan', stages: 3, z0: -2.02, z1: -1.62, hub: [0.19, 0.26], tip: [0.46, 0.43], blades: [28, 46], firstMaterial: 'titanium', firstChord: 1.25 },
       hpc: { stages: 10, z0: -1.32, z1: -0.36, hub: [0.2, 0.27], tip: [0.335, 0.3], blades: [40, 72] },
       combustor: { z0: -0.2, z1: 0.32, rIn: 0.2, rOut: 0.33, injectors: 18 },
       hpt: { stages: 1, z0: 0.46, z1: 0.46, hub: [0.25, 0.25], tip: [0.335, 0.335], blades: [62, 62] },
@@ -39,15 +53,17 @@ const VARIANTS = {
     nozzle: { hingeR: 0.47, throat0: 0.305, primary: 0.3, divergent: 0.34, flaps: 16 },
     mounts: [-0.9, 0.95],
     flanges: [-2.2, -1.52, -0.42, 0.38, 1.0, 1.75, 2.5],
+    // Dış gövde: fan gövdesi biraz daha geniş, sonra baypas kanalı
+    shell: [[0.505, -2.08], [0.515, -1.95], [0.515, -1.55], [0.5, -1.45], [0.5, 0.98]],
   },
   turbojet: {
     R: 0.43,
     throat: 0.4,
     intakeZ: -2.2,
     noseLen: 0.3,
-    igv: 24,
+    igv: 6,
     gas: {
-      lpc: { part: 'booster', stages: 3, z0: -2.05, z1: -1.62, hub: [0.14, 0.2], tip: [0.395, 0.36], blades: [28, 40] },
+      lpc: { part: 'booster', stages: 3, z0: -2.05, z1: -1.62, hub: [0.14, 0.2], tip: [0.395, 0.36], blades: [24, 40], firstMaterial: 'titanium', firstChord: 1.15 },
       hpc: { stages: 3, z0: -1.42, z1: -1.02, hub: [0.21, 0.25], tip: [0.35, 0.33], blades: [42, 52] },
       combustor: { z0: -0.82, z1: 0.0, rIn: 0.2, rOut: 0.36, injectors: 10 },
       hpt: { stages: 1, z0: 0.16, z1: 0.16, hub: [0.26, 0.26], tip: [0.36, 0.36], blades: [58, 58] },
@@ -61,6 +77,8 @@ const VARIANTS = {
     nozzle: { hingeR: 0.43, throat0: 0.285, primary: 0.3, divergent: 0, flaps: 14 },
     mounts: [-1.1, 0.4],
     flanges: [-2.2, -1.6, -0.95, -0.82, 0.05, 0.55, 1.4, 2.55],
+    // Kompresör gövdesi, yanma odası bölümünde şişkin gövde, türbin
+    shell: [[0.43, -2.08], [0.43, -1.0], [0.465, -0.88], [0.465, -0.02], [0.44, 0.14], [0.44, 0.53]],
   },
 };
 
@@ -180,31 +198,44 @@ export function buildBareJet(materials, kind) {
     ],
     60,
   );
-  group.add(tagPart(new THREE.Mesh(latheFromProfile(nose, 96), materials.spinner), 'spinner'));
-  const igv = bladeRow(
-    createStageBladeGeometry(0.165, t, {
-      sections: 6,
-      samples: 20,
-      chord: [0.1, 0.09],
-      twist: [deg(8), deg(4)],
-      thickness: [0.12, 0.1],
-      camber: [0.04, 0.03],
-    }),
-    materials.superalloy,
-    v.igv,
-    { z: z + 0.06 },
-  );
-  group.add(tagPart(igv, 'inlet'));
+  // Burun konisi giriş kılavuz kanatlarının göbeğidir ve DÖNMEZ; dönen
+  // izlenimi vermesin diye sarmal işaretsiz, düz boyalı
+  group.add(tagPart(new THREE.Mesh(latheFromProfile(nose, 96), materials.nozzleFlap), 'spinner'));
+  // Ön çerçeve: turbojette birkaç kalın dikme (yağ/hava hatları içinden
+  // geçer); modern askeri turbofanda giriş kılavuz kanadı yok, fan doğrudan görünür
+  if (v.igv > 0) {
+    const strutGeo = createStageBladeGeometry(0.165, t, {
+      sections: 4,
+      samples: 16,
+      chord: [0.16, 0.14],
+      twist: [0, 0],
+      thickness: [0.22, 0.2],
+      camber: [0, 0],
+    });
+    group.add(tagPart(bladeRow(strutGeo, materials.engineCase, v.igv, { z: z + 0.04, phase: Math.PI / v.igv }), 'inlet'));
+  }
+
+  // İlk rotor kademesinin hareket bulanıklığı diski (yüksek devirde)
+  const lpc = v.gas.lpc;
+  const blurMat = new THREE.MeshBasicMaterial({
+    map: createBlurDiscTexture(512, lpc.blades[0]),
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const blurDisc = new THREE.Mesh(new THREE.RingGeometry(lpc.hub[0], lpc.tip[0], 64, 1), blurMat);
+  blurDisc.position.z = lpc.z0 - 0.02;
+  blurDisc.visible = false;
+  group.add(blurDisc);
 
   /* ---------------- dış gövde ---------------- */
   const R = v.R;
   const ab = v.ab;
-  const shellPts = [
-    [t + 0.01, z + 0.02],
-    [R, z + 0.1],
-    [R, ab.z0 - 0.02],
-  ];
+  const shellPts = [[t + 0.01, z + 0.02], ...v.shell];
   const shell = new THREE.Mesh(latheFromProfile(shellPts.map(([r, zz]) => new THREE.Vector2(r, zz)), 128), materials.engineCase);
+  // Dış donanımın izleyeceği yüzey: gövde + art yakıcı kanalı
+  const prof = radiusProfile([...v.shell, [ab.R, ab.z0 + 0.12], [ab.R, ab.z1]]);
   shell.name = 'engine-case';
   group.add(tagPart(shell, 'fanCase'));
 
@@ -219,7 +250,7 @@ export function buildBareJet(materials, kind) {
 
   // Flanşlar ve cıvata halkaları
   for (const fz of v.flanges) {
-    const r = fz >= ab.z0 ? ab.R : R;
+    const r = prof(fz);
     const fl = new THREE.Mesh(new THREE.TorusGeometry(r + 0.004, 0.012, 8, 128), materials.machinery);
     fl.position.z = fz;
     group.add(tagPart(fl, 'fanCase'));
@@ -278,57 +309,85 @@ export function buildBareJet(materials, kind) {
   group.add(tagPart(nozzle.group, 'nozzle'));
 
   /* ---------------- dış tesisat ---------------- */
-  // Aksesuar dişli kutusu (alt tarafta) ve pompalar
-  const gbZ0 = z + 0.55;
-  const gbLen = 1.0;
-  const gb = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, gbLen), materials.machinery);
-  gb.position.set(0, -R - 0.12, gbZ0 + gbLen / 2);
-  group.add(tagPart(gb, 'gearbox'));
-  const pumpGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.16, 18);
-  [
-    [-0.12, gbZ0 + 0.18],
-    [0.12, gbZ0 + 0.4],
-    [-0.1, gbZ0 + 0.7],
-    [0.11, gbZ0 + 0.85],
-  ].forEach(([x, pz], i) => {
-    const pump = new THREE.Mesh(pumpGeo, i % 2 ? materials.brassFitting : materials.engineCase);
-    pump.position.set(x, -R - 0.26, pz);
-    group.add(tagPart(pump, 'gearbox'));
-  });
-  // Dişli kutusunu gövdeye bağlayan kule mili muhafazası
-  const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.12, 12), materials.machinery);
-  tower.position.set(0, -R - 0.03, gbZ0 + 0.3);
-  group.add(tagPart(tower, 'gearbox'));
-
-  // Borular: yakıt manifoldu, yağ hatları, sensör kablo demetleri
-  const pipes = [];
-  const along = (a, r, z0, z1, wob, rad, mat) => {
-    const pts = [];
-    for (let k = 0; k <= 8; k++) {
-      const zz = z0 + ((z1 - z0) * k) / 8;
-      const aa = a + wob * Math.sin(k * 1.7);
-      pts.push([Math.cos(aa) * r, Math.sin(aa) * r, zz]);
-    }
-    const m = new THREE.Mesh(pipeAlong(pts, rad, 8), mat);
-    pipes.push(m);
-    group.add(tagPart(m, 'gearbox'));
+  const mats = {
+    metal: materials.machinery,
+    lever: materials.engineCase,
+    ring: materials.hubMetal,
+    pipe: materials.engineCase,
+    anodized: materials.anodized,
+    box: materials.boxPaint,
+    braid: materials.braid,
+    cast: materials.castAlu,
+    tank: materials.engineCase,
+    glass: materials.sightGlass,
+    rubber: materials.hose,
   };
-  along(deg(-60), R + 0.035, z + 0.3, ab.z0 + 0.4, 0.05, 0.014, materials.engineCase);
-  along(deg(-120), R + 0.03, z + 0.4, 0.6, 0.04, 0.011, materials.brassFitting);
-  along(deg(-30), R + 0.05, z + 0.8, ab.z1 - 0.2, 0.03, 0.018, materials.engineCase);
-  along(deg(-150), R + 0.045, z + 0.5, ab.z0 + 0.8, 0.06, 0.01, materials.hose);
-  along(deg(30), R + 0.03, z + 0.2, ab.z0, 0.08, 0.009, materials.hose);
-  along(deg(150), R + 0.03, z + 0.6, ab.z0 + 0.2, 0.08, 0.009, materials.hose);
-  // Yanma odası çevresindeki yakıt manifoldu halkası
-  const cbz = (v.gas.combustor.z0 + v.gas.combustor.z1) / 2 - 0.1;
-  const manifold = new THREE.Mesh(new THREE.TorusGeometry(R + 0.04, 0.012, 8, 96), materials.engineCase);
-  manifold.position.z = cbz;
-  group.add(tagPart(manifold, 'gearbox'));
-  const feed = new THREE.CylinderGeometry(0.007, 0.007, 0.05, 6);
-  feed.translate(0, R + 0.02, 0);
-  group.add(tagPart(radialInstances(feed, materials.engineCase, v.gas.combustor.injectors, 0, cbz), 'gearbox'));
-  // Art yakıcı yakıt hattı
-  along(deg(-90) + 0.35, ab.R + 0.03, ab.z0 - 0.3, ab.z0 + 0.14, 0.02, 0.016, materials.engineCase);
+  const B = -Math.PI / 2; // alt
+  const cb = v.gas.combustor;
+  const cbz = (cb.z0 + cb.z1) / 2;
+  const turbojet = kind === 'turbojet';
+
+  // Değişken stator kanadı halkaları (turbojette kompresör gövdesi dışarıda)
+  if (turbojet) {
+    const zs = [-1.96, -1.82, -1.68, -1.4, -1.27, -1.14];
+    zs.forEach((zz, i) => vsvStage(group, prof, zz, 36 + i * 4, mats, i < 3 ? 'booster' : 'hpc'));
+    vsvActuator(group, prof, zs, 0.25, mats, 'hpc');
+    vsvActuator(group, prof, zs, Math.PI - 0.25, mats, 'hpc');
+  } else {
+    // Fan gövdesinde ön kademe VSV'leri
+    const zs = [-1.98, -1.84];
+    zs.forEach((zz) => vsvStage(group, prof, zz, 32, mats, 'fan'));
+    vsvActuator(group, prof, zs, 0.3, mats, 'fan');
+  }
+
+  // Yakıt manifoldu + pigtail'ler, ateşleyiciler
+  fuelManifold(group, prof, cb.z0 + 0.08, cb.injectors, mats, 'gearbox');
+  igniters(group, prof, cbz, [B - 0.75, B + 0.75], cbz + 0.45, mats, 'gearbox');
+  borescopePorts(group, prof, [cb.z0 - 0.25, cbz, v.gas.hpt.z0, v.gas.lpt.z0], 0.35, mats);
+
+  // Aksesuar dişli kutusu (alt tarafta, gövde eğrisini izler)
+  const gbZ0 = turbojet ? z + 0.2 : z + 0.5;
+  const gbLen = turbojet ? 0.95 : 1.05;
+  accessoryGearbox(
+    group,
+    prof,
+    {
+      z0: gbZ0,
+      len: gbLen,
+      arc: 1.15,
+      depth: 0.13,
+      accessories: [
+        { da: -0.32, z: gbZ0 + 0.2, r: 0.07, h: 0.16, fins: true, mat: 'cast' }, // jeneratör
+        { da: 0.3, z: gbZ0 + 0.25, r: 0.06, h: 0.14, mat: 'metal' }, // yakıt pompası
+        { da: 0, z: gbZ0 + gbLen * 0.62, r: 0.085, h: 0.12, fins: true, mat: 'cast' }, // hava türbinli marş
+        { da: -0.34, z: gbZ0 + gbLen * 0.8, r: 0.05, h: 0.12, mat: 'anodized' }, // hidrolik pompa
+        { da: 0.34, z: gbZ0 + gbLen * 0.82, r: 0.045, h: 0.1, mat: 'metal' }, // yağ pompası
+      ],
+    },
+    mats,
+  );
+  oilTank(group, prof, { a: -0.25, z: gbZ0 + 0.3 }, mats);
+  controlUnit(group, prof, { a: Math.PI + 0.3, z: gbZ0 + 0.35 }, mats);
+
+  // Borular: gövdeyi izler, kelepçelerle bağlanır
+  const pipe = (a0, a1, z0, z1, rad, mat, gap = 0.012) =>
+    hugPipe(group, prof, { a0, a1, z0, z1, rad, gap, mat, clampMat: materials.machinery });
+  // Yakıt besleme: pompa → manifold
+  pipe(B + 0.3, B + 0.55, gbZ0 + 0.3, cb.z0 + 0.03, 0.013, materials.engineCase);
+  // Yağ hatları: tank → yataklar (ön ve arka)
+  pipe(-0.25, -0.05, gbZ0 + 0.1, z + 0.25, 0.009, materials.brassFitting, 0.01);
+  pipe(-0.3, -0.55, gbZ0 + 0.5, v.gas.lpt.z0 + 0.1, 0.009, materials.brassFitting, 0.01);
+  // Kompresör bleed havası: kalın kanal
+  pipe(Math.PI - 0.35, Math.PI - 0.15, v.gas.hpc.z1 - 0.05, cbz + 0.6, 0.028, materials.engineCase, 0.018);
+  // Art yakıcı yakıt hattı: dişli kutusu → püskürtme halkaları
+  pipe(B - 0.5, B - 0.3, gbZ0 + 0.6, ab.z0 + 0.14, 0.015, materials.engineCase, 0.014);
+  // Kablo demetleri: kontrol ünitesinden sensörlere
+  harness(group, prof, { a0: Math.PI + 0.25, a1: Math.PI + 0.55, z0: z + 0.25, z1: ab.z0 - 0.05, mat: materials.hose, clampMat: materials.machinery });
+  harness(group, prof, { a0: Math.PI + 0.4, a1: 0.15, z0: gbZ0 + 0.5, z1: ab.z1 - 0.2, gap: 0.02, count: 2, mat: materials.hose, clampMat: materials.machinery });
+  // Art yakıcı püskürtme halkası besleme rakorları
+  const feed = new THREE.CylinderGeometry(0.012, 0.012, 0.035, 8);
+  feed.translate(0, ab.R + 0.015, 0);
+  group.add(tagPart(radialInstances(feed, materials.machinery, 6, 0, ab.z0 + 0.14, { phase: 0.4 }), 'afterburner'));
 
   /* ---------------- test standı askısı ---------------- */
   const yoke = buildStandYoke(materials, { mounts: v.mounts, engineR: R });
@@ -339,6 +398,9 @@ export function buildBareJet(materials, kind) {
     lpSpool,
     hpSpool,
     nozzle,
+    blurDisc,
+    blurMat,
+    bladeCount: lpc.blades[0],
     intake: { z: z - 0.1, radius: t },
     exhaust: {
       get z() {

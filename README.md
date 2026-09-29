@@ -59,12 +59,25 @@ Gaz kolu art yakıcılı motorlarda MIL kademesinin ötesine uzanır (IDLE → M
 MAX, **B** tuşu); EICAS motor tipine göre değişir (FTIT, TRQ/ITT/NG, NP, lüle
 açıklığı, art yakıcı kademesi).
 
+**Kaportasız motorların dış donanımı** — askeri turbofan, turbojet ve
+turboprobun gövdesi çıplaktır; üzerinde gerçek motorlardaki gibi değişken
+stator (VSV) halkaları ve aktüatörleri, yakıt manifoldu ve enjektör besleme
+boruları, ateşleyiciler, boroskop tapaları, aksesuar dişli kutusu, yağ tankı,
+FADEC kutusu, gövdeye kelepçelerle oturan yakıt/yağ/bleed boruları ve örgülü
+kablo demetleri bulunur. Turboprobun redüktörü gerçekten döner bir planet
+dişli setidir (güneş dişlisi türbin milinde, taşıyıcı pervane milinde).
+
 **Efektler** — art yakıcıda ışın yürütmeli (raymarch) hacimsel alev ve jet Mach
 sayısından hesaplanan şok elmasları; ıslak çalıştırmada yakıt buharı,
 light-off'ta is ve kıvılcım, torching ve surge ateş topları, kapatmada buhar;
 eski turbojetin dumanı; yerden girişe kıvrılan yoğuşma girdabı, giriş dudağında
 yoğuşma, zeminden kalkan toz, pervane uç girdaplarının sarmal izi, sıcak
-egzozun ısı kırılması ve zemine vuran art yakıcı ışığı.
+egzozun ısı kırılması ve zemine vuran art yakıcı ışığı. Art yakıcı rengi
+motora göre değişir: temiz yanan modern motorda CH/C₂ ışımasından mavi-mor
+çekirdek ve pembe-turuncu uç, is bırakan eski turbojette kurum ışımasından
+turuncu-sarı alev. Tam güçte lüle ve art yakıcı gömleği kızarır; duman, alevin
+ışığını alır. **Hücre ışıkları** (açık / loş / gece) kapatılınca motoru yalnız
+kendi alevi ve kor parçaları aydınlatır.
 
 | | |
 | --- | --- |
@@ -80,7 +93,15 @@ imleci, CAS uyarı mesajları), overhead tarzı çalıştırma paneli, kademeli 
 
 **Motorun içi paneli** — sıcaklığa göre renklenen istasyon şeması (üzerine
 gelince 3B'de parça yanar), canlı T–s diyagramı, istasyon tablosu, OPR, BPR,
-TSFC, surge payı.
+TSFC, surge payı. Baypassız motorlarda 13/19 istasyonları gizlenir;
+turboprobda mil gücü, pervane devri ve itki paylaşımı, art yakıcılı motorlarda
+T7 ve lüle açıklığı gösterilir.
+
+**3B etkileşim** — parçanın üzerine gelince motor tipine uygun bilgi kartı
+çıkar (ör. turbojetin "fan"ı aslında alçak basınç kompresörüdür); tıklamak
+parçayı vurgular, **çift tıklamak kamerayı o noktaya yaklaştırır**. Kesit
+görünümü kameraya göre döner: motorun etrafında dolaşırken iç kısım her
+açıdan görünür. Kamera açıları motor tipine göre yeniden kadrajlanır.
 
 **Ses** — tamamen sentezlenmiş: fan kanat geçiş tonu, süpersonik fan ucunun
 "buzz-saw" sesi, çekirdek ıslığı, jet gürlemesi, marş türbini, ateşleyici

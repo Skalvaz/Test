@@ -20,8 +20,15 @@ const vertexShader = /* glsl */ `
   varying vec4 vColor;
   varying float vSeed;
   varying float vNear;
+  varying vec3 vLit;
+  uniform vec3 uGlowPos;
+  uniform vec3 uGlowColor;
+  uniform float uGlowRadius;
   void main() {
     vec4 mv = modelViewMatrix * vec4(iPos, 1.0);
+    // Yakındaki alevin dumanı aydınlatması (art yakıcı, torching)
+    vec3 dg = iPos - uGlowPos;
+    vLit = uGlowColor * exp(-dot(dg, dg) / (uGlowRadius * uGlowRadius));
     // Kameraya çok yakın parçacıklar solar: aksi halde tek bir duman
     // bulutu bütün ekranı kaplar
     vNear = smoothstep(0.3, 1.2 + iSizeRot.x * 1.5, -mv.z);
@@ -43,6 +50,7 @@ const fragmentShader = /* glsl */ `
   varying vec4 vColor;
   varying float vSeed;
   varying float vNear;
+  varying vec3 vLit;
   void main() {
     vec2 d = vUv - 0.5;
     float r = length(d) * 2.0;
@@ -56,7 +64,7 @@ const fragmentShader = /* glsl */ `
     if (uGlow > 0.5) {
       gl_FragColor = vec4(vColor.rgb * a, 1.0);
     } else {
-      gl_FragColor = vec4(vColor.rgb, a);
+      gl_FragColor = vec4(vColor.rgb + vLit, a);
     }
   }
 `;
@@ -112,7 +120,13 @@ export class ParticleSystem {
 
     const glow = kind === 'glow';
     this.material = new THREE.ShaderMaterial({
-      uniforms: { uNoise: { value: noise }, uGlow: { value: glow ? 1 : 0 } },
+      uniforms: {
+        uNoise: { value: noise },
+        uGlow: { value: glow ? 1 : 0 },
+        uGlowPos: { value: new THREE.Vector3() },
+        uGlowColor: { value: new THREE.Color(0, 0, 0) },
+        uGlowRadius: { value: 2.5 },
+      },
       vertexShader,
       fragmentShader,
       transparent: true,

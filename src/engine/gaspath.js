@@ -27,7 +27,7 @@ function compressor(materials, c, rotorGroup, statorGroup) {
     const hub = lerp(c.hub[0], c.hub[1], t);
     const tip = lerp(c.tip[0], c.tip[1], t);
     const span = tip - hub;
-    const chord = Math.max(0.03, span * lerp(0.95, 0.7, t));
+    const chord = Math.max(0.03, span * lerp(0.95, 0.7, t)) * (i === 0 ? (c.firstChord ?? 1) : 1);
     const count = Math.round(lerp(c.blades[0], c.blades[1], t));
     const opts = {
       sections: 6,
@@ -36,7 +36,8 @@ function compressor(materials, c, rotorGroup, statorGroup) {
       twist: [deg(48 - t * 14), deg(26 - t * 8)],
       thickness: [0.1, 0.055],
     };
-    rotorGroup.add(tagPart(bladeRow(createStageBladeGeometry(hub, tip, opts), materials.hubMetal, count, { z, phase: i * 0.07 }), c.part));
+    const rotorMat = i === 0 && c.firstMaterial ? materials[c.firstMaterial] : materials.hubMetal;
+    rotorGroup.add(tagPart(bladeRow(createStageBladeGeometry(hub, tip, opts), rotorMat, count, { z, phase: i * 0.07 }), c.part));
     const stator = bladeRow(
       createStageBladeGeometry(hub + 0.006, tip + 0.003, {
         ...opts,

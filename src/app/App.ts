@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { EngineAudio } from '../audio/EngineAudio';
 import { createEnvironment, PRESETS } from '../core/environment.js';
 import { createComposer } from '../core/postfx.js';
-import { CELL_BOUNDS, loadTestCell, type TestCell } from '../core/testCell';
+import { CELL_BOUNDS, loadTestCell, setCellLights, type TestCell } from '../core/testCell';
 import { EngineVisual, type PartId } from '../engine/visual';
 import { LessonRunner, type LessonResult } from '../game/LessonRunner';
 import { LESSONS } from '../game/lessons';
@@ -25,7 +25,7 @@ import { LessonPanel } from '../ui/LessonPanel';
 import { glossaryModal, lessonSelect, mainMenu, resultModal, settingsModal } from '../ui/Menus';
 import { SandboxPanel } from '../ui/SandboxPanel';
 import { Toasts } from '../ui/Toasts';
-import { CameraRig, VIEWS, type ViewName } from './CameraRig';
+import { CameraRig, KIND_VIEWS, VIEWS, type ViewName } from './CameraRig';
 import { Picker } from './Picker';
 
 type Mode = 'menu' | 'lesson' | 'sandbox';
@@ -81,6 +81,10 @@ export class App {
   private soundBtn!: HTMLButtonElement;
 
   private clipPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0);
+  /** Kesit görünümünde iç kısmı aydınlatan, kameraya bağlı dolgu ışığı */
+  private cutFill = new THREE.PointLight(0xfff4e8, 0, 14, 1.6);
+  /** Test hücresi ışık seviyesi: 1 açık, 0.35 loş, 0 gece */
+  lightLevel = 1;
   private cutaway = false;
   private diagramVisible = false;
   private consoleVisible = false;
@@ -148,6 +152,7 @@ export class App {
     await step(onProgress, 'Motor geometrisi oluşturuluyor…');
     this.visual = new EngineVisual(materials, this.sim.kind);
     this.scene.add(this.visual.root);
+    this.scene.add(this.cutFill);
 
     await step(onProgress, 'Termodinamik model dengeleniyor…');
     this.sim.trim(0);
@@ -160,6 +165,11 @@ export class App {
     this.cockpit?.setEngineKind(this.sim.kind);
     this.picker.onPick = (p) => this.onPick(p);
     this.picker.onHover = (p) => this.onHover(p);
+    this.picker.onFocus = (p, point) => {
+      if (this.mode === 'menu' || (this.runner && this.pickMode)) return;
+      this.stickyHighlight = p;
+      this.rig.focusOn(point);
+    };
 
     this.buildUi();
     this.applyEnvironment(this.envName);
@@ -232,6 +242,7 @@ export class App {
     this.sandboxPanel = new SandboxPanel(this.sim, () => this.visual, {
       autoStart: () => this.beginAutoStart(),
       onEngine: (kind) => this.setEngine(kind, true),
+      onLights: (level) => this.setLights(level),
       onTimeScale: (v) => {
         this.timeScale = v;
       },
@@ -287,7 +298,30 @@ export class App {
     this.visual.setClipping(planes);
     this.visual.setInteriorVisible(on);
     this.picker.clipPlanes = planes;
+    if (on) this.aimCutaway();
+    this.cutFill.intensity = on ? 5 : 0;
     this.cutBtn?.classList.toggle('active', on);
+  }
+
+  /**
+   * Kesit düzlemi motor ekseninden geçer ve kameraya bakan yarıyı kaldırır;
+   * böylece motorun etrafında dönerken iç kısım her açıdan görünür.
+   */
+  private aimCutaway() {
+    const c = this.rig.camera.position;
+    const len = Math.hypot(c.x, c.y);
+    if (len < 0.3) return; // tam eksenden bakarken son yön korunur
+    // Kamera yataya yakınken (±20°) düzlem dikey kalır: ders açılarında
+    // kesit hep aynı yerden geçer ve alt/üst parçalar (dişli kutusu) açık
+    // kalır; daha dik bakışlarda düzlem kamerayla birlikte döner
+    const th = Math.atan2(c.y, c.x);
+    const base = Math.abs(th) < Math.PI / 2 ? 0 : Math.sign(th || 1) * Math.PI;
+    const d = th - base;
+    const dz = THREE.MathUtils.degToRad(20);
+    const a = base + Math.sign(d) * Math.max(0, Math.abs(d) - dz) * (Math.PI / 2 / (Math.PI / 2 - dz));
+    this.clipPlane.normal.set(-Math.cos(a), -Math.sin(a), 0);
+    // Dolgu ışığı kameranın biraz önünde, kesit düzlemine yakın
+    this.cutFill.position.copy(c);
   }
 
   private setDiagram(on: boolean) {
@@ -443,6 +477,20 @@ export class App {
     this.setCutaway(this.cutaway);
     this.stickyHighlight = null;
     this.stepHighlight = null;
+    this.applyKindViews(kind);
+    // Yeni motor farklı boyda: motora bağlı bir yakın açıdaysak yeniden kadrajla
+    const cur = this.rig.current;
+    if (this.mode !== 'menu' && cur !== 'menu' && (KIND_VIEWS[kind][cur] || cur === 'fan' || cur === 'inlet')) this.rig.go(cur);
+  }
+
+  /** Kamera açılarını ve seçicideki adları motor tipine göre günceller */
+  private applyKindViews(kind: EngineKind) {
+    this.rig.overrides = KIND_VIEWS[kind];
+    const names = (Object.keys(VIEWS) as ViewName[]).filter((v) => v !== 'menu');
+    names.forEach((v, i) => {
+      const opt = this.viewSelect.options[i];
+      if (opt) opt.text = `${i + 1} · ${(KIND_VIEWS[kind][v] ?? VIEWS[v]).label}`;
+    });
   }
 
   openGlossary(id?: string) {
@@ -502,6 +550,8 @@ export class App {
     this.rig.bounds = inCell ? CELL_BOUNDS : null;
     this.rig.controls.maxDistance = inCell ? 18 : 40;
     if (!inCell) {
+      // Hücre ışığı kısılmışsa açık hava ortam ışığı etkilenmesin
+      this.scene.environmentIntensity = 1;
       env.setPreset(this.envName);
       return;
     }
@@ -525,6 +575,26 @@ export class App {
     env.rimPanel.position.set(4.5, 7.6, 3);
     env.rimPanel.lookAt(0, 0, 0.5);
     this.renderer.toneMappingExposure = 0.95;
+    this.setLights(this.lightLevel);
+  }
+
+  /**
+   * Hücre ışıklarını kısar ya da kapatır. Gece modunda motoru aydınlatan
+   * yalnızca kendi kor parçaları, alevi ve kontrol odası ışığıdır.
+   */
+  setLights(level: number) {
+    this.lightLevel = level;
+    if (!this.cell || this.envName !== TEST_CELL) return;
+    const env = this.env;
+    const k = Math.max(0, Math.min(1, level));
+    setCellLights(this.cell, k);
+    env.sun.intensity = 2.4 * k;
+    env.keyPanel.intensity = 2.2 * k;
+    env.rimPanel.intensity = 1.6 * k;
+    env.ambient.intensity = 0.12 * k + 0.015;
+    this.scene.environmentIntensity = 0.06 + 0.94 * k;
+    // Karanlıkta göz uyum sağlar: pozlama biraz artar
+    this.renderer.toneMappingExposure = 0.95 * (1 + 0.6 * (1 - k));
   }
 
   private afterModal() {
@@ -710,6 +780,7 @@ export class App {
       this.visual.update(snap, dt, this.rig.camera);
       this.runner?.update(dt, snap);
       this.rig.update(dt, 0);
+      if (this.cutaway) this.aimCutaway();
     }
     const snap = this.sim.snapshot();
     if (this.consoleVisible) this.cockpit.update(snap);
@@ -767,6 +838,7 @@ export class App {
 
     this.picker.update();
     this.rig.update(dt, this.visual.shake);
+    if (this.cutaway) this.aimCutaway();
     this.updateHaze(snap, dt);
     this.fx.composer.render(dt);
   }

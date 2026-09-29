@@ -74,6 +74,8 @@ export interface CycleDiagramCallbacks {
 export class CycleDiagram {
   readonly el: HTMLDivElement;
   private regionEls = new Map<Region, SVGPathElement>();
+  private markerEls = new Map<StationId, SVGGElement>();
+  private hasBypass = true;
   private ts: HTMLCanvasElement;
   private tsCtx: CanvasRenderingContext2D;
   private kv: HTMLDListElement;
@@ -122,6 +124,7 @@ export class CycleDiagram {
       t.textContent = m.id;
       g.append(c, t);
       svg.append(g);
+      this.markerEls.set(m.id, g);
     }
 
     this.ts = h('canvas', { class: 'ts-canvas' });
@@ -169,9 +172,19 @@ export class CycleDiagram {
     if (this.acc < 0.1 && !force) return;
     this.acc = 0;
     const st = s.cycle.stations;
+    // Baypassız motorlarda (turbojet, turboprop) 13/19 istasyonu yoktur
+    const bypass = s.cycle.bypassRatio > 0.05;
+    if (bypass !== this.hasBypass) {
+      this.hasBypass = bypass;
+      for (const [r, p] of this.regionEls) if (r.part === 'bypassDuct') p.style.display = bypass ? '' : 'none';
+      for (const id of ['13', '19'] as StationId[]) {
+        const g = this.markerEls.get(id);
+        if (g) g.style.display = bypass ? '' : 'none';
+      }
+    }
 
     for (const [r, p] of this.regionEls) {
-      const t = r.part === 'fan' ? st['13'].T : st[r.station].T;
+      const t = r.part === 'fan' && bypass ? st['13'].T : st[r.station].T;
       p.setAttribute('fill', tempColor(t));
     }
 
@@ -179,19 +192,44 @@ export class CycleDiagram {
     const coreShare = c.coreThrust / Math.max(1, c.coreThrust + c.bypassThrust);
     const rows: [string, string][] = [
       ['Toplam basınç oranı (OPR)', c.opr.toFixed(1)],
-      ['Baypas oranı (BPR)', c.bypassRatio.toFixed(1)],
+      ...(bypass ? ([['Baypas oranı (BPR)', c.bypassRatio.toFixed(1)]] as [string, string][]) : []),
       ['Türbin giriş sıcaklığı T4', `${(st['4'].T - K).toFixed(0)} °C`],
       ['Yakıt / hava oranı', c.far.toFixed(4)],
       ['Özgül yakıt tüketimi', s.tsfc > 0 ? `${(s.tsfc * 1e6).toFixed(2)} g/kN·s` : '—'],
       ['Surge payı (HPC)', `${(c.surgeMargin * 100).toFixed(1)} %`],
       ['HPC harita konumu β', c.beta.toFixed(2)],
-      ['İtki: fan / çekirdek', `${((1 - coreShare) * 100).toFixed(0)} / ${(coreShare * 100).toFixed(0)} %`],
-      ['Çekirdek jet hızı V9', `${c.V9.toFixed(0)} m/s`],
-      ['Fan jet hızı V19', `${c.V19.toFixed(0)} m/s`],
     ];
+    if (s.kind === 'turboprop') {
+      const total = Math.max(1, s.propThrust + c.netThrust);
+      rows.push(
+        ['Mil gücü', `${(s.shaftPower / 1000).toFixed(0)} kW`],
+        ['Pervane devri', `${s.propRpm.toFixed(0)} dev/dk`],
+        ['Hatve yük katsayısı', s.propPitch.toFixed(2)],
+        ['İtki: pervane / jet', `${((s.propThrust / total) * 100).toFixed(0)} / ${((Math.max(0, c.netThrust) / total) * 100).toFixed(0)} %`],
+        ['Jet hızı V9', `${c.V9.toFixed(0)} m/s`],
+      );
+    } else if (bypass) {
+      rows.push(
+        ['İtki: fan / çekirdek', `${((1 - coreShare) * 100).toFixed(0)} / ${(coreShare * 100).toFixed(0)} %`],
+        ['Çekirdek jet hızı V9', `${c.V9.toFixed(0)} m/s`],
+        ['Fan jet hızı V19', `${c.V19.toFixed(0)} m/s`],
+      );
+    } else {
+      rows.push(['Jet hızı V9', `${c.V9.toFixed(0)} m/s`]);
+    }
+    if (s.kind === 'militaryTurbofan' || s.kind === 'turbojet') {
+      rows.push(
+        ['Art yakıcı', s.abLit ? `yanık · ${(s.abLevel * 100).toFixed(0)} %` : 'sönük'],
+        ['Lüle alanı A8', `${(s.nozzleArea * 100).toFixed(0)} %`],
+        ['Karışım / art yakıcı T7', `${(st['7'].T - K).toFixed(0)} °C`],
+      );
+    }
     this.kv.replaceChildren(...rows.flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })]));
 
-    const ids: StationId[] = ['0', '2', '13', '25', '3', '4', '45', '5', '9'];
+    const ids: StationId[] = bypass
+      ? ['0', '2', '13', '25', '3', '4', '45', '5', '9']
+      : ['0', '2', '25', '3', '4', '45', '5', '9'];
+    if (s.kind === 'militaryTurbofan' || s.kind === 'turbojet') ids.splice(ids.length - 1, 0, '7');
     this.tbody.replaceChildren(
       ...ids.map((id) =>
         h('tr', {}, [
@@ -227,7 +265,7 @@ export class CycleDiagram {
       return g.cp * Math.log(st[id].T / T0) - g.R * Math.log(st[id].P / P0);
     };
     const core: StationId[] = ['0', '2', '25', '3', '4', '45', '5', '9'];
-    const byp: StationId[] = ['2', '13', '19'];
+    const byp: StationId[] = this.hasBypass ? ['2', '13', '19'] : [];
     const pts = core.map((id) => ({ id, s: ent(id), T: st[id].T }));
     const bpts = byp.map((id) => ({ id, s: ent(id), T: st[id].T }));
 
@@ -302,7 +340,7 @@ export class CycleDiagram {
     ctx.strokeStyle = 'rgba(80,170,255,0.8)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    bpts.forEach((p, i) => (i ? ctx.lineTo(X(p.s), Y(p.T)) : ctx.moveTo(X(p.s), Y(p.T))));
+    if (bpts.length) bpts.forEach((p, i) => (i ? ctx.lineTo(X(p.s), Y(p.T)) : ctx.moveTo(X(p.s), Y(p.T))));
     ctx.stroke();
 
     // Çekirdek yolu: süreçlere göre renklendirilmiş

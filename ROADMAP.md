@@ -63,6 +63,11 @@ ortamı (Blender), (2) el yapımı detay dokuları, (3) HDRI ortam ışığı.
   turboprop — aynı model, farklı tasarım; tipe göre EICAS ve gaz kolu
 - ✅ Efektler: art yakıcı alevi ve şok elmasları, çalıştırma/surge/kapatma
   dumanı ve alevi, giriş girdabı, yoğuşma, zemin tozu, pervane uç izleri
+- ✅ Kaportasız motorlara dış donanım (VSV, manifold, borular, kablo
+  demetleri, aksesuar kutusu), turboprop planet redüktörü, stroboskopik
+  dönüş düzeltmesi ve bulanıklık diskleri, kameraya göre dönen kesit,
+  motor tipine göre alev renkleri, hücre ışıkları (gece modu), çift tıkla
+  odaklanma
 - Sıradaki: motor tiplerine özel dersler (art yakıcı kullanımı, turboprop
   pervane valisi ve beta aralığı), gece/nemli hava ayarı (yoğuşmayı artırır)
 - İngilizce yerelleştirme, erişilebilirlik (klavye ile tam kontrol, renk körü paleti)

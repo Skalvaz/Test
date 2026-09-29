@@ -8,6 +8,7 @@ import { FlightControls } from './FlightControls';
 export interface SandboxCallbacks {
   autoStart(): void;
   onEngine(kind: EngineKind): void;
+  onLights(level: number): void;
   onTimeScale(v: number): void;
   onExit(): void;
 }
@@ -17,10 +18,12 @@ export class SandboxPanel {
   private flight: FlightControls;
   private faultBtns: Record<string, HTMLButtonElement> = {};
   private selectEngine: (kind: EngineKind) => void = () => {};
+  private applyView: () => void = () => {};
+  private viewApplied: EngineVisual | null = null;
 
   constructor(
     private sim: EngineSim,
-    visual: () => EngineVisual,
+    private visual: () => EngineVisual,
     cb: SandboxCallbacks,
   ) {
     this.flight = new FlightControls(sim);
@@ -29,6 +32,17 @@ export class SandboxPanel {
       h('button', { class: `btn small${primary ? ' primary' : ''}`, text: label, on: { click: fn } });
 
     const speeds: [number, string][] = [[0.25, '¼×'], [0.5, '½×'], [1, '1×'], [2, '2×'], [4, '4×']];
+    // Hücre ışıkları: gece modunda alev ve kor parçalar sahneyi aydınlatır
+    const lightSeg = h('div', { class: 'seg' });
+    for (const [v, label] of [[1, 'Açık'], [0.35, 'Loş'], [0, 'Gece']] as [number, string][]) {
+      const b = h('button', { text: label, class: v === 1 ? 'sel' : '' });
+      b.addEventListener('click', () => {
+        for (const x of lightSeg.children) x.classList.remove('sel');
+        b.classList.add('sel');
+        cb.onLights(v);
+      });
+      lightSeg.append(b);
+    }
     const speedSeg = h('div', { class: 'seg' });
     for (const [v, label] of speeds) {
       const b = h('button', { text: label, class: v === 1 ? 'sel' : '' });
@@ -76,12 +90,32 @@ export class SandboxPanel {
       sim.controls.reheat = sim.controls.reheat > 0 ? 0 : 1;
     });
     let shown: EngineKind | null = null;
-    // Efekt tercihi motor değişince de korunur
-    let effectsOn = true;
+    // Görünüm tercihleri motor değişince yeni modele yeniden uygulanır
+    const view = { pylon: true, wing: false, plume: true, effects: true, blur: true };
+    const applyView = () => {
+      const v = visual();
+      this.viewApplied = v;
+      v.setPylonVisible(view.pylon);
+      v.setWingVisible(view.wing);
+      v.setPlumeVisible(view.plume);
+      v.effects.enabled = view.effects;
+      v.motionBlur = view.blur;
+    };
+    const pylonBtn = toggle('Pilon', view.pylon, (v) => {
+      view.pylon = v;
+      visual().setPylonVisible(v);
+    });
+    const wingBtn = toggle('Kanat', view.wing, (v) => {
+      view.wing = v;
+      visual().setWingVisible(v);
+    });
     const selectEngine = (kind: EngineKind) => {
       if (kind === shown) return;
       shown = kind;
       abBtn.classList.toggle('hidden', !ENGINE_CATALOG[kind].afterburner);
+      // Pilon ve kanat yalnız kaportalı yolcu turbofanında vardır
+      pylonBtn.classList.toggle('hidden', kind !== 'turbofan');
+      wingBtn.classList.toggle('hidden', kind !== 'turbofan');
       for (const b of engineSeg.children) b.classList.toggle('sel', (b as HTMLElement).dataset.kind === kind);
       const d = ENGINE_CATALOG[kind];
       summary.innerHTML = `<b>${d.name}</b><br>${d.summary}`;
@@ -90,13 +124,14 @@ export class SandboxPanel {
       const b = h('button', { class: 'btn small', text: LABELS[kind], attrs: { 'data-kind': kind } });
       b.addEventListener('click', () => {
         cb.onEngine(kind);
-        visual().effects.enabled = effectsOn;
+        applyView();
         selectEngine(kind);
         for (const f of Object.values(this.faultBtns)) f.classList.remove('active');
       });
       engineSeg.append(b);
     }
     this.selectEngine = selectEngine;
+    this.applyView = applyView;
     selectEngine(sim.kind);
 
     this.el = h('div', { class: 'side-left panel' }, [
@@ -156,16 +191,22 @@ export class SandboxPanel {
           style: { fontSize: '12px', marginTop: '8px' },
           html: 'Deneyler: aşınmış kompresörle gaz kolunu hızla it · ateşleyici arızasında çalıştırmayı dene · <b>FADEC → MANUEL</b> ile yakıtı elle aç · ¼× hızda çalıştırmayı izle.',
         }),
+        h('div', { class: 'section-label', text: 'Hücre ışıkları' }),
+        lightSeg,
         h('div', { class: 'section-label', text: 'Görünüm' }),
         h('div', { class: 'chips' }, [
-          toggle('Pilon', true, (v) => visual().setPylonVisible(v)),
-          toggle('Kanat', false, (v) => visual().setWingVisible(v)),
-          toggle('Egzoz akışı', true, (v) => visual().setPlumeVisible(v)),
-          toggle('Efektler', true, (v) => {
-            effectsOn = v;
+          pylonBtn,
+          wingBtn,
+          toggle('Egzoz akışı', view.plume, (v) => {
+            view.plume = v;
+            visual().setPlumeVisible(v);
+          }),
+          toggle('Efektler', view.effects, (v) => {
+            view.effects = v;
             visual().effects.enabled = v;
           }),
-          toggle('Hareket bulanıklığı', true, (v) => {
+          toggle('Hareket bulanıklığı', view.blur, (v) => {
+            view.blur = v;
             visual().motionBlur = v;
           }),
         ]),
@@ -174,6 +215,8 @@ export class SandboxPanel {
   }
 
   update() {
+    // Motor (ders ya da seçici ile) değiştiyse görünüm tercihleri yeni modele
+    if (this.visual() !== this.viewApplied) this.applyView();
     this.flight.refresh();
     this.selectEngine(this.sim.kind);
     if (this.faultBtns.bird && this.sim.fanDamage === 0) this.faultBtns.bird.classList.remove('active');

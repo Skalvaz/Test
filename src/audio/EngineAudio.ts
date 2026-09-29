@@ -147,6 +147,8 @@ export class EngineAudio {
   }
 
   private set(voice: Voice, gain: number, freq?: number, filterFreq?: number) {
+    // Sonlu olmayan değer AudioParam'da istisna fırlatır ve kareyi keser
+    if (!Number.isFinite(gain) || (freq !== undefined && !Number.isFinite(freq)) || (filterFreq !== undefined && !Number.isFinite(filterFreq))) return;
     const t = this.ctx!.currentTime;
     voice.gain.gain.setTargetAtTime(gain, t, 0.06);
     if (freq !== undefined && voice.osc) voice.osc.frequency.setTargetAtTime(Math.max(1, freq), t, 0.05);

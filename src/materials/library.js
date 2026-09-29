@@ -16,6 +16,9 @@ import {
   cavityTexture,
   createHeatTintTexture,
   createPropBladeTexture,
+  createCaseMaps,
+  createBraidTexture,
+  createLinerMaps,
 } from './textures.js';
 
 /**
@@ -196,8 +199,11 @@ export function createMaterials(renderer, details = null) {
   });
 
   /* --- yanma odası iç yüzeyi: kor halindeki seramik kaplama --- */
+  const liner = createLinerMaps();
   const combustorGlow = new THREE.MeshStandardMaterial({
-    color: 0x2a1a12,
+    map: liner.map,
+    emissiveMap: liner.emissiveMap,
+    color: 0xb8aca2,
     emissive: new THREE.Color(0xff7a2a),
     emissiveIntensity: 3.2,
     metalness: 0.6,
@@ -250,14 +256,37 @@ export function createMaterials(renderer, details = null) {
 
   /* --- kaportasız askeri motorlar ve turboprop --- */
   // Motor gövdesi: saten titanyum/çelik
+  const caseMaps = createCaseMaps();
+  for (const t of Object.values(caseMaps)) t.anisotropy = maxAniso;
   const engineCase = new THREE.MeshPhysicalMaterial({
-    color: 0x8f969b,
+    color: 0xa9b0b5,
+    map: caseMaps.map,
+    roughnessMap: caseMaps.roughnessMap,
+    normalMap: caseMaps.normalMap,
+    normalScale: new THREE.Vector2(0.4, 0.4),
     metalness: 1.0,
-    roughness: 0.36,
-    anisotropy: 0.3,
+    roughness: 1.0,
+    anisotropy: 0.35,
     envMapIntensity: 0.9,
     side: THREE.DoubleSide,
   });
+  // Döküm alüminyum (dişli kutusu, pompa gövdeleri): mat, kumlu
+  const castAlu = new THREE.MeshStandardMaterial({
+    color: 0x9a9d9c,
+    map: caseMaps.map,
+    metalness: 0.7,
+    roughness: 0.62,
+    envMapIntensity: 0.7,
+    side: THREE.DoubleSide,
+  });
+  // Örgülü paslanmaz kablo/hortum kılıfı
+  const braid = new THREE.MeshStandardMaterial({ map: createBraidTexture(), metalness: 0.8, roughness: 0.45 });
+  // Eloksal kaplamalı bağlantılar (mavi)
+  const anodized = new THREE.MeshStandardMaterial({ color: 0x2c5f9e, metalness: 0.6, roughness: 0.35 });
+  // Boyalı elektronik kutular (koyu gri-yeşil)
+  const boxPaint = new THREE.MeshStandardMaterial({ color: 0x3d433c, metalness: 0.3, roughness: 0.6 });
+  // Gözetleme camı (yağ seviyesi)
+  const sightGlass = new THREE.MeshStandardMaterial({ color: 0xc8a24a, metalness: 0.1, roughness: 0.1, emissive: new THREE.Color(0x3a2a08) });
   // Art yakıcı kanalı: ısı renklenmesi
   const heatTint = createHeatTintTexture();
   heatTint.anisotropy = maxAniso;
@@ -363,6 +392,11 @@ export function createMaterials(renderer, details = null) {
     pylonDetail,
     coreDetail,
     engineCase,
+    castAlu,
+    braid,
+    anodized,
+    boxPaint,
+    sightGlass,
     abDuct,
     abLiner,
     flameHolder,

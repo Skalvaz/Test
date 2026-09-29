@@ -497,6 +497,49 @@ export function createBlurDiscTexture(size = 1024, blades = 22) {
   return tex;
 }
 
+/**
+ * Pervane diski: yüksek devirde kameranın gördüğü yarı saydam disk.
+ * Pal kordunun geniş olduğu orta açıklıkta daha koyu bir halka, uçta palların
+ * sarı uyarı bantlarından oluşan belirgin sarı çember (gerçek fotoğraflarda
+ * ve simülatörlerde pervanenin döndüğünü ilk bu çember belli eder).
+ */
+export function createPropDiscTexture(size = 1024, blades = 6, hubR = 0.12) {
+  const canvas = makeCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  const c = size / 2;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = (x - c) / c;
+      const dy = (y - c) / c;
+      const r = Math.hypot(dx, dy);
+      const i = (y * size + x) * 4;
+      if (r > 1 || r < hubR) { img.data[i + 3] = 0; continue; }
+      const t = (r - hubR) / (1 - hubR);
+      // Pal kordu dağılımı ≈ kaplama oranı: kökte dar, ortada geniş, uca incelir
+      const chord = 0.35 + 0.65 * Math.sin(Math.PI * Math.min(1, 0.25 + t * 0.85)) * (1 - 0.35 * t);
+      const ang = Math.atan2(dy, dx);
+      const ghost = 0.82 + 0.18 * Math.cos(ang * blades);
+      let a = 0.42 * chord * ghost;
+      let rr = 22, gg = 23, bb = 25;
+      if (r > 0.925 && r < 0.985) {
+        // Sarı uç bantları
+        rr = 232; gg = 185; bb = 28;
+        a = 0.62 * ghost;
+      } else if (r >= 0.985) {
+        a *= 0.5;
+      }
+      img.data[i] = rr; img.data[i + 1] = gg; img.data[i + 2] = bb;
+      img.data[i + 3] = Math.min(255, a * 255);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 /** Isı dalgalanması ve egzoz türbülansı için sarmalanabilir gürültü. */
 export function createNoiseTexture(size = 512, seed = 99) {
   const a = fbm2D(size, size, { octaves: 5, frequency: 6, seed });
@@ -552,6 +595,129 @@ export function createHeatTintTexture(w = 256, h = 1024, seed = 17) {
   }
   ctx.putImageData(img, 0, 0);
   return toTexture(canvas, { srgb: true });
+}
+
+/**
+ * İşlenmiş motor gövdesi: tornada kalan çevresel ince izler (lathe UV'sinde
+ * v sabit çizgiler), hafif fırçalama, yağ/kir lekeleri ve sıcak bölgeye doğru
+ * saman rengi kararma. Pürüzlülük ve normal haritası üretir.
+ */
+export function createCaseMaps(w = 512, h = 1024, seed = 61) {
+  const grime = fbm2D(w, h, { octaves: 5, frequency: 5, seed });
+  const fine = fbm2D(w, h, { octaves: 3, frequency: 60, seed: seed + 3, stretchX: 0.05 });
+  const color = makeCanvas(w, h);
+  const cctx = color.getContext('2d');
+  const img = cctx.createImageData(w, h);
+  const rough = new Float32Array(w * h);
+  const height = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    // Torna izleri: v boyunca düzensiz aralıklı ince halkalar
+    const ring = 0.5 + 0.5 * Math.sin(y * 0.9 + Math.sin(y * 0.07) * 4);
+    const along = 1 - y / h; // canvas üstü = arka uç
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      const g = grime[i];
+      const dirt = Math.pow(Math.max(0, g - 0.45) / 0.55, 1.5);
+      const tint = Math.max(0, along - 0.6) / 0.4;
+      const base = 0.86 - dirt * 0.35 + (fine[i] - 0.5) * 0.06;
+      img.data[i * 4] = 255 * Math.min(1, base * (1 + tint * 0.08));
+      img.data[i * 4 + 1] = 255 * Math.min(1, base * (1 + tint * 0.02));
+      img.data[i * 4 + 2] = 255 * Math.min(1, base * (1 - tint * 0.12));
+      img.data[i * 4 + 3] = 255;
+      rough[i] = 0.3 + ring * 0.08 + dirt * 0.35 + fine[i] * 0.08;
+      height[i] = ring * 0.25 + fine[i] * 0.4;
+    }
+  }
+  cctx.putImageData(img, 0, 0);
+  return {
+    map: toTexture(color, { srgb: true }),
+    roughnessMap: toTexture(grayCanvas(rough, w, h)),
+    normalMap: toTexture(heightToNormalTexture(height, w, h, 0.6)),
+  };
+}
+
+/**
+ * Yanma odası gömleği: kademeli soğutma bantları (louver), sıra sıra
+ * efüzyon soğutma delikleri ve seyreltme delikleri. `emissiveMap` alevin
+ * ısıttığı bölgeleri verir: enjektörlerin arkasında sıcak çizgiler, deliklerde
+ * içerideki alevin parıltısı. Lathe UV: u çevre (tekrarlanır), v eksen.
+ */
+export function createLinerMaps(w = 256, h = 512) {
+  const color = makeCanvas(w, h);
+  const glow = makeCanvas(w, h);
+  const c = color.getContext('2d');
+  const g = glow.getContext('2d');
+  c.fillStyle = '#6d625a';
+  c.fillRect(0, 0, w, h);
+  g.fillStyle = '#1a0a04';
+  g.fillRect(0, 0, w, h);
+  // Enjektör arkasındaki sıcak çizgi (u ortası), eksen boyunca sönümlenir
+  const streak = g.createLinearGradient(0, 0, w, 0);
+  streak.addColorStop(0.2, 'rgba(255,120,40,0)');
+  streak.addColorStop(0.5, 'rgba(255,150,60,0.8)');
+  streak.addColorStop(0.8, 'rgba(255,120,40,0)');
+  g.fillStyle = streak;
+  g.fillRect(0, h * 0.15, w, h * 0.75);
+  // Soğutma bantları
+  for (let k = 0; k < 6; k++) {
+    const y = h * (0.12 + k * 0.14);
+    c.fillStyle = 'rgba(40,34,30,0.8)';
+    c.fillRect(0, y, w, 3);
+    c.fillStyle = 'rgba(160,150,140,0.5)';
+    c.fillRect(0, y + 3, w, 1);
+    g.fillStyle = 'rgba(255,170,90,0.9)';
+    g.fillRect(0, y, w, 2);
+  }
+  // Efüzyon delikleri
+  for (let y = 10; y < h; y += 9) {
+    for (let x = (y / 9) % 2 ? 4 : 8; x < w; x += 9) {
+      c.fillStyle = '#1b1614';
+      c.beginPath();
+      c.arc(x, y, 1.3, 0, Math.PI * 2);
+      c.fill();
+      g.fillStyle = 'rgba(255,190,110,0.8)';
+      g.beginPath();
+      g.arc(x, y, 1.3, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+  // Seyreltme delikleri (büyük)
+  for (const x of [w * 0.25, w * 0.75]) {
+    c.fillStyle = '#120e0c';
+    c.beginPath();
+    c.arc(x, h * 0.55, 10, 0, Math.PI * 2);
+    c.fill();
+    g.fillStyle = 'rgba(255,220,150,1)';
+    g.beginPath();
+    g.arc(x, h * 0.55, 10, 0, Math.PI * 2);
+    g.fill();
+  }
+  return {
+    map: toTexture(color, { srgb: true, repeat: [16, 1] }),
+    emissiveMap: toTexture(glow, { srgb: true, repeat: [16, 1] }),
+  };
+}
+
+/** Örgülü paslanmaz çelik hortum kılıfı (TubeGeometry UV: u boy, v çevre) */
+export function createBraidTexture(size = 128) {
+  const canvas = makeCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#5c6166';
+  ctx.fillRect(0, 0, size, size);
+  const n = 8;
+  const s = size / n;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      const over = (i + j) % 2 === 0;
+      const g = ctx.createLinearGradient(i * s, j * s, (i + 1) * s, (j + 1) * s);
+      g.addColorStop(0, over ? '#c8cdd2' : '#8d9398');
+      g.addColorStop(1, over ? '#7d8388' : '#4a4f54');
+      ctx.fillStyle = g;
+      ctx.fillRect(i * s + 1, j * s + 1, s - 2, s - 2);
+    }
+  }
+  const tex = toTexture(canvas, { srgb: true, repeat: [40, 2] });
+  return tex;
 }
 
 /** Pervane palı: mat siyah kompozit, uçta sarı uyarı bandı (UV v = açıklık). */

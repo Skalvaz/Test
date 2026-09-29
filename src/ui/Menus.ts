@@ -45,7 +45,7 @@ export function mainMenu(cb: MenuCallbacks, progress: Progress, lessonCount: num
         item('gear', 'Ayarlar', 'Grafik kalitesi, ses, ortam', null, cb.onSettings),
         item('wrench', 'Motor tasarım atölyesi', 'Kendi motorunu tasarla — ardından uçağını', 'YOL HARİTASI'),
       ]),
-      h('div', { class: 'menu-foot', html: 'Sürükle: döndür · Tekerlek: yakınlaş · <kbd>Esc</kbd> menü · <kbd>H</kbd> arayüzü gizle' }),
+      h('div', { class: 'menu-foot', html: 'Sürükle: döndür · Tekerlek: yakınlaş · Çift tık: parçaya odaklan · <kbd>Esc</kbd> menü · <kbd>H</kbd> arayüzü gizle' }),
     ]),
   ]);
 }

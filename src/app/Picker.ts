@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import type { EngineVisual, PartId } from '../engine/visual';
-import { PARTS } from '../game/parts';
+import { partInfo } from '../game/parts';
 import { h } from '../ui/dom';
 
 export class Picker {
@@ -15,6 +15,9 @@ export class Picker {
   showLabels = true;
   onPick?: (part: PartId) => void;
   onHover?: (part: PartId | null) => void;
+  /** Çift tıklama: tıklanan yüzey noktası (kamerayı oraya odaklamak için) */
+  onFocus?: (part: PartId, point: THREE.Vector3) => void;
+  private lastPoint = new THREE.Vector3();
 
   private raycaster = new THREE.Raycaster();
   private ndc = new THREE.Vector2();
@@ -49,9 +52,14 @@ export class Picker {
       const part = this.hit(e);
       if (part) this.onPick?.(part);
     });
+    dom.addEventListener('dblclick', (e) => {
+      if (!this.enabled) return;
+      const part = this.hit(e);
+      if (part) this.onFocus?.(part, this.lastPoint.clone());
+    });
   }
 
-  private hit(e: PointerEvent): PartId | null {
+  private hit(e: MouseEvent): PartId | null {
     const r = this.dom.getBoundingClientRect();
     this.ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     this.raycaster.setFromCamera(this.ndc, this.camera);
@@ -60,7 +68,10 @@ export class Picker {
       if (!hit.object.visible || !isVisibleInTree(hit.object)) continue;
       if (this.clipPlanes.some((p) => p.distanceToPoint(hit.point) < 0)) continue;
       const part = this.visual.partOf(hit.object);
-      if (part && part !== 'wing') return part;
+      if (part && part !== 'wing') {
+        this.lastPoint.copy(hit.point);
+        return part;
+      }
     }
     return null;
   }
@@ -74,7 +85,7 @@ export class Picker {
       this.tip.classList.add('hidden');
       return;
     }
-    const info = PARTS[part];
+    const info = partInfo(part, this.visual.kind);
     this.tip.replaceChildren(h('b', { text: info.name }), h('p', { text: info.short }));
     this.tip.style.left = `${Math.min(e.clientX, window.innerWidth - 320)}px`;
     this.tip.style.top = `${Math.min(e.clientY, window.innerHeight - 140)}px`;

@@ -317,5 +317,22 @@ describe('motor tipleri', () => {
     const ratio = mid.propThrust / hi.propThrust;
     expect(Math.abs(ratio - (mid.shaftPower / hi.shaftPower) ** (2 / 3))).toBeLessThan(0.02);
   });
-});
 
+  it.each(Object.keys(ENGINE_CATALOG) as EngineKind[])(
+    '%s: tamamen duran motora geçişte anlık görüntüde NaN olmaz',
+    (kind) => {
+      const sim = new EngineSim();
+      sim.setDesign(ENGINE_CATALOG[kind]);
+      run(sim, 0.5);
+      const bad: string[] = [];
+      const scan = (o: unknown, path: string) => {
+        for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+          if (typeof v === 'number' && !Number.isFinite(v)) bad.push(path + k);
+          else if (v && typeof v === 'object') scan(v, `${path}${k}.`);
+        }
+      };
+      scan(sim.snapshot(), '');
+      expect(bad).toEqual([]);
+    },
+  );
+});

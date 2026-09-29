@@ -55,7 +55,6 @@ interface PartEntry {
   materials: Set<EmissiveMaterial>;
 }
 
-const RPM_TO_RAD = (Math.PI * 2) / 60;
 const HIGHLIGHT = new THREE.Color(0x2ee6d6);
 
 /* ------------------------------------------------------------------ */
@@ -150,6 +149,8 @@ interface EngineModel {
   hpSpool: THREE.Object3D;
   blurDisc?: THREE.Mesh;
   blurMat?: THREE.MeshBasicMaterial;
+  /** Önden görünen rotor kademesinin kanat sayısı (stroboskop sınırı için) */
+  bladeCount?: number;
   /** Turboprop: pervane grubu ve pal açısı */
   propeller?: THREE.Object3D;
   setPitch?: (load: number, feather: number) => void;
@@ -159,6 +160,8 @@ interface EngineModel {
   mount?: THREE.Object3D;
   intake: { z: number; radius: number; y?: number };
   exhaust: { z: number; radius: number };
+  /** Modele özel ek animasyon (ör. planet dişliler) */
+  tick?: (lpAngle: number, propAngle: number) => void;
 }
 
 function buildTurbofanModel(materials: Materials): EngineModel {
@@ -176,6 +179,7 @@ function buildTurbofanModel(materials: Materials): EngineModel {
     hpSpool: core.hpSpool,
     blurDisc: fan.blurDisc,
     blurMat: fan.blurMat,
+    bladeCount: 22,
     wing: pylon.wing,
     mount: pylon.group,
     intake: { z: -2.25, radius: 1.1 },
@@ -264,6 +268,8 @@ export class EngineVisual {
     }
 
     this.indexParts();
+    for (const m of [this.plume.mesh, this.exhaustFlame.mesh, this.inletFlame.mesh]) m.userData.noClip = true;
+    this.effects.group.traverse((o) => (o.userData.noClip = true));
     this.root.add(this.effects.group);
   }
 
@@ -334,6 +340,9 @@ export class EngineVisual {
     this.root.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
+      // Stand askısı, egzoz/alev hacimleri ve parçacıklar kesilmez: yarım
+      // kalan alev ya da havada asılı yarım kiriş yanlış görünür
+      if (o.userData.part === 'stand' || o.userData.noClip) return;
       const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       for (const m of mats) {
         // Kesitte tek yüzlü katı parçalar (kutular, silindirler) içi boş
@@ -366,8 +375,9 @@ export class EngineVisual {
    */
   setInteriorVisible(v: boolean) {
     // Kaportasız motorlarda dişli kutusu ve tesisat dışarıdadır, hep görünür
-    const interior: PartId[] = ['booster', 'hpc', 'combustor', 'hpt', 'shafts', 'casing'];
-    if (this.kind === 'turbofan') interior.push('gearbox');
+    // ve girişten ilk kompresör kademeleri görünür
+    const interior: PartId[] = ['hpc', 'combustor', 'hpt', 'shafts', 'casing'];
+    if (this.kind === 'turbofan') interior.push('gearbox', 'booster');
     for (const part of interior) {
       for (const m of this.parts.get(part)?.meshes ?? []) m.visible = v;
     }
@@ -391,31 +401,41 @@ export class EngineVisual {
     this.time += dt;
     const cyc = snap.cycle;
 
-    // Mil dönüşleri (gerçek devir × görsel ölçek)
-    // Küçük motorların devri çok yüksektir; görsel ölçek sabit açısal hıza
-    // yakın tutulur (tasarım devrinde benzer görünür dönüş).
+    // Mil dönüşleri. Ekran kare hızı sınırlı olduğundan hızlı dönen bir
+    // kanat dizisi her karede kanat aralığından fazla ilerlerse göz onu
+    // duruyor ya da geri dönüyor sanır (vagon tekerleği / stroboskop etkisi).
+    // Kamera da gerçekte böyle görür; oyunlardaki çözüm: görünür adımı kanat
+    // aralığının bir kesriyle sınırla, hızı hareket bulanıklığı diskiyle ver.
     const m = this.model;
-    const scale = this.kind === 'turbofan' ? 1 : 0.28;
-    this.lpAngle += snap.n1Rpm * RPM_TO_RAD * this.spinScale * scale * dt;
-    this.hpAngle += snap.n2Rpm * RPM_TO_RAD * this.spinScale * 0.35 * scale * dt;
+    // Görünür açısal hız: devirle orantılı, tasarım devrinde kare başına
+    // kanat aralığının ~%30'u (60 fps'te). Düşük kare hızında da bu sınır
+    // aşılmaz; daha fazlası bulanıklık diskiyle anlatılır.
+    const cap = (blades: number) => (0.3 * Math.PI * 2) / blades / Math.max(dt, 1 / 240);
+    const visual = (blades: number, frac: number) =>
+      Math.min(((0.3 * Math.PI * 2) / blades) * 60 * Math.pow(Math.max(frac, 0), 1.2), cap(blades));
+    const lpBlades = m.bladeCount ?? 30;
+    this.lpAngle += visual(lpBlades, snap.N1) * dt;
+    this.hpAngle += visual(40, snap.N2) * dt;
     m.lpSpool.rotation.z = this.lpAngle;
     m.hpSpool.rotation.z = this.hpAngle;
 
     // Pervane: kendi devrinde (redüksiyon dişlisi sonrası) ve pal açısı
     let blurSpeed = snap.N1;
     if (m.propeller) {
-      this.propAngle += snap.propRpm * RPM_TO_RAD * 0.22 * dt;
+      this.propAngle += visual(6, snap.propRpm / 1200) * dt;
       m.propeller.rotation.z = this.propAngle;
       const feather = !snap.lit && snap.N1 < 0.35 ? 1 - snap.N1 / 0.35 : 0;
       m.setPitch?.(snap.propPitch, feather);
       blurSpeed = snap.propRpm / 1200;
     }
 
+    m.tick?.(this.lpAngle, this.propAngle);
+
     // Hareket bulanıklığı diski
     if (m.blurDisc && m.blurMat) {
-      const blur = THREE.MathUtils.smoothstep(blurSpeed, 0.3, 0.78);
-      m.blurDisc.visible = this.motionBlur && blur > 0.01;
-      m.blurMat.opacity = blur * (m.propeller ? 0.4 : 0.52);
+      const blur = this.motionBlur ? THREE.MathUtils.smoothstep(blurSpeed, 0.25, 0.7) : 0;
+      m.blurDisc.visible = blur > 0.01;
+      m.blurMat.opacity = blur * (m.propeller ? 0.95 : 0.85);
       m.blurDisc.rotation.z = (m.propeller ? this.propAngle : this.lpAngle) * 0.35;
     }
 
@@ -427,14 +447,25 @@ export class EngineVisual {
       this.plume.mesh.position.z = this.model.exhaust.z - 0.05;
     }
 
+    // Jet borusu sıcaklığı: art yakıcı yanmasa da eski turbojetin kuyruk
+    // konisi ve lülesi yüksek güçte donuk kızıl kor gibi görünür
+    const hot = THREE.MathUtils.smoothstep(cyc.stations['7'].T, 820, 1250);
+    if (this.highlighted !== 'exhaust') {
+      for (const mat of this.parts.get('exhaust')?.materials ?? []) {
+        if (mat.name !== 'sooted') continue;
+        mat.emissive.setRGB(1, 0.22, 0.04);
+        mat.emissiveIntensity = hot * 1.4 + snap.abLevel * 0.6;
+      }
+    }
+
     // Art yakıcı gömleği, alev tutucular ve seramik lüle iç yüzü kor olur
     const ab = snap.abLevel;
     for (const part of ['afterburner', 'nozzle'] as PartId[]) {
       if (part === this.highlighted) continue;
       for (const mat of this.parts.get(part)?.materials ?? []) {
-        if (mat.name === 'abLiner') mat.emissiveIntensity = ab * 0.9;
-        else if (mat.name === 'flameHolder') mat.emissiveIntensity = ab * 2.2;
-        else if (mat.name === 'nozzleCeramic') mat.emissiveIntensity = ab * 0.55;
+        if (mat.name === 'abLiner') mat.emissiveIntensity = ab * 0.9 + hot * 0.15;
+        else if (mat.name === 'flameHolder') mat.emissiveIntensity = ab * 2.2 + hot * 0.4;
+        else if (mat.name === 'nozzleCeramic') mat.emissiveIntensity = ab * 0.55 + hot * 0.35;
       }
     }
 

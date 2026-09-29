@@ -16,6 +16,33 @@
 
 import * as THREE from 'three';
 
+/**
+ * Alev renk paletleri. Mavi-mor ışıma temiz yanan bölgedeki CH/C2
+ * radikallerinin kemilüminesansıdır; sarı-turuncu ise akkor is
+ * parçacıklarıdır. Modern, fakir karışımla yanan art yakıcılar mor-pembe,
+ * eski turbojetlerin zengin yanması turuncu-sarı görünür.
+ */
+export const FLAME_STYLES = {
+  clean: {
+    hotA: [0.85, 0.3, 0.55],
+    hotB: [1.0, 0.5, 0.35],
+    tail: [0.7, 0.18, 0.12],
+    core: [0.45, 0.4, 1.0],
+    diaA: [1.0, 0.8, 0.6],
+    diaB: [1.0, 0.72, 0.85],
+    coreGain: 2.6,
+  },
+  sooty: {
+    hotA: [1.0, 0.3, 0.04],
+    hotB: [1.0, 0.62, 0.16],
+    tail: [0.85, 0.2, 0.03],
+    core: [0.6, 0.45, 0.9],
+    diaA: [1.0, 0.78, 0.4],
+    diaB: [1.0, 0.85, 0.5],
+    coreGain: 1.0,
+  },
+};
+
 const vertexShader = /* glsl */ `
   uniform vec3 uScale;
   varying vec3 vLocal;
@@ -37,6 +64,13 @@ const fragmentShader = /* glsl */ `
   uniform float uSpacing;
   uniform float uDiamonds;
   uniform float uPop;
+  uniform vec3 uHotA;
+  uniform vec3 uHotB;
+  uniform vec3 uTail;
+  uniform vec3 uCore;
+  uniform vec3 uDiaA;
+  uniform vec3 uDiaB;
+  uniform float uCoreGain;
   varying vec3 vLocal;
 
   float hash(vec3 p) {
@@ -110,13 +144,12 @@ const fragmentShader = /* glsl */ `
         : 0.0;
       diamond *= step(0.0, k) * exp(-k * 0.42) * uDiamonds;
 
-      vec3 hot = mix(vec3(1.0, 0.26, 0.04), vec3(1.0, 0.52, 0.12), edge);
-      vec3 tailCol = vec3(0.85, 0.16, 0.03);
-      vec3 bodyCol = mix(hot, tailCol, smoothstep(0.3, 0.9, s));
-      vec3 coreCol = vec3(0.55, 0.42, 1.0);
-      vec3 diaCol = mix(vec3(1.0, 0.7, 0.4), vec3(1.0, 0.56, 0.7), lvl);
+      vec3 hot = mix(uHotA, uHotB, edge);
+      vec3 bodyCol = mix(hot, uTail, smoothstep(0.3, 0.9, s));
+      vec3 coreCol = uCore;
+      vec3 diaCol = mix(uDiaA, uDiaB, lvl);
 
-      acc += (bodyCol * body * (1.0 + 2.4 * lvl) + coreCol * core * 1.8 + diaCol * diamond * 4.0) * dt;
+      acc += (bodyCol * body * (1.0 + 2.4 * lvl) + coreCol * core * uCoreGain + diaCol * diamond * 4.0) * dt;
       t += dt;
     }
     // Titreşim: yanma kararsızlığı
@@ -127,7 +160,9 @@ const fragmentShader = /* glsl */ `
 `;
 
 export class AfterburnerFlame {
-  constructor() {
+  constructor(style = 'clean') {
+    const pal = FLAME_STYLES[style] ?? FLAME_STYLES.clean;
+    const v3 = (a) => ({ value: new THREE.Vector3(...a) });
     this.rMax = 1;
     this.len = 1;
     this.material = new THREE.ShaderMaterial({
@@ -142,6 +177,13 @@ export class AfterburnerFlame {
         uSpacing: { value: 0.8 },
         uDiamonds: { value: 1 },
         uPop: { value: 0 },
+        uHotA: v3(pal.hotA),
+        uHotB: v3(pal.hotB),
+        uTail: v3(pal.tail),
+        uCore: v3(pal.core),
+        uDiaA: v3(pal.diaA),
+        uDiaB: v3(pal.diaB),
+        uCoreGain: { value: pal.coreGain },
       },
       vertexShader,
       fragmentShader,

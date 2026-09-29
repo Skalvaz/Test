@@ -64,7 +64,7 @@ export class EngineEffects {
     this.smoke = new ParticleSystem('smoke', noise, 4500);
     this.glow = new ParticleSystem('glow', noise, 1400);
     this.smoke.floorY = this.glow.floorY = FLOOR_Y + 0.03;
-    this.flame = new AfterburnerFlame();
+    this.flame = new AfterburnerFlame(geo.kind === 'turbojet' ? 'sooty' : 'clean');
     this.floor = floorGlow();
     // Art yakıcı alevinin motoru aydınlatan ışığı
     this.abLight = new THREE.PointLight(0xff8a3a, 0, 12, 2);
@@ -283,6 +283,12 @@ export class EngineEffects {
     this.floor.mat.opacity = Math.pow(ab, 0.8) * 0.32 * flicker + this.flame.pop * 0.3;
     this.abLight.position.set(0, 0, ex.z + flameLen * 0.25);
     this.abLight.intensity = (Math.pow(ab, 0.8) * 60 + this.flame.pop * 80) * flicker;
+    // Duman ve toz alevin ışığını alır
+    const glowAmt = Math.pow(ab, 0.8) * 1.3 + torch * 1.6 + this.flame.pop * 1.2;
+    const su = this.smoke.material.uniforms;
+    su.uGlowPos.value.set(0, 0, ex.z + flameLen * 0.3);
+    su.uGlowColor.value.setRGB(1.0, 0.45, 0.15).multiplyScalar(glowAmt * flicker);
+    su.uGlowRadius.value = 1.5 + flameLen * 0.35;
 
     /* ---------------- hava efektleri ---------------- */
     // Yerden girişe yoğuşma girdabı: giriş yüksekliği/çap < ~1.6 ve yüksek akışta
