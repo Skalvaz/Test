@@ -24,10 +24,13 @@ import {
   FAR_STOICH,
   P_STD,
   T_STD,
+  LHV,
   combustorExitT,
   compressT,
   convergentNozzle,
   expandT,
+  idealJet,
+  mixStreams,
 } from './gas';
 import { compressorMap, workingLineEta, workingLineFlow, workingLinePR } from './maps';
 
@@ -62,6 +65,8 @@ export interface CycleInput {
   lit: boolean;
   surging: boolean;
   health?: Health;
+  /** Art yakıcıya giden yakıt [kg/s] (yalnız art yakıcılı motorlar) */
+  wfAb?: number;
 }
 
 export interface CycleResult {
@@ -93,6 +98,14 @@ export interface CycleResult {
   V19: number;
   coreNozzleChoked: boolean;
   bypassNozzleChoked: boolean;
+  /** Art yakıcıda yanan yakıt [kg/s] ve tam yanığa oranı (0..1) */
+  wfAbBurned: number;
+  abFraction: number;
+  /** Lüle boğaz alanı / kuru tasarım alanı (art yakıcıda lüle açılır) */
+  nozzleArea: number;
+  /** Jet çıkış Mach sayısı ve lüle basınç oranı (şok elmasları için) */
+  jetMach: number;
+  nozzlePR: number;
 }
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
@@ -305,14 +318,49 @@ export function computeCycle(input: CycleInput): CycleResult {
   const coreThrust = W4 * (coreNoz.velocity * d.nozzleCv + coreNoz.pressureThrustPerFlow);
 
   /* ---------------- baypas ---------------- */
-  const W2 = Math.max(W2demand, W25);
+  // Baypassız motorda (turbojet, turboprop) giriş akışını çekirdek belirler
+  const W2 = d.bypassRatio > 0 ? Math.max(W2demand, W25) : W25;
   const W13 = W2 - W25;
   const P19t = P13 * (1 - d.bypassDuctDP);
   const bypNoz = convergentNozzle(P19t, T13, P0, AIR);
   const bypassThrust = W13 * (bypNoz.velocity * d.nozzleCv + bypNoz.pressureThrustPerFlow);
 
   const ramDrag = W2 * amb.V0;
-  const netThrust = coreThrust + bypassThrust - ramDrag;
+  let netThrust = coreThrust + bypassThrust - ramDrag;
+  let st7 = { T: T5, P: P5, W: W4 };
+  let exit = { T: coreNoz.staticT, P: coreNoz.staticP };
+  let mixedThrust = coreThrust;
+  let mixedBypass = bypassThrust;
+  let V9 = coreNoz.velocity * d.nozzleCv;
+  let jetMach = coreNoz.mach;
+  let nozzlePR = P5 / P0;
+  let wfAbBurned = 0;
+  let abFraction = 0;
+  let nozzleArea = 1;
+
+  /* ---------------- karıştırıcı + art yakıcı + değişken lüle ---------------- */
+  if (d.afterburner) {
+    const ab = d.afterburner;
+    const mix = mixStreams(W4, T5, P5, W13, T13, P19t, ab.mixerLoss);
+    const oxyLeft = Math.max(0, FAR_STOICH * W2 - wfBurned);
+    wfAbBurned = input.lit ? Math.min(Math.max(0, input.wfAb ?? 0), oxyLeft) : 0;
+    abFraction = r.wfAbMax > 0 ? wfAbBurned / r.wfAbMax : 0;
+    const T7 =
+      (mix.W * GAS.cp * mix.T + ab.eta * wfAbBurned * LHV) / ((mix.W + wfAbBurned) * GAS.cp);
+    const dp = ab.dpDry + (ab.dpLit - ab.dpDry) * Math.min(1, abFraction);
+    const P7 = mix.P * (1 - dp);
+    const W7 = mix.W + wfAbBurned;
+    const jet = idealJet(P7, T7, P0);
+    mixedThrust = P7 > P0 ? W7 * jet.velocity * d.nozzleCv : 0;
+    mixedBypass = 0;
+    netThrust = mixedThrust - ramDrag;
+    V9 = jet.velocity * d.nozzleCv;
+    jetMach = jet.mach;
+    nozzlePR = P7 / P0;
+    nozzleArea = W7 / jet.throatFlux / r.A8dry;
+    st7 = { T: T7, P: P7, W: W7 };
+    exit = { T: jet.staticT, P: P0 };
+  }
 
   /* ---------------- güçler ---------------- */
   const fanPower = W13 * AIR.cp * (T13 - T2) + W25 * AIR.cp * (T21 - T2);
@@ -330,7 +378,8 @@ export function computeCycle(input: CycleInput): CycleResult {
     '4': { T: T4, P: P4, W: W4 },
     '45': { T: T45, P: P45, W: W4 },
     '5': { T: T5, P: P5, W: W4 },
-    '9': { T: coreNoz.staticT, P: coreNoz.staticP, W: W4 },
+    '7': st7,
+    '9': { T: exit.T, P: exit.P, W: st7.W },
   };
 
   return {
@@ -349,15 +398,20 @@ export function computeCycle(input: CycleInput): CycleResult {
     hpcPower,
     hptPower,
     lptPower,
-    coreThrust,
-    bypassThrust,
+    coreThrust: mixedThrust,
+    bypassThrust: mixedBypass,
     ramDrag,
     netThrust,
     bypassRatio: W25 > 1e-6 ? W13 / W25 : 0,
     opr: P3 / P2,
-    V9: coreNoz.velocity * d.nozzleCv,
+    V9,
     V19: bypNoz.velocity * d.nozzleCv,
     coreNozzleChoked: coreNoz.choked,
     bypassNozzleChoked: bypNoz.choked,
+    wfAbBurned,
+    abFraction,
+    nozzleArea,
+    jetMach,
+    nozzlePR,
   };
 }

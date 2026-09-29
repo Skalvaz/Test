@@ -15,16 +15,84 @@ import { ambient, type Ambient } from './atmosphere';
 import {
   AIR,
   GAS,
+  FAR_STOICH,
   compressT,
   convergentNozzle,
+  expandT,
   expansionPR,
   flowFunctionRatio,
   fuelForT4,
+  idealJet,
+  mixStreams,
+  LHV as LHV_,
   P_STD,
   T_STD,
 } from './gas';
 
-export type StationId = '0' | '2' | '13' | '19' | '21' | '25' | '3' | '4' | '45' | '5' | '9';
+export type StationId = '0' | '2' | '13' | '19' | '21' | '25' | '3' | '4' | '45' | '5' | '7' | '9';
+
+/**
+ * Motor türü.
+ *  - turbofan: yüksek baypaslı, ayrık akışlı sivil turbofan
+ *  - militaryTurbofan: düşük baypaslı, karışık akışlı, art yakıcılı askeri turbofan
+ *  - turbojet: iki milli, art yakıcılı turbojet (baypas yok)
+ *  - turboprop: gaz jeneratörü + serbest güç türbini + pervane
+ */
+export type EngineKind = 'turbofan' | 'militaryTurbofan' | 'turbojet' | 'turboprop';
+
+/** Sınır değerler (EICAS kırmızı/amber çizgileri ve prosedür limitleri). */
+export interface EngineLimits {
+  egtRedline: number; // °C
+  egtAmber: number; // °C — sürekli azami
+  egtStart: number; // °C — çalıştırma sırasında
+  n1Redline: number;
+  n2Redline: number;
+  starterCutout: number;
+  fuelOnMinN2: number; // prosedür: yakıtı en erken bu N2'de ver
+  idleN2: number;
+  leanBlowoutFar: number;
+  /** Bu gerçek sıcaklığın üstünde kalınan süre türbine kalıcı hasar verir */
+  egtDamage: number; // °C
+  egtDamageSeconds: number;
+  ignitionMinFar: number;
+}
+
+/** Çalıştırma sistemi */
+export interface StartSystem {
+  /** Marş motoru torku, HP mil ekseninde, sıfır devirde [N·m] */
+  starterTorque: number;
+  /** Marş torkunun sıfırlandığı N2 */
+  starterFadeN2: number;
+  /** Çalıştırma programı yakıt/hava oranı: marş başında ve rölantiye yakın */
+  farHigh: number;
+  farLow: number;
+}
+
+/** Art yakıcı (reheat) ve değişken kesitli yakınsak-ıraksak lüle */
+export interface AfterburnerSpec {
+  /** Tam art yakıcıda jet borusu çıkış sıcaklığı [K] */
+  t7Max: number;
+  eta: number;
+  /** Jet borusu basınç kaybı: art yakıcı sönük / tam yanık */
+  dpDry: number;
+  dpLit: number;
+  /** Baypas–çekirdek karıştırıcı basınç kaybı */
+  mixerLoss: number;
+}
+
+/** Pervane ve redüksiyon dişli kutusu (turboprop) */
+export interface PropellerSpec {
+  diameter: number;
+  blades: number;
+  /** %100 NP'de pervane devri [rpm] */
+  rpm: number;
+  /** Statik itkide pervane başarı katsayısı (figure of merit) */
+  figureOfMerit: number;
+  /** İleri uçuşta pervane verimi */
+  efficiency: number;
+  /** Tasarım noktasında egzoz lülesi basınç oranı (artık jet itkisi) */
+  nozzlePR: number;
+}
 
 export interface Station {
   /** Toplam sıcaklık [K] (0, 9 ve 19 için statik) */
@@ -51,7 +119,10 @@ export interface CompressorMapShape {
 }
 
 export interface EngineDesign {
+  kind: EngineKind;
   name: string;
+  /** Menüde gösterilen kısa açıklama */
+  summary: string;
   /** Fan yüzü toplam hava akışı, kalkış [kg/s] */
   massFlow: number;
   bypassRatio: number;
@@ -88,7 +159,27 @@ export interface EngineDesign {
   /** HP milinden çekilen aksesuar gücü (%100 N2'de) [W] */
   accessoryPower: number;
   hpcMap: CompressorMapShape;
+  limits: EngineLimits;
+  start: StartSystem;
+  afterburner?: AfterburnerSpec;
+  prop?: PropellerSpec;
 }
+
+/** Yüksek baypaslı sivil turbofanın limitleri (dersler bu motorla yazıldı). */
+export const TURBOFAN_LIMITS: EngineLimits = {
+  egtRedline: 1010,
+  egtAmber: 975,
+  egtStart: 750,
+  n1Redline: 1.04,
+  n2Redline: 1.05,
+  starterCutout: 0.56,
+  fuelOnMinN2: 0.2,
+  idleN2: 0.62,
+  leanBlowoutFar: 0.0042,
+  egtDamage: 1150,
+  egtDamageSeconds: 4,
+  ignitionMinFar: 0.0055,
+};
 
 /**
  * Varsayılan motor: 2.77 m fanlı, ~330 kN sınıfı jenerik yüksek baypas
@@ -96,7 +187,9 @@ export interface EngineDesign {
  * (BPR ≈ 9, OPR ≈ 45, T4 ≈ 1680 K); belirli bir ticari motoru temsil etmez.
  */
 export const DEFAULT_DESIGN: EngineDesign = {
+  kind: 'turbofan',
   name: 'TF-330 (jenerik yüksek baypas)',
+  summary: 'Geniş gövdeli yolcu uçağı motoru. BPR 9: itkinin çoğunu dev fan üretir; sessiz ve tasarruflu.',
   massFlow: 1150,
   bypassRatio: 9.0,
   fanPR: 1.55,
@@ -129,6 +222,135 @@ export const DEFAULT_DESIGN: EngineDesign = {
     chokeFlowFactor: 1.03,
     betaDesign: 0.5,
   },
+  limits: TURBOFAN_LIMITS,
+  start: { starterTorque: 520, starterFadeN2: 0.72, farHigh: 0.0165, farLow: 0.0095 },
+};
+
+/**
+ * Art yakıcılı askeri turbofan: ~75 kN kuru, ~125 kN art yakıcılı sınıfı.
+ * Üç kademeli fan, karışık akış, değişken yakınsak-ıraksak lüle. Tek motorlu
+ * ya da çift motorlu 4. nesil avcıların motor sınıfından tipik değerler.
+ */
+export const MILITARY_TURBOFAN: EngineDesign = {
+  kind: 'militaryTurbofan',
+  name: 'AF-125 (jenerik art yakıcılı turbofan)',
+  summary: 'Avcı uçağı motoru. Düşük baypas, karışık akış, art yakıcı ve açılıp kapanan lüle yaprakları.',
+  massFlow: 112,
+  bypassRatio: 0.68,
+  fanPR: 3.1,
+  fanHubPRFraction: 1,
+  boosterPR: 1,
+  hpcPR: 8.2,
+  tit: 1670,
+  eff: { fan: 0.86, booster: 0.9, hpc: 0.87, hpt: 0.89, lpt: 0.9, combustor: 0.995, mech: 0.99 },
+  combustorDP: 0.05,
+  bypassDuctDP: 0.03,
+  nozzleCv: 0.98,
+  n1Rpm: 10400,
+  n2Rpm: 14200,
+  inertia: { lp: 14, hp: 5 },
+  fanDiameter: 0.93,
+  fanBlades: 36,
+  accessoryPower: 120e3,
+  hpcMap: { ...DEFAULT_DESIGN.hpcMap },
+  // Askeri motorlarda sıcaklık fan türbini girişinde (FTIT) ölçülür ve
+  // sivil motorlardan daha yüksek çalışır
+  limits: {
+    ...TURBOFAN_LIMITS,
+    egtRedline: 1130,
+    egtAmber: 1100,
+    egtStart: 800,
+    egtDamage: 1270,
+    idleN2: 0.64,
+  },
+  start: { starterTorque: 150, starterFadeN2: 0.7, farHigh: 0.0165, farLow: 0.0095 },
+  afterburner: { t7Max: 2000, eta: 0.9, dpDry: 0.03, dpLit: 0.065, mixerLoss: 0.01 },
+};
+
+/**
+ * İki milli art yakıcılı turbojet: ~40 kN kuru, ~60 kN art yakıcılı. 1950–60'ların
+ * süpersonik avcı motorlarının (baypassız, düşük basınç oranı) tipik değerleri.
+ */
+export const TURBOJET: EngineDesign = {
+  kind: 'turbojet',
+  name: 'TJ-60 (jenerik art yakıcılı turbojet)',
+  summary: "Soğuk savaş dönemi avcı motoru. Baypas yok: bütün hava yanma odasından geçer. Gürültülü, susuz ama basit.",
+  massFlow: 66,
+  bypassRatio: 0,
+  fanPR: 3.2,
+  fanHubPRFraction: 1,
+  boosterPR: 1,
+  hpcPR: 2.9,
+  tit: 1230,
+  eff: { fan: 0.84, booster: 0.9, hpc: 0.84, hpt: 0.88, lpt: 0.88, combustor: 0.98, mech: 0.985 },
+  combustorDP: 0.06,
+  bypassDuctDP: 0.0,
+  nozzleCv: 0.975,
+  n1Rpm: 11150,
+  n2Rpm: 11400,
+  inertia: { lp: 10, hp: 6 },
+  fanDiameter: 0.8,
+  fanBlades: 25,
+  accessoryPower: 60e3,
+  hpcMap: { surgePRFactor: 1.18, chokePRFactor: 0.66, surgeFlowFactor: 0.9, chokeFlowFactor: 1.04, betaDesign: 0.5 },
+  limits: {
+    ...TURBOFAN_LIMITS,
+    egtRedline: 890,
+    egtAmber: 860,
+    egtStart: 700,
+    egtDamage: 1000,
+    idleN2: 0.62,
+  },
+  start: { starterTorque: 170, starterFadeN2: 0.7, farHigh: 0.018, farLow: 0.011 },
+  afterburner: { t7Max: 1900, eta: 0.88, dpDry: 0.04, dpLit: 0.08, mixerLoss: 0 },
+};
+
+/**
+ * Turboprop: ~2.5 MW, altı palli 3.9 m pervane. Gaz jeneratörü (eksenel +
+ * santrifüj kompresör) ve pervaneyi redüksiyon dişlisiyle çeviren serbest güç
+ * türbini. Bölgesel yolcu ve taktik nakliye uçaklarının motor sınıfı.
+ */
+export const TURBOPROP: EngineDesign = {
+  kind: 'turboprop',
+  name: 'TP-25 (jenerik turboprop)',
+  summary: 'Nakliye/bölgesel uçak motoru. Türbin gücü dişli kutusuyla pervaneyi çevirir; itkinin %90\'ı pervaneden.',
+  massFlow: 9.5,
+  bypassRatio: 0,
+  fanPR: 1,
+  fanHubPRFraction: 1,
+  boosterPR: 1,
+  hpcPR: 15,
+  tit: 1440,
+  eff: { fan: 0.9, booster: 0.9, hpc: 0.83, hpt: 0.88, lpt: 0.9, combustor: 0.99, mech: 0.985 },
+  combustorDP: 0.05,
+  bypassDuctDP: 0,
+  nozzleCv: 0.97,
+  n1Rpm: 20400,
+  n2Rpm: 29800,
+  inertia: { lp: 0.3, hp: 0.35 },
+  fanDiameter: 3.93,
+  fanBlades: 6,
+  accessoryPower: 40e3,
+  hpcMap: { ...DEFAULT_DESIGN.hpcMap },
+  // Turboprop'ta EGT yerine türbinler arası sıcaklık (ITT) izlenir
+  limits: {
+    ...TURBOFAN_LIMITS,
+    egtRedline: 900,
+    egtAmber: 870,
+    egtStart: 850,
+    egtDamage: 1010,
+    idleN2: 0.62,
+  },
+  start: { starterTorque: 34, starterFadeN2: 0.6, farHigh: 0.017, farLow: 0.01 },
+  prop: { diameter: 3.93, blades: 6, rpm: 1200, figureOfMerit: 0.72, efficiency: 0.85, nozzlePR: 1.1 },
+};
+
+/** Oyunda seçilebilen motorlar */
+export const ENGINE_CATALOG: Record<EngineKind, EngineDesign> = {
+  turbofan: DEFAULT_DESIGN,
+  militaryTurbofan: MILITARY_TURBOFAN,
+  turbojet: TURBOJET,
+  turboprop: TURBOPROP,
 };
 
 /** Tasarım noktasında sabitlenen ve tasarım dışı hesapta kullanılan değerler. */
@@ -163,11 +385,20 @@ export interface EngineReference {
   /** HP ve LP milinin tasarım güçleri [W] */
   hpPower: number;
   lpPower: number;
+  /** Tasarım (çekirdek) akışı [kg/s] — ölçekleme için */
+  coreFlow: number;
+  /** Art yakıcı: tam yanıkta yakıt [kg/s] ve kuru lüle boğaz alanı [m²] */
+  wfAbMax: number;
+  A8dry: number;
+  /** Turboprop: tasarım mil gücü [W] */
+  shaftPower: number;
 }
 
 export interface DesignPoint {
   stations: Stations;
   thrust: number;
+  /** Tam art yakıcılı itki (art yakıcısız motorda = thrust) */
+  thrustWet: number;
   wf: number;
   tsfc: number;
   opr: number;
@@ -223,13 +454,28 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
   if (!Number.isFinite(PRhpt)) throw new DesignError('HP türbini gereken işi çıkaramıyor.');
   const P45 = P4 / PRhpt;
 
-  // LP türbin: fan + booster gücünü karşılar
-  const lpPower =
+  // LP türbin: fan + booster gücünü karşılar. Turboprop'ta serbest güç
+  // türbini, egzoz lülesinde küçük bir artık basınç bırakacak kadar genişler;
+  // çıkardığı güç pervaneye gider.
+  const compLpPower =
     W13 * AIR.cp * (T13 - T2) + W25 * AIR.cp * (T21 - T2) + W25 * AIR.cp * (T25 - T21);
-  const T5 = T45 - lpPower / d.eff.mech / (W4 * GAS.cp);
-  const PRlpt = expansionPR(T45, T5, d.eff.lpt);
-  if (!Number.isFinite(PRlpt)) throw new DesignError('LP türbini fanı çeviremiyor.');
-  const P5 = P45 / PRlpt;
+  let T5: number;
+  let P5: number;
+  let lpPower: number;
+  let shaftPower = 0;
+  if (d.prop) {
+    P5 = amb.P0 * d.prop.nozzlePR;
+    if (P45 <= P5) throw new DesignError('Güç türbinine genişleyecek basınç kalmıyor.');
+    T5 = expandT(T45, P45 / P5, d.eff.lpt);
+    lpPower = W4 * GAS.cp * (T45 - T5) * d.eff.mech;
+    shaftPower = lpPower - compLpPower;
+  } else {
+    lpPower = compLpPower;
+    T5 = T45 - lpPower / d.eff.mech / (W4 * GAS.cp);
+    const PRlpt = expansionPR(T45, T5, d.eff.lpt);
+    if (!Number.isFinite(PRlpt)) throw new DesignError('LP türbini fanı çeviremiyor.');
+    P5 = P45 / PRlpt;
+  }
   if (P5 <= amb.P0 * 1.01) {
     throw new DesignError('Çekirdek lülesinde genişleyecek basınç kalmıyor (P5 ≤ P0).');
   }
@@ -244,7 +490,31 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
   const A19 = W13 / byp.massFlux;
   const F19 = W13 * (byp.velocity * d.nozzleCv + byp.pressureThrustPerFlow);
 
-  const thrust = F9 + F19 - W2 * amb.V0;
+  let thrust = F9 + F19 - W2 * amb.V0;
+  let thrustWet = thrust;
+  let wfAbMax = 0;
+  let A8dry = 0;
+  let st7 = { T: T5, P: P5, W: W4 };
+  if (d.afterburner) {
+    // Karışık akış: baypas ve çekirdek jet borusunda karışır, art yakıcıdan
+    // geçer ve değişken yakınsak-ıraksak lüleden tam genleşmeyle çıkar.
+    const ab = d.afterburner;
+    const mix = mixStreams(W4, T5, P5, W13, T13, P19t, ab.mixerLoss);
+    const P7 = mix.P * (1 - ab.dpDry);
+    const dry = idealJet(P7, mix.T, amb.P0);
+    thrust = mix.W * dry.velocity * d.nozzleCv - W2 * amb.V0;
+    A8dry = mix.W / dry.throatFlux;
+    st7 = { T: mix.T, P: P7, W: mix.W };
+    // Tam art yakıcı: kalan oksijenle t7Max'a ulaşan yakıt
+    const oxyLeft = FAR_STOICH * W2 - Wf;
+    wfAbMax = Math.min(
+      oxyLeft,
+      (mix.W * GAS.cp * (ab.t7Max - mix.T)) / (ab.eta * LHV_ - GAS.cp * ab.t7Max),
+    );
+    const T7 = (mix.W * GAS.cp * mix.T + ab.eta * wfAbMax * LHV_) / ((mix.W + wfAbMax) * GAS.cp);
+    const wet = idealJet(mix.P * (1 - ab.dpLit), T7, amb.P0);
+    thrustWet = (mix.W + wfAbMax) * wet.velocity * d.nozzleCv - W2 * amb.V0;
+  }
 
   const theta = (t: number) => t / T_STD;
   const delta = (p: number) => p / P_STD;
@@ -272,6 +542,10 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
     omega2: (d.n2Rpm * 2 * Math.PI) / 60,
     hpPower,
     lpPower,
+    coreFlow: W25,
+    wfAbMax,
+    A8dry,
+    shaftPower,
   };
 
   const stations: Stations = {
@@ -285,12 +559,13 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
     '4': { T: T4, P: P4, W: W4 },
     '45': { T: T45, P: P45, W: W4 },
     '5': { T: T5, P: P5, W: W4 },
+    '7': st7,
     '9': { T: core.staticT, P: core.staticP, W: W4 },
   };
 
   return {
     design,
     ref,
-    point: { stations, thrust, wf: Wf, tsfc: Wf / thrust, opr: P3 / P2 },
+    point: { stations, thrust, thrustWet, wf: Wf, tsfc: Wf / thrust, opr: P3 / P2 },
   };
 }

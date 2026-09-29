@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ambient, isaStatic } from './atmosphere';
 import { computeCycle, surgeFuelFlow } from './cycle';
-import { DEFAULT_DESIGN, sizeEngine } from './design';
+import { DEFAULT_DESIGN, ENGINE_CATALOG, sizeEngine, type EngineKind } from './design';
 import { EngineSim, LIMITS, type SimEventType } from './engineSim';
 
 function withEvents(sim: EngineSim) {
@@ -221,3 +221,101 @@ describe('FADEC ve geçici rejim', () => {
     expect(cruise.tsfc).toBeGreaterThan(sls.tsfc * 1.5);
   });
 });
+
+describe('motor tipleri', () => {
+  const KINDS = Object.keys(ENGINE_CATALOG) as EngineKind[];
+
+  /** Normal prosedürle çalıştırır; tepe EGT'yi ve olayları döndürür. */
+  function start(kind: EngineKind) {
+    const sim = new EngineSim(ENGINE_CATALOG[kind]);
+    const seen = withEvents(sim);
+    Object.assign(sim.controls, { apuBleed: true, starter: true, ignition: true });
+    let peakEgt = -99;
+    run(sim, 70, () => {
+      if (!sim.controls.fuelRun && sim.N2 >= sim.limits.fuelOnMinN2 + 0.02) sim.controls.fuelRun = true;
+      peakEgt = Math.max(peakEgt, sim.egtSensor);
+    });
+    sim.controls.ignition = false;
+    return { sim, seen, peakEgt };
+  }
+
+  it.each(KINDS)('%s: tasarım noktası tutarlı ve kendi sınıfında gerçekçi', (kind) => {
+    const e = sizeEngine(ENGINE_CATALOG[kind]);
+    const expected: Record<EngineKind, [number, number]> = {
+      turbofan: [280e3, 360e3],
+      militaryTurbofan: [70e3, 95e3],
+      turbojet: [35e3, 55e3],
+      turboprop: [0.5e3, 5e3], // artık jet itkisi; asıl itki pervaneden
+    };
+    const [lo, hi] = expected[kind];
+    expect(e.point.thrust).toBeGreaterThan(lo);
+    expect(e.point.thrust).toBeLessThan(hi);
+    // Tasarım dışı çözücü tasarım noktasını yeniden üretir
+    const cyc = computeCycle({ eng: e, amb: ambient(0, 0, 0), N1: 1, N2: 1, wf: e.ref.Wf, lit: true, surging: false });
+    expect(Math.abs(cyc.stations['4'].T - e.design.tit)).toBeLessThan(25);
+    expect(cyc.surgeMargin).toBeGreaterThan(0.1);
+  });
+
+  it.each(KINDS)('%s: normal prosedürle rölantiye oturur, sıcak çalıştırma yok', (kind) => {
+    const { sim, seen, peakEgt } = start(kind);
+    expect(seen).toContain('lightoff');
+    expect(seen).toContain('idle');
+    expect(seen).not.toContain('hotStart');
+    expect(peakEgt).toBeLessThan(sim.limits.egtStart);
+    expect(sim.N2).toBeGreaterThan(sim.limits.idleN2 - 0.02);
+    expect(sim.lit).toBe(true);
+  });
+
+  it.each(KINDS)('%s: tam güce 7 s içinde çıkar, surge ve EGT aşımı yok', (kind) => {
+    const { sim, seen } = start(kind);
+    sim.controls.throttle = 1;
+    run(sim, 7);
+    const s = sim.snapshot();
+    expect(s.N2).toBeGreaterThan(0.95);
+    expect(s.egt).toBeLessThan(sim.limits.egtRedline);
+    expect(sim.surgeCount).toBe(0);
+    expect(seen).not.toContain('egtRedline');
+  });
+
+  it.each(['militaryTurbofan', 'turbojet'] as EngineKind[])(
+    '%s: art yakıcı itkiyi ≥%%40 artırır, lüle açılır, çekirdek etkilenmez',
+    (kind) => {
+      const { sim, seen } = start(kind);
+      sim.controls.throttle = 1;
+      run(sim, 12);
+      const dry = sim.snapshot();
+      sim.controls.reheat = 1;
+      run(sim, 5);
+      const wet = sim.snapshot();
+      expect(seen).toContain('abLight');
+      expect(wet.thrust / dry.thrust).toBeGreaterThan(1.4);
+      expect(wet.nozzleArea).toBeGreaterThan(1.4);
+      expect(Math.abs(wet.N1 - dry.N1)).toBeLessThan(0.01);
+      expect(Math.abs(wet.egt - dry.egt)).toBeLessThan(10);
+      // Art yakıcı gaz kolu MIL'den çekilince söner
+      sim.controls.throttle = 0.8;
+      run(sim, 1);
+      expect(sim.abLit).toBe(false);
+    },
+  );
+
+  it('turboprop: vali pervane devrini %100\'de tutar, itki gücün 2/3 kuvvetiyle ölçeklenir', () => {
+    const { sim } = start('turboprop');
+    sim.controls.throttle = 1;
+    run(sim, 10);
+    const hi = sim.snapshot();
+    expect(Math.abs(hi.N1 - 1)).toBeLessThan(0.01);
+    expect(hi.shaftPower).toBeGreaterThan(2.4e6);
+    expect(hi.propThrust).toBeGreaterThan(35e3);
+    expect(hi.propThrust).toBeLessThan(65e3);
+    sim.controls.throttle = 0.5;
+    run(sim, 10);
+    const mid = sim.snapshot();
+    expect(Math.abs(mid.N1 - 1)).toBeLessThan(0.02);
+    expect(mid.shaftPower).toBeLessThan(hi.shaftPower * 0.85);
+    // Momentum teorisi: T ∝ P^(2/3)
+    const ratio = mid.propThrust / hi.propThrust;
+    expect(Math.abs(ratio - (mid.shaftPower / hi.shaftPower) ** (2 / 3))).toBeLessThan(0.02);
+  });
+});
+

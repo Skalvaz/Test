@@ -120,3 +120,49 @@ export function combustorExitT(w3: number, t3: number, wf: number, etaB: number)
 export function fuelForT4(w3: number, t3: number, t4: number, etaB: number): number {
   return (w3 * (GAS.cp * t4 - AIR.cp * t3)) / (etaB * LHV - GAS.cp * t4);
 }
+
+export interface IdealJet {
+  /** Tam genleşmiş jet hızı [m/s] (hız katsayısı uygulanmamış) */
+  velocity: number;
+  /** Lüle boğazındaki kütle akısı [kg/(s·m²)] — boğaz alanı = W / throatFlux */
+  throatFlux: number;
+  /** Çıkış Mach sayısı */
+  mach: number;
+  /** Çıkış statik sıcaklığı [K] */
+  staticT: number;
+}
+
+/**
+ * Değişken kesitli yakınsak-ıraksak lüle: çıkış alanı ortam basıncına tam
+ * genleşecek şekilde ayarlanmış kabul edilir (askeri motorların lüle
+ * programı buna yakındır). Boğaz, basınç oranı kritikse boğulmuştur.
+ */
+export function idealJet(pt: number, tt: number, pAmb: number, g: GasProps = GAS): IdealJet {
+  const pr = Math.max(pt / pAmb, 1);
+  const kk = k(g);
+  const staticT = tt * Math.pow(pr, -kk);
+  const velocity = Math.sqrt(Math.max(0, 2 * g.cp * (tt - staticT)));
+  const mach = velocity / Math.sqrt(g.gamma * g.R * staticT);
+  const throat = convergentNozzle(pt, tt, pAmb, g);
+  return { velocity, throatFlux: Math.max(throat.massFlux, 1e-6), mach, staticT };
+}
+
+/**
+ * Baypas (soğuk) ve çekirdek (sıcak) akımlarının karışımı: enerji korunumu
+ * ile karışım sıcaklığı, kütle ağırlıklı toplam basınç ve karıştırıcı kaybı.
+ */
+export function mixStreams(
+  wHot: number,
+  tHot: number,
+  pHot: number,
+  wCold: number,
+  tCold: number,
+  pCold: number,
+  loss: number,
+): { W: number; T: number; P: number } {
+  const W = wHot + wCold;
+  if (wCold <= 1e-9) return { W: wHot, T: tHot, P: pHot * (1 - loss) };
+  const T = (wHot * GAS.cp * tHot + wCold * AIR.cp * tCold) / (W * GAS.cp);
+  const P = ((wHot * pHot + wCold * pCold) / W) * (1 - loss);
+  return { W, T, P };
+}

@@ -14,7 +14,15 @@
 
 import { ambient, type Ambient } from './atmosphere';
 import { computeCycle, HEALTHY, surgeFuelFlow, type CycleResult, type Health } from './cycle';
-import { DEFAULT_DESIGN, sizeEngine, type EngineDesign, type SizedEngine } from './design';
+import {
+  DEFAULT_DESIGN,
+  sizeEngine,
+  TURBOFAN_LIMITS,
+  type EngineDesign,
+  type EngineKind,
+  type EngineLimits,
+  type SizedEngine,
+} from './design';
 
 export type FadecMode = 'normal' | 'manual';
 
@@ -31,6 +39,8 @@ export interface Controls {
   fadec: FadecMode;
   /** Manuel yakıt modunda dozaj valfi 0..1 (tasarım yakıtının 1.15 katına kadar) */
   manualFuel: number;
+  /** Art yakıcı kademesi 0 (kapalı) … 1 (tam); gaz kolu MIL'deyken etkin */
+  reheat: number;
 }
 
 export interface Flight {
@@ -63,7 +73,9 @@ export type SimEventType =
   | 'n2Overspeed'
   | 'birdStrike'
   | 'turbineDamage'
-  | 'egtLimiting';
+  | 'egtLimiting'
+  | 'abLight'
+  | 'abOff';
 
 export type Severity = 'info' | 'caution' | 'warning';
 
@@ -74,30 +86,31 @@ export interface SimEvent {
   message: string;
 }
 
-/** Sınır değerler (EICAS kırmızı/amber çizgileri ve prosedür limitleri). */
-export const LIMITS = {
-  egtRedline: 1010, // °C
-  egtAmber: 975, // °C — sürekli azami
-  egtStart: 750, // °C — çalıştırma sırasında
-  n1Redline: 1.04,
-  n2Redline: 1.05,
-  starterCutout: 0.56,
-  fuelOnMinN2: 0.2, // prosedür: yakıtı en erken bu N2'de ver
-  idleN2: 0.62,
-  leanBlowoutFar: 0.0042,
-  /** Bu gerçek sıcaklığın üstünde kalınan süre türbine kalıcı hasar verir */
-  egtDamage: 1150, // °C
-  egtDamageSeconds: 4,
-  ignitionMinFar: 0.0055,
-};
+/**
+ * Varsayılan (yüksek baypaslı turbofan) sınırları. Dersler bu motorla yazıldı;
+ * seçilen motorun sınırları için `EngineSim.limits` kullanılır.
+ */
+export const LIMITS: EngineLimits = TURBOFAN_LIMITS;
 
 const SUBSTEP = 1 / 240;
 const KELVIN = 273.15;
-const WF_MIN_START = 0.055; // kg/s — start yakıt akışı alt sınırı
-const START_FAR_HIGH = 0.0165;
-const STARTER_TORQUE = 520; // N·m — HP mil ekseninde, sıfır devirde
-const START_FAR_LOW = 0.0095;
 const EGT_SENSOR_TAU = 0.9; // s — termokupl gecikmesi
+/*
+ * Aşağıdaki katsayılar ilk (yüksek baypaslı) motorda ayarlandı ve motorun
+ * tasarım yakıt akışı ya da çekirdek akışıyla ölçeklenir; böylece aynı FADEC
+ * ve çalıştırma mantığı 9 kg/s'lik turboproptan 1150 kg/s'lik turbofana kadar
+ * aynı davranır.
+ */
+const WF_MIN_START_PER_CORE = 4.78e-4; // (kg/s yakıt) / (kg/s çekirdek havası)
+const START_SLEW_PER_WF = 0.0925; // 1/s — tasarım yakıtının oranı
+const FADEC_GAIN_PER_WF = 0.936; // hız biçimli PI çıkışını yakıta çevirir
+const LIGHT_MIN_W3_PER_CORE = 0.0026;
+const PUDDLE_TORCH_PER_CORE = 0.00217; // kg / (kg/s)
+const PUDDLE_WET_PER_CORE = 0.0039;
+const LP_FRICTION = 2.84e-4; // LP mil sürtünmesi / tasarım torku
+/** Pervane valisi (turboprop) */
+const PITCH_MIN = 0.03;
+const PITCH_MAX = 1.8;
 /** Test hücresinde uçuş koşullarının değişim hızı (oyun zamanı) */
 const FLIGHT_SLEW = { altitude: 450, mach: 0.12, isaDev: 6 };
 
@@ -133,6 +146,25 @@ export interface SimSnapshot {
   turbineDamaged: boolean;
   /** Yakıt açık ama alev yok ve motor yavaşlıyor */
   flamedOut: boolean;
+  kind: EngineKind;
+  limits: EngineLimits;
+  /** FADEC'in N2 hedefi (turboprop gaz jeneratörü yönetimi) */
+  n2Command: number | null;
+  /** Art yakıcı */
+  abLit: boolean;
+  wfAb: number;
+  /** Art yakıcı yanma oranı 0..1 */
+  abLevel: number;
+  /** Lüle boğaz alanı / kuru tasarım (rölantide açık, MIL'de kapalı, AB'de açık) */
+  nozzleArea: number;
+  /** Turboprop */
+  propRpm: number;
+  /** Tork, tasarımın oranı (1 = %100) */
+  torque: number;
+  shaftPower: number;
+  propThrust: number;
+  /** Pervane pal yükü (vali çıkışı), 0 = ince pal … */
+  propPitch: number;
 }
 
 type Listener = (e: SimEvent) => void;
@@ -147,6 +179,7 @@ export class EngineSim {
     throttle: 0,
     fadec: 'normal',
     manualFuel: 0,
+    reheat: 0,
   };
   /** Anlık uçuş koşulları (hedefe doğru kademeli ilerler) */
   flight: Flight = { altitude: 0, mach: 0, isaDev: 0 };
@@ -173,6 +206,15 @@ export class EngineSim {
   egtSensor: number;
   fuelPuddle = 0;
   surgeCount = 0;
+  /** Art yakıcı */
+  wfAb = 0;
+  abLit = false;
+  /** FADEC'in N2 hedefi (turboprop) */
+  n2Command: number | null = null;
+  /** Pervane */
+  propPitch = PITCH_MIN;
+  propPower = 0;
+  propThrust = 0;
 
   private amb: Ambient;
   private last: CycleResult;
@@ -190,12 +232,29 @@ export class EngineSim {
   private surgeWfCache = Infinity;
   private surgeWfAge = 99;
   private flags = new Set<SimEventType>();
+  private abTimer = 0;
+  private prevNpErr = 0;
 
   constructor(design: EngineDesign = DEFAULT_DESIGN) {
     this.eng = sizeEngine(design);
     this.amb = ambient(0, 0, 0);
     this.egtSensor = this.amb.T0 - KELVIN;
     this.last = this.evaluate();
+  }
+
+  /** Seçili motorun sınırları */
+  get limits(): EngineLimits {
+    return this.eng.design.limits;
+  }
+
+  get kind(): EngineKind {
+    return this.eng.design.kind;
+  }
+
+  /** Başka bir motora geçer: yeniden boyutlandırır ve soğuk, durmuş hale getirir. */
+  setDesign(design: EngineDesign) {
+    this.eng = sizeEngine(design);
+    this.reset();
   }
 
   on(fn: Listener): () => void {
@@ -270,6 +329,7 @@ export class EngineSim {
       lit: this.lit,
       surging: this.surging,
       health: this.health,
+      wfAb: this.wfAb,
     });
   }
 
@@ -278,7 +338,7 @@ export class EngineSim {
       this.controls.starter &&
       this.controls.apuBleed &&
       !this.failures.starter &&
-      this.N2 < LIMITS.starterCutout + 0.02
+      this.N2 < this.limits.starterCutout + 0.02
     );
   }
 
@@ -310,11 +370,13 @@ export class EngineSim {
     const d = this.eng.design;
     const r = this.eng.ref;
     const c = this.controls;
+    const L = this.limits;
     this.time += dt;
     this.slewFlight(dt);
 
     /* ---------- yakıt kontrolü ---------- */
     this.updateFuel(dt);
+    this.updateAfterburner(dt);
 
     /* ---------- birikmiş yakıtın alev alması (torching) ---------- */
     let wfExtra = 0;
@@ -334,14 +396,17 @@ export class EngineSim {
     /* ---------- ateşleme / sönme ---------- */
     if (!this.lit) {
       const canLight =
-        this.igniting && this.wf > 1e-4 && W3 > 0.3 && farFed > LIMITS.ignitionMinFar;
+        this.igniting &&
+        this.wf > 1e-4 &&
+        W3 > LIGHT_MIN_W3_PER_CORE * r.coreFlow &&
+        farFed > L.ignitionMinFar;
       this.ignitionTimer = canLight ? this.ignitionTimer + dt : 0;
       if (this.ignitionTimer > 1.1) {
         this.lit = true;
         this.ignitionTimer = 0;
         this.phase = 'lightoff';
         this.emit('lightoff', 'info', 'Ateşleme gerçekleşti (light-off). EGT yükseliyor.');
-        if (this.fuelPuddle > 0.25) {
+        if (this.fuelPuddle > PUDDLE_TORCH_PER_CORE * r.coreFlow) {
           this.torchTimer = 1.4;
           this.emit(
             'torching',
@@ -355,7 +420,7 @@ export class EngineSim {
       else this.fuelPuddle = Math.max(0, this.fuelPuddle - 0.012 * W3 * dt); // kuru motorlama havalandırır
       this.latch(
         'wetStart',
-        this.fuelPuddle > 0.45 && !this.lit,
+        this.fuelPuddle > PUDDLE_WET_PER_CORE * r.coreFlow && !this.lit,
         'warning',
         'Islak çalıştırma: yakıt veriliyor ama ateşleme yok. Yakıtı kesip motoru kuru çevirin.',
       );
@@ -363,7 +428,7 @@ export class EngineSim {
       const noFuel = !c.fuelRun || this.wf < 1e-4;
       // Surge sırasında akış geçici olarak çöker; oran anlamsızdır
       const lean =
-        farFed < LIMITS.leanBlowoutFar && this.N2 > 0.3 && !this.surging && this.recoveryTimer <= 0;
+        farFed < L.leanBlowoutFar && this.N2 > 0.3 && !this.surging && this.recoveryTimer <= 0;
       if (noFuel || lean) {
         this.lit = false;
         this.phase = 'spooldown';
@@ -404,12 +469,17 @@ export class EngineSim {
     const accTorque = d.accessoryPower / r.omega2;
     const hpTorqueLoss =
       accTorque * (0.12 + 0.88 * this.N2) + ((0.004 * r.hpPower) / r.omega2) * this.N2;
-    const lpTorqueLoss = 60 + ((0.003 * r.lpPower) / r.omega1) * this.N1;
+    const lpDesignTorque = r.lpPower / r.omega1;
+    const lpTorqueLoss = lpDesignTorque * (LP_FRICTION + 0.003 * this.N1);
     const hpTorqueAero = (cyc.hptPower * eta - cyc.hpcPower) / w2f;
-    const lpTorqueAero = (cyc.lptPower * eta - cyc.fanPower - cyc.boosterPower) / w1f;
+    this.updatePropeller(dt);
+    const lpTorqueAero =
+      (cyc.lptPower * eta - cyc.fanPower - cyc.boosterPower - this.propPower) / w1f;
 
-    // Hava türbinli marş motoru: tork hızla doğrusal azalır
-    const starterTorque = this.starterEngaged ? STARTER_TORQUE * Math.max(0, 1 - this.N2 / 0.72) : 0;
+    // Marş motoru: tork hızla doğrusal azalır
+    const starterTorque = this.starterEngaged
+      ? d.start.starterTorque * Math.max(0, 1 - this.N2 / d.start.starterFadeN2)
+      : 0;
 
     let a2 = (hpTorqueAero - hpTorqueLoss + starterTorque) / d.inertia.hp;
     let a1 = (lpTorqueAero - lpTorqueLoss) / d.inertia.lp;
@@ -426,9 +496,9 @@ export class EngineSim {
     this.egtSensor += (egtTrue - this.egtSensor) * Math.min(1, dt / EGT_SENSOR_TAU);
 
     /* ---------- aşırı sıcaklık hasarı ---------- */
-    if (egtTrue > LIMITS.egtDamage) this.overTempTime += dt;
+    if (egtTrue > L.egtDamage) this.overTempTime += dt;
     else this.overTempTime = Math.max(0, this.overTempTime - dt * 0.5);
-    if (!this.turbineDamaged && this.overTempTime > LIMITS.egtDamageSeconds) {
+    if (!this.turbineDamaged && this.overTempTime > L.egtDamageSeconds) {
       this.turbineDamaged = true;
       this.health.hptEta *= 0.9;
       this.health.lptEta *= 0.93;
@@ -446,6 +516,7 @@ export class EngineSim {
 
   private updatePhase(dt: number) {
     const c = this.controls;
+    const LIMITS = this.limits;
 
     if (c.starter && !c.apuBleed) {
       this.latch('noBleed', true, 'caution', 'Marş için hava yok: önce APU BLEED açılmalı.');
@@ -494,6 +565,7 @@ export class EngineSim {
   }
 
   private checkLimits() {
+    const LIMITS = this.limits;
     this.latch(
       'egtRedline',
       this.egtSensor > LIMITS.egtRedline,
@@ -512,6 +584,7 @@ export class EngineSim {
     const c = this.controls;
     const d = this.eng.design;
     const r = this.eng.ref;
+    const LIMITS = this.limits;
     const W3 = this.last.stations['3'].W;
     const wfMax = r.Wf * 1.15;
 
@@ -522,7 +595,10 @@ export class EngineSim {
       return;
     }
 
-    if (c.fadec === 'manual' || !this.lit) this.n1Command = null;
+    if (c.fadec === 'manual' || !this.lit) {
+      this.n1Command = null;
+      this.n2Command = null;
+    }
     if (c.fadec === 'manual') {
       // Doğrudan dozaj valfi: koruma yok, yalnızca valf hız sınırı
       const target = clamp(c.manualFuel, 0, 1) * wfMax;
@@ -543,21 +619,37 @@ export class EngineSim {
     if (!this.lit || this.phase === 'lightoff' || this.phase === 'accelerating') {
       // Çalıştırma programı: N2 arttıkça yakıt/hava oranı düşer
       const t = clamp((this.N2 - 0.2) / (LIMITS.idleN2 - 0.2), 0, 1);
-      const far = lerp(START_FAR_HIGH, START_FAR_LOW, t);
-      let target = Math.max(WF_MIN_START, far * W3);
+      const far = lerp(d.start.farHigh, d.start.farLow, t);
+      let target = Math.max(WF_MIN_START_PER_CORE * r.coreFlow, far * W3);
       if (this.lit) target = Math.min(target, accelLimit);
-      const slew = 0.25 * dt;
+      const slew = START_SLEW_PER_WF * r.Wf * dt;
       this.wf += clamp(target - this.wf, -slew, slew);
       this.governing = false;
       this.n1Command = null;
+      this.n2Command = null;
       return;
     }
 
     // --- Yönetim (governing): hız biçimli PI döngüleri, min/max seçimi ---
     const theta2 = Math.sqrt(this.amb.T2 / r.T2);
-    const n1Target = lerp(0.18, 1.0, clamp(c.throttle, 0, 1)) * theta2;
-    this.n1Command = Math.min(n1Target, LIMITS.n1Redline - 0.02);
-    const e1 = Math.min(n1Target, LIMITS.n1Redline - 0.02) - this.N1;
+    // Turboprop'ta pervane devrini vali tutar; FADEC gaz jeneratörünü (N2)
+    // yönetir. Jet motorlarında itkiyi belirleyen N1 yönetilir.
+    const gasGen = d.kind === 'turboprop';
+    let e1: number;
+    if (gasGen) {
+      const n2Target = Math.min(
+        lerp(LIMITS.idleN2, 1.0, clamp(c.throttle, 0, 1)) * theta2,
+        LIMITS.n2Redline - 0.02,
+      );
+      this.n2Command = n2Target;
+      this.n1Command = null;
+      e1 = n2Target - this.N2;
+    } else {
+      const n1Target = lerp(0.18, 1.0, clamp(c.throttle, 0, 1)) * theta2;
+      this.n1Command = Math.min(n1Target, LIMITS.n1Redline - 0.02);
+      this.n2Command = null;
+      e1 = Math.min(n1Target, LIMITS.n1Redline - 0.02) - this.N1;
+    }
     const e2 = LIMITS.idleN2 - this.N2;
     const eN2max = LIMITS.n2Redline - 0.015 - this.N2;
     if (!this.governing) {
@@ -587,13 +679,91 @@ export class EngineSim {
       'FADEC EGT sınırlamasında: türbini korumak için itki kısıldı.',
     );
     this.egtLimited = limitedByEgt;
-    let wf = this.wf + rate * dt * d.massFlow * 0.0022;
+    let wf = this.wf + rate * dt * r.Wf * FADEC_GAIN_PER_WF;
 
     if (this.recoveryTimer > 0) {
       this.recoveryTimer -= dt;
       wf = Math.min(wf, decelLimit * 1.4);
     }
     this.wf = clamp(wf, decelLimit, accelLimit);
+  }
+
+  /**
+   * Art yakıcı: gaz kolu MIL'de, motor kararlı ve N1 yüksekken ateşlenir.
+   * Yakıt püskürtme halkaları kademeli açılır; değişken lüle eşzamanlı
+   * açılarak türbin çıkış basıncını sabit tutar (çekirdek bundan etkilenmez).
+   */
+  private updateAfterburner(dt: number) {
+    const ab = this.eng.design.afterburner;
+    if (!ab) return;
+    const c = this.controls;
+    const r = this.eng.ref;
+    const theta2 = Math.sqrt(this.amb.T2 / r.T2);
+    const want =
+      c.reheat > 0.02 &&
+      c.fuelRun &&
+      this.lit &&
+      !this.surging &&
+      this.phase === 'running' &&
+      c.throttle >= 0.97 &&
+      this.N1 >= 0.9 * theta2;
+
+    if (want && !this.abLit) {
+      this.abTimer += dt;
+      if (this.abTimer > 0.35) {
+        this.abLit = true;
+        this.abTimer = 0;
+        this.emit('abLight', 'info', 'Art yakıcı yandı: lüle açılıyor, itki artıyor.');
+      }
+    } else if (!want) {
+      this.abTimer = 0;
+      if (this.abLit) {
+        this.abLit = false;
+        this.emit('abOff', 'info', 'Art yakıcı kapandı.');
+      }
+    }
+    const flowScale = this.last.stations['2'].W / this.eng.design.massFlow;
+    const target = this.abLit ? r.wfAbMax * lerp(0.2, 1, clamp(c.reheat, 0, 1)) * flowScale : 0;
+    const up = r.wfAbMax * 1.6 * dt;
+    const down = r.wfAbMax * 5 * dt;
+    this.wfAb += clamp(target - this.wfAb, -down, up);
+    if (this.wfAb < 1e-5) this.wfAb = 0;
+  }
+
+  /**
+   * Turboprop pervanesi ve sabit devir valisi. Vali pal açısını değiştirerek
+   * pervanenin çektiği gücü güç türbininin ürettiğine eşitler ve NP'yi %100'de
+   * tutar. Güç yetmediğinde pal en ince konumda kalır ve NP düşer.
+   */
+  private updatePropeller(dt: number) {
+    const d = this.eng.design;
+    const prop = d.prop;
+    if (!prop) {
+      this.propPower = 0;
+      this.propThrust = 0;
+      return;
+    }
+    const r = this.eng.ref;
+    const sigma = this.amb.rho0 / 1.225;
+    const governing = this.lit && this.N1 > 0.5;
+    const e = this.N1 - 1.0;
+    if (governing) {
+      this.propPitch += 3.0 * (e - this.prevNpErr) + 4.0 * e * dt;
+    } else {
+      // Çalıştırma ve duruşta ince pal (yük az)
+      this.propPitch += (PITCH_MIN - this.propPitch) * Math.min(1, dt * 2);
+    }
+    this.prevNpErr = e;
+    this.propPitch = clamp(this.propPitch, PITCH_MIN, PITCH_MAX);
+    const n = Math.max(this.N1, 0);
+    this.propPower = r.shaftPower * this.propPitch * n * n * n * sigma;
+
+    // İtki: statikte momentum teorisi (başarı katsayısıyla), ileri uçuşta ηP/V
+    const area = (Math.PI * prop.diameter * prop.diameter) / 4;
+    const P = Math.max(this.propPower, 0);
+    const staticT = Math.cbrt((prop.figureOfMerit * P) ** 2 * 2 * this.amb.rho0 * area);
+    const V = this.amb.V0;
+    this.propThrust = V > 1 ? Math.min(staticT, (prop.efficiency * P) / V) : staticT;
   }
 
   /* ------------------------------------------------------------------ */
@@ -615,6 +785,15 @@ export class EngineSim {
     this.phase = 'off';
     this.fuelPuddle = 0;
     this.surgeCount = 0;
+    this.wfAb = 0;
+    this.abLit = false;
+    this.abTimer = 0;
+    this.propPitch = PITCH_MIN;
+    this.propPower = 0;
+    this.propThrust = 0;
+    this.prevNpErr = 0;
+    this.n1Command = null;
+    this.n2Command = null;
     this.torchTimer = 0;
     this.recoveryTimer = 0;
     this.overTempTime = 0;
@@ -627,6 +806,7 @@ export class EngineSim {
       fuelRun: false,
       throttle: 0,
       manualFuel: 0,
+      reheat: 0,
     });
     this.last = this.evaluate();
     this.egtSensor = this.amb.T0 - KELVIN;
@@ -652,9 +832,9 @@ export class EngineSim {
       fadec: 'normal',
     });
     if (this.N2 < 0.5) {
-      this.N2 = 0.62;
-      this.N1 = 0.22;
-      this.wf = 0.186;
+      this.N2 = this.limits.idleN2;
+      this.N1 = this.eng.design.prop ? 0.9 : 0.22;
+      this.wf = 0.07 * this.eng.ref.Wf;
     }
     this.governing = false;
     this.last = this.evaluate();
@@ -676,9 +856,12 @@ export class EngineSim {
       n2Rpm: this.N2 * d.n2Rpm,
       egt: this.egtSensor,
       egtTrue: cyc.stations['45'].T - KELVIN,
-      wf: this.wf,
-      thrust: cyc.netThrust,
-      tsfc: cyc.netThrust > 100 ? this.wf / cyc.netThrust : 0,
+      wf: this.wf + this.wfAb,
+      thrust: cyc.netThrust + this.propThrust,
+      tsfc:
+        cyc.netThrust + this.propThrust > 100
+          ? (this.wf + this.wfAb) / (cyc.netThrust + this.propThrust)
+          : 0,
       lit: this.lit,
       surging: this.surging,
       phase: this.phase,
@@ -695,7 +878,30 @@ export class EngineSim {
       egtLimited: this.egtLimited,
       turbineDamaged: this.turbineDamaged,
       flamedOut: !this.lit && this.controls.fuelRun && this.phase === 'spooldown' && this.N2 > 0.25,
+      kind: d.kind,
+      limits: this.limits,
+      n2Command: this.n2Command,
+      abLit: this.abLit,
+      wfAb: this.wfAb,
+      abLevel: cyc.abFraction,
+      nozzleArea: this.nozzleSchedule(cyc),
+      propRpm: d.prop ? this.N1 * d.prop.rpm : 0,
+      torque: d.prop ? this.propPower / Math.max(this.eng.ref.shaftPower, 1) / Math.max(this.N1, 0.05) : 0,
+      shaftPower: this.propPower,
+      propThrust: this.propThrust,
+      propPitch: this.propPitch,
     };
+  }
+
+  /**
+   * Değişken lülenin konumu (görsel ve gösterge için): askeri motorlarda
+   * rölantide lüle açıktır (rölanti itkisini azaltır), güç arttıkça kapanır,
+   * art yakıcıda yanma arttıkça yeniden açılır.
+   */
+  private nozzleSchedule(cyc: CycleResult): number {
+    if (!this.eng.design.afterburner) return 1;
+    const idleOpen = lerp(1.45, 1, clamp((this.N1 - 0.55) / 0.35, 0, 1));
+    return Math.max(idleOpen, cyc.nozzleArea);
   }
 
   /** Kuş çarpması: fan verimi ve akışı düşer, titreşim artar, HPC payı azalır. */
