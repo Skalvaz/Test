@@ -165,6 +165,10 @@ export interface SimSnapshot {
   propThrust: number;
   /** Pervane pal yükü (vali çıkışı), 0 = ince pal … */
   propPitch: number;
+  /** Giriş hava akışı / tasarım akışı (efektler için) */
+  airflow: number;
+  /** Net itki / tasarım (kuru) itkisi */
+  thrustFrac: number;
 }
 
 type Listener = (e: SimEvent) => void;
@@ -890,6 +894,8 @@ export class EngineSim {
       shaftPower: this.propPower,
       propThrust: this.propThrust,
       propPitch: this.propPitch,
+      airflow: cyc.stations['2'].W / d.massFlow,
+      thrustFrac: (cyc.netThrust + this.propThrust) / Math.max(1, this.eng.point.thrust + (d.prop ? 5e4 : 0)),
     };
   }
 
@@ -901,7 +907,10 @@ export class EngineSim {
   private nozzleSchedule(cyc: CycleResult): number {
     if (!this.eng.design.afterburner) return 1;
     const idleOpen = lerp(1.45, 1, clamp((this.N1 - 0.55) / 0.35, 0, 1));
-    return Math.max(idleOpen, cyc.nozzleArea);
+    // Hesaplanan boğaz alanı yalnız akış varken anlamlıdır (durmuş motorda
+    // sıfıra yakın akı alanı sonsuza götürür)
+    const abArea = this.abLit && this.lit ? clamp(cyc.nozzleArea, 0.9, 2.0) : 1;
+    return Math.max(idleOpen, abArea);
   }
 
   /** Kuş çarpması: fan verimi ve akışı düşer, titreşim artar, HPC payı azalır. */

@@ -348,7 +348,7 @@ if (want('sandbox')) {
 console.log('\nTest hücresi');
 await page.evaluate(() => window.__app.showMenu());
 await page.click('.menu-item:has-text("Test hücresi")');
-await page.click('button:has-text("Kalkış")');
+await page.click('button:has-text("Tam güç")');
 await advance(12);
 await page.keyboard.press('c');
 await advance(2);

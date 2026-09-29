@@ -59,7 +59,12 @@ ortamı (Blender), (2) el yapımı detay dokuları, (3) HDRI ortam ışığı.
   (kamera oraya girebilsin), KTX2 doku sıkıştırma
 - Yeni dersler: itki çevirici, buz önleme ve bleed hava, yağ sistemi, uçuşta
   yeniden çalıştırma (windmilling relight), ateşleyici arızasıyla çalıştırma
-- Turbojet / turboprop / turbofan karşılaştırması (aynı model, farklı tasarım)
+- ✅ Motor tipleri: yolcu turbofanı, art yakıcılı askeri turbofan, turbojet,
+  turboprop — aynı model, farklı tasarım; tipe göre EICAS ve gaz kolu
+- ✅ Efektler: art yakıcı alevi ve şok elmasları, çalıştırma/surge/kapatma
+  dumanı ve alevi, giriş girdabı, yoğuşma, zemin tozu, pervane uç izleri
+- Sıradaki: motor tiplerine özel dersler (art yakıcı kullanımı, turboprop
+  pervane valisi ve beta aralığı), gece/nemli hava ayarı (yoğuşmayı artırır)
 - İngilizce yerelleştirme, erişilebilirlik (klavye ile tam kontrol, renk körü paleti)
 - Kaydedilmiş ses örnekleri + sentez karışımı
 

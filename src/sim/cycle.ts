@@ -357,7 +357,7 @@ export function computeCycle(input: CycleInput): CycleResult {
     V9 = jet.velocity * d.nozzleCv;
     jetMach = jet.mach;
     nozzlePR = P7 / P0;
-    nozzleArea = W7 / jet.throatFlux / r.A8dry;
+    nozzleArea = P7 > P0 * 1.01 ? Math.min(3, W7 / jet.throatFlux / r.A8dry) : 1;
     st7 = { T: T7, P: P7, W: W7 };
     exit = { T: jet.staticT, P: P0 };
   }

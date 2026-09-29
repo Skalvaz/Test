@@ -50,11 +50,6 @@ export function buildStandYoke(materials, { mounts, engineR }) {
     const pad = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.07, 0.18), materials.machinery);
     pad.position.set(0, engineR + 0.02, mz);
     group.add(pad);
-    // Çapraz takviye
-    const brace = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, Math.hypot(top - bottom, 0.4)), materials.standPaint);
-    brace.position.set(0, (top + bottom) / 2, mz + (mz < cz ? 0.2 : -0.2));
-    brace.rotation.x = (mz < cz ? 1 : -1) * Math.atan2(top - bottom, 0.4) - (mz < cz ? Math.PI / 2 : -Math.PI / 2);
-    group.add(brace);
   }
   group.traverse((o) => {
     if (o.isMesh) {

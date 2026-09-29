@@ -17,6 +17,7 @@ import { buildCore } from './core.js';
 import { buildPylon } from './pylon.js';
 import { buildExhaustPlume } from './exhaust.js';
 import { createNoiseTexture } from '../materials/textures.js';
+import { EngineEffects } from '../effects/EngineEffects.js';
 import type { createMaterials } from '../materials/library.js';
 
 export type Materials = ReturnType<typeof createMaterials>;
@@ -130,7 +131,9 @@ class Flame {
   update(dt: number, time: number, sustain = 0) {
     this.intensity = Math.max(sustain, this.intensity - this.decay * dt);
     const on = this.intensity > 0.01;
-    this.mesh.visible = on;
+    // Alevin kendisini parçacıklar çizer (EngineEffects); bu koni yalnız
+    // çevreyi aydınlatan ışık kaynağı olarak kalır
+    this.mesh.visible = false;
     this.material.uniforms.uIntensity.value = this.intensity;
     this.material.uniforms.uTime.value = time;
     this.mesh.scale.setScalar(0.7 + 0.5 * Math.min(1, this.intensity));
@@ -194,6 +197,7 @@ export class EngineVisual {
   private model: EngineModel;
   private plume: ReturnType<typeof buildExhaustPlume>;
   private exhaustFlame: Flame;
+  readonly effects: EngineEffects;
   private inletFlame: Flame;
   private lpAngle = 0;
   private hpAngle = 0;
@@ -238,6 +242,14 @@ export class EngineVisual {
         mesh.receiveShadow = true;
       }
     });
+
+    // Efektler (parçacıklar, art yakıcı alevi) gölge almaz ve seçilemez;
+    // parça indekslemesinden sonra eklenmeleri için burada kurulur
+    const prop = kind === 'turboprop' ? { z: -2.08, radius: 1.965, blades: 6 } : undefined;
+    this.effects = new EngineEffects(
+      { kind, intake: this.model.intake, exhaust: this.model.exhaust, prop },
+      createNoiseTexture(256, 777),
+    );
     const noShadow = [this.plume.mesh, this.exhaustFlame.mesh, this.inletFlame.mesh];
     if (this.model.blurDisc) noShadow.push(this.model.blurDisc);
     for (const m of noShadow) {
@@ -252,6 +264,7 @@ export class EngineVisual {
     }
 
     this.indexParts();
+    this.root.add(this.effects.group);
   }
 
   /** Lüle ağzı (efektler için): z konumu ve yarıçap */
@@ -278,6 +291,7 @@ export class EngineVisual {
     for (const g of geos) g.dispose();
     for (const m of mats) m.dispose();
     this.plume.material.dispose();
+    this.effects.dispose();
   }
 
   /** Parça başına malzeme klonları: bir parçayı vurgulamak diğerlerini etkilemesin. */
@@ -373,7 +387,7 @@ export class EngineVisual {
 
   /* ---------------------------------------------------------------- */
 
-  update(snap: SimSnapshot, dt: number) {
+  update(snap: SimSnapshot, dt: number, camera?: THREE.Camera) {
     this.time += dt;
     const cyc = snap.cycle;
 
@@ -476,5 +490,6 @@ export class EngineVisual {
         m.emissiveIntensity = pulse;
       }
     }
+    if (camera) this.effects.update(snap, dt, camera, this.propAngle);
   }
 }

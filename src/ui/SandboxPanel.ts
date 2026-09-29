@@ -76,6 +76,8 @@ export class SandboxPanel {
       sim.controls.reheat = sim.controls.reheat > 0 ? 0 : 1;
     });
     let shown: EngineKind | null = null;
+    // Efekt tercihi motor değişince de korunur
+    let effectsOn = true;
     const selectEngine = (kind: EngineKind) => {
       if (kind === shown) return;
       shown = kind;
@@ -88,6 +90,7 @@ export class SandboxPanel {
       const b = h('button', { class: 'btn small', text: LABELS[kind], attrs: { 'data-kind': kind } });
       b.addEventListener('click', () => {
         cb.onEngine(kind);
+        visual().effects.enabled = effectsOn;
         selectEngine(kind);
         for (const f of Object.values(this.faultBtns)) f.classList.remove('active');
       });
@@ -158,6 +161,10 @@ export class SandboxPanel {
           toggle('Pilon', true, (v) => visual().setPylonVisible(v)),
           toggle('Kanat', false, (v) => visual().setWingVisible(v)),
           toggle('Egzoz akışı', true, (v) => visual().setPlumeVisible(v)),
+          toggle('Efektler', true, (v) => {
+            effectsOn = v;
+            visual().effects.enabled = v;
+          }),
           toggle('Hareket bulanıklığı', true, (v) => {
             visual().motionBlur = v;
           }),

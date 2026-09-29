@@ -296,7 +296,7 @@ export function createMaterials(renderer, details = null) {
     envMapIntensity: 0.7,
   });
   const nozzleCeramic = new THREE.MeshStandardMaterial({
-    color: 0xb7ab96,
+    color: 0x6f6a63,
     metalness: 0.1,
     roughness: 0.85,
     emissive: new THREE.Color(0xff8a3a),

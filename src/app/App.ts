@@ -707,7 +707,7 @@ export class App {
       this.sim.step(dt * (this.mode === 'sandbox' ? this.timeScale : 1));
       this.updateAutoStart();
       const snap = this.sim.snapshot();
-      this.visual.update(snap, dt);
+      this.visual.update(snap, dt, this.rig.camera);
       this.runner?.update(dt, snap);
       this.rig.update(dt, 0);
     }
@@ -726,7 +726,7 @@ export class App {
     this.updateAutoStart();
     const snap = this.sim.snapshot();
 
-    this.visual.update(snap, simDt);
+    this.visual.update(snap, simDt, this.rig.camera);
     this.runner?.update(dt, snap);
 
     // Vurgulama önceliği: seçme modunda fare altındaki parça, sonra ders, sonra kullanıcı seçimi
@@ -775,14 +775,16 @@ export class App {
     const cam = this.rig.camera;
     const ex = this.visual.exhaustExit;
     this.hazeA.set(0, 0, ex.z).project(cam);
-    this.hazeB.set(0, 0, ex.z + ex.radius * 12).project(cam);
+    this.hazeB.set(0, 0, ex.z + ex.radius * (12 + 14 * snap.abLevel)).project(cam);
     const u = this.fx.grade.uniforms;
     u.uHazeA.value.set(this.hazeA.x * 0.5 + 0.5, this.hazeA.y * 0.5 + 0.5);
     u.uHazeB.value.set(this.hazeB.x * 0.5 + 0.5, this.hazeB.y * 0.5 + 0.5);
     const dist = cam.position.distanceTo(new THREE.Vector3(0, 0, ex.z + 1.2));
     u.uHazeWidth.value = THREE.MathUtils.clamp((2.6 * ex.radius) / dist, 0.04, 0.3);
     const hot = snap.cycle.stations['7'].T - snap.amb.T0;
-    u.uHaze.value = snap.lit ? THREE.MathUtils.smoothstep(hot, 80, 480) : 0;
+    // Art yakıcıda kırılma daha güçlü ve daha geniş bir bölgeye yayılır
+    u.uHaze.value = snap.lit ? THREE.MathUtils.smoothstep(hot, 80, 480) + 0.8 * snap.abLevel : 0;
+    u.uHazeWidth.value *= 1 + 0.8 * snap.abLevel;
     u.uTime.value += dt;
   }
 }

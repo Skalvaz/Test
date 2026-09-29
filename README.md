@@ -45,6 +45,32 @@ sıraları, kamlok bağlantılar, yağ servis ve basınç tahliye kapakları, al
 yuvaları, havalandırma panjurları, boroskop tapaları. Blender'da yüksek
 poligonlu olarak modellenip normal + AO haritalarına pişirilir.
 
+**Dört motor tipi** — test hücresinde motor seçilebilir; hepsi aynı
+termodinamik modelle, kendi tasarım noktasından boyutlandırılır:
+
+| Motor | Sınıf | Öne çıkan |
+| --- | --- | --- |
+| TF-330 yolcu turbofanı | ~320 kN, BPR 9 | Dev fan, ayrık akış, dersler bu motorla |
+| AF-125 askeri turbofan | 81 kN kuru / 129 kN art yakıcılı | Karışık akış, art yakıcı, açılıp kapanan yakınsak-ıraksak lüle |
+| TJ-60 turbojet | 45 / 64 kN | Soğuk savaş dönemi, baypassız, iki milli, is bırakan egzoz |
+| TP-25 turboprop | 2,85 MW mil gücü | Serbest güç türbini, dişli kutusu, sabit devirli pervane valisi |
+
+Gaz kolu art yakıcılı motorlarda MIL kademesinin ötesine uzanır (IDLE → MIL →
+MAX, **B** tuşu); EICAS motor tipine göre değişir (FTIT, TRQ/ITT/NG, NP, lüle
+açıklığı, art yakıcı kademesi).
+
+**Efektler** — art yakıcıda ışın yürütmeli (raymarch) hacimsel alev ve jet Mach
+sayısından hesaplanan şok elmasları; ıslak çalıştırmada yakıt buharı,
+light-off'ta is ve kıvılcım, torching ve surge ateş topları, kapatmada buhar;
+eski turbojetin dumanı; yerden girişe kıvrılan yoğuşma girdabı, giriş dudağında
+yoğuşma, zeminden kalkan toz, pervane uç girdaplarının sarmal izi, sıcak
+egzozun ısı kırılması ve zemine vuran art yakıcı ışığı.
+
+| | |
+| --- | --- |
+| ![Art yakıcı ve şok elmasları](renders/13-askeri-art-yakici.jpg) | ![Islak çalıştırmada torching](renders/14-turbojet-torching.jpg) |
+| ![Turboprop ve pervane uç girdapları](renders/15-turboprop.jpg) | ![Giriş girdabı](renders/16-giris-girdabi.jpg) |
+
 **Serbest mod** — test hücresinde bütün anahtarlar, FADEC'i manuele alma, irtifa /
 Mach / sıcaklık, simülasyon hızı (¼×–4×), arıza enjeksiyonu (kuş çarpması,
 kompresör/türbin aşınması, marş ve ateşleyici arızası).
@@ -143,6 +169,7 @@ src/
   ui/         EICAS, kokpit, motor içi paneli, ders paneli, menüler
   game/       ders motoru, ders içerikleri, parça bilgileri, bilgi bankası
   audio/      prosedürel motor sesi (Web Audio)
+  effects/    art yakıcı alevi, parçacık sistemi, motor efektleri
   core/       gökyüzü/ışık ortamı, görüntü işleme zinciri
   materials/  prosedürel dokular, PBR malzemeler, kaporta yerleşimi
   assets/     Blender çıktıları (test hücresi glb, panel detay dokuları)
