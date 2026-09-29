@@ -7,7 +7,7 @@
  * ikincil göstergeler ve CAS (ekip uyarı) mesaj listesi yer alır.
  */
 
-import { LIMITS, type SimSnapshot } from '../sim';
+import type { SimSnapshot } from '../sim';
 
 const C = {
   white: '#eef2f6',
@@ -83,35 +83,58 @@ export class Eicas {
 
     const starting = s.phase === 'motoring' || s.phase === 'lightoff' || s.phase === 'accelerating';
 
-    this.dial(x0, cy, r, {
-      value: s.N1 * 100,
-      min: 0,
-      max: 110,
-      red: LIMITS.n1Redline * 100,
-      target: s.n1Command !== null ? s.n1Command * 100 : null,
-      label: 'N1',
-      text: (s.N1 * 100).toFixed(1),
-      unit: '%',
-      ticks: [0, 20, 40, 60, 80, 100],
-    });
+    const L = s.limits;
+    const egtMax = Math.ceil((L.egtRedline + 90) / 200) * 200;
+    const egtTicks = Array.from({ length: egtMax / 200 + 1 }, (_, i) => i * 200);
+    const prop = s.kind === 'turboprop';
+    const egtLabel = prop ? 'ITT' : s.kind === 'militaryTurbofan' ? 'FTIT' : 'EGT';
+
+    if (prop) {
+      // Turboprop: tork (pervaneye giden güç), ITT ve gaz jeneratörü devri NG
+      this.dial(x0, cy, r, {
+        value: s.torque * 100,
+        min: 0,
+        max: 120,
+        amber: 100,
+        red: 106,
+        target: null,
+        label: 'TRQ',
+        text: (s.torque * 100).toFixed(0),
+        unit: '%',
+        ticks: [0, 20, 40, 60, 80, 100, 120],
+      });
+    } else {
+      this.dial(x0, cy, r, {
+        value: s.N1 * 100,
+        min: 0,
+        max: 110,
+        red: L.n1Redline * 100,
+        target: s.n1Command !== null ? s.n1Command * 100 : null,
+        label: s.kind === 'turbojet' ? 'N1 LP' : 'N1',
+        text: (s.N1 * 100).toFixed(1),
+        unit: '%',
+        ticks: [0, 20, 40, 60, 80, 100],
+      });
+    }
     this.dial(x0 + gap, cy, r, {
       value: s.egt,
       min: 0,
-      max: 1100,
-      amber: LIMITS.egtAmber,
-      red: LIMITS.egtRedline,
-      startLimit: starting ? LIMITS.egtStart : null,
-      label: 'EGT',
+      max: egtMax,
+      amber: L.egtAmber,
+      red: L.egtRedline,
+      startLimit: starting ? L.egtStart : null,
+      label: egtLabel,
       text: Math.round(s.egt).toString(),
       unit: '°C',
-      ticks: [0, 200, 400, 600, 800, 1000],
+      ticks: egtTicks,
     });
     this.dial(x0 + 2 * gap, cy, r * 0.84, {
       value: s.N2 * 100,
       min: 0,
       max: 110,
-      red: LIMITS.n2Redline * 100,
-      label: 'N2',
+      red: L.n2Redline * 100,
+      target: s.n2Command !== null ? s.n2Command * 100 : null,
+      label: prop ? 'NG' : 'N2',
       text: (s.N2 * 100).toFixed(1),
       unit: '%',
       ticks: [0, 20, 40, 60, 80, 100],
@@ -260,13 +283,23 @@ export class Eicas {
 
   private secondary(x: number, y: number, w: number, s: SimSnapshot) {
     const ctx = this.ctx;
-    const rows: [string, string, string, string][] = [
+    const rows: [string, string, string, string][] = [];
+    if (s.kind === 'turboprop') {
+      rows.push(['NP', s.propRpm.toFixed(0), 'rpm', s.lit && s.N1 < 0.95 && s.controls.throttle > 0.3 ? C.amber : C.white]);
+      rows.push(['SHP', (s.shaftPower / 1000).toFixed(0), 'kW', C.white]);
+    }
+    if (s.kind === 'militaryTurbofan' || s.kind === 'turbojet') {
+      const zone = s.abLit ? `Z${Math.max(1, Math.ceil(s.controls.reheat * 5))}` : '—';
+      rows.push(['AB', zone, s.abLit ? `${Math.round(s.abLevel * 100)}%` : '', s.abLit ? C.amber : C.white]);
+      rows.push(['NOZ', (s.nozzleArea * 100 - 100).toFixed(0), '%aç', C.white]);
+    }
+    rows.push(
       ['FF', (s.wf * 3600).toFixed(0), 'kg/h', C.white],
       ['İTKİ', (s.thrust / 1000).toFixed(1), 'kN', C.white],
       ['YAĞ P', s.N2 > 0.05 ? s.oilPressure.toFixed(0) : '0', 'psi', s.N2 > 0.5 && s.oilPressure < 25 ? C.amber : C.white],
       ['TİTR', s.vibration.toFixed(1), 'N1', s.vibration > 2.5 ? C.amber : C.white],
       ['SM', (s.cycle.surgeMargin * 100).toFixed(0), '%', s.N2 > 0.45 && s.cycle.surgeMargin < 0.08 ? C.amber : C.white],
-    ];
+    );
     const lh = Math.min(30, (this.h - 30) / rows.length);
     ctx.textBaseline = 'middle';
     rows.forEach(([label, value, unit, color], i) => {
@@ -294,9 +327,10 @@ export class Eicas {
   private casMessages(s: SimSnapshot): { text: string; level: CasLevel }[] {
     const m: { text: string; level: CasLevel }[] = [];
     if (s.surging) m.push({ text: 'ENG SURGE', level: 'warning' });
-    if (s.egt > LIMITS.egtRedline) m.push({ text: 'ENG EGT LİMİT', level: 'warning' });
+    if (s.egt > s.limits.egtRedline) m.push({ text: 'ENG EGT LİMİT', level: 'warning' });
     if (s.flamedOut) m.push({ text: 'ENG ALEV SÖNDÜ', level: 'warning' });
     if (s.turbineDamaged) m.push({ text: 'ENG TÜRBİN HASARI', level: 'warning' });
+    if (s.abLit) m.push({ text: 'ART YAKICI', level: 'advisory' });
     if (s.controls.fadec === 'manual') m.push({ text: 'FADEC MANUEL', level: 'caution' });
     if (s.egtLimited) m.push({ text: 'ENG EGT SINIRLAMA', level: 'caution' });
     if (s.vibration > 2.5) m.push({ text: 'ENG TİTREŞİM', level: 'caution' });

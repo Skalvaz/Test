@@ -28,7 +28,7 @@ export class Picker {
   constructor(
     private dom: HTMLElement,
     private camera: THREE.Camera,
-    private visual: EngineVisual,
+    public visual: EngineVisual,
   ) {
     document.body.append(this.tip);
     dom.addEventListener('pointermove', (e) => {

@@ -5,7 +5,7 @@
  * APU BLEED → MARŞ (GRD) → ATEŞLEME → N2 ≥ %20'de YAKIT KONTROL RUN.
  */
 
-import type { EngineSim, SimSnapshot } from '../sim';
+import type { EngineKind, EngineSim, SimSnapshot } from '../sim';
 import { h } from './dom';
 
 export type SwitchId = 'apuBleed' | 'starter' | 'ignition' | 'fuelRun' | 'fadec';
@@ -16,11 +16,36 @@ interface SwitchView {
   lamp: HTMLSpanElement;
 }
 
-const DETENTS = [
-  { v: 0, label: 'IDLE' },
-  { v: 0.82, label: 'CL' },
-  { v: 1, label: 'TO' },
-];
+interface Detent {
+  v: number;
+  label: string;
+}
+
+/** Art yakıcı bölgesinin kol üzerindeki uzunluğu (MIL = 1.0 … MAX AB = 1 + AB_RANGE) */
+const AB_RANGE = 0.3;
+
+const DETENTS: Record<EngineKind, Detent[]> = {
+  turbofan: [
+    { v: 0, label: 'IDLE' },
+    { v: 0.82, label: 'CL' },
+    { v: 1, label: 'TO' },
+  ],
+  militaryTurbofan: [
+    { v: 0, label: 'IDLE' },
+    { v: 1, label: 'MIL' },
+    { v: 1 + AB_RANGE, label: 'MAX' },
+  ],
+  turbojet: [
+    { v: 0, label: 'IDLE' },
+    { v: 1, label: 'MIL' },
+    { v: 1 + AB_RANGE, label: 'MAX' },
+  ],
+  turboprop: [
+    { v: 0, label: 'G.IDLE' },
+    { v: 0.75, label: 'CLB' },
+    { v: 1, label: 'MAX' },
+  ],
+};
 
 export interface CockpitCallbacks {
   onSwitch?: (id: SwitchId, value: boolean | string) => void;
@@ -39,6 +64,10 @@ export class Cockpit {
   private readout: HTMLDivElement;
   private throttleLocked = false;
   private hidden = new Set<SwitchId>();
+  private detents: Detent[] = DETENTS.turbofan;
+  /** Kolun üst ucu: art yakıcılı motorlarda MIL'in ötesine uzanır */
+  private leverMax = 1;
+  private detentEls: HTMLElement[] = [];
 
   constructor(
     private sim: EngineSim,
@@ -96,13 +125,9 @@ export class Cockpit {
     this.handle = h('div', { class: 'throttle-handle' });
     this.track = h('div', { class: 'throttle-track', attrs: { role: 'slider', tabindex: '0', 'aria-label': 'Gaz kolu' } }, [
       h('div', { class: 'throttle-slot' }),
-      ...DETENTS.map((d) =>
-        h('div', { class: 'throttle-detent', style: { top: `calc(10px + ${(1 - d.v) * 100}% - ${(1 - d.v) * 20}px)` } }, [
-          h('span', { text: d.label }),
-        ]),
-      ),
       this.handle,
     ]);
+    this.setEngineKind('turbofan');
     this.readout = h('div', { class: 'throttle-readout' });
     this.throttleEl = h('div', { class: 'throttle panel' }, [
       h('span', { class: 'panel-title', text: 'Gaz' }),
@@ -148,12 +173,36 @@ export class Cockpit {
     }
   }
 
+  /** Motor tipine göre kol kademelerini kurar (art yakıcı bölgesi dahil). */
+  setEngineKind(kind: EngineKind) {
+    this.detents = DETENTS[kind];
+    this.leverMax = this.detents[this.detents.length - 1].v;
+    for (const el of this.detentEls) el.remove();
+    this.detentEls = this.detents.map((d) => {
+      const t = 1 - d.v / this.leverMax;
+      const el = h('div', {
+        class: `throttle-detent${d.v > 1 ? ' ab' : ''}`,
+        style: { top: `calc(10px + ${t * 100}% - ${t * 20}px)` },
+      }, [h('span', { text: d.label })]);
+      this.track.insertBefore(el, this.handle);
+      return el;
+    });
+    this.track.classList.toggle('has-ab', this.leverMax > 1);
+  }
+
+  /** Kol konumu: 0 … 1 gaz, 1 … 1.3 art yakıcı kademesi */
+  private get lever(): number {
+    const c = this.sim.controls;
+    return c.throttle + (this.leverMax > 1 ? c.reheat * AB_RANGE : 0);
+  }
+
   private setThrottle(v: number, snap = true) {
     if (this.throttleLocked) return;
-    let x = Math.min(1, Math.max(0, v));
-    if (snap) for (const d of DETENTS) if (Math.abs(x - d.v) < 0.025) x = d.v;
-    this.sim.controls.throttle = x;
-    this.cb.onThrottle?.(x);
+    let x = Math.min(this.leverMax, Math.max(0, v));
+    if (snap) for (const d of this.detents) if (Math.abs(x - d.v) < 0.025 * this.leverMax) x = d.v;
+    this.sim.controls.throttle = Math.min(1, x);
+    this.sim.controls.reheat = x > 1.0001 ? (x - 1) / AB_RANGE : 0;
+    this.cb.onThrottle?.(Math.min(1, x));
   }
 
   private bindThrottle() {
@@ -161,7 +210,7 @@ export class Cockpit {
     const fromEvent = (e: PointerEvent) => {
       const r = this.track.getBoundingClientRect();
       const y = e.clientY - r.top - 10;
-      return 1 - y / (r.height - 20);
+      return (1 - y / (r.height - 20)) * this.leverMax;
     };
     this.track.addEventListener('pointerdown', (e) => {
       dragging = true;
@@ -195,7 +244,7 @@ export class Cockpit {
    * kademesine geri yapışır ve kol hiç kıpırdamaz.
    */
   nudge(delta: number) {
-    this.setThrottle(this.sim.controls.throttle + delta, false);
+    this.setThrottle(this.lever + delta, false);
   }
 
   setThrottleTo(v: number) {
@@ -246,9 +295,16 @@ export class Cockpit {
     this.manualRow.classList.toggle('hidden', !manual);
     if (manual) this.manualReadout.textContent = `${(s.wf * 3600).toFixed(0)} kg/h`;
 
-    const pct = c.throttle;
-    this.handle.style.top = `calc(10px + ${(1 - pct) * 100}% - ${(1 - pct) * 20}px)`;
-    const label = pct <= 0.001 ? 'IDLE' : pct >= 0.999 ? 'TO' : `${Math.round(pct * 100)}%`;
+    const lever = this.lever;
+    const t = 1 - lever / this.leverMax;
+    this.handle.style.top = `calc(10px + ${t * 100}% - ${t * 20}px)`;
+    this.handle.classList.toggle('ab', c.reheat > 0 && this.leverMax > 1);
+    const top = this.detents[this.detents.length - 1];
+    let label: string;
+    if (c.reheat > 0 && this.leverMax > 1) label = `AB ${Math.max(1, Math.ceil(c.reheat * 5))}`;
+    else if (c.throttle <= 0.001) label = this.detents[0].label;
+    else if (c.throttle >= 0.999) label = this.leverMax > 1 ? 'MIL' : top.label;
+    else label = `${Math.round(c.throttle * 100)}%`;
     if (this.readout.textContent !== label) this.readout.textContent = label;
   }
 }

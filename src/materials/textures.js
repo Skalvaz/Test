@@ -516,6 +516,66 @@ export function createNoiseTexture(size = 512, seed = 99) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Isı renklenmesi ve pervane palı                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Titanyum/çeliğin ısı renklenmesi (heat tint): art yakıcı kanalı boyunca
+ * gümüşten saman sarısına, bronza, mora ve maviye, lüleye doğru koyu griye.
+ * Lathe UV'sinde v eksen yönüdür (0 ön, 1 arka); canvas'ta v ters çizilir.
+ */
+export function createHeatTintTexture(w = 256, h = 1024, seed = 17) {
+  const canvas = makeCanvas(w, h);
+  const ctx = canvas.getContext('2d');
+  const g = ctx.createLinearGradient(0, h, 0, 0);
+  const stops = [
+    [0.0, '#9aa0a4'],
+    [0.14, '#a8a38e'],
+    [0.28, '#b89a5a'],
+    [0.42, '#9a6a3c'],
+    [0.56, '#6e4a5e'],
+    [0.7, '#46557a'],
+    [0.84, '#3f4b5a'],
+    [1.0, '#34363a'],
+  ];
+  for (const [t, c] of stops) g.addColorStop(t, c);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+  // Düzensiz lekeler: ısı renklenmesi hiçbir zaman düzgün bant değildir
+  const noise = fbm2D(w, h, { octaves: 5, frequency: 4, seed, stretchY: 0.4 });
+  const img = ctx.getImageData(0, 0, w, h);
+  for (let i = 0; i < w * h; i++) {
+    const k = 0.78 + noise[i] * 0.4;
+    img.data[i * 4] *= k;
+    img.data[i * 4 + 1] *= k;
+    img.data[i * 4 + 2] *= k;
+  }
+  ctx.putImageData(img, 0, 0);
+  return toTexture(canvas, { srgb: true });
+}
+
+/** Pervane palı: mat siyah kompozit, uçta sarı uyarı bandı (UV v = açıklık). */
+export function createPropBladeTexture(w = 64, h = 512) {
+  const canvas = makeCanvas(w, h);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#17181a';
+  ctx.fillRect(0, 0, w, h);
+  // canvas'ta y = 0 → v = 1 (uç)
+  ctx.fillStyle = '#e8b91c';
+  ctx.fillRect(0, 0, w, h * 0.055);
+  ctx.fillStyle = '#e8e6e0';
+  ctx.fillRect(0, h * 0.055, w, h * 0.02);
+  // Hücum kenarı aşınma şeridi (nikel koruyucu): u ≈ 0.5
+  const grad = ctx.createLinearGradient(0, 0, w, 0);
+  grad.addColorStop(0.44, 'rgba(160,165,170,0)');
+  grad.addColorStop(0.5, 'rgba(160,165,170,0.9)');
+  grad.addColorStop(0.56, 'rgba(160,165,170,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, h * 0.075, w, h * 0.5);
+  return toTexture(canvas, { srgb: true });
+}
+
+/* ------------------------------------------------------------------ */
 /* Blender'da pişirilmiş panel detayları                               */
 /* ------------------------------------------------------------------ */
 

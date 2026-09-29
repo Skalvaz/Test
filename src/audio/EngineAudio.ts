@@ -30,6 +30,7 @@ export class EngineAudio {
   private noise!: AudioBuffer;
   private v: Record<string, Voice> = {};
   private nextClick = 0;
+  private nextCrackle = 0;
   private _volume = 0.7;
   private _muted = false;
 
@@ -137,6 +138,12 @@ export class EngineAudio {
     this.v.hiss = noise('bandpass', 3500, 0.7);
     this.v.air = noise('bandpass', 600, 1.1);
     this.v.starter = osc('sine');
+    // Art yakıcı: derin, geniş bantlı gürleme + çatırtı
+    this.v.abRoar = noise('lowpass', 300, 0.5);
+    this.v.abBody = noise('bandpass', 90, 0.6);
+    // Pervane: pal geçiş frekansı ve harmonikleri (vızıltı / "wub")
+    this.v.prop = osc('sawtooth', 'lowpass', 2.5);
+    this.v.propSub = osc('sine');
   }
 
   private set(voice: Voice, gain: number, freq?: number, filterFreq?: number) {
@@ -150,19 +157,44 @@ export class EngineAudio {
    * @param frontness −1 (kamera tam arkada) … +1 (kamera tam önde)
    * @param proximity 0 (uzak) … 1 (çok yakın)
    */
-  update(s: SimSnapshot, fanBlades: number, fanDiameter: number, frontness: number, proximity: number) {
+  update(
+    s: SimSnapshot,
+    fanBlades: number,
+    fanDiameter: number,
+    frontness: number,
+    proximity: number,
+    designThrust = 320e3,
+  ) {
     if (!this.ctx || this.ctx.state !== 'running') return;
+    const prop = s.kind === 'turboprop';
     const n1rps = s.n1Rpm / 60;
     const n2rps = s.n2Rpm / 60;
-    const tipMach = (n1rps * Math.PI * fanDiameter) / s.amb.a0;
-    const thrustFrac = clamp(s.thrust / 320e3, 0, 1.2);
+    const tipMach = prop ? 0 : (n1rps * Math.PI * fanDiameter) / s.amb.a0;
+    const thrustFrac = clamp((prop ? s.thrust - s.propThrust : s.thrust) / designThrust, 0, 1.2);
     const front = 0.55 + 0.45 * clamp(frontness, -1, 1);
     const back = 0.55 - 0.45 * clamp(frontness, -1, 1);
     const near = 0.6 + 0.6 * proximity;
 
     // Fan kanat geçiş tonu
     const bpf = n1rps * fanBlades;
-    this.set(this.v.fan, 0.05 * Math.pow(s.N1, 1.4) * front * near, bpf, bpf * 2.5 + 200);
+    this.set(this.v.fan, prop ? 0 : 0.05 * Math.pow(s.N1, 1.4) * front * near, bpf, bpf * 2.5 + 200);
+
+    // Pervane: 6 pal × ~20 dev/s ≈ 120 Hz; pal yükü arttıkça daha sert
+    if (prop) {
+      const prps = s.propRpm / 60;
+      const load = clamp(s.torque, 0, 1.1);
+      const pbpf = prps * fanBlades;
+      this.set(this.v.prop, (0.05 + 0.13 * load) * clamp(s.propRpm / 600, 0, 1) * near, pbpf, pbpf * (3 + 5 * load));
+      this.set(this.v.propSub, 0.08 * load * near, pbpf, undefined);
+    } else {
+      this.set(this.v.prop, 0);
+      this.set(this.v.propSub, 0);
+    }
+
+    // Art yakıcı: jet gürlemesinin üstüne derin gürleme ve rastgele çatırtılar
+    const ab = clamp(s.abLevel, 0, 1);
+    this.set(this.v.abRoar, 0.55 * Math.pow(ab, 0.7) * (0.5 + 0.8 * back) * near, undefined, 260 + 900 * ab);
+    this.set(this.v.abBody, 0.5 * Math.pow(ab, 0.8) * near, undefined, 70 + 40 * ab);
 
     // Buzz-saw: süpersonik fan ucu şok dalgaları → mil frekansı harmonikleri
     const buzz = smooth(tipMach, 0.92, 1.12);
@@ -190,10 +222,33 @@ export class EngineAudio {
 
     // Ateşleyici tıkırtısı (~1.8 Hz)
     const now = this.ctx.currentTime;
+    // Yüksek hızlı jetin "çatırtısı" (crackle): süpersonik jette şok dalgaları
+    const crack = Math.max(ab, smooth(s.cycle.V9, 480, 720) * 0.5);
+    if (crack > 0.05 && now >= this.nextCrackle) {
+      this.pop(0.35 * crack * (0.4 + back) * near);
+      this.nextCrackle = now + 0.03 + Math.random() * (0.18 - 0.12 * crack);
+    }
     if (s.igniting && now >= this.nextClick) {
       this.click(0.16 * near);
       this.nextClick = now + 0.55;
     }
+  }
+
+  /** Kısa, alçak frekanslı patlama (art yakıcı çatırtısı) */
+  private pop(gain: number) {
+    const ctx = this.ctx!;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 300 + Math.random() * 900;
+    f.Q.value = 0.8;
+    const g = ctx.createGain();
+    const t = ctx.currentTime;
+    g.gain.setValueAtTime(gain, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05 + Math.random() * 0.05);
+    src.connect(f).connect(g).connect(this.master);
+    src.start(t, Math.random() * 3, 0.12);
   }
 
   private click(gain: number) {

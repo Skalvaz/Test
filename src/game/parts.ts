@@ -108,4 +108,23 @@ export const PARTS: Record<PartId, PartInfo> = {
     name: 'Kanat',
     short: 'Motorun asıldığı kanat kökü (görsel bağlam için).',
   },
+  afterburner: {
+    name: 'Art yakıcı (afterburner / reheat)',
+    short:
+      'Türbinden çıkan gazda hâlâ bol oksijen vardır. Art yakıcı bu gaza ikinci kez yakıt püskürtüp alev tutucuların arkasında yakar: itki %50-60 artar, yakıt tüketimi ise 3-4 katına çıkar.',
+  },
+  nozzle: {
+    name: 'Değişken kesitli lüle',
+    short:
+      'Hidrolik aktüatörlerle açılıp kapanan yaprak halkası. Art yakıcı yanınca gaz hacmi büyür; lüle açılmasa türbin arkasındaki basınç yükselir ve fan stall olur. Yakınsak-ıraksak şekli jeti süpersonik hıza hızlandırır.',
+  },
+  propeller: {
+    name: 'Pervane',
+    short:
+      'Güç türbininin gücünü dişli kutusu üzerinden alır. Sabit devir valisi pal açısını değiştirerek devri sabit tutar; motor kapanınca paller rüzgâra paralel "tüy" konumuna döner.',
+  },
+  stand: {
+    name: 'Test standı',
+    short: 'Motoru itki ölçüm çerçevesine asan çelik kiriş. Motorun ittiği kuvvet buradan yük hücresine aktarılır.',
+  },
 };

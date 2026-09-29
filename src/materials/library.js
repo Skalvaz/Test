@@ -14,6 +14,8 @@ import {
   createTarmacMaps,
   albedoWithCavity,
   cavityTexture,
+  createHeatTintTexture,
+  createPropBladeTexture,
 } from './textures.js';
 
 /**
@@ -246,6 +248,80 @@ export function createMaterials(renderer, details = null) {
     applyPanelDetail(pylonDetail, details.pylon);
   }
 
+  /* --- kaportasız askeri motorlar ve turboprop --- */
+  // Motor gövdesi: saten titanyum/çelik
+  const engineCase = new THREE.MeshPhysicalMaterial({
+    color: 0x8f969b,
+    metalness: 1.0,
+    roughness: 0.36,
+    anisotropy: 0.3,
+    envMapIntensity: 0.9,
+    side: THREE.DoubleSide,
+  });
+  // Art yakıcı kanalı: ısı renklenmesi
+  const heatTint = createHeatTintTexture();
+  heatTint.anisotropy = maxAniso;
+  const abDuct = new THREE.MeshPhysicalMaterial({
+    map: heatTint,
+    metalness: 1.0,
+    roughness: 0.42,
+    iridescence: 0.25,
+    iridescenceThicknessRange: [180, 520],
+    envMapIntensity: 0.8,
+    side: THREE.DoubleSide,
+  });
+  // Art yakıcı gömleği (içeride): yandığında kor parlar
+  const abLiner = new THREE.MeshStandardMaterial({
+    color: 0x5a524a,
+    metalness: 0.6,
+    roughness: 0.7,
+    emissive: new THREE.Color(0xff6a1a),
+    emissiveIntensity: 0,
+    side: THREE.DoubleSide,
+  });
+  const flameHolder = new THREE.MeshStandardMaterial({
+    color: 0x4a4540,
+    metalness: 0.8,
+    roughness: 0.6,
+    emissive: new THREE.Color(0xff7a2a),
+    emissiveIntensity: 0,
+    side: THREE.DoubleSide,
+  });
+  // Lüle yaprakları: dışta koyu, içte seramik kaplama (art yakıcıda kor)
+  const nozzleFlap = new THREE.MeshPhysicalMaterial({
+    color: 0x3b3a3a,
+    metalness: 0.85,
+    roughness: 0.5,
+    iridescence: 0.2,
+    envMapIntensity: 0.7,
+  });
+  const nozzleCeramic = new THREE.MeshStandardMaterial({
+    color: 0xb7ab96,
+    metalness: 0.1,
+    roughness: 0.85,
+    emissive: new THREE.Color(0xff8a3a),
+    emissiveIntensity: 0,
+  });
+  // Test standı: sarı boyalı çelik
+  const standPaint = new THREE.MeshStandardMaterial({ color: 0xc99a1f, metalness: 0.2, roughness: 0.55 });
+  // Pervane
+  const propTex = createPropBladeTexture();
+  const propBlade = new THREE.MeshPhysicalMaterial({
+    map: propTex,
+    metalness: 0.1,
+    roughness: 0.5,
+    clearcoat: 0.3,
+    clearcoatRoughness: 0.4,
+    side: THREE.DoubleSide,
+  });
+  const propSpinner = new THREE.MeshPhysicalMaterial({
+    color: 0x1c1d1f,
+    metalness: 0.2,
+    roughness: 0.35,
+    clearcoat: 0.8,
+    clearcoatRoughness: 0.1,
+  });
+
   /* --- zemin --- */
   const tarmacMat = new THREE.MeshStandardMaterial({
     map: tarmac.map,
@@ -286,6 +362,15 @@ export function createMaterials(renderer, details = null) {
     pylonSkin,
     pylonDetail,
     coreDetail,
+    engineCase,
+    abDuct,
+    abLiner,
+    flameHolder,
+    nozzleFlap,
+    nozzleCeramic,
+    standPaint,
+    propBlade,
+    propSpinner,
     tarmac: tarmacMat,
     cutawayFace,
   };

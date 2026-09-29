@@ -48,16 +48,22 @@ const fragmentShader = /* glsl */ `
   }
 `;
 
-export function buildExhaustPlume() {
+/**
+ * @param {number} radius lüle çıkış yarıçapı [m]
+ * @param {number} z lüle çıkışının eksenel konumu [m]
+ */
+export function buildExhaustPlume(radius = 0.5, z = 3.3) {
   const noise = createNoiseTexture(512, 404);
 
-  // Lüle ağzında dar, akış aşağısında genişleyen koni.
+  // Lüle ağzında dar, akış aşağısında genişleyen koni. Ölçüler lüle
+  // yarıçapına oranlıdır; geometri orijini lüle ağzındadır, böylece
+  // değişken lülede yalnızca ölçek değiştirilir.
   // CylinderGeometry'de "top" (+Y) rotateX(90°) sonrası +Z'ye, yani arkaya
   // bakar; bu yüzden dar uç radiusBottom olarak verilir.
-  const length = 5.2;
-  const geo = new THREE.CylinderGeometry(1.15, 0.62, length, 48, 28, true);
+  const length = radius * 10.4;
+  const geo = new THREE.CylinderGeometry(radius * 2.3, radius * 1.24, length, 48, 28, true);
   geo.rotateX(Math.PI / 2);
-  geo.translate(0, 0, 3.3 + length / 2);
+  geo.translate(0, 0, length / 2);
 
   const material = new THREE.ShaderMaterial({
     uniforms: {
@@ -75,6 +81,7 @@ export function buildExhaustPlume() {
   });
 
   const mesh = new THREE.Mesh(geo, material);
+  mesh.position.z = z - 0.05;
   mesh.name = 'exhaust-plume';
   mesh.frustumCulled = false;
   return { mesh, material };

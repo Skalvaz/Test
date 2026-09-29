@@ -16,7 +16,7 @@ import { PARTS } from '../game/parts';
 import { loadProgress, loadSettings, saveLessonResult, saveSettings, type Settings } from '../game/progress';
 import { createMaterials } from '../materials/library.js';
 import { loadPanelDetails } from '../materials/textures.js';
-import { EngineSim, LIMITS, type SimEvent } from '../sim';
+import { ENGINE_CATALOG, EngineSim, type EngineKind, type SimEvent } from '../sim';
 import { Cockpit, type SwitchId } from '../ui/Cockpit';
 import { CycleDiagram } from '../ui/CycleDiagram';
 import { h, icon } from '../ui/dom';
@@ -58,6 +58,7 @@ export class App {
   timeScale = 1;
 
   private env!: ReturnType<typeof createEnvironment>;
+  private materials!: ReturnType<typeof createMaterials>;
   private cell: TestCell | null = null;
   private fx!: ReturnType<typeof createComposer>;
   private picker!: Picker;
@@ -130,6 +131,7 @@ export class App {
       return null;
     });
     const materials = createMaterials(renderer, details);
+    this.materials = materials;
 
     await step(onProgress, 'Gökyüzü ve ortam ışığı hesaplanıyor…');
     this.env = createEnvironment(renderer, this.scene, materials);
@@ -144,7 +146,7 @@ export class App {
     }
 
     await step(onProgress, 'Motor geometrisi oluşturuluyor…');
-    this.visual = new EngineVisual(materials);
+    this.visual = new EngineVisual(materials, this.sim.kind);
     this.scene.add(this.visual.root);
 
     await step(onProgress, 'Termodinamik model dengeleniyor…');
@@ -155,6 +157,7 @@ export class App {
     this.fx = createComposer(renderer, this.scene, this.rig.camera);
 
     this.picker = new Picker(renderer.domElement, this.rig.camera, this.visual);
+    this.cockpit?.setEngineKind(this.sim.kind);
     this.picker.onPick = (p) => this.onPick(p);
     this.picker.onHover = (p) => this.onHover(p);
 
@@ -225,8 +228,10 @@ export class App {
     this.lessonPanel = new LessonPanel(this.sim);
     this.lessonPanel.onExit = () => this.showMenu();
 
-    this.sandboxPanel = new SandboxPanel(this.sim, this.visual, {
+    this.cockpit.setEngineKind(this.sim.kind);
+    this.sandboxPanel = new SandboxPanel(this.sim, () => this.visual, {
       autoStart: () => this.beginAutoStart(),
+      onEngine: (kind) => this.setEngine(kind, true),
       onTimeScale: (v) => {
         this.timeScale = v;
       },
@@ -354,6 +359,8 @@ export class App {
 
   startLesson(lesson: Lesson) {
     this.closeOverlay();
+    // Dersler yüksek baypaslı turbofan üzerine yazıldı
+    this.setEngine('turbofan', false);
     this.mode = 'lesson';
     this.currentLessonIndex = LESSONS.indexOf(lesson);
     this.rig.autoRotate = false;
@@ -415,6 +422,27 @@ export class App {
     this.rig.go('front');
     this.refreshChrome();
     this.toasts.show('Test hücresi: motor rölantide. Soldaki panelden koşulları ve arızaları değiştirebilirsin.', 'info', 5500);
+  }
+
+  /**
+   * Başka bir motor tipine geçer: simülasyonu yeniden boyutlandırır, 3B modeli
+   * değiştirir, gaz kolu kademelerini ve kesit durumunu yeniden kurar.
+   * `idle` ile yeni motor rölantide çalışır halde gelir.
+   */
+  setEngine(kind: EngineKind, idle: boolean) {
+    if (this.sim.kind === kind && this.visual.kind === kind) return;
+    this.sim.setDesign(ENGINE_CATALOG[kind]);
+    if (idle) this.sim.trim(0, 30);
+    this.autoStart = false;
+    this.scene.remove(this.visual.root);
+    this.visual.dispose();
+    this.visual = new EngineVisual(this.materials, kind);
+    this.scene.add(this.visual.root);
+    this.picker.visual = this.visual;
+    this.cockpit.setEngineKind(kind);
+    this.setCutaway(this.cutaway);
+    this.stickyHighlight = null;
+    this.stepHighlight = null;
   }
 
   openGlossary(id?: string) {
@@ -562,6 +590,7 @@ export class App {
     if (e.type === 'surge') this.audio.bang(1);
     if (e.type === 'torching') this.audio.whoomp(1.2);
     if (e.type === 'lightoff') this.audio.whoomp(0.35);
+    if (e.type === 'abLight') this.audio.whoomp(0.9);
     if (e.type === 'birdStrike') this.audio.bang(0.7);
     if (this.mode === 'menu') return;
     // Bilgi olayları derste panelde zaten anlatılıyor; uyarılar her zaman görünür
@@ -590,8 +619,9 @@ export class App {
   private updateAutoStart() {
     if (!this.autoStart) return;
     const c = this.sim.controls;
-    if (!c.fuelRun && this.sim.N2 >= LIMITS.fuelOnMinN2 + 0.02) c.fuelRun = true;
-    if (this.sim.phase === 'running' && this.sim.N2 > LIMITS.idleN2 - 0.02) {
+    const L = this.sim.limits;
+    if (!c.fuelRun && this.sim.N2 >= L.fuelOnMinN2 + 0.02) c.fuelRun = true;
+    if (this.sim.phase === 'running' && this.sim.N2 > L.idleN2 - 0.02) {
       c.apuBleed = false;
       c.ignition = false;
       this.autoStart = false;
@@ -617,6 +647,7 @@ export class App {
     if (k === 'w' || e.key === 'ArrowUp') this.cockpit.nudge(fine);
     else if (k === 's' || e.key === 'ArrowDown') this.cockpit.nudge(-fine);
     else if (e.key === 'PageUp') this.cockpit.setThrottleTo(1);
+    else if (k === 'b') this.cockpit.setThrottleTo(this.sim.controls.reheat > 0 ? 1 : 1.3);
     else if (e.key === 'PageDown') this.cockpit.setThrottleTo(0);
     else if (k === 'c') this.setCutaway(!this.cutaway);
     else if (k === 'd') this.setDiagram(!this.diagramVisible);
@@ -731,6 +762,7 @@ export class App {
       this.sim.eng.design.fanDiameter,
       -cam.z / Math.max(dist, 1e-3),
       THREE.MathUtils.clamp(1 - (dist - 3) / 16, 0, 1),
+      this.sim.eng.point.thrust,
     );
 
     this.picker.update();
@@ -741,14 +773,15 @@ export class App {
 
   private updateHaze(snap: ReturnType<EngineSim['snapshot']>, dt: number) {
     const cam = this.rig.camera;
-    this.hazeA.set(0, 0, 3.35).project(cam);
-    this.hazeB.set(0, 0, 9.5).project(cam);
+    const ex = this.visual.exhaustExit;
+    this.hazeA.set(0, 0, ex.z).project(cam);
+    this.hazeB.set(0, 0, ex.z + ex.radius * 12).project(cam);
     const u = this.fx.grade.uniforms;
     u.uHazeA.value.set(this.hazeA.x * 0.5 + 0.5, this.hazeA.y * 0.5 + 0.5);
     u.uHazeB.value.set(this.hazeB.x * 0.5 + 0.5, this.hazeB.y * 0.5 + 0.5);
-    const dist = cam.position.distanceTo(new THREE.Vector3(0, 0, 4.5));
-    u.uHazeWidth.value = THREE.MathUtils.clamp(1.3 / dist, 0.04, 0.24);
-    const hot = snap.cycle.stations['5'].T - snap.amb.T0;
+    const dist = cam.position.distanceTo(new THREE.Vector3(0, 0, ex.z + 1.2));
+    u.uHazeWidth.value = THREE.MathUtils.clamp((2.6 * ex.radius) / dist, 0.04, 0.3);
+    const hot = snap.cycle.stations['7'].T - snap.amb.T0;
     u.uHaze.value = snap.lit ? THREE.MathUtils.smoothstep(hot, 80, 480) : 0;
     u.uTime.value += dt;
   }

@@ -339,6 +339,21 @@ kbd {
   border-radius: 2px;
 }
 .throttle-readout { font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+/* Art yakıcı bölgesi: MIL kademesinin üstü turuncu */
+.throttle-track.has-ab::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 10px;
+  height: calc((100% - 20px) * 0.2308);
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(to bottom, rgba(255, 128, 40, 0.28), rgba(255, 128, 40, 0.06));
+  pointer-events: none;
+}
+.throttle-detent.ab { background: rgba(255, 150, 60, 0.7); }
+.throttle-detent.ab span { color: #ffab5e; }
+.throttle-handle.ab::after { background: #ff8a2a; box-shadow: 0 0 8px #ff8a2a; }
 .throttle.locked .throttle-track { opacity: 0.45; cursor: not-allowed; }
 
 /* ---------------- ders paneli ---------------- */
@@ -768,3 +783,16 @@ body.ui-hidden .toasts { display: none !important; }
   .glossary { grid-template-columns: 1fr; }
   .glossary-list { border-right: none; flex-direction: row; flex-wrap: wrap; }
 }
+
+/* ---------------- motor seçici (test hücresi) ---------------- */
+.engine-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.engine-grid .btn.sel {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(46, 230, 214, 0.1);
+}
+.engine-summary { font-size: 12px; margin: 8px 0 2px; }

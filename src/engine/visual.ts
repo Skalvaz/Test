@@ -8,8 +8,10 @@
  */
 
 import * as THREE from 'three';
-import type { SimSnapshot } from '../sim';
+import type { EngineKind, SimSnapshot } from '../sim';
 import { buildNacelle } from './nacelle.js';
+import { buildBareJet } from './barejet.js';
+import { buildTurboprop } from './turboprop.js';
 import { buildFan } from './fan.js';
 import { buildCore } from './core.js';
 import { buildPylon } from './pylon.js';
@@ -39,7 +41,11 @@ export type PartId =
   | 'exhaust'
   | 'gearbox'
   | 'pylon'
-  | 'wing';
+  | 'wing'
+  | 'afterburner'
+  | 'nozzle'
+  | 'propeller'
+  | 'stand';
 
 type EmissiveMaterial = THREE.MeshStandardMaterial;
 
@@ -134,9 +140,50 @@ class Flame {
 
 /* ------------------------------------------------------------------ */
 
+/** Motor tipinden bağımsız görsel model arayüzü */
+interface EngineModel {
+  group: THREE.Group;
+  lpSpool: THREE.Object3D;
+  hpSpool: THREE.Object3D;
+  blurDisc?: THREE.Mesh;
+  blurMat?: THREE.MeshBasicMaterial;
+  /** Turboprop: pervane grubu ve pal açısı */
+  propeller?: THREE.Object3D;
+  setPitch?: (load: number, feather: number) => void;
+  /** Art yakıcılı motorlar: değişken lüle */
+  nozzle?: { set(area: number, abLevel: number): void };
+  wing?: THREE.Object3D;
+  mount?: THREE.Object3D;
+  intake: { z: number; radius: number; y?: number };
+  exhaust: { z: number; radius: number };
+}
+
+function buildTurbofanModel(materials: Materials): EngineModel {
+  const group = new THREE.Group();
+  const nacelle = buildNacelle(materials);
+  const fan = buildFan(materials);
+  const core = buildCore(materials);
+  const pylon = buildPylon(materials);
+  // Fan rotoru LP milinin ön ucudur
+  core.lpSpool.add(fan.group);
+  group.add(nacelle, core.group, pylon.group);
+  return {
+    group,
+    lpSpool: core.lpSpool,
+    hpSpool: core.hpSpool,
+    blurDisc: fan.blurDisc,
+    blurMat: fan.blurMat,
+    wing: pylon.wing,
+    mount: pylon.group,
+    intake: { z: -2.25, radius: 1.1 },
+    exhaust: { z: 3.35, radius: 0.5 },
+  };
+}
+
 export class EngineVisual {
   readonly root = new THREE.Group();
   readonly pickables: THREE.Object3D[] = [];
+  readonly kind: EngineKind;
   /** Motor dışı titreşim (kamera sarsıntısı için) 0..1 */
   shake = 0;
   /** Görsel devir ölçeği: gerçek devir göz için çok hızlıdır */
@@ -144,34 +191,39 @@ export class EngineVisual {
   motionBlur = true;
 
   private parts = new Map<PartId, PartEntry>();
-  private fan: ReturnType<typeof buildFan>;
-  private core: ReturnType<typeof buildCore>;
-  private pylon: ReturnType<typeof buildPylon>;
+  private model: EngineModel;
   private plume: ReturnType<typeof buildExhaustPlume>;
   private exhaustFlame: Flame;
   private inletFlame: Flame;
   private lpAngle = 0;
   private hpAngle = 0;
+  private propAngle = 0;
+  private nozzleArea = 1.4;
+  private plumeBaseRadius: number;
   private highlighted: PartId | null = null;
   private time = 0;
   private lastSurgeCount = 0;
 
-  constructor(materials: Materials) {
-    this.root.name = 'turbofan';
-
-    const nacelle = buildNacelle(materials);
-    this.fan = buildFan(materials);
-    this.core = buildCore(materials);
-    this.pylon = buildPylon(materials);
-    this.plume = buildExhaustPlume();
-
-    // Fan rotoru LP milinin ön ucudur
-    this.core.lpSpool.add(this.fan.group);
-    this.root.add(nacelle, this.core.group, this.pylon.group, this.plume.mesh);
+  constructor(materials: Materials, kind: EngineKind = 'turbofan') {
+    this.kind = kind;
+    this.root.name = kind;
+    this.model =
+      kind === 'turbofan'
+        ? buildTurbofanModel(materials)
+        : kind === 'turboprop'
+          ? (buildTurboprop(materials) as unknown as EngineModel)
+          : (buildBareJet(materials, kind) as unknown as EngineModel);
+    const ex = this.model.exhaust;
+    this.plume = buildExhaustPlume(ex.radius, ex.z);
+    this.plumeBaseRadius = ex.radius;
+    this.root.add(this.model.group, this.plume.mesh);
 
     const noise = createNoiseTexture(256, 1234);
-    this.exhaustFlame = new Flame(noise, 0.5, 3.6, 3.35, false);
-    this.inletFlame = new Flame(noise, 1.1, 2.4, -2.25, true);
+    const inl = this.model.intake;
+    this.exhaustFlame = new Flame(noise, ex.radius, kind === 'turbofan' ? 3.6 : 2.6, ex.z + 0.05, false);
+    this.inletFlame = new Flame(noise, inl.radius, kind === 'turbofan' ? 2.4 : 1.4, inl.z, true);
+    this.inletFlame.mesh.position.y = inl.y ?? 0;
+    this.inletFlame.light.position.y = inl.y ?? 0;
     this.root.add(
       this.exhaustFlame.mesh,
       this.exhaustFlame.light,
@@ -186,7 +238,9 @@ export class EngineVisual {
         mesh.receiveShadow = true;
       }
     });
-    for (const m of [this.plume.mesh, this.fan.blurDisc, this.exhaustFlame.mesh, this.inletFlame.mesh]) {
+    const noShadow = [this.plume.mesh, this.exhaustFlame.mesh, this.inletFlame.mesh];
+    if (this.model.blurDisc) noShadow.push(this.model.blurDisc);
+    for (const m of noShadow) {
       m.castShadow = false;
       m.receiveShadow = false;
     }
@@ -198,6 +252,32 @@ export class EngineVisual {
     }
 
     this.indexParts();
+  }
+
+  /** Lüle ağzı (efektler için): z konumu ve yarıçap */
+  get exhaustExit(): { z: number; radius: number } {
+    return { z: this.model.exhaust.z, radius: this.model.exhaust.radius };
+  }
+
+  get intake(): { z: number; radius: number; y: number } {
+    const i = this.model.intake;
+    return { z: i.z, radius: i.radius, y: i.y ?? 0 };
+  }
+
+  /** Sahneden çıkarılırken GPU kaynaklarını bırakır (malzeme klonları, geometri). */
+  dispose() {
+    const geos = new Set<THREE.BufferGeometry>();
+    const mats = new Set<THREE.Material>();
+    this.root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      geos.add(mesh.geometry);
+      const m = mesh.material;
+      for (const mm of Array.isArray(m) ? m : [m]) if (mm.userData.baseEmissive) mats.add(mm);
+    });
+    for (const g of geos) g.dispose();
+    for (const m of mats) m.dispose();
+    this.plume.material.dispose();
   }
 
   /** Parça başına malzeme klonları: bir parçayı vurgulamak diğerlerini etkilemesin. */
@@ -271,17 +351,20 @@ export class EngineVisual {
    * LP türbin egzozdan görünebildiği için açık kalır.
    */
   setInteriorVisible(v: boolean) {
-    for (const part of ['booster', 'hpc', 'combustor', 'hpt', 'shafts', 'casing', 'gearbox'] as PartId[]) {
+    // Kaportasız motorlarda dişli kutusu ve tesisat dışarıdadır, hep görünür
+    const interior: PartId[] = ['booster', 'hpc', 'combustor', 'hpt', 'shafts', 'casing'];
+    if (this.kind === 'turbofan') interior.push('gearbox');
+    for (const part of interior) {
       for (const m of this.parts.get(part)?.meshes ?? []) m.visible = v;
     }
   }
 
   setWingVisible(v: boolean) {
-    this.pylon.wing.visible = v;
+    if (this.model.wing) this.model.wing.visible = v;
   }
 
   setPylonVisible(v: boolean) {
-    this.pylon.group.visible = v;
+    if (this.model.mount) this.model.mount.visible = v;
   }
 
   setPlumeVisible(v: boolean) {
@@ -295,16 +378,51 @@ export class EngineVisual {
     const cyc = snap.cycle;
 
     // Mil dönüşleri (gerçek devir × görsel ölçek)
-    this.lpAngle += snap.n1Rpm * RPM_TO_RAD * this.spinScale * dt;
-    this.hpAngle += snap.n2Rpm * RPM_TO_RAD * this.spinScale * 0.35 * dt;
-    this.core.lpSpool.rotation.z = this.lpAngle;
-    this.core.hpSpool.rotation.z = this.hpAngle;
+    // Küçük motorların devri çok yüksektir; görsel ölçek sabit açısal hıza
+    // yakın tutulur (tasarım devrinde benzer görünür dönüş).
+    const m = this.model;
+    const scale = this.kind === 'turbofan' ? 1 : 0.28;
+    this.lpAngle += snap.n1Rpm * RPM_TO_RAD * this.spinScale * scale * dt;
+    this.hpAngle += snap.n2Rpm * RPM_TO_RAD * this.spinScale * 0.35 * scale * dt;
+    m.lpSpool.rotation.z = this.lpAngle;
+    m.hpSpool.rotation.z = this.hpAngle;
+
+    // Pervane: kendi devrinde (redüksiyon dişlisi sonrası) ve pal açısı
+    let blurSpeed = snap.N1;
+    if (m.propeller) {
+      this.propAngle += snap.propRpm * RPM_TO_RAD * 0.22 * dt;
+      m.propeller.rotation.z = this.propAngle;
+      const feather = !snap.lit && snap.N1 < 0.35 ? 1 - snap.N1 / 0.35 : 0;
+      m.setPitch?.(snap.propPitch, feather);
+      blurSpeed = snap.propRpm / 1200;
+    }
 
     // Hareket bulanıklığı diski
-    const blur = THREE.MathUtils.smoothstep(snap.N1, 0.3, 0.78);
-    this.fan.blurDisc.visible = this.motionBlur && blur > 0.01;
-    this.fan.blurMat.opacity = blur * 0.52;
-    this.fan.blurDisc.rotation.z = this.lpAngle * 0.35;
+    if (m.blurDisc && m.blurMat) {
+      const blur = THREE.MathUtils.smoothstep(blurSpeed, 0.3, 0.78);
+      m.blurDisc.visible = this.motionBlur && blur > 0.01;
+      m.blurMat.opacity = blur * (m.propeller ? 0.4 : 0.52);
+      m.blurDisc.rotation.z = (m.propeller ? this.propAngle : this.lpAngle) * 0.35;
+    }
+
+    // Değişken lüle: hidrolik aktüatör hızıyla izler
+    if (m.nozzle) {
+      this.nozzleArea += (snap.nozzleArea - this.nozzleArea) * Math.min(1, dt * 4);
+      m.nozzle.set(this.nozzleArea, snap.abLevel);
+      this.plume.mesh.scale.setScalar(this.model.exhaust.radius / this.plumeBaseRadius);
+      this.plume.mesh.position.z = this.model.exhaust.z - 0.05;
+    }
+
+    // Art yakıcı gömleği, alev tutucular ve seramik lüle iç yüzü kor olur
+    const ab = snap.abLevel;
+    for (const part of ['afterburner', 'nozzle'] as PartId[]) {
+      if (part === this.highlighted) continue;
+      for (const mat of this.parts.get(part)?.materials ?? []) {
+        if (mat.name === 'abLiner') mat.emissiveIntensity = ab * 0.9;
+        else if (mat.name === 'flameHolder') mat.emissiveIntensity = ab * 2.2;
+        else if (mat.name === 'nozzleCeramic') mat.emissiveIntensity = ab * 0.55;
+      }
+    }
 
     // Yanma odası parlaması (T4) ve aşırı ısınan türbin kanatları
     const t4 = cyc.stations['4'].T;
@@ -325,7 +443,11 @@ export class EngineVisual {
 
     // Egzoz akışı
     this.plume.material.uniforms.uTime.value += dt;
-    this.plume.material.uniforms.uThrust.value = THREE.MathUtils.clamp(cyc.coreThrust / 45e3, 0, 1);
+    this.plume.material.uniforms.uThrust.value = THREE.MathUtils.clamp(
+      cyc.coreThrust / (this.kind === 'turbofan' ? 45e3 : 60e3),
+      0,
+      1,
+    );
 
     // Surge: giriş ve egzozdan alev patlaması
     if (snap.surgeCount > this.lastSurgeCount) {
