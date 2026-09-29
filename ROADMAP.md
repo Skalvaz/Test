@@ -90,8 +90,8 @@ altyapıyı paylaşır; bu yüzden sıra önemlidir: önce varlık hattı ve mod
 | **İnternet (yalnız CC0 / kamu malı)** | HDRI ortamlar, taban malzeme taramaları (döküm, fırçalı metal, boya, beton), referans görseller | Poly Haven, ambientCG, NASA/FAA kamu belgeleri. Her dosyanın kaynağı ve lisansı `ASSETS.md`'ye yazılır |
 | **Kod (prosedürel)** | Tasarlanabilen her şey: kanat profilleri, kademeler, kanallar, lüleler; çalışma anında dokular ve shader'lar | Parametre değişince anında yeniden üretilir |
 
-Sınırlar: tek HTML dosyası 15 MB altında kalır (şu an 4,5 MB); büyük varlıklar
-gerekirse isteğe bağlı ayrı paket dosyası. Mobil/zayıf GPU için düşük kalite
+Sınırlar: görsel gerçekçilik boyuttan önce gelir (M1.5'ten sonra tek HTML
+~45 MB). Gerekirse büyük varlıklar isteğe bağlı ayrı paket dosyasına alınır. Mobil/zayıf GPU için düşük kalite
 seviyesi korunur.
 
 #### M1 — Varlık hattı ve kit-bash kütüphanesi ✅
@@ -105,9 +105,20 @@ seviyesi korunur.
 - ✅ Prosedürel kelepçe/somun/aktüatör/kutu/pompa/tanklar kit parçalarıyla
   değiştirildi; flanş cıvataları, sondalar, kaldırma kulakları, yağ filtresi,
   tahliye valfi eklendi. Önce/sonra renderları README'de
-- Ertelenen: KTX2 sıkıştırma (tek dosya paketine ~0,5 MB çözücü ekler;
-  doku toplamı şu an 0,7 MB WebP, gerek görülmedi). CC0 taramalar: ortamın
-  ağ ayarı Poly Haven/ambientCG'ye izin verince eklenecek
+- Ertelenen: KTX2 sıkıştırma (tek dosya paketine ~0,5 MB çözücü ekler).
+  CC0 taramalar M1.5'te eklendi
+
+#### M1.5 — Gerçek taramalar ve fotoğraf tabanlı ortamlar ✅
+- ✅ `scripts/fetch-assets.mjs`: Poly Haven / ambientCG API'lerinden indirme,
+  WebP/ORM dönüştürme, meshopt; kaynak ve yazarlar ASSETS.md'de
+- ✅ 3 HDRI ortam (hangar, apron, makine atölyesi): zemine yansıtılmış arka
+  plan, HDRI'dan güneş yönü/pozlama, yumuşak temas gölgeleri, yer taşıma standı
+- ✅ 9 ambientCG taraması motor gövdelerine, sıcak bölgeye, lüleye, döküm
+  muhafazalara, boyaya ve kit parçalarına (uv1, metre ölçeği)
+- ✅ Test hücresine 10 Poly Haven modeli (vinç, alet arabası, kaynak arabası,
+  raf, varil, yangın tüpü…); yer tutucular çıkarılıp hücre yeniden pişirildi
+- ✅ Hata: GTAO ön-geçişi yarı saydam egzoz akışını katı yüzey sayıp
+  arkasındaki görüntüyü bozuyordu
 
 #### M2 — Model yükseltmesi (mevcut motorlar)
 - Fan ve kompresör kanatları: kök (dovetail) ve platform, uç aşınması,

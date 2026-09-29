@@ -555,11 +555,8 @@ def build_scene(mt):
         s = box('stringer', (px + 2.3, FLOOR + 1.12, pz + dz), (2.9, 0.12, 0.05), mt['yellow'])
         s.rotation_euler = Euler((0, math.atan2(2.15, 2.1), 0))
         Pp.append(s)
-    Pp.append(box('tool_chest', (-11.8, FLOOR + 0.55, 5.5), (0.8, 1.1, 1.6), mt['red']))
-    Pp.append(box('tool_chest_top', (-11.8, FLOOR + 1.12, 5.5), (0.82, 0.04, 1.62), mt['black']))
-    for z in (-15.0, 11.0):
-        for sgn in (-1, 1):
-            Pp.append(cylinder('extinguisher', (sgn * (WALL_X - 0.3), FLOOR + 0.9, z), 0.12, 0.7, 'y', mt['red'], 16))
+    # Alet dolabı, yangın tüpleri, varil, raf, kaynak arabası vb. oyunda gerçek
+    # modellerdir (Poly Haven, CC0; src/core/cellProps.ts) — burada pişirilmez
     for z in np.arange(-8.5, 8.0, 2.0):
         Pp.append(cylinder('bollard', (5.6, FLOOR + 0.5, float(z)), 0.06, 1.0, 'y', mt['yellow'], 12))
         Pp.append(cylinder('bollard_base', (5.6, FLOOR + 0.03, float(z)), 0.18, 0.06, 'y', mt['black'], 16))

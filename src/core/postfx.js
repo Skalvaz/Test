@@ -131,6 +131,22 @@ export function createComposer(renderer, scene, camera) {
     distanceFallOff: 1.0,
     screenSpaceRadius: false,
   });
+  // Ortam kapanması yalnız katı yüzeylerden hesaplanmalı: yarı saydam egzoz
+  // akışı, parçacıklar ve derinlik yazmayan arka planlar (HDRI kubbesi)
+  // normal/derinlik ön-geçişine girerse arkalarındaki görüntüyü bozar
+  const baseOverride = gtao._overrideVisibility.bind(gtao);
+  gtao._overrideVisibility = function () {
+    baseOverride();
+    const cache = this._visibilityCache;
+    this.scene.traverse((o) => {
+      if (!o.visible || !o.isMesh) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      if (mats.some((m) => m.transparent || m.depthWrite === false) || o.userData.noAO) {
+        o.visible = false;
+        cache.push(o);
+      }
+    });
+  };
   composer.addPass(gtao);
 
   // Ton eşleme önce uygulanır. Bloom doğrusal HDR tamponda çalıştırılırsa

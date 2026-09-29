@@ -1,0 +1,31 @@
+[
+  {
+    "id": "hangar_interior",
+    "name": "Hangar Interior",
+    "file": "hangar_interior_2k.hdr",
+    "authors": [
+      "Dimitrios Savva",
+      "Jarod Guest"
+    ],
+    "url": "https://polyhaven.com/a/hangar_interior"
+  },
+  {
+    "id": "hanger_exterior_cloudy",
+    "name": "Hanger Exterior Cloudy",
+    "file": "hanger_exterior_cloudy_2k.hdr",
+    "authors": [
+      "Dimitrios Savva",
+      "Jarod Guest"
+    ],
+    "url": "https://polyhaven.com/a/hanger_exterior_cloudy"
+  },
+  {
+    "id": "machine_shop_02",
+    "name": "Machine Shop 02",
+    "file": "machine_shop_02_2k.hdr",
+    "authors": [
+      "Sergej Majboroda"
+    ],
+    "url": "https://polyhaven.com/a/machine_shop_02"
+  }
+]

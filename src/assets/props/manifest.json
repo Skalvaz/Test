@@ -1,0 +1,194 @@
+[
+  {
+    "id": "metal_tool_chest",
+    "name": "Metal Tool Chest",
+    "file": "metal_tool_chest.glb",
+    "size": [
+      0.685,
+      0.652,
+      0.407
+    ],
+    "min": [
+      -0.3694364447146654,
+      0.0008001220397914621,
+      -0.19743731371537918
+    ],
+    "authors": [
+      "Yann Kervran",
+      "John Hutcheson"
+    ],
+    "url": "https://polyhaven.com/a/metal_tool_chest"
+  },
+  {
+    "id": "tool_cart",
+    "name": "Tool Cart",
+    "file": "tool_cart.glb",
+    "size": [
+      1.273,
+      0.965,
+      0.754
+    ],
+    "min": [
+      -0.6576048135757446,
+      -0.0035863263866712236,
+      -0.3849822208974295
+    ],
+    "authors": [
+      "Savva Zakharov"
+    ],
+    "url": "https://polyhaven.com/a/tool_cart"
+  },
+  {
+    "id": "portable_welding_cart",
+    "name": "Portable Welding Cart",
+    "file": "portable_welding_cart.glb",
+    "size": [
+      0.838,
+      1.563,
+      0.655
+    ],
+    "min": [
+      -0.4227468407863147,
+      -0.0018960833549499512,
+      -0.3872571950521141
+    ],
+    "authors": [
+      "Georgii Gorbunov"
+    ],
+    "url": "https://polyhaven.com/a/portable_welding_cart"
+  },
+  {
+    "id": "hand_truck",
+    "name": "Hand Truck",
+    "file": "hand_truck.glb",
+    "size": [
+      0.593,
+      1.403,
+      0.693
+    ],
+    "min": [
+      -0.29664342517390946,
+      -0.00004776567220687866,
+      -0.09566586398032328
+    ],
+    "authors": [
+      "Mutanzom3D"
+    ],
+    "url": "https://polyhaven.com/a/hand_truck"
+  },
+  {
+    "id": "steel_frame_shelves_01",
+    "name": "Steel Frame Shelves 01",
+    "file": "steel_frame_shelves_01.glb",
+    "size": [
+      10.973,
+      21.405,
+      5.02
+    ],
+    "min": [
+      -5.486428731186807,
+      -0.010678904131054878,
+      -2.5097821989377316
+    ],
+    "authors": [
+      "James Ray Cock"
+    ],
+    "url": "https://polyhaven.com/a/steel_frame_shelves_01"
+  },
+  {
+    "id": "korean_fire_extinguisher_01",
+    "name": "Korean Fire Extinguisher 01",
+    "file": "korean_fire_extinguisher_01.glb",
+    "size": [
+      0.28,
+      0.659,
+      0.367
+    ],
+    "min": [
+      -0.1399602455099941,
+      -3.978568940965488e-8,
+      -0.12322860954464751
+    ],
+    "authors": [
+      "UM JOORIN"
+    ],
+    "url": "https://polyhaven.com/a/korean_fire_extinguisher_01"
+  },
+  {
+    "id": "barrel_03",
+    "name": "Barrel 03",
+    "file": "barrel_03.glb",
+    "size": [
+      0.634,
+      0.93,
+      0.639
+    ],
+    "min": [
+      -0.31699197645596716,
+      -1.1793932941372987e-7,
+      -0.3193202350211608
+    ],
+    "authors": [
+      "Serhii Khromov"
+    ],
+    "url": "https://polyhaven.com/a/barrel_03"
+  },
+  {
+    "id": "industrial_storage_cart",
+    "name": "Industrial Storage Cart",
+    "file": "industrial_storage_cart.glb",
+    "size": [
+      1.603,
+      1.377,
+      1.103
+    ],
+    "min": [
+      -0.8016743063926697,
+      0.0022730326828155345,
+      -0.5514125557002482
+    ],
+    "authors": [
+      "Jule Bielitz"
+    ],
+    "url": "https://polyhaven.com/a/industrial_storage_cart"
+  },
+  {
+    "id": "power_box_01",
+    "name": "Power Box 01",
+    "file": "power_box_01.glb",
+    "size": [
+      0.461,
+      0.503,
+      0.399
+    ],
+    "min": [
+      -0.28632190303373445,
+      -0.251571387052536,
+      -0.04749108163197818
+    ],
+    "authors": [
+      "Rico Cilliers",
+      "Yann Kervran"
+    ],
+    "url": "https://polyhaven.com/a/power_box_01"
+  },
+  {
+    "id": "overhead_crane",
+    "name": "Overhead Crane",
+    "file": "overhead_crane.glb",
+    "size": [
+      12.492,
+      5.133,
+      4
+    ],
+    "min": [
+      -6.245830059051514,
+      -3.9131789313054055,
+      -0.9553407071314672
+    ],
+    "authors": [
+      "Timothy3D"
+    ],
+    "url": "https://polyhaven.com/a/overhead_crane"
+  }
+]

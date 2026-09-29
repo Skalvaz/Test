@@ -410,6 +410,7 @@ export function buildBareJet(materials, kind) {
     blurDisc,
     blurMat,
     bladeCount: lpc.blades[0],
+    stand: { yoke, mounts: v.mounts, engineR: R },
     intake: { z: z - 0.1, radius: t },
     exhaust: {
       get z() {

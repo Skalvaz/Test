@@ -5,9 +5,10 @@
 
 import * as THREE from 'three';
 import { EngineAudio } from '../audio/EngineAudio';
-import { createEnvironment, PRESETS } from '../core/environment.js';
+import { createEnvironment, HDRI_PRESETS, PRESETS } from '../core/environment.js';
 import { createComposer } from '../core/postfx.js';
 import { CELL_BOUNDS, loadTestCell, setCellLights, type TestCell } from '../core/testCell';
+import { loadCellProps } from '../core/cellProps';
 import { EngineVisual, type PartId } from '../engine/visual';
 import { LessonRunner, type LessonResult } from '../game/LessonRunner';
 import { LESSONS } from '../game/lessons';
@@ -16,6 +17,7 @@ import { PARTS } from '../game/parts';
 import { loadProgress, loadSettings, saveLessonResult, saveSettings, type Settings } from '../game/progress';
 import { createMaterials } from '../materials/library.js';
 import { loadKit, setKitQuality } from '../engine/kit.js';
+import { loadScans } from '../materials/scans.js';
 import { loadPanelDetails } from '../materials/textures.js';
 import { ENGINE_CATALOG, EngineSim, type EngineKind, type SimEvent } from '../sim';
 import { Cockpit, type SwitchId } from '../ui/Cockpit';
@@ -95,6 +97,8 @@ export class App {
   private autoStart = false;
   private settings: Settings;
   private envName = TEST_CELL;
+  /** Zemin yüksekliği (ortama bağlı; efektler kullanır) */
+  private floorY = -3.35;
   private last = performance.now();
   private sandboxAcc = 0;
   private hazeA = new THREE.Vector3();
@@ -141,7 +145,12 @@ export class App {
       console.error('Kit parçaları yüklenemedi', err);
       return null;
     });
-    const materials = createMaterials(renderer, details, kitTex);
+    await step(onProgress, 'Malzeme taramaları yükleniyor…');
+    const scans = await loadScans(renderer).catch((err) => {
+      console.error('Malzeme taramaları yüklenemedi', err);
+      return null;
+    });
+    const materials = createMaterials(renderer, details, kitTex, scans);
     this.materials = materials;
 
     await step(onProgress, 'Gökyüzü ve ortam ışığı hesaplanıyor…');
@@ -151,6 +160,13 @@ export class App {
     try {
       this.cell = await loadTestCell(renderer);
       this.scene.add(this.cell.root);
+      await step(onProgress, 'Hücre donanımı yükleniyor…');
+      // Gerçek modeller (Poly Haven): yüklenemezse hücre yine çalışır
+      const props = await loadCellProps().catch((err) => {
+        console.error('Hücre modelleri yüklenemedi', err);
+        return null;
+      });
+      if (props) this.cell.root.add(props);
     } catch (err) {
       console.error('Test hücresi yüklenemedi, açık hava ortamı kullanılacak', err);
       this.cell = null;
@@ -491,6 +507,7 @@ export class App {
     this.scene.remove(this.visual.root);
     this.visual.dispose();
     this.visual = new EngineVisual(this.materials, kind);
+    this.visual.setGround(this.floorY, this.envName === TEST_CELL);
     this.scene.add(this.visual.root);
     this.picker.visual = this.visual;
     if (this.cutaway) this.setCutaway(true);
@@ -548,7 +565,7 @@ export class App {
   }
 
   private environmentNames(): string[] {
-    return [...(this.cell ? [TEST_CELL] : []), ...Object.keys(PRESETS)];
+    return [...(this.cell ? [TEST_CELL] : []), ...Object.keys(HDRI_PRESETS), ...Object.keys(PRESETS)];
   }
 
   /**
@@ -559,12 +576,25 @@ export class App {
   private applyEnvironment(name: string) {
     const env = this.env;
     const inCell = name === TEST_CELL && !!this.cell;
-    this.envName = inCell ? TEST_CELL : PRESETS[name as keyof typeof PRESETS] ? name : 'Altın saat';
+    const hdri = !inCell && name in HDRI_PRESETS;
+    this.envName = inCell ? TEST_CELL : hdri || PRESETS[name as keyof typeof PRESETS] ? name : 'Altın saat';
     if (this.cell) this.cell.root.visible = inCell;
-    env.sky.visible = !inCell;
-    env.ground.visible = !inCell;
+    env.sky.visible = !inCell && !hdri;
+    env.ground.visible = !inCell && !hdri;
     this.rig.bounds = inCell ? CELL_BOUNDS : null;
-    this.rig.controls.maxDistance = inCell ? 18 : 40;
+    this.rig.controls.maxDistance = inCell ? 18 : hdri ? 25 : 40;
+    this.floorY = hdri ? HDRI_PRESETS[name as keyof typeof HDRI_PRESETS].floor : -3.35;
+    this.visual.setGround(this.floorY, inCell);
+    if (hdri) {
+      // Fotoğraf ortamı: dosya yüklenene kadar mevcut görünüm kalır
+      this.scene.environmentIntensity = 1;
+      env.setHdri(this.envName).catch((err: unknown) => {
+        console.error('HDRI yüklenemedi', err);
+        this.applyEnvironment('Altın saat');
+      });
+      return;
+    }
+    env.clearHdri();
     if (!inCell) {
       // Hücre ışığı kısılmışsa açık hava ortam ışığı etkilenmesin
       this.scene.environmentIntensity = 1;

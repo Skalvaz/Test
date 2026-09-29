@@ -20,6 +20,7 @@ import {
   createBraidTexture,
   createLinerMaps,
 } from './textures.js';
+import { scanParams } from './scans.js';
 
 /**
  * Pişirilmiş panel detayını (normal + ORM) malzemeye bağlar. Pürüzlülük ve
@@ -41,31 +42,29 @@ function applyPanelDetail(mat, detail) {
 }
 
 /**
- * Kit parçalarının malzemeleri (Blender'da pişirilmiş dokular, bkz. kit.js).
- * Döşenen malzeme dokuları UV'de 1 birim = 0.15 m ölçeğindedir; trim sheet
- * şeritleri U yönünde döşenir.
- * @param {Record<string, THREE.Texture>} t
+ * Kit parçalarının malzemeleri. Gövde yüzeyleri gerçek taramalardan (uv1,
+ * metre), küçük detaylar (kaynak dikişi, tırtıl, perçin, etiket) Blender'da
+ * pişirilmiş trim sheet'ten (uv, kanal 0) gelir.
+ * @param {Record<string, THREE.Texture>} t kit dokuları (loadKit)
+ * @param {object | null} sc taramalar (loadScans)
  */
-function createKitMaterials(t) {
+function createKitMaterials(t, sc) {
   const std = (o) => new THREE.MeshStandardMaterial({ envMapIntensity: 0.95, ...o });
-  const ns = (k) => new THREE.Vector2(k, k);
-  // Döşenen doku + ORM: R boşluk (aoMap), G pürüzlülük
-  const tiled = (n, o, k, extra) =>
-    std({ normalMap: n, normalScale: ns(k), roughnessMap: o, aoMap: o, aoMapIntensity: 0.8, roughness: 1, ...extra });
+  const scan = (name, o, fallback) => (sc?.[name] ? std(scanParams(sc[name], o)) : std(fallback));
   const trim = (extra) =>
-    std({ normalMap: t.trimNormal, normalScale: ns(1), roughnessMap: t.trimOrm, aoMap: t.trimOrm, aoMapIntensity: 1, roughness: 1, ...extra });
+    std({ normalMap: t.trimNormal, roughnessMap: t.trimOrm, aoMap: t.trimOrm, aoMapIntensity: 1, roughness: 1, ...extra });
   return {
-    kitCast: tiled(t.castN, t.castO, 0.9, { color: 0x7c8180, metalness: 0.7 }),
-    kitIridite: tiled(t.castN, t.castO, 0.9, { color: 0x8d8052, metalness: 0.8 }),
-    kitSteel: tiled(t.machN, t.machO, 0.6, { color: 0x8e949a, metalness: 1.0 }),
-    kitStainless: tiled(t.machN, t.machO, 0.5, { color: 0xb9bdc1, metalness: 1.0, roughness: 0.8 }),
-    kitAnodized: tiled(t.machN, t.machO, 0.4, { color: 0x2c5f9e, metalness: 0.65, roughness: 0.75 }),
-    kitGold: tiled(t.machN, t.machO, 0.4, { color: 0xb8913e, metalness: 1.0, roughness: 0.8 }),
-    kitPaint: tiled(t.paintN, t.paintO, 1.0, { color: 0x3d433c, metalness: 0.25 }),
-    kitTank: tiled(t.castN, t.castO, 0.35, { color: 0x979da1, metalness: 0.9, roughness: 1.0 }),
-    kitRubber: std({ color: 0x151617, metalness: 0, roughness: 0.85 }),
+    kitCast: scan('cast', { color: 0x7c8180, metal: 0.7, rough: 1.8 }, { color: 0x7c8180, metalness: 0.7, roughness: 0.6 }),
+    kitIridite: scan('cast', { color: 0x8d8052, metal: 0.8, rough: 1.6 }, { color: 0x8d8052, metalness: 0.8, roughness: 0.5 }),
+    kitSteel: scan('brushed', { color: 0x8e949a }, { color: 0x8e949a, metalness: 1, roughness: 0.35 }),
+    kitStainless: scan('polished', { color: 0xb9bdc1 }, { color: 0xb9bdc1, metalness: 1, roughness: 0.25 }),
+    kitAnodized: scan('smooth', { color: 0x2c5f9e, rough: 1.2 }, { color: 0x2c5f9e, metalness: 0.65, roughness: 0.3 }),
+    kitGold: scan('smooth', { color: 0xb8913e }, { color: 0xb8913e, metalness: 1, roughness: 0.3 }),
+    kitPaint: scan('paint', { color: 0x3d433c }, { color: 0x3d433c, metalness: 0.25, roughness: 0.5 }),
+    kitTank: scan('cast', { color: 0x979da1, metal: 0.9, rough: 1.7 }, { color: 0x979da1, metalness: 0.9, roughness: 0.4 }),
+    kitRubber: scan('rubber', { color: 0x151617, rough: 1.1 }, { color: 0x151617, metalness: 0, roughness: 0.85 }),
     kitRed: std({ color: 0xb01a10, metalness: 0.1, roughness: 0.4 }),
-    kitYellow: tiled(t.paintN, t.paintO, 1.0, { color: 0xd9a514, metalness: 0.15 }),
+    kitYellow: scan('paint', { color: 0xd9a514 }, { color: 0xd9a514, metalness: 0.15, roughness: 0.5 }),
     kitWeld: trim({ color: 0x8b8680, metalness: 1.0 }),
     kitKnurl: trim({ color: 0x9aa0a6, metalness: 1.0 }),
     kitTrimPaint: trim({ color: 0x3d433c, metalness: 0.25 }),
@@ -74,12 +73,47 @@ function createKitMaterials(t) {
 }
 
 /**
+ * Gerçek taramaları kütüphane malzemelerine uygular (yalnız normal, pürüzlülük,
+ * metallik ve renk ayrıntısı eklenir; mevcut kanal-0 dokuları korunur).
+ */
+function applyScans(lib, sc) {
+  const set = (mat, name, o) => {
+    if (!sc[name]) return;
+    const p = scanParams(sc[name], o);
+    if (o.useMap === false) delete p.color;
+    Object.assign(mat, p);
+    if (p.normalScale) mat.normalScale = p.normalScale;
+    mat.needsUpdate = true;
+  };
+  // Kaportasız motorların titanyum/çelik gövdesi (eski prosedürel doku yerine)
+  set(lib.engineCase, 'case', { color: 0x9aa1a6, normal: 0.8, rough: 1.35 });
+  set(lib.castAlu, 'cast', { color: 0x9a9d9c, metal: 0.7, rough: 1.8 });
+  set(lib.machinery, 'brushed', { color: 0x5a6068 });
+  set(lib.hubMetal, 'brushed', { color: 0x8e959c, normal: 0.5 });
+  set(lib.anodized, 'smooth', { color: 0x2c5f9e });
+  set(lib.boxPaint, 'paint', { color: 0x3d433c });
+  set(lib.standPaint, 'paint', { color: 0xc99a1f });
+  set(lib.hose, 'rubber', { color: 0x14171a, rough: 1.1 });
+  // Sıcak bölge
+  set(lib.inconel, 'hot', { color: 0x554d46 });
+  set(lib.sooted, 'hot', { color: 0x2a2622, rough: 1.15 });
+  set(lib.superalloy, 'hot', { color: 0x5e5751, normal: 0.5 });
+  set(lib.nozzleFlap, 'dark', { color: 0x3b3a3a });
+  set(lib.flameHolder, 'dark', { color: 0x4a4540 });
+  set(lib.abLiner, 'dark', { color: 0x5a524a });
+  // Art yakıcı kanalı: ısı renklenmesi haritası (kanal 0) kalır, taramadan
+  // yalnız yüzey kabartısı ve pürüzlülük
+  set(lib.abDuct, 'hot', { useMap: false, color: 0xffffff });
+}
+
+/**
  * @param {THREE.WebGLRenderer} renderer
  * @param {Record<'nacelle'|'core'|'pylon', { normal: THREE.Texture, orm: THREE.Texture }> | null} [details]
  *   Blender'da pişirilmiş panel detayları (bkz. loadPanelDetails).
  * @param {Record<string, THREE.Texture> | null} [kitTex] kit dokuları (loadKit)
+ * @param {object | null} [scans] gerçek malzeme taramaları (loadScans)
  */
-export function createMaterials(renderer, details = null, kitTex = null) {
+export function createMaterials(renderer, details = null, kitTex = null, scans = null) {
   const maxAnisoAll = renderer.capabilities.getMaxAnisotropy();
   for (const d of Object.values(details ?? {})) {
     for (const tex of Object.values(d)) tex.anisotropy = maxAnisoAll;
@@ -441,8 +475,9 @@ export function createMaterials(renderer, details = null, kitTex = null) {
     propSpinner,
     tarmac: tarmacMat,
     cutawayFace,
-    ...(kitTex ? createKitMaterials(kitTex) : {}),
+    ...(kitTex ? createKitMaterials(kitTex, scans) : {}),
   };
+  if (scans) applyScans(library, scans);
   // İsimler, parça başına klonlanan malzemelerin kaynağını tanımak için
   for (const [name, mat] of Object.entries(library)) mat.name = name;
   return library;

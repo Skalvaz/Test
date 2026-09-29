@@ -34,11 +34,23 @@ hedefler (ör. "N1'i %78–82'de 5 saniye tut"), quiz'ler ve 3B parça seçme
 görevleri. Yanlış prosedür (ör. yakıtı çok erken vermek) adımı başarısız sayar
 ve tekrarlatır. Her ders yıldızla puanlanır ve ilerleme tarayıcıda saklanır.
 
+**Fotoğraf tabanlı ortamlar** — Poly Haven'ın CC0 HDRI'larıyla gerçek bir
+uçak hangarı, bulutlu havada apron ve makine atölyesi. Fotoğraf zemine
+yansıtılır (motor gerçekten o zeminde durur), güneş yönü ve pozlama HDRI'nın
+kendisinden hesaplanır; hücre dışında kaportasız motorlar tekerlekli bir yer
+taşıma standına oturur. Metal yüzeyler (motor gövdesi, sıcak bölge, lüle,
+döküm muhafazalar, boyalı kutular, stand) ambientCG'nin gerçek malzeme
+taramalarını kullanır; taramalar ikinci bir UV kanalında metre ölçeğinde
+uygulanır, mevcut dokular korunur.
+
 **Test hücresi ortamı** — Blender'da modellenip Cycles ile ışığı pişirilmiş
 kapalı motor test hücresi: ses yutucu panelli duvarlar, hava girişi susturucusu,
 arkada egzoz augmenter'ı, itki ölçüm çerçevesi ve yük hücresi, kontrol odası
 camı, bakım platformu, zemin işaretleri. Motorun yansımaları da bu hücreden
-alınır. Ayarlardan açık hava (pist) ortamına geçilebilir.
+alınır. Hücrede Poly Haven'dan gerçek modeller durur: tavan vinci, alet
+arabası ve sandığı, kaynak arabası, raf, el arabası, yağ varilleri, yangın
+tüpleri, elektrik panoları. Ayarlardan fotoğraf tabanlı ortamlara ya da
+prosedürel gökyüzüyle açık havaya geçilebilir.
 
 **Panel detayı** — fan kaportası, çekirdek kaportası ve pilon: perçin ve vida
 sıraları, kamlok bağlantılar, yağ servis ve basınç tahliye kapakları, alt kilit
@@ -207,6 +219,13 @@ node scripts/pack-kit.mjs build/kit_raw.glb src/assets/kit.glb   # nicemleme + m
 python blender/trim_sheet.py --out src/assets           # kaynak/tırtıl/perçin/etiket (~4 dk)
 python blender/materials.py --out src/assets            # dikişsiz döküm/işlenmiş/boya
 python blender/kit_preview.py --out build/kit.png       # parça tablosu (görsel kontrol)
+```
+
+Dış varlıklar (CC0: Poly Haven HDRI ve modeller, ambientCG taramaları)
+tek komutla indirilip dönüştürülür:
+
+```bash
+npm run assets:fetch            # hepsi (ya da: -- hdri | scans | models)
 ```
 
 Varlıkların kaynak ve lisans kaydı: **[ASSETS.md](ASSETS.md)**.

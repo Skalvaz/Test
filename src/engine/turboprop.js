@@ -344,7 +344,8 @@ export function buildTurboprop(materials, blades = 6) {
   group.add(kit.build());
 
   /* ---------------- test standı askısı ---------------- */
-  group.add(tagPart(buildStandYoke(materials, { mounts: [-1.25, 0.35], engineR: 0.42 }), 'stand'));
+  const yoke = buildStandYoke(materials, { mounts: [-1.25, 0.35], engineR: 0.42 });
+  group.add(tagPart(yoke, 'stand'));
 
   /**
    * Pal açısı: vali yükü (0.03 ince … 1.8 kalın) → pal açısı farkı;
@@ -373,6 +374,7 @@ export function buildTurboprop(materials, blades = 6) {
     blurMat,
     bladeCount: blades * 2,
     setPitch,
+    stand: { yoke, mounts: [-1.25, 0.35], engineR: 0.42 },
     intake: { z: -1.62, radius: 0.2, y: -0.62 },
     exhaust: { z: 1.62, radius: 0.27 },
   };

@@ -63,6 +63,7 @@ export class EngineEffects {
     this.group.name = 'engine-effects';
     this.smoke = new ParticleSystem('smoke', noise, 4500);
     this.glow = new ParticleSystem('glow', noise, 1400);
+    this.floorY = FLOOR_Y;
     this.smoke.floorY = this.glow.floorY = FLOOR_Y + 0.03;
     this.flame = new AfterburnerFlame(geo.kind === 'turbojet' ? 'sooty' : 'clean');
     this.floor = floorGlow();
@@ -72,7 +73,7 @@ export class EngineEffects {
 
     // Girdap ekseni: girişin önünde, zeminden girişe
     const inl = geo.intake;
-    this.smoke.vortexA.set(0, FLOOR_Y + 0.02, inl.z - inl.radius * 1.1);
+    this.smoke.vortexA.set(0, this.floorY + 0.02, inl.z - inl.radius * 1.1);
     this.smoke.vortexB.set(0, inl.y ?? 0, inl.z + 0.2);
 
     this.acc = {};
@@ -101,6 +102,18 @@ export class EngineEffects {
 
   puff(sys, n, opts) {
     for (let i = 0; i < n; i++) sys.emit(opts());
+  }
+
+  /**
+   * Zemin yüksekliği (ortama göre değişir: test hücresi −3.35 m, fotoğraf
+   * ortamlarında motor yere daha yakın). Toz, yer girdabı, art yakıcı
+   * yansıması ve parçacık çarpışması buna göre çalışır.
+   */
+  setFloor(y) {
+    this.floorY = y;
+    this.smoke.floorY = this.glow.floorY = y + 0.03;
+    this.floor.mesh.position.y = y + 0.015;
+    this.smoke.vortexA.y = y + 0.02;
   }
 
   update(snap, dt, camera, propAngle = 0) {
@@ -293,7 +306,7 @@ export class EngineEffects {
     /* ---------------- hava efektleri ---------------- */
     // Yerden girişe yoğuşma girdabı: giriş yüksekliği/çap < ~1.6 ve yüksek akışta
     const inl = g.intake;
-    const hOverD = ((inl.y ?? 0) - FLOOR_Y) / (2 * inl.radius);
+    const hOverD = ((inl.y ?? 0) - this.floorY) / (2 * inl.radius);
     const vortexTarget = kind === 'turboprop' ? 0 : smooth(snap.airflow, 0.55, 0.92) * smooth(2.0 - hOverD, 0, 0.6);
     this.vortexStrength += (vortexTarget - this.vortexStrength) * Math.min(1, dt * 1.5);
     if (this.vortexStrength > 0.02) {
@@ -303,7 +316,7 @@ export class EngineEffects {
       this.smoke.vortexA.z = inl.z - inl.radius * (1.0 + 0.3 * Math.sin(t));
       const n = this.count('vortex', 260 * this.vortexStrength, dt);
       this.puff(this.smoke, n, () => ({
-        pos: [0, FLOOR_Y, 0],
+        pos: [0, this.floorY, 0],
         life: 4,
         size: [inl.radius * 0.14, inl.radius * 0.4],
         color: [0.92, 0.94, 0.96, 0.13 * this.vortexStrength],
@@ -335,7 +348,7 @@ export class EngineEffects {
       const n = this.count('dust', 50 * dust, dt);
       const reach = ex.z + 3 + 4 * snap.thrustFrac;
       this.puff(this.smoke, n, () => ({
-        pos: [rand(-1.6, 1.6), FLOOR_Y + 0.05, reach + rand(-1.5, 3)],
+        pos: [rand(-1.6, 1.6), this.floorY + 0.05, reach + rand(-1.5, 3)],
         vel: [rand(-1.5, 1.5), rand(0.4, 1.6), jetSpeed * rand(0.4, 0.8)],
         life: rand(1.5, 2.8),
         size: [0.25, rand(1.2, 2.2)],
@@ -378,7 +391,7 @@ export class EngineEffects {
       if (wash > 0.2) {
         const n = this.count('wash', 45 * wash, dt);
         this.puff(this.smoke, n, () => ({
-          pos: [rand(-2, 2), FLOOR_Y + 0.05, p.z + rand(-0.5, 2.5)],
+          pos: [rand(-2, 2), this.floorY + 0.05, p.z + rand(-0.5, 2.5)],
           vel: [rand(-2, 2), rand(0.3, 1.2), 8 * wash * rand(0.6, 1)],
           life: rand(1.2, 2.2),
           size: [0.2, rand(1, 1.8)],

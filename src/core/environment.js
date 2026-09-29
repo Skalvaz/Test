@@ -11,6 +11,32 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import { GroundedSkybox } from 'three/addons/objects/GroundedSkybox.js';
+import hangarUrl from '../assets/hdri/hangar_interior_2k.hdr?url';
+import apronUrl from '../assets/hdri/hanger_exterior_cloudy_2k.hdr?url';
+import workshopUrl from '../assets/hdri/machine_shop_02_2k.hdr?url';
+
+/** Motor ve efektlerin varsaydığı zemin yüksekliği (test hücresiyle aynı) */
+const GROUND_Y = -3.35;
+
+/**
+ * Fotoğraf tabanlı ortamlar (Poly Haven HDRI, CC0). Görüntü zemine
+ * yansıtılır (GroundedSkybox): motor fotoğraftaki zeminin üstünde durur.
+ * Güneş yönü, rengi ve pozlama HDRI'nın kendisinden hesaplanır.
+ *  floor:    zemin yüksekliği (m). Fotoğraf yaklaşık motor ekseni
+ *            yüksekliğinden çekilmiş sayılır (GroundedSkybox height =
+ *            −floor): kamera motor çevresinde dolaşırken zemin projeksiyonu
+ *            bozulmaz. Test hücresindeki −3.35 m burada fazla yüksek kalır.
+ *  rotation: HDRI'nın dikey eksen etrafında dönüşü (motoru ilginç bir
+ *            arka plana bakacak şekilde yerleştirmek için)
+ *  key:      hedef ortalama parlaklık (pozlama = key / HDRI ortalaması)
+ */
+export const HDRI_PRESETS = {
+  Hangar: { url: hangarUrl, floor: -2.4, radius: 60, rotation: 200, key: 0.5, sunScale: 1.0 },
+  'Apron (bulutlu)': { url: apronUrl, floor: -2.4, radius: 120, rotation: 100, key: 0.5, sunScale: 0.6 },
+  'Motor atölyesi': { url: workshopUrl, floor: -2.4, radius: 50, rotation: 140, key: 0.36, sunScale: 0.8 },
+};
 
 export const PRESETS = {
   'Altın saat': {
@@ -137,10 +163,153 @@ export function createEnvironment(renderer, scene, materials) {
 
   scene.fog = new THREE.FogExp2(0x9fb2c4, 0.006);
 
+  // HDRI ortamlarında motorun gölgesini alan görünmez zemin
+  const shadowCatcher = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: 0.45 }));
+  shadowCatcher.rotation.x = -Math.PI / 2;
+  shadowCatcher.position.y = GROUND_Y + 0.01;
+  shadowCatcher.receiveShadow = true;
+  shadowCatcher.visible = false;
+  scene.add(shadowCatcher);
+
+  /* ---------------- HDRI ortamları ---------------- */
+  const hdrCache = new Map();
+  let skybox = null;
+  let hdriRT = null;
+  let hdriToken = 0;
+
+  /**
+   * En parlak bölgeden güneş yönü/rengi ve ortalama parlaklıktan pozlama.
+   * Veri 8×8 bloklara indirgenir (tek piksel parlamalarını yok sayar).
+   */
+  function analyse(tex) {
+    const { data, width: W, height: H } = tex.image;
+    const B = 8;
+    let best = -1;
+    let bi = 0;
+    let bj = 0;
+    let sum = 0;
+    let wsum = 0;
+    const bc = [0, 0, 0];
+    for (let j = 0; j < H; j += B) {
+      // Enlem ağırlığı (kutuplar küçük alan)
+      const lat = ((j + B / 2) / H - 0.5) * Math.PI;
+      const w = Math.cos(lat);
+      for (let i = 0; i < W; i += B) {
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        for (let y = j; y < Math.min(H, j + B); y++) {
+          for (let x = i; x < Math.min(W, i + B); x++) {
+            const k = (y * W + x) * 4;
+            r += data[k];
+            g += data[k + 1];
+            b += data[k + 2];
+          }
+        }
+        const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / (B * B);
+        sum += lum * w;
+        wsum += w;
+        // Güneş adayı: ufkun üstünde
+        if (j < H / 2 && lum > best) {
+          best = lum;
+          bi = i;
+          bj = j;
+          bc[0] = r;
+          bc[1] = g;
+          bc[2] = b;
+        }
+      }
+    }
+    const u = (bi + B / 2) / W;
+    const v = 1 - (bj + B / 2) / H;
+    const phi = (u - 0.5) * 2 * Math.PI;
+    const theta = (v - 0.5) * Math.PI;
+    const dir = new THREE.Vector3(Math.cos(theta) * Math.cos(phi), Math.sin(theta), Math.cos(theta) * Math.sin(phi));
+    const m = Math.max(bc[0], bc[1], bc[2]) || 1;
+    return { dir, color: new THREE.Color(bc[0] / m, bc[1] / m, bc[2] / m), peak: best, mean: sum / wsum };
+  }
+
+  async function loadHdri(name) {
+    if (hdrCache.has(name)) return hdrCache.get(name);
+    const p = HDRI_PRESETS[name];
+    const tex = await new HDRLoader().setDataType(THREE.FloatType).loadAsync(p.url);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    const info = analyse(tex);
+    const entry = { tex, info };
+    hdrCache.set(name, entry);
+    return entry;
+  }
+
+  function clearHdri() {
+    hdriToken++;
+    if (skybox) {
+      scene.remove(skybox);
+      skybox.geometry.dispose();
+      skybox.material.dispose();
+      skybox = null;
+    }
+    shadowCatcher.visible = false;
+  }
+
+  /** Fotoğraf tabanlı ortam: HDRI ışığı, yansımalar, zemine yansıtılmış arka plan */
+  async function setHdri(name) {
+    const p = HDRI_PRESETS[name];
+    if (!p) return false;
+    const token = ++hdriToken;
+    const { tex, info } = await loadHdri(name);
+    if (token !== hdriToken) return false; // bu arada başka ortam seçildi
+    if (skybox) {
+      scene.remove(skybox);
+      skybox.geometry.dispose();
+      skybox.material.dispose();
+    }
+    const rot = THREE.MathUtils.degToRad(p.rotation);
+    skybox = new GroundedSkybox(tex, -p.floor, p.radius);
+    skybox.position.y = 0;
+    skybox.rotation.y = rot;
+    scene.add(skybox);
+    if (hdriRT) hdriRT.dispose();
+    hdriRT = pmrem.fromEquirectangular(tex);
+    scene.environment = hdriRT.texture;
+    scene.environmentRotation.set(0, rot, 0);
+    scene.background = null;
+    sky.visible = false;
+    ground.visible = false;
+    shadowCatcher.visible = true;
+    shadowCatcher.position.y = p.floor + 0.01;
+    scene.fog.density = 0;
+    // Pozlama: ortalama parlaklığı orta griye getir
+    renderer.toneMappingExposure = THREE.MathUtils.clamp(p.key / Math.max(info.mean, 1e-4), 0.05, 8);
+    // Güneş: HDRI'nın en parlak bölgesinden (ortam dönüşüyle birlikte)
+    const d = info.dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
+    // Çok alçak güneş upuzun gölgeler çizer; iç mekânda ışık zaten yukarıdan
+    d.y = Math.max(d.y, 0.45);
+    d.normalize();
+    sun.visible = true;
+    sun.position.copy(d).multiplyScalar(25);
+    sun.target.position.set(0, 0, 0);
+    sun.color.copy(info.color);
+    // Güneşin gücü tepe/ortalama oranıyla ölçeklenir (bulutlu havada zayıf gölge)
+    sun.intensity = THREE.MathUtils.clamp(Math.log10(info.peak / info.mean + 1) * p.sunScale, 0.3, 2.6);
+    // Dağınık ışıkta (bulutlu hava) gölge hem soluk hem yumuşak
+    // İç mekânda ışık büyük kapı/pencerelerden gelir: gölge hep yumuşak
+    shadowCatcher.material.opacity = THREE.MathUtils.clamp(0.1 + sun.intensity * 0.14, 0.15, 0.38);
+    sun.shadow.radius = 10;
+    ambient.intensity = 0.05;
+    keyPanel.intensity = 0;
+    rimPanel.intensity = 0;
+    rampLightA.intensity = 0;
+    rampLightB.intensity = 0;
+    return true;
+  }
+
   /* ---------------- sunum ---------------- */
   const params = { ...PRESETS['Altın saat'], name: 'Altın saat' };
 
   function refresh() {
+    clearHdri();
+    sun.shadow.radius = 3;
+    scene.environmentRotation.set(0, 0, 0);
     const u = sky.material.uniforms;
     u.turbidity.value = params.turbidity;
     u.rayleigh.value = params.rayleigh;
@@ -190,5 +359,5 @@ export function createEnvironment(renderer, scene, materials) {
 
   refresh();
 
-  return { sky, sun, ambient, ground, params, refresh, setPreset, keyPanel, rimPanel };
+  return { sky, sun, ambient, ground, params, refresh, setPreset, setHdri, clearHdri, keyPanel, rimPanel, shadowCatcher };
 }

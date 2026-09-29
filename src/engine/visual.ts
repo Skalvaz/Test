@@ -18,6 +18,8 @@ import { buildPylon } from './pylon.js';
 import { buildExhaustPlume } from './exhaust.js';
 import { createNoiseTexture } from '../materials/textures.js';
 import { EngineEffects } from '../effects/EngineEffects.js';
+import { buildGroundCradle } from './stand.js';
+import { tagPart, ensureUV1 } from './geom.js';
 import type { createMaterials } from '../materials/library.js';
 
 export type Materials = ReturnType<typeof createMaterials>;
@@ -151,6 +153,8 @@ interface EngineModel {
   blurMat?: THREE.MeshBasicMaterial;
   /** Önden görünen rotor kademesinin kanat sayısı (stroboskop sınırı için) */
   bladeCount?: number;
+  /** Kaportasız motorlar: hücre askısı ve yer standı için bağlantı noktaları */
+  stand?: { yoke: THREE.Object3D; mounts: number[]; engineR: number };
   /** Turboprop: pervane grubu ve pal açısı */
   propeller?: THREE.Object3D;
   setPitch?: (load: number, feather: number) => void;
@@ -212,7 +216,10 @@ export class EngineVisual {
   private time = 0;
   private lastSurgeCount = 0;
 
+  private materials: Materials;
+
   constructor(materials: Materials, kind: EngineKind = 'turbofan') {
+    this.materials = materials;
     this.kind = kind;
     this.root.name = kind;
     this.model =
@@ -267,10 +274,48 @@ export class EngineVisual {
       });
     }
 
+    // Gerçek malzeme taramaları için metre ölçekli ikinci UV
+    this.root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (mesh.isMesh) ensureUV1(mesh.geometry);
+    });
     this.indexParts();
     for (const m of [this.plume.mesh, this.exhaustFlame.mesh, this.inletFlame.mesh]) m.userData.noClip = true;
     this.effects.group.traverse((o) => (o.userData.noClip = true));
     this.root.add(this.effects.group);
+  }
+
+  private cradle: THREE.Object3D | null = null;
+
+  /**
+   * Zemin ve taşıyıcı: test hücresinde motor itki çerçevesine asılıdır;
+   * başka ortamlarda yerdeki tekerlekli taşıma standına oturur.
+   */
+  setGround(floorY: number, inCell: boolean) {
+    this.effects.setFloor(floorY);
+    const st = this.model.stand;
+    if (!st) return;
+    st.yoke.visible = inCell;
+    if (this.cradle) {
+      this.model.group.remove(this.cradle);
+      this.cradle.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        m.geometry.dispose();
+        const mat = m.material as THREE.Material;
+        if (mat.userData.owned) mat.dispose();
+      });
+      this.cradle = null;
+    }
+    if (!inCell) {
+      const cradle = tagPart(buildGroundCradle(this.materials, { mounts: st.mounts, engineR: st.engineR, floorY }), 'stand');
+      cradle.traverse((o: THREE.Object3D) => {
+        const mesh = o as THREE.Mesh;
+        if (mesh.isMesh) ensureUV1(mesh.geometry);
+      });
+      this.model.group.add(cradle);
+      this.cradle = cradle;
+    }
   }
 
   /** Lüle ağzı (efektler için): z konumu ve yarıçap */

@@ -22,12 +22,6 @@ import kitUrl from '../assets/kit.glb?url';
 import trimAlbedoUrl from '../assets/trim_albedo.webp?url';
 import trimNormalUrl from '../assets/trim_normal.webp?url';
 import trimOrmUrl from '../assets/trim_orm.webp?url';
-import castNUrl from '../assets/mat_cast_normal.webp?url';
-import castOUrl from '../assets/mat_cast_orm.webp?url';
-import machNUrl from '../assets/mat_machined_normal.webp?url';
-import machOUrl from '../assets/mat_machined_orm.webp?url';
-import paintNUrl from '../assets/mat_paint_normal.webp?url';
-import paintOUrl from '../assets/mat_paint_orm.webp?url';
 
 /** @type {Map<string, { geometry: THREE.BufferGeometry, slot: string }[][]> | null} */
 let PARTS = null;
@@ -71,14 +65,8 @@ export async function loadKit(renderer) {
     tex(trimAlbedoUrl, { srgb: true, clampV: true }),
     tex(trimNormalUrl, { clampV: true }),
     tex(trimOrmUrl, { clampV: true }),
-    tex(castNUrl),
-    tex(castOUrl),
-    tex(machNUrl),
-    tex(machOUrl),
-    tex(paintNUrl),
-    tex(paintOUrl),
   ]);
-  const [trimAlbedo, trimNormal, trimOrm, castN, castO, machN, machO, paintN, paintO] = maps;
+  const [trimAlbedo, trimNormal, trimOrm] = maps;
 
   PARTS = new Map();
   gltf.scene.traverse((o) => {
@@ -97,7 +85,7 @@ export async function loadKit(renderer) {
     if (!PARTS.has(name)) PARTS.set(name, []);
     PARTS.get(name)[Number(l)] = prims;
   });
-  return { trimAlbedo, trimNormal, trimOrm, castN, castO, machN, machO, paintN, paintO };
+  return { trimAlbedo, trimNormal, trimOrm };
 }
 
 /**
@@ -116,6 +104,13 @@ function toFloat(geo) {
     out.setAttribute(name, new THREE.BufferAttribute(arr, size));
   }
   if (geo.index) out.setIndex(Array.from(geo.index.array));
+  // Gerçek taramalar için metre ölçekli ikinci UV (kit UV'si 1 birim = 0.15 m)
+  const uv = out.attributes.uv;
+  if (uv) {
+    const a = new Float32Array(uv.array.length);
+    for (let i = 0; i < a.length; i++) a[i] = uv.array[i] * 0.15;
+    out.setAttribute('uv1', new THREE.BufferAttribute(a, 2));
+  }
   // Bütün motor modelleri aynı geometriyi paylaşır: model atılırken silinmez
   out.userData.shared = true;
   return out;

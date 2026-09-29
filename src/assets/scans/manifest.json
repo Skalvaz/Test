@@ -1,0 +1,110 @@
+[
+  {
+    "name": "case",
+    "id": "Metal059B",
+    "kind": "tint",
+    "size": 1,
+    "res": 2048,
+    "mean": 0.5,
+    "hasMetal": true,
+    "hasAO": false,
+    "use": "kaportasız motor gövdesi (titanyum/çelik)",
+    "url": "https://ambientcg.com/view?id=Metal059B"
+  },
+  {
+    "name": "hot",
+    "id": "Metal063",
+    "kind": "tint",
+    "size": 1,
+    "res": 2048,
+    "mean": 0.5,
+    "hasMetal": true,
+    "hasAO": false,
+    "use": "sıcak bölge, egzoz, art yakıcı kanalı",
+    "url": "https://ambientcg.com/view?id=Metal063"
+  },
+  {
+    "name": "dark",
+    "id": "Metal046B",
+    "kind": "tint",
+    "size": 0.8,
+    "res": 1024,
+    "mean": 0.5,
+    "hasMetal": true,
+    "hasAO": false,
+    "use": "lüle yaprakları, isli parçalar",
+    "url": "https://ambientcg.com/view?id=Metal046B"
+  },
+  {
+    "name": "brushed",
+    "id": "Metal009",
+    "kind": "tint",
+    "size": 0.5,
+    "res": 1024,
+    "mean": 0.5,
+    "hasMetal": true,
+    "hasAO": false,
+    "use": "işlenmiş çelik (kit parçaları, flanşlar)",
+    "url": "https://ambientcg.com/view?id=Metal009"
+  },
+  {
+    "name": "polished",
+    "id": "Metal012",
+    "kind": "tint",
+    "size": 0.5,
+    "res": 1024,
+    "mean": 0.5,
+    "hasMetal": true,
+    "hasAO": false,
+    "use": "paslanmaz boru, tank",
+    "url": "https://ambientcg.com/view?id=Metal012"
+  },
+  {
+    "name": "smooth",
+    "id": "Metal032",
+    "kind": "tint",
+    "size": 0.6,
+    "res": 1024,
+    "mean": 0.5,
+    "hasMetal": true,
+    "hasAO": false,
+    "use": "eloksal, kaplamalı parçalar",
+    "url": "https://ambientcg.com/view?id=Metal032"
+  },
+  {
+    "name": "cast",
+    "id": "Metal041A",
+    "kind": "tint",
+    "size": 0.8,
+    "res": 1024,
+    "mean": 0.5,
+    "hasMetal": true,
+    "hasAO": false,
+    "use": "döküm muhafazalar, dişli kutusu",
+    "url": "https://ambientcg.com/view?id=Metal041A"
+  },
+  {
+    "name": "paint",
+    "id": "PaintedMetal004",
+    "kind": "tint",
+    "size": 1,
+    "res": 2048,
+    "mean": 0.5,
+    "hasMetal": true,
+    "hasAO": false,
+    "use": "boyalı kutular, stand, platformlar",
+    "url": "https://ambientcg.com/view?id=PaintedMetal004"
+  },
+  {
+    "name": "rubber",
+    "id": "Rubber004",
+    "kind": "tint",
+    "size": 0.5,
+    "res": 1024,
+    "mean": 0.5,
+    "hasMetal": false,
+    "hasAO": false,
+    "use": "hortum, izolatör",
+    "url": "https://ambientcg.com/view?id=Rubber004"
+  }
+]

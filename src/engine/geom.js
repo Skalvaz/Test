@@ -215,3 +215,55 @@ export function boxUV(geometry, scale = 0.15) {
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   return g;
 }
+
+/**
+ * Metre ölçekli ikinci UV kanalı (uv1) — gerçek malzeme taramaları için
+ * (bkz. materials/scans.js). Geometri tipine göre:
+ *  - Lathe (eksen z; latheFromProfile): u = çevre boyunca yay, v = z
+ *  - Silindir (eksen y): u = çevre, v = y
+ *  - Torus: u = büyük çember, v = boru çevresi
+ *  - Boru (TubeGeometry): u = yol uzunluğu, v = boru çevresi
+ *  - diğerleri: köşe normaline göre üç düzlemli izdüşüm
+ * Aynı geometri birden çok ağda kullanılabileceği için bir kez hesaplanır.
+ */
+export function ensureUV1(geometry) {
+  if (!geometry || geometry.attributes.uv1 || !geometry.attributes.position) return;
+  const pos = geometry.attributes.position;
+  const uv = geometry.attributes.uv;
+  const nrm = geometry.attributes.normal;
+  const n = pos.count;
+  const out = new Float32Array(n * 2);
+  const type = geometry.type;
+  const p = geometry.parameters ?? {};
+  const TAU = Math.PI * 2;
+  for (let i = 0; i < n; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    let u;
+    let v;
+    if (uv && type === 'LatheGeometry') {
+      u = uv.getX(i) * TAU * Math.hypot(x, y);
+      v = z;
+    } else if (uv && type === 'CylinderGeometry') {
+      u = uv.getX(i) * TAU * Math.hypot(x, z);
+      v = y;
+    } else if (uv && type === 'TorusGeometry') {
+      u = uv.getX(i) * (p.arc ?? TAU) * (p.radius ?? 1);
+      v = uv.getY(i) * TAU * (p.tube ?? 0.1);
+    } else if (uv && type === 'TubeGeometry') {
+      u = uv.getX(i) * (p.path?.getLength?.() ?? 1);
+      v = uv.getY(i) * TAU * (p.radius ?? 0.01);
+    } else {
+      const ax = nrm ? Math.abs(nrm.getX(i)) : 0;
+      const ay = nrm ? Math.abs(nrm.getY(i)) : 1;
+      const az = nrm ? Math.abs(nrm.getZ(i)) : 0;
+      if (ax >= ay && ax >= az) [u, v] = [z, y];
+      else if (ay >= az) [u, v] = [x, z];
+      else [u, v] = [x, y];
+    }
+    out[i * 2] = u;
+    out[i * 2 + 1] = v;
+  }
+  geometry.setAttribute('uv1', new THREE.BufferAttribute(out, 2));
+}
