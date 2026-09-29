@@ -18,7 +18,8 @@ await MeshoptEncoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder });
 const doc = await io.read(src);
 await doc.transform(
-  dedup(),
+  // Malzeme adları oyunda eşleme için kullanılır: aynı görünen malzemeler birleştirilmesin
+  dedup({ keepUniqueNames: true }),
   weld(),
   prune({ keepAttributes: true }),
   // Kit parçaları küçük (≤ 0.4 m): 14 bit konum ~0.03 mm hassasiyet verir

@@ -8,3 +8,4 @@ scratch/
 playtest-output/
 __pycache__/
 build/
+dist-af/

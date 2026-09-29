@@ -9,6 +9,8 @@ import { createEnvironment, HDRI_PRESETS, PRESETS } from '../core/environment.js
 import { createComposer } from '../core/postfx.js';
 import { CELL_BOUNDS, loadTestCell, setCellLights, type TestCell } from '../core/testCell';
 import { loadCellProps } from '../core/cellProps';
+import { loadAirfield, type Airfield } from '../core/airfield';
+import { createNoiseTexture } from '../materials/textures.js';
 import { EngineVisual, type PartId } from '../engine/visual';
 import { LessonRunner, type LessonResult } from '../game/LessonRunner';
 import { LESSONS } from '../game/lessons';
@@ -43,6 +45,8 @@ const QUALITY = {
 
 /** Blender'da pişirilmiş kapalı test hücresi ortamının adı */
 const TEST_CELL = 'Test hücresi';
+const AIRFIELD_DEFAULT = 'Havaalanı — öğle';
+const AIRFIELD_NIGHT = 'Havaalanı — gece';
 
 const step = (onText: (t: string) => void, text: string) =>
   new Promise<void>((resolve) => {
@@ -97,6 +101,7 @@ export class App {
   private autoStart = false;
   private settings: Settings;
   private envName = TEST_CELL;
+  private airfield: Airfield | null = null;
   /** Zemin yüksekliği (ortama bağlı; efektler kullanır) */
   private floorY = -3.35;
   private last = performance.now();
@@ -170,6 +175,19 @@ export class App {
     } catch (err) {
       console.error('Test hücresi yüklenemedi, açık hava ortamı kullanılacak', err);
       this.cell = null;
+    }
+
+    await step(onProgress, 'Havaalanı yükleniyor…');
+    try {
+      this.airfield = await loadAirfield(scans, createNoiseTexture(256, 4242));
+      this.scene.add(this.airfield.root);
+      // Shader'ları önceden derle: yoksa ilk karelerde apron çizilmez ve
+      // altındaki çimen görünür (paralel derleme bitene kadar)
+      await renderer.compileAsync(this.airfield.root, this.rig.camera, this.scene).catch(() => undefined);
+      this.airfield.root.visible = false;
+    } catch (err) {
+      console.error('Havaalanı yüklenemedi, prosedürel zemin kullanılacak', err);
+      this.airfield = null;
     }
 
     await step(onProgress, 'Motor geometrisi oluşturuluyor…');
@@ -565,40 +583,55 @@ export class App {
   }
 
   private environmentNames(): string[] {
-    return [...(this.cell ? [TEST_CELL] : []), ...Object.keys(HDRI_PRESETS), ...Object.keys(PRESETS)];
+    const outdoor = this.airfield ? [...Object.keys(HDRI_PRESETS), AIRFIELD_NIGHT] : Object.keys(PRESETS);
+    return [...(this.cell ? [TEST_CELL] : []), ...outdoor];
   }
 
   /**
    * Ortamı değiştirir. Test hücresinde gökyüzü, zemin ve sis kapanır; motoru
    * aydınlatan çalışma zamanı ışıkları hücrenin pişirilmiş ışığına uyacak
    * şekilde tavan armatürlerinin altına taşınır; yansımalar hücreden gelir.
+   * Havaalanında gökyüzü HDRI'dan (gece: fiziksel gökyüzü modeli), zemin ve
+   * binalar 3B'dir; yansıma haritası gökyüzü + havaalanından yakalanır.
    */
   private applyEnvironment(name: string) {
     const env = this.env;
     const inCell = name === TEST_CELL && !!this.cell;
-    const hdri = !inCell && name in HDRI_PRESETS;
-    this.envName = inCell ? TEST_CELL : hdri || PRESETS[name as keyof typeof PRESETS] ? name : 'Altın saat';
+    const hasAirfield = !!this.airfield;
+    const sky = !inCell && hasAirfield && name in HDRI_PRESETS;
+    const night = !inCell && hasAirfield && name === AIRFIELD_NIGHT;
+    const legacy = !inCell && !hasAirfield && name in PRESETS;
+    this.envName = inCell || sky || night || legacy ? name : hasAirfield ? AIRFIELD_DEFAULT : 'Altın saat';
+    const outdoorAirfield = !inCell && hasAirfield;
     if (this.cell) this.cell.root.visible = inCell;
-    env.sky.visible = !inCell && !hdri;
-    env.ground.visible = !inCell && !hdri;
+    if (this.airfield) {
+      this.airfield.root.visible = outdoorAirfield;
+      this.airfield.setNight(this.envName === AIRFIELD_NIGHT);
+    }
+    env.sky.visible = !inCell && !(outdoorAirfield && this.envName !== AIRFIELD_NIGHT);
+    env.ground.visible = !inCell && !outdoorAirfield;
     this.rig.bounds = inCell ? CELL_BOUNDS : null;
-    this.rig.controls.maxDistance = inCell ? 18 : hdri ? 25 : 40;
-    this.floorY = hdri ? HDRI_PRESETS[name as keyof typeof HDRI_PRESETS].floor : -3.35;
+    this.rig.controls.maxDistance = inCell ? 18 : 40;
+    this.floorY = outdoorAirfield ? this.airfield!.floorY : -3.35;
     this.visual.setGround(this.floorY, inCell);
-    if (hdri) {
-      // Fotoğraf ortamı: dosya yüklenene kadar mevcut görünüm kalır
+    const capture = () => env.captureEnvironment([this.visual.root]);
+    if (outdoorAirfield && this.envName !== AIRFIELD_NIGHT) {
       this.scene.environmentIntensity = 1;
-      env.setHdri(this.envName).catch((err: unknown) => {
-        console.error('HDRI yüklenemedi', err);
-        this.applyEnvironment('Altın saat');
-      });
+      env
+        .setHdri(this.envName)
+        .then((ok: boolean) => ok && capture())
+        .catch((err: unknown) => {
+          console.error('Gökyüzü yüklenemedi', err);
+          this.applyEnvironment(AIRFIELD_NIGHT);
+        });
       return;
     }
     env.clearHdri();
     if (!inCell) {
       // Hücre ışığı kısılmışsa açık hava ortam ışığı etkilenmesin
       this.scene.environmentIntensity = 1;
-      env.setPreset(this.envName);
+      env.setPreset(this.envName === AIRFIELD_NIGHT ? 'Gece apronu' : this.envName);
+      if (outdoorAirfield) capture();
       return;
     }
     const cell = this.cell!;

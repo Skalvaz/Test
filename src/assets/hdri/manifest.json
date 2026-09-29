@@ -1,52 +1,53 @@
 [
   {
-    "id": "hangar_interior",
-    "name": "Hangar Interior",
+    "id": "kloofendal_48d_partly_cloudy_puresky",
+    "name": "Kloofendal 48d Partly Cloudy (Pure Sky)",
     "files": [
-      "hangar_interior_rgb.webp",
-      "hangar_interior_l.webp"
+      "kloofendal_48d_partly_cloudy_puresky_rgb.webp",
+      "kloofendal_48d_partly_cloudy_puresky_l.webp"
     ],
     "lRange": [
       -10,
       14
     ],
     "authors": [
-      "Dimitrios Savva",
+      "Greg Zaal",
       "Jarod Guest"
     ],
-    "url": "https://polyhaven.com/a/hangar_interior"
+    "url": "https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky"
   },
   {
-    "id": "hanger_exterior_cloudy",
-    "name": "Hanger Exterior Cloudy",
+    "id": "overcast_soil_puresky",
+    "name": "Overcast Soil (Pure Sky)",
     "files": [
-      "hanger_exterior_cloudy_rgb.webp",
-      "hanger_exterior_cloudy_l.webp"
+      "overcast_soil_puresky_rgb.webp",
+      "overcast_soil_puresky_l.webp"
     ],
     "lRange": [
       -10,
       14
     ],
     "authors": [
-      "Dimitrios Savva",
-      "Jarod Guest"
-    ],
-    "url": "https://polyhaven.com/a/hanger_exterior_cloudy"
-  },
-  {
-    "id": "machine_shop_02",
-    "name": "Machine Shop 02",
-    "files": [
-      "machine_shop_02_rgb.webp",
-      "machine_shop_02_l.webp"
-    ],
-    "lRange": [
-      -10,
-      14
-    ],
-    "authors": [
+      "Jarod Guest",
       "Sergej Majboroda"
     ],
-    "url": "https://polyhaven.com/a/machine_shop_02"
+    "url": "https://polyhaven.com/a/overcast_soil_puresky"
+  },
+  {
+    "id": "industrial_sunset_puresky",
+    "name": "Industrial Sunset (Pure Sky)",
+    "files": [
+      "industrial_sunset_puresky_rgb.webp",
+      "industrial_sunset_puresky_l.webp"
+    ],
+    "lRange": [
+      -10,
+      14
+    ],
+    "authors": [
+      "Jarod Guest",
+      "Sergej Majboroda"
+    ],
+    "url": "https://polyhaven.com/a/industrial_sunset_puresky"
   }
 ]

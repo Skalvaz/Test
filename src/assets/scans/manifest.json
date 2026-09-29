@@ -106,5 +106,89 @@
     "hasAO": false,
     "use": "hortum, izolatör",
     "url": "https://ambientcg.com/view?id=Rubber004"
+  },
+  {
+    "name": "apron",
+    "id": "Concrete047A",
+    "kind": "tint",
+    "size": 4,
+    "res": 1024,
+    "mean": 0.5,
+    "hasMetal": false,
+    "hasAO": true,
+    "use": "apron beton plakaları (gri tonlamalı, oyunda renklenir)",
+    "url": "https://ambientcg.com/view?id=Concrete047A"
+  },
+  {
+    "name": "asphalt",
+    "id": "Asphalt031",
+    "kind": "color",
+    "size": 3,
+    "res": 1024,
+    "mean": null,
+    "hasMetal": false,
+    "hasAO": true,
+    "use": "pist asfaltı",
+    "url": "https://ambientcg.com/view?id=Asphalt031"
+  },
+  {
+    "name": "taxiway",
+    "id": "Road012A",
+    "kind": "color",
+    "size": 4,
+    "res": 1024,
+    "mean": null,
+    "hasMetal": false,
+    "hasAO": true,
+    "use": "taksi yolu, yıpranmış asfalt",
+    "url": "https://ambientcg.com/view?id=Road012A"
+  },
+  {
+    "name": "grass",
+    "id": "Grass004",
+    "kind": "color",
+    "size": 2.5,
+    "res": 1024,
+    "mean": null,
+    "hasMetal": false,
+    "hasAO": true,
+    "use": "çimen alanlar",
+    "url": "https://ambientcg.com/view?id=Grass004"
+  },
+  {
+    "name": "gravel",
+    "id": "Gravel043",
+    "kind": "color",
+    "size": 1.5,
+    "res": 512,
+    "mean": null,
+    "hasMetal": false,
+    "hasAO": true,
+    "use": "pist omuzları, çakıl",
+    "url": "https://ambientcg.com/view?id=Gravel043"
+  },
+  {
+    "name": "corrugated",
+    "id": "CorrugatedSteel005",
+    "kind": "tint",
+    "size": 2,
+    "res": 1024,
+    "mean": 0.5,
+    "hasMetal": true,
+    "hasAO": true,
+    "use": "hangar duvar/çatısı, blast duvarı (gri tonlamalı)",
+    "url": "https://ambientcg.com/view?id=CorrugatedSteel005"
+  },
+  {
+    "name": "shutter",
+    "id": "CorrugatedSteel009",
+    "kind": "tint",
+    "size": 1.5,
+    "res": 512,
+    "mean": 0.5,
+    "hasMetal": true,
+    "hasAO": true,
+    "use": "hangar kapıları (gri tonlamalı)",
+    "url": "https://ambientcg.com/view?id=CorrugatedSteel009"
   }
 ]

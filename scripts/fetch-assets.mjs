@@ -26,11 +26,15 @@ const DL = 'build/dl';
 const OUT_SCANS = 'src/assets/scans';
 const OUT_HDRI = 'src/assets/hdri';
 
-/** Ortam HDRI'ları (Poly Haven, CC0) */
+/**
+ * Gökyüzü HDRI'ları (Poly Haven, CC0). Yalnız "puresky" türü: fotoğrafta
+ * zemin yoktur, ufkun altı oyunun 3B havaalanıdır. Gökyüzü arka planda
+ * yumuşak görüneceği için 2K yeterli.
+ */
 export const HDRIS = [
-  { id: 'hangar_interior', res: '2k' },
-  { id: 'hanger_exterior_cloudy', res: '2k' },
-  { id: 'machine_shop_02', res: '2k' },
+  { id: 'kloofendal_48d_partly_cloudy_puresky', res: '2k' },
+  { id: 'overcast_soil_puresky', res: '2k' },
+  { id: 'industrial_sunset_puresky', res: '2k' },
 ];
 
 /**
@@ -49,6 +53,14 @@ export const SCANS = [
   { name: 'cast', id: 'Metal041A', res: '1K', px: 1024, kind: 'tint', size: 0.8, use: 'döküm muhafazalar, dişli kutusu' },
   { name: 'paint', id: 'PaintedMetal004', res: '1K', px: 1024, kind: 'tint', size: 1.0, use: 'boyalı kutular, stand, platformlar' },
   { name: 'rubber', id: 'Rubber004', res: '1K', px: 512, kind: 'tint', size: 0.5, use: 'hortum, izolatör' },
+  // Havaalanı zemini ve binaları (renk olduğu gibi)
+  { name: 'apron', id: 'Concrete047A', res: '1K', px: 1024, kind: 'tint', size: 4.0, use: 'apron beton plakaları (gri tonlamalı, oyunda renklenir)' },
+  { name: 'asphalt', id: 'Asphalt031', res: '1K', px: 1024, kind: 'color', size: 3.0, use: 'pist asfaltı' },
+  { name: 'taxiway', id: 'Road012A', res: '1K', px: 1024, kind: 'color', size: 4.0, use: 'taksi yolu, yıpranmış asfalt' },
+  { name: 'grass', id: 'Grass004', res: '1K', px: 1024, kind: 'color', size: 2.5, use: 'çimen alanlar' },
+  { name: 'gravel', id: 'Gravel043', res: '1K', px: 512, kind: 'color', size: 1.5, use: 'pist omuzları, çakıl' },
+  { name: 'corrugated', id: 'CorrugatedSteel005', res: '1K', px: 1024, kind: 'tint', size: 2.0, use: 'hangar duvar/çatısı, blast duvarı (gri tonlamalı)' },
+  { name: 'shutter', id: 'CorrugatedSteel009', res: '1K', px: 512, kind: 'tint', size: 1.5, use: 'hangar kapıları (gri tonlamalı)' },
 ];
 
 // Poly Haven API tanımlayıcı bir User-Agent ister. Proxy arkasında:
