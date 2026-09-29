@@ -43,6 +43,11 @@ döküm muhafazalar, boyalı kutular, stand) ambientCG'nin gerçek malzeme
 taramalarını kullanır; taramalar ikinci bir UV kanalında metre ölçeğinde
 uygulanır, mevcut dokular korunur.
 
+| | |
+| --- | --- |
+| ![Hangar (HDRI)](renders/24-hangar-hdri.jpg) | ![Apron (HDRI)](renders/25-apron-hdri.jpg) |
+| ![Hücre, önce](renders/22-hucre-once.jpg) | ![Hücre, sonra: gerçek modeller](renders/23-hucre-sonra.jpg) |
+
 **Test hücresi ortamı** — Blender'da modellenip Cycles ile ışığı pişirilmiş
 kapalı motor test hücresi: ses yutucu panelli duvarlar, hava girişi susturucusu,
 arkada egzoz augmenter'ı, itki ölçüm çerçevesi ve yük hücresi, kontrol odası

@@ -34,8 +34,9 @@ interface Placement {
 const PLACEMENTS: Placement[] = [
   // Sol platformun yanında alet arabası, üstünde alet sandığı
   { id: 'tool_cart', pos: [-4.4, FLOOR, 0.9], rot: 75, shadow: 1.5 },
-  { id: 'metal_tool_chest', pos: [-11.9, FLOOR + 3, 7.75], rot: 90, shadow: 0, sitOn: true },
+  // (sitOn olanlar, oturdukları modelden sonra gelmeli)
   { id: 'industrial_storage_cart', pos: [-11.9, FLOOR, 7.9], rot: 90, shadow: 1.8 },
+  { id: 'metal_tool_chest', pos: [-11.9, FLOOR + 3, 7.75], rot: 90, shadow: 0, sitOn: true },
   // Sağ tarafta kaynak arabası ve raf
   { id: 'portable_welding_cart', pos: [10.6, FLOOR, 5.2], rot: -40, shadow: 1.1 },
   { id: 'steel_frame_shelves_01', pos: [WALL_X - 0.4, FLOOR, -6.5], rot: -90, scale: 0.1, shadow: 1.4 },
@@ -104,10 +105,19 @@ export async function loadCellProps(): Promise<THREE.Group> {
     const obj = src.clone();
     obj.position.set(...p.pos);
     if (p.sitOn) {
+      // Alttaki yüzey tel ızgara olabilir: taban alanına 5×5 ışın atılır,
+      // en yüksek çarpışma oturma yüksekliğidir
       group.updateMatrixWorld(true);
-      ray.set(new THREE.Vector3(p.pos[0], p.pos[1], p.pos[2]), new THREE.Vector3(0, -1, 0));
-      const hit = ray.intersectObjects(group.children, true)[0];
-      if (hit) obj.position.y = hit.point.y + 0.002;
+      const r = 0.25;
+      let top = -Infinity;
+      for (let i = -2; i <= 2; i++) {
+        for (let j = -2; j <= 2; j++) {
+          ray.set(new THREE.Vector3(p.pos[0] + (i * r) / 2, p.pos[1], p.pos[2] + (j * r) / 2), new THREE.Vector3(0, -1, 0));
+          const hit = ray.intersectObjects(group.children, true)[0];
+          if (hit) top = Math.max(top, hit.point.y);
+        }
+      }
+      obj.position.y = Number.isFinite(top) ? top + 0.002 : FLOOR;
     }
     obj.rotation.y = deg(p.rot ?? 0);
     obj.scale.setScalar(p.scale ?? 1);
