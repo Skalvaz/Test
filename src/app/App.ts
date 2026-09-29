@@ -102,6 +102,13 @@ export class App {
   private settings: Settings;
   private envName = TEST_CELL;
   private airfield: Airfield | null = null;
+  /**
+   * Ortam değişiminde yeni shader'lar derlenirken true: bu sürede kare
+   * çizilmez, ekranda önceki kare kalır. (Paralel derlemede hazır olmayan
+   * nesneler atlanır; yoksa bir an apron yerine altındaki çimen görünür.)
+   */
+  envPending = false;
+  private envSerial = 0;
   /** Zemin yüksekliği (ortama bağlı; efektler kullanır) */
   private floorY = -3.35;
   private last = performance.now();
@@ -619,7 +626,10 @@ export class App {
       this.scene.environmentIntensity = 1;
       env
         .setHdri(this.envName)
-        .then((ok: boolean) => ok && capture())
+        .then((ok: boolean) => {
+          if (ok) capture();
+          this.precompile();
+        })
         .catch((err: unknown) => {
           console.error('Gökyüzü yüklenemedi', err);
           this.applyEnvironment(AIRFIELD_NIGHT);
@@ -632,6 +642,7 @@ export class App {
       this.scene.environmentIntensity = 1;
       env.setPreset(this.envName === AIRFIELD_NIGHT ? 'Gece apronu' : this.envName);
       if (outdoorAirfield) capture();
+      this.precompile();
       return;
     }
     const cell = this.cell!;
@@ -655,6 +666,7 @@ export class App {
     env.rimPanel.lookAt(0, 0, 0.5);
     this.renderer.toneMappingExposure = 0.95;
     this.setLights(this.lightLevel);
+    this.precompile();
   }
 
   /**
@@ -919,7 +931,17 @@ export class App {
     this.rig.update(dt, this.visual.shake);
     if (this.cutaway) this.aimCutaway();
     this.updateHaze(snap, dt);
-    this.fx.composer.render(dt);
+    if (!this.envPending) this.fx.composer.render(dt);
+  }
+
+  /** Sahnedeki tüm görünür malzemeleri derler; bitene kadar çizim bekler */
+  private precompile() {
+    const serial = ++this.envSerial;
+    this.envPending = true;
+    const done = () => {
+      if (serial === this.envSerial) this.envPending = false;
+    };
+    this.renderer.compileAsync(this.scene, this.rig.camera).then(done, done);
   }
 
   private updateHaze(snap: ReturnType<EngineSim['snapshot']>, dt: number) {

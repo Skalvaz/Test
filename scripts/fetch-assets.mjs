@@ -241,17 +241,50 @@ export const MODELS = [
   { id: 'overhead_crane', res: '1k', simplify: 0.35 },
 ];
 
-async function fetchModels() {
+/**
+ * Havaalanı donanımı (Poly Haven, CC0). keep: yalnız adı bu öneklerle
+ * başlayan kök düğümler kalır (modüler setlerden parça seçimi); center:
+ * seçilen düğümler orijine alınır (tek parçalar); simplify: üçgen oranı.
+ * Havaalanında modeller kameradan metrelerce uzakta: 512 px doku yeter.
+ */
+export const AF_MODELS = [
+  { id: 'concrete_road_barrier', res: '1k', simplify: 0.08 },
+  { id: 'concrete_road_barrier_02', res: '1k', simplify: 0.12 },
+  // Modüler setler: parçalar ayrı ayrı orijine alınır (y korunur)
+  { id: 'modular_chainlink_fence', res: '1k', keep: ['modular_chainlink_fence_double', 'modular_chainlink_fence_post', 'modular_chainlink_fence_door_frame', 'modular_chainlink_fence_door_gate'], drop: ['_bracket'], center: 'each', simplify: 0.5, err: 0.005 },
+  { id: 'modular_electricity_poles', res: '1k', keep: ['preset_01_', 'preset_02_', 'preset_03_'], drop: ['bolt', 'nail', 'nut'], simplify: 0.2, err: 0.012 },
+  { id: 'portable_generator', res: '1k', simplify: 0.4, err: 0.005 },
+  // Varyant setlerinden biri seçilir, grup olarak ortalanır
+  { id: 'exterior_aircon_unit', res: '1k', keep: ['exterior_aircon_unit_rusted'], center: 'group', simplify: 0.5 },
+  { id: 'utility_box_01', res: '1k' },
+  { id: 'utility_box_02', res: '1k' },
+  { id: 'fire_hydrant', res: '1k', keep: ['fire_hydrant'], drop: ['_aged'], center: 'group', simplify: 0.12 },
+  { id: 'water_manhole_cover', res: '1k', simplify: 0.4, px: 256 },
+  { id: 'metal_trash_can', res: '1k', keep: ['metal_trash_can_rust'], center: 'group', simplify: 0.5, px: 256 },
+  { id: 'old_tyre', res: '1k', px: 256 },
+  { id: 'covered_car', res: '1k', simplify: 0.6 },
+  { id: 'wooden_crate_01', res: '1k', px: 256 },
+  { id: 'wooden_military_crate', res: '1k', simplify: 0.4 },
+  { id: 'metal_jerrycan', res: '1k', simplify: 0.4, px: 256 },
+  { id: 'old_military_compressor', res: '1k', simplify: 0.15, err: 0.005 },
+  { id: 'cardboard_box_01', res: '1k', simplify: 0.25, px: 256 },
+  { id: 'Barrel_01', res: '1k', px: 256 },
+  { id: 'ladder_sectioned_01', res: '1k', simplify: 0.3, px: 256 },
+  { id: 'security_light', res: '1k', px: 256 },
+];
+const OUT_AFPROPS = 'src/assets/afprops';
+
+async function fetchModels(list = MODELS, outDir = OUT_PROPS) {
   const { NodeIO } = await import('@gltf-transform/core');
   const { ALL_EXTENSIONS } = await import('@gltf-transform/extensions');
-  const { dedup, prune, meshopt, textureCompress, weld, getBounds, simplify } = await import('@gltf-transform/functions');
+  const { dedup, prune, meshopt, textureCompress, weld, getBounds, simplify, quantize } = await import('@gltf-transform/functions');
   const { MeshoptEncoder, MeshoptSimplifier } = await import('meshoptimizer');
   await MeshoptEncoder.ready;
   await MeshoptSimplifier.ready;
   const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder });
-  mkdirSync(OUT_PROPS, { recursive: true });
+  mkdirSync(outDir, { recursive: true });
   const meta = [];
-  for (const m of MODELS) {
+  for (const m of list) {
     const files = await json(`https://api.polyhaven.com/files/${m.id}`);
     const info = await json(`https://api.polyhaven.com/info/${m.id}`);
     const g = files.gltf[m.res].gltf;
@@ -265,16 +298,37 @@ async function fetchModels() {
       await download(f.url, out);
     }
     const doc = await io.read(main);
+    if (m.keep) {
+      const scene = doc.getRoot().listScenes()[0];
+      for (const node of scene.listChildren()) {
+        const name = node.getName();
+        if (!m.keep.some((k) => name.startsWith(k)) || m.drop?.some((d) => name.includes(d))) node.dispose();
+        else if (m.center === 'each') {
+          const [, y] = node.getTranslation();
+          node.setTranslation([0, y, 0]);
+        }
+      }
+      if (m.center === 'group') {
+        const b = getBounds(scene);
+        const cx = (b.min[0] + b.max[0]) / 2;
+        const cz = (b.min[2] + b.max[2]) / 2;
+        for (const node of scene.listChildren()) {
+          const [x, y, z] = node.getTranslation();
+          node.setTranslation([x - cx, y, z - cz]);
+        }
+      }
+    }
     await doc.transform(
       dedup(),
       weld(),
-      ...(m.simplify ? [simplify({ simplifier: MeshoptSimplifier, ratio: m.simplify, error: 0.002 })] : []),
+      ...(m.simplify ? [simplify({ simplifier: MeshoptSimplifier, ratio: m.simplify, error: m.err ?? 0.002 })] : []),
       prune(),
       // Hücre donanımı motordan metrelerce uzakta: 512 px doku yeterli
-      textureCompress({ encoder: sharp, targetFormat: 'webp', quality: 80, resize: [512, 512] }),
+      textureCompress({ encoder: sharp, targetFormat: 'webp', quality: 80, resize: [m.px ?? 512, m.px ?? 512] }),
+      ...(outDir === OUT_AFPROPS ? [quantize()] : []),
       meshopt({ encoder: MeshoptEncoder, level: 'medium' }),
     );
-    const out = path.join(OUT_PROPS, `${m.id}.glb`);
+    const out = path.join(outDir, `${m.id}.glb`);
     await io.write(out, doc);
     const b = getBounds(doc.getRoot().listScenes()[0]);
     const size = b.max.map((v, i) => +(v - b.min[i]).toFixed(3));
@@ -282,7 +336,7 @@ async function fetchModels() {
     console.log(`  ${m.id}: ${(bytes / 1e6).toFixed(2)} MB, boyut ${size.join(' × ')} m`);
     meta.push({ id: m.id, name: info.name, file: path.basename(out), size, min: b.min, authors: Object.keys(info.authors ?? {}), url: `https://polyhaven.com/a/${m.id}` });
   }
-  writeFileSync(path.join(OUT_PROPS, 'manifest.json'), JSON.stringify(meta, null, 2));
+  writeFileSync(path.join(outDir, 'manifest.json'), JSON.stringify(meta, null, 2));
 }
 
 /* ------------------------------------------------------------------ */
@@ -300,4 +354,8 @@ if (what === 'all' || what === 'scans') {
 if (what === 'all' || what === 'models') {
   console.log('Modeller');
   await fetchModels();
+}
+if (what === 'all' || what === 'afprops') {
+  console.log('Havaalanı donanımı');
+  await fetchModels(AF_MODELS, OUT_AFPROPS);
 }
