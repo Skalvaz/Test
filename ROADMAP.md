@@ -73,16 +73,118 @@ ortamı (Blender), (2) el yapımı detay dokuları, (3) HDRI ortam ışığı.
 - İngilizce yerelleştirme, erişilebilirlik (klavye ile tam kontrol, renk körü paleti)
 - Kaydedilmiş ses örnekleri + sentez karışımı
 
-### Faz 3 — Motor tasarım atölyesi
-Kodda temeli hazır: `EngineDesign` → `sizeEngine()` tasarım noktasını
-boyutlandırıyor ve tasarım dışı model bununla çalışıyor.
-- Tasarım parametreleri: fan çapı ve kanat sayısı, BPR, fan/HPC basınç
-  oranları, kademe sayıları, T4, malzeme seçimi
-- Parametrik geometri: parametreler değiştikçe 3B model yeniden üretilir
-- Kısıtlar: kütle, maliyet, gürültü, NOx, kanat ucu hızı, disk gerilmesi,
-  türbin soğutma havası
-- Sertifikasyon görevleri (FAR/CS-33 esinli): kuş yutma, kanat kopması
-  muhafazası, 5 s ivmelenme, EGT payı, dayanıklılık testi
+### Faz 3 — Görsel yükseltme + Motor Atölyesi (sıradaki)
+
+Amaç: (1) mevcut dört motorun model ve efektlerini bir üst seviyeye taşımak,
+(2) bunu yaparken **her parçayı atölyede yeniden kullanılabilir bir modül**
+olarak kurmak, (3) oyuncunun kendi motorunu tasarlayıp test hücresinde
+çalıştırabildiği **Motor Atölyesi**ni açmak. Görsel yükseltme ile atölye aynı
+altyapıyı paylaşır; bu yüzden sıra önemlidir: önce varlık hattı ve modüler
+üretici, sonra arayüz.
+
+#### Varlık kaynakları ve kuralları
+
+| Kaynak | Ne için | Nasıl |
+| --- | --- | --- |
+| **Blender (bpy 5.0, başsız)** | Kit-bash parça kütüphanesi (flanş, kelepçe, rakor, aktüatör, sensör, cıvata başı, braket), yüksek poligondan pişirilen normal/ORM dokuları, trim sheet'ler, atölye ortamı (montaj standı, taşıma arabası, vinç, alet tezgâhı), tanıtım renderleri | Her varlık `blender/*.py` betiğiyle koddan üretilir; elle tıklama yok, tekrar üretilebilir. Çıktı: glTF (Meshopt) + WebP/KTX2 |
+| **İnternet (yalnız CC0 / kamu malı)** | HDRI ortamlar, taban malzeme taramaları (döküm, fırçalı metal, boya, beton), referans görseller | Poly Haven, ambientCG, NASA/FAA kamu belgeleri. Her dosyanın kaynağı ve lisansı `ASSETS.md`'ye yazılır |
+| **Kod (prosedürel)** | Tasarlanabilen her şey: kanat profilleri, kademeler, kanallar, lüleler; çalışma anında dokular ve shader'lar | Parametre değişince anında yeniden üretilir |
+
+Sınırlar: tek HTML dosyası 15 MB altında kalır (şu an 4,5 MB); büyük varlıklar
+gerekirse isteğe bağlı ayrı paket dosyası. Mobil/zayıf GPU için düşük kalite
+seviyesi korunur.
+
+#### M1 — Varlık hattı ve kit-bash kütüphanesi
+- `blender/kit_parts.py`: ~25 dış donanım parçası (3 detay seviyesi), tek bir
+  glb'de; kodda `kit.place('clampP', {…})` ile yerleştirilir
+- `blender/trim_sheets.py`: perçin sırası, panel dikişi, kaynak dikişi, uyarı
+  etiketleri, ısı rengi geçişleri için trim sheet (normal + ORM + albedo)
+- Malzeme taramaları (CC0) → üç kalite kademesi, KTX2 sıkıştırma
+- `ASSETS.md`: kaynak/lisans kaydı
+- **Bitti sayılır:** mevcut prosedürel boru/kelepçe/aktüatörler kit parçalarıyla
+  değiştirilmiş, görsel karşılaştırma renderları, build boyutu bütçede
+
+#### M2 — Model yükseltmesi (mevcut motorlar)
+- Fan ve kompresör kanatları: kök (dovetail) ve platform, uç aşınması,
+  ön kenar erozyonu, titanyum ısıl renk; blisk (askeri) / ayrı kanat (yolcu)
+- Türbin: termal bariyer kaplamalı kanatlar, soğutma delikleri (normal harita),
+  kanat uçlarında kızıl-mor ısı tonu
+- Yanma odası: gömlek soğutma delikleri, dönen girdap yakıcılar (swirler)
+- Lüle: değişken lüle yaprakları gerçek üst üste binen kanatçıklar + hidrolik
+  aktüatörler, lüle açılıp kapanırken hareket eder
+- Kesit: kesik yüzeyleri dolu çizme (stencil "cap"), kesik kenarında ince
+  kırmızı işaret şeridi (teknik çizim gibi)
+- **Bitti sayılır:** her motor için önce/sonra render seti; performans düşük
+  kalitede ≥ 30 fps (entegre GPU)
+
+#### M3 — Efekt yükseltmesi
+- Art yakıcı: kademeli yanma (zon 1→5 sırayla tutuşur), lüle yapraklarının
+  açılmasıyla senkron; hafif titreşen Mach diskleri; sıcak gaz kırılması
+  alevin çevresinde güçlü
+- Egzoz: ısı pusu (heat haze) ekranda daha doğru hacim, kurum birikimi
+  (egzoz arkası zeminde zamanla kararma)
+- Çalıştırma: yakıt püskürme sisi, ilk ateşlemede kıvılcım, soğuk günde
+  beyaz buhar; kapatmada soğuyan türbinin kızıllığının sönmesi
+- Hava: nemli havada giriş dudağında ve pervane uçlarında yoğuşma halkaları,
+  yağmur/gece ayarı
+- Surge: girişten geri tepen alev + basınç dalgası (ekran sarsıntısı + ses)
+- **Bitti sayılır:** her efekt için kısa video/GIF karşılaştırması
+
+#### M4 — Modüler parametrik motor üretici (atölyenin motoru)
+Bugün üç ayrı el yazımı üretici var (`core.js`+`fan.js`+`nacelle.js`,
+`barejet.js`, `turboprop.js`). Bunlar tek bir **modül grafiği**ne dönüşür:
+
+```
+Giriş → [Fan | Pervane+redüktör] → [LPC] → HPC (eksenel / santrifüj)
+      → Yanma odası (halka / kutu) → HPT → [LPT | güç türbini]
+      → [Karıştırıcı] → [Art yakıcı] → Lüle (yakınsak / YI / chevron / ayrık akış)
+      + Kaporta / çıplak gövde + dış donanım (otomatik yerleşir)
+```
+- Her modül: parametreler, akış istasyonları, bağlantı yarıçapları; komşusuna
+  otomatik uyar (kanal geçişleri kendiliğinden yumuşatılır)
+- `EngineDesign` modül grafiğinden türetilir; `sizeEngine()` her geçerli
+  kombinasyonu boyutlandırır
+- Mevcut dört motor bu sistemle yeniden üretilir ve görsel olarak eskisiyle
+  aynı ya da daha iyi olmalıdır (regresyon testi = ekran görüntüsü karşılaştırma)
+- Yeni hesaplar: kütle (malzeme × hacim), maliyet, kanat ucu Mach, disk
+  gerilmesi (AN²), türbin soğutma havası, gürültü (jet hızı + fan ucu),
+  NOx (T3/T4)
+- **Bitti sayılır:** 4 motor yeni üreticide, simülasyon testleri geçiyor,
+  parametre değişikliği < 150 ms'de modeli yeniden üretiyor
+
+#### M5 — Motor Atölyesi arayüzü (v1)
+Ekran düzeni:
+```
+┌──────────────┬───────────────────────────────┬──────────────────┐
+│ Modül ağacı  │   3B motor (canlı)            │ Performans       │
+│ + parametre  │   · patlatılmış görünüm       │ itki · TSFC      │
+│   kaydırıcı  │   · kesit                     │ kütle · T/W      │
+│              │   · istasyon renkleri         │ maliyet · gürültü│
+│ Şablonlar    │                               │ ⚠ uyarılar       │
+├──────────────┴───────────────────────────────┴──────────────────┤
+│ Grafikler: kompresör haritası + çalışma hattı · itki–Mach–irtifa │
+│            · T–s · tasarım A/B karşılaştırma                     │
+└──────────────────────────────────────────────────────────────────┘
+```
+- Başlangıç şablonları: mevcut 4 motor
+- Modül değiştirme (ör. lüleyi YI yap, art yakıcı ekle, santrifüj kademe),
+  parametre kaydırıcıları, anında 3B güncelleme; **patlatılmış görünüm** ile
+  modüller eksen boyunca ayrılır
+- Uyarılar öğretir: "fan ucu Mach 1,7 — gürültü ve verim kaybı", "T4
+  malzeme sınırını aşıyor — soğutma havası ekle ya da tek kristal kanat seç";
+  her uyarı ilgili derse bağlanır
+- Geri al/yinele, kaydet/yükle (JSON dosyası + paylaşılabilir kısa kod)
+- **"Test hücresinde çalıştır"**: tasarım mevcut test hücresine gider;
+  çalıştırma, gaz kolu, arıza enjeksiyonu aynen çalışır
+- Atölye ortamı: Blender'da üretilen montaj hangarı (M1 hattıyla)
+- **Bitti sayılır:** otomatik oynanış testi atölyede sıfırdan bir motor
+  tasarlayıp test hücresinde çalıştırıyor; hatasız
+
+#### M6 — Sertifikasyon ve ilerleme (atölye v2)
+- FAR/CS-33 esinli görevler: 5 s ivmelenme, kuş yutma, kanat kopması
+  muhafazası, EGT payı, 150 saat dayanıklılık (hızlandırılmış)
+- Müşteri istekleri (ör. "bölgesel jet için 90 kN, TSFC < 17 g/kN·s")
+- Malzeme ve teknoloji kilitleri (tek kristal kanat, CMC, dişli fan)
 
 ### Faz 4 — Uçak tasarımı ("Sprocket'in uçak versiyonu")
 - Parametrik gövde, kanat, kuyruk; iniş takımı
