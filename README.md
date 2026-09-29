@@ -86,8 +86,7 @@ yakıt enjektörü flanşları, pompalar, jeneratör, marş motoru, yağ tankı 
 filtresi, FADEC kutusu, sondalar, kaldırma kulakları, flanş cıvataları
 (31 parça, her biri 3 detay seviyesi; kalite ayarı seçer). Kaynak dikişi,
 tırtıl, perçin ve etiketler (FUEL, OIL, HYDRAULIC, DANGER HIGH VOLTAGE…)
-ortak bir trim sheet'ten gelir; döküm, işlenmiş metal ve boya dokuları
-dikişsiz olarak Blender'da pişirilir. Oyun parçaları InstancedMesh ile
+ortak bir trim sheet'ten gelir; gövde yüzeyleri gerçek malzeme taramalarıdır. Oyun parçaları InstancedMesh ile
 çizer (yüzlerce parça, birkaç düzine çizim çağrısı).
 
 ![Kit parça kütüphanesi](renders/17-kit-kutuphanesi.jpg)
@@ -217,7 +216,6 @@ ortak geometri yardımcılarını ve trim sheet düzenini içerir):
 python blender/kit_parts.py --out build/kit_raw.glb     # 31 parça × 3 LOD
 node scripts/pack-kit.mjs build/kit_raw.glb src/assets/kit.glb   # nicemleme + meshopt
 python blender/trim_sheet.py --out src/assets           # kaynak/tırtıl/perçin/etiket (~4 dk)
-python blender/materials.py --out src/assets            # dikişsiz döküm/işlenmiş/boya
 python blender/kit_preview.py --out build/kit.png       # parça tablosu (görsel kontrol)
 ```
 

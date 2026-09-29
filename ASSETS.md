@@ -15,7 +15,6 @@ Hepsi bu deponun lisansı altındadır. Blender betikleri başsız çalışır
 | `src/assets/{nacelle,core,pylon}_{normal,orm}.webp` | `blender/panel_details.py` | Perçin/panel/kapak detayı, yüksek poligondan pişirme |
 | `src/assets/kit.glb` | `blender/kit_parts.py` → `scripts/pack-kit.mjs` | 31 dış donanım parçası × 3 detay seviyesi (L0 ≈ 19 k, L1 ≈ 11,5 k, L2 ≈ 6 k üçgen toplam); nicemleme + meshopt sıkıştırma |
 | `src/assets/trim_{albedo,normal,orm}.webp` | `blender/trim_sheet.py` | Trim sheet: kaynak dikişi, tırtıl, perçin sırası, panjur, 8 etiket; yüksek poligondan pişirme |
-| `src/assets/mat_{cast,machined,paint}_{normal,orm}.webp` | `blender/materials.py` | Dikişsiz malzeme dokuları (4B gürültü tor eşlemesi), Cycles ile pişirme |
 | Motor gövdeleri, kanatlar, gaz yolu, alev ve parçacık dokuları | `src/engine/*`, `src/materials/textures.js`, `src/effects/*` | Çalışma anında prosedürel |
 
 Etiket metinleri (FUEL, OIL, HYDRAULIC, DANGER HIGH VOLTAGE, EEC/FADEC bilgi
@@ -33,7 +32,8 @@ dönüştürme tekrar üretilebilir: `npm run assets:fetch`
 
 ### HDRI ortamları — [Poly Haven](https://polyhaven.com)
 
-2K Radiance HDR. Oyunda ortam ışığı + yansıma (PMREM) ve zemine yansıtılmış
+2K Radiance HDR, "RGB + log parlaklık" olarak iki WebP'ye kodlanır
+(6,5 MB → 0,6–1 MB; tarayıcıda half-float HDR'ye çözülür). Oyunda ortam ışığı + yansıma (PMREM) ve zemine yansıtılmış
 arka plan (GroundedSkybox) olarak kullanılır; güneş yönü ve pozlama HDRI'dan
 hesaplanır.
 
@@ -45,7 +45,7 @@ hesaplanır.
 
 ### Malzeme taramaları — [ambientCG](https://ambientcg.com)
 
-1K/2K JPG → WebP. "tint" türü taramalar gri tonlamaya çevrilip doğrusal
+Motor gövdesi 2K, diğerleri 1K/512 px WebP. "tint" türü taramalar gri tonlamaya çevrilip doğrusal
 ortalaması 0,5'e normalize edilir (oyun kendi rengiyle çarpar); ORM dokusu
 AO + pürüzlülük + metallik haritalarından paketlenir.
 
@@ -63,7 +63,7 @@ AO + pürüzlülük + metallik haritalarından paketlenir.
 
 ### 3B modeller — [Poly Haven](https://polyhaven.com)
 
-glTF 1K → dokular WebP (en çok 1024 px), geometri meshopt ile sıkıştırılmış
+glTF 1K → dokular WebP (512 px; uzaktan görülürler), vinçte üçgen sayısı %35'e indirilmiş, geometri meshopt ile sıkıştırılmış
 glb. Test hücresinde gerçek zamanlı aydınlatılır (`src/core/cellProps.ts`).
 
 | Dosya | Kaynak | Yazar(lar) |
@@ -85,3 +85,4 @@ Modeller genel mühendislik bilgisine ve kamuya açık belgelere göre
 tasarlandı; herhangi bir üreticinin çizimi, ticari markası ya da logosu
 kullanılmadı. Etiket renkleri boru tanımlama geleneğini izler (yakıt kırmızı,
 yağ sarı-kahve, hidrolik mavi).
+

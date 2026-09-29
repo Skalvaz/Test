@@ -11,11 +11,66 @@
 import * as THREE from 'three';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
-import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import { GroundedSkybox } from 'three/addons/objects/GroundedSkybox.js';
-import hangarUrl from '../assets/hdri/hangar_interior_2k.hdr?url';
-import apronUrl from '../assets/hdri/hanger_exterior_cloudy_2k.hdr?url';
-import workshopUrl from '../assets/hdri/machine_shop_02_2k.hdr?url';
+import hangarRgb from '../assets/hdri/hangar_interior_rgb.webp?url';
+import hangarL from '../assets/hdri/hangar_interior_l.webp?url';
+import apronRgb from '../assets/hdri/hanger_exterior_cloudy_rgb.webp?url';
+import apronL from '../assets/hdri/hanger_exterior_cloudy_l.webp?url';
+import workshopRgb from '../assets/hdri/machine_shop_02_rgb.webp?url';
+import workshopL from '../assets/hdri/machine_shop_02_l.webp?url';
+import hdriManifest from '../assets/hdri/manifest.json';
+
+/**
+ * RGB + log parlaklık kodlu HDR'yi (scripts/fetch-assets.mjs → encodeHdr)
+ * kayan noktalı DataTexture'a çözer: hdr = srgb⁻¹(rgb) · 2^L.
+ * Görüntüler renk yönetimi uygulanmadan okunur (değerler veri gibi).
+ */
+async function loadEncodedHdr(rgbUrl, lUrl) {
+  const [minL, maxL] = hdriManifest[0].lRange;
+  const read = async (url) => {
+    const blob = await (await fetch(url)).blob();
+    const bmp = await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+    const c = document.createElement('canvas');
+    c.width = bmp.width;
+    c.height = bmp.height;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(bmp, 0, 0);
+    bmp.close();
+    return g.getImageData(0, 0, c.width, c.height);
+  };
+  const [rgb, lum] = await Promise.all([read(rgbUrl), read(lUrl)]);
+  const W = rgb.width;
+  const H = rgb.height;
+  const lin = new Float32Array(256);
+  for (let i = 0; i < 256; i++) {
+    const x = i / 255;
+    lin[i] = x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+  }
+  const scale = new Float32Array(256);
+  for (let i = 0; i < 256; i++) scale[i] = 2 ** (minL + (i / 255) * (maxL - minL));
+  const data = new Float32Array(W * H * 4);
+  const a = rgb.data;
+  const l = lum.data;
+  for (let i = 0; i < W * H; i++) {
+    const k = scale[l[i * 4]];
+    data[i * 4] = lin[a[i * 4]] * k;
+    data[i * 4 + 1] = lin[a[i * 4 + 1]] * k;
+    data[i * 4 + 2] = lin[a[i * 4 + 2]] * k;
+    data[i * 4 + 3] = 1;
+  }
+  // Half-float: çoğu mobil GPU 32 bit float dokuyu doğrusal filtreleyemez
+  const half = new Uint16Array(data.length);
+  for (let i = 0; i < data.length; i++) half[i] = THREE.DataUtils.toHalfFloat(Math.min(data[i], 65000));
+  const tex = new THREE.DataTexture(half, W, H, THREE.RGBAFormat, THREE.HalfFloatType);
+  // HDRLoader ile aynı düzen: satırlar üstten başlar
+  tex.flipY = true;
+  tex.colorSpace = THREE.LinearSRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  tex.needsUpdate = true;
+  return { tex, raw: { data, width: W, height: H } };
+}
 
 /** Motor ve efektlerin varsaydığı zemin yüksekliği (test hücresiyle aynı) */
 const GROUND_Y = -3.35;
@@ -33,9 +88,9 @@ const GROUND_Y = -3.35;
  *  key:      hedef ortalama parlaklık (pozlama = key / HDRI ortalaması)
  */
 export const HDRI_PRESETS = {
-  Hangar: { url: hangarUrl, floor: -2.4, radius: 60, rotation: 200, key: 0.5, sunScale: 1.0 },
-  'Apron (bulutlu)': { url: apronUrl, floor: -2.4, radius: 120, rotation: 100, key: 0.5, sunScale: 0.6 },
-  'Motor atölyesi': { url: workshopUrl, floor: -2.4, radius: 50, rotation: 140, key: 0.36, sunScale: 0.8 },
+  Hangar: { url: [hangarRgb, hangarL], floor: -2.4, radius: 60, rotation: 200, key: 0.5, sunScale: 1.0 },
+  'Apron (bulutlu)': { url: [apronRgb, apronL], floor: -2.4, radius: 120, rotation: 100, key: 0.5, sunScale: 0.6 },
+  'Motor atölyesi': { url: [workshopRgb, workshopL], floor: -2.4, radius: 50, rotation: 140, key: 0.36, sunScale: 0.8 },
 };
 
 export const PRESETS = {
@@ -181,8 +236,8 @@ export function createEnvironment(renderer, scene, materials) {
    * En parlak bölgeden güneş yönü/rengi ve ortalama parlaklıktan pozlama.
    * Veri 8×8 bloklara indirgenir (tek piksel parlamalarını yok sayar).
    */
-  function analyse(tex) {
-    const { data, width: W, height: H } = tex.image;
+  function analyse(raw) {
+    const { data, width: W, height: H } = raw;
     const B = 8;
     let best = -1;
     let bi = 0;
@@ -232,9 +287,9 @@ export function createEnvironment(renderer, scene, materials) {
   async function loadHdri(name) {
     if (hdrCache.has(name)) return hdrCache.get(name);
     const p = HDRI_PRESETS[name];
-    const tex = await new HDRLoader().setDataType(THREE.FloatType).loadAsync(p.url);
+    const { tex, raw } = await loadEncodedHdr(...p.url);
     tex.mapping = THREE.EquirectangularReflectionMapping;
-    const info = analyse(tex);
+    const info = analyse(raw);
     const entry = { tex, info };
     hdrCache.set(name, entry);
     return entry;

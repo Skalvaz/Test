@@ -38,15 +38,17 @@ export const HDRIS = [
  * 'tint' gri tonlamalı (oyunda renklendirilir). size: dokunun gerçek boyutu (m).
  */
 export const SCANS = [
-  { name: 'case', id: 'Metal059B', res: '2K', kind: 'tint', size: 1.0, use: 'kaportasız motor gövdesi (titanyum/çelik)' },
-  { name: 'hot', id: 'Metal063', res: '2K', kind: 'tint', size: 1.0, use: 'sıcak bölge, egzoz, art yakıcı kanalı' },
-  { name: 'dark', id: 'Metal046B', res: '1K', kind: 'tint', size: 0.8, use: 'lüle yaprakları, isli parçalar' },
-  { name: 'brushed', id: 'Metal009', res: '1K', kind: 'tint', size: 0.5, use: 'işlenmiş çelik (kit parçaları, flanşlar)' },
-  { name: 'polished', id: 'Metal012', res: '1K', kind: 'tint', size: 0.5, use: 'paslanmaz boru, tank' },
-  { name: 'smooth', id: 'Metal032', res: '1K', kind: 'tint', size: 0.6, use: 'eloksal, kaplamalı parçalar' },
-  { name: 'cast', id: 'Metal041A', res: '1K', kind: 'tint', size: 0.8, use: 'döküm muhafazalar, dişli kutusu' },
-  { name: 'paint', id: 'PaintedMetal004', res: '2K', kind: 'tint', size: 1.0, use: 'boyalı kutular, stand, platformlar' },
-  { name: 'rubber', id: 'Rubber004', res: '1K', kind: 'tint', size: 0.5, use: 'hortum, izolatör' },
+  // px: oyundaki çözünürlük. Yalnız büyük yüzeylerde (motor gövdesi) 2K;
+  // küçük parçalarda 1K ya da 512 yeterli (boyut ile keskinlik dengesi)
+  { name: 'case', id: 'Metal059B', res: '2K', px: 2048, kind: 'tint', size: 1.0, use: 'kaportasız motor gövdesi (titanyum/çelik)' },
+  { name: 'hot', id: 'Metal063', res: '1K', px: 1024, kind: 'tint', size: 1.0, use: 'sıcak bölge, egzoz, art yakıcı kanalı' },
+  { name: 'dark', id: 'Metal046B', res: '1K', px: 1024, kind: 'tint', size: 0.8, use: 'lüle yaprakları, isli parçalar' },
+  { name: 'brushed', id: 'Metal009', res: '1K', px: 1024, kind: 'tint', size: 0.5, use: 'işlenmiş çelik (kit parçaları, flanşlar)' },
+  { name: 'polished', id: 'Metal012', res: '1K', px: 1024, kind: 'tint', size: 0.5, use: 'paslanmaz boru, tank' },
+  { name: 'smooth', id: 'Metal032', res: '1K', px: 512, kind: 'tint', size: 0.6, use: 'eloksal, kaplamalı parçalar' },
+  { name: 'cast', id: 'Metal041A', res: '1K', px: 1024, kind: 'tint', size: 0.8, use: 'döküm muhafazalar, dişli kutusu' },
+  { name: 'paint', id: 'PaintedMetal004', res: '1K', px: 1024, kind: 'tint', size: 1.0, use: 'boyalı kutular, stand, platformlar' },
+  { name: 'rubber', id: 'Rubber004', res: '1K', px: 512, kind: 'tint', size: 0.5, use: 'hortum, izolatör' },
 ];
 
 // Poly Haven API tanımlayıcı bir User-Agent ister. Proxy arkasında:
@@ -70,16 +72,61 @@ async function json(url) {
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * HDR kodlaması ("RGB + log parlaklık"): Radiance .hdr (2K ≈ 6,5 MB) iki
+ * WebP'ye bölünür:
+ *   <id>_rgb.webp  renk / 2^L (0–1, sRGB eğrisiyle 8 bit, kayıplı)
+ *   <id>_l.webp    L = log2(en parlak kanal), [L_MIN, L_MAX] → 8 bit (kayıpsız)
+ * Tarayıcıda hdr = rgb · 2^L olarak geri çözülür (core/environment.js).
+ * 24 durak aralık / 256 adım ≈ 0,09 durak çözünürlük; ortam ışığı ve
+ * yansımalarda fark edilmez, dosya ~6–10× küçülür.
+ */
+export const L_MIN = -10;
+export const L_MAX = 14;
+
+async function encodeHdr(file, outBase) {
+  const THREE = await import('three');
+  const { HDRLoader } = await import('three/examples/jsm/loaders/HDRLoader.js');
+  const { readFileSync } = await import('node:fs');
+  const buf = readFileSync(file);
+  const loader = new HDRLoader();
+  loader.setDataType(THREE.FloatType);
+  const { width: W, height: H, data } = loader.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+  const rgb = Buffer.alloc(W * H * 3);
+  const lum = Buffer.alloc(W * H);
+  for (let i = 0; i < W * H; i++) {
+    const r = data[i * 4];
+    const g = data[i * 4 + 1];
+    const b = data[i * 4 + 2];
+    const m = Math.max(r, g, b, 1e-9);
+    const L = Math.min(L_MAX, Math.max(L_MIN, Math.log2(m)));
+    const q = Math.round(((L - L_MIN) / (L_MAX - L_MIN)) * 255);
+    lum[i] = q;
+    const scale = 2 ** (L_MIN + (q / 255) * (L_MAX - L_MIN));
+    rgb[i * 3] = Math.round(toSrgb(Math.min(1, r / scale)) * 255);
+    rgb[i * 3 + 1] = Math.round(toSrgb(Math.min(1, g / scale)) * 255);
+    rgb[i * 3 + 2] = Math.round(toSrgb(Math.min(1, b / scale)) * 255);
+  }
+  await sharp(rgb, { raw: { width: W, height: H, channels: 3 } }).webp({ quality: 88, smartSubsample: true }).toFile(`${outBase}_rgb.webp`);
+  await sharp(lum, { raw: { width: W, height: H, channels: 1 } }).webp({ lossless: true }).toFile(`${outBase}_l.webp`);
+}
+
 async function fetchHdris() {
   mkdirSync(OUT_HDRI, { recursive: true });
+  mkdirSync(path.join(DL, 'hdri'), { recursive: true });
   const meta = [];
   for (const h of HDRIS) {
     const files = await json(`https://api.polyhaven.com/files/${h.id}`);
     const info = await json(`https://api.polyhaven.com/info/${h.id}`);
     const f = files.hdri[h.res].hdr;
-    const out = path.join(OUT_HDRI, `${h.id}_${h.res}.hdr`);
-    await download(f.url, out);
-    meta.push({ id: h.id, name: info.name, file: path.basename(out), authors: Object.keys(info.authors ?? {}), url: `https://polyhaven.com/a/${h.id}` });
+    const raw = path.join(DL, 'hdri', `${h.id}_${h.res}.hdr`);
+    await download(f.url, raw);
+    const base = path.join(OUT_HDRI, h.id);
+    await encodeHdr(raw, base);
+    const { statSync } = await import('node:fs');
+    const kb = (statSync(`${base}_rgb.webp`).size + statSync(`${base}_l.webp`).size) / 1024;
+    console.log(`  ${h.id}: ${(statSync(raw).size / 1e6).toFixed(1)} MB .hdr → ${kb.toFixed(0)} KB (RGB + L WebP)`);
+    meta.push({ id: h.id, name: info.name, files: [`${h.id}_rgb.webp`, `${h.id}_l.webp`], lRange: [L_MIN, L_MAX], authors: Object.keys(info.authors ?? {}), url: `https://polyhaven.com/a/${h.id}` });
   }
   writeFileSync(path.join(OUT_HDRI, 'manifest.json'), JSON.stringify(meta, null, 2));
 }
@@ -113,7 +160,7 @@ async function processScan(s) {
   const roughF = find(dl, '_Roughness.jpg');
   const metalF = find(dl, '_Metalness.jpg');
   const aoF = find(dl, '_AmbientOcclusion.jpg');
-  const W = s.res === '2K' ? 2048 : 1024;
+  const W = s.px;
   mkdirSync(OUT_SCANS, { recursive: true });
 
   // Renk (tint türünde gri tonlama + doğrusal ortalama)
@@ -135,11 +182,11 @@ async function processScan(s) {
     const gray = Buffer.alloc(n);
     for (let i = 0; i < n; i++) gray[i] = Math.round(toSrgb(Math.min(1, lin[i] * k)) * 255);
     mean = 0.5;
-    await sharp(gray, { raw: { width: W, height: W, channels: 1 } }).webp({ quality: 86 }).toFile(path.join(OUT_SCANS, `${s.name}_color.webp`));
+    await sharp(gray, { raw: { width: W, height: W, channels: 1 } }).webp({ quality: 80 }).toFile(path.join(OUT_SCANS, `${s.name}_color.webp`));
   } else {
-    await sharp(colorF).resize(W, W).webp({ quality: 86 }).toFile(path.join(OUT_SCANS, `${s.name}_color.webp`));
+    await sharp(colorF).resize(W, W).webp({ quality: 80 }).toFile(path.join(OUT_SCANS, `${s.name}_color.webp`));
   }
-  await sharp(normalF).resize(W, W).webp({ quality: 90 }).toFile(path.join(OUT_SCANS, `${s.name}_normal.webp`));
+  await sharp(normalF).resize(W, W).webp({ quality: 85 }).toFile(path.join(OUT_SCANS, `${s.name}_normal.webp`));
 
   // ORM paketleme
   const rough = await raw(roughF, W);
@@ -152,7 +199,7 @@ async function processScan(s) {
     orm[i * 3 + 1] = rough.data[i * rough.channels];
     orm[i * 3 + 2] = metal ? metal.data[i * metal.channels] : 0;
   }
-  await sharp(orm, { raw: { width: W, height: W, channels: 3 } }).webp({ quality: 90 }).toFile(path.join(OUT_SCANS, `${s.name}_orm.webp`));
+  await sharp(orm, { raw: { width: W, height: W, channels: 3 } }).webp({ quality: 80 }).toFile(path.join(OUT_SCANS, `${s.name}_orm.webp`));
   console.log(`  ${s.name} ← ${s.id} (${W}px${mean !== null ? `, ortalama ${mean.toFixed(3)}` : ''}${metal ? '' : ', metallik haritası yok'})`);
   return { name: s.name, id: s.id, kind: s.kind, size: s.size, res: W, mean, hasMetal: !!metal, hasAO: !!ao, use: s.use, url: `https://ambientcg.com/view?id=${s.id}` };
 }
@@ -178,15 +225,17 @@ export const MODELS = [
   { id: 'barrel_03', res: '1k' },
   { id: 'industrial_storage_cart', res: '1k' },
   { id: 'power_box_01', res: '1k' },
-  { id: 'overhead_crane', res: '1k' },
+  // Vinç tavanda, uzakta: üçgen sayısı ~%35'e indirilir
+  { id: 'overhead_crane', res: '1k', simplify: 0.35 },
 ];
 
 async function fetchModels() {
   const { NodeIO } = await import('@gltf-transform/core');
   const { ALL_EXTENSIONS } = await import('@gltf-transform/extensions');
-  const { dedup, prune, meshopt, textureCompress, weld, getBounds } = await import('@gltf-transform/functions');
-  const { MeshoptEncoder } = await import('meshoptimizer');
+  const { dedup, prune, meshopt, textureCompress, weld, getBounds, simplify } = await import('@gltf-transform/functions');
+  const { MeshoptEncoder, MeshoptSimplifier } = await import('meshoptimizer');
   await MeshoptEncoder.ready;
+  await MeshoptSimplifier.ready;
   const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder });
   mkdirSync(OUT_PROPS, { recursive: true });
   const meta = [];
@@ -207,8 +256,10 @@ async function fetchModels() {
     await doc.transform(
       dedup(),
       weld(),
+      ...(m.simplify ? [simplify({ simplifier: MeshoptSimplifier, ratio: m.simplify, error: 0.002 })] : []),
       prune(),
-      textureCompress({ encoder: sharp, targetFormat: 'webp', quality: 85, resize: [1024, 1024] }),
+      // Hücre donanımı motordan metrelerce uzakta: 512 px doku yeterli
+      textureCompress({ encoder: sharp, targetFormat: 'webp', quality: 80, resize: [512, 512] }),
       meshopt({ encoder: MeshoptEncoder, level: 'medium' }),
     );
     const out = path.join(OUT_PROPS, `${m.id}.glb`);

@@ -2,7 +2,14 @@
   {
     "id": "hangar_interior",
     "name": "Hangar Interior",
-    "file": "hangar_interior_2k.hdr",
+    "files": [
+      "hangar_interior_rgb.webp",
+      "hangar_interior_l.webp"
+    ],
+    "lRange": [
+      -10,
+      14
+    ],
     "authors": [
       "Dimitrios Savva",
       "Jarod Guest"
@@ -12,7 +19,14 @@
   {
     "id": "hanger_exterior_cloudy",
     "name": "Hanger Exterior Cloudy",
-    "file": "hanger_exterior_cloudy_2k.hdr",
+    "files": [
+      "hanger_exterior_cloudy_rgb.webp",
+      "hanger_exterior_cloudy_l.webp"
+    ],
+    "lRange": [
+      -10,
+      14
+    ],
     "authors": [
       "Dimitrios Savva",
       "Jarod Guest"
@@ -22,7 +36,14 @@
   {
     "id": "machine_shop_02",
     "name": "Machine Shop 02",
-    "file": "machine_shop_02_2k.hdr",
+    "files": [
+      "machine_shop_02_rgb.webp",
+      "machine_shop_02_l.webp"
+    ],
+    "lRange": [
+      -10,
+      14
+    ],
     "authors": [
       "Sergej Majboroda"
     ],

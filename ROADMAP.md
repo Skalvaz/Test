@@ -90,8 +90,10 @@ altyapıyı paylaşır; bu yüzden sıra önemlidir: önce varlık hattı ve mod
 | **İnternet (yalnız CC0 / kamu malı)** | HDRI ortamlar, taban malzeme taramaları (döküm, fırçalı metal, boya, beton), referans görseller | Poly Haven, ambientCG, NASA/FAA kamu belgeleri. Her dosyanın kaynağı ve lisansı `ASSETS.md`'ye yazılır |
 | **Kod (prosedürel)** | Tasarlanabilen her şey: kanat profilleri, kademeler, kanallar, lüleler; çalışma anında dokular ve shader'lar | Parametre değişince anında yeniden üretilir |
 
-Sınırlar: görsel gerçekçilik boyuttan önce gelir (M1.5'ten sonra tek HTML
-~45 MB). Gerekirse büyük varlıklar isteğe bağlı ayrı paket dosyasına alınır. Mobil/zayıf GPU için düşük kalite
+Sınırlar: görsel gerçekçilik öncelikli, ama boyut gereksiz büyütülmez: HDRI'lar
+"RGB + log parlaklık" WebP çiftine kodlanır (6,5 MB → <1 MB), taramalar yalnız
+büyük yüzeylerde 2K, uzaktaki modellerde 512 px doku ve sadeleştirilmiş geometri.
+Gerekirse büyük varlıklar isteğe bağlı ayrı paket dosyasına alınır. Mobil/zayıf GPU için düşük kalite
 seviyesi korunur.
 
 #### M1 — Varlık hattı ve kit-bash kütüphanesi ✅
@@ -100,7 +102,7 @@ seviyesi korunur.
   InstancedMesh ile çizilir (`src/engine/kit.js`)
 - ✅ `blender/trim_sheet.py`: kaynak dikişi, tırtıl, perçin/vida sırası,
   soğutma panjuru, 8 etiket (normal + ORM + albedo)
-- ✅ `blender/materials.py`: dikişsiz döküm, işlenmiş metal, boya dokuları
+- ✅ Dikişsiz döküm/metal/boya dokuları (Blender) — M1.5'te yerini gerçek taramalara bıraktı
 - ✅ `ASSETS.md`: kaynak/lisans kaydı
 - ✅ Prosedürel kelepçe/somun/aktüatör/kutu/pompa/tanklar kit parçalarıyla
   değiştirildi; flanş cıvataları, sondalar, kaldırma kulakları, yağ filtresi,
