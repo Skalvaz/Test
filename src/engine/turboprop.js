@@ -13,8 +13,12 @@ import { createBladeGeometry } from './airfoil.js';
 import { buildGasPath } from './gaspath.js';
 import { buildStandYoke } from './stand.js';
 import { createPropDiscTexture } from '../materials/textures.js';
+import { KitBatch } from './kit.js';
 import {
   radiusProfile,
+  flangeBolts,
+  probes,
+  liftLugs,
   hugPipe,
   harness,
   fuelManifold,
@@ -250,14 +254,14 @@ export function buildTurboprop(materials, blades = 6) {
   ];
   group.add(tagPart(new THREE.Mesh(latheFromProfile(smoothProfile(casePts, 80), 128), materials.engineCase), 'fanCase'));
   const prof = radiusProfile(casePts.map(([r, z]) => [r, z]));
+  // Kit parçaları (Blender'da modellenmiş dış donanım, bkz. kit.js)
+  const kit = new KitBatch(materials);
   for (const fz of [-0.84, -0.3, -0.08, 0.48, 1.0]) {
     const r = prof(fz);
-    const fl = new THREE.Mesh(new THREE.TorusGeometry(r + 0.004, 0.01, 8, 96), materials.machinery);
+    const fl = new THREE.Mesh(new THREE.TorusGeometry(r + 0.004, 0.01, 8, 96), materials.kitSteel ?? materials.machinery);
     fl.position.z = fz;
     group.add(tagPart(fl, 'fanCase'));
-    const bolt = new THREE.CylinderGeometry(0.006, 0.006, 0.024, 6);
-    bolt.rotateX(Math.PI / 2);
-    group.add(tagPart(radialInstances(bolt, materials.machinery, 36, r + 0.013, fz), 'fanCase'));
+    flangeBolts(r + 0.013, fz, 36, { kit }, 0.009);
   }
 
   // Egzoz: jet borusu
@@ -311,34 +315,33 @@ export function buildTurboprop(materials, blades = 6) {
     tank: materials.engineCase,
     glass: materials.sightGlass,
     rubber: materials.hose,
+    castKit: materials.kitCast,
+    kit,
   };
   fuelManifold(group, prof, 0.14, 14, mats, 'gearbox');
   igniters(group, prof, 0.25, [-Math.PI / 2 - 0.8, -Math.PI / 2 + 0.8], 0.6, mats, 'gearbox');
   borescopePorts(group, prof, [-0.5, 0.3, 0.56, 0.8], 0.4, mats);
   oilTank(group, prof, { a: -0.15, z: -0.45, len: 0.28, r: 0.065 }, mats);
   controlUnit(group, prof, { a: Math.PI + 0.25, z: -0.35, w: 0.18, d: 0.26 }, mats);
-  const pipe = (a0, a1, z0, z1, rad, mat, gap = 0.012) =>
-    hugPipe(group, prof, { a0, a1, z0, z1, rad, gap, mat, clampMat: materials.machinery });
+  const pipe = (a0, a1, z0, z1, rad, mat, gap = 0.012) => hugPipe(group, prof, { a0, a1, z0, z1, rad, gap, mat, kit });
   pipe(0.35, 0.15, -0.8, 0.12, 0.013, materials.engineCase); // yakıt besleme
   pipe(-0.3, -0.6, -0.4, 0.75, 0.009, materials.brassFitting, 0.01); // yağ dönüş
   pipe(Math.PI - 0.4, Math.PI - 0.1, -0.75, 0.9, 0.009, materials.brassFitting, 0.01); // yağ basınç
   pipe(Math.PI / 2 + 0.5, Math.PI / 2 + 0.2, -0.2, 0.4, 0.022, materials.engineCase, 0.016); // bleed
-  harness(group, prof, { a0: Math.PI + 0.15, a1: Math.PI + 0.55, z0: -0.2, z1: 0.95, mat: materials.hose, clampMat: materials.machinery });
-  // Dişli kutusunun arka yüzündeki aksesuarlar: starter-jeneratör, pompalar
-  for (const [x, y, r, l, mat] of [
-    [0.3, 0.24, 0.085, 0.22, materials.castAlu],
-    [-0.28, 0.26, 0.06, 0.18, materials.machinery],
-    [0.3, -0.24, 0.05, 0.16, materials.anodized],
+  harness(group, prof, { a0: Math.PI + 0.15, a1: Math.PI + 0.55, z0: -0.2, z1: 0.95, mat: materials.hose, kit });
+  // Dişli kutusunun arka yüzündeki aksesuarlar (eksenel, +Z): starter-jeneratör,
+  // yakıt kontrol ünitesi/pompa, hidrolik pompa
+  for (const [x, y, r, l, kind] of [
+    [0.3, 0.24, 0.085, 0.22, 'generator'],
+    [-0.28, 0.26, 0.06, 0.18, 'pump'],
+    [0.3, -0.24, 0.05, 0.16, 'hydPump'],
   ]) {
-    const acc = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.95, l, 20), mat);
-    acc.rotation.x = Math.PI / 2;
-    acc.position.set(x, y, -0.86 + l / 2);
-    group.add(tagPart(acc, 'gearbox'));
-    const fl = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.2, r * 1.2, 0.015, 20), materials.machinery);
-    fl.rotation.x = Math.PI / 2;
-    fl.position.set(x, y, -0.87);
-    group.add(tagPart(fl, 'gearbox'));
+    const s = r / 0.06;
+    kit.at(kind, Math.atan2(y, x), Math.hypot(x, y), -0.87, { pitch: Math.PI / 2, scale: [s, l / 0.145, s] }, 'gearbox');
   }
+  probes(prof, 0.95, 6, { kit }, 0.3, 'lpt');
+  liftLugs(prof, [-0.55, 0.62], { kit });
+  group.add(kit.build());
 
   /* ---------------- test standı askısı ---------------- */
   group.add(tagPart(buildStandYoke(materials, { mounts: [-1.25, 0.35], engineR: 0.42 }), 'stand'));

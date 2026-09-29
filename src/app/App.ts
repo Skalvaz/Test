@@ -15,6 +15,7 @@ import type { Lesson, StepUi } from '../game/lessons/types';
 import { PARTS } from '../game/parts';
 import { loadProgress, loadSettings, saveLessonResult, saveSettings, type Settings } from '../game/progress';
 import { createMaterials } from '../materials/library.js';
+import { loadKit, setKitQuality } from '../engine/kit.js';
 import { loadPanelDetails } from '../materials/textures.js';
 import { ENGINE_CATALOG, EngineSim, type EngineKind, type SimEvent } from '../sim';
 import { Cockpit, type SwitchId } from '../ui/Cockpit';
@@ -134,7 +135,13 @@ export class App {
       console.error('Panel detay dokuları yüklenemedi', err);
       return null;
     });
-    const materials = createMaterials(renderer, details);
+    await step(onProgress, 'Donanım parçaları yükleniyor…');
+    setKitQuality(this.settings.quality);
+    const kitTex = await loadKit(renderer).catch((err) => {
+      console.error('Kit parçaları yüklenemedi', err);
+      return null;
+    });
+    const materials = createMaterials(renderer, details, kitTex);
     this.materials = materials;
 
     await step(onProgress, 'Gökyüzü ve ortam ışığı hesaplanıyor…');
@@ -468,11 +475,7 @@ export class App {
     this.sim.setDesign(ENGINE_CATALOG[kind]);
     if (idle) this.sim.trim(0, 30);
     this.autoStart = false;
-    this.scene.remove(this.visual.root);
-    this.visual.dispose();
-    this.visual = new EngineVisual(this.materials, kind);
-    this.scene.add(this.visual.root);
-    this.picker.visual = this.visual;
+    this.rebuildVisual(kind);
     this.cockpit.setEngineKind(kind);
     this.setCutaway(this.cutaway);
     this.stickyHighlight = null;
@@ -481,6 +484,16 @@ export class App {
     // Yeni motor farklı boyda: motora bağlı bir yakın açıdaysak yeniden kadrajla
     const cur = this.rig.current;
     if (this.mode !== 'menu' && cur !== 'menu' && (KIND_VIEWS[kind][cur] || cur === 'fan' || cur === 'inlet')) this.rig.go(cur);
+  }
+
+  /** 3B motor modelini (aynı ya da yeni tip) yeniden üretir */
+  private rebuildVisual(kind: EngineKind = this.visual.kind) {
+    this.scene.remove(this.visual.root);
+    this.visual.dispose();
+    this.visual = new EngineVisual(this.materials, kind);
+    this.scene.add(this.visual.root);
+    this.picker.visual = this.visual;
+    if (this.cutaway) this.setCutaway(true);
   }
 
   /** Kamera açılarını ve seçicideki adları motor tipine göre günceller */
@@ -508,6 +521,9 @@ export class App {
             this.settings.quality = q;
             this.applyQuality(q);
             saveSettings(this.settings);
+            // Kit parçalarının detay seviyesi değişti: model yeniden üretilir
+            setKitQuality(q);
+            this.rebuildVisual();
           },
           onVolume: (v) => {
             this.settings.volume = v;

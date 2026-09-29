@@ -94,15 +94,20 @@ Sınırlar: tek HTML dosyası 15 MB altında kalır (şu an 4,5 MB); büyük var
 gerekirse isteğe bağlı ayrı paket dosyası. Mobil/zayıf GPU için düşük kalite
 seviyesi korunur.
 
-#### M1 — Varlık hattı ve kit-bash kütüphanesi
-- `blender/kit_parts.py`: ~25 dış donanım parçası (3 detay seviyesi), tek bir
-  glb'de; kodda `kit.place('clampP', {…})` ile yerleştirilir
-- `blender/trim_sheets.py`: perçin sırası, panel dikişi, kaynak dikişi, uyarı
-  etiketleri, ısı rengi geçişleri için trim sheet (normal + ORM + albedo)
-- Malzeme taramaları (CC0) → üç kalite kademesi, KTX2 sıkıştırma
-- `ASSETS.md`: kaynak/lisans kaydı
-- **Bitti sayılır:** mevcut prosedürel boru/kelepçe/aktüatörler kit parçalarıyla
-  değiştirilmiş, görsel karşılaştırma renderları, build boyutu bütçede
+#### M1 — Varlık hattı ve kit-bash kütüphanesi ✅
+- ✅ `blender/kit_parts.py`: 31 dış donanım parçası, 3 detay seviyesi, tek
+  glb (nicemleme + meshopt, 0,8 MB); kodda `KitBatch` ile yerleştirilir,
+  InstancedMesh ile çizilir (`src/engine/kit.js`)
+- ✅ `blender/trim_sheet.py`: kaynak dikişi, tırtıl, perçin/vida sırası,
+  soğutma panjuru, 8 etiket (normal + ORM + albedo)
+- ✅ `blender/materials.py`: dikişsiz döküm, işlenmiş metal, boya dokuları
+- ✅ `ASSETS.md`: kaynak/lisans kaydı
+- ✅ Prosedürel kelepçe/somun/aktüatör/kutu/pompa/tanklar kit parçalarıyla
+  değiştirildi; flanş cıvataları, sondalar, kaldırma kulakları, yağ filtresi,
+  tahliye valfi eklendi. Önce/sonra renderları README'de
+- Ertelenen: KTX2 sıkıştırma (tek dosya paketine ~0,5 MB çözücü ekler;
+  doku toplamı şu an 0,7 MB WebP, gerek görülmedi). CC0 taramalar: ortamın
+  ağ ayarı Poly Haven/ambientCG'ye izin verince eklenecek
 
 #### M2 — Model yükseltmesi (mevcut motorlar)
 - Fan ve kompresör kanatları: kök (dovetail) ve platform, uç aşınması,

@@ -7,3 +7,4 @@ dist-single/
 scratch/
 playtest-output/
 __pycache__/
+build/

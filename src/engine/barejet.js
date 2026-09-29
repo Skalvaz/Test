@@ -14,8 +14,12 @@ import { createStageBladeGeometry } from './airfoil.js';
 import { buildGasPath } from './gaspath.js';
 import { buildStandYoke } from './stand.js';
 import { createBlurDiscTexture } from '../materials/textures.js';
+import { KitBatch } from './kit.js';
 import {
   radiusProfile,
+  flangeBolts,
+  probes,
+  liftLugs,
   hugPipe,
   harness,
   vsvStage,
@@ -248,15 +252,16 @@ export function buildBareJet(materials, kind) {
     group.add(tagPart(split, 'bypassDuct'));
   }
 
+  // Kit parçaları (Blender'da modellenmiş dış donanım, bkz. kit.js)
+  const kit = new KitBatch(materials);
+
   // Flanşlar ve cıvata halkaları
   for (const fz of v.flanges) {
     const r = prof(fz);
-    const fl = new THREE.Mesh(new THREE.TorusGeometry(r + 0.004, 0.012, 8, 128), materials.machinery);
+    const fl = new THREE.Mesh(new THREE.TorusGeometry(r + 0.004, 0.012, 8, 128), materials.kitSteel ?? materials.machinery);
     fl.position.z = fz;
     group.add(tagPart(fl, 'fanCase'));
-    const bolt = new THREE.CylinderGeometry(0.007, 0.007, 0.03, 6);
-    bolt.rotateX(Math.PI / 2);
-    group.add(tagPart(radialInstances(bolt, materials.machinery, 48, r + 0.016, fz), 'fanCase'));
+    flangeBolts(r + 0.016, fz, 48, { kit }, 0.011);
   }
 
   // Egzoz: türbin arka çerçevesi + kuyruk konisi
@@ -321,6 +326,8 @@ export function buildBareJet(materials, kind) {
     tank: materials.engineCase,
     glass: materials.sightGlass,
     rubber: materials.hose,
+    castKit: materials.kitCast,
+    kit,
   };
   const B = -Math.PI / 2; // alt
   const cb = v.gas.combustor;
@@ -357,11 +364,11 @@ export function buildBareJet(materials, kind) {
       arc: 1.15,
       depth: 0.13,
       accessories: [
-        { da: -0.32, z: gbZ0 + 0.2, r: 0.07, h: 0.16, fins: true, mat: 'cast' }, // jeneratör
-        { da: 0.3, z: gbZ0 + 0.25, r: 0.06, h: 0.14, mat: 'metal' }, // yakıt pompası
-        { da: 0, z: gbZ0 + gbLen * 0.62, r: 0.085, h: 0.12, fins: true, mat: 'cast' }, // hava türbinli marş
-        { da: -0.34, z: gbZ0 + gbLen * 0.8, r: 0.05, h: 0.12, mat: 'anodized' }, // hidrolik pompa
-        { da: 0.34, z: gbZ0 + gbLen * 0.82, r: 0.045, h: 0.1, mat: 'metal' }, // yağ pompası
+        { kind: 'generator', da: -0.32, z: gbZ0 + 0.2, r: 0.07, h: 0.16 },
+        { kind: 'pump', da: 0.3, z: gbZ0 + 0.25, r: 0.06, h: 0.14, yaw: Math.PI / 2 }, // yakıt pompası
+        { kind: 'starter', da: 0, z: gbZ0 + gbLen * 0.62, r: 0.075, h: 0.13 }, // hava türbinli marş
+        { kind: 'hydPump', da: -0.34, z: gbZ0 + gbLen * 0.8, r: 0.05, h: 0.12, yaw: Math.PI }, // hidrolik pompa
+        { kind: 'oilPump', da: 0.34, z: gbZ0 + gbLen * 0.82, r: 0.045, h: 0.1 }, // yağ pompası
       ],
     },
     mats,
@@ -370,8 +377,7 @@ export function buildBareJet(materials, kind) {
   controlUnit(group, prof, { a: Math.PI + 0.3, z: gbZ0 + 0.35 }, mats);
 
   // Borular: gövdeyi izler, kelepçelerle bağlanır
-  const pipe = (a0, a1, z0, z1, rad, mat, gap = 0.012) =>
-    hugPipe(group, prof, { a0, a1, z0, z1, rad, gap, mat, clampMat: materials.machinery });
+  const pipe = (a0, a1, z0, z1, rad, mat, gap = 0.012) => hugPipe(group, prof, { a0, a1, z0, z1, rad, gap, mat, kit });
   // Yakıt besleme: pompa → manifold
   pipe(B + 0.3, B + 0.55, gbZ0 + 0.3, cb.z0 + 0.03, 0.013, materials.engineCase);
   // Yağ hatları: tank → yataklar (ön ve arka)
@@ -382,12 +388,15 @@ export function buildBareJet(materials, kind) {
   // Art yakıcı yakıt hattı: dişli kutusu → püskürtme halkaları
   pipe(B - 0.5, B - 0.3, gbZ0 + 0.6, ab.z0 + 0.14, 0.015, materials.engineCase, 0.014);
   // Kablo demetleri: kontrol ünitesinden sensörlere
-  harness(group, prof, { a0: Math.PI + 0.25, a1: Math.PI + 0.55, z0: z + 0.25, z1: ab.z0 - 0.05, mat: materials.hose, clampMat: materials.machinery });
-  harness(group, prof, { a0: Math.PI + 0.4, a1: 0.15, z0: gbZ0 + 0.5, z1: ab.z1 - 0.2, gap: 0.02, count: 2, mat: materials.hose, clampMat: materials.machinery });
+  harness(group, prof, { a0: Math.PI + 0.25, a1: Math.PI + 0.55, z0: z + 0.25, z1: ab.z0 - 0.05, mat: materials.hose, kit });
+  harness(group, prof, { a0: Math.PI + 0.4, a1: 0.15, z0: gbZ0 + 0.5, z1: ab.z1 - 0.2, gap: 0.02, count: 2, mat: materials.hose, kit });
   // Art yakıcı püskürtme halkası besleme rakorları
-  const feed = new THREE.CylinderGeometry(0.012, 0.012, 0.035, 8);
-  feed.translate(0, ab.R + 0.015, 0);
-  group.add(tagPart(radialInstances(feed, materials.machinery, 6, 0, ab.z0 + 0.14, { phase: 0.4 }), 'afterburner'));
+  for (let i = 0; i < 6; i++) kit.at('bNut', 0.4 + (i / 6) * Math.PI * 2, prof(ab.z0 + 0.14), ab.z0 + 0.14, {}, 'afterburner');
+  // Egzoz sıcaklık sondaları (türbin çıkışı çevresinde), kaldırma kulakları
+  probes(prof, v.gas.lpt.z1 + 0.14, 8, { kit }, 0.2, 'lpt');
+  liftLugs(prof, [z + 0.35, ab.z0 + 0.3], { kit });
+
+  group.add(kit.build());
 
   /* ---------------- test standı askısı ---------------- */
   const yoke = buildStandYoke(materials, { mounts: v.mounts, engineR: R });

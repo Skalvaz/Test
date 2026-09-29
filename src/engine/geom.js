@@ -183,3 +183,35 @@ export function tagPart(obj, part) {
   });
   return obj;
 }
+
+/**
+ * Dünya ölçekli üç düzlemli UV (kit malzemelerinin döşenen dokuları için:
+ * 1 UV birimi = `scale` metre). Yüz normalinin baskın eksenine göre izdüşüm.
+ */
+export function boxUV(geometry, scale = 0.15) {
+  // Dikişte UV kopabilsin diye indekssiz (köşe normalleri korunur)
+  const g = geometry.index ? geometry.toNonIndexed() : geometry;
+  const pos = g.attributes.position;
+  const uv = new Float32Array(pos.count * 2);
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const fn = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i += 3) {
+    a.fromBufferAttribute(pos, i);
+    b.fromBufferAttribute(pos, i + 1);
+    c.fromBufferAttribute(pos, i + 2);
+    fn.subVectors(c, b).cross(a.clone().sub(b)).normalize();
+    const ax = Math.abs(fn.x) > Math.abs(fn.y) ? (Math.abs(fn.x) > Math.abs(fn.z) ? 0 : 2) : Math.abs(fn.y) > Math.abs(fn.z) ? 1 : 2;
+    for (let k = 0; k < 3; k++) {
+      const x = pos.getX(i + k);
+      const y = pos.getY(i + k);
+      const z = pos.getZ(i + k);
+      const [u, v] = ax === 0 ? [z, y] : ax === 1 ? [x, z] : [x, y];
+      uv[(i + k) * 2] = u / scale;
+      uv[(i + k) * 2 + 1] = v / scale;
+    }
+  }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return g;
+}

@@ -290,7 +290,7 @@ export class EngineVisual {
     this.root.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
-      geos.add(mesh.geometry);
+      if (!mesh.geometry.userData.shared) geos.add(mesh.geometry);
       const m = mesh.material;
       for (const mm of Array.isArray(m) ? m : [m]) if (mm.userData.baseEmissive) mats.add(mm);
     });

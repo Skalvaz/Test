@@ -67,6 +67,24 @@ FADEC kutusu, gövdeye kelepçelerle oturan yakıt/yağ/bleed boruları ve örg�
 kablo demetleri bulunur. Turboprobun redüktörü gerçekten döner bir planet
 dişli setidir (güneş dişlisi türbin milinde, taşıyıcı pervane milinde).
 
+**Kit-bash donanım kütüphanesi** — dış donanımın küçük parçaları Blender'da
+kodla modellenir: yastıklı boru kelepçeleri, B-somunlu rakorlar, VSV
+kolları ve yuvaları, hidrolik aktüatörler, ateşleyici ve uyarıcı kutusu,
+yakıt enjektörü flanşları, pompalar, jeneratör, marş motoru, yağ tankı ve
+filtresi, FADEC kutusu, sondalar, kaldırma kulakları, flanş cıvataları
+(31 parça, her biri 3 detay seviyesi; kalite ayarı seçer). Kaynak dikişi,
+tırtıl, perçin ve etiketler (FUEL, OIL, HYDRAULIC, DANGER HIGH VOLTAGE…)
+ortak bir trim sheet'ten gelir; döküm, işlenmiş metal ve boya dokuları
+dikişsiz olarak Blender'da pişirilir. Oyun parçaları InstancedMesh ile
+çizer (yüzlerce parça, birkaç düzine çizim çağrısı).
+
+![Kit parça kütüphanesi](renders/17-kit-kutuphanesi.jpg)
+
+| Önce | Sonra |
+| --- | --- |
+| ![VSV halkaları, önce](renders/18-vsv-once.jpg) | ![VSV halkaları, sonra](renders/19-vsv-sonra.jpg) |
+| ![Yan görünüm, önce](renders/20-yan-once.jpg) | ![Yan görünüm, sonra](renders/21-yan-sonra.jpg) |
+
 **Efektler** — art yakıcıda ışın yürütmeli (raymarch) hacimsel alev ve jet Mach
 sayısından hesaplanan şok elmasları; ıslak çalıştırmada yakıt buharı,
 light-off'ta is ve kıvılcım, torching ve surge ateş topları, kapatmada buhar;
@@ -180,6 +198,19 @@ python blender/panel_details.py --part core --scale 0.5 --out /tmp   # hızlı t
 Panel yerleşimleri (derzler, kapaklar, kilitler, tapalar) `src/materials/panelLayouts.json`
 dosyasındadır; Blender modeli ve oyundaki albedo derzleri aynı dosyadan beslenir.
 
+Kit-bash parçaları ve dokuları (bpy 5.0.1 ile üretildi; `blender/kitlib.py`
+ortak geometri yardımcılarını ve trim sheet düzenini içerir):
+
+```bash
+python blender/kit_parts.py --out build/kit_raw.glb     # 31 parça × 3 LOD
+node scripts/pack-kit.mjs build/kit_raw.glb src/assets/kit.glb   # nicemleme + meshopt
+python blender/trim_sheet.py --out src/assets           # kaynak/tırtıl/perçin/etiket (~4 dk)
+python blender/materials.py --out src/assets            # dikişsiz döküm/işlenmiş/boya
+python blender/kit_preview.py --out build/kit.png       # parça tablosu (görsel kontrol)
+```
+
+Varlıkların kaynak ve lisans kaydı: **[ASSETS.md](ASSETS.md)**.
+
 ### Dosya düzeni
 
 ```
@@ -193,9 +224,9 @@ src/
   effects/    art yakıcı alevi, parçacık sistemi, motor efektleri
   core/       gökyüzü/ışık ortamı, görüntü işleme zinciri
   materials/  prosedürel dokular, PBR malzemeler, kaporta yerleşimi
-  assets/     Blender çıktıları (test hücresi glb, panel detay dokuları)
-blender/      Blender betikleri (test hücresi, panel detayları)
-scripts/      tek dosya paketleyici, otomatik oynanış testi
+  assets/     Blender çıktıları (test hücresi, kit parçaları, trim sheet, dokular)
+blender/      Blender betikleri (test hücresi, panel detayları, kit, trim, malzemeler)
+scripts/      tek dosya paketleyici, kit paketleyici, otomatik oynanış testi
 ```
 
 İleriye dönük plan (motor tasarım atölyesi, uçak tasarımı, Blender varlık
