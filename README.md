@@ -62,7 +62,8 @@ zeminde "MOTOR ÇALIŞTIRMA", uyarı levhaları ve ışıklı taksi yolu tabelal
 | --- | --- |
 | ![Havaalanı: apron](renders/24-havaalani-apron.jpg) | ![Havaalanı: genel görünüm](renders/25-havaalani-genel.jpg) |
 | ![Açık hangar](renders/27-havaalani-hangar.jpg) | ![Kule ve itfaiye](renders/29-havaalani-kule.jpg) |
-| ![Gece](renders/28-havaalani-gece.jpg) | |
+| ![Gece](renders/28-havaalani-gece.jpg) | ![Gece: pencere arkası odalar](renders/31-gece-cephe.jpg) |
+| ![Hangar kapıları](renders/30-hangar-kapilari.jpg) | |
 | ![Hücre, önce](renders/22-hucre-once.jpg) | ![Hücre, sonra: gerçek modeller](renders/23-hucre-sonra.jpg) |
 
 **Test hücresi ortamı** — Blender'da modellenip Cycles ile ışığı pişirilmiş
