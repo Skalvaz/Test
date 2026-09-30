@@ -7,7 +7,7 @@
  */
 
 import * as THREE from 'three';
-import { createEngineMaterials } from './engine';
+import { createEngineMaterials, capify } from './engine';
 import {
   createNacelleMaps,
   createBladeMaps,
@@ -161,12 +161,12 @@ export function createMaterials(renderer, details = null, kitTex = null, scans =
 
   /* --- giriş ağzı: parlatılmış alüminyum halka --- */
   const polishedLip = new THREE.MeshPhysicalMaterial({
-    color: 0xd9dde1,
+    color: 0xd4d8dc,
     metalness: 1.0,
-    roughness: 0.075,
-    envMapIntensity: 1.6,
-    clearcoat: 0.3,
-    clearcoatRoughness: 0.08,
+    roughness: 0.17,
+    envMapIntensity: 1.35,
+    clearcoat: 0.25,
+    clearcoatRoughness: 0.12,
     side: THREE.DoubleSide,
   });
 
@@ -480,6 +480,13 @@ export function createMaterials(renderer, details = null, kitTex = null, scans =
     ...createEngineMaterials(scans),
   };
   if (scans) applyScans(library, scans);
+  // Açık yüzeyler için kapaksız kopyalar (kesitte arka yüzleri kırmızı olmasın)
+  library.acousticLinerOpen = library.acousticLiner.clone();
+  library.engineCaseOpen = library.engineCase.clone();
+  // Kapalı katı gövdelere dönüştürülen kabukların malzemeleri: kesit kapaklı
+  for (const name of ['polishedLip', 'cowlDetail', 'acousticLiner', 'composite', 'coreDetail', 'sooted', 'inconel', 'spinner', 'nozzleFlap', 'nozzleCeramic', 'engineCase', 'abDuct', 'abLiner', 'propSpinner']) {
+    if (library[name]) capify(library[name]);
+  }
   // İsimler, parça başına klonlanan malzemelerin kaynağını tanımak için
   for (const [name, mat] of Object.entries(library)) mat.name = name;
   return library;

@@ -9,9 +9,10 @@
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, bladeRow, radialInstances, tagPart } from './geom.js';
+import { smoothProfile, latheFromProfile, thickLathe, bladeRow, radialInstances, tagPart } from './geom.js';
 import { createStageBladeGeometry } from './airfoil.js';
 import { buildGasPath } from './gaspath.js';
+import { buildNozzle } from './nozzle.js';
 import { buildStandYoke } from './stand.js';
 import { createBlurDiscTexture } from '../materials/textures.js';
 import { KitBatch } from './kit.js';
@@ -86,82 +87,6 @@ const VARIANTS = {
   },
 };
 
-/**
- * Değişken lüle: menteşeli birincil (yakınsak) ve ikincil (ıraksak) yaprak
- * halkası. `set(area, abLevel)` boğaz alanı oranına göre yaprakları döndürür.
- */
-function buildNozzle(materials, z0, n) {
-  const group = new THREE.Group();
-  group.name = 'variable-nozzle';
-  const primaries = [];
-  const secondaries = [];
-  const width = (2 * Math.PI * n.hingeR) / n.flaps;
-  // Yaprak: hafif kavisli plaka (dış yüz koyu, iç yüz seramik)
-  const plate = (len, w, mat) => {
-    const geo = new THREE.BoxGeometry(w * 1.04, 0.012, len);
-    geo.translate(0, 0, len / 2);
-    return new THREE.Mesh(geo, mat);
-  };
-  for (let pass = 0; pass < 2; pass++) {
-    // pass 0: yaprak, pass 1: aradaki sızdırmazlık yaprağı (biraz içte)
-    const phase = pass === 0 ? 0 : Math.PI / n.flaps;
-    for (let i = 0; i < n.flaps; i++) {
-      const spoke = new THREE.Group();
-      spoke.rotation.z = phase + (i / n.flaps) * Math.PI * 2;
-      const hinge = new THREE.Group();
-      hinge.position.set(0, n.hingeR - pass * 0.012, z0);
-      const p = plate(n.primary, width * (pass ? 0.7 : 1), pass ? materials.nozzleCeramic : materials.nozzleFlap);
-      hinge.add(p);
-      primaries.push(hinge);
-      if (n.divergent > 0) {
-        const joint = new THREE.Group();
-        joint.position.z = n.primary;
-        joint.add(plate(n.divergent, width * (pass ? 0.72 : 1.06), pass ? materials.nozzleCeramic : materials.nozzleFlap));
-        hinge.add(joint);
-        secondaries.push(joint);
-      }
-      spoke.add(hinge);
-      group.add(spoke);
-    }
-  }
-  // Aktüatörler (sabit, lüle kasnağına bağlı)
-  const act = new THREE.CylinderGeometry(0.016, 0.016, 0.28, 10);
-  act.rotateX(Math.PI / 2);
-  act.translate(0, n.hingeR + 0.05, z0 - 0.05);
-  group.add(radialInstances(act, materials.machinery, 6, 0, 0, { phase: 0.26 }));
-  // Kasnak halkası
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(n.hingeR + 0.02, 0.028, 12, 96), materials.nozzleFlap);
-  ring.position.z = z0;
-  group.add(ring);
-
-  let exitZ = z0 + n.primary + n.divergent;
-  let exitR = n.throat0;
-  const set = (area, abLevel = 0) => {
-    const rt = n.throat0 * Math.sqrt(Math.max(0.6, area));
-    const tp = Math.asin(THREE.MathUtils.clamp((n.hingeR - rt) / n.primary, -0.95, 0.95));
-    for (const h of primaries) h.rotation.x = tp;
-    let re = rt;
-    if (n.divergent > 0) {
-      re = rt * (1.12 + 0.14 * abLevel);
-      const td = -Math.asin(THREE.MathUtils.clamp((re - rt) / n.divergent, -0.95, 0.95));
-      for (const j of secondaries) j.rotation.x = td - tp;
-    }
-    exitR = re;
-    exitZ = z0 + n.primary * Math.cos(tp) + (n.divergent > 0 ? n.divergent * Math.cos(Math.asin((re - rt) / n.divergent)) : 0);
-  };
-  set(1, 0);
-  return {
-    group,
-    set,
-    get exitZ() {
-      return exitZ;
-    },
-    get exitR() {
-      return exitR;
-    },
-  };
-}
-
 export function buildBareJet(materials, kind) {
   const v = VARIANTS[kind];
   const group = new THREE.Group();
@@ -187,7 +112,7 @@ export function buildBareJet(materials, kind) {
     ],
     90,
   );
-  const bellmouth = new THREE.Mesh(latheFromProfile(bell, 160), materials.polishedLip);
+  const bellmouth = new THREE.Mesh(thickLathe(bell, 160, 0.012, 'out'), materials.polishedLip);
   bellmouth.name = 'bellmouth';
   group.add(tagPart(bellmouth, 'inlet'));
 
@@ -204,7 +129,7 @@ export function buildBareJet(materials, kind) {
   );
   // Burun konisi giriş kılavuz kanatlarının göbeğidir ve DÖNMEZ; dönen
   // izlenimi vermesin diye sarmal işaretsiz, düz boyalı
-  group.add(tagPart(new THREE.Mesh(latheFromProfile(nose, 96), materials.nozzleFlap), 'spinner'));
+  group.add(tagPart(new THREE.Mesh(thickLathe(nose, 96, 0.008, 'in'), materials.nozzleFlap), 'spinner'));
   // Ön çerçeve: turbojette birkaç kalın dikme (yağ/hava hatları içinden
   // geçer); modern askeri turbofanda giriş kılavuz kanadı yok, fan doğrudan görünür
   if (v.igv > 0) {
@@ -237,7 +162,7 @@ export function buildBareJet(materials, kind) {
   const R = v.R;
   const ab = v.ab;
   const shellPts = [[t + 0.01, z + 0.02], ...v.shell];
-  const shell = new THREE.Mesh(latheFromProfile(shellPts.map(([r, zz]) => new THREE.Vector2(r, zz)), 128), materials.engineCase);
+  const shell = new THREE.Mesh(thickLathe(shellPts.map(([r, zz]) => new THREE.Vector2(r, zz)), 128, 0.01, 'in'), materials.engineCase);
   // Dış donanımın izleyeceği yüzey: gövde + art yakıcı kanalı
   const prof = radiusProfile([...v.shell, [ab.R, ab.z0 + 0.12], [ab.R, ab.z1]]);
   shell.name = 'engine-case';
@@ -267,7 +192,7 @@ export function buildBareJet(materials, kind) {
   // Egzoz: türbin arka çerçevesi + kuyruk konisi
   const [tc0, tc1, tcR] = v.tailCone;
   const cone = new THREE.Mesh(
-    latheFromProfile(smoothProfile([[tcR, tc0], [tcR * 0.8, tc0 + (tc1 - tc0) * 0.45], [0.02, tc1]], 40), 64),
+    thickLathe(smoothProfile([[tcR, tc0], [tcR * 0.8, tc0 + (tc1 - tc0) * 0.45], [0.02, tc1]], 40), 64, 0.008, 'in'),
     materials.sooted,
   );
   group.add(tagPart(cone, 'exhaust'));
@@ -277,16 +202,18 @@ export function buildBareJet(materials, kind) {
 
   /* ---------------- art yakıcı ---------------- */
   const abShell = new THREE.Mesh(
-    latheFromProfile(
+    thickLathe(
       [new THREE.Vector2(R, ab.z0 - 0.03), new THREE.Vector2(ab.R, ab.z0 + 0.12), new THREE.Vector2(ab.R, ab.z1)],
       128,
+      0.01,
+      'out',
     ),
     materials.abDuct,
   );
   abShell.name = 'afterburner-duct';
   group.add(tagPart(abShell, 'afterburner'));
   const liner = new THREE.Mesh(
-    latheFromProfile([new THREE.Vector2(ab.liner, ab.z0 + 0.05), new THREE.Vector2(ab.liner, ab.z1)], 96),
+    thickLathe([new THREE.Vector2(ab.liner, ab.z0 + 0.05), new THREE.Vector2(ab.liner, ab.z1)], 96, 0.006, 'out'),
     materials.abLiner,
   );
   liner.name = 'afterburner-liner';

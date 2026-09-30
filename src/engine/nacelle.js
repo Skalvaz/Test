@@ -9,7 +9,7 @@
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, arcLengthV, radialInstances, tagPart } from './geom.js';
+import { smoothProfile, latheFromProfile, thickLathe, arcLengthV, radialInstances, tagPart } from './geom.js';
 
 const SEG = 256;
 
@@ -76,7 +76,7 @@ export function buildNacelle(materials, dims) {
     ],
     140,
   );
-  const lip = new THREE.Mesh(latheFromProfile(lipProfile, SEG), materials.polishedLip);
+  const lip = new THREE.Mesh(thickLathe(lipProfile, SEG, 0.012, [1.56, -1.9]), materials.polishedLip);
   lip.name = 'inlet-lip';
   lip.castShadow = true;
   lip.receiveShadow = true;
@@ -98,7 +98,7 @@ export function buildNacelle(materials, dims) {
     180,
   );
   const cowl = new THREE.Mesh(
-    arcLengthV(latheFromProfile(cowlProfile, SEG), cowlProfile),
+    thickLathe(cowlProfile, SEG, 0.012, 'in', { arcV: true }),
     materials.cowlDetail,
   );
   cowl.name = 'fan-cowl';
@@ -121,7 +121,7 @@ export function buildNacelle(materials, dims) {
     ],
     160,
   );
-  const duct = new THREE.Mesh(latheFromProfile(ductProfile, SEG), materials.acousticLiner);
+  const duct = new THREE.Mesh(thickLathe(ductProfile, SEG, 0.014, 'out'), materials.acousticLiner);
   duct.name = 'bypass-duct';
   duct.receiveShadow = true;
   group.add(tagPart(duct, 'bypassDuct'));
@@ -138,7 +138,8 @@ export function buildNacelle(materials, dims) {
     ],
     60,
   );
-  const fanCase = new THREE.Mesh(latheFromProfile(caseProfile, 160), materials.composite);
+  // Kapalı kesit: muhafaza duvarı + baypas kanalına oturan taban
+  const fanCase = new THREE.Mesh(thickLathe(caseProfile, 160, 0.012, 'in'), materials.composite);
   fanCase.name = 'fan-containment-case';
   group.add(tagPart(fanCase, 'fanCase'));
 
@@ -153,17 +154,14 @@ export function buildNacelle(materials, dims) {
 
   const innerChevrons = new THREE.Mesh(
     chevronBand({ startR: 1.344, startZ: 1.52, endR: 1.382, endZ: 1.70, count: 18 }),
-    materials.acousticLiner,
+    materials.acousticLinerOpen ?? materials.acousticLiner,
   );
   innerChevrons.name = 'bypass-chevrons-inner';
   group.add(tagPart(innerChevrons, 'bypassNozzle'));
 
   // Lüle arka kenarını kapatan ince halka
   const nozzleRing = new THREE.Mesh(
-    latheFromProfile(
-      [new THREE.Vector2(1.516, 1.52), new THREE.Vector2(1.344, 1.52)],
-      SEG,
-    ),
+    thickLathe([new THREE.Vector2(1.516, 1.52), new THREE.Vector2(1.344, 1.52)], SEG, 0.01, [1.43, 1.4]),
     materials.composite,
   );
   group.add(tagPart(nozzleRing, 'bypassNozzle'));

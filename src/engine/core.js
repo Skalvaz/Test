@@ -12,7 +12,7 @@
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, arcLengthV, bladeRow, radialInstances, pipeAlong, tagPart } from './geom.js';
+import { smoothProfile, latheFromProfile, thickLathe, arcLengthV, bladeRow, radialInstances, pipeAlong, tagPart } from './geom.js';
 import { createStageBladeGeometry } from './airfoil.js';
 import { compressorModule, turbineModule, casingShell } from './stages.js';
 import { revolve, roundPoly } from './revolve.js';
@@ -49,7 +49,7 @@ export function buildCore(materials) {
     170,
   );
   const coreCowl = new THREE.Mesh(
-    arcLengthV(latheFromProfile(coreCowlProfile, 200), coreCowlProfile),
+    thickLathe(coreCowlProfile, 200, 0.012, 'in', { arcV: true }),
     materials.coreDetail,
   );
   coreCowl.name = 'core-cowl';
@@ -67,7 +67,7 @@ export function buildCore(materials) {
     ],
     40,
   );
-  const splitter = new THREE.Mesh(latheFromProfile(splitterProfile, 200), materials.polishedLip);
+  const splitter = new THREE.Mesh(thickLathe(splitterProfile, 200, 0.01, 'out'), materials.polishedLip);
   splitter.name = 'flow-splitter';
   group.add(tagPart(splitter, 'coreCowl'));
 
@@ -81,7 +81,7 @@ export function buildCore(materials) {
     thickness: [0.10, 0.06],
     camber: [0.07, 0.045],
   });
-  const ogv = bladeRow(ogvGeo, materials.hubMetal, 44, { z: 0.20 });
+  const ogv = bladeRow(ogvGeo, materials.compVane ?? materials.hubMetal, 44, { z: 0.20 });
   ogv.name = 'outlet-guide-vanes';
   group.add(tagPart(ogv, 'ogv'));
 
@@ -94,7 +94,7 @@ export function buildCore(materials) {
     thickness: [0.18, 0.12],
     camber: [0.0, 0.0],
   });
-  const struts = bladeRow(strutGeo, materials.hubMetal, 8, { z: 0.62, phase: 0.12 });
+  const struts = bladeRow(strutGeo, materials.compVane ?? materials.hubMetal, 8, { z: 0.62, phase: 0.12 });
   struts.name = 'fan-frame-struts';
   group.add(tagPart(struts, 'ogv'));
 
@@ -271,7 +271,7 @@ export function buildCore(materials) {
    * gibi durur.
    */
   const rearFrameHub = new THREE.Mesh(
-    latheFromProfile(
+    thickLathe(
       smoothProfile(
         [
           [0.344, 2.900],
@@ -282,6 +282,8 @@ export function buildCore(materials) {
         40,
       ),
       120,
+      0.01,
+      'in',
     ),
     materials.sooted,
   );
@@ -293,7 +295,7 @@ export function buildCore(materials) {
 
   // Egzoz kanalı iç duvarı: türbin çıkışından lüle ağzına
   const exhaustDuct = new THREE.Mesh(
-    latheFromProfile(
+    thickLathe(
       smoothProfile(
         [
           [0.648, 2.905],
@@ -305,6 +307,8 @@ export function buildCore(materials) {
         50,
       ),
       160,
+      0.01,
+      'out',
     ),
     materials.sooted,
   );
@@ -323,7 +327,7 @@ export function buildCore(materials) {
     ],
     40,
   );
-  const primaryNozzle = new THREE.Mesh(latheFromProfile(nozzleProfile, 180), materials.inconel);
+  const primaryNozzle = new THREE.Mesh(thickLathe(nozzleProfile, 180, 0.008, 'out'), materials.inconel);
   primaryNozzle.castShadow = true;
   exhaust.add(primaryNozzle);
 
@@ -342,7 +346,7 @@ export function buildCore(materials) {
     ],
     110,
   );
-  const plug = new THREE.Mesh(latheFromProfile(plugProfile, 180), materials.inconel);
+  const plug = new THREE.Mesh(thickLathe(plugProfile, 180, 0.01, 'in'), materials.inconel);
   plug.name = 'exhaust-plug';
   plug.castShadow = true;
   exhaust.add(plug);

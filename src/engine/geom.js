@@ -10,6 +10,7 @@
  */
 
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /**
  * Kontrol noktalarından yumuşak bir profil eğrisi örnekler.
@@ -81,6 +82,72 @@ export function arcLengthU(geometry, ringSize, rings) {
   }
   uv.needsUpdate = true;
   return geometry;
+}
+
+/**
+ * Kalınlıklı dönel kabuk: profilin döndürülmüş yüzeyi + t kadar ötelenmiş
+ * ikinci yüzey + iki uç halkası → kapalı katı. Kesit görünümünde kabuk
+ * duvarı dolu (kapaklı) görünür; ince açık yüzeyler "kâğıt" gibi durur.
+ *
+ * Dış yüzey LatheGeometry ile aynıdır (UV ve pişirilmiş detay haritaları
+ * korunur). `side` ötelemenin yönü: 'in' (eksene doğru), 'out' (dışa) ya
+ * da katının içinde kalan bir [r, z] noktası.
+ */
+export function thickLathe(profile, segments, t, side = 'in', opts = {}) {
+  const pts = profile.map((p) => (p.isVector2 ? p : new THREE.Vector2(p[0], p[1])));
+  const outer = latheFromProfile(pts, segments);
+  if (opts.arcV) arcLengthV(outer, pts);
+  const n = pts.length;
+  // Profil normalleri (r, z): dış yüzey normalinden (φ = 0 sütunu)
+  const nrm = outer.attributes.normal;
+  const n2 = [];
+  for (let j = 0; j < n; j++) n2.push([-nrm.getY(j), nrm.getZ(j)]);
+  let sgn;
+  if (Array.isArray(side)) {
+    const m = Math.floor(n / 2);
+    const d = [side[0] - pts[m].x, side[1] - pts[m].y];
+    sgn = d[0] * n2[m][0] + d[1] * n2[m][1] >= 0 ? 1 : -1;
+  } else {
+    let s = 0;
+    for (const v of n2) s += v[0];
+    sgn = (side === 'out' ? 1 : -1) * (s >= 0 ? 1 : -1);
+  }
+  const off = pts.map((p, j) => new THREE.Vector2(Math.max(0, p.x + sgn * t * n2[j][0]), p.y + sgn * t * n2[j][1]));
+  const inner = latheFromProfile(off, segments);
+  inner.attributes.uv.array.set(outer.attributes.uv.array);
+  const flip = (g) => {
+    const idx = g.index.array;
+    for (let i = 0; i < idx.length; i += 3) {
+      const tmp = idx[i + 1];
+      idx[i + 1] = idx[i + 2];
+      idx[i + 2] = tmp;
+    }
+    const a = g.attributes.normal.array;
+    for (let i = 0; i < a.length; i++) a[i] = -a[i];
+  };
+  // Katının dış normali: dış yüzeyde −sgn·n, iç yüzeyde +sgn·n
+  if (sgn > 0) flip(outer);
+  if (sgn < 0) flip(inner);
+  const cap = (a, b, outDir) => {
+    const g = latheFromProfile([a, b], segments);
+    const gn = g.attributes.normal;
+    if (-gn.getY(0) * outDir[0] + gn.getZ(0) * outDir[1] < 0) flip(g);
+    return g;
+  };
+  const d0 = [pts[0].x - pts[1].x, pts[0].y - pts[1].y];
+  const d1 = [pts[n - 1].x - pts[n - 2].x, pts[n - 1].y - pts[n - 2].y];
+  const parts = [outer, inner, cap(pts[0], off[0], d0), cap(pts[n - 1], off[n - 1], d1)];
+  const merged = mergeGeometries(parts.map((g) => g.index ? g : g), false);
+  // uv1 (metre): LatheGeometry kuralıyla (ensureUV1 bu türü tanımaz)
+  const pos = merged.attributes.position;
+  const uv = merged.attributes.uv;
+  const u1 = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    u1[i * 2] = uv.getX(i) * Math.PI * 2 * Math.hypot(pos.getX(i), pos.getY(i));
+    u1[i * 2 + 1] = pos.getZ(i);
+  }
+  merged.setAttribute('uv1', new THREE.BufferAttribute(u1, 2));
+  return merged;
 }
 
 /** Basit halka (disk) — iki yarıçap arasında, sabit eksenel konumda. */

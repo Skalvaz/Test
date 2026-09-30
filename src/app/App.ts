@@ -349,6 +349,36 @@ export class App {
     this.visual.setClipping(planes);
     this.visual.setInteriorVisible(on);
     setCutPlane(on ? this.clipPlane : null);
+    // GTAO ön geçişi override malzemeyle çizer (malzeme kırpması yok): motor
+    // kesilmemiş görünür, iç parçaların ortam kapanması dış kabuktan
+    // hesaplanırdı. Kesit düzlemi yalnız motorun sınır kutusu içinde uygulanır
+    // (clipIntersection): zemin ve ortam etkilenmez.
+    const nm = this.fx.gtao.normalMaterial as THREE.MeshNormalMaterial;
+    if (on) {
+      // Sınır kutusu: motor parçaları (stand, egzoz akışı, parçacıklar hariç)
+      const box = new THREE.Box3();
+      this.visual.root.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh && !o.userData.noClip && o.userData.part && o.userData.part !== 'stand') box.expandByObject(m);
+      });
+      box.expandByScalar(0.05);
+      nm.clippingPlanes = [
+        this.clipPlane,
+        new THREE.Plane(new THREE.Vector3(1, 0, 0), -box.max.x),
+        new THREE.Plane(new THREE.Vector3(-1, 0, 0), box.min.x),
+        new THREE.Plane(new THREE.Vector3(0, 1, 0), -box.max.y),
+        new THREE.Plane(new THREE.Vector3(0, -1, 0), box.min.y),
+        new THREE.Plane(new THREE.Vector3(0, 0, 1), -box.max.z),
+        new THREE.Plane(new THREE.Vector3(0, 0, -1), box.min.z),
+      ];
+      nm.clipIntersection = true;
+      nm.side = THREE.DoubleSide;
+    } else {
+      nm.clippingPlanes = null;
+      nm.clipIntersection = false;
+      nm.side = THREE.FrontSide;
+    }
+    nm.needsUpdate = true;
     this.picker.clipPlanes = planes;
     if (on) this.aimCutaway();
     this.cutFill.intensity = on ? 5 : 0;

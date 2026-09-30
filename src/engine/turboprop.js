@@ -8,7 +8,7 @@
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, radialInstances, tagPart } from './geom.js';
+import { smoothProfile, latheFromProfile, thickLathe, radialInstances, tagPart } from './geom.js';
 import { createBladeGeometry } from './airfoil.js';
 import { buildGasPath } from './gaspath.js';
 import { buildStandYoke } from './stand.js';
@@ -121,7 +121,7 @@ export function buildTurboprop(materials, blades = 6) {
     ],
     80,
   );
-  propeller.add(tagPart(new THREE.Mesh(latheFromProfile(spinner, 128), materials.propSpinner), 'spinner'));
+  propeller.add(tagPart(new THREE.Mesh(thickLathe(spinner, 128, 0.01, 'in'), materials.propSpinner), 'spinner'));
 
   const bladeGeo = createBladeGeometry({
     hubRadius: 0.24,
@@ -252,7 +252,7 @@ export function buildTurboprop(materials, blades = 6) {
     [0.33, 0.62],
     [0.32, 1.0],
   ];
-  group.add(tagPart(new THREE.Mesh(latheFromProfile(smoothProfile(casePts, 80), 128), materials.engineCase), 'fanCase'));
+  group.add(tagPart(new THREE.Mesh(thickLathe(smoothProfile(casePts, 80), 128, 0.01, 'in'), materials.engineCase), 'fanCase'));
   const prof = radiusProfile(casePts.map(([r, z]) => [r, z]));
   // Kit parçaları (Blender'da modellenmiş dış donanım, bkz. kit.js)
   const kit = new KitBatch(materials);
@@ -266,11 +266,11 @@ export function buildTurboprop(materials, blades = 6) {
 
   // Egzoz: jet borusu
   const jetPipe = new THREE.Mesh(
-    latheFromProfile(smoothProfile([[0.3, 0.98], [0.29, 1.3], [0.27, 1.62]], 20), 96),
+    thickLathe(smoothProfile([[0.3, 0.98], [0.29, 1.3], [0.27, 1.62]], 20), 96, 0.008, 'out'),
     materials.sooted,
   );
   group.add(tagPart(jetPipe, 'exhaust'));
-  const tail = new THREE.Mesh(latheFromProfile(smoothProfile([[0.15, 0.95], [0.1, 1.2], [0.01, 1.42]], 30), 48), materials.sooted);
+  const tail = new THREE.Mesh(thickLathe(smoothProfile([[0.15, 0.95], [0.1, 1.2], [0.01, 1.42]], 30), 48, 0.008, 'in'), materials.sooted);
   group.add(tagPart(tail, 'exhaust'));
 
   /* ---------------- çene tipi hava girişi: S-kanal ---------------- */
@@ -284,7 +284,7 @@ export function buildTurboprop(materials, blades = 6) {
       [0, -0.42, -0.9, 0.2, 0.1],
       [0, -0.3, -0.8, 0.2, 0.09],
     ]),
-    materials.engineCase,
+    materials.engineCaseOpen ?? materials.engineCase,
   );
   group.add(tagPart(duct, 'inlet'));
   // Ağız dudağı: parlatılmış, eliptik

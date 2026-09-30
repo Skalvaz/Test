@@ -4,6 +4,8 @@ import { createBlade } from '../src/engine/blades.js';
 import { bladeRow } from '../src/engine/geom.js';
 import { compressorModule, turbineModule } from '../src/engine/stages.js';
 import { buildCore } from '../src/engine/core.js';
+import { buildFan } from '../src/engine/fan.js';
+import { buildNozzle } from '../src/engine/nozzle.js';
 import { buildBareJet } from '../src/engine/barejet.js';
 
 const deg = THREE.MathUtils.degToRad;
@@ -123,6 +125,16 @@ export const LAB_OBJECTS: Record<string, LabDef> = {
       return group(r.rotor, r.stator);
     },
     view: '1,0.25,0.1',
+    dist: 0.9,
+  },
+  fan: { build: (m) => buildFan(m).group, view: '0.5,0.35,-1', dist: 0.9 },
+  nozzle: {
+    build: (m, q) => {
+      const nz = buildNozzle(m, 0, { hingeR: 0.47, throat0: 0.305, primary: 0.3, divergent: 0.34, flaps: 16 });
+      nz.set(Number(q.get('area') ?? 1), Number(q.get('ab') ?? 0));
+      return nz.group;
+    },
+    view: '1,0.6,1.2',
     dist: 0.9,
   },
   core: { build: (m) => buildCore(m).group, view: '1,0.2,0', dist: 0.8 },

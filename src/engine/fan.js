@@ -4,8 +4,9 @@
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, bladeRow, tagPart } from './geom.js';
-import { createBladeGeometry } from './airfoil.js';
+import { smoothProfile, thickLathe, bladeRow, tagPart } from './geom.js';
+import { createBlade } from './blades.js';
+import { revolve, roundPoly } from './revolve.js';
 import { createBlurDiscTexture } from '../materials/textures.js';
 
 export const FAN_BLADE_COUNT = 22;
@@ -29,64 +30,103 @@ export function buildFan(materials) {
     ],
     110,
   );
-  const spinner = new THREE.Mesh(latheFromProfile(spinnerProfile, 192), materials.spinner);
+  const spinner = new THREE.Mesh(thickLathe(spinnerProfile, 192, 0.012, 'in'), materials.spinner);
   spinner.name = 'spinner';
   spinner.castShadow = true;
   spinner.receiveShadow = true;
   group.add(tagPart(spinner, 'spinner'));
 
-  /* ---------------- fan diski ve kanat platformları ---------------- */
-  const platformProfile = smoothProfile(
-    [
-      [0.440, -0.560],
-      [0.452, -0.470],
-      [0.462, -0.300],
-      [0.468, -0.120],
-      [0.470, 0.020],
-      [0.455, 0.080],
-      [0.400, 0.105],
-    ],
-    70,
-  );
-  const platform = new THREE.Mesh(latheFromProfile(platformProfile, 192), materials.hubMetal);
-  platform.name = 'fan-platform';
-  platform.castShadow = true;
-  platform.receiveShadow = true;
-  group.add(tagPart(platform, 'fan'));
-
-  // Kanat kökü yuvaları arasındaki ayırıcı contalar
-  const sealGeo = new THREE.BoxGeometry(0.035, 0.05, 0.62);
-  const seals = bladeRow(sealGeo, materials.composite, FAN_BLADE_COUNT, {
-    z: -0.28,
-    phase: Math.PI / FAN_BLADE_COUNT,
-  });
-  // InstancedMesh yalnızca dönüş uygular; contaları yarıçapa taşımak için
-  // geometriyi önceden ötelemek gerekir.
-  sealGeo.translate(0, 0.462, 0);
-  group.add(tagPart(seals, 'fan'));
-
   /* ---------------- geniş kordlu fan kanatları ---------------- */
-  const bladeGeo = createBladeGeometry({
-    hubRadius: 0.455,
-    tipRadius: 1.386,
-    sections: 34,
-    samples: 110,
-    // Kord uç bölgesinde genişler (wide-chord tasarım)
-    chord: (t) => 0.50 + 0.62 * Math.pow(t, 0.85),
-    // Kökte yüksek burulma, uçta düşük — eksenel hız profiline uyum
-    twist: (t) => THREE.MathUtils.degToRad(62 - 46 * Math.pow(t, 0.72)),
-    thickness: (t) => 0.155 - 0.115 * Math.pow(t, 0.7),
-    camber: (t) => 0.062 - 0.048 * t,
-    // Pala ucu öne kıvrımlı "pala/scimitar" ok dağılımı
-    sweep: (t) => 0.30 * t * t - 0.46 * Math.pow(t, 4.6),
+  // Kanat: hücumda yüksek, uçta düşük dönüşlü profil; pala (scimitar) ok
+  // dağılımı ve uca doğru genişleyen kord. Kök: kırlangıç kuyruğu, kanatlar
+  // arasında dolgu platformu (annulus filler).
+  const deg = THREE.MathUtils.degToRad;
+  const hub = 0.455;
+  const tip = 1.386;
+  const bladeGeo = createBlade({
+    hub,
+    tip,
+    count: FAN_BLADE_COUNT,
+    chord: (t) => 0.5 + 0.6 * Math.pow(t, 0.85),
+    beta1: (t) => deg(44 + 22 * Math.pow(t, 0.8)),
+    beta2: (t) => deg(8 + 50 * Math.pow(t, 1.15)),
+    tmax: (t) => 0.1 - 0.072 * Math.pow(t, 0.6),
+    te: 0.007,
+    xt: 0.42,
+    sweep: (t) => 0.3 * t * t - 0.46 * Math.pow(t, 4.6),
     lean: (t) => 0.085 * Math.sin(Math.PI * t) - 0.03 * t,
-    chordAnchor: 0.34,
-    tipRound: 0.05,
+    sections: 30,
+    samples: 56,
+    fillet: 0.025,
+    platform: { depth: 0.014 / (tip - hub), over: 0.04 },
+    root: 'dovetail',
+    rootDepth: 0.075,
+    tipType: 'plain',
   });
-
-  const blades = bladeRow(bladeGeo, materials.titanium, FAN_BLADE_COUNT, { z: -0.28 });
+  const info = bladeGeo.userData.bladeInfo;
+  const blades = bladeRow(bladeGeo, materials.fanBlade ?? materials.titanium, FAN_BLADE_COUNT, { z: -0.28 });
+  // Örnek verisi (bladeShading): ısı yok, kanat başına rastgele
+  const c = new THREE.Color();
+  for (let i = 0; i < FAN_BLADE_COUNT; i++) blades.setColorAt(i, c.setRGB(0, ((i * 0.618) % 1), 0));
   blades.name = 'fan-blades';
   group.add(tagPart(blades, 'fan'));
+
+  /* ---------------- fan diski ---------------- */
+  // Jant kırlangıç yuvalarını taşır; ince gövde LP mil göbeğine iner
+  const rz0 = -0.28 + info.rootZ[0] + 0.004;
+  const rz1 = -0.28 + info.rootZ[1] - 0.004;
+  const rimTop = info.platR;
+  const rimBot = info.rootBottom - 0.02;
+  const zc = (rz0 + rz1) / 2;
+  const w = rz1 - rz0;
+  const disk = roundPoly(
+    [
+      [rimTop, rz0],
+      [rimTop, rz1],
+      [rimBot, rz1],
+      [rimBot, zc + w * 0.09],
+      [0.2, zc + w * 0.16],
+      [0.2, zc + w * 0.34],
+      [0.118, zc + w * 0.34],
+      [0.118, zc - w * 0.3],
+      [0.2, zc - w * 0.3],
+      [0.2, zc - w * 0.16],
+      [rimBot, zc - w * 0.09],
+      [rimBot, rz0],
+    ],
+    [0.004, 0.004, 0.006, 0.05, 0.03, 0.004, 0.003, 0.003, 0.004, 0.03, 0.05, 0.006],
+    3,
+  );
+  const diskMesh = new THREE.Mesh(revolve(disk, { segments: 144 }), materials.diskMetal ?? materials.hubMetal);
+  diskMesh.name = 'fan-disk';
+  group.add(tagPart(diskMesh, 'fan'));
+
+  // Göbek kaplaması: spinner ile kanat platformları arasındaki kapalı
+  // halka (ön) ve arka conta halkası
+  const fairing = roundPoly(
+    [
+      [0.44, -0.56],
+      [info.platR + 0.012, rz0 - 0.004],
+      [info.platR - 0.02, rz0 - 0.004],
+      [0.4, -0.56],
+    ],
+    0.004,
+    2,
+  );
+  const fairingMesh = new THREE.Mesh(revolve(fairing, { segments: 160 }), materials.diskMetal ?? materials.hubMetal);
+  group.add(tagPart(fairingMesh, 'fan'));
+  const aftSeal = roundPoly(
+    [
+      [info.platR + 0.006, rz1 + 0.002],
+      [0.452, 0.02],
+      [0.41, 0.105],
+      [0.39, 0.105],
+      [info.platR - 0.03, rz1 + 0.002],
+    ],
+    0.004,
+    2,
+  );
+  group.add(tagPart(new THREE.Mesh(revolve(aftSeal, { segments: 160 }), materials.diskMetal ?? materials.hubMetal), 'fan'));
 
   /* ---------------- hareket bulanıklığı diski ---------------- */
   const blurTex = createBlurDiscTexture(1024, FAN_BLADE_COUNT);

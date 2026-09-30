@@ -242,7 +242,7 @@ export function createEngineMaterials(scans: Scans) {
     combustorGlow: new THREE.MeshPhysicalMaterial({ color: 0xa09890, metalness: 0.6, roughness: 0.55, emissive: new THREE.Color(0xff7a2a), emissiveIntensity: 3.2, envMapIntensity: 0.7 }),
     combustorMetal: scan(phys({ color: 0x7b7169, roughness: 0.45, iridescence: 0.15, iridescenceThicknessRange: [200, 460], envMapIntensity: 0.8 }), 'hot', 0.5),
     nozzleMetal: scan(phys({ color: 0x96928d, roughness: 0.3, envMapIntensity: 0.9 }), 'brushed', 0.3),
-    fanBlade: phys({ color: 0x9fa5aa, roughness: 0.2, anisotropy: 0.5, anisotropyRotation: Math.PI / 2, envMapIntensity: 1.2 }),
+    fanBlade: scan(phys({ color: 0xa2a7ab, roughness: 0.3, envMapIntensity: 1.05 }), 'brushed', 0.25),
     compBlade: scan(phys({ color: 0xa4a8ac, roughness: 0.24, envMapIntensity: 1.1 }), 'brushed', 0.2),
     compVane: scan(phys({ color: 0x8e9297, roughness: 0.32, envMapIntensity: 0.95 }), 'brushed', 0.25),
     hptBlade: phys({ color: 0xb7aa95, metalness: 0.0, roughness: 0.72, envMapIntensity: 0.6 }),
