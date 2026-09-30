@@ -925,7 +925,8 @@ def build_ops():
     doors = [(z0 + 1.2 + i * 6.9, z0 + 1.2 + i * 6.9 + 5.8) for i in range(3)]
     edges = [z0] + [v for d in doors for v in d] + [z1]
     for i in range(0, len(edges), 2):
-        b.wall('x', x0, edges[i], edges[i + 1], y0, y0 + H + 0.6, 'wall_panel', -1)
+        # ayaklar bandın altında biter (üst üste binen yüzeyler AO'yu karartır)
+        b.wall('x', x0, edges[i], edges[i + 1], y0, y0 + 5.0, 'wall_panel', -1)
     b.wall('x', x0, z0, z1, y0 + 5.0, y0 + H + 0.6, 'wall_panel', -1)
     for (d0, d1) in doors:
         b.wall('x', x0 + 0.25, d0, d1, y0, y0 + 5.0, 'shutter_red', -1)
