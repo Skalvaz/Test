@@ -22,7 +22,7 @@
  *   uv     u = profil çevresi (0 firar/emme → 0.5 hücum → 1 firar/basınç),
  *          v = açıklık (0 kök → 1 uç). Delik ve erozyon desenleri bunu kullanır.
  *   uv1    metre ölçekli (tarama dokuları için): u = yay uzunluğu, v = yarıçap
- *   aZone  0 = profil, 1 = platform/kök, 2 = uç ayrıntısı
+ *   aZone  0 = profil, 1 = platform, 2 = uç ayrıntısı, 3 = kök (gövde, diş, kanatçık)
  *
  * Yerel eksenler (bladeRow ile uyumlu): +Y radyal, +Z eksenel (egzoza),
  * +X teğetsel. Kanat, dönüş ekseni Z olan bir halkaya kopyalanır.
@@ -265,12 +265,16 @@ export function createBlade(opts) {
   };
 
   // --- profil gövdesi ---
+  // Kök kesiti platformun içine gömülür: kapak platform üst yüzüyle
+  // çakışmaz (z-fighting), dolgu platform yüzeyinden başlar
+  const sink = platform ? Math.max(0.002, span * platform.depth) * 0.7 : 0;
   const rings = [];
   let ringSize = 0;
   for (const t of tList) {
     const s = sectionAt(t);
     ringSize = s.out.length;
-    const idx = s.out.map(([x, y, z], i) => push(x, y, z, s.u[i], t, s.u[i] * s.perim, s.r, 0));
+    const k = t === 0 && sink > 0 ? (hub - sink) / hub : 1;
+    const idx = s.out.map(([x, y, z], i) => push(x * k, y * k, z, s.u[i], t, s.u[i] * s.perim, s.r, 0));
     rings.push(idx);
   }
   for (let j = 0; j < rings.length - 1; j++) {
@@ -452,7 +456,7 @@ export function createBlade(opts) {
           ],
           zc - ax / 2,
           zc + ax / 2,
-          1,
+          3,
         );
       } else if (root === 'firtree') {
         // gövde (shank) + üç dişli çam ağacı
@@ -470,7 +474,7 @@ export function createBlade(opts) {
           if (k === teeth - 1) pts.push([-sw * 0.5, y1]);
         }
         const mirror = pts.slice().reverse().map(([x, y]) => [-x, y]);
-        extrude([...pts, ...mirror], zc - ax / 2, zc + ax / 2, 1);
+        extrude([...pts, ...mirror], zc - ax / 2, zc + ax / 2, 3);
         // sızdırmazlık kanatçıkları (angel wings): gövdenin ön/arka yüzünde
         const wingY = yTop - shankH * 0.4;
         for (const s of [-1, 1]) {
@@ -484,7 +488,7 @@ export function createBlade(opts) {
             ],
             s < 0 ? zz - ax * 0.1 : zz,
             s < 0 ? zz : zz + ax * 0.1,
-            1,
+            3,
           );
         }
       }

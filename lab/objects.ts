@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { createBlade } from '../src/engine/blades.js';
 import { bladeRow } from '../src/engine/geom.js';
 import { compressorModule, turbineModule } from '../src/engine/stages.js';
+import { buildCore } from '../src/engine/core.js';
+import { buildBareJet } from '../src/engine/barejet.js';
 
 const deg = THREE.MathUtils.degToRad;
 type Mats = Record<string, THREE.Material>;
@@ -68,16 +70,18 @@ function one(opts: object, mat: THREE.Material) {
   const m = new THREE.Mesh(g, mat);
   return m;
 }
-function row(opts: object, mat: THREE.Material, n: number, count: number) {
-  // Halkanın yalnız n kanatlık dilimi (yakın plan)
+function row(opts: object, mat: THREE.Material, n: number, count: number, heat = 0.8) {
+  // Halkanın yalnız n kanatlık dilimi (yakın plan); örnek verisi: ısı, rastgele
   const g = createBlade(opts);
-  const grp = new THREE.Group();
+  const m = new THREE.InstancedMesh(g, mat, n);
+  const M = new THREE.Matrix4();
+  const c = new THREE.Color();
   for (let i = 0; i < n; i++) {
-    const m = new THREE.Mesh(g, mat);
-    m.rotation.z = ((i - n / 2) / count) * Math.PI * 2;
-    grp.add(m);
+    M.makeRotationZ(((i - n / 2) / count) * Math.PI * 2);
+    m.setMatrixAt(i, M);
+    m.setColorAt(i, c.setRGB(heat, (i * 0.618) % 1, 0));
   }
-  return grp;
+  return m;
 }
 
 function group(...objs: THREE.Object3D[]) {
@@ -90,12 +94,12 @@ const hptSpec = { part: 'hpt', stages: 2, z0: 2.05, z1: 2.21, hub: [0.352, 0.358
 const lptSpec = { part: 'lpt', stages: 5, z0: 2.36, z1: 2.84, hub: [0.34, 0.356], tip: [0.512, 0.602], blades: [74, 98], bore: [0.12, 0.03], casing: { flanges: [2.48, 2.72] }, cones: { aft: [0.11, 2.95] } };
 
 export const LAB_OBJECTS: Record<string, LabDef> = {
-  hpt: { build: (m) => one(hptOpts, m.superalloy), view: '1,0.35,-0.8', dist: 1.3 },
-  hptRow: { build: (m) => row(hptOpts, m.superalloy, 7, 62), view: '1,0.7,-1', dist: 0.9 },
+  hpt: { build: (m) => one(hptOpts, m.hptBlade), view: '1,0.35,-0.8', dist: 1.3 },
+  hptRow: { build: (m, q) => row(hptOpts, m[q.get('mat') ?? 'hptBlade'], 7, 62), view: '1,0.7,-1', dist: 0.9 },
   hpc: { build: (m) => one(hpcOpts, m.hubMetal), view: '1,0.35,-0.8', dist: 1.4 },
-  hpcRow: { build: (m) => row(hpcOpts, m.hubMetal, 8, 56), view: '1,0.7,-1', dist: 0.9 },
+  hpcRow: { build: (m) => row(hpcOpts, m.compBlade, 8, 56), view: '1,0.7,-1', dist: 0.9 },
   lpt: { build: (m) => one(lptOpts, m.superalloy), view: '1,0.35,-0.8', dist: 1.3 },
-  lptRow: { build: (m) => row(lptOpts, m.superalloy, 8, 80), view: '1,0.8,-0.6', dist: 0.8 },
+  lptRow: { build: (m) => row(lptOpts, m.lptBlade, 8, 80), view: '1,0.8,-0.6', dist: 0.8 },
   hptTop: { build: (m) => one(hptOpts, m.superalloy), view: '0.1,1,0.05', dist: 1.0 },
   hpcMod: {
     build: (m) => {
@@ -121,6 +125,9 @@ export const LAB_OBJECTS: Record<string, LabDef> = {
     view: '1,0.25,0.1',
     dist: 0.9,
   },
+  core: { build: (m) => buildCore(m).group, view: '1,0.2,0', dist: 0.8 },
+  mil: { build: (m) => buildBareJet(m, 'militaryTurbofan').group, view: '1,0.2,0', dist: 0.8 },
+  jet: { build: (m) => buildBareJet(m, 'turbojet').group, view: '1,0.2,0', dist: 0.8 },
   full: {
     build: (m) => {
       const g = createBlade(hptOpts);

@@ -533,7 +533,7 @@ export class EngineVisual {
     const overheat = THREE.MathUtils.clamp((snap.egtTrue - 1000) / 700, 0, 1);
     for (const part of ['hpt', 'lpt'] as PartId[]) {
       for (const m of this.parts.get(part)?.materials ?? []) {
-        if (m.name !== 'superalloy') continue;
+        if (!['superalloy', 'hptBlade', 'hptVane', 'lptBlade', 'lptVane'].includes(m.name)) continue;
         m.emissive.setRGB(1, 0.22, 0.04);
         m.emissiveIntensity = overheat * (part === 'hpt' ? 3 : 2);
       }

@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { smoothProfile, latheFromProfile, radialInstances, tagPart } from './geom.js';
 import { compressorModule, turbineModule, casingShell } from './stages.js';
 import { revolve, roundPoly } from './revolve.js';
+import { buildCombustor } from './combustor.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const deg = THREE.MathUtils.degToRad;
@@ -81,38 +82,6 @@ export function buildGasPath(materials, spec) {
     group.add(tagPart(diffuser, 'hpc'));
   }
 
-  // Halka yanma odası: iki gömlek + enjektörler
-  const cb = spec.combustor;
-  const mid = (cb.rIn + cb.rOut) / 2;
-  const h = (cb.rOut - cb.rIn) / 2;
-  const L = cb.z1 - cb.z0;
-  const outer = smoothProfile(
-    [
-      [mid + h * 0.35, cb.z0],
-      [cb.rOut, cb.z0 + L * 0.2],
-      [cb.rOut, cb.z0 + L * 0.7],
-      [mid + h * 0.55, cb.z1],
-    ],
-    40,
-  );
-  const inner = smoothProfile(
-    [
-      [mid - h * 0.35, cb.z0],
-      [cb.rIn, cb.z0 + L * 0.2],
-      [cb.rIn, cb.z0 + L * 0.7],
-      [mid - h * 0.55, cb.z1],
-    ],
-    40,
-  );
-  group.add(
-    tagPart(new THREE.Mesh(latheFromProfile(outer, 96), materials.combustorGlow), 'combustor'),
-    tagPart(new THREE.Mesh(latheFromProfile(inner, 96), materials.combustorGlow), 'combustor'),
-  );
-  const inj = new THREE.CylinderGeometry(h * 0.18, h * 0.25, L * 0.25, 8);
-  inj.rotateX(Math.PI / 2);
-  inj.translate(0, mid, 0);
-  group.add(tagPart(radialInstances(inj, materials.machinery, cb.injectors ?? 16, 0, cb.z0), 'combustor'));
-
   const hpt = turbineModule(materials, {
     part: 'hpt',
     ...spec.hpt,
@@ -143,16 +112,35 @@ export function buildGasPath(materials, spec) {
     };
     const z0 = spec.centrifugal ? spec.centrifugal.z + 0.13 : hpc.zBack;
     const z1 = hpt.zFront;
-    const rIn = Math.max(spec.combustor.rOut + 0.012, 0);
+    const rIn = Math.max(spec.combustor.rOut + 0.03, 0);
+    const caseAt = (z) => {
+      const u = THREE.MathUtils.smoothstep(z, z0, z0 + (z1 - z0) * 0.2) * (1 - THREE.MathUtils.smoothstep(z, z1 - (z1 - z0) * 0.12, z1));
+      const edge = z < (z0 + z1) / 2 ? hpc.casingAt(hpc.zBack) : hpt.casingAt(z1);
+      return lerp(spec.centrifugal && z < (z0 + z1) / 2 ? at(z) : edge, Math.max(at(z), rIn), u);
+    };
+    const cb = spec.combustor;
+    const ngv = hpt.vanes[0];
+    const L = cb.z1 - cb.z0;
+    group.add(
+      buildCombustor(materials, {
+        z0,
+        zDome: cb.z0 + L * 0.14,
+        z1: ngv.z - ngv.axial * 0.55,
+        rIn: cb.rIn,
+        rOut: cb.rOut,
+        inHub: spec.centrifugal ? cb.rIn + (cb.rOut - cb.rIn) * 0.3 : hpc.hubAt(hpc.zBack),
+        inTip: spec.centrifugal ? cb.rOut - (cb.rOut - cb.rIn) * 0.3 : hpc.casingAt(hpc.zBack),
+        exHub: ngv.hub,
+        exTip: ngv.tip - 0.004,
+        caseAt,
+        injectors: cb.injectors ?? 16,
+      }),
+    );
     group.add(
       casingShell(
         { casing: materials.caseInner, bolt: materials.boltSteel },
         {
-          inner: (z) => {
-            const u = THREE.MathUtils.smoothstep(z, z0, z0 + (z1 - z0) * 0.2) * (1 - THREE.MathUtils.smoothstep(z, z1 - (z1 - z0) * 0.12, z1));
-            const edge = z < (z0 + z1) / 2 ? hpc.casingAt(hpc.zBack) : hpt.casingAt(z1);
-            return lerp(spec.centrifugal && z < (z0 + z1) / 2 ? at(z) : edge, Math.max(at(z), rIn), u);
-          },
+          inner: caseAt,
           z0,
           z1,
           t: 0.008,

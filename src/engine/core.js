@@ -16,6 +16,7 @@ import { smoothProfile, latheFromProfile, arcLengthV, bladeRow, radialInstances,
 import { createStageBladeGeometry } from './airfoil.js';
 import { compressorModule, turbineModule, casingShell } from './stages.js';
 import { revolve, roundPoly } from './revolve.js';
+import { buildCombustor } from './combustor.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -157,11 +158,12 @@ export function buildCore(materials) {
   group.add(tagPart(transition, 'hpc'));
 
   // Yanma odası gövdesi (difüzör + dış kasa): HPC gövdesinden HPT'ye
+  const combCaseAt = (z) =>
+    z < 1.66 ? lerp(hpc.casingAt(1.52), 0.575, THREE.MathUtils.smoothstep(z, hpc.zBack, 1.66)) : z < 1.88 ? 0.585 : lerp(0.585, 0.5, THREE.MathUtils.smoothstep(z, 1.88, 1.97));
   const combCase = casingShell(
     { casing: materials.caseInner, bolt: materials.boltSteel },
     {
-      inner: (z) =>
-        z < 1.66 ? lerp(hpc.casingAt(1.52), 0.575, THREE.MathUtils.smoothstep(z, hpc.zBack, 1.66)) : z < 1.88 ? 0.585 : lerp(0.585, 0.5, THREE.MathUtils.smoothstep(z, 1.88, 1.97)),
+      inner: combCaseAt,
       z0: hpc.zBack,
       z1: 1.975,
       t: 0.01,
@@ -171,39 +173,6 @@ export function buildCore(materials) {
     },
   );
   group.add(combCase);
-
-  /* ---------------- halka yanma odası ---------------- */
-  const linerOuter = smoothProfile(
-    [
-      [0.452, 1.585],
-      [0.512, 1.640],
-      [0.536, 1.760],
-      [0.524, 1.900],
-      [0.480, 1.975],
-    ],
-    50,
-  );
-  const linerInner = smoothProfile(
-    [
-      [0.372, 1.585],
-      [0.330, 1.650],
-      [0.318, 1.770],
-      [0.330, 1.900],
-      [0.372, 1.975],
-    ],
-    50,
-  );
-  const combustorOuter = new THREE.Mesh(latheFromProfile(linerOuter, 140), materials.combustorGlow);
-  const combustorInner = new THREE.Mesh(latheFromProfile(linerInner, 140), materials.combustorGlow);
-  combustorOuter.name = 'combustor-outer-liner';
-  combustorInner.name = 'combustor-inner-liner';
-  group.add(tagPart(combustorOuter, 'combustor'), tagPart(combustorInner, 'combustor'));
-
-  // Yakıt enjektörleri
-  const nozzleGeo = new THREE.CylinderGeometry(0.022, 0.030, 0.13, 10);
-  nozzleGeo.rotateX(Math.PI / 2);
-  nozzleGeo.translate(0, 0.452, 0);
-  group.add(tagPart(radialInstances(nozzleGeo, materials.machinery, 20, 0, 1.585), 'combustor'));
 
   /* ---------------- HP türbin (2 kademe) ---------------- */
   const hpt = turbineModule(materials, {
@@ -220,6 +189,24 @@ export function buildCore(materials) {
   });
   hpSpool.add(hpt.rotor);
   group.add(hpt.stator);
+
+  /* ---------------- halka yanma odası ---------------- */
+  const ngv = hpt.vanes[0];
+  group.add(
+    buildCombustor(materials, {
+      z0: hpc.zBack,
+      zDome: 1.68,
+      z1: ngv.z - ngv.axial * 0.55,
+      rIn: 0.33,
+      rOut: 0.54,
+      inHub: hpc.hubAt(1.52),
+      inTip: hpc.casingAt(1.52),
+      exHub: ngv.hub,
+      exTip: ngv.tip - 0.004,
+      caseAt: combCaseAt,
+      injectors: 20,
+    }),
+  );
 
   /* ---------------- LP türbin (5 kademe) ---------------- */
   const lpt = turbineModule(materials, {

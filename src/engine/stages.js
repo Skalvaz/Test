@@ -60,6 +60,22 @@ function piecewise(points) {
   };
 }
 
+/**
+ * Örnek rengi veri taşıyıcı (bladeShading.ts): r = kademe ısısı,
+ * g = kanat başına rastgele, b = kademe konumu
+ */
+function bladeData(row, heat, t) {
+  const c = new THREE.Color();
+  let seed = Math.floor(heat * 977 + t * 131) + 1;
+  for (let i = 0; i < row.count; i++) {
+    seed = (seed * 16807) % 2147483647;
+    c.setRGB(heat, (seed % 1000) / 1000, t);
+    row.setColorAt(i, c);
+  }
+  row.instanceColor.needsUpdate = true;
+  return row;
+}
+
 /* ------------------------------------------------------------------ */
 /* Disk, kol, bant profilleri                                          */
 /* ------------------------------------------------------------------ */
@@ -241,6 +257,7 @@ export function compressorModule(materials, c) {
   const n = c.stages;
   const pitch = n > 1 ? (c.z1 - c.z0) / (n - 1) : c.pitch ?? 0.1;
   const clr = c.clearance ?? 0.0015;
+  const heat = c.heat ?? (part === 'hpc' ? [0.08, 0.42] : [0, 0.05]);
   const mats = {
     blade: pick(materials, c.bladeMat, 'compBlade', 'hubMetal'),
     vane: pick(materials, 'compVane', 'superalloy'),
@@ -301,6 +318,7 @@ export function compressorModule(materials, c) {
     s.axial = s.info.zMax - s.info.zMin;
     const mat = i0(s) && c.firstMaterial ? materials[c.firstMaterial] : mats.blade;
     const row = bladeRow(geo, mat, count, { z: s.z, phase: s.i * 0.07 });
+    bladeData(row, lerp(heat[0], heat[1], t), t);
     row.name = `${part}-r${s.i + 1}`;
     rotor.add(tagPart(row, part));
   }
@@ -345,6 +363,7 @@ export function compressorModule(materials, c) {
       tipType: 'plain',
     });
     const row = bladeRow(geo, mats.vane, count, { z: v.z, phase: 0.03 * v.k });
+    bladeData(row, lerp(heat[0], heat[1], t), t);
     row.name = `${part}-s${v.k}`;
     stator.add(tagPart(row, part));
     v.hub = hub;
@@ -538,6 +557,7 @@ export function turbineModule(materials, c) {
     bolt: pick(materials, 'boltSteel', 'machinery'),
   };
   const shroud = c.shroud ?? !hp;
+  const heat = c.heat ?? (hp ? [0.9, 0.8] : [0.62, 0.22]);
 
   const S = [];
   for (let i = 0; i < n; i++) {
@@ -578,6 +598,7 @@ export function turbineModule(materials, c) {
     s.info = geo.userData.bladeInfo;
     s.axial = s.info.zMax - s.info.zMin;
     const row = bladeRow(geo, mats.blade, count, { z: s.z, phase: s.i * 0.05 });
+    bladeData(row, lerp(heat[0], heat[1], t), t);
     row.name = `${part}-r${s.i + 1}`;
     rotor.add(tagPart(row, part));
   }
@@ -621,6 +642,7 @@ export function turbineModule(materials, c) {
       tipType: 'plain',
     });
     const row = bladeRow(geo, mats.vane, count, { z: v.z, phase: 0.02 * v.k });
+    bladeData(row, Math.min(1, lerp(heat[0], heat[1], t) + 0.08), t);
     row.name = `${part}-n${v.k + 1}`;
     stator.add(tagPart(row, part));
     Object.assign(v, { hub, tip, span, axial, count });
