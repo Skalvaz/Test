@@ -18,6 +18,7 @@
 
 import * as THREE from 'three';
 import { tagPart } from './geom.js';
+import { mergeStatic } from './stages.js';
 import { revolve, roundPoly } from './revolve.js';
 import { bladeQuality } from './blades.js';
 import { linerUniforms } from '../materials/engine';
@@ -251,6 +252,7 @@ export function buildCombustor(materials, c) {
     group.add(solid(shell(caseIn, zB, c.z1 + 0.01, -Math.max(0.006, h * 0.035), 24, 1), metal, part, c.rIn));
   }
 
+  mergeStatic(group);
   return group;
 }
 

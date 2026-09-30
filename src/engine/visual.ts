@@ -395,6 +395,9 @@ export class EngineVisual {
       // Stand askısı, egzoz/alev hacimleri ve parçacıklar kesilmez: yarım
       // kalan alev ya da havada asılı yarım kiriş yanlış görünür
       if (o.userData.part === 'stand' || o.userData.noClip) return;
+      // Kalınlıklı kabuklar: iç yüzey yalnız kesitte çizilir (thickLathe)
+      const oc = mesh.geometry.userData.outerCount as number | undefined;
+      if (oc !== undefined) mesh.geometry.setDrawRange(0, planes.length ? Infinity : oc);
       const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       for (const m of mats) {
         // Kesitte tek yüzlü katı parçalar (kutular, silindirler) içi boş

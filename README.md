@@ -102,6 +102,33 @@ FADEC kutusu, gövdeye kelepçelerle oturan yakıt/yağ/bleed boruları ve örg�
 kablo demetleri bulunur. Turboprobun redüktörü gerçekten döner bir planet
 dişli setidir (güneş dişlisi türbin milinde, taşıyıcı pervane milinde).
 
+**Motor iç yapısı (M2)** — kanatlar, diskler ve gövdeler istasyon
+tablosundan koddan üretilir; dört motor aynı kademe üretecini kullanır.
+Kanat kesiti metal açılarından kurulur (yuvarlak hücum, sonlu firar kenarı,
+köke dolgu yarıçapı); kompresörde kırlangıç kuyruğu kök, türbinde çam ağacı
+kök ve angel wing, HPT'de squealer uç cebi, LPT'de bıçak contalı uç örtüsü.
+Her rotor diskinin jantı, gövdesi ve göbeği gerçek kesit profilindedir;
+diskleri labirent conta dişli ara kollar bağlar, statorların iç bantları bal
+peteği yatağa oturur, değişken statorların mili, kolu ve birleştirme halkası
+gövdenin dışındadır. Yüzeyler prosedüreldir: HPT kanatlarında termal bariyer
+kaplama, hücum kenarında duş başlığı ve basınç yüzünde film soğutma delikleri,
+firar kenarı yarıkları, uçta kızıl-mor ısı tonu; LPT'de kademe ısısına göre
+ince oksit renkleri; kompresörde hücum kenarı erozyonu ve arka kademelerde
+saman sarısı ısı rengi; disklerde torna izleri. Yanma odasında basamaklı
+soğutma halkalı gömlekler (seyreltme delikleri gerçek açıklık), swirler
+kapları, enjektörler ve bujiler; askeri lülede pul gibi bindiren yapraklar,
+contalar, senkron halka ve lüle alanıyla hareket eden hidrolik aktüatörler
+vardır. Kesit görünümünde kesilen katılar müzelerdeki kesit motorları gibi
+kırmızı boyalıdır (disk ve millerde dolu kesit, ince duvarlarda ince şerit),
+kanat dizileri bütün kalır.
+
+| | |
+| --- | --- |
+| ![M2 kesit: turbofan çekirdeği](renders/32-m2-kesit.jpg) | ![M2: türbin](renders/33-m2-turbin.jpg) |
+| ![M2: yanma odası](renders/34-m2-yanma-odasi.jpg) | ![M2: fan](renders/35-m2-fan.jpg) |
+| ![M2: askeri turbofan kesiti](renders/36-m2-askeri-kesit.jpg) | ![M2: askeri lüle](renders/37-m2-lule.jpg) |
+| ![M2: turbojet çekirdeği](renders/38-m2-turbojet.jpg) | ![M2: turboprop gaz jeneratörü](renders/39-m2-turboprop.jpg) |
+
 **Kit-bash donanım kütüphanesi** — dış donanımın küçük parçaları Blender'da
 kodla modellenir: yastıklı boru kelepçeleri, B-somunlu rakorlar, VSV
 kolları ve yuvaları, hidrolik aktüatörler, ateşleyici ve uyarıcı kutusu,

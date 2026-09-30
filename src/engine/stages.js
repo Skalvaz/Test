@@ -26,6 +26,7 @@ import * as THREE from 'three';
 import { createBlade, bladeQuality } from './blades.js';
 import { bladeRow, tagPart } from './geom.js';
 import { revolve, roundPoly } from './revolve.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const deg = THREE.MathUtils.degToRad;
@@ -226,6 +227,36 @@ export function casingShell(mats, { inner, z0, z1, t = 0.008, flanges = [], part
     group.add(boltRing(mats.bolt, r, f - fw, n, boltSize, -1, part), boltRing(mats.bolt, r, f + fw, n, boltSize, 1, part));
   }
   return group;
+}
+
+/**
+ * Gruptaki (iç içe dahil) örneksiz, statik ağları malzeme başına tek ağda
+ * birleştirir: bir modül onlarca disk/kol/bant yerine birkaç çizim çağrısı.
+ */
+export function mergeStatic(group) {
+  const byMat = new Map();
+  const drop = [];
+  group.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  group.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh) return;
+    const g = o.geometry;
+    if (!g.index || !g.attributes.uv1 || g.userData.shared) return;
+    const key = o.material.uuid;
+    if (!byMat.has(key)) byMat.set(key, { mat: o.material, part: o.userData.part, geos: [] });
+    const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    byMat.get(key).geos.push(m.equals(new THREE.Matrix4()) ? g : g.clone().applyMatrix4(m));
+    drop.push(o);
+  });
+  for (const o of drop) o.parent.remove(o);
+  for (const { mat, part, geos } of byMat.values()) {
+    const merged = mergeGeometries(geos, false);
+    for (const g of geos) g.dispose();
+    const mesh = new THREE.Mesh(merged, mat);
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    group.add(tagPart(mesh, part));
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -497,6 +528,8 @@ export function compressorModule(materials, c) {
     }
   }
 
+  mergeStatic(rotor);
+  mergeStatic(stator);
   return { rotor, stator, tipAt, hubAt, casingAt: extend, zFront, zBack, stations: S, vanes: vaneAt };
 }
 
@@ -756,5 +789,7 @@ export function turbineModule(materials, c) {
     }
   }
 
+  mergeStatic(rotor);
+  mergeStatic(stator);
   return { rotor, stator, tipAt, hubAt, casingAt, zFront, zBack, stations: S, vanes: vaneAt };
 }

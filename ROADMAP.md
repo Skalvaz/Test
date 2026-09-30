@@ -134,18 +134,40 @@ seviyesi korunur.
 - ✅ Apron betonunda plaka başına ton farkı ve derz kiri; gece projektörleri;
   pilonlu turbofan için test sehpası; ortam değişiminde shader derleme kapısı
 
-#### M2 — Model yükseltmesi (mevcut motorlar)
-- Fan ve kompresör kanatları: kök (dovetail) ve platform, uç aşınması,
-  ön kenar erozyonu, titanyum ısıl renk; blisk (askeri) / ayrı kanat (yolcu)
-- Türbin: termal bariyer kaplamalı kanatlar, soğutma delikleri (normal harita),
-  kanat uçlarında kızıl-mor ısı tonu
-- Yanma odası: gömlek soğutma delikleri, dönen girdap yakıcılar (swirler)
-- Lüle: değişken lüle yaprakları gerçek üst üste binen kanatçıklar + hidrolik
-  aktüatörler, lüle açılıp kapanırken hareket eder
-- Kesit: kesik yüzeyleri dolu çizme (stencil "cap"), kesik kenarında ince
-  kırmızı işaret şeridi (teknik çizim gibi)
-- **Bitti sayılır:** her motor için önce/sonra render seti; performans düşük
-  kalitede ≥ 30 fps (entegre GPU)
+#### M2 — Model yükseltmesi (mevcut motorlar) ✅
+- ✅ Yeni kanat üreteci (`src/engine/blades.js`): metal açılarından kamber
+  çizgisi, yuvarlak hücum / sonlu firar kenarı, köke dolgu yarıçapı, kanat
+  aralığı genişliğinde eğik platform, kompresörde kırlangıç kuyruğu, türbinde
+  gövde + angel wing + üç dişli çam ağacı kök, HPT'de squealer uç cebi, LPT'de
+  bıçak contalı uç örtüsü; kalite ayarına bağlı LOD
+- ✅ Kademe üreteci (`src/engine/stages.js`): istasyon tablosundan rotor
+  (kanat + dolgu yarıçaplı disk + ara kol + labirent conta dişleri + mil
+  konileri) ve stator (kanatçık + iç bant + bal peteği conta yatağı, VSV mili,
+  kolu ve birleştirme halkası, aşınabilir şeritli kalınlıklı gövde, flanş ve
+  cıvatalar); dört motor da aynı üreteci kullanır. Askeri fan blisk
+- ✅ Prosedürel yüzeyler (`src/materials/bladeShading.ts`): kompresörde hücum
+  kenarı erozyonu, göbekte kir, arka kademelerde saman sarısı ısı rengi; HPT'de
+  termal bariyer kaplama, duş başlığı + film soğutma delikleri, firar kenarı
+  yarıkları, uçta kızıl-mor ısı tonu, kurum ve kaplama dökülmesi; LPT'de kademe
+  ısısına göre ince oksit renkleri; disklerde torna izleri
+- ✅ Yanma odası (`src/engine/combustor.js`): basamaklı soğutma halkalı
+  gömlekler, shader'da gerçek açıklık olan birincil/seyreltme delikleri,
+  efüzyon delikleri, alev tarafı parlaması, kubbe, swirler kapları, ön
+  kaporta, enjektör sapları, bujiler, difüzör ve iç kasa
+- ✅ Fan: geniş kordlu pala uçlu kanatlar, kırlangıç kök, kapalı disk profili
+- ✅ Askeri lüle (`src/engine/nozzle.js`): kavisli yakınsak/ıraksak yapraklar
+  ve contalar, pul gibi bindiren dış yapraklar, senkron halka, sabit boylu
+  bağlantı kolları, hidrolik aktüatörler; lüle alanıyla birlikte hareket eder
+- ✅ Kesit: kapalı katılarda arka yüz kapağı (müze kesitlerindeki gibi kırmızı
+  boyalı kesik yüzey; ince duvarlarda ince kırmızı şerit); kanat dizileri
+  bütün kalır; dış kabuklar kalınlıklı (iç yüzey yalnız kesitte çizilir);
+  GTAO kesitte yalnız motor hacmini kırpar
+- ✅ Önce/sonra render seti README'de. Düşük kalitede kare başına üçgen ve
+  çizim çağrısı M2 öncesiyle aynı düzeyde (turbofan dış görünüm −%12 üçgen,
+  askeri motorlarda −%20 çizim çağrısı, kesitte +%6–15 üçgen). Gerçek entegre
+  GPU'da fps ölçümü bu ortamda yapılamadı (yazılım rasterleştirici)
+- Ertelenen: kesit kapağında parça başına renk tonu; blisk/kanat için ayrı
+  hasar (çentik, FOD) varyasyonları
 
 #### M3 — Efekt yükseltmesi
 - Art yakıcı: kademeli yanma (zon 1→5 sırayla tutuşur), lüle yapraklarının

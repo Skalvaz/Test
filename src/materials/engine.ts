@@ -18,6 +18,36 @@ import * as THREE from 'three';
 import { addPatch } from './weathering';
 import { bladeSurface, turnedSurface } from './bladeShading';
 
+/*
+ * three.js anizotropik ortam yansıması: bitanjant bakış yönüne paralel
+ * olduğunda cross(bitanjant, bakış) = 0 ve normalize NaN üretir. Disk
+ * gövdelerinde (çevresel anizotropi) bu, bakış doğrultusunun yarıçapla
+ * çakıştığı bölgelerde olur; bloom NaN pikselleri siyah lekelere yayar.
+ * Paylaşılan parça bir kez güvenli hale getirilir (dejenere durumda yüzey
+ * normali kullanılır).
+ */
+{
+  const chunk = THREE.ShaderChunk as unknown as Record<string, string>;
+  // Dikdörtgen alan ışığı (LTC): normal bakış yönüne paralelken taban
+  // vektörü sıfır olur → NaN (kameraya dik bakan parlak metal yüzeylerde
+  // siyah leke + bloom halesi)
+  const ltc = 'lights_physical_pars_fragment';
+  const ltcBad = 'T1 = normalize( V - N * dot( V, N ) );';
+  if (chunk[ltc].includes(ltcBad)) {
+    chunk[ltc] = chunk[ltc].replace(
+      ltcBad,
+      'vec3 t1v = V - N * dot( V, N ); T1 = dot( t1v, t1v ) > 1e-8 ? normalize( t1v ) : normalize( cross( N, abs( N.x ) < 0.9 ? vec3( 1.0, 0.0, 0.0 ) : vec3( 0.0, 1.0, 0.0 ) ) );',
+    );
+  }
+  const key = 'envmap_physical_pars_fragment';
+  const bad = 'bentNormal = normalize( cross( bentNormal, bitangent ) );';
+  if (chunk[key].includes(bad)) {
+    chunk[key] = chunk[key]
+      .split(bad)
+      .join('bentNormal = cross( bentNormal, bitangent ); bentNormal = dot( bentNormal, bentNormal ) > 1e-8 ? normalize( bentNormal ) : normal;');
+  }
+}
+
 export const cutUniforms = {
   uCutOn: { value: 0 },
   /** Dünya uzayında kesit yüzeyinin normali (kameraya bakan) */
@@ -229,8 +259,8 @@ export function createEngineMaterials(scans: Scans) {
   };
   const mats = {
     // Tornalanmış disk ve kollar: çevresel torna izi (anizotropi u = θ)
-    diskMetal: scan(phys({ color: 0x9ba1a7, roughness: 0.3, anisotropy: 0.55, envMapIntensity: 1.0 }), 'brushed', 0.35),
-    turbineDisk: scan(phys({ color: 0x8c8781, roughness: 0.36, anisotropy: 0.5, envMapIntensity: 0.9 }), 'brushed', 0.35),
+    diskMetal: scan(phys({ color: 0x9ba1a7, roughness: 0.36, anisotropy: 0.45, envMapIntensity: 1.0 }), 'brushed', 0.35),
+    turbineDisk: scan(phys({ color: 0x8a847e, roughness: 0.48, anisotropy: 0.3, envMapIntensity: 0.85 }), 'brushed', 0.35),
     // Gövde iç yüzü: dövme/işlenmiş çelik, yer yer koyu
     caseInner: scan(phys({ color: 0x7a7d80, roughness: 0.46, envMapIntensity: 0.8 }), 'case', 0.6),
     turbineCase: scan(phys({ color: 0x5d5752, roughness: 0.55, envMapIntensity: 0.7 }), 'hot', 0.6),

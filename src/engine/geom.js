@@ -113,8 +113,10 @@ export function thickLathe(profile, segments, t, side = 'in', opts = {}) {
     sgn = (side === 'out' ? 1 : -1) * (s >= 0 ? 1 : -1);
   }
   const off = pts.map((p, j) => new THREE.Vector2(Math.max(0, p.x + sgn * t * n2[j][0]), p.y + sgn * t * n2[j][1]));
-  const inner = latheFromProfile(off, segments);
-  inner.attributes.uv.array.set(outer.attributes.uv.array);
+  // İç yüzey yalnız kesitte görünür: profil seyreltilir (uçlar korunur)
+  const step = Math.max(1, Math.round(n / 48));
+  const offS = off.filter((_, j) => j % step === 0 || j === n - 1);
+  const inner = latheFromProfile(offS, segments);
   const flip = (g) => {
     const idx = g.index.array;
     for (let i = 0; i < idx.length; i += 3) {
@@ -137,7 +139,11 @@ export function thickLathe(profile, segments, t, side = 'in', opts = {}) {
   const d0 = [pts[0].x - pts[1].x, pts[0].y - pts[1].y];
   const d1 = [pts[n - 1].x - pts[n - 2].x, pts[n - 1].y - pts[n - 2].y];
   const parts = [outer, inner, cap(pts[0], off[0], d0), cap(pts[n - 1], off[n - 1], d1)];
-  const merged = mergeGeometries(parts.map((g) => g.index ? g : g), false);
+  const merged = mergeGeometries(parts, false);
+  // Dış yüzey ilk sırada: kesit kapalıyken yalnız o çizilir (drawRange),
+  // iç yüzey ve uç halkaları kesitte açılır (bkz. visual.setClipping)
+  merged.userData.outerCount = outer.index.count;
+  merged.setDrawRange(0, outer.index.count);
   // uv1 (metre): LatheGeometry kuralıyla (ensureUV1 bu türü tanımaz)
   const pos = merged.attributes.position;
   const uv = merged.attributes.uv;

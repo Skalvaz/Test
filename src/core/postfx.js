@@ -97,8 +97,12 @@ const GradeShader = {
       color.b = texture2D(tDiffuse, uv - caOffset).b;
       color.a = 1.0;
 
-      /* --- hafif S eğrisi: gölgeler derinleşir, orta tonlar canlanır --- */
-      color.rgb = mix(color.rgb, color.rgb * color.rgb * (3.0 - 2.0 * color.rgb), 0.22);
+      /* --- hafif S eğrisi: gölgeler derinleşir, orta tonlar canlanır ---
+       * Eğri yalnız [0,1] aralığında tanımlı: bloom parlak yüzeyleri 1'in
+       * üstüne taşır; x²(3−2x) 1,5'ten sonra negatife döner ve en parlak
+       * noktalar siyah leke olurdu. Taşan kısım olduğu gibi eklenir. */
+      vec3 cs = clamp(color.rgb, 0.0, 1.0);
+      color.rgb = mix(color.rgb, cs * cs * (3.0 - 2.0 * cs) + (color.rgb - cs), 0.22);
 
       /* --- vinyet --- */
       float vig = 1.0 - uVignette * smoothstep(0.18, 0.95, length(center) * 1.42);
