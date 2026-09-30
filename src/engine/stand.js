@@ -134,3 +134,77 @@ export function buildGroundCradle(materials, { mounts, engineR, floorY }) {
   });
   return group;
 }
+
+/**
+ * Pilonlu turbofan için açık hava test sehpası: motor pilonundan, iki
+ * A-çerçeve ve boyuna kirişlerden oluşan çelik bir portala asılır (motor
+ * yer testlerinde kullanılan itki çerçevesi). Ayaklar nasel çapının
+ * dışında, geniş tabanlı; tabanda cıvatalı plakalar.
+ */
+export function buildPylonGantry(materials, { mounts, top, floorY, halfSpan = 2.1 }) {
+  const group = new THREE.Group();
+  group.name = 'pylon-gantry';
+  const paint = materials.kitPaint?.clone() ?? materials.standPaint.clone();
+  paint.color.setHex(0xc79a22); // sarı yer donanımı boyası
+  paint.userData.owned = true;
+  const dark = materials.kitSteel ?? materials.machinery;
+  const beam = (a, b, w, h, mat) => {
+    const d = new THREE.Vector3().subVectors(b, a);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, d.length(), h), mat);
+    m.position.copy(a).addScaledVector(d, 0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize());
+    group.add(m);
+    return m;
+  };
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const z0 = Math.min(...mounts) - 0.7;
+  const z1 = Math.max(...mounts) + 0.7;
+  const yTop = top + 0.14;
+  const baseHalf = halfSpan + 0.55;
+  for (const z of [z0, z1]) {
+    // A-çerçeve: iki eğik ayak, üst başlık, orta yatay bağ
+    for (const s of [-1, 1]) {
+      beam(V(s * baseHalf, floorY + 0.03, z), V(s * halfSpan, yTop, z), 0.2, 0.2, paint);
+      const pl = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.03, 0.55), dark);
+      pl.position.set(s * baseHalf, floorY + 0.015, z);
+      group.add(pl);
+      for (const [bx, bz] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) {
+        const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.05, 6), dark);
+        bolt.position.set(s * baseHalf + bx, floorY + 0.04, z + bz);
+        group.add(bolt);
+      }
+    }
+    const head = new THREE.Mesh(new THREE.BoxGeometry(halfSpan * 2 + 0.3, 0.3, 0.26), paint);
+    head.position.set(0, yTop + 0.15, z);
+    group.add(head);
+    const mid = floorY + (yTop - floorY) * 0.42;
+    const t = (mid - floorY) / (yTop - floorY);
+    const xm = baseHalf + (halfSpan - baseHalf) * t;
+    beam(V(-xm, mid, z), V(xm, mid, z), 0.12, 0.12, paint);
+    beam(V(-xm, mid, z), V(0, yTop, z), 0.09, 0.09, paint);
+    beam(V(xm, mid, z), V(0, yTop, z), 0.09, 0.09, paint);
+  }
+  // Boyuna kirişler (pilonu taşıyan) ve yan çaprazlar
+  for (const x of [-0.32, 0.32]) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.24, z1 - z0 + 0.26), paint);
+    b.position.set(x, yTop - 0.02, (z0 + z1) / 2);
+    group.add(b);
+  }
+  for (const s of [-1, 1]) {
+    beam(V(s * halfSpan, yTop + 0.15, z0), V(s * halfSpan, yTop + 0.15, z1), 0.14, 0.14, paint);
+    beam(V(s * baseHalf, floorY + 0.1, z0), V(s * (halfSpan + 0.25), yTop - 0.9, z1), 0.08, 0.08, paint);
+  }
+  // Pilon bağlantı bloğu
+  for (const mz of mounts) {
+    const blk = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.14, 0.4), dark);
+    blk.position.set(0, top + 0.02, mz);
+    group.add(blk);
+  }
+  group.traverse((o) => {
+    if (o.isMesh) {
+      o.castShadow = true;
+      o.receiveShadow = true;
+    }
+  });
+  return group;
+}

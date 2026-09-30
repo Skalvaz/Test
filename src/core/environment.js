@@ -81,9 +81,9 @@ async function loadEncodedHdr(rgbUrl, lUrl) {
  *  fog:      sis yoğunluğu (ufuktaki zemin/gökyüzü birleşimini yumuşatır)
  */
 export const HDRI_PRESETS = {
-  'Havaalanı — öğle': { url: [noonRgb, noonL], rotation: 150, key: 0.2, sunScale: 1.25, fog: 0.0016 },
-  'Havaalanı — kapalı': { url: [overcastRgb, overcastL], rotation: 0, key: 0.24, sunScale: 0.5, fog: 0.0045 },
-  'Havaalanı — gün batımı': { url: [sunsetRgb, sunsetL], rotation: 200, key: 0.17, sunScale: 1.1, fog: 0.0022 },
+  'Havaalanı — öğle': { url: [noonRgb, noonL], rotation: 150, key: 0.2, sunScale: 1.25, fog: 0.00028 },
+  'Havaalanı — kapalı': { url: [overcastRgb, overcastL], rotation: 0, key: 0.24, sunScale: 0.5, fog: 0.0009 },
+  'Havaalanı — gün batımı': { url: [sunsetRgb, sunsetL], rotation: 200, key: 0.17, sunScale: 1.1, fog: 0.00036 },
 };
 
 export const PRESETS = {
@@ -147,7 +147,7 @@ export const PRESETS = {
     ambient: 0.10,
     exposure: 1.05,
     fog: 0x0a0e15,
-    fogDensity: 0.02,
+    fogDensity: 0.0035,
     fillColor: 0xffc98c,
     fillIntensity: 5.5,
   },

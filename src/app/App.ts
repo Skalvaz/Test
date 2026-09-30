@@ -186,7 +186,7 @@ export class App {
 
     await step(onProgress, 'Havaalanı yükleniyor…');
     try {
-      this.airfield = await loadAirfield(scans, createNoiseTexture(256, 4242));
+      this.airfield = await loadAirfield(scans, createNoiseTexture(256, 4242), renderer);
       this.scene.add(this.airfield.root);
       // Shader'ları önceden derle: yoksa ilk karelerde apron çizilmez ve
       // altındaki çimen görünür (paralel derleme bitene kadar)
@@ -928,6 +928,7 @@ export class App {
     );
 
     this.picker.update();
+    if (this.airfield?.root.visible) this.airfield.update(dt);
     this.rig.update(dt, this.visual.shake);
     if (this.cutaway) this.aimCutaway();
     this.updateHaze(snap, dt);

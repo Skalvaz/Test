@@ -18,7 +18,7 @@ import { buildPylon } from './pylon.js';
 import { buildExhaustPlume } from './exhaust.js';
 import { createNoiseTexture } from '../materials/textures.js';
 import { EngineEffects } from '../effects/EngineEffects.js';
-import { buildGroundCradle } from './stand.js';
+import { buildGroundCradle, buildPylonGantry } from './stand.js';
 import { tagPart, ensureUV1 } from './geom.js';
 import type { createMaterials } from '../materials/library.js';
 
@@ -294,8 +294,8 @@ export class EngineVisual {
   setGround(floorY: number, inCell: boolean) {
     this.effects.setFloor(floorY);
     const st = this.model.stand;
-    if (!st) return;
-    st.yoke.visible = inCell;
+    if (!st && !this.model.mount) return;
+    if (st) st.yoke.visible = inCell;
     if (this.cradle) {
       this.model.group.remove(this.cradle);
       this.cradle.traverse((o) => {
@@ -308,7 +308,13 @@ export class EngineVisual {
       this.cradle = null;
     }
     if (!inCell) {
-      const cradle = tagPart(buildGroundCradle(this.materials, { mounts: st.mounts, engineR: st.engineR, floorY }), 'stand');
+      const cradle = tagPart(
+        st
+          ? buildGroundCradle(this.materials, { mounts: st.mounts, engineR: st.engineR, floorY })
+          : // Pilonlu turbofan: pilondan asılı portal sehpa
+            buildPylonGantry(this.materials, { mounts: [-0.55, 1.25], top: 1.72, floorY }),
+        'stand',
+      );
       cradle.traverse((o: THREE.Object3D) => {
         const mesh = o as THREE.Mesh;
         if (mesh.isMesh) ensureUV1(mesh.geometry);

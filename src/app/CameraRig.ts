@@ -90,7 +90,7 @@ export class CameraRig {
   private currentOffset = new THREE.Vector3(0, 0, 1);
 
   constructor(dom: HTMLElement) {
-    this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 3000);
+    this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 14000);
     this.camera.position.set(...VIEWS.front.position);
     this.controls = new OrbitControls(this.camera, dom);
     this.controls.enableDamping = true;

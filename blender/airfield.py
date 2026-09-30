@@ -8,13 +8,18 @@ kanalı vardır:
     Meters  (TEXCOORD_1)  metre ölçekli döşeme UV'si — taramalar (uv1)
 Malzeme adları oyundaki tarama malzemelerine eşlenir (src/core/airfield.ts).
 
+Arazi (çimen, tepeler), bitki örtüsü ve hazır modeller (Poly Haven: beton
+bariyer, tel çit, elektrik direkleri, jeneratör…) oyunda eklenir; bu betik
+yapıları ve zemin kaplamalarını üretir.
+
 Yerleşim (three.js eksenleri; motor orijinde, ekseni z boyunca, giriş −z):
     zemin y = −2.4 (motor yer taşıma standında)
-    apron: x ∈ [−70, 70], z ∈ [−60, 40], 5 m'lik beton plakalar
+    apron: x ∈ [−52, 70], z ∈ [−60, 40], 5 m'lik beton plakalar
     motor çalıştırma alanı: motorun etrafında boyalı sınır, "ENGINE RUN-UP"
-    jet egzozu saptırma duvarı: z ≈ 26, 24 m genişlik, kavisli perdeler
-    hangarlar: x ≈ −62, kapıları apron'a (+x) bakar
-    kontrol kulesi: x ≈ 78, z ≈ −55
+    jet egzozu saptırma duvarı: z ≈ 26, kavisli perdeler
+    hangarlar: ön yüzleri x = −52, kapıları apron'a (+x) bakar
+    doğu (kara tarafı): kule, operasyon binası, itfaiye, otopark
+    güney: servis yolu, yakıt tankları
     taksi yolu → pist: pist z ≈ 170 boyunca, x ∈ [−1200, 1200]
 
     /home/user/bpyenv/bin/python blender/airfield.py --out build/airfield_raw.glb [--ao]
@@ -30,19 +35,22 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import bpy  # noqa: E402
-import bmesh  # noqa: E402
 from mathutils import Matrix, Vector  # noqa: E402
 
 from kitlib import C, link, reset, select_only  # noqa: E402
 
 FLOOR = -2.4
-APRON = (-70.0, 70.0, -60.0, 40.0)   # x0, x1, z0, z1
+APRON = (-52.0, 70.0, -60.0, 40.0)   # x0, x1, z0, z1
 RUNWAY_Z = 170.0
 RUNWAY_HALF = 22.5
 RUNWAY_LEN = 1200.0
 TAXI_X = 48.0
 TAXI_HALF = 11.5
 FENCE_Z = 26.0
+HANGAR_X = -52.0          # hangar ön yüzü
+HANGAR_DEPTH = 40.0
+HANGARS = (('A', -30.0, 0.55), ('B', 18.0, 0.0))   # ad, merkez z, kapı açıklığı
+HANGAR_W = 44.0
 
 MATS = {}
 
@@ -65,6 +73,11 @@ def mat(name, color=(0.5, 0.5, 0.5), emit=0.0):
 # Ağ oluşturucu (three koordinatları, "Meters" UV'si köşe başına)
 # ---------------------------------------------------------------------------
 
+BOX_FACES = [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (2, 3, 7, 6), (1, 2, 6, 5), (0, 4, 7, 3)]
+BOX_CORNERS = ((-1, -1, -1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
+               (-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1))
+
+
 class Builder:
     """Bir grup için köşe/yüz/UV/malzeme biriktirir, sonunda tek nesne yapar."""
 
@@ -73,40 +86,114 @@ class Builder:
         self.verts = []
         self.faces = []      # (indeksler, malzeme adı, [uv...])
 
-    def quad(self, a, b, c, d, material, uvs=None, flip=False):
-        """Dörtgen; uvs verilmezse yüz düzleminde metre izdüşümü."""
-        pts = [Vector(p) for p in (a, b, c, d)]
+    def poly(self, pts, material, uvs=None, flip=False):
+        """Dışbükey çokgen; uvs verilmezse yüz düzleminde metre izdüşümü.
+        Normal (p1 − p0) × (p_son − p0) yönündedir."""
+        pts = [Vector(p) for p in pts]
         if uvs is None:
-            n = (pts[1] - pts[0]).cross(pts[3] - pts[0])
+            n = (pts[1] - pts[0]).cross(pts[-1] - pts[0])
             ax = max(range(3), key=lambda i: abs(n[i]))
             pick = {0: (2, 1), 1: (0, 2), 2: (0, 1)}[ax]
             uvs = [(p[pick[0]], p[pick[1]]) for p in pts]
         i0 = len(self.verts)
         self.verts += pts
-        idx = [i0, i0 + 1, i0 + 2, i0 + 3]
+        idx = list(range(i0, i0 + len(pts)))
+        uvs = list(uvs)
         if flip:
             idx = idx[::-1]
             uvs = uvs[::-1]
-        self.faces.append((idx, material, list(uvs)))
+        self.faces.append((idx, material, uvs))
 
-    def box(self, center, size, material, rot_y=0.0, skip_bottom=True):
-        cx, cy, cz = center
-        sx, sy, sz = (s / 2 for s in size)
-        R = Matrix.Rotation(rot_y, 3, 'Y')
-        c = [R @ Vector((x * sx, y * sy, z * sz)) + Vector(center)
-             for x, y, z in ((-1, -1, -1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
-                             (-1, -1, 1), (1, -1, 1), (1, 1, 1), (-1, 1, 1))]
-        faces = [(0, 3, 2, 1), (4, 5, 6, 7), (0, 1, 5, 4), (2, 3, 7, 6), (1, 2, 6, 5), (0, 4, 7, 3)]
-        for k, f in enumerate(faces):
-            if skip_bottom and k == 2:
+    def quad(self, a, b, c, d, material, uvs=None, flip=False):
+        self.poly((a, b, c, d), material, uvs, flip)
+
+    def _frame_box(self, center, ex, ey, ez, size, material, skip=()):
+        c = [Vector(center) + ex * (x * size[0] / 2) + ey * (y * size[1] / 2) + ez * (z * size[2] / 2)
+             for x, y, z in BOX_CORNERS]
+        for k, f in enumerate(BOX_FACES):
+            if k in skip:
                 continue
             self.quad(*(c[i] for i in f), material)
+
+    def box(self, center, size, material, rot_y=0.0, skip_bottom=True):
+        R = Matrix.Rotation(rot_y, 3, 'Y')
+        self._frame_box(center, R @ Vector((1, 0, 0)), R @ Vector((0, 1, 0)), R @ Vector((0, 0, 1)),
+                        size, material, skip=(2,) if skip_bottom else ())
+
+    def beam(self, p0, p1, w, h, material, up=(0, 1, 0)):
+        """p0'dan p1'e uzanan dikdörtgen kesitli kiriş (w: yan, h: 'yukarı' yönü)."""
+        p0, p1 = Vector(p0), Vector(p1)
+        d = p1 - p0
+        L = d.length
+        if L < 1e-6:
+            return
+        dn = d / L
+        right = dn.cross(Vector(up))
+        if right.length < 1e-4:
+            right = dn.cross(Vector((1, 0, 0)))
+        right.normalize()
+        upv = right.cross(dn).normalized()
+        ez = right.cross(upv)
+        self._frame_box((p0 + p1) / 2, right, upv, ez, (w, h, L), material)
+
+    def cyl(self, base, axis, radius, length, material, segs=12, caps=True, r2=None):
+        """Silindir (r2 verilirse kesik koni); base: bir uç merkezi, axis: yön."""
+        a = Vector(axis).normalized()
+        ref = Vector((0, 1, 0)) if abs(a.y) < 0.9 else Vector((1, 0, 0))
+        ex = ref.cross(a).normalized()
+        ey = a.cross(ex)
+        r2 = radius if r2 is None else r2
+        b0 = Vector(base)
+        b1 = b0 + a * length
+        ring0 = [b0 + (ex * math.cos(t) + ey * math.sin(t)) * radius for t in (2 * math.pi * i / segs for i in range(segs))]
+        ring1 = [b1 + (ex * math.cos(t) + ey * math.sin(t)) * r2 for t in (2 * math.pi * i / segs for i in range(segs))]
+        circ = 2 * math.pi * max(radius, r2)
+        for i in range(segs):
+            j = (i + 1) % segs
+            u0, u1 = circ * i / segs, circ * (i + 1) / segs
+            self.quad(ring0[i], ring0[j], ring1[j], ring1[i], material,
+                      uvs=[(u0, 0), (u1, 0), (u1, length), (u0, length)])
+        if caps:
+            self.poly(ring1, material)
+            self.poly(ring0[::-1], material)
 
     def ground(self, x0, x1, z0, z1, y, material, uv_offset=(0, 0)):
         """Yatay dikdörtgen (yukarı bakar)."""
         ox, oz = uv_offset
         self.quad((x0, y, z1), (x1, y, z1), (x1, y, z0), (x0, y, z0), material,
                   uvs=[(x0 + ox, z1 + oz), (x1 + ox, z1 + oz), (x1 + ox, z0 + oz), (x0 + ox, z0 + oz)])
+
+    def wall(self, axis, coord, u0, u1, y0, y1, material, facing):
+        """Eksene dik düşey dikdörtgen. axis 'x': düzlem x = coord, u = z;
+        axis 'z': düzlem z = coord, u = x. facing: +1 / −1 (normal yönü)."""
+        if axis == 'x':
+            pts = [(coord, y0, u0), (coord, y0, u1), (coord, y1, u1), (coord, y1, u0)]
+            # normal = (b − a) × (d − a) = +z × +y = −x
+            flip = facing > 0
+            uvs = [(u0, y0), (u1, y0), (u1, y1), (u0, y1)]
+        else:
+            pts = [(u0, y0, coord), (u1, y0, coord), (u1, y1, coord), (u0, y1, coord)]
+            # +x × +y = +z
+            flip = facing < 0
+            uvs = [(u0, y0), (u1, y0), (u1, y1), (u0, y1)]
+        self.quad(*pts, material, uvs=uvs, flip=flip)
+
+    def window(self, axis, coord, facing, u, y, w, h, glass='glass', frame='frame', sill='concrete'):
+        """Duvar üstünde pencere: cam, çıkıntılı çerçeve ve denizlik."""
+        n = 0.035 * facing
+        self.wall(axis, coord + n, u - w / 2, u + w / 2, y, y + h, glass, facing)
+        t = 0.07
+        d = 0.09
+        def at(uu, yy, off=0.0):
+            return (coord + facing * off, yy, uu) if axis == 'x' else (uu, yy, coord + facing * off)
+        sz = (lambda a, b, c: (c, b, a)) if axis == 'x' else (lambda a, b, c: (a, b, c))
+        self.box(at(u, y + h, d / 2), sz(w + 2 * t, t, d), frame, skip_bottom=False)
+        self.box(at(u, y, d / 2), sz(w + 2 * t, t, d), frame, skip_bottom=False)
+        for s in (-1, 1):
+            self.box(at(u + s * (w / 2 + t / 2), y + h / 2, d / 2), sz(t, h, d), frame)
+        # orta kayıt
+        self.box(at(u, y + h / 2, d / 2 - 0.02), sz(0.045, h, d * 0.6), frame)
+        self.box(at(u, y - 0.06, 0.12), sz(w + 0.3, 0.06, 0.24), sill)
 
     def build(self):
         me = bpy.data.meshes.new(self.name)
@@ -131,45 +218,103 @@ class Builder:
         return obj
 
 
+def text_obj(body, pos, size, material, rot_y=0.0, flat=False, align='CENTER'):
+    """Yazı ağı. flat: zemine yatık (yukarı bakar); değilse düşey, +z'ye bakar
+    (rot_y ile döndürülür)."""
+    cu = bpy.data.curves.new('t', 'FONT')
+    cu.body = body
+    cu.size = size
+    cu.align_x = align
+    cu.align_y = 'CENTER'
+    cu.offset = 0.01 if flat else 0.0
+    o = link(bpy.data.objects.new('txt', cu))
+    o.data.materials.append(mat(material))
+    select_only(o)
+    bpy.ops.object.convert(target='MESH')
+    o = bpy.context.view_layer.objects.active
+    M = Matrix.Translation(pos) @ Matrix.Rotation(rot_y, 4, 'Y')
+    if flat:
+        M = M @ Matrix.Rotation(-math.pi / 2, 4, 'X')
+    o.data.transform(M)
+    o.data.transform(C)
+    o.data.uv_layers.new(name='UVMap')
+    o.data.uv_layers.new(name='Meters')
+    return o
+
+
+def text_mesh(body, pos, size, rot_y, material):
+    return text_obj(body, pos, size, material, rot_y=rot_y, flat=True)
+
+
 # ---------------------------------------------------------------------------
-# Zemin: çimen, apron, taksi yolu, pist, omuzlar, işaretler
+# Zemin kaplamaları: apron, taksi yolu, pist, yollar, omuzlar
+# (çimenli arazi oyunda üretilir: core/terrain.ts)
 # ---------------------------------------------------------------------------
 
 def build_ground():
     g = Builder('AF_ground')
     y = FLOOR
     ax0, ax1, az0, az1 = APRON
-    # Çimen: apron ve yolların çevresi (üst üste binmesin diye parçalı)
-    G = 1500.0
-    y_g = y - 0.03
-    # apron + taksi yolu + pist dışında kalan dört şerit halinde değil, basitçe
-    # büyük bir çimen düzlemi: yollar biraz yukarıda çizilir
-    g.ground(-G, G, -G, G, y_g, 'grass')
 
     # Apron (beton plakalar)
     g.ground(ax0, ax1, az0, az1, y, 'apron')
+    # Hangar çevresi servis betonu (hangar tabanları hangarlarla birlikte)
+    hz = [(cz - HANGAR_W / 2, cz + HANGAR_W / 2) for _, cz, _ in HANGARS]
+    xb = HANGAR_X - HANGAR_DEPTH
+    for (z0, z1) in ((az0, hz[0][0]), (hz[0][1], hz[1][0]), (hz[1][1], az1)):
+        g.ground(xb - 8, ax0, z0, z1, y, 'concrete')
+    g.ground(xb - 8, xb, hz[0][0], hz[1][1], y, 'concrete')
     # Apron kenarında çakıl şerit
-    for (x0, x1, z0, z1) in ((ax0 - 3, ax0, az0 - 3, az1 + 3), (ax1, ax1 + 3, az0 - 3, az1 + 3),
-                             (ax0, ax1, az0 - 3, az0), (ax0, TAXI_X - TAXI_HALF, az1, az1 + 3),
-                             (TAXI_X + TAXI_HALF, ax1, az1, az1 + 3)):
+    for (x0, x1, z0, z1) in ((ax1, ax1 + 2, az0 - 2, az1 + 2),
+                             (xb - 10, TAXI_X - TAXI_HALF, az1, az1 + 2),
+                             (TAXI_X + TAXI_HALF, ax1, az1, az1 + 2),
+                             (xb - 10, xb - 8, az0 - 2, az1 + 2)):
         g.ground(x0, x1, z0, z1, y - 0.015, 'gravel')
 
-    # Taksi yolu: apron'dan piste
+    # Taksi yolu: apron'dan piste (asfalt), omuzlarda çakıl
     g.ground(TAXI_X - TAXI_HALF, TAXI_X + TAXI_HALF, az1, RUNWAY_Z - RUNWAY_HALF, y, 'taxiway')
     for s in (-1, 1):
         x = TAXI_X + s * TAXI_HALF
-        g.ground(min(x, x + s * 4), max(x, x + s * 4), az1 + 3, RUNWAY_Z - RUNWAY_HALF - 7, y - 0.015, 'gravel')
+        g.ground(min(x, x + s * 4), max(x, x + s * 4), az1 + 2, RUNWAY_Z - RUNWAY_HALF - 7, y - 0.015, 'gravel')
 
     # Pist ve omuzları
     g.ground(-RUNWAY_LEN, RUNWAY_LEN, RUNWAY_Z - RUNWAY_HALF, RUNWAY_Z + RUNWAY_HALF, y, 'asphalt')
     for s in (-1, 1):
         z = RUNWAY_Z + s * RUNWAY_HALF
         g.ground(-RUNWAY_LEN, RUNWAY_LEN, min(z, z + s * 7.5), max(z, z + s * 7.5), y - 0.012, 'gravel')
+    # Pist sonu dönüş cepleri
+    for end in (-1, 1):
+        x = end * RUNWAY_LEN
+        g.ground(min(x, x + end * 60), max(x, x + end * 60), RUNWAY_Z - RUNWAY_HALF, RUNWAY_Z + RUNWAY_HALF, y - 0.004, 'taxiway')
+
+    # Kara tarafı yolları (asfalt) ve otopark
+    for (x0, x1, z0, z1) in ROADS:
+        g.ground(x0, x1, z0, z1, y + 0.001, 'road')
+    # Kaldırım/bina çevresi beton
+    for (x0, x1, z0, z1) in PAVED:
+        g.ground(x0, x1, z0, z1, y + 0.002, 'concrete')
     return g.build()
 
 
+# Yollar: (x0, x1, z0, z1)
+ROADS = [
+    (72.0, 79.0, -110.0, 38.0),       # apron doğu kenarı boyunca servis yolu
+    (-100.0, 150.0, -112.0, -104.0),  # güney servis yolu
+    (132.0, 140.0, -420.0, -112.0),   # dış kapıya giden yol
+    (122.0, 150.0, -100.0, -62.0),    # otopark
+    (79.0, 122.0, -70.0, -62.0),      # otopark bağlantısı
+]
+PAVED = [
+    (80.0, 121.0, -103.0, -99.0),     # operasyon binası önü
+    (79.0, 106.0, -30.0, -2.0),       # itfaiye önü (apron tarafı)
+    (86.0, 118.0, -58.0, -30.0),      # kule çevresi
+    (-36.0, 12.0, -101.0, -76.0),     # yakıt sahası
+]
+
+
 def build_markings():
-    """Boya ve derzler: zeminden 2–4 mm yukarıda ince dörtgenler."""
+    """Boya ve derzler: zeminden 2–4 mm yukarıda ince dörtgenler (oyunda
+    ayrıca polygonOffset ile zemine yapışık çizilir)."""
     m = Builder('AF_markings')
     y = FLOOR + 0.004
     ax0, ax1, az0, az1 = APRON
@@ -185,12 +330,18 @@ def build_markings():
         m.ground(ax0, ax1, z - w, z + w, y - 0.002, 'joint')
         z += 5
 
-    # Motor çalıştırma alanı: sarı-siyah sınır (motorun etrafında 16 × 30 m)
+    # Motor çalıştırma alanı: sarı sınır (motorun etrafında 16 × 30 m)
     bx0, bx1, bz0, bz1 = -8.0, 8.0, -14.0, 16.0
     lw = 0.3
     for (x0, x1, z0, z1) in ((bx0, bx1, bz0, bz0 + lw), (bx0, bx1, bz1 - lw, bz1),
                              (bx0, bx0 + lw, bz0, bz1), (bx1 - lw, bx1, bz0, bz1)):
         m.ground(x0, x1, z0, z1, y, 'paint_yellow')
+    # İkinci (dış) sınır: kesikli kırmızı — emme tehlike bölgesi
+    for (x0, x1, z0, z1) in ((bx0 - 1.2, bx1 + 1.2, bz0 - 1.5, bz0 - 1.25),):
+        xx = x0
+        while xx < x1:
+            m.ground(xx, min(xx + 1.2, x1), z0, z1, y, 'paint_red')
+            xx += 2.0
     # Giriş tehlike bölgesi: girişin önünde kırmızı taralı şeritler
     for k in range(10):
         zz = bz0 + 0.8 + k * 1.1
@@ -207,13 +358,75 @@ def build_markings():
     # Taksi yolu merkez çizgisi (sarı) apron içinden motor alanına döner
     m.ground(TAXI_X - 0.15, TAXI_X + 0.15, -10, RUNWAY_Z - RUNWAY_HALF - 2, y, 'paint_yellow')
     m.ground(bx1 + 2, TAXI_X + 0.15, -10.15, -9.85, y, 'paint_yellow')
+    # Bekleme noktası (holding position): iki düz + iki kesikli sarı çizgi
+    zh = RUNWAY_Z - RUNWAY_HALF - 45
+    for k, off in enumerate((0.0, 0.45, 1.2, 1.65)):
+        if k < 2:
+            m.ground(TAXI_X - TAXI_HALF + 0.5, TAXI_X + TAXI_HALF - 0.5, zh + off, zh + off + 0.15, y, 'paint_yellow')
+        else:
+            xx = TAXI_X - TAXI_HALF + 0.5
+            while xx < TAXI_X + TAXI_HALF - 0.5:
+                m.ground(xx, min(xx + 1.0, TAXI_X + TAXI_HALF - 0.5), zh + off, zh + off + 0.15, y, 'paint_yellow')
+                xx += 2.0
+    # Taksi yolu kenar çizgileri (çift sarı)
+    for s in (-1, 1):
+        for off in (0.4, 0.7):
+            xx = TAXI_X + s * (TAXI_HALF - off)
+            m.ground(xx - 0.075, xx + 0.075, az1 + 2, RUNWAY_Z - RUNWAY_HALF - 1, y, 'paint_yellow')
     # Apron kenar çizgileri (çift sarı)
     for off in (0.5, 0.9):
         m.ground(ax0, ax1, az1 - off - 0.15, az1 - off, y, 'paint_yellow')
-    # Hangar önü park pozisyonları: kurşun çizgisi + durma çubuğu
-    for hz in (-30.0, 12.0):
-        m.ground(-55, -20, hz - 0.1, hz + 0.1, y, 'paint_yellow')
-        m.ground(-54, -52.5, hz - 2.5, hz + 2.5, y, 'paint_yellow')
+    # Hangar önü park pozisyonları: kurşun çizgisi + durma çubuğu + kanat ucu
+    for _, hz, _ in HANGARS:
+        m.ground(ax0 + 1, -20, hz - 0.1, hz + 0.1, y, 'paint_yellow')
+        m.ground(ax0 + 3, ax0 + 4.5, hz - 2.5, hz + 2.5, y, 'paint_yellow')
+        for s in (-1, 1):
+            zz = hz + s * 9
+            xx = ax0 + 6
+            while xx < -24:
+                m.ground(xx, xx + 1.5, zz - 0.08, zz + 0.08, y, 'paint_red')
+                xx += 3.0
+    # Hangar kapısı önü: sarı-siyah tehlike şeridi (kapı rayı boyunca)
+    for _, hz, open_ in HANGARS:
+        z0 = hz - HANGAR_W / 2
+        k = 0
+        zz = z0
+        while zz < z0 + HANGAR_W:
+            m.ground(HANGAR_X + 1.1, HANGAR_X + 1.5, zz, min(zz + 0.5, z0 + HANGAR_W), y, 'paint_yellow' if k % 2 == 0 else 'paint_black')
+            zz += 0.5
+            k += 1
+    # Servis yolu: apron'dan ayıran beyaz kesikli çizgi (araç yolu)
+    zz = az0 + 2
+    while zz < az1 - 2:
+        m.ground(ax1 - 3.2, ax1 - 3.05, zz, zz + 3, y, 'paint_white')
+        zz += 6
+    # Otopark çizgileri
+    for k in range(14):
+        xx = 123 + k * 2.6
+        if xx > 149:
+            break
+        for (z0, z1) in ((-99.5, -94.5), (-67.5, -62.5)):
+            m.ground(xx - 0.06, xx + 0.06, z0, z1, y + 0.001, 'paint_white')
+    # Yol orta çizgileri
+    for (x0, x1, z0, z1) in ROADS[:3]:
+        if x1 - x0 > z1 - z0:
+            zc = (z0 + z1) / 2
+            xx = x0 + 2
+            while xx < x1 - 3:
+                m.ground(xx, xx + 3, zc - 0.06, zc + 0.06, y + 0.001, 'paint_white')
+                xx += 9
+        else:
+            xc = (x0 + x1) / 2
+            zz = z0 + 2
+            while zz < z1 - 3:
+                m.ground(xc - 0.06, xc + 0.06, zz, zz + 3, y + 0.001, 'paint_white')
+                zz += 9
+
+    # Drenaj ızgaraları: apron kuzey kenarında ve çalıştırma alanı çevresinde
+    m.ground(ax0 + 2, TAXI_X - TAXI_HALF - 1, az1 - 2.3, az1 - 1.95, y - 0.001, 'grate')
+    m.ground(bx0 - 3, bx1 + 3, bz0 - 3.4, bz0 - 3.05, y - 0.001, 'grate')
+    m.ground(bx0 - 3.4, bx0 - 3.05, bz0 - 3, FENCE_Z - 2, y - 0.001, 'grate')
+    m.ground(bx1 + 3.05, bx1 + 3.4, bz0 - 3, FENCE_Z - 2, y - 0.001, 'grate')
 
     # Pist işaretleri: merkez çizgisi, kenar çizgileri, eşik "piyano tuşları"
     yr = FLOOR + 0.004
@@ -230,117 +443,242 @@ def build_markings():
             for s in (-1, 1):
                 z = RUNWAY_Z + s * (3 + k * 2.3)
                 m.ground(x0, x0 + 30, z - 0.9, z + 0.9, yr, 'paint_white')
-        # nişan noktası işaretleri
+        # nişan noktası ve temas bölgesi işaretleri
         xa = end * (RUNWAY_LEN - 300)
         for s in (-1, 1):
             m.ground(xa - 22, xa + 22, RUNWAY_Z + s * 7 - 5, RUNWAY_Z + s * 7 + 5, yr, 'paint_white')
-    # Pist lastik izleri (koyu, yarı saydam değil; hafif koyu asfalt)
-    for k in range(6):
-        xa = -RUNWAY_LEN + 330 + k * 25
-        m.ground(xa, xa + 22, RUNWAY_Z - 6, RUNWAY_Z + 6, yr - 0.001, 'rubber_marks')
+            for k in range(3):
+                xt = end * (RUNWAY_LEN - 150 - k * 150)
+                for j in range(3 - k):
+                    zz = RUNWAY_Z + s * (4 + j * 2.2)
+                    m.ground(xt - 11, xt + 11, zz - 0.8, zz + 0.8, yr, 'paint_white')
+    # Pist lastik izleri (temas bölgelerinde)
+    for end in (-1, 1):
+        for k in range(8):
+            xa = end * (RUNWAY_LEN - 330 - k * 22) - 11
+            m.ground(xa, xa + 20, RUNWAY_Z - 6.5 + (k % 3) * 0.6, RUNWAY_Z + 6.5 - (k % 2) * 0.8, yr - 0.001, 'rubber_marks')
     return m.build()
 
 
-def text_mesh(body, pos, size, rot_y, material):
-    cu = bpy.data.curves.new('t', 'FONT')
-    cu.body = body
-    cu.size = size
-    cu.align_x = 'CENTER'
-    cu.align_y = 'CENTER'
-    cu.offset = 0.02
-    o = link(bpy.data.objects.new('txt', cu))
-    o.data.materials.append(mat(material))
-    select_only(o)
-    bpy.ops.object.convert(target='MESH')
-    o = bpy.context.view_layer.objects.active
-    # yatay: yazı XY düzleminde → three zemini (XZ); okuma yönü motor önünden
-    M = Matrix.Translation(pos) @ Matrix.Rotation(rot_y, 4, 'Y') @ Matrix.Rotation(-math.pi / 2, 4, 'X')
-    o.data.transform(M)
-    o.data.transform(C)
-    uv = o.data.uv_layers.new(name='UVMap')
-    o.data.uv_layers.new(name='Meters')
-    return o
+def build_runway_text():
+    """Pist numaraları (27 / 09) ve apron yazıları."""
+    objs = []
+    for end, num in ((-1, '09'), (1, '27')):
+        x = end * (RUNWAY_LEN - 55)
+        # Numara, pist ucuna yaklaşan uçaktan okunur
+        objs.append(text_obj(num, (x, FLOOR + 0.005, RUNWAY_Z), 9.0, 'paint_white',
+                             rot_y=-end * math.pi / 2, flat=True))
+    # Motorun önünden (−z) bakana düz okunur
+    objs.append(text_mesh('ENGINE RUN-UP', (0, FLOOR + 0.005, -11.2), 1.6, math.pi, 'paint_white'))
+    objs.append(text_mesh('NO STEP  -  JET BLAST', (0, FLOOR + 0.005, 13.6), 0.7, 0.0, 'paint_red'))
+    for name, hz, _ in HANGARS:
+        objs.append(text_mesh(f'H{name}', (APRON[0] + 9, FLOOR + 0.005, hz + 4), 1.4, -math.pi / 2, 'paint_yellow'))
+    return objs
 
 
 # ---------------------------------------------------------------------------
-# Hangar: kemerli çatı, oluklu sac, sürgülü kapılar
+# Hangar: kemerli çatı, oluklu sac, sürgülü kapılar, kafes kirişler
 # ---------------------------------------------------------------------------
 
-def build_hangar(name, cx, cz, width_z=44.0, depth_x=40.0, wall_h=9.0, rise=7.0, door_open=0.55):
-    """cx: hangarın ön (kapı) yüzünün x'i; hangar −x yönüne uzanır."""
-    h = Builder(name)
-    y0 = FLOOR
-    x_front = cx
-    x_back = cx - depth_x
-    z0 = cz - width_z / 2
-    z1 = cz + width_z / 2
-    n = 24
-    # Kemer profili (z boyunca): duvar + tonoz
+def arch_profile(z0, width, y0, wall_h, rise, n=24):
     prof = [(z0, y0), (z0, y0 + wall_h)]
     for i in range(1, n):
         t = i / n
-        zz = z0 + t * width_z
-        yy = y0 + wall_h + rise * math.sin(math.pi * t)
-        prof.append((zz, yy))
-    prof += [(z1, y0 + wall_h), (z1, y0)]
-    # Çatı + yan duvarlar: profil boyunca x'e süpürülür (dış yüz)
-    for k in range(len(prof) - 1):
-        (za, ya), (zb, yb) = prof[k], prof[k + 1]
-        s0 = sum(math.hypot(prof[j + 1][0] - prof[j][0], prof[j + 1][1] - prof[j][1]) for j in range(k))
-        s1 = s0 + math.hypot(zb - za, yb - ya)
-        mat_name = 'corrugated'
-        # dış yüz (normal dışarı)
-        h.quad((x_back, ya, za), (x_back, yb, zb), (x_front, yb, zb), (x_front, ya, za), mat_name,
+        prof.append((z0 + t * width, y0 + wall_h + rise * math.sin(math.pi * t)))
+    prof += [(z0 + width, y0 + wall_h), (z0 + width, y0)]
+    return prof
+
+
+def build_hangar(label, cz, door_open, interior=True):
+    """Ön yüz x = HANGAR_X; hangar −x yönüne uzanır."""
+    name = f'AF_hangar_{label.lower()}'
+    h = Builder(name)
+    y0 = FLOOR
+    width_z, depth_x, wall_h, rise = HANGAR_W, HANGAR_DEPTH, 9.0, 7.0
+    x_front = HANGAR_X
+    x_back = x_front - depth_x
+    z0 = cz - width_z / 2
+    z1 = cz + width_z / 2
+    plinth = 1.2
+    prof = arch_profile(z0, width_z, y0, wall_h, rise)
+    # Profilin duvar kısmı kaide üstünden başlar
+    prof_clad = [(prof[0][0], y0 + plinth)] + prof[1:-1] + [(prof[-1][0], y0 + plinth)]
+
+    # Çatı + yan duvarlar: profil boyunca x'e süpürülür (dış yüz) + koyu iç yüz
+    acc = 0.0
+    lens = []
+    for k in range(len(prof_clad) - 1):
+        (za, ya), (zb, yb) = prof_clad[k], prof_clad[k + 1]
+        l = math.hypot(zb - za, yb - ya)
+        s0, s1 = acc, acc + l
+        acc = s1
+        lens.append((s0, s1))
+        h.quad((x_back, ya, za), (x_back, yb, zb), (x_front, yb, zb), (x_front, ya, za), 'corrugated',
                uvs=[(s0, 0), (s1, 0), (s1, depth_x), (s0, depth_x)])
-        # iç yüz (koyu, aynı geometri ters)
         h.quad((x_front, ya, za), (x_front, yb, zb), (x_back, yb, zb), (x_back, ya, za), 'interior',
                uvs=[(s0, depth_x), (s1, depth_x), (s1, 0), (s0, 0)])
-    # Arka duvar (profil dolgusu, fan üçgenleri → dörtgen şeritler)
+    # Çatı ışıklıkları: kemer üstünde üç şerit (yarı saydam polikarbonat)
+    arch = prof_clad[2:-2]
+    for t in (0.25, 0.5, 0.75):
+        k = int(t * (len(arch) - 1))
+        (za, ya), (zb, yb) = arch[k], arch[k + 1]
+        nz, ny = -(yb - ya), (zb - za)
+        nl = math.hypot(nz, ny)
+        nz, ny = nz / nl * 0.03, ny / nl * 0.03
+        xx = x_back + 2
+        while xx < x_front - 3:
+            h.quad((xx, ya + ny, za + nz), (xx, yb + ny, zb + nz), (xx + 3.0, yb + ny, zb + nz), (xx + 3.0, ya + ny, za + nz), 'skylight')
+            xx += 5.5
+    # Kaide (beton, hafif çıkıntılı): yan ve arka duvar
+    for zz, f in ((z0, -1), (z1, 1)):
+        h.wall('z', zz + f * 0.08, x_back - 0.08, x_front, y0, y0 + plinth, 'concrete', f)
+        h.box((x_front - depth_x / 2, y0 + plinth + 0.03, zz + f * 0.04), (depth_x + 0.16, 0.06, 0.16), 'concrete')
+    h.wall('x', x_back - 0.08, z0 - 0.08, z1 + 0.08, y0, y0 + plinth, 'concrete', -1)
+    # Arka duvar (profil dolgusu)
     for k in range(len(prof) - 1):
         (za, ya), (zb, yb) = prof[k], prof[k + 1]
-        # bu sarım −x'e (dışarı) bakar; iç yüz ters sarımla +x'e
-        h.quad((x_back, y0, za), (x_back, y0, zb), (x_back, yb, zb), (x_back, ya, za), 'corrugated',
-               uvs=[(za, 0), (zb, 0), (zb, yb - y0), (za, ya - y0)])
+        ylo = y0 + plinth
+        if max(ya, yb) <= ylo + 1e-3:
+            continue
+        ya2, yb2 = max(ya, ylo), max(yb, ylo)
+        h.quad((x_back, ylo, za), (x_back, ylo, zb), (x_back, yb2, zb), (x_back, ya2, za), 'corrugated',
+               uvs=[(za, 0), (zb, 0), (zb, yb2 - y0), (za, ya2 - y0)])
         h.quad((x_back + 0.05, y0, za), (x_back + 0.05, y0, zb), (x_back + 0.05, yb, zb), (x_back + 0.05, ya, za), 'interior',
                uvs=[(za, 0), (zb, 0), (zb, yb - y0), (za, ya - y0)], flip=True)
-    # Ön cephe: kapı açıklığının üstünde "alın" duvarı
+    # Saçak oluğu ve iniş boruları (yan duvarlar)
+    for zz, f in ((z0, -1), (z1, 1)):
+        h.box((x_front - depth_x / 2, y0 + wall_h - 0.1, zz + f * 0.18), (depth_x + 0.4, 0.22, 0.28), 'galv')
+        for xx in (x_back + 1.0, x_back + depth_x / 2, x_front - 1.2):
+            h.cyl((xx, y0 + 0.15, zz + f * 0.2), (0, 1, 0), 0.06, wall_h - 0.3, 'galv', segs=8, caps=False)
+            h.beam((xx, y0 + 0.15, zz + f * 0.2), (xx, y0 + 0.05, zz + f * 0.5), 0.12, 0.12, 'galv')
+    # Yan servis kapıları (kanopi + lamba) ve küçük pencereler
+    for zz, f in ((z0, -1), (z1, 1)):
+        xd = x_front - 8.0
+        h.wall('z', zz + f * 0.1, xd - 0.55, xd + 0.55, y0, y0 + 2.2, 'door_paint', f)
+        h.box((xd, y0 + 2.25, zz + f * 0.1), (1.3, 0.1, 0.12), 'steel_dark')
+        for s in (-1, 1):
+            h.box((xd + s * 0.6, y0 + 1.1, zz + f * 0.1), (0.1, 2.2, 0.12), 'steel_dark')
+        h.box((xd, y0 + 2.6, zz + f * 0.55), (1.8, 0.1, 1.0), 'steel_dark', skip_bottom=False)
+        h.box((xd, y0 + 2.5, zz + f * 0.9), (0.3, 0.06, 0.12), 'lamp_warm')
+        for xw in (x_front - 16, x_front - 22, x_front - 28):
+            h.window('z', zz + f * 0.05, f, xw, y0 + 3.2, 1.8, 1.1)
+    # Ön cephe: kapı açıklığının üstünde alın duvarı
     door_h = wall_h + 1.5
     for k in range(len(prof) - 1):
         (za, ya), (zb, yb) = prof[k], prof[k + 1]
-        lo_a, lo_b = y0 + door_h, y0 + door_h
-        if ya <= lo_a and yb <= lo_b:
+        lo = y0 + door_h
+        if ya <= lo and yb <= lo:
             continue
-        # ön yüz +x'e (apron'a) bakmalı: sarım ters çevrilir; içte koyu yüz
-        h.quad((x_front, max(lo_a, y0), za), (x_front, max(lo_b, y0), zb), (x_front, max(yb, lo_b), zb), (x_front, max(ya, lo_a), za),
+        h.quad((x_front, lo, za), (x_front, lo, zb), (x_front, max(yb, lo), zb), (x_front, max(ya, lo), za),
                'corrugated', uvs=[(za, 0), (zb, 0), (zb, yb - y0), (za, ya - y0)], flip=True)
-        h.quad((x_front - 0.05, max(lo_a, y0), za), (x_front - 0.05, max(lo_b, y0), zb), (x_front - 0.05, max(yb, lo_b), zb),
-               (x_front - 0.05, max(ya, lo_a), za), 'interior', uvs=[(za, 0), (zb, 0), (zb, yb - y0), (za, ya - y0)])
-    # Alın kirişi ve kapı rayı
-    h.box((x_front + 0.3, y0 + door_h, cz), (0.6, 0.8, width_z + 0.4), 'steel_dark')
-    h.box((x_front + 0.5, y0 + 0.05, cz), (0.4, 0.1, width_z * 1.9), 'steel_dark')
-    # Sürgülü kapı panelleri: iki yana itilmiş (kısmen açık)
+        h.quad((x_front - 0.05, lo, za), (x_front - 0.05, lo, zb), (x_front - 0.05, max(yb, lo), zb),
+               (x_front - 0.05, max(ya, lo), za), 'interior', uvs=[(za, 0), (zb, 0), (zb, yb - y0), (za, ya - y0)])
+    # Alın kirişi: iki başlıklı kafes kiriş (kapı üstü), ışıklık bandı, tabela
+    yb_ = y0 + door_h
+    h.box((x_front + 0.35, yb_ - 0.15, cz), (0.7, 0.3, width_z + 1.2), 'steel_dark', skip_bottom=False)
+    h.box((x_front + 0.35, yb_ + 1.35, cz), (0.7, 0.3, width_z + 1.2), 'steel_dark', skip_bottom=False)
+    n_web = 22
+    for i in range(n_web):
+        za_ = z0 - 0.5 + (width_z + 1) * i / n_web
+        zb_ = z0 - 0.5 + (width_z + 1) * (i + 1) / n_web
+        h.beam((x_front + 0.35, yb_, za_), (x_front + 0.35, yb_ + 1.2, zb_ if i % 2 == 0 else za_), 0.12, 0.12, 'steel_dark', up=(1, 0, 0))
+    h.wall('x', x_front + 0.72, z0 - 0.5, z1 + 0.5, yb_ + 1.5, yb_ + 2.6, 'skylight', 1)
+    # Tabela
+    h.box((x_front + 0.8, yb_ + 4.2, cz), (0.15, 2.0, 11.0), 'sign_white', skip_bottom=False)
+    # Kapı rayı (zeminde) ve üst kılavuz
+    h.box((x_front + 0.5, y0 + 0.02, cz), (0.5, 0.04, width_z * 1.9), 'steel_dark')
+    h.box((x_front + 0.8, yb_ - 0.45, cz), (0.25, 0.3, width_z * 1.9), 'steel_dark', skip_bottom=False)
+    # Sürgülü kapı panelleri
     panels = 6
     pw = width_z / panels
     for i in range(panels):
         side = -1 if i < panels / 2 else 1
         k = i if side < 0 else panels - 1 - i
-        # dıştaki panel en çok itilir; kapı açıklık oranı door_open
         shift = side * (width_z / 2) * door_open * (1 - k / (panels / 2)) if door_open > 0 else 0
         zc = z0 + (i + 0.5) * pw + shift
         zc = max(z0 - width_z * 0.45, min(z1 + width_z * 0.45, zc))
-        h.box((x_front + 0.35 + 0.18 * (k % 2), y0 + door_h / 2, zc), (0.12, door_h - 0.2, pw), 'shutter')
-    # Kapı dikmeleri (yan kolonlar)
-    for zz in (z0 - 0.3, z1 + 0.3):
-        h.box((x_front, y0 + door_h / 2, zz), (0.8, door_h, 0.6), 'steel_dark')
-    # Zemin (içeride beton, apron'dan devam)
-    h.ground(x_back, x_front, z0, z1, y0 + 0.002, 'hangar_floor')
-    # Tavan armatürleri (içeride, gece yanar)
-    for xi in (x_back + depth_x * 0.3, x_back + depth_x * 0.7):
-        for zi in (cz - width_z * 0.25, cz, cz + width_z * 0.25):
-            h.box((xi, y0 + wall_h + rise * 0.85, zi), (1.8, 0.1, 0.5), 'lamp_warm')
-    # Çatı sırtı havalandırma
-    h.box(((x_front + x_back) / 2, y0 + wall_h + rise + 0.25, cz), (depth_x - 2, 0.5, 1.2), 'steel_dark')
-    return h.build()
+        xp = x_front + 0.35 + 0.22 * (k % 2)
+        dh = door_h - 0.55
+        h.box((xp, y0 + dh / 2, zc), (0.12, dh, pw - 0.04), 'shutter', skip_bottom=False)
+        # Panel çerçevesi, cam şerit, alt lastik, orta kuşak
+        for yy in (y0 + 0.12, y0 + dh * 0.5, y0 + dh - 0.1):
+            h.box((xp + 0.08, yy, zc), (0.06, 0.18, pw - 0.04), 'steel_dark')
+        for s in (-1, 1):
+            h.box((xp + 0.08, y0 + dh / 2, zc + s * (pw / 2 - 0.1)), (0.06, dh, 0.18), 'steel_dark')
+        h.wall('x', xp + 0.065, zc - pw / 2 + 0.4, zc + pw / 2 - 0.4, y0 + dh * 0.72, y0 + dh * 0.8, 'glass', 1)
+        h.box((xp, y0 + 0.04, zc), (0.2, 0.08, pw - 0.06), 'rubber')
+    # Kapı dikmeleri (yan kolonlar, beton kaide üstünde)
+    for zz in (z0 - 0.35, z1 + 0.35):
+        h.box((x_front + 0.1, y0 + 0.5, zz), (1.2, 1.0, 1.0), 'concrete')
+        h.box((x_front + 0.1, y0 + door_h / 2 + 0.5, zz), (0.8, door_h - 1.0, 0.6), 'steel_dark')
+        # sarı-siyah çarpma koruması
+        for j in range(4):
+            h.box((x_front + 0.1, y0 + 1.1 + j * 0.3, zz), (0.84, 0.15, 0.64), 'paint_yellow' if j % 2 == 0 else 'paint_black', skip_bottom=False)
+    # Taban: hangar içi epoksi beton
+    h.ground(x_back, x_front + 0.2, z0, z1, y0 + 0.002, 'hangar_floor')
+    # Çatı sırtı havalandırma bacaları
+    for xx in (x_back + 8, x_back + 20, x_back + 32):
+        h.box((xx, y0 + wall_h + rise + 0.35, cz), (2.4, 0.7, 1.4), 'galv')
+        h.box((xx, y0 + wall_h + rise + 0.75, cz), (2.8, 0.1, 1.8), 'galv', skip_bottom=False)
+
+    if interior:
+        # Kafes kemer kirişler (6,5 m aralık): dış ve iç başlık + dikme/çapraz
+        n = 16
+        pts = []
+        for i in range(n + 1):
+            t = i / n
+            zz = z0 + 0.5 + t * (width_z - 1.0)
+            yy = y0 + wall_h + rise * math.sin(math.pi * t) - 0.35
+            tz, ty = width_z, rise * math.pi * math.cos(math.pi * t)
+            l = math.hypot(tz, ty)
+            nz, ny = -ty / l, tz / l
+            pts.append(((zz, yy), (zz - nz * 1.1, yy - ny * 1.1)))
+        xx = x_back + 3.0
+        while xx < x_front - 1.5:
+            for (zz, f) in ((z0 + 0.35, 1), (z1 - 0.35, -1)):
+                h.box((xx, y0 + wall_h / 2, zz), (0.35, wall_h, 0.3), 'steel_dark')
+            for i in range(n):
+                (o0, i0), (o1, i1) = pts[i], pts[i + 1]
+                h.beam((xx, o0[1], o0[0]), (xx, o1[1], o1[0]), 0.18, 0.2, 'steel_dark', up=(1, 0, 0))
+                h.beam((xx, i0[1], i0[0]), (xx, i1[1], i1[0]), 0.16, 0.18, 'steel_dark', up=(1, 0, 0))
+                a, b = (o0, i1) if i % 2 == 0 else (i0, o1)
+                h.beam((xx, a[1], a[0]), (xx, b[1], b[0]), 0.08, 0.08, 'steel_dark', up=(1, 0, 0))
+            # Asma armatürler
+            for zz in (cz - width_z * 0.25, cz + width_z * 0.25):
+                yl = y0 + wall_h + rise * 0.8 - 1.8
+                h.beam((xx, yl + 1.2, zz), (xx, yl + 0.25, zz), 0.02, 0.02, 'steel_dark', up=(1, 0, 0))
+                h.cyl((xx, yl, zz), (0, 1, 0), 0.32, 0.3, 'steel_dark', segs=10, r2=0.12)
+                h.poly([(xx + 0.3 * math.cos(a_), yl - 0.005, zz - 0.3 * math.sin(a_)) for a_ in
+                        (2 * math.pi * i / 10 for i in range(10))], 'lamp_warm')
+            xx += 6.5
+        # Arka duvarda asma kat ofisleri: camlı cephe, merdiven, korkuluk
+        ox = x_back + 6.0
+        h.box((x_back + 3.0, y0 + 1.6, cz), (6.0, 3.2, width_z - 6), 'wall_panel')
+        h.box((x_back + 3.0, y0 + 3.35, cz), (6.2, 0.3, width_z - 5.6), 'concrete', skip_bottom=False)
+        h.box((x_back + 3.0, y0 + 4.9, cz), (6.0, 2.8, width_z - 6), 'wall_panel')
+        for k in range(8):
+            zc_ = cz - (width_z - 8) / 2 + k * (width_z - 8) / 7
+            h.window('x', ox, 1, zc_, y0 + 0.9, 2.2, 1.4)
+            h.window('x', ox, 1, zc_, y0 + 4.1, 2.2, 1.5)
+        for k in range(12):
+            zr = cz - (width_z - 6) / 2 + k * (width_z - 6) / 11
+            h.box((ox + 0.9, y0 + 3.5 + 0.55, zr), (0.05, 1.1, 0.05), 'paint_yellow')
+        h.box((ox + 0.9, y0 + 4.6, cz), (0.06, 0.06, width_z - 6), 'paint_yellow')
+        # merdiven
+        for k in range(16):
+            h.box((ox + 0.6 + k * 0.28, y0 + 0.1 + k * 0.21, cz + width_z / 2 - 5), (0.3, 0.05, 1.2), 'steel_dark', skip_bottom=False)
+        h.beam((ox + 0.4, y0, cz + width_z / 2 - 5.65), (ox + 5.0, y0 + 3.4, cz + width_z / 2 - 5.65), 0.06, 0.25, 'steel_dark')
+        h.beam((ox + 0.4, y0, cz + width_z / 2 - 4.35), (ox + 5.0, y0 + 3.4, cz + width_z / 2 - 4.35), 0.06, 0.25, 'steel_dark')
+        # Zemin işaretleri (sarı yürüme yolu)
+        h.ground(x_back + 7, x_front - 1, z0 + 1.5, z0 + 1.62, y0 + 0.004, 'paint_yellow')
+        h.ground(x_back + 7, x_front - 1, z1 - 1.62, z1 - 1.5, y0 + 0.004, 'paint_yellow')
+    else:
+        # Kapalı hangar: içerisi görünmez; yalnız birkaç armatür (gece)
+        pass
+    obj = h.build()
+    txt = text_obj(f'HANGAR {label}', (x_front + 0.9, y0 + door_h + 4.2, cz), 1.25, 'sign_black', rot_y=math.pi / 2)
+    txt.name = f'{name}_sign'
+    return [obj, txt]
 
 
 # ---------------------------------------------------------------------------
@@ -354,7 +692,6 @@ def build_blast_fence():
     H = 5.0
     sections = 13
     sw = width / sections
-    # Kavisli perde: profil (z, y) arkaya doğru bükülür
     prof = []
     for i in range(9):
         t = i / 8
@@ -363,7 +700,6 @@ def build_blast_fence():
     for s in range(sections):
         x0 = -width / 2 + s * sw
         x1 = x0 + sw - 0.06
-        # yatay oluklu levhalar gibi: profil boyunca şeritler (ön yüz)
         acc = 0.0
         for k in range(len(prof) - 1):
             (za, ya), (zb, yb) = prof[k], prof[k + 1]
@@ -373,52 +709,317 @@ def build_blast_fence():
             b.quad((x0, yb, zb + 0.05), (x1, yb, zb + 0.05), (x1, ya, za + 0.05), (x0, ya, za + 0.05), 'galv',
                    uvs=[(x0, acc + l), (x1, acc + l), (x1, acc), (x0, acc)])
             acc += l
-        # arka destek üçgeni (her bölmenin kenarında)
+        # Panel ek kayışları (yatay) ve kenar profilleri
+        for k in (2, 4, 6):
+            (za, ya) = prof[k]
+            b.box(((x0 + x1) / 2, ya, za - 0.04), (sw - 0.1, 0.12, 0.06), 'steel_dark')
+        # Arka destek: dikme, taban kirişi, çapraz, cıvatalı taban plakası
         xs = x0 + 0.02
         zt, yt = prof[-1]
         b.box((xs, (y0 + yt) / 2, zt + 1.6), (0.2, yt - y0, 0.25), 'steel_dark')
         b.box((xs, y0 + 0.2, (FENCE_Z + zt + 3) / 2), (0.25, 0.4, zt + 3 - FENCE_Z), 'steel_dark')
-        # çapraz
-        L = math.hypot(3.2, yt - y0)
-        b.box((xs, (y0 + yt) / 2, zt + 0.1), (0.15, L, 0.18), 'steel_dark', rot_y=0.0)
+        b.beam((xs, y0 + 0.4, FENCE_Z + 0.6), (xs, yt - 0.3, zt + 1.5), 0.15, 0.18, 'steel_dark', up=(1, 0, 0))
+        b.box((xs, y0 + 0.43, zt + 1.6), (0.5, 0.04, 0.5), 'steel_dark')
+    # Uç dikmeleri: sarı-siyah uyarı bantlı
+    for sx in (-1, 1):
+        xe = sx * (width / 2 + 0.2)
+        for j in range(10):
+            b.box((xe, y0 + 0.45 + j * 0.5, FENCE_Z + 1.2), (0.35, 0.5, 0.35), 'paint_yellow' if j % 2 == 0 else 'paint_black', skip_bottom=j > 0)
     # Beton temel kirişi
     b.box((0, y0 + 0.2, FENCE_Z + 1.5), (width + 1, 0.4, 5.0), 'concrete')
     return b.build()
 
 
 # ---------------------------------------------------------------------------
-# Kontrol kulesi, ışık direkleri, pist lambaları
+# Binalar: kule, operasyon binası, itfaiye, yakıt tankları
 # ---------------------------------------------------------------------------
+
+def flat_building(b, x0, x1, z0, z1, floors, fh=3.4, wall='wall_panel', win=(1.8, 1.4), spacing=3.2,
+                  skip_faces=(), door_faces=(), parapet=0.8):
+    """Düz çatılı prekast beton bina: pencere dizileri, kat bantları,
+    parapet, çatı zarı ve çatı üstü teçhizat."""
+    y0 = FLOOR
+    H = floors * fh
+    walls = [('z', z0, -1, x0, x1), ('z', z1, 1, x0, x1), ('x', x0, -1, z0, z1), ('x', x1, 1, z0, z1)]
+    for (axis, coord, f, u0, u1) in walls:
+        b.wall(axis, coord, u0, u1, y0, y0 + H + parapet, wall, f)
+        # kaide (koyu) ve kat bantları
+        b.wall(axis, coord + f * 0.02, u0, u1, y0, y0 + 0.6, 'concrete', f)
+        for k in range(1, floors):
+            yy = y0 + k * fh
+            if axis == 'x':
+                b.box((coord + f * 0.04, yy, (u0 + u1) / 2), (0.08, 0.22, u1 - u0 + 0.16), 'concrete')
+            else:
+                b.box(((u0 + u1) / 2, yy, coord + f * 0.04), (u1 - u0 + 0.16, 0.22, 0.08), 'concrete')
+        # panel derzleri (düşey, 3 m)
+        uu = u0 + 3.0
+        while uu < u1 - 0.5:
+            b.wall(axis, coord + f * 0.012, uu - 0.015, uu + 0.015, y0 + 0.6, y0 + H + parapet, 'joint', f)
+            uu += 3.0
+        if (axis, f) in skip_faces:
+            continue
+        n = int((u1 - u0 - 1.0) // spacing)
+        for k in range(floors):
+            for i in range(n):
+                u = u0 + (u1 - u0) / 2 + (i - (n - 1) / 2) * spacing
+                if (axis, f) in door_faces and k == 0 and i == n // 2:
+                    # Giriş: cam kapı + kanopi
+                    b.wall(axis, coord + f * 0.03, u - 1.0, u + 1.0, y0, y0 + 2.4, 'glass', f)
+                    at = (coord + f * 0.9, y0 + 2.7, u) if axis == 'x' else (u, y0 + 2.7, coord + f * 0.9)
+                    sz = (1.8, 0.18, 3.0) if axis == 'x' else (3.0, 0.18, 1.8)
+                    b.box(at, sz, 'concrete', skip_bottom=False)
+                    lamp = (coord + f * 1.0, y0 + 2.6, u) if axis == 'x' else (u, y0 + 2.6, coord + f * 1.0)
+                    b.box(lamp, (0.4, 0.04, 0.4), 'lamp_warm')
+                    continue
+                b.window(axis, coord, f, u, y0 + k * fh + 0.95, win[0], win[1])
+    # Çatı: bitümlü zar, parapet kapağı
+    b.ground(x0, x1, z0, z1, y0 + H + 0.05, 'roof')
+    for (axis, coord, f, u0, u1) in walls:
+        b.wall(axis, coord - f * 0.25, u0 + 0.25, u1 - 0.25, y0 + H, y0 + H + parapet, wall, -f)
+        if axis == 'x':
+            b.box((coord - f * 0.12, y0 + H + parapet + 0.04, (u0 + u1) / 2), (0.34, 0.08, u1 - u0 + 0.1), 'galv')
+        else:
+            b.box(((u0 + u1) / 2, y0 + H + parapet + 0.04, coord - f * 0.12), (u1 - u0 + 0.1, 0.08, 0.34), 'galv')
+    # Çatı üstü: merdiven kulesi, klima santrali, havalandırma
+    cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+    b.box((x0 + 3.0, y0 + H + 1.4, cz), (3.5, 2.8, 4.0), wall)
+    b.box((cx + 2.0, y0 + H + 0.8, cz), (4.0, 1.5, 2.2), 'galv')
+    for k in range(3):
+        b.cyl((cx + 0.8 + k * 1.2, y0 + H + 1.55, cz), (0, 1, 0), 0.35, 0.12, 'steel_dark', segs=12)
+    b.cyl((x1 - 2.0, y0 + H, cz - 1.5), (0, 1, 0), 0.25, 1.4, 'galv', segs=10)
+    return H
+
 
 def build_tower(cx, cz):
     t = Builder('AF_tower')
     y0 = FLOOR
-    H = 18.0
-    t.box((cx, y0 + H / 2, cz), (7, H, 7), 'concrete')
-    # kabin: eğik camlı sekizgen yerine kutu + cam
+    H = 20.0
+    s = 3.2
+    # Şaft: dört yüzlü beton, köşe pahları, düşey merdiven pencere şeridi
+    for (axis, coord, f) in (('z', cz - s, -1), ('z', cz + s, 1), ('x', cx - s, -1), ('x', cx + s, 1)):
+        u0, u1 = (cx - s, cx + s) if axis == 'z' else (cz - s, cz + s)
+        t.wall(axis, coord, u0, u1, y0, y0 + H, 'wall_panel', f)
+        for k in range(1, 7):
+            yy = y0 + k * 3.0
+            if axis == 'x':
+                t.box((coord + f * 0.03, yy, cz), (0.06, 0.1, 2 * s + 0.06), 'joint')
+            else:
+                t.box((cx, yy, coord + f * 0.03), (2 * s + 0.06, 0.1, 0.06), 'joint')
+    for k in range(6):
+        t.window('x', cx - s, -1, cz, y0 + 1.5 + k * 3.0, 0.9, 1.8)
+        t.window('z', cz + s, 1, cx, y0 + 1.5 + k * 3.0, 0.9, 1.8)
+    # Kabin: sekizgen, dışa eğik camlar, dikmeler, çatı saçağı
     cab_y = y0 + H
-    t.box((cx, cab_y + 0.3, cz), (11, 0.6, 11), 'concrete')
-    t.box((cx, cab_y + 2.3, cz), (10, 3.4, 10), 'glass')
-    t.box((cx, cab_y + 4.2, cz), (11.5, 0.5, 11.5), 'steel_dark')
-    t.box((cx, cab_y + 6.5, cz), (0.2, 4.2, 0.2), 'steel_dark')
-    t.box((cx, cab_y + 8.6, cz), (0.5, 0.5, 0.5), 'light_red')
-    # alt bina
-    t.box((cx + 9, y0 + 3, cz), (12, 6, 16), 'concrete')
-    for k in range(5):
-        t.box((cx + 3.05, y0 + 3.5, cz - 6 + k * 3), (0.1, 1.6, 2.0), 'glass')
+    R0, R1, Hc = 5.6, 6.3, 3.6
+    t.cyl((cx, cab_y, cz), (0, 1, 0), 6.4, 0.6, 'concrete', segs=8)
+    ring0 = [(cx + R0 * math.cos(a), cab_y + 0.6, cz + R0 * math.sin(a)) for a in (math.pi / 8 + i * math.pi / 4 for i in range(8))]
+    ring1 = [(cx + R1 * math.cos(a), cab_y + 0.6 + Hc, cz + R1 * math.sin(a)) for a in (math.pi / 8 + i * math.pi / 4 for i in range(8))]
+    for i in range(8):
+        j = (i + 1) % 8
+        t.quad(ring0[j], ring0[i], ring1[i], ring1[j], 'glass')
+        t.beam(ring0[i], ring1[i], 0.14, 0.14, 'steel_dark')
+    t.cyl((cx, cab_y + 0.6 + Hc, cz), (0, 1, 0), 7.0, 0.5, 'steel_dark', segs=8)
+    # Seyir balkonu korkuluğu
+    for i in range(32):
+        a = i * math.tau / 32
+        t.box((cx + 7.1 * math.cos(a), cab_y + 0.55 + 0.55, cz + 7.1 * math.sin(a)), (0.05, 1.1, 0.05), 'galv')
+    t.cyl((cx, cab_y + 1.65, cz), (0, 1, 0), 7.12, 0.05, 'galv', segs=24, caps=False)
+    t.cyl((cx, cab_y + 0.55, cz), (0, 1, 0), 7.3, 0.06, 'concrete', segs=24)
+    # Çatı: antenler, rüzgâr ölçer, bekon
+    top = cab_y + 0.6 + Hc + 0.5
+    t.cyl((cx, top, cz), (0, 1, 0), 0.08, 5.5, 'galv', segs=6)
+    t.box((cx, top + 5.6, cz), (0.35, 0.35, 0.35), 'light_red')
+    for (dx, dz, hh) in ((2.5, 1.5, 3.0), (-2.2, -2.0, 2.2), (1.0, -3.0, 1.6)):
+        t.cyl((cx + dx, top, cz + dz), (0, 1, 0), 0.03, hh, 'galv', segs=5)
+    t.beam((cx - 3, top + 2.5, cz + 2), (cx - 3, top + 2.5, cz + 3.2), 0.05, 0.05, 'galv')
+    t.cyl((cx - 3, top, cz + 2.6), (0, 1, 0), 0.04, 2.5, 'galv', segs=5)
+    t.box((cx + 3.2, top + 0.4, cz - 0.5), (1.4, 0.8, 1.0), 'galv')
+    # Alt bina (iki katlı) şaftın doğusunda
+    flat_building(t, cx + s, cx + s + 16, cz - 9, cz + 9, 2, door_faces=(('z', -1),))
     return t.build()
+
+
+def build_ops():
+    b = Builder('AF_ops')
+    # Operasyon binası: apron'a (kuzey, −z yönünde değil; +z) bakar
+    flat_building(b, 82.0, 120.0, -100.0, -80.0, 2, door_faces=(('z', 1),))
+    # İtfaiye: üç araç kapısı apron'a (−x) bakar
+    y0 = FLOOR
+    x0, x1, z0, z1 = 82.0, 104.0, -26.0, -4.0
+    H = 7.0
+    for (axis, coord, f, u0, u1) in (('z', z0, -1, x0, x1), ('z', z1, 1, x0, x1), ('x', x1, 1, z0, z1)):
+        b.wall(axis, coord, u0, u1, y0, y0 + H + 0.6, 'wall_panel', f)
+        b.wall(axis, coord + f * 0.02, u0, u1, y0, y0 + 0.6, 'concrete', f)
+    for (axis, coord, f, u0, u1) in (('z', z0, -1, x0, x1), ('z', z1, 1, x0, x1)):
+        for u in (x0 + 5, x0 + 11, x0 + 17):
+            b.window(axis, coord, f, u, y0 + 4.2, 2.0, 1.2)
+    # Ön cephe: kapı aralarında ayaklar, üstte bant
+    doors = [(z0 + 1.2 + i * 6.9, z0 + 1.2 + i * 6.9 + 5.8) for i in range(3)]
+    edges = [z0] + [v for d in doors for v in d] + [z1]
+    for i in range(0, len(edges), 2):
+        b.wall('x', x0, edges[i], edges[i + 1], y0, y0 + H + 0.6, 'wall_panel', -1)
+    b.wall('x', x0, z0, z1, y0 + 5.0, y0 + H + 0.6, 'wall_panel', -1)
+    for (d0, d1) in doors:
+        b.wall('x', x0 + 0.25, d0, d1, y0, y0 + 5.0, 'shutter_red', -1)
+        b.box((x0 + 0.1, y0 + 5.1, (d0 + d1) / 2), (0.3, 0.2, d1 - d0 + 0.2), 'steel_dark')
+        for s in (-1, 1):
+            b.box((x0 - 0.15, y0 + 0.6, d0 - 0.2 if s < 0 else d1 + 0.2), (0.3, 1.2, 0.3), 'paint_yellow')
+        b.box((x0 - 0.5, y0 + 5.3, (d0 + d1) / 2), (0.4, 0.05, 0.6), 'lamp_warm')
+    b.box((x0 - 0.05, y0 + 6.1, (z0 + z1) / 2), (0.12, 1.0, 12.0), 'sign_red', skip_bottom=False)
+    b.ground(x0, x1, z0, z1, y0 + H + 0.05, 'roof')
+    b.cyl((x1 - 3, y0 + H, z0 + 3), (0, 1, 0), 0.06, 6.0, 'galv', segs=6)
+    b.box((x1 - 3, y0 + H + 6.0, z0 + 3), (0.3, 0.3, 0.3), 'light_red')
+    # Siren direği
+    b.cyl((x1 - 1.5, y0 + H, z1 - 2), (0, 1, 0), 0.1, 3.0, 'galv', segs=6)
+    b.cyl((x1 - 1.5, y0 + H + 3.0, z1 - 2), (1, 0, 0), 0.35, 0.5, 'steel_dark', segs=10)
+    return b.build()
+
+
+def build_fuel_farm():
+    f = Builder('AF_fuel')
+    y0 = FLOOR
+    x0, x1, z0, z1 = -34.0, 10.0, -99.0, -78.0
+    # Beton set duvarı (taşma havuzu)
+    for (axis, coord, fc, u0, u1) in (('z', z0, -1, x0, x1), ('z', z1, 1, x0, x1), ('x', x0, -1, z0, z1), ('x', x1, 1, z0, z1)):
+        if axis == 'x':
+            f.box((coord, y0 + 0.5, (u0 + u1) / 2), (0.3, 1.0, u1 - u0 + 0.3), 'concrete')
+        else:
+            f.box(((u0 + u1) / 2, y0 + 0.5, coord), (u1 - u0 + 0.3, 1.0, 0.3), 'concrete')
+    # Yatay tanklar (beyaz boyalı), kaide, merdiven, borular
+    for k in range(3):
+        zc = z0 + 3.8 + k * 6.6
+        f.cyl((x0 + 6, y0 + 2.2, zc), (1, 0, 0), 2.0, 26.0, 'tank_white', segs=24)
+        for xs in (x0 + 9, x0 + 18, x0 + 27):
+            f.box((xs, y0 + 0.6, zc), (0.8, 1.2, 3.0), 'concrete')
+        # tank uçlarında bombe
+        for (xe, d) in ((x0 + 6, -1), (x0 + 32, 1)):
+            f.cyl((xe, y0 + 2.2, zc), (d, 0, 0), 2.0, 0.5, 'tank_white', segs=24, r2=1.3)
+        # üst boru ve vana
+        f.cyl((x0 + 30, y0 + 4.2, zc), (0, 1, 0), 0.25, 0.5, 'steel_dark', segs=8)
+        f.cyl((x0 + 32.5, y0 + 1.2, zc), (1, 0, 0), 0.12, 6.0, 'paint_yellow', segs=8)
+        # tank yazı bandı
+        f.cyl((x0 + 17.5, y0 + 2.2, zc), (1, 0, 0), 2.02, 0.4, 'paint_red', segs=24, caps=False)
+    # Dolum istasyonu (kanopi)
+    f.box((x1 + 6, y0 + 4.5, (z0 + z1) / 2), (7.0, 0.4, 9.0), 'steel_dark', skip_bottom=False)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            f.box((x1 + 6 + sx * 3, y0 + 2.2, (z0 + z1) / 2 + sz * 4), (0.3, 4.4, 0.3), 'galv')
+    f.box((x1 + 6, y0 + 0.8, (z0 + z1) / 2), (1.0, 1.6, 0.8), 'paint_red')
+    return f.build()
+
+
+def build_radar(cx, cz):
+    """Gözetleme radarı: kafes kule (sabit) + dönen anten (ayrı nesne)."""
+    r = Builder('AF_radar')
+    y0 = FLOOR
+    H = 12.0
+    w0, w1 = 2.2, 0.9
+    legs = [(sx, sz) for sx in (-1, 1) for sz in (-1, 1)]
+    for sx, sz in legs:
+        r.beam((cx + sx * w0, y0, cz + sz * w0), (cx + sx * w1, y0 + H, cz + sz * w1), 0.18, 0.18, 'galv')
+    for k in range(6):
+        ya, yb = y0 + k * H / 6, y0 + (k + 1) * H / 6
+        wa = w0 + (w1 - w0) * k / 6
+        wb = w0 + (w1 - w0) * (k + 1) / 6
+        for (a, b) in (((-1, -1), (1, -1)), ((1, -1), (1, 1)), ((1, 1), (-1, 1)), ((-1, 1), (-1, -1))):
+            r.beam((cx + a[0] * wa, ya, cz + a[1] * wa), (cx + b[0] * wb, yb, cz + b[1] * wb), 0.08, 0.08, 'galv')
+            r.beam((cx + a[0] * wb, yb, cz + a[1] * wb), (cx + b[0] * wb, yb, cz + b[1] * wb), 0.08, 0.08, 'galv')
+    r.box((cx, y0 + H + 0.15, cz), (2.6, 0.3, 2.6), 'galv', skip_bottom=False)
+    r.box((cx, y0 + H + 0.9, cz), (1.6, 1.2, 1.6), 'wall_panel')
+    r.box((cx + 3.5, y0 + 1.3, cz), (3.0, 2.6, 2.4), 'wall_panel')
+    tower = r.build()
+    a = Builder('AF_radar_antenna')
+    # Anten orijinde kurulur (oyun y ekseni etrafında döndürür); konum nesnede
+    top = 0.0
+    a.cyl((0, top, 0), (0, 1, 0), 0.35, 1.2, 'steel_dark', segs=10)
+    # Kavisli ızgara reflektör: yatay latalar
+    Wd, Hd = 7.0, 2.4
+    for k in range(7):
+        yy = top + 1.0 + k * Hd / 6
+        bow = 0.6 * (1 - ((k - 3) / 3) ** 2)
+        segs = 8
+        for i in range(segs):
+            xa = -Wd / 2 + Wd * i / segs
+            xb = -Wd / 2 + Wd * (i + 1) / segs
+            za = -0.5 - bow - 0.5 * (1 - (2 * xa / Wd) ** 2)
+            zb = -0.5 - bow - 0.5 * (1 - (2 * xb / Wd) ** 2)
+            a.beam((xa, yy, za), (xb, yy, zb), 0.05, 0.12, 'galv')
+    for i in range(9):
+        xx = -Wd / 2 + Wd * i / 8
+        z_ = -0.5 - 0.5 * (1 - (2 * xx / Wd) ** 2)
+        a.beam((xx, top + 1.0, z_ - 0.6), (xx, top + 1.0 + Hd, z_ - 0.6), 0.06, 0.06, 'galv')
+    a.beam((0, top + 1.2, 0), (0, top + 1.0 + Hd / 2, -1.2), 0.15, 0.15, 'steel_dark')
+    a.box((0, top + 1.0 + Hd / 2, 0.4), (0.4, 0.4, 0.8), 'steel_dark', skip_bottom=False)
+    ant = a.build()
+    ant.location = C @ Vector((cx, y0 + H + 1.5, cz))
+    return [tower, ant]
+
+
+def build_windsock(cx, cz):
+    w = Builder('AF_windsock_mast')
+    y0 = FLOOR
+    w.box((cx, y0 + 0.15, cz), (1.6, 0.3, 1.6), 'concrete')
+    w.cyl((cx, y0 + 0.3, cz), (0, 1, 0), 0.07, 6.2, 'paint_white', segs=8)
+    for k in range(4):
+        w.cyl((cx, y0 + 0.3 + k * 1.55, cz), (0, 1, 0), 0.075, 0.6, 'windsock', segs=8, caps=False)
+    w.cyl((cx, y0 + 6.3, cz), (0, 1, 0), 0.5, 0.05, 'galv', segs=12)
+    mast = w.build()
+    s = Builder('AF_windsock')
+    # Tulum orijinden +x yönüne; oyun rüzgâra göre döndürür/sallar
+    L = 3.6
+    for k in range(5):
+        r0 = 0.45 - k * 0.055
+        r1 = 0.45 - (k + 1) * 0.055
+        s.cyl((k * L / 5, 0, 0), (1, 0, 0), r0, L / 5, 'windsock' if k % 2 == 0 else 'paint_white', segs=14, caps=False, r2=r1)
+    sock = s.build()
+    sock.location = C @ Vector((cx + 0.5, y0 + 6.0, cz))
+    return [mast, sock]
+
+
+# ---------------------------------------------------------------------------
+# Işık direkleri, pist lambaları, tabelalar, yaklaşma ışıkları
+# ---------------------------------------------------------------------------
+
+MASTS = [(APRON[0] + 12, APRON[2] + 3), (APRON[1] - 3, APRON[2] + 3), (APRON[0] + 12, APRON[3] - 3), (APRON[1] - 3, APRON[3] - 3), (10.0, APRON[2] + 3)]
 
 
 def build_lights():
     L = Builder('AF_lights')
     y0 = FLOOR
-    # Apron ışık direkleri (4)
-    ax0, ax1, az0, az1 = APRON
-    for (x, z) in ((ax0 + 4, az0 + 4), (ax1 - 4, az0 + 4), (ax0 + 4, az1 - 4), (ax1 - 4, az1 - 4)):
-        L.box((x, y0 + 11, z), (0.5, 22, 0.5), 'galv')
-        L.box((x, y0 + 22.2, z), (2.6, 0.5, 0.8), 'steel_dark')
-        L.box((x, y0 + 21.9, z), (2.4, 0.08, 0.6), 'lamp_white')
-    # Pist kenar lambaları (60 m aralık) ve taksi yolu mavi lambaları
+    H = 22.0
+    for (x, z) in MASTS:
+        # Kafes gövde: üç ayak + çaprazlar
+        legs = [(math.cos(a), math.sin(a)) for a in (0, 2.094, 4.189)]
+        r0, r1 = 1.1, 0.45
+        L.cyl((x, y0, z), (0, 1, 0), 1.5, 0.5, 'concrete', segs=10)
+        for (cx, cz) in legs:
+            L.beam((x + cx * r0, y0 + 0.5, z + cz * r0), (x + cx * r1, y0 + H, z + cz * r1), 0.12, 0.12, 'galv')
+        for k in range(10):
+            ya = y0 + 0.5 + k * (H - 0.5) / 10
+            yb = y0 + 0.5 + (k + 1) * (H - 0.5) / 10
+            ra = r0 + (r1 - r0) * k / 10
+            rb = r0 + (r1 - r0) * (k + 1) / 10
+            for i in range(3):
+                (ax, az), (bx, bz) = legs[i], legs[(i + 1) % 3]
+                L.beam((x + ax * ra, ya, z + az * ra), (x + bx * rb, yb, z + bz * rb), 0.05, 0.05, 'galv')
+                L.beam((x + ax * rb, yb, z + az * rb), (x + bx * rb, yb, z + bz * rb), 0.05, 0.05, 'galv')
+        # Baş: platform, korkuluk, 6 projektör apron merkezine eğik
+        L.cyl((x, y0 + H, z), (0, 1, 0), 1.6, 0.15, 'galv', segs=12)
+        for i in range(16):
+            a = i * math.tau / 16
+            L.box((x + 1.55 * math.cos(a), y0 + H + 0.6, z + 1.55 * math.sin(a)), (0.04, 0.9, 0.04), 'galv')
+        L.cyl((x, y0 + H + 1.05, z), (0, 1, 0), 1.56, 0.04, 'galv', segs=16, caps=False)
+        toward = Vector((0 - x, 0, -10 - z)).normalized()
+        base_a = math.atan2(toward.z, toward.x)
+        for i in range(6):
+            a = base_a + (i - 2.5) * 0.28
+            d = Vector((math.cos(a), 0, math.sin(a)))
+            c = Vector((x, y0 + H + 1.6 + (i % 2) * 0.7, z)) + d * 1.2
+            # projektör kutusu: öne ve aşağı eğik
+            fwd = (d * math.cos(0.6) + Vector((0, -1, 0)) * math.sin(0.6)).normalized()
+            L.beam(c - fwd * 0.2, c + fwd * 0.2, 0.7, 0.5, 'steel_dark')
+            L.beam(c + fwd * 0.2, c + fwd * 0.215, 0.62, 0.42, 'lamp_white')
+    # Pist kenar lambaları (60 m aralık), taksi yolu mavi lambaları
     x = -RUNWAY_LEN + 30
     while x < RUNWAY_LEN:
         for s in (-1, 1):
@@ -429,7 +1030,48 @@ def build_lights():
         for s in (-1, 1):
             L.box((TAXI_X + s * (TAXI_HALF + 1), y0 + 0.15, z), (0.2, 0.3, 0.2), 'light_blue')
         z += 20
+    # Pist başı eşik ışıkları (yeşil/kırmızı) ve yaklaşma ışık barları
+    for end in (-1, 1):
+        xe = end * RUNWAY_LEN
+        for k in range(12):
+            zz = RUNWAY_Z - RUNWAY_HALF + 1 + k * (2 * RUNWAY_HALF - 2) / 11
+            L.box((xe, y0 + 0.2, zz), (0.3, 0.35, 0.3), 'light_green')
+        for k in range(10):
+            xx = xe + end * (70 + k * 30)
+            L.box((xx, y0 + 0.5 + k * 0.1, RUNWAY_Z), (0.25, 1.0 + k * 0.2, 0.25), 'galv')
+            L.box((xx, y0 + 1.0 + k * 0.2, RUNWAY_Z), (0.3, 0.12, 9.0), 'steel_dark')
+            for j in range(5):
+                L.box((xx, y0 + 1.12 + k * 0.2, RUNWAY_Z - 4 + j * 2), (0.25, 0.2, 0.25), 'light_white')
     return L.build()
+
+
+def build_signs():
+    """Taksi yolu tabelaları: bekleme noktasında kırmızı pist tabelası,
+    yön tabelaları (sarı zemin siyah yazı / siyah zemin sarı yazı)."""
+    S = Builder('AF_signs')
+    objs = []
+    y0 = FLOOR
+    zh = RUNWAY_Z - RUNWAY_HALF - 46
+    for (xs, items) in ((TAXI_X - TAXI_HALF - 6, [('09-27', 'sign_red', 'sign_white'), ('A', 'sign_black', 'paint_yellow')]),
+                        (TAXI_X + TAXI_HALF + 6, [('A', 'sign_black', 'paint_yellow'), ('09-27', 'sign_red', 'sign_white')])):
+        w_tot = sum(2.2 if len(t) > 2 else 1.1 for t, _, _ in items)
+        u = xs - w_tot / 2
+        for (txt, bg, fg) in items:
+            w = 2.2 if len(txt) > 2 else 1.1
+            S.box((u + w / 2, y0 + 1.0, zh), (w, 0.9, 0.35), bg, skip_bottom=False)
+            for s in (-1, 1):
+                objs.append(text_obj(txt, (u + w / 2, y0 + 1.0, zh + s * 0.18), 0.55, fg, rot_y=0 if s > 0 else math.pi))
+            u += w
+        for s in (-1, 1):
+            S.box((xs + s * (w_tot / 2 - 0.2), y0 + 0.3, zh), (0.12, 0.6, 0.12), 'galv')
+    # Apron'dan taksi yoluna yön tabelası
+    zs = APRON[3] + 6
+    S.box((TAXI_X - TAXI_HALF - 5, y0 + 1.0, zs), (2.4, 0.9, 0.35), 'paint_yellow', skip_bottom=False)
+    for s in (-1, 1):
+        objs.append(text_obj('A →', (TAXI_X - TAXI_HALF - 5, y0 + 1.0, zs + s * 0.18), 0.55, 'sign_black', rot_y=0 if s > 0 else math.pi))
+    for s in (-1, 1):
+        S.box((TAXI_X - TAXI_HALF - 5 + s * 1.0, y0 + 0.3, zs), (0.12, 0.6, 0.12), 'galv')
+    return [S.build()] + objs
 
 
 # ---------------------------------------------------------------------------
@@ -472,18 +1114,14 @@ def main():
     t0 = time.time()
     reset()
     bpy.context.scene.world.light_settings.distance = 6.0
-    objs = [
-        build_ground(),
-        build_markings(),
-        build_hangar('AF_hangar_a', -52.0, -30.0),
-        build_hangar('AF_hangar_b', -52.0, 18.0, door_open=0.0),
-        build_blast_fence(),
-        build_tower(80.0, -58.0),
-        build_lights(),
-    ]
-    # Motorun önünden (−z) bakana düz okunur
-    txt = text_mesh('ENGINE RUN-UP', (0, FLOOR + 0.005, -11.2), 1.6, math.pi, 'paint_white')
-    objs.append(txt)
+    objs = [build_ground(), build_markings()]
+    for label, cz, door in HANGARS:
+        objs += build_hangar(label, cz, door, interior=door > 0)
+    objs += [build_blast_fence(), build_tower(95.0, -44.0), build_ops(), build_fuel_farm(), build_lights()]
+    objs += build_radar(158.0, 92.0)
+    objs += build_windsock(96.0, 132.0)
+    objs += build_signs()
+    objs += build_runway_text()
     for o in objs:
         print(f'  {o.name}: {len(o.data.polygons)} yüz', flush=True)
     if args.ao:

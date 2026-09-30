@@ -1,0 +1,327 @@
+{
+ "tile": 512,
+ "cols": 4,
+ "rows": 4,
+ "tiles": [
+  {
+   "name": "olive_a",
+   "kind": "tree",
+   "tile": [
+    0,
+    0
+   ],
+   "px": [
+    18,
+    5,
+    494,
+    508
+   ],
+   "left": -2.384,
+   "right": 2.384,
+   "bottom": -0.01,
+   "top": 5.028,
+   "coverage": 0.323,
+   "source": "island_tree_01"
+  },
+  {
+   "name": "olive_b",
+   "kind": "tree",
+   "tile": [
+    1,
+    0
+   ],
+   "px": [
+    5,
+    52,
+    507,
+    460
+   ],
+   "left": -2.104,
+   "right": 2.104,
+   "bottom": -0.007,
+   "top": 3.413,
+   "coverage": 0.272,
+   "source": "island_tree_02"
+  },
+  {
+   "name": "broad_a",
+   "kind": "tree",
+   "tile": [
+    2,
+    0
+   ],
+   "px": [
+    4,
+    56,
+    507,
+    457
+   ],
+   "left": -12.258,
+   "right": 12.209,
+   "bottom": -0.043,
+   "top": 19.463,
+   "coverage": 0.305,
+   "source": "jacaranda_tree"
+  },
+  {
+   "name": "broad_b",
+   "kind": "tree",
+   "tile": [
+    3,
+    0
+   ],
+   "px": [
+    9,
+    4,
+    503,
+    508
+   ],
+   "left": -9.58,
+   "right": 9.58,
+   "bottom": -0.04,
+   "top": 19.508,
+   "coverage": 0.418,
+   "source": "jacaranda_tree"
+  },
+  {
+   "name": "young",
+   "kind": "tree",
+   "tile": [
+    0,
+    1
+   ],
+   "px": [
+    95,
+    4,
+    417,
+    508
+   ],
+   "left": -1.462,
+   "right": 1.462,
+   "bottom": -0.009,
+   "top": 4.566,
+   "coverage": 0.19,
+   "source": "tree_small_02"
+  },
+  {
+   "name": "fir_a",
+   "kind": "conifer",
+   "tile": [
+    1,
+    1
+   ],
+   "px": [
+    169,
+    5,
+    343,
+    508
+   ],
+   "left": -3.28,
+   "right": 3.28,
+   "bottom": -0.038,
+   "top": 18.926,
+   "coverage": 0.107,
+   "source": "fir_tree_01"
+  },
+  {
+   "name": "fir_c",
+   "kind": "conifer",
+   "tile": [
+    2,
+    1
+   ],
+   "px": [
+    147,
+    5,
+    365,
+    508
+   ],
+   "left": -3.153,
+   "right": 3.153,
+   "bottom": -0.029,
+   "top": 14.521,
+   "coverage": 0.048,
+   "source": "fir_tree_01"
+  },
+  {
+   "name": "pine_b",
+   "kind": "conifer",
+   "tile": [
+    3,
+    1
+   ],
+   "px": [
+    134,
+    5,
+    378,
+    508
+   ],
+   "left": -3.617,
+   "right": 3.617,
+   "bottom": -0.03,
+   "top": 14.882,
+   "coverage": 0.112,
+   "source": "pine_tree_01"
+  },
+  {
+   "name": "shrub_a",
+   "kind": "shrub",
+   "tile": [
+    0,
+    2
+   ],
+   "px": [
+    116,
+    66,
+    421,
+    460
+   ],
+   "left": -0.602,
+   "right": 0.709,
+   "bottom": 0.202,
+   "top": 1.896,
+   "coverage": 0.049,
+   "source": "shrub_02"
+  },
+  {
+   "name": "shrub_c",
+   "kind": "shrub",
+   "tile": [
+    1,
+    2
+   ],
+   "px": [
+    88,
+    113,
+    445,
+    379
+   ],
+   "left": -0.831,
+   "right": 0.935,
+   "bottom": 0.582,
+   "top": 1.898,
+   "coverage": 0.032,
+   "source": "shrub_02"
+  },
+  {
+   "name": "shrub_bc",
+   "kind": "shrub",
+   "tile": [
+    2,
+    2
+   ],
+   "px": [
+    85,
+    100,
+    452,
+    379
+   ],
+   "left": -0.936,
+   "right": 1.073,
+   "bottom": 0.313,
+   "top": 1.839,
+   "coverage": 0.035,
+   "source": "shrub_02"
+  },
+  {
+   "name": "shrub_ac",
+   "kind": "shrub",
+   "tile": [
+    3,
+    2
+   ],
+   "px": [
+    93,
+    87,
+    412,
+    372
+   ],
+   "left": -0.974,
+   "right": 0.932,
+   "bottom": 0.581,
+   "top": 2.284,
+   "coverage": 0.043,
+   "source": "shrub_02"
+  },
+  {
+   "name": "meadow_a",
+   "kind": "grass",
+   "tile": [
+    0,
+    3
+   ],
+   "px": [
+    4,
+    160,
+    507,
+    352
+   ],
+   "left": -1.454,
+   "right": 1.448,
+   "bottom": -0.001,
+   "top": 1.107,
+   "coverage": 0.109,
+   "source": "grass_medium_02"
+  },
+  {
+   "name": "meadow_b",
+   "kind": "grass",
+   "tile": [
+    1,
+    3
+   ],
+   "px": [
+    5,
+    153,
+    507,
+    358
+   ],
+   "left": -1.324,
+   "right": 1.324,
+   "bottom": 0.004,
+   "top": 1.085,
+   "coverage": 0.097,
+   "source": "grass_medium_02"
+  },
+  {
+   "name": "meadow_c",
+   "kind": "grass",
+   "tile": [
+    2,
+    3
+   ],
+   "px": [
+    4,
+    124,
+    506,
+    388
+   ],
+   "left": -1.035,
+   "right": 1.026,
+   "bottom": -0.0,
+   "top": 1.084,
+   "coverage": 0.125,
+   "source": "grass_medium_02"
+  },
+  {
+   "name": "meadow_d",
+   "kind": "grass",
+   "tile": [
+    3,
+    3
+   ],
+   "px": [
+    5,
+    141,
+    506,
+    371
+   ],
+   "left": -1.732,
+   "right": 1.725,
+   "bottom": -0.002,
+   "top": 1.584,
+   "coverage": 0.113,
+   "source": "grass_medium_02"
+  }
+ ]
+}
