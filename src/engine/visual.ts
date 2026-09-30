@@ -20,6 +20,7 @@ import { createNoiseTexture } from '../materials/textures.js';
 import { EngineEffects } from '../effects/EngineEffects.js';
 import { buildGroundCradle, buildPylonGantry } from './stand.js';
 import { tagPart, ensureUV1 } from './geom.js';
+import { clonePatched } from '../materials/weathering';
 import type { createMaterials } from '../materials/library.js';
 
 export type Materials = ReturnType<typeof createMaterials>;
@@ -368,7 +369,7 @@ export class EngineVisual {
       const key = `${part}|${src.uuid}`;
       let mat = cache.get(key);
       if (!mat) {
-        mat = src.clone();
+        mat = clonePatched(src);
         mat.userData.baseEmissive = mat.emissive.clone();
         mat.userData.baseEmissiveIntensity = mat.emissiveIntensity;
         cache.set(key, mat);
@@ -400,7 +401,8 @@ export class EngineVisual {
         // görünmesin: kırpma açıkken arka yüzler de çizilir ve seçilebilir.
         if (m.userData.baseSide === undefined) m.userData.baseSide = m.side;
         m.side = planes.length ? THREE.DoubleSide : m.userData.baseSide;
-        m.clippingPlanes = planes;
+        // Kanat dizileri kırpılmaz: örnek bazında bütün kalır/kalkar (engine.ts)
+        m.clippingPlanes = m.userData.wholeCut ? [] : planes;
         m.clipShadows = true;
         m.needsUpdate = true;
       }

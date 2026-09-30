@@ -36,12 +36,17 @@ const asFn = (v) => (typeof v === 'function' ? v : Array.isArray(v) ? (t) => ler
 /** Kalite seviyesine göre çözünürlük */
 export const BLADE_LOD = {
   low: { sections: 0.5, samples: 0.5, roots: false },
-  medium: { sections: 0.8, samples: 0.75, roots: true },
+  medium: { sections: 0.75, samples: 0.7, roots: true },
   high: { sections: 1, samples: 1, roots: true },
 };
 let lod = BLADE_LOD.high;
+let lodName = 'high';
 export function setBladeQuality(q) {
   lod = BLADE_LOD[q] ?? BLADE_LOD.high;
+  lodName = BLADE_LOD[q] ? q : 'high';
+}
+export function bladeQuality() {
+  return lodName;
 }
 
 /**
@@ -223,7 +228,7 @@ export function createBlade(opts) {
   ts[0] = 0;
   ts[ts.length - 1] = 1;
   // Kökte dolgu için ek kesitler (0 < t < fillet)
-  const extra = lod === BLADE_LOD.low ? [] : [fillet * 0.15, fillet * 0.4, fillet * 0.75];
+  const extra = lod === BLADE_LOD.low ? [] : lod === BLADE_LOD.medium ? [fillet * 0.3] : [fillet * 0.2, fillet * 0.6];
   const tList = [...new Set([...ts, ...extra])].sort((a, b) => a - b);
 
   /** Dünya (yerel) konumu: kesit noktası (kz, kx) kord biriminde → (x, y, z) */
@@ -344,52 +349,59 @@ export function createBlade(opts) {
   const stagger = Math.atan2(teX - leX, teP[2] - leP[2]);
   const xMid = (leX + teX) / 2;
 
-  /** Silindirik (θ, z) dörtgen plaka: r0 → r1 kalınlık; θ kenarları z ile kayar */
+  /**
+   * Silindirik (θ, z) dörtgen plaka: r0 → r1 kalınlık; θ kenarları z ile kayar.
+   * Her yüz kendi köşelerini kullanır: keskin kenarlarda normaller
+   * ortalanmaz (yuvarlak görünen platform kenarı olmaz).
+   */
   const sectorPlate = (r0, r1, z0, z1, a0, a1, skew, zone, segs = 6) => {
-    const base = [];
-    const rows = [];
-    for (const [r, face] of [[r1, 0], [r0, 1]]) {
-      const row = [];
-      for (let i = 0; i <= segs; i++) {
-        const ta = i / segs;
-        for (const [zz, sk] of [[z0, -skew], [z1, skew]]) {
-          const a = lerp(a0, a1, ta) + sk / r;
-          row.push(push(Math.sin(a) * r, Math.cos(a) * r, zz, ta, face, a * r, zz, zone));
-        }
-      }
-      rows.push(row);
-    }
-    const [top, bot] = rows;
+    const at = (r, ta, zz) => {
+      const a = lerp(a0, a1, ta) + (zz === z0 ? -skew : skew) / r;
+      return [Math.sin(a) * r, Math.cos(a) * r, zz, a * r];
+    };
+    const quad = (A, B, C, D, uvA = [0, 0], uvB = [1, 0], uvC = [0, 1], uvD = [1, 1]) => {
+      // A-B alt kenar, C-D üst kenar; ön yüz (A,B,C) sırasına göre
+      const ia = push(A[0], A[1], A[2], uvA[0], uvA[1], A[3], A[2], zone);
+      const ib = push(B[0], B[1], B[2], uvB[0], uvB[1], B[3], B[2], zone);
+      const ic = push(C[0], C[1], C[2], uvC[0], uvC[1], C[3], C[2], zone);
+      const id = push(D[0], D[1], D[2], uvD[0], uvD[1], D[3], D[2], zone);
+      I.push(ia, ib, ic, ic, ib, id);
+    };
     for (let i = 0; i < segs; i++) {
-      const a = 2 * i;
-      const b = 2 * (i + 1);
-      // üst yüz (dışa) ve alt yüz (içe)
-      I.push(top[a], top[a + 1], top[b], top[b], top[a + 1], top[b + 1]);
-      I.push(bot[a], bot[b], bot[a + 1], bot[b], bot[b + 1], bot[a + 1]);
+      const ta = i / segs;
+      const tb = (i + 1) / segs;
+      // üst (dış) ve alt (iç) yüzler
+      quad(at(r1, ta, z0), at(r1, ta, z1), at(r1, tb, z0), at(r1, tb, z1), [ta, 0], [ta, 1], [tb, 0], [tb, 1]);
+      quad(at(r0, ta, z0), at(r0, tb, z0), at(r0, ta, z1), at(r0, tb, z1), [ta, 0], [tb, 0], [ta, 1], [tb, 1]);
       // ön (z0) ve arka (z1) kenarlar
-      I.push(top[a], top[b], bot[a], bot[a], top[b], bot[b]);
-      I.push(top[a + 1], bot[a + 1], top[b + 1], top[b + 1], bot[a + 1], bot[b + 1]);
+      quad(at(r1, ta, z0), at(r1, tb, z0), at(r0, ta, z0), at(r0, tb, z0));
+      quad(at(r1, ta, z1), at(r0, ta, z1), at(r1, tb, z1), at(r0, tb, z1));
     }
     // yan kenarlar (θ uçları)
-    const e = 2 * segs;
-    I.push(top[0], bot[0], top[1], top[1], bot[0], bot[1]);
-    I.push(top[e], top[e + 1], bot[e], bot[e], top[e + 1], bot[e + 1]);
-    base.push(top, bot);
-    return base;
+    quad(at(r1, 0, z0), at(r0, 0, z0), at(r1, 0, z1), at(r0, 0, z1));
+    quad(at(r1, 1, z0), at(r1, 1, z1), at(r0, 1, z0), at(r0, 1, z1));
   };
 
   /** 2B (x teğetsel, y radyal) çokgeni z boyunca uzatır (kök profilleri) */
   const extrude = (poly, z0, z1, zone) => {
     const n = poly.length;
-    const f = poly.map(([x, y]) => push(x, y, z0, 0, 0, x, z0, zone));
-    const b = poly.map(([x, y]) => push(x, y, z1, 0, 0, x, z1, zone));
+    const v2 = poly.map(([x, y]) => new THREE.Vector2(x, y));
+    const ccw = !THREE.ShapeUtils.isClockWise(v2);
+    // yan yüzler: kenar başına ayrı köşeler (düz gölgeleme, keskin dişler)
     for (let i = 0; i < n; i++) {
-      const i2 = (i + 1) % n;
-      I.push(f[i], b[i], f[i2], f[i2], b[i], b[i2]);
+      const [x0, y0] = poly[i];
+      const [x1, y1] = poly[(i + 1) % n];
+      const a = push(x0, y0, z0, 0, 0, x0, z0, zone);
+      const b = push(x0, y0, z1, 0, 1, x0, z1, zone);
+      const c = push(x1, y1, z0, 1, 0, x1, z0, zone);
+      const d = push(x1, y1, z1, 1, 1, x1, z1, zone);
+      if (ccw) I.push(a, c, b, c, d, b);
+      else I.push(a, b, c, c, b, d);
     }
     // uç kapakları: dışbükey olmayan profiller (çam ağacı) için üçgenleme
-    const tris = THREE.ShapeUtils.triangulateShape(poly.map(([x, y]) => new THREE.Vector2(x, y)), []);
-    const ccw = !THREE.ShapeUtils.isClockWise(poly.map(([x, y]) => new THREE.Vector2(x, y)));
+    const f = poly.map(([x, y]) => push(x, y, z0, 0, 0, x, y, zone));
+    const b = poly.map(([x, y]) => push(x, y, z1, 0, 0, x, y, zone));
+    const tris = THREE.ShapeUtils.triangulateShape(v2, []);
     for (const [a, b2, c] of tris) {
       if (ccw) {
         I.push(f[a], f[c], f[b2]);
@@ -401,19 +413,26 @@ export function createBlade(opts) {
     }
   };
 
+  const info = { hub, tip, zMin, zMax, rMid, count, platR: hub, platZ: [zMin, zMax], rootZ: null, rootTop: hub, rootBottom: hub };
   if (platform) {
     const over = (zMax - zMin) * platform.over;
     const pd = Math.max(0.002, span * platform.depth);
     const skew = (Math.tan(stagger) * (zMax - zMin + 2 * over)) / 2;
     const a0 = xMid / hub - pitchAng / 2;
     sectorPlate(hub - pd, hub, zMin - over, zMax + over, a0, a0 + pitchAng, skew, 1);
+    info.platR = hub - pd;
+    info.platZ = [zMin - over, zMax + over];
 
+    // Kök ölçüleri (kök çizilmese de disk jantı için gerekli)
+    const rd = rootDepth ?? span * 0.45;
+    const ax = (zMax - zMin) * 0.9;
+    const zc = (zMin + zMax) / 2;
+    const w = Math.min(hub * pitchAng * 0.55, (zMax - zMin) * 0.5);
+    const yTop = hub - pd;
+    info.rootZ = [zc - ax / 2, zc + ax / 2];
+    info.rootTop = root === 'firtree' ? yTop - rd * 0.45 : yTop;
+    info.rootBottom = yTop - rd;
     if (root && lod.roots) {
-      const rd = rootDepth ?? span * 0.45;
-      const ax = (zMax - zMin) * 0.9;
-      const zc = (zMin + zMax) / 2;
-      const w = Math.min(hub * pitchAng * 0.55, (zMax - zMin) * 0.5);
-      const yTop = hub - pd;
       if (root === 'dovetail') {
         // boyun + kırlangıç kuyruğu (x, y)
         const neck = w * 0.45;
@@ -494,6 +513,6 @@ export function createBlade(opts) {
   geo.setIndex(I);
   geo.computeVertexNormals();
   geo.computeBoundingSphere();
-  geo.userData.bladeInfo = { hub, tip, zMin, zMax, rMid, count };
+  geo.userData.bladeInfo = info;
   return geo;
 }

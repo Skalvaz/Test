@@ -10,6 +10,7 @@ import { loadScans } from '../src/materials/scans.js';
 import { loadPanelDetails } from '../src/materials/textures.js';
 import { createMaterials } from '../src/materials/library.js';
 import { LAB_OBJECTS } from './objects';
+import { setCutPlane } from '../src/materials/engine';
 
 const q = new URLSearchParams(location.search);
 const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true });
@@ -42,7 +43,19 @@ const controls = new OrbitControls(camera, renderer.domElement);
   const materials = createMaterials(renderer, details, null, scans);
   const name = q.get('obj') ?? 'hpt';
   const def = LAB_OBJECTS[name];
+  if (q.get('front')) for (const mm of Object.values(materials)) if ((mm as THREE.Material).isMaterial) (mm as THREE.Material).side = THREE.FrontSide;
   const obj = def.build(materials, q);
+  if (q.get('cut')) {
+    // Oyundaki kesit gibi: +X yarısı kaldırılır
+    const plane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0);
+    setCutPlane(plane);
+    for (const mm of Object.values(materials)) {
+      const mat = mm as THREE.Material;
+      if (!mat.isMaterial) continue;
+      if (!mat.userData.wholeCut) mat.clippingPlanes = [plane];
+      mat.side = THREE.DoubleSide;
+    }
+  }
   scene.add(obj);
   const box = new THREE.Box3().setFromObject(obj);
   const c = box.getCenter(new THREE.Vector3());
@@ -53,6 +66,12 @@ const controls = new OrbitControls(camera, renderer.domElement);
   camera.position.copy(c).addScaledVector(dir, dist);
   controls.target.copy(c);
   if (def.target) controls.target.set(...def.target);
+  const tg = q.get('tgt');
+  if (tg) {
+    const [x, y, z] = tg.split(',').map(Number);
+    controls.target.set(x, y, z);
+    camera.position.set(x, y, z).addScaledVector(dir, dist);
+  }
   controls.update();
   let tris = 0;
   obj.traverse((o) => {

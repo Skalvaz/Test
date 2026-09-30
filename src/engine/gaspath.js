@@ -9,106 +9,12 @@
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, bladeRow, radialInstances, tagPart } from './geom.js';
-import { createStageBladeGeometry } from './airfoil.js';
+import { smoothProfile, latheFromProfile, radialInstances, tagPart } from './geom.js';
+import { compressorModule, turbineModule, casingShell } from './stages.js';
+import { revolve, roundPoly } from './revolve.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const deg = THREE.MathUtils.degToRad;
-
-/**
- * Eksenel kompresör kademeleri.
- * @param {object} c { stages, z0, z1, hub:[a,b], tip:[a,b], blades:[a,b], part }
- */
-function compressor(materials, c, rotorGroup, statorGroup) {
-  const n = c.stages;
-  for (let i = 0; i < n; i++) {
-    const t = n > 1 ? i / (n - 1) : 0;
-    const z = lerp(c.z0, c.z1, t);
-    const hub = lerp(c.hub[0], c.hub[1], t);
-    const tip = lerp(c.tip[0], c.tip[1], t);
-    const span = tip - hub;
-    const chord = Math.max(0.03, span * lerp(0.95, 0.7, t)) * (i === 0 ? (c.firstChord ?? 1) : 1);
-    const count = Math.round(lerp(c.blades[0], c.blades[1], t));
-    const opts = {
-      sections: 6,
-      samples: 22,
-      chord: [chord, chord * 0.9],
-      twist: [deg(48 - t * 14), deg(26 - t * 8)],
-      thickness: [0.1, 0.055],
-    };
-    const rotorMat = i === 0 && c.firstMaterial ? materials[c.firstMaterial] : materials.hubMetal;
-    rotorGroup.add(tagPart(bladeRow(createStageBladeGeometry(hub, tip, opts), rotorMat, count, { z, phase: i * 0.07 }), c.part));
-    const stator = bladeRow(
-      createStageBladeGeometry(hub + 0.006, tip + 0.003, {
-        ...opts,
-        chord: [chord * 0.85, chord * 0.8],
-        twist: [deg(-30), deg(-18)],
-      }),
-      materials.superalloy,
-      count + 4,
-      { z: z + chord * 0.75, phase: 0.03 },
-    );
-    statorGroup.add(tagPart(stator, c.part));
-  }
-  // Rotor tamburu
-  const drum = smoothProfile(
-    [
-      [c.hub[0] - 0.01, c.z0 - 0.04],
-      [lerp(c.hub[0], c.hub[1], 0.5) - 0.01, (c.z0 + c.z1) / 2],
-      [c.hub[1] - 0.01, c.z1 + 0.08],
-    ],
-    30,
-  );
-  rotorGroup.add(tagPart(new THREE.Mesh(latheFromProfile(drum, 96), materials.hubMetal), c.part));
-}
-
-/** Türbin kademeleri (stator + rotor). */
-function turbine(materials, c, rotorGroup, statorGroup) {
-  const n = c.stages;
-  for (let i = 0; i < n; i++) {
-    const t = n > 1 ? i / (n - 1) : 0;
-    const z = lerp(c.z0, c.z1, t);
-    const hub = lerp(c.hub[0], c.hub[1], t);
-    const tip = lerp(c.tip[0], c.tip[1], t);
-    const chord = Math.max(0.035, (tip - hub) * 0.85);
-    const vane = bladeRow(
-      createStageBladeGeometry(hub, tip, {
-        sections: 6,
-        samples: 24,
-        chord: [chord, chord * 0.92],
-        twist: [deg(-42), deg(-30)],
-        thickness: [0.17, 0.12],
-        camber: [0.1, 0.08],
-      }),
-      materials.superalloy,
-      Math.round(lerp(c.blades[0], c.blades[1], t) * 0.6),
-      { z: z - chord * 0.9 },
-    );
-    statorGroup.add(tagPart(vane, c.part));
-    const rotor = bladeRow(
-      createStageBladeGeometry(hub, tip, {
-        sections: 6,
-        samples: 24,
-        chord: [chord * 0.92, chord * 0.86],
-        twist: [deg(40), deg(22)],
-        thickness: [0.16, 0.1],
-        camber: [0.09, 0.07],
-      }),
-      materials.superalloy,
-      Math.round(lerp(c.blades[0], c.blades[1], t)),
-      { z, phase: i * 0.05 },
-    );
-    rotorGroup.add(tagPart(rotor, c.part));
-  }
-  // Disk
-  const disk = new THREE.Mesh(
-    new THREE.CylinderGeometry(c.hub[0] - 0.005, c.hub[1] - 0.005, Math.abs(c.z1 - c.z0) + 0.08, 48),
-    materials.superalloy,
-  );
-  disk.rotation.x = Math.PI / 2;
-  disk.position.z = (c.z0 + c.z1) / 2;
-  rotorGroup.add(tagPart(disk, c.part));
-}
 
 /**
  * @param {object} spec
@@ -126,14 +32,30 @@ export function buildGasPath(materials, spec) {
   hpSpool.name = 'hp-spool';
   group.add(lpSpool, hpSpool);
 
-  if (spec.casing) {
-    const casing = new THREE.Mesh(latheFromProfile(smoothProfile(spec.casing, 120), 128), materials.superalloy);
-    casing.name = 'gas-path-casing';
-    group.add(tagPart(casing, 'casing'));
-  }
-
-  if (spec.lpc) compressor(materials, { part: 'booster', ...spec.lpc }, lpSpool, group);
-  compressor(materials, { part: 'hpc', ...spec.hpc }, hpSpool, group);
+  const [lpZ0, lpZ1, lpR] = spec.shafts.lp;
+  const [hpZ0, hpZ1, hpR] = spec.shafts.hp;
+  // İlk kademe malzemesi: M2 kanat malzemeleri kesitte bütün kalır
+  const first = (m) => (m === 'titanium' && materials.fanBlade ? 'fanBlade' : m);
+  const addComp = (c, part, spool, boreR, shaftZ0) => {
+    const pitch = c.stages > 1 ? (c.z1 - c.z0) / (c.stages - 1) : 0.1;
+    const mod = compressorModule(materials, {
+      part,
+      ...c,
+      firstMaterial: first(c.firstMaterial),
+      blisk: part === 'fan',
+      bore: [boreR + 0.008, Math.max(0.02, (c.hub[0] - boreR) * 0.25)],
+      vsv: c.vsv ?? (part === 'hpc' ? Math.min(4, c.stages) : 0),
+      igv: c.igv ?? part === 'hpc',
+      cones: { front: [boreR + 0.004, Math.max(shaftZ0 + 0.03, c.z0 - pitch * 1.2)] },
+      casing: { flanges: c.flanges ?? [] },
+    });
+    spool.add(mod.rotor);
+    group.add(mod.stator);
+    return mod;
+  };
+  const lpc = spec.lpc ? addComp(spec.lpc, spec.lpc.part ?? 'booster', lpSpool, lpR, lpZ0) : null;
+  const hpc = addComp(spec.hpc, 'hpc', hpSpool, hpR, hpZ0);
+  void lpc;
 
   // Santrifüj son kademe (turboprop gaz jeneratörleri)
   if (spec.centrifugal) {
@@ -191,18 +113,79 @@ export function buildGasPath(materials, spec) {
   inj.translate(0, mid, 0);
   group.add(tagPart(radialInstances(inj, materials.machinery, cb.injectors ?? 16, 0, cb.z0), 'combustor'));
 
-  turbine(materials, { part: 'hpt', ...spec.hpt }, hpSpool, group);
-  turbine(materials, { part: 'lpt', ...spec.lpt }, lpSpool, group);
+  const hpt = turbineModule(materials, {
+    part: 'hpt',
+    ...spec.hpt,
+    pitch: spec.hpt.pitch ?? Math.min(0.16, (spec.lpt.z0 - spec.hpt.z1) * 0.9),
+    bore: [hpR + 0.008, 0.045],
+    cones: { front: [hpR + 0.004, Math.max(hpZ0, spec.hpt.z0 - 0.12)] },
+  });
+  hpSpool.add(hpt.rotor);
+  group.add(hpt.stator);
+  const lpt = turbineModule(materials, {
+    part: 'lpt',
+    ...spec.lpt,
+    pitch: spec.lpt.pitch ?? 0.16,
+    bore: [lpR + 0.008, 0.028],
+    casingFrom: hpt.zBack,
+    cones: { aft: [lpR + 0.004, Math.min(lpZ1 - 0.02, spec.lpt.z1 + 0.1)] },
+  });
+  lpSpool.add(lpt.rotor);
+  group.add(lpt.stator);
 
-  // Miller
-  const shaft = (z0, z1, r, mat, target) => {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, z1 - z0, 32), mat);
-    m.rotation.x = Math.PI / 2;
-    m.position.z = (z0 + z1) / 2;
+  // Yanma odası bölümü gövdesi: kompresör çıkışından türbin girişine
+  if (spec.casing) {
+    const prof = spec.casing.map(([r, z]) => [z, r]).sort((x, y) => x[0] - y[0]);
+    const at = (z) => {
+      if (z <= prof[0][0]) return prof[0][1];
+      for (let i = 1; i < prof.length; i++) if (z <= prof[i][0]) return lerp(prof[i - 1][1], prof[i][1], (z - prof[i - 1][0]) / (prof[i][0] - prof[i - 1][0]));
+      return prof[prof.length - 1][1];
+    };
+    const z0 = spec.centrifugal ? spec.centrifugal.z + 0.13 : hpc.zBack;
+    const z1 = hpt.zFront;
+    const rIn = Math.max(spec.combustor.rOut + 0.012, 0);
+    group.add(
+      casingShell(
+        { casing: materials.caseInner, bolt: materials.boltSteel },
+        {
+          inner: (z) => {
+            const u = THREE.MathUtils.smoothstep(z, z0, z0 + (z1 - z0) * 0.2) * (1 - THREE.MathUtils.smoothstep(z, z1 - (z1 - z0) * 0.12, z1));
+            const edge = z < (z0 + z1) / 2 ? hpc.casingAt(hpc.zBack) : hpt.casingAt(z1);
+            return lerp(spec.centrifugal && z < (z0 + z1) / 2 ? at(z) : edge, Math.max(at(z), rIn), u);
+          },
+          z0,
+          z1,
+          t: 0.008,
+          steps: 24,
+          flanges: [z0 + 0.012, z1 - 0.012],
+          part: 'combustor',
+        },
+      ),
+    );
+  }
+
+  // Miller: iç içe tüpler (kesitte duvar kalınlığı görünür)
+  const tube = (z0, z1, r, t, mat, target) => {
+    const m = new THREE.Mesh(
+      revolve(
+        roundPoly(
+          [
+            [r, z0],
+            [r, z1],
+            [r - t, z1],
+            [r - t, z0],
+          ],
+          0.003,
+          1,
+        ),
+        { segments: 48 },
+      ),
+      mat,
+    );
     target.add(tagPart(m, 'shafts'));
   };
-  shaft(...spec.shafts.lp, materials.hubMetal, lpSpool);
-  shaft(...spec.shafts.hp, materials.machinery, hpSpool);
+  tube(lpZ0, lpZ1, lpR, lpR * 0.35, materials.diskMetal, lpSpool);
+  tube(hpZ0, hpZ1, hpR, hpR * 0.18, materials.diskMetal, hpSpool);
 
   return { group, lpSpool, hpSpool };
 }

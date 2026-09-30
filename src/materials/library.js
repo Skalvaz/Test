@@ -7,6 +7,7 @@
  */
 
 import * as THREE from 'three';
+import { createEngineMaterials } from './engine';
 import {
   createNacelleMaps,
   createBladeMaps,
@@ -476,6 +477,7 @@ export function createMaterials(renderer, details = null, kitTex = null, scans =
     tarmac: tarmacMat,
     cutawayFace,
     ...(kitTex ? createKitMaterials(kitTex, scans) : {}),
+    ...createEngineMaterials(scans),
   };
   if (scans) applyScans(library, scans);
   // İsimler, parça başına klonlanan malzemelerin kaynağını tanımak için

@@ -19,6 +19,8 @@ import { PARTS } from '../game/parts';
 import { loadProgress, loadSettings, saveLessonResult, saveSettings, type Settings } from '../game/progress';
 import { createMaterials } from '../materials/library.js';
 import { loadKit, setKitQuality } from '../engine/kit.js';
+import { setBladeQuality } from '../engine/blades.js';
+import { setCutPlane } from '../materials/engine';
 import { loadScans } from '../materials/scans.js';
 import { loadPanelDetails } from '../materials/textures.js';
 import { ENGINE_CATALOG, EngineSim, type EngineKind, type SimEvent } from '../sim';
@@ -153,6 +155,7 @@ export class App {
     });
     await step(onProgress, 'Donanım parçaları yükleniyor…');
     setKitQuality(this.settings.quality);
+    setBladeQuality(this.settings.quality);
     const kitTex = await loadKit(renderer).catch((err) => {
       console.error('Kit parçaları yüklenemedi', err);
       return null;
@@ -345,6 +348,7 @@ export class App {
     const planes = on ? [this.clipPlane] : [];
     this.visual.setClipping(planes);
     this.visual.setInteriorVisible(on);
+    setCutPlane(on ? this.clipPlane : null);
     this.picker.clipPlanes = planes;
     if (on) this.aimCutaway();
     this.cutFill.intensity = on ? 5 : 0;
@@ -368,6 +372,7 @@ export class App {
     const dz = THREE.MathUtils.degToRad(20);
     const a = base + Math.sign(d) * Math.max(0, Math.abs(d) - dz) * (Math.PI / 2 / (Math.PI / 2 - dz));
     this.clipPlane.normal.set(-Math.cos(a), -Math.sin(a), 0);
+    setCutPlane(this.clipPlane);
     // Dolgu ışığı kameranın biraz önünde, kesit düzlemine yakın
     this.cutFill.position.copy(c);
   }
@@ -565,6 +570,7 @@ export class App {
             saveSettings(this.settings);
             // Kit parçalarının detay seviyesi değişti: model yeniden üretilir
             setKitQuality(q);
+            setBladeQuality(q);
             this.rebuildVisual();
           },
           onVolume: (v) => {

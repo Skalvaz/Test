@@ -36,6 +36,28 @@ export function addPatch(mat: THREE.Material, key: string, apply: Patch['apply']
   mat.needsUpdate = true;
 }
 
+/**
+ * Yamalı malzemeyi klonlar. Material.clone() onBeforeCompile'ı kopyalamaz
+ * ve userData'yı JSON üzerinden kopyaladığı için yama listesindeki
+ * fonksiyonlar kaybolur; klon yamasız (ör. kesit kapaksız) derlenirdi.
+ */
+export function clonePatched<T extends THREE.Material>(src: T): T {
+  const m = src.clone() as T;
+  const list = src.userData.patches as Patch[] | undefined;
+  if (list?.length) {
+    const copy = list.slice();
+    m.userData.patches = copy;
+    m.onBeforeCompile = (sh) => {
+      for (const p of copy) p.apply(sh);
+    };
+    m.customProgramCacheKey = () => copy.map((p) => p.key).join('|');
+  } else if (src.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) {
+    m.onBeforeCompile = src.onBeforeCompile;
+    m.customProgramCacheKey = src.customProgramCacheKey;
+  }
+  return m;
+}
+
 /** Dünya konumu ve normali varyingleri (bir kez eklenir) */
 function worldVaryings(sh: THREE.WebGLProgramParametersWithUniforms) {
   if (sh.vertexShader.includes('vWxPos')) return;
