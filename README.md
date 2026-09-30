@@ -45,8 +45,12 @@ Poly Haven ağaçlarından pişirilmiş impostor ağaçlar ve çayır öbekleri;
 gibi Poly Haven (CC0) donanımı. Gökyüzü "pure sky" HDRI'dır (öğle, kapalı,
 gün batımı); güneş ve sis ondan hesaplanır. Gece apron projektörlerle
 aydınlanır. Kaportasız motorlar tekerlekli yer taşıma standına oturur,
-pilonlu turbofan çelik bir test sehpasına asılır. Yüzeyler ambientCG'nin gerçek
-malzeme taramalarını ikinci UV kanalında metre ölçeğinde kullanır.
+pilonlu turbofan çelik bir test sehpasına asılır. Hangar B önünde işaretsiz bir
+RQ-4 Global Hawk park etmiştir (NASA 3D Resources). Yüzeyler ambientCG'nin
+gerçek malzeme taramalarını kullanır; üstüne dünya konumundan hesaplanan
+yıpranma katmanı gelir (taban kiri, yağmur izleri, pas, aşınmış boya; apronda
+derz dolgusu, çatlaklar, yağ lekeleri, tekerlek izleri). Cycles'ta pişirilmiş
+ortam kapanması binaların içini ve dibini karartır, gölgeler ±120 m'yi kapsar.
 
 | | |
 | --- | --- |

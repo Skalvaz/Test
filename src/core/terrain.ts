@@ -97,13 +97,14 @@ function terrainMaterial(scans: Record<string, any> | null, noise: THREE.Texture
     sh.uniforms.uMacro = { value: noise };
     sh.uniforms.uZones = { value: zones };
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vWorldT;')
-      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWorldT = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWorldT;\nvarying vec3 vWorldNT;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvWorldT = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWorldNT = normalize(mat3(modelMatrix) * objectNormal);');
     sh.fragmentShader = sh.fragmentShader
       .replace(
         '#include <common>',
         `#include <common>
         varying vec3 vWorldT;
+        varying vec3 vWorldNT;
         uniform sampler2D uMacro;
         uniform vec4 uZones[${zones.length}];
         float tHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -157,8 +158,15 @@ function terrainMaterial(scans: Record<string, any> | null, noise: THREE.Texture
           vec3 baseCol = mix(vec3(1.02, 1.02, 0.8), vec3(1.4, 1.18, 0.66), dry);
           diffuseColor.rgb *= mix(baseCol, fieldCol, fieldMix);
           // Dağ yamaçları: kayalık / çalılık (yüksekliğe göre)
-          float alt = smoothstep(40.0, 420.0, vWorldT.y);
-          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.26, 0.25, 0.2) * (0.8 + 0.4 * mA), alt * 0.8);
+          // Dağ yamaçları: ormanlık (koyu yeşil) ve kayalık/çalılık (kahve-gri) lekeler
+          float alt = smoothstep(30.0, 300.0, vWorldT.y);
+          float forest = smoothstep(0.45, 0.6, texture2D(uMacro, p * 0.00055 + 0.2).g * 0.6 + texture2D(uMacro, p * 0.0023).r * 0.4);
+          float rock = smoothstep(0.55, 0.75, texture2D(uMacro, p * 0.0011 + 0.7).b);
+          vec3 slope = mix(vec3(0.36, 0.33, 0.25), vec3(0.12, 0.17, 0.09), forest);
+          slope = mix(slope, vec3(0.45, 0.42, 0.38), rock * (1.0 - forest));
+          // Yamaç eğimi: dik yüzler daha koyu (vadi gölgesi hissi)
+          float steep = 1.0 - clamp(normalize(vWorldNT).y * 1.2, 0.0, 1.0);
+          diffuseColor.rgb = mix(diffuseColor.rgb, slope * (0.85 + 0.3 * mA) * (1.0 - 0.25 * steep), alt * 0.92);
         }`,
       );
   };

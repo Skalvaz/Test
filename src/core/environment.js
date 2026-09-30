@@ -309,6 +309,9 @@ export function createEnvironment(renderer, scene, materials) {
     c.bottom = -half;
     c.far = far;
     c.updateProjectionMatrix();
+    // Sapma derinlik aralığına göre: ~5 cm; normal sapması doku pikseline göre
+    sun.shadow.bias = -0.05 / far;
+    sun.shadow.normalBias = Math.max(0.035, (half / 60) * 0.035);
   }
 
   /**
@@ -344,7 +347,7 @@ export function createEnvironment(renderer, scene, materials) {
     d.y = Math.max(d.y, 0.06);
     d.normalize();
     sun.visible = true;
-    sun.position.copy(d).multiplyScalar(60);
+    sun.position.copy(d).multiplyScalar(320);
     sun.target.position.set(0, 0, 0);
     sun.color.copy(info.color);
     // Güneş/gökyüzü aydınlık oranı R: açık havada ~4, kapalı havada <1.
@@ -354,8 +357,9 @@ export function createEnvironment(renderer, scene, materials) {
     const R = THREE.MathUtils.clamp(contrast * p.sunScale, 0.25, 5);
     sun.intensity = (Math.PI * R * p.key) / exposure;
     sun.shadow.radius = contrast < 1.2 ? 12 : 3;
-    // Hangarlar ve blast duvarı da gölge atsın (4096 dokuda ~3 cm/piksel)
-    setShadowRange(60, 260);
+    // Hangarlar, kule, binalar ve saptırma duvarı da gölge atsın
+    // (±120 m; 4096 dokuda ~6 cm/piksel, yumuşak PCF ile)
+    setShadowRange(120, 640);
     ambient.intensity = 0;
     keyPanel.intensity = 0;
     rimPanel.intensity = 0;

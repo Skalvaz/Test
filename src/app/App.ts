@@ -621,6 +621,8 @@ export class App {
     this.rig.controls.maxDistance = inCell ? 18 : 40;
     this.floorY = outdoorAirfield ? this.airfield!.floorY : -3.35;
     this.visual.setGround(this.floorY, inCell);
+    // Ortam kapanması yarıçapı: hücrede motor ayrıntısı, dışarıda yapılar ve donanım
+    this.fx?.gtao.updateGtaoMaterial({ radius: inCell ? 0.32 : 0.75, thickness: inCell ? 0.6 : 1.2 });
     const capture = () => env.captureEnvironment([this.visual.root]);
     if (outdoorAirfield && this.envName !== AIRFIELD_NIGHT) {
       this.scene.environmentIntensity = 1;

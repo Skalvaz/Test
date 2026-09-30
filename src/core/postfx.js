@@ -30,9 +30,9 @@ const GradeShader = {
     uHazeB: { value: new THREE.Vector2(0.8, 0.5) },
     uHazeWidth: { value: 0.12 },
     uAspect: { value: 1.0 },
-    uVignette: { value: 0.42 },
-    uGrain: { value: 0.035 },
-    uChroma: { value: 0.0009 },
+    uVignette: { value: 0.26 },
+    uGrain: { value: 0.012 },
+    uChroma: { value: 0.0004 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -96,6 +96,9 @@ const GradeShader = {
       color.g = texture2D(tDiffuse, uv).g;
       color.b = texture2D(tDiffuse, uv - caOffset).b;
       color.a = 1.0;
+
+      /* --- hafif S eğrisi: gölgeler derinleşir, orta tonlar canlanır --- */
+      color.rgb = mix(color.rgb, color.rgb * color.rgb * (3.0 - 2.0 * color.rgb), 0.22);
 
       /* --- vinyet --- */
       float vig = 1.0 - uVignette * smoothstep(0.18, 0.95, length(center) * 1.42);

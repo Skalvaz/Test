@@ -16,6 +16,8 @@ Hepsi bu deponun lisansı altındadır. Blender betikleri başsız çalışır
 | `src/assets/kit.glb` | `blender/kit_parts.py` → `scripts/pack-kit.mjs` | 31 dış donanım parçası × 3 detay seviyesi (L0 ≈ 19 k, L1 ≈ 11,5 k, L2 ≈ 6 k üçgen toplam); nicemleme + meshopt sıkıştırma |
 | `src/assets/trim_{albedo,normal,orm}.webp` | `blender/trim_sheet.py` | Trim sheet: kaynak dikişi, tırtıl, perçin sırası, panjur, 8 etiket; yüksek poligondan pişirme |
 | `src/assets/airfield.glb` | `blender/airfield.py` → `scripts/pack-kit.mjs` | Havaalanı: apron, taksi yolu, pist, yollar, işaretler, iki hangar (kafes kemer kirişler, ışıklıklar, ofis katı), kule, operasyon binası, itfaiye, yakıt sahası, radar, rüzgâr tulumu, ışık direkleri, tabelalar |
+| `src/assets/ao/*.webp` | `blender/airfield.py --ao` | Cycles ile pişirilmiş ortam kapanması: yapı başına atlas + 270×170 m zemin haritası (binaların, duvarların dibinde temas gölgesi) |
+| `src/assets/afprops/global_hawk.glb` | `blender/global_hawk.py` | NASA modelinden türetildi (aşağıya bakın): amblem ve boya kaldırıldı, ölçeklendi |
 | `src/assets/veg/veg_{color,normal}.webp` | `blender/impostors.py` | Bitki impostor atlası: Poly Haven ağaç/çalı/çim modellerinin yandan ortografik renderı (albedo × AO, teğet uzayı normal) |
 | Arazi, tarlalar, köyler, tel çit panelleri, elektrik telleri, trafik konileri | `src/core/terrain.ts`, `src/core/afProps.ts` | Çalışma anında prosedürel |
 | Motor gövdeleri, kanatlar, gaz yolu, alev ve parçacık dokuları | `src/engine/*`, `src/materials/textures.js`, `src/effects/*` | Çalışma anında prosedürel |
@@ -136,6 +138,17 @@ renderlanıp atlasa (`src/assets/veg/`) pişirilir.
 | [Pine Tree 01](https://polyhaven.com/a/pine_tree_01) |
 | [Shrub 02](https://polyhaven.com/a/shrub_02) |
 | [Grass Medium 02](https://polyhaven.com/a/grass_medium_02) |
+
+### Kamu malı — [NASA 3D Resources](https://github.com/nasa/NASA-3D-Resources)
+
+NASA'nın 3B kaynakları telif hakkı içermez ("free and without copyright");
+NASA amblemi ve logoları ise korumalı işaretlerdir, bu yüzden model
+dokusuz alınıp amblem ve kurum boyası kaldırılmıştır. Uçak apronda
+askeri açık gri renkte, işaretsiz park etmiş olarak durur.
+
+| Dosya | Kaynak |
+| --- | --- |
+| `src/assets/afprops/global_hawk.glb` | Global Hawk (`3D Models/Global Hawk`) |
 
 ## Referanslar (varlık değil, yalnız bilgi)
 

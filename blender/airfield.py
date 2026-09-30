@@ -504,6 +504,17 @@ def build_hangar(label, cz, door_open, interior=True):
     # Profilin duvar kısmı kaide üstünden başlar
     prof_clad = [(prof[0][0], y0 + plinth)] + prof[1:-1] + [(prof[-1][0], y0 + plinth)]
 
+    def inset(z, y, d=0.06):
+        # Duvar noktaları yatay, kemer noktaları eğri normali boyunca içeri
+        if abs(z - z0) < 1e-6:
+            return (z + d, y)
+        if abs(z - z1) < 1e-6:
+            return (z - d, y)
+        t = (z - z0) / width_z
+        tz, ty = width_z, rise * math.pi * math.cos(math.pi * t)
+        l = math.hypot(tz, ty)
+        return (z + ty / l * d, y - tz / l * d)
+
     # Çatı + yan duvarlar: profil boyunca x'e süpürülür (dış yüz) + koyu iç yüz
     acc = 0.0
     lens = []
@@ -515,7 +526,9 @@ def build_hangar(label, cz, door_open, interior=True):
         lens.append((s0, s1))
         h.quad((x_back, ya, za), (x_back, yb, zb), (x_front, yb, zb), (x_front, ya, za), 'corrugated',
                uvs=[(s0, 0), (s1, 0), (s1, depth_x), (s0, depth_x)])
-        h.quad((x_front, ya, za), (x_front, yb, zb), (x_back, yb, zb), (x_back, ya, za), 'interior',
+        # İç kaplama 6 cm içeride (aynı düzlemde olursa AO pişirmesinde birbirini kapatır)
+        (zia, yia), (zib, yib) = inset(za, ya), inset(zb, yb)
+        h.quad((x_front - 0.06, yia, zia), (x_front - 0.06, yib, zib), (x_back + 0.06, yib, zib), (x_back + 0.06, yia, zia), 'interior',
                uvs=[(s0, depth_x), (s1, depth_x), (s1, 0), (s0, 0)])
     # Çatı ışıklıkları: kemer üstünde üç şerit (yarı saydam polikarbonat)
     arch = prof_clad[2:-2]
@@ -1078,29 +1091,76 @@ def build_signs():
 # AO pişirme (isteğe bağlı): UVMap'e lightmap atlası + Cycles AO
 # ---------------------------------------------------------------------------
 
-def bake_ao(obj, size, samples, outdir):
-    select_only(obj)
+# Pişirilecek yapılar ve doku boyutları (px)
+AO_OBJECTS = {
+    'AF_hangar_a': 2048, 'AF_hangar_b': 1024, 'AF_tower': 1024, 'AF_ops': 1024,
+    'AF_fuel': 512, 'AF_blastfence': 1024, 'AF_radar': 512, 'AF_lights': 1024,
+}
+# Zemin AO bölgesi (three x0, x1, z0, z1) ve doku boyutu
+GROUND_AO = (-110.0, 160.0, -120.0, 50.0)
+GROUND_AO_PX = 2048
+
+
+def _bake_image(obj, img, samples):
     me = obj.data
-    me.uv_layers.active = me.uv_layers['UVMap']
-    bpy.ops.object.mode_set(mode='EDIT')
-    bpy.ops.mesh.select_all(action='SELECT')
-    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.004)
-    bpy.ops.object.mode_set(mode='OBJECT')
-    img = bpy.data.images.new(f'{obj.name}_ao', size, size, float_buffer=False, alpha=False)
-    img.colorspace_settings.name = 'Non-Color'
     for m in me.materials:
         nt = m.node_tree
         node = nt.nodes.get('BAKE') or nt.nodes.new('ShaderNodeTexImage')
         node.name = 'BAKE'
         node.image = img
         nt.nodes.active = node
+    select_only(obj)
     bpy.context.scene.cycles.samples = samples
+    bpy.ops.object.bake(type='AO', margin=6, use_clear=True)
+
+
+def bake_ao(obj, size, samples, outdir):
+    """Yapının kendi AO atlası: UVMap akıllı açılım + Cycles AO."""
+    select_only(obj)
+    me = obj.data
+    me.uv_layers.active = me.uv_layers['UVMap']
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.006)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    img = bpy.data.images.new(f'{obj.name}_ao', size, size, float_buffer=False, alpha=False)
+    img.colorspace_settings.name = 'Non-Color'
     t0 = time.time()
-    bpy.ops.object.bake(type='AO', margin=4, use_clear=True)
+    _bake_image(obj, img, samples)
     img.filepath_raw = os.path.join(outdir, f'{obj.name}_ao.png')
     img.file_format = 'PNG'
     img.save()
     print(f'  AO {obj.name}: {time.time() - t0:.0f} s', flush=True)
+
+
+def bake_ground_ao(samples, outdir, hide):
+    """Zemin AO haritası: bölgeyi kaplayan yatay bir düzleme pişirilir
+    (UV = dünya x/z). Oyunda zemin malzemeleri dünya konumundan okur:
+    binaların, duvarların ve çitlerin dibinde yumuşak kararma."""
+    x0, x1, z0, z1 = GROUND_AO
+    g = Builder('AO_ground')
+    g.ground(x0, x1, z0, z1, FLOOR + 0.01, 'ao_plane')
+    obj = g.build()
+    me = obj.data
+    uv = me.uv_layers['UVMap']
+    # Builder köşe sırası: (x0,z1) (x1,z1) (x1,z0) (x0,z0); v = z ekseni (z0 → 0)
+    for li, (u, v) in zip(me.polygons[0].loop_indices, ((0, 1), (1, 1), (1, 0), (0, 0))):
+        uv.data[li].uv = (u, v)
+    for o in hide:
+        o.hide_render = True
+    W = GROUND_AO_PX
+    H = int(round(W * (z1 - z0) / (x1 - x0)))
+    img = bpy.data.images.new('ground_ao', W, H, float_buffer=False, alpha=False)
+    img.colorspace_settings.name = 'Non-Color'
+    t0 = time.time()
+    _bake_image(obj, img, samples)
+    img.filepath_raw = os.path.join(outdir, 'ground_ao.png')
+    img.file_format = 'PNG'
+    img.save()
+    for o in hide:
+        o.hide_render = False
+    bpy.data.objects.remove(obj)
+    print(f'  AO zemin: {time.time() - t0:.0f} s ({W}×{H})', flush=True)
 
 
 def main():
@@ -1109,7 +1169,7 @@ def main():
     ap.add_argument('--out', default='build/airfield_raw.glb')
     ap.add_argument('--ao', action='store_true')
     ap.add_argument('--ao-size', type=int, default=2048)
-    ap.add_argument('--samples', type=int, default=32)
+    ap.add_argument('--samples', type=int, default=64)
     args = ap.parse_args(argv)
     t0 = time.time()
     reset()
@@ -1125,10 +1185,17 @@ def main():
     for o in objs:
         print(f'  {o.name}: {len(o.data.polygons)} yüz', flush=True)
     if args.ao:
-        outdir = os.path.dirname(os.path.abspath(args.out))
+        outdir = os.path.abspath('build/ao')
+        os.makedirs(outdir, exist_ok=True)
+        scn = bpy.context.scene
+        scn.cycles.device = 'CPU'
+        scn.render.bake.margin = 6
+        scn.world.light_settings.distance = 25.0
+        bake_ground_ao(args.samples, outdir, [o for o in objs if o.name in ('AF_ground', 'AF_markings') or o.name.startswith('txt')])
+        scn.world.light_settings.distance = 5.0
         for o in objs:
-            if o.name in ('AF_ground', 'AF_hangar_a', 'AF_hangar_b', 'AF_blastfence'):
-                bake_ao(o, args.ao_size, args.samples, outdir)
+            if o.name in AO_OBJECTS:
+                bake_ao(o, AO_OBJECTS[o.name], args.samples, outdir)
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=args.out, export_format='GLB', export_materials='EXPORT',
                               export_image_format='NONE', export_yup=True, export_texcoords=True,

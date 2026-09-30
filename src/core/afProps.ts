@@ -126,6 +126,10 @@ function barrierRow(from: P, to: P, step: number): [number, number, number][] {
   return out;
 }
 
+/** Global Hawk yönü (model burnu yerel −z'de: +x'e çevir) ve takozlar */
+const GH_YAW = -Math.PI / 2;
+const GH_CHOCKS: P[] = [];
+
 const CARS: [number, number, number][] = [
   [124.3, -97, 0], [129.5, -97, 2], [132.1, -97, -1], [140.0, -97, 1], [145.2, -97, 0],
   [126.9, -65, 180], [134.7, -65, 178], [137.3, -65, 181], [147.8, -65, 180],
@@ -219,6 +223,7 @@ export async function loadAirfieldProps(): Promise<THREE.Group> {
       'concrete_road_barrier',
       'concrete_road_barrier_02',
       'covered_car',
+      'global_hawk',
       'modular_chainlink_fence',
       'modular_electricity_poles',
     ]),
@@ -286,6 +291,34 @@ export async function loadAirfieldProps(): Promise<THREE.Group> {
     // Hangar B köşesinde istif
     for (let k = 0; k < 6; k++) a.push(trs(-96 + (k % 3) * 1.65, FLOOR, 44.5 + Math.floor(k / 3) * 1.1, deg(90 * 0 + (k % 2) * 2)));
     group.add(...instanced(b1, a), ...instanced(b2, b));
+  }
+
+  // Hangar B önünde park etmiş RQ-4 Global Hawk (NASA 3D Resources, kamu malı;
+  // amblemsiz, askeri açık gri). Burnu apron'a bakar, tekerleklerde takoz.
+  const gh = models.get('global_hawk');
+  if (gh) {
+    const body = new THREE.MeshStandardMaterial({ color: 0xa3a8ac, roughness: 0.42, metalness: 0.08 });
+    const dark = new THREE.MeshStandardMaterial({ color: 0x22262a, roughness: 0.35, metalness: 0.2 });
+    const rubber = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.9 });
+    gh.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      const n = (m.material as THREE.Material).name;
+      m.material = n.includes('rubber') ? rubber : n.includes('dark') ? dark : body;
+    });
+    const plane = gh.clone();
+    plane.scale.setScalar(0.85);
+    plane.position.set(-33, FLOOR, 18);
+    plane.rotation.y = GH_YAW;
+    group.add(plane);
+    const chockMat = new THREE.MeshStandardMaterial({ color: 0xc9a227, roughness: 0.7 });
+    const chock = new THREE.BoxGeometry(0.25, 0.14, 0.5);
+    for (const [x, z] of GH_CHOCKS) {
+      const c = new THREE.Mesh(chock, chockMat);
+      c.position.set(x, FLOOR + 0.07, z);
+      c.castShadow = true;
+      group.add(c);
+    }
   }
 
   // Örtülü araçlar (otopark)

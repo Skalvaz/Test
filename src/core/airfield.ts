@@ -14,6 +14,12 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import airfieldUrl from '../assets/airfield.glb?url';
 import { scanParams } from '../materials/scans.js';
 import { buildTerrain, buildVillages } from './terrain';
+import { apronDetail, groundAO, weather, wornPaint } from '../materials/weathering';
+
+/** Pişirilmiş AO dokuları (blender/airfield.py --ao) */
+const aoUrls = import.meta.glob('../assets/ao/*.webp', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
+/** Zemin AO bölgesi (x0, x1, z0, z1) — blender/airfield.py GROUND_AO ile aynı */
+const GROUND_AO: [number, number, number, number] = [-110, 160, -120, 50];
 import { loadVegetation } from './vegetation';
 import { loadAirfieldProps } from './afProps';
 
@@ -203,9 +209,10 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
     grate: scan('dark', { color: 0x2c2e30, rough: 1.1 }, { color: 0x2c2e30, metalness: 0.6, roughness: 0.6 }),
     rubber: std({ color: 0x111111, roughness: 0.9 }),
     rubber_marks: std({ color: 0x151515, roughness: 0.9, transparent: true, opacity: 0.5, depthWrite: false }),
-    paint_yellow: paint(0xc9981e),
-    paint_white: paint(0xcfcfca),
-    paint_red: paint(0x9a3a2e),
+    // Güneşte solmuş işaret boyaları
+    paint_yellow: paint(0xb89238),
+    paint_white: paint(0xc6c5bf),
+    paint_red: paint(0x8e463a),
     paint_black: paint(0x1d1d1c),
     sign_white: std({ color: 0xe6e6e1, roughness: 0.5 }),
     sign_black: std({ color: 0x141414, roughness: 0.5 }),
@@ -220,7 +227,70 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
     light_green: lamp(0x2aff6a),
   };
   for (const [name, m] of Object.entries(mats)) m.name = `af_${name}`;
+
+  // Yıpranma: kir, yağmur izleri, pas, aşınmış boya, apron ayrıntısı
+  const W = (k: string, o: Parameters<typeof weather>[2]) => weather(mats[k] as THREE.MeshStandardMaterial, noise, o);
+  W('wall_panel', { base: 0.45, streaks: 0.45, mottle: 0.18, rust: 0.05 });
+  W('corrugated', { base: 0.4, streaks: 0.5, mottle: 0.22, rust: 0.35, top: 0.35 });
+  W('shutter', { base: 0.45, streaks: 0.35, mottle: 0.2, rust: 0.3 });
+  W('shutter_red', { base: 0.4, streaks: 0.3, mottle: 0.2, rust: 0.2 });
+  W('galv', { base: 0.35, streaks: 0.4, mottle: 0.35, rust: 0.45, top: 0.3 });
+  W('steel_dark', { base: 0.25, streaks: 0.2, mottle: 0.15, rust: 0.5 });
+  W('frame', { base: 0.1, streaks: 0.2, mottle: 0.1, rust: 0.3 });
+  W('door_paint', { base: 0.4, streaks: 0.2, mottle: 0.2 });
+  W('tank_white', { base: 0.3, streaks: 0.55, mottle: 0.12, rust: 0.6, top: 0.3 });
+  W('sign_white', { base: 0, streaks: 0.35, mottle: 0.1, rust: 0.3 });
+  W('interior', { base: 0.3, streaks: 0.1, mottle: 0.2, top: 0 });
+  W('concrete', { base: 0.25, streaks: 0.3, mottle: 0.2, top: 0.25 });
+  W('roof', { base: 0, streaks: 0, mottle: 0.25, top: 0.5 });
+  W('hangar_floor', { base: 0, streaks: 0, mottle: 0.2, top: 0.35 });
+  for (const k of ['paint_yellow', 'paint_white', 'paint_red', 'paint_black']) wornPaint(mats[k] as THREE.MeshStandardMaterial, noise, k === 'paint_white' ? 0.3 : 0.4);
+  apronDetail(apron, noise, { x0: -47, z0: -60, step: 5 });
   const skylight = mats.skylight as THREE.MeshStandardMaterial;
+
+  // AO dokuları
+  const texLoader = new THREE.TextureLoader();
+  const aoTex = new Map<string, THREE.Texture>();
+  await Promise.all(
+    Object.entries(aoUrls).map(async ([path, url]) => {
+      const t = await texLoader.loadAsync(url);
+      const name = path.split('/').pop()!.replace('.webp', '');
+      // Yapı atlasları glTF UV'siyle okunur (v ters çevrilmez); zemin haritası dünya x/z'siyle
+      if (name !== 'ground') {
+        t.flipY = false;
+        t.needsUpdate = true;
+      }
+      t.colorSpace = THREE.NoColorSpace;
+      t.channel = 0;
+      t.anisotropy = 4;
+      aoTex.set(path.split('/').pop()!.replace('.webp', ''), t);
+    }),
+  );
+  const gao = aoTex.get('ground');
+  if (gao) {
+    for (const k of ['apron', 'concrete', 'asphalt', 'road', 'taxiway', 'gravel', 'hangar_floor', 'paint_yellow', 'paint_white', 'paint_red', 'paint_black', 'joint', 'grate', 'steel']) {
+      groundAO(mats[k] as THREE.MeshStandardMaterial, gao, GROUND_AO);
+    }
+  }
+  // Yapı başına AO: malzeme nesneye özel kopyalanır (aoMap kanal 0 = UVMap)
+  const perObject = new Map<string, THREE.Material>();
+  const withAO = (m: THREE.Material, obj: string, tex: THREE.Texture) => {
+    const key = `${m.uuid}:${obj}`;
+    let c = perObject.get(key);
+    if (!c) {
+      const src = m as THREE.MeshStandardMaterial;
+      const cm = src.clone();
+      cm.onBeforeCompile = src.onBeforeCompile;
+      cm.customProgramCacheKey = src.customProgramCacheKey;
+      cm.userData = src.userData;
+      cm.aoMap = tex;
+      cm.aoMapIntensity = 1;
+      cm.name = `${src.name}@${obj}`;
+      perObject.set(key, cm);
+      c = cm;
+    }
+    return c;
+  };
 
   let antenna: THREE.Object3D | null = null;
   let sock: THREE.Object3D | null = null;
@@ -233,6 +303,9 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
     const key = src.name.replace(/\.\d+$/, '');
     mesh.material = mats[key] ?? mats.concrete;
     src.dispose();
+    const objAO = aoTex.get(mesh.name.replace(/^AF_/, '').toLowerCase()) ?? (mesh.parent && aoTex.get(mesh.parent.name.replace(/^AF_/, '').toLowerCase()));
+    const noAOmap = ['glass', 'lamp_white', 'lamp_warm', 'light_white', 'light_blue', 'light_red', 'light_green', 'skylight'];
+    if (objAO && !noAOmap.includes(key)) mesh.material = withAO(mesh.material as THREE.Material, mesh.name, objAO);
     mesh.receiveShadow = true;
     // Zemin gölge atmaz; binalar ve duvar atar
     mesh.castShadow = !/ground|markings|txt/i.test(mesh.name);
@@ -256,7 +329,9 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
 
   const floorY = -2.4;
   // Arazi, bitki örtüsü, donanım
-  root.add(buildTerrain(scans, noise), buildVillages());
+  const terrain = buildTerrain(scans, noise);
+  if (gao) groundAO(terrain.material as THREE.MeshStandardMaterial, gao, GROUND_AO);
+  root.add(terrain, buildVillages());
   const [veg, props] = await Promise.all([
     loadVegetation(renderer).catch((e) => {
       console.error('Bitki örtüsü yüklenemedi', e);

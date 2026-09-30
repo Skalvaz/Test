@@ -198,8 +198,21 @@ export async function loadVegetation(renderer: THREE.WebGLRenderer): Promise<THR
     const conifer = fbm(x / 900 - 3, z / 900 + 5, 2) > 0.52;
     addTree(x, z, conifer, (conifer ? 12 : 8) + rnd() * 9);
   }
+  // 1b) Üssü çevreleyen orman kuşağı (250–700 m), pist ekseni açık
+  for (let i = 0; i < 40000 && big.length < 16000; i++) {
+    const a = rnd() * Math.PI * 2;
+    const r = 260 + Math.pow(rnd(), 0.8) * 520;
+    const x = Math.cos(a) * r * 1.25;
+    const z = Math.sin(a) * r;
+    if (zoneDistance(x, z) < 70) continue;
+    if (Math.abs(z - 170) < 180 && Math.abs(x) < 1500) continue;
+    // kuşak boşluklu: gürültüyle öbeklenir
+    if (fbm(x / 160 + 4, z / 160 - 2, 3) < 0.47) continue;
+    const conifer = fbm(x / 500 + 9, z / 500, 2) > 0.55;
+    addTree(x, z, conifer, (conifer ? 11 : 7) + rnd() * 8);
+  }
   // 2) Tarla kenarı ağaç sıraları (rüzgâr kıranlar)
-  for (let k = 0; k < 40; k++) {
+  for (let k = 0; k < 90; k++) {
     const r = 350 + rnd() * 2600;
     const a = rnd() * Math.PI * 2;
     let x = Math.cos(a) * r;
