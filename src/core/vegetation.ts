@@ -49,7 +49,7 @@ function paved(x: number, z: number, margin: number) {
   return false;
 }
 
-function billboardMaterial(color: THREE.Texture, normal: THREE.Texture | null, depth = false) {
+function billboardMaterial(color: THREE.Texture, normal: THREE.Texture | null, depth = false, fade = 0) {
   const mat = depth
     ? new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: color, alphaTest: 0.5 })
     : new THREE.MeshStandardMaterial({
@@ -91,6 +91,14 @@ function billboardMaterial(color: THREE.Texture, normal: THREE.Texture | null, d
         float bbS = length(instanceMatrix[0].xyz);
         vec3 bbF = bbForward(bbC);
         vec3 bbR = normalize(cross(vec3(0.0, 1.0, 0.0), bbF));
+        ${
+          fade > 0
+            ? `// Çayır kartları: uzakta ve yukarıdan bakınca küçülerek kaybolur
+          vec3 toC = cameraPosition - bbC;
+          float elev = abs(toC.y) / max(length(toC), 1e-3);
+          bbS *= (1.0 - smoothstep(0.45, 0.8, elev)) * (1.0 - smoothstep(${(fade * 0.6).toFixed(1)}, ${fade.toFixed(1)}, length(toC)));`
+            : ''
+        }
         vec3 bbWorld = bbC + bbR * (mix(aRect.x, aRect.y, uv.x) * bbS) + vec3(0.0, mix(aRect.z, aRect.w, uv.y) * bbS, 0.0);
         vec3 transformed = vec3(0.0);`,
       )
@@ -106,7 +114,7 @@ function billboardMaterial(color: THREE.Texture, normal: THREE.Texture | null, d
         #endif`,
       );
   };
-  mat.customProgramCacheKey = () => (depth ? 'billboard-depth' : 'billboard');
+  mat.customProgramCacheKey = () => `billboard-${depth}-${fade}`;
   return mat;
 }
 
@@ -118,7 +126,7 @@ interface Instance {
   tint: number;
 }
 
-function buildBatch(list: Instance[], color: THREE.Texture, normal: THREE.Texture, shadows: boolean, cols: number, rows: number, size: number) {
+function buildBatch(list: Instance[], color: THREE.Texture, normal: THREE.Texture, shadows: boolean, cols: number, rows: number, size: number, fade = 0) {
   const geo = new THREE.PlaneGeometry(1, 1);
   const n = list.length;
   const tile = new Float32Array(n * 4);
@@ -135,7 +143,7 @@ function buildBatch(list: Instance[], color: THREE.Texture, normal: THREE.Textur
   });
   geo.setAttribute('aTile', new THREE.InstancedBufferAttribute(tile, 4));
   geo.setAttribute('aRect', new THREE.InstancedBufferAttribute(rect, 4));
-  const mesh = new THREE.InstancedMesh(geo, billboardMaterial(color, normal), n);
+  const mesh = new THREE.InstancedMesh(geo, billboardMaterial(color, normal, false, fade), n);
   const m = new THREE.Matrix4();
   const col = new THREE.Color();
   list.forEach((it, i) => {
@@ -243,6 +251,6 @@ export async function loadVegetation(renderer: THREE.WebGLRenderer): Promise<THR
   const group = new THREE.Group();
   group.name = 'vegetation';
   group.add(buildBatch(big, color, normal, true, cols, rows, size));
-  group.add(buildBatch(small, color, normal, false, cols, rows, size));
+  group.add(buildBatch(small, color, normal, false, cols, rows, size, 260));
   return group;
 }

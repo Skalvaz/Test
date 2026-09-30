@@ -13,7 +13,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import airfieldUrl from '../assets/airfield.glb?url';
 import { scanParams } from '../materials/scans.js';
-import { buildTerrain } from './terrain';
+import { buildTerrain, buildVillages } from './terrain';
 import { loadVegetation } from './vegetation';
 import { loadAirfieldProps } from './afProps';
 
@@ -256,7 +256,7 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
 
   const floorY = -2.4;
   // Arazi, bitki örtüsü, donanım
-  root.add(buildTerrain(scans, noise));
+  root.add(buildTerrain(scans, noise), buildVillages());
   const [veg, props] = await Promise.all([
     loadVegetation(renderer).catch((e) => {
       console.error('Bitki örtüsü yüklenemedi', e);

@@ -144,8 +144,8 @@ export function buildGroundCradle(materials, { mounts, engineR, floorY }) {
 export function buildPylonGantry(materials, { mounts, top, floorY, halfSpan = 2.1 }) {
   const group = new THREE.Group();
   group.name = 'pylon-gantry';
-  const paint = materials.kitPaint?.clone() ?? materials.standPaint.clone();
-  paint.color.setHex(0xc79a22); // sarı yer donanımı boyası
+  // Sarı yer donanımı boyası: düz endüstriyel boya (tarama sarıda mermer gibi görünür)
+  const paint = new THREE.MeshStandardMaterial({ color: 0xc2951f, roughness: 0.5, metalness: 0.15 });
   paint.userData.owned = true;
   const dark = materials.kitSteel ?? materials.machinery;
   const beam = (a, b, w, h, mat) => {

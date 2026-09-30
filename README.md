@@ -34,18 +34,24 @@ hedefler (ör. "N1'i %78–82'de 5 saniye tut"), quiz'ler ve 3B parça seçme
 görevleri. Yanlış prosedür (ör. yakıtı çok erken vermek) adımı başarısız sayar
 ve tekrarlatır. Her ders yıldızla puanlanır ve ilerleme tarayıcıda saklanır.
 
-**Fotoğraf tabanlı ortamlar** — Poly Haven'ın CC0 HDRI'larıyla gerçek bir
-uçak hangarı, bulutlu havada apron ve makine atölyesi. Fotoğraf zemine
-yansıtılır (motor gerçekten o zeminde durur), güneş yönü ve pozlama HDRI'nın
-kendisinden hesaplanır; hücre dışında kaportasız motorlar tekerlekli bir yer
-taşıma standına oturur. Metal yüzeyler (motor gövdesi, sıcak bölge, lüle,
-döküm muhafazalar, boyalı kutular, stand) ambientCG'nin gerçek malzeme
-taramalarını kullanır; taramalar ikinci bir UV kanalında metre ölçeğinde
-uygulanır, mevcut dokular korunur.
+**Havaalanı ortamı** — Blender'da koddan modellenmiş bir hava üssü
+(`blender/airfield.py`): 5 m'lik beton plakalı apron, motor çalıştırma alanı,
+jet egzozu saptırma duvarı, kafes kemer kirişli ve ofis katlı iki hangar,
+kontrol kulesi, operasyon binası, itfaiye, yakıt tankları, dönen radar,
+rüzgâr tulumu, kafes ışık direkleri, taksi yolu tabelaları ve pist. Çevresinde
+çalışma anında üretilen 9 km'lik arazi (tarlalar, tepeler, uzak dağlar, köyler),
+Poly Haven ağaçlarından pişirilmiş impostor ağaçlar ve çayır öbekleri; tel
+çit, elektrik hattı, beton bariyerler, jeneratör, kompresör, sandık ve varil
+gibi Poly Haven (CC0) donanımı. Gökyüzü "pure sky" HDRI'dır (öğle, kapalı,
+gün batımı); güneş ve sis ondan hesaplanır. Gece apron projektörlerle
+aydınlanır. Kaportasız motorlar tekerlekli yer taşıma standına oturur,
+pilonlu turbofan çelik bir test sehpasına asılır. Yüzeyler ambientCG'nin gerçek
+malzeme taramalarını ikinci UV kanalında metre ölçeğinde kullanır.
 
 | | |
 | --- | --- |
-| ![Hangar (HDRI)](renders/24-hangar-hdri.jpg) | ![Apron (HDRI)](renders/25-apron-hdri.jpg) |
+| ![Havaalanı: apron](renders/24-havaalani-apron.jpg) | ![Havaalanı: genel görünüm](renders/25-havaalani-genel.jpg) |
+| ![Açık hangar](renders/27-havaalani-hangar.jpg) | ![Gece](renders/28-havaalani-gece.jpg) |
 | ![Hücre, önce](renders/22-hucre-once.jpg) | ![Hücre, sonra: gerçek modeller](renders/23-hucre-sonra.jpg) |
 
 **Test hücresi ortamı** — Blender'da modellenip Cycles ile ışığı pişirilmiş

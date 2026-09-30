@@ -122,6 +122,18 @@ seviyesi korunur.
 - ✅ Hata: GTAO ön-geçişi yarı saydam egzoz akışını katı yüzey sayıp
   arkasındaki görüntüyü bozuyordu
 
+#### M1.6 — 3B havaalanı ortamı ✅
+- ✅ Fotoğraf HDRI arka planları kaldırıldı: yalnız "pure sky" gökyüzü + 3B
+  hava üssü (`blender/airfield.py`): apron, çalıştırma alanı, saptırma duvarı,
+  kafes kirişli hangarlar, kule, operasyon binası, itfaiye, yakıt sahası,
+  dönen radar, rüzgâr tulumu, ışık direkleri, tabelalar, pist
+- ✅ Çalışma anında 9 km arazi (tarlalar, tepeler, dağlar, köyler), Poly Haven
+  ağaçlarından impostor atlası (`blender/impostors.py`), çayır öbekleri
+- ✅ 21 Poly Haven donanımı (çit, elektrik hattı, bariyer, jeneratör,
+  kompresör, sandık, varil, araç…); açık hangar içi dolu
+- ✅ Apron betonunda plaka başına ton farkı ve derz kiri; gece projektörleri;
+  pilonlu turbofan için test sehpası; ortam değişiminde shader derleme kapısı
+
 #### M2 — Model yükseltmesi (mevcut motorlar)
 - Fan ve kompresör kanatları: kök (dovetail) ve platform, uç aşınması,
   ön kenar erozyonu, titanyum ısıl renk; blisk (askeri) / ayrı kanat (yolcu)

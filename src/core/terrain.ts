@@ -123,6 +123,9 @@ function terrainMaterial(scans: Record<string, any> | null, noise: THREE.Texture
         {
           vec2 p = vWorldT.xz;
           float dist = length(vWorldT - cameraPosition);
+          // Tarama fazla doygun: Anadolu çayırı gibi daha soluk, sarımsı
+          float luma = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+          diffuseColor.rgb = mix(vec3(luma), diffuseColor.rgb, 0.62) * vec3(1.06, 1.0, 0.9);
           // Uzakta döşeme tekrarı görünmesin: taramanın ortalama rengine yaklaş
           diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.30, 0.33, 0.17), smoothstep(250.0, 1400.0, dist) * 0.8);
           float mA = texture2D(uMacro, p * 0.0021).r;
@@ -149,8 +152,9 @@ function terrainMaterial(scans: Record<string, any> | null, noise: THREE.Texture
           float edge = 1.0 - smoothstep(1.5, 5.0, min(e.x, e.y));
           float fieldMix = smoothstep(120.0, 400.0, zd);
           vec3 fieldCol = tint * rows * mix(1.0, 0.62, edge);
-          // Hava üssü içi: biçilmiş, hafif sararmış çimen
-          vec3 baseCol = vec3(1.08, 1.04, 0.82);
+          // Hava üssü içi: biçilmiş, yer yer kurumuş çimen
+          float dry = smoothstep(0.3, 0.65, texture2D(uMacro, p * 0.0043 + 0.61).b * 0.7 + mB * 0.3);
+          vec3 baseCol = mix(vec3(1.02, 1.02, 0.8), vec3(1.4, 1.18, 0.66), dry);
           diffuseColor.rgb *= mix(baseCol, fieldCol, fieldMix);
           // Dağ yamaçları: kayalık / çalılık (yüksekliğe göre)
           float alt = smoothstep(40.0, 420.0, vWorldT.y);
@@ -203,4 +207,65 @@ export function buildTerrain(scans: Record<string, any> | null, noise: THREE.Tex
   // Gölge kamerası dar; arazi gölge atmaz
   mesh.castShadow = false;
   return mesh;
+}
+
+/**
+ * Uzak köyler: tepelere serpilmiş beyaz badanalı, kiremit çatılı evler.
+ * Sisle birleşir; ölçek ve yaşanmışlık hissi verir. İki InstancedMesh
+ * (duvar kutusu + beşik çatı), kümeler tohumlu.
+ */
+export function buildVillages() {
+  const walls = new THREE.BoxGeometry(1, 1, 1);
+  walls.translate(0, 0.5, 0);
+  const roof = new THREE.CylinderGeometry(0.72, 0.72, 1, 3, 1);
+  roof.rotateZ(Math.PI / 2);
+  roof.rotateX(Math.PI / 6);
+  roof.scale(1.08, 0.55, 1);
+  roof.translate(0, 0.02, 0);
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xe4ddd0, roughness: 0.9 });
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0xa44c32, roughness: 0.8 });
+  let seed = 777;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const houses: THREE.Matrix4[] = [];
+  const roofs: THREE.Matrix4[] = [];
+  const colors: THREE.Color[] = [];
+  const q = new THREE.Quaternion();
+  const up = new THREE.Vector3(0, 1, 0);
+  for (let v = 0; v < 9; v++) {
+    const r = 1300 + rnd() * 3200;
+    const a = rnd() * Math.PI * 2;
+    const cx = Math.cos(a) * r;
+    const cz = Math.sin(a) * r;
+    if (zoneDistance(cx, cz) < 500) continue;
+    const n = 18 + Math.floor(rnd() * 40);
+    const street = rnd() * Math.PI;
+    for (let i = 0; i < n; i++) {
+      const d = Math.sqrt(rnd()) * (90 + n * 2.5);
+      const t = rnd() * Math.PI * 2;
+      const x = cx + Math.cos(t) * d;
+      const z = cz + Math.sin(t) * d;
+      const w = 7 + rnd() * 6;
+      const l = 8 + rnd() * 8;
+      const h = rnd() < 0.3 ? 6 : 3.2;
+      const rot = street + (rnd() < 0.5 ? 0 : Math.PI / 2) + (rnd() - 0.5) * 0.3;
+      q.setFromAxisAngle(up, rot);
+      const y = heightAt(x, z) - 0.5;
+      houses.push(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(w, h + 0.5, l)));
+      roofs.push(new THREE.Matrix4().compose(new THREE.Vector3(x, y + h + 0.5, z), q, new THREE.Vector3(w, 2.2, l)));
+      colors.push(new THREE.Color().setHSL(0.03 + rnd() * 0.03, 0.45, 0.3 + rnd() * 0.12));
+    }
+  }
+  const g = new THREE.Group();
+  g.name = 'villages';
+  const hm = new THREE.InstancedMesh(walls, wallMat, houses.length);
+  const rm = new THREE.InstancedMesh(roof, roofMat, roofs.length);
+  houses.forEach((m, i) => hm.setMatrixAt(i, m));
+  roofs.forEach((m, i) => {
+    rm.setMatrixAt(i, m);
+    rm.setColorAt(i, colors[i]);
+  });
+  hm.frustumCulled = rm.frustumCulled = false;
+  hm.userData.noAO = rm.userData.noAO = true;
+  g.add(hm, rm);
+  return g;
 }
