@@ -16,6 +16,8 @@ Hepsi bu deponun lisansı altındadır. Blender betikleri başsız çalışır
 | `src/assets/kit.glb` | `blender/kit_parts.py` → `scripts/pack-kit.mjs` | 31 dış donanım parçası × 3 detay seviyesi (L0 ≈ 19 k, L1 ≈ 11,5 k, L2 ≈ 6 k üçgen toplam); nicemleme + meshopt sıkıştırma |
 | `src/assets/trim_{albedo,normal,orm}.webp` | `blender/trim_sheet.py` | Trim sheet: kaynak dikişi, tırtıl, perçin sırası, panjur, 8 etiket; yüksek poligondan pişirme |
 | `src/assets/airfield.glb` | `blender/airfield.py` → `scripts/pack-kit.mjs` | Havaalanı: apron, taksi yolu, pist, yollar, işaretler, iki hangar (kafes kemer kirişler, ışıklıklar, ofis katı), kule, operasyon binası, itfaiye, yakıt sahası, radar, rüzgâr tulumu, ışık direkleri, tabelalar |
+| `src/assets/facade/{door,cladding,facade}_{albedo,normal,orm}.webp` | `blender/facade_textures.py` | Yüksek poligondan pişirme: hangar kapı kanadı (trapez nervür, polikarbonat şerit, tekmelik, uyarı bandı), trapez sac karosu, prekast cephe modülü (pencere boşluğu, doğrama; ORM.b = cam maskesi → oyunda iç mekân eşleme) |
+| `src/assets/facade/signs_albedo.webp` | `blender/facade_textures.py` | Levha atlası: Türkçe uyarı levhaları (dikkat, sigara, askeri yasak bölge, yangın tüpü, kulak koruyucu, yüksek gerilim, jet egzozu, FOD, hız) ve taksi yolu tabela yüzleri |
 | `src/assets/ao/*.webp` | `blender/airfield.py --ao` | Cycles ile pişirilmiş ortam kapanması: yapı başına atlas + 270×170 m zemin haritası (binaların, duvarların dibinde temas gölgesi) |
 | `src/assets/afprops/global_hawk.glb` | `blender/global_hawk.py` | NASA modelinden türetildi (aşağıya bakın): amblem ve boya kaldırıldı, ölçeklendi |
 | `src/assets/veg/veg_{color,normal}.webp` | `blender/impostors.py` | Bitki impostor atlası: Poly Haven ağaç/çalı/çim modellerinin yandan ortografik renderı (albedo × AO, teğet uzayı normal) |
@@ -149,6 +151,16 @@ askeri açık gri renkte, işaretsiz park etmiş olarak durur.
 | Dosya | Kaynak |
 | --- | --- |
 | `src/assets/afprops/global_hawk.glb` | Global Hawk (`3D Models/Global Hawk`) |
+
+### Yazı tipleri — [Google Fonts](https://fonts.google.com) (SIL Open Font License 1.1)
+
+Yalnız Blender'da kullanılır (harfler geometriye/dokuya dönüştürülür; oyunla
+yazı tipi dosyası dağıtılmaz). Lisans metinleri `blender/fonts/OFL-*.txt`.
+
+| Dosya | Yazı tipi | Kullanım |
+| --- | --- | --- |
+| `blender/fonts/BarlowCondensed-{Bold,SemiBold}.ttf` | Barlow Condensed (Jeremy Tribby) | levhalar, bina harfleri, tabela yüzleri |
+| `blender/fonts/SairaStencilOne-Regular.ttf` | Saira Stencil One (Omnibus-Type) | zemin şablon yazıları, kapı numaraları, tank yazıları |
 
 ## Referanslar (varlık değil, yalnız bilgi)
 

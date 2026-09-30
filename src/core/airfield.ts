@@ -15,6 +15,10 @@ import airfieldUrl from '../assets/airfield.glb?url';
 import { scanParams } from '../materials/scans.js';
 import { buildTerrain, buildVillages } from './terrain';
 import { apronDetail, groundAO, weather, wornPaint } from '../materials/weathering';
+import { interiorUniforms, interiorWindows } from '../materials/interior';
+
+/** Pişirilmiş cephe/kapı/sac/levha dokuları (blender/facade_textures.py) */
+const facadeUrls = import.meta.glob('../assets/facade/*.webp', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
 
 /** Pişirilmiş AO dokuları (blender/airfield.py --ao) */
 const aoUrls = import.meta.glob('../assets/ao/*.webp', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
@@ -177,6 +181,36 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
     lamps.push(m);
     return m;
   };
+  // Cephe dokuları: glTF UV kuralı (v ters çevrilmez), metre kanalı (uv1)
+  const texLoader0 = new THREE.TextureLoader();
+  const ftex: Record<string, THREE.Texture> = {};
+  await Promise.all(
+    Object.entries(facadeUrls).map(async ([path, url]) => {
+      const name = path.split('/').pop()!.replace('.webp', '');
+      const t = await texLoader0.loadAsync(url);
+      t.flipY = false;
+      t.channel = 1;
+      t.wrapS = t.wrapT = THREE.RepeatWrapping;
+      t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      t.colorSpace = name.endsWith('albedo') ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+      ftex[name] = t;
+    }),
+  );
+  const baked = (set: string, o: THREE.MeshStandardMaterialParameters, repeat?: [number, number]) => {
+    const p: THREE.MeshStandardMaterialParameters = { ...o };
+    const map = ftex[`${set}_albedo`];
+    if (map) {
+      const r = (t: THREE.Texture) => {
+        if (repeat) t = t.clone();
+        if (repeat) t.repeat.set(...repeat);
+        return t;
+      };
+      p.map = r(map);
+      if (ftex[`${set}_normal`]) p.normalMap = r(ftex[`${set}_normal`]);
+      if (ftex[`${set}_orm`]) p.roughnessMap = r(ftex[`${set}_orm`]);
+    }
+    return std(p);
+  };
   const apron = scan('apron', { color: 0x8c8b86, ao: 0.6 }, { color: 0x8c8b86, roughness: 0.85 });
   if (scans?.apron) slabVariation(apron, noise, (scans.apron as { meta: { size: number } }).meta.size, [-47, -60]);
   const paint = (color: number) => scan('apron', { color, rough: 0.85 }, { color, roughness: 0.7 });
@@ -188,8 +222,17 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
     road: scan('asphalt', { color: 0x8a8a8a }, { color: 0x3a3a3a, roughness: 0.9 }, 0.2),
     taxiway: scan('taxiway', { color: 0xffffff }, { color: 0x404040, roughness: 0.9 }, 0.25),
     gravel: scan('gravel', { color: 0xc8c4bc }, { color: 0x8a857c, roughness: 0.95 }),
-    // Boyalı oluklu sac (hangar): açık gri, yarı metalik
-    corrugated: scan('corrugated', { color: 0xaeb3b6, metal: 0.35, rough: 1.3 }, { color: 0xaeb3b6, metalness: 0.35, roughness: 0.55 }),
+    // Hangar kaplaması: pişirilmiş trapez sac karosu (2,0 × 1,035 m)
+    corrugated: baked('cladding', { color: 0xd2d6d8, metalness: 0.3, roughness: 1 }, [1 / 2.0, 1 / 1.035]),
+    // Sürgülü kapı kanadı: pişirilmiş doku (0..1)
+    door_leaf: baked('door', { color: 0xffffff, metalness: 0.3, roughness: 1 }),
+    // Prekast beton cephe modülü; pencereler iç mekân eşlemeli
+    facade: baked('facade', { color: 0xffffff, metalness: 0, roughness: 1 }),
+    signs: baked('signs', { color: 0xffffff, metalness: 0.1, roughness: 0.45 }),
+    signs_lit: baked('signs', { color: 0xffffff, metalness: 0.1, roughness: 0.4 }),
+    letters_dark: std({ color: 0x2b2f33, metalness: 0.45, roughness: 0.45 }),
+    letters_red: std({ color: 0xa3241c, metalness: 0.1, roughness: 0.5 }),
+    letters_white: std({ color: 0xdedfda, metalness: 0.1, roughness: 0.5 }),
     shutter: scan('shutter', { color: 0x8f989e, metal: 0.4, rough: 1.2 }, { color: 0x8f989e, metalness: 0.4, roughness: 0.5 }),
     shutter_red: scan('shutter', { color: 0x9c2b22, metal: 0.3, rough: 1.2 }, { color: 0x9c2b22, metalness: 0.3, roughness: 0.5 }),
     // Blast duvarı, oluklar: yıpranmış galvaniz
@@ -204,7 +247,7 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
     roof: scan('asphalt', { color: 0x6a6a68 }, { color: 0x3a3a3a, roughness: 0.9 }),
     skylight: std({ color: 0xd6dbd4, roughness: 0.45, metalness: 0, emissive: new THREE.Color(0xfff0d0), emissiveIntensity: 0 }),
     // İç yüzler dış yüzlerle aynı yerde ve ters yönlü: yalnız ön yüz çizilir
-    interior: scan('corrugated', { color: 0x585c5f, metal: 0.3, rough: 1.3 }, { color: 0x2a2c2e, metalness: 0.3, roughness: 0.8 }),
+    interior: baked('cladding', { color: 0x7d8284, metalness: 0.3, roughness: 1 }, [1 / 2.0, 1 / 1.035]),
     joint: std({ color: 0x3b3a37, roughness: 0.95 }),
     grate: scan('dark', { color: 0x2c2e30, rough: 1.1 }, { color: 0x2c2e30, metalness: 0.6, roughness: 0.6 }),
     rubber: std({ color: 0x111111, roughness: 0.9 }),
@@ -214,6 +257,7 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
     paint_white: paint(0xc6c5bf),
     paint_red: paint(0x8e463a),
     paint_black: paint(0x1d1d1c),
+    stencil_white: std({ color: 0xdcdcd6, roughness: 0.6 }),
     sign_white: std({ color: 0xe6e6e1, roughness: 0.5 }),
     sign_black: std({ color: 0x141414, roughness: 0.5 }),
     sign_red: std({ color: 0xa31d16, roughness: 0.5 }),
@@ -227,12 +271,25 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
     light_green: lamp(0x2aff6a),
   };
   for (const [name, m] of Object.entries(mats)) m.name = `af_${name}`;
+  // Işıklı tabelalar: gece yüzleri kendi renginde yanar
+  const signsLit = mats.signs_lit as THREE.MeshStandardMaterial;
+  if (signsLit.map) {
+    signsLit.emissiveMap = signsLit.map;
+    signsLit.emissive = new THREE.Color(0xffffff);
+    signsLit.emissiveIntensity = 0;
+  }
 
   // Yıpranma: kir, yağmur izleri, pas, aşınmış boya, apron ayrıntısı
   const W = (k: string, o: Parameters<typeof weather>[2]) => weather(mats[k] as THREE.MeshStandardMaterial, noise, o);
   W('wall_panel', { base: 0.45, streaks: 0.45, mottle: 0.18, rust: 0.05 });
   W('corrugated', { base: 0.4, streaks: 0.5, mottle: 0.22, rust: 0.35, top: 0.35 });
   W('shutter', { base: 0.45, streaks: 0.35, mottle: 0.2, rust: 0.3 });
+  W('door_leaf', { base: 0.4, streaks: 0.3, mottle: 0.12, rust: 0.35 });
+  W('facade', { base: 0.35, streaks: 0.4, mottle: 0.12, rust: 0.05 });
+  W('signs', { base: 0, streaks: 0.15, mottle: 0.06, rust: 0.2 });
+  W('letters_dark', { base: 0, streaks: 0.2, mottle: 0.1, rust: 0.4 });
+  W('letters_white', { base: 0, streaks: 0.35, mottle: 0.1, rust: 0.3 });
+  if (ftex.facade_orm) interiorWindows(mats.facade as THREE.MeshStandardMaterial, ftex.facade_orm);
   W('shutter_red', { base: 0.4, streaks: 0.3, mottle: 0.2, rust: 0.2 });
   W('galv', { base: 0.35, streaks: 0.4, mottle: 0.35, rust: 0.45, top: 0.3 });
   W('steel_dark', { base: 0.25, streaks: 0.2, mottle: 0.15, rust: 0.5 });
@@ -244,6 +301,7 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
   W('concrete', { base: 0.25, streaks: 0.3, mottle: 0.2, top: 0.25 });
   W('roof', { base: 0, streaks: 0, mottle: 0.25, top: 0.5 });
   W('hangar_floor', { base: 0, streaks: 0, mottle: 0.2, top: 0.35 });
+  wornPaint(mats.stencil_white as THREE.MeshStandardMaterial, noise, 0.3);
   for (const k of ['paint_yellow', 'paint_white', 'paint_red', 'paint_black']) wornPaint(mats[k] as THREE.MeshStandardMaterial, noise, k === 'paint_white' ? 0.3 : 0.4);
   apronDetail(apron, noise, { x0: -47, z0: -60, step: 5 });
   const skylight = mats.skylight as THREE.MeshStandardMaterial;
@@ -366,6 +424,8 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
       night = on;
       for (const m of lamps) m.emissiveIntensity = on ? 6 : (m.userData.day as number);
       skylight.emissiveIntensity = on ? 0.6 : 0;
+      signsLit.emissiveIntensity = on ? 0.9 : 0;
+      interiorUniforms.uNight.value = on ? 1 : 0;
       for (const s of spots) s.intensity = on ? 9000 : 0;
     },
     update(dt: number) {

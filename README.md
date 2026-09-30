@@ -51,6 +51,12 @@ gerçek malzeme taramalarını kullanır; üstüne dünya konumundan hesaplanan
 yıpranma katmanı gelir (taban kiri, yağmur izleri, pas, aşınmış boya; apronda
 derz dolgusu, çatlaklar, yağ lekeleri, tekerlek izleri). Cycles'ta pişirilmiş
 ortam kapanması binaların içini ve dibini karartır, gölgeler ±120 m'yi kapsar.
+Hangar kapıları, trapez sac kaplama ve prekast cepheler Blender'da yüksek
+poligondan pişirilmiş dokular kullanır; pencerelerin arkasında "iç mekân
+eşleme" ile derinliği olan odalar (lamba, masa, jaluzi) görünür, gece bazı
+odaların ışığı yanar. Yazılar Türkçe: cepheye montajlı "HANGAR 1/2",
+"İTFAİYE", "HAREKÂT MERKEZİ" harfleri, kapı kanatlarında şablon numaralar,
+zeminde "MOTOR ÇALIŞTIRMA", uyarı levhaları ve ışıklı taksi yolu tabelaları.
 
 | | |
 | --- | --- |

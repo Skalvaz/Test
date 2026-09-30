@@ -149,7 +149,8 @@ export function wornPaint(mat: THREE.MeshStandardMaterial, noise: THREE.Texture,
       '#include <alphamap_fragment>',
       `#include <alphamap_fragment>
       {
-        vec2 p = vWxPos.xz;
+        // Zeminde x/z; düşey yüzeylerde (kapı numaraları) yükseklik de katılır
+        vec2 p = vWxPos.xz + vWxPos.y * vec2(0.73, 1.37);
         float coarse = wxN(p * 0.045);
         float fine = wxN3(p * 0.9) * 0.6 + wxHash(floor(p * 40.0)) * 0.4;
         float keep = smoothstep(${(wear * 0.9).toFixed(3)}, ${(wear * 0.9 + 0.3).toFixed(3)}, coarse * 0.55 + fine * 0.45 + 0.1);
