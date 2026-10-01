@@ -169,18 +169,33 @@ seviyesi korunur.
 - Ertelenen: kesit kapağında parça başına renk tonu; blisk/kanat için ayrı
   hasar (çentik, FOD) varyasyonları
 
-#### M3 — Efekt yükseltmesi
-- Art yakıcı: kademeli yanma (zon 1→5 sırayla tutuşur), lüle yapraklarının
-  açılmasıyla senkron; hafif titreşen Mach diskleri; sıcak gaz kırılması
-  alevin çevresinde güçlü
-- Egzoz: ısı pusu (heat haze) ekranda daha doğru hacim, kurum birikimi
-  (egzoz arkası zeminde zamanla kararma)
-- Çalıştırma: yakıt püskürme sisi, ilk ateşlemede kıvılcım, soğuk günde
-  beyaz buhar; kapatmada soğuyan türbinin kızıllığının sönmesi
-- Hava: nemli havada giriş dudağında ve pervane uçlarında yoğuşma halkaları,
-  yağmur/gece ayarı
-- Surge: girişten geri tepen alev + basınç dalgası (ekran sarsıntısı + ses)
-- **Bitti sayılır:** her efekt için kısa video/GIF karşılaştırması
+#### M3 — Efekt yükseltmesi ✅
+- ✅ Art yakıcı: 5 zon sırayla (≈0,4 s arayla) tutuşur — zon 1 çekirdekte,
+  sonrakiler dışa doğru halkalar; gaz kolunun art yakıcı bölümü kaç zonun
+  yanacağını belirler. Lüle yaprakları zonlarla birlikte açılır, her zon
+  tutuşması kısa bir parlama ve darbe sesi verir. Mach diskleri aralık ve
+  parlaklıkta titrer; lüle ağzında sarı-beyaz sıcak çekirdek
+- ✅ Isı pusu: jetin ekrana izdüşen kesik konisi (lüle yarıçapından jet
+  genişlemesine), akış aşağısında zayıflar, karışma katmanında daha
+  dalgalı; art yakıcıda çok daha güçlü. Kamera arkasına düşen uç kırpılır
+- ✅ Kurum: jetin zemine değdiği yerden başlayan iz; eski turbojet ve art
+  yakıcı hızla, modern turbofan rölantide neredeyse hiç karartmaz
+- ✅ Çalıştırma: kesitte bujilerin tıkırtılı kıvılcımı, tutuşmadan önce
+  enjektörlerden yakıt sisi, yanarken swirler çıkışlarında mavi çekirdekli
+  alev dilleri; soğuk ve nemli havada egzozda beyaz buhar
+- ✅ Kapatma: metal sıcaklıkları gaz sıcaklığını ısınırken hızlı (≈5 s),
+  soğurken yavaş (≈40 s) izler; türbin kanatları, egzoz konisi ve lüle iç
+  yüzü kara cisim renginde kızarır ve kapatınca yavaşça söner
+- ✅ Hava: test hücresi panelinde bağıl nem — giriş dudağı yoğuşması, yer
+  girdabı, pervane ucu sarmalları ve surge halkası neme bağlı. "Havaalanı —
+  yağmur" ortamı: çizgi yağmur, ıslanan zemin, su birikintileri ve damla
+  halkaları, sıcak lülede buharlaşan damlalar. Gece ortamı M1.6'dan
+- ✅ Surge: girişten öne tükürülen alev ve ardından duman, öne doğru genişleyen
+  yoğuşma halkası (basınç dalgası), sert kamera sarsıntısı ve patlama sesi
+- ✅ GIF karşılaştırmaları README'de (sabit adımlı kare yakalama kancası:
+  `App.fixedDt` / `pendingSteps`)
+- Düzeltilen: renk derecelendirmesinin S-eğrisi, bloom'un 1'i aştığı
+  parlak yüzeylerde negatife dönüp siyah leke yapıyordu (M2 sonunda)
 
 #### M4 — Modüler parametrik motor üretici (atölyenin motoru)
 Bugün üç ayrı el yazımı üretici var (`core.js`+`fan.js`+`nacelle.js`,

@@ -163,6 +163,22 @@ kendi alevi ve kor parçaları aydınlatır.
 | ![Art yakıcı ve şok elmasları](renders/13-askeri-art-yakici.jpg) | ![Islak çalıştırmada torching](renders/14-turbojet-torching.jpg) |
 | ![Turboprop ve pervane uç girdapları](renders/15-turboprop.jpg) | ![Giriş girdabı](renders/16-giris-girdabi.jpg) |
 
+**Efektler II (M3)** — art yakıcı beş bölgede sırayla tutuşur (içten dışa
+halkalar, her bölgede küçük bir "whoomp"), lüle yaprakları bölgelerle aynı
+anda açılır; şok elmaslarının Mach diskleri titrer. Egzozun ısı kırılması
+artık lüleden genişleyerek uzayan bir hacimdir. Uzun çalışmada egzozun
+arkasındaki zemin isle kararır (turbojet en çok, turboprop en az). Kesit
+görünümünde çalıştırma sırasında yanma odasının içi görünür: bujilerin
+kıvılcımı, enjektörlerden yakıt sisi, light-off'ta alev dilleri. Kapatmadan
+sonra türbin kanatları, lüle ve art yakıcı gömleği metal sıcaklığına göre
+(siyah cisim rengi) yavaşça soğur. Surge'de girişten ileri alev ve duman
+püskürür, nemli havada basınç dalgası halkası görünür, kamera sarsılır.
+**Bağıl nem** kaydırıcısı yoğuşma girdabını, giriş dudağındaki ve pervane
+uçlarındaki yoğuşmayı ayarlar; soğuk havada egzozdan buhar çıkar. Yeni
+**yağmurlu havaalanı** ortamında yağmur yağar, zemin ıslanır, su birikintileri
+dalgalanır ve sıcak egzoz borusundan buhar yükselir.
+
+
 **Serbest mod** — test hücresinde bütün anahtarlar, FADEC'i manuele alma, irtifa /
 Mach / sıcaklık, simülasyon hızı (¼×–4×), arıza enjeksiyonu (kuş çarpması,
 kompresör/türbin aşınması, marş ve ateşleyici arızası).
