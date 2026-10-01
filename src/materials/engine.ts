@@ -135,6 +135,63 @@ export function capify<T extends THREE.Material>(mat: T): T {
   return mat;
 }
 
+/**
+ * Kesitte iç parçalar için boşluk örtmesi. Motorun içindeki bir disk yüzü
+ * gerçekte çevreyi değil kalan gövde yarısının iç yüzünü ve komşu kademeleri
+ * görür; dışarıdaki ışıklar da ona yalnız kesit açıklığından ulaşır. Oysa
+ * apron projektörleri ve rampa lambaları gölge atmaz, ortam haritası da
+ * motorun dışından yakalanır: örtme olmadan ışık gövdenin içinden geçer ve
+ * disk/mil yüzlerinde (motor kapalıyken de) beyaz lekeler yapardı.
+ *
+ * Bir yön (ışığa ya da yansımaya doğru) kesitin açık tarafına (uCutN)
+ * çıkıyorsa engelsizdir; kalan gövdeye ya da eksen boyunca komşu kademelere
+ * gidiyorsa örtülür. Doğrudan ışık tümüyle, ortam yansıması iç sekmelerden
+ * kalan küçük bir payla kısılır. Gölgeli güneş de aynı kurala uyar. Kesit
+ * kapalıyken iç parçalar görünmez: yama yalnız kesitte etkilidir. Motor
+ * ekseni dünya z'sidir.
+ */
+function cavityOcclusion<T extends THREE.Material>(mat: T): T {
+  addPatch(mat, 'cavity-v2', (sh) => {
+    sh.uniforms.uCutOn = cutUniforms.uCutOn;
+    sh.uniforms.uCutN = cutUniforms.uCutN;
+    // Kesit kapağı yaması aynı uniform'ları zaten bildirmiş olabilir
+    const decl = sh.fragmentShader.includes('uniform vec3 uCutN;') ? '' : 'uniform float uCutOn;\nuniform vec3 uCutN;';
+    const chunk = (THREE.ShaderChunk as unknown as Record<string, string>).lights_fragment_begin;
+    // Tanımlar main'in hemen önüne: diğer yamaların bildirimlerinden sonra gelsin
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        'void main() {',
+        `${decl}
+        // dirView: görüş uzayında yüzeyden dışarı doğru yön → açıklık (0..1)
+        float cavityOpen(vec3 dirView) {
+          if (uCutOn < 0.5 || !gl_FrontFacing) return 1.0;
+          vec3 w = inverseTransformDirection(dirView, viewMatrix);
+          return smoothstep(-0.1, 0.5, dot(w, uCutN)) * (1.0 - 0.75 * smoothstep(0.65, 0.95, abs(w.z)));
+        }
+        IncidentLight cavityLight(IncidentLight l) {
+          l.color *= cavityOpen(l.direction);
+          return l;
+        }
+        void main() {`,
+      )
+      .replace('#include <lights_fragment_begin>', chunk.split('RE_Direct( directLight,').join('RE_Direct( cavityLight( directLight ),'))
+      .replace(
+        '#include <lights_fragment_maps>',
+        `#include <lights_fragment_maps>
+        #if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
+        {
+          float cav = mix(0.1, 1.0, cavityOpen(reflect(-geometryViewDir, geometryNormal)));
+          radiance *= cav;
+          #ifdef USE_CLEARCOAT
+          clearcoatRadiance *= cav;
+          #endif
+        }
+        #endif`,
+      );
+  });
+  return mat;
+}
+
 /** Yanma odası gömleği geometrisi (combustor.js her yapımda günceller) */
 export const linerUniforms = {
   uRMid: { value: 0.4 },
@@ -295,6 +352,8 @@ export function createEngineMaterials(scans: Scans) {
     m.name = name;
     if (blades.includes(name)) wholeCut(m);
     else capify(m);
+    // Lüle metali kesitte de dışarıdan görünür: örtme uygulanmaz
+    if (name !== 'nozzleMetal') cavityOcclusion(m);
   }
   return mats;
 }

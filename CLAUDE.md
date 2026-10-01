@@ -96,6 +96,26 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
 
 ## Sıradaki işler
 
+0. **YARIM KALAN (kesit disk lekeleri, madde 2):** Kaynak ölçüldü
+   (`scripts/blob.tmp.mjs` — gitignore'da, ışıkları tek tek açıp lekenin
+   parlaklığını ölçer; `scripts/spots.tmp.mjs` parlak piksele ışın atıp
+   malzeme/normal yazar). Kesit `cam [1.15,0.5,1.25]`, `tgt [0,-0.02,0.2]`,
+   fov 34, gece, turbojet, `cut:1`. Leke kutusunda tek başına katkı: apron
+   spotları ~186, rampa nokta ışıkları ~156, kesit dolgu ışığı (`cutFill`,
+   kamerada, şiddet 5) ~214, ortam IBL ~7 (doygunluk 255). Spot/nokta ışıklar
+   gölgesiz, kalan kasanın içinden geçip disklere vuruyor.
+   `src/materials/engine.ts` → `cavityOcclusion` (cavity-v2) yazıldı: iç
+   malzemelerde ışık/yansıma yönü kesit açıklığına (uCutN) çıkmıyorsa
+   örtüyor. Derleniyor ama son ölçümde spot/nokta katkısı DÜŞMEDİ (186/156)
+   → `RE_Direct( directLight,` değişimi ya tutmuyor ya da leke kutusu bu
+   malzemelerde değil (kutu 560,130; önceki spots çıktısı turbineDisk/
+   diskMetal/sooted gösterdi; `sooted` egzoz malzemesi library.js'te, yamasız).
+   Sıradaki: shader'da değişimin uygulandığını doğrula (ör. cavityLight
+   rengi 0 → leke sönmeli), sonra `cutFill`'i pozlamaya göre ölçekle /
+   kameradan kaydır. Ardından kapatma sahnesi bu kadrajla
+   (`setup: sim.trim(1,40); a.advance(20);` — görsel metal ısınsın diye
+   advance şart), `frames 48, dt 0.25`, kareler 2'de yakıt kes. Soğuma:
+   hpt 1062→756 K / pipe 946→686 K, 9 s'de kızıllık söner.
 1. Kapatma sonrası soğuma karşılaştırması: dış görünümde kızıllık seçilmiyor.
    Kesitte türbin + egzoz borusuna bakan yeni sahne (`scenes/shutdown.json`),
    M2 (`c7ac8e4` + kayıt kancası) ile karşılaştır, `renders/46-m3-shutdown.gif`.

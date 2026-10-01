@@ -167,7 +167,8 @@ export async function recordScene(page, spec, outDir, { gif = false } = {}) {
   console.log(`${name} bitti: ${secs(t0)}`);
   // GIF kodlaması (sharp, ayrı iş parçacıkları) sonraki sahnenin kaydıyla
   // örtüşür. Nesne içinde döner: async fonksiyon promise'i kendisi beklemesin.
-  if (!gif) return { gif: Promise.resolve() };
+  // Tek karelik sahneden animasyon çıkmaz
+  if (!gif || shots.length < 2) return { gif: Promise.resolve() };
   const out = `${outDir.replace(/[\\/]+$/, '')}.gif`;
   return { gif: toGif(outDir, out, { width: 480, fps: 12 }).then(() => console.log('GIF:', out)) };
 }
