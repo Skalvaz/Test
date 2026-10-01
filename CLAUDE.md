@@ -112,4 +112,7 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
 
 ## Sıradaki işler
 
-1. ROADMAP Faz 3'ün sıradaki kilometre taşı.
+1. M4a (ROADMAP'te kapsamı yazılı; Ekim 2026'da kullanıcıyla gözden
+   geçirildi: geometri fizikten türetilir, tam modül listesi, M4 a/b/c'ye
+   bölündü, M4'te yalnız geometriye bağlı hesaplar).
+2. ROADMAP Faz 3'ün sıradaki kilometre taşı.

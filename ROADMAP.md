@@ -211,13 +211,50 @@ Giriş → [Fan | Pervane+redüktör] → [LPC] → HPC (eksenel / santrifüj)
   otomatik uyar (kanal geçişleri kendiliğinden yumuşatılır)
 - `EngineDesign` modül grafiğinden türetilir; `sizeEngine()` her geçerli
   kombinasyonu boyutlandırır
-- Mevcut dört motor bu sistemle yeniden üretilir ve görsel olarak eskisiyle
-  aynı ya da daha iyi olmalıdır (regresyon testi = ekran görüntüsü karşılaştırma)
-- Yeni hesaplar: kütle (malzeme × hacim), maliyet, kanat ucu Mach, disk
-  gerilmesi (AN²), türbin soğutma havası, gürültü (jet hızı + fan ucu),
-  NOx (T3/T4)
-- **Bitti sayılır:** 4 motor yeni üreticide, simülasyon testleri geçiyor,
-  parametre değişikliği < 150 ms'de modeli yeniden üretiyor
+- **Geometri fizikten türetilir** (kapsam gözden geçirmesi, Ekim 2026):
+  kanal alanları kütle akışı ve eksenel Mach'tan, yarıçaplar göbek/uç
+  oranından, kademe sayıları basınç oranı ve kademe yüklemesinden hesaplanır.
+  Oyuncu az sayıda tasarım düğmesiyle oynar (göbek/uç oranı, eksenel Mach,
+  kademe yüklemesi, uç hızı…). Bugünkü elle girilmiş ölçü tabloları
+  (`barejet.js` `VARIANTS`, `turboprop.js`, `core.js`) kalkar
+- Regresyon: her şablonun ana ölçüleri (fan/giriş çapı, toplam boy, kademe
+  sayıları) bugünkünün ±%5'i içinde; ekran görüntüleri önce/sonra
+  karşılaştırılır, görsel olarak aynı ya da daha iyi olmalı
+- Yeni modül grafiği TypeScript'te; mevcut JS geometri yardımcıları
+  (`stages.js`, `blades.js`, `combustor.js`, `nozzle.js`…) kullanılır
+- Bugünkü yeniden üretim süresi (RTX 4070, yüksek kalite): turbofan 530 ms
+  (3 M üçgen), askeri 212 ms, turbojet 183 ms, turboprop 224 ms
+
+M4 üç adımda:
+
+**M4a — Modül grafiği ve fizikten gaz yolu**
+- Modül tipleri, bağlantı kuralları (geçerli kombinasyonlar), grafik →
+  `EngineDesign` → `sizeEngine()`; istasyonlardan kanal geometrisi
+- Turbojet ve art yakıcılı askeri turbofan yeni üreticide (ikisi de bugün
+  ortak gaz yolu üreticisini kullanıyor). Karıştırıcı modülü (askeri
+  turbofanda baypas art yakıcıdan önce karışır)
+- Geometriye bağlı hesaplar: kanat ucu Mach (bağıl), disk gerilmesi (AN²),
+  kütle (malzeme × hacim); geçersiz tasarımı reddeden denetimler
+- **Bitti sayılır:** iki motor yeni üreticide, ölçüler ±%5, simülasyon
+  testleri geçiyor, önce/sonra görselleri README'de
+
+**M4b — Turboprop ve yüksek baypaslı turbofan**
+- Pervane + redüktör, santrifüj HPC kademesi, serbest güç türbini
+- Yüksek baypaslı fan, ayrık akışlı lüle, kaporta/pilon (`core.js`,
+  `fan.js`, `nacelle.js` yeni sistemde yeniden yazılır)
+- **Bitti sayılır:** dört motor yeni üreticide, eski üreticiler silinmiş
+
+**M4c — Yeni modüller ve hız**
+- Kutu (can) yanma odası, chevron lüle, ayrı karıştırıcı varyantları;
+  bunların simülasyon karşılıkları (basınç kaybı, karışma verimi, gürültü
+  için hazırlık)
+- Artımlı yeniden üretim: yalnız değişen modül ve komşu geçişleri yeniden
+  üretilir; kaydırıcı sürüklenirken düşük LOD önizleme
+- **Bitti sayılır:** parametre değişikliği < 150 ms'de modeli yeniden
+  üretiyor
+
+Maliyet, gürültü (jet hızı + fan ucu), NOx (T3/T4) ve türbin soğutma havası
+hesapları gösterilecekleri arayüzle birlikte M5'e alındı.
 
 #### M5 — Motor Atölyesi arayüzü (v1)
 Ekran düzeni:
@@ -237,6 +274,7 @@ Ekran düzeni:
 - Modül değiştirme (ör. lüleyi YI yap, art yakıcı ekle, santrifüj kademe),
   parametre kaydırıcıları, anında 3B güncelleme; **patlatılmış görünüm** ile
   modüller eksen boyunca ayrılır
+- M4'ten ertelenen hesaplar: maliyet, gürültü, NOx, türbin soğutma havası
 - Uyarılar öğretir: "fan ucu Mach 1,7 — gürültü ve verim kaybı", "T4
   malzeme sınırını aşıyor — soğutma havası ekle ya da tek kristal kanat seç";
   her uyarı ilgili derse bağlanır
