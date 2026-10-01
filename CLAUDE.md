@@ -54,6 +54,33 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   görünümlerde alfa/parlaklığı buna göre ayarla.
 - `vite.config.js` değişince dev sunucusu yeniden başlar; süren kayıt bozulur.
 
+## Kullanıcının tercihleri
+
+- Kalite çıtası yüksek: referans War Thunder / DCS seviyesi efektler ve
+  gerçek motor detayı. "Çok kaliteli yap" varsayılan beklenti.
+- Her görsel değişikliği önce/sonra GIF ya da görüntüyle görmek istiyor.
+- Kısa durum bilgisi sever; uzun işlerde ara ara ne yapıldığını söyle.
+- Fark seçilmeyen bir karşılaştırmayı README'ye koyma; kadrajı düzelt.
+
+## Öğrenilenler (deneyerek bulundu)
+
+- Otomatik çalıştırma (`a.sim.reset(); a.beginAutoStart()`): yakıt ve
+  ateşleme ~23,9 s'de açılır, light-off ~25,1 s, ateşleme ~40 s'de kapanır.
+  Motor zaten çalışıyorsa `beginAutoStart` hiçbir şey yapmaz; önce `reset`.
+- `a.advance(t)` 1/30 s adımlarla ilerletir; büyük adımlar zamanlamayı kaydırır.
+- Yanma odası efekt noktaları (`combustor.userData.injectors/igniters`)
+  model uzayında; kesitte yalnız kesit düzlemine yakın 1–2 enjektör görünür,
+  bu yüzden alevler yoğun ve HDR parlak olmalı.
+- Termal kızıllık ışıklı ortamda dışarıdan zor seçilir; gece + kesit kullan.
+- İs izi (`effects.soot`) egzozun ~h/0,2 m arkasından başlar; kamera zemine
+  ve egzoz arkasına bakmalı.
+- Art yakıcıyı yandan çek (alev kameraya doğru gelmesin): örn. cam
+  `[4.2, 0.5, 4.4]`, hedef `[0, -0.15, 4.6]`.
+- Yağmur sahnesi: ortam `Havaalanı — yağmur`; M2'de bu ortam yok,
+  karşılaştırmada M2 tarafı için `Havaalanı — kapalı` kullan.
+- Kayıt sırasında `src/` dosyalarını düzenleme: Vite sayfayı yeniler ve kayıt
+  bozulur. Ayar denemelerini ayrı worktree + ayrı portta yap.
+
 ## Sıradaki işler
 
 1. Kayıt hızlandırma: `scripts/capture/batch.mjs` her sahnede tarayıcıyı ve
