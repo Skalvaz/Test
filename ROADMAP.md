@@ -227,16 +227,26 @@ Giriş → [Fan | Pervane+redüktör] → [LPC] → HPC (eksenel / santrifüj)
 
 M4 üç adımda:
 
-**M4a — Modül grafiği ve fizikten gaz yolu**
-- Modül tipleri, bağlantı kuralları (geçerli kombinasyonlar), grafik →
-  `EngineDesign` → `sizeEngine()`; istasyonlardan kanal geometrisi
-- Turbojet ve art yakıcılı askeri turbofan yeni üreticide (ikisi de bugün
-  ortak gaz yolu üreticisini kullanıyor). Karıştırıcı modülü (askeri
-  turbofanda baypas art yakıcıdan önce karışır)
-- Geometriye bağlı hesaplar: kanat ucu Mach (bağıl), disk gerilmesi (AN²),
-  kütle (malzeme × hacim); geçersiz tasarımı reddeden denetimler
-- **Bitti sayılır:** iki motor yeni üreticide, ölçüler ±%5, simülasyon
-  testleri geçiyor, önce/sonra görselleri README'de
+**M4a — Modül grafiği ve fizikten gaz yolu ✅**
+- ✅ `src/design/`: modül tipleri (`types.ts`), sıra ve birleşim kuralları,
+  grafik → `EngineDesign` → `sizeEngine()` (`graph.ts`); istasyonlardan
+  kanal geometrisi, mil devirleri, kademe/kanat sayıları, eksenel yerleşim
+  (`flowpath.ts`)
+- ✅ Turbojet ve art yakıcılı askeri turbofan yeni üreticide
+  (`templates.ts`, `catalog.ts`); `barejet.js`'teki elle girilmiş
+  `VARIANTS` tablosu kalktı. Karıştırıcı modülü
+- ✅ Kanat ucu bağıl Mach, türbin AN², kütle tahmini (turbojet 1,46 t,
+  T/W 4,5; askeri 2,03 t, T/W 6,5); geçersiz grafiği öğretici mesajla
+  reddeden denetimler
+- ✅ 17 test: ölçüler eski modellerin ±%5'i, kademe sayıları aynı, itki ve
+  yakıt katalogdaki motorla birebir, simülasyonda çalıştırma
+- ✅ README'de parametrik varyant görseli (`renders/48-m4a-parametrik.jpg`).
+  Önce/sonra ekran görüntüleri neredeyse aynı (hedef buydu), README'ye
+  konmadı
+- Not: askeri fanın kanat sayısı simülasyonda 36 → 28 (modelle aynı);
+  fan kanat geçiş tonu biraz pesleşti. Devirler uç hızından türetildiği
+  için ±%0,1 değişti
+- Düzeltilen: arayüz gizliyken (H) kamera hâlâ panellere yer açıyordu
 
 **M4b — Turboprop ve yüksek baypaslı turbofan**
 - Pervane + redüktör, santrifüj HPC kademesi, serbest güç türbini

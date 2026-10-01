@@ -198,6 +198,21 @@ disk yüzleri cilalı değil tornalanmış pürüzlülükte:
 
 ![Kesitte iç parçaların yansımaları, önce/sonra](renders/46-kesit-yansima.jpg)
 
+**Modüler motor üretici (M4a)** — turbojet ve art yakıcılı turbofan artık
+elle ölçülendirilmiş tablolardan değil, bir **modül grafiğinden** (giriş →
+fan/LPC → HPC → yanma odası → HPT → LPT → karıştırıcı → art yakıcı → lüle)
+fizikle üretilir. Tasarım noktası çevriminden her istasyonun sıcaklığı,
+basıncı ve debisi çıkar; kanal alanları eksenel Mach'tan, yarıçaplar göbek/uç
+oranından, mil devri uç hızından, kademe sayıları kademe yüklemesinden
+(Δh / ψU²), yanma odası halkası referans hızdan, lüle boğazı tasarım
+alanından hesaplanır. Aynı yerden kütle tahmini, kanat ucu bağıl Mach'ı ve
+türbin AN² değeri gelir. Şablonların düğmeleri eski modellere kalibre edildi
+(ölçüler ±%5, testli); motorlar eskisiyle aynı görünür. Ama artık bir
+parametre değiştiğinde motor fizikten yeniden oluşur — bu, Motor Atölyesi'nin
+(M5) çekirdeği:
+
+![Aynı turbojet, farklı parametreler](renders/48-m4a-parametrik.jpg)
+
 
 **Serbest mod** — test hücresinde bütün anahtarlar, FADEC'i manuele alma, irtifa /
 Mach / sıcaklık, simülasyon hızı (¼×–4×), arıza enjeksiyonu (kuş çarpması,
@@ -328,6 +343,8 @@ Varlıkların kaynak ve lisans kaydı: **[ASSETS.md](ASSETS.md)**.
 ```
 src/
   sim/        termodinamik model, FADEC, olaylar (+ testler)
+  design/     modüler motor grafiği; tasarım noktasından gaz yolu geometrisi,
+              kütle, uç Mach, AN² (+ testler)
   engine/     prosedürel 3B motor; visual.ts simülasyonu görselleştirir
   app/        uygulama çekirdeği, kamera, 3B parça seçici
   ui/         EICAS, kokpit, motor içi paneli, ders paneli, menüler

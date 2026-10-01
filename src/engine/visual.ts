@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import type { EngineKind, SimSnapshot } from '../sim';
 import { buildNacelle } from './nacelle.js';
 import { buildBareJet } from './barejet.js';
+import { bareJetLayout } from '../design/catalog';
 import { buildTurboprop } from './turboprop.js';
 import { buildFan } from './fan.js';
 import { buildCore } from './core.js';
@@ -231,7 +232,7 @@ export class EngineVisual {
         ? buildTurbofanModel(materials)
         : kind === 'turboprop'
           ? (buildTurboprop(materials) as unknown as EngineModel)
-          : (buildBareJet(materials, kind) as unknown as EngineModel);
+          : (buildBareJet(materials, kind, bareJetLayout(kind)) as unknown as EngineModel);
     const ex = this.model.exhaust;
     this.plume = buildExhaustPlume(ex.radius, ex.z);
     this.plumeBaseRadius = ex.radius;

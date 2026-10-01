@@ -2,6 +2,7 @@
 
 import type { EngineVisual } from '../engine/visual';
 import { ENGINE_CATALOG, type EngineKind, type EngineSim } from '../sim';
+import { engineDesign } from '../design/catalog';
 import { h, icon } from './dom';
 import { FlightControls } from './FlightControls';
 
@@ -112,12 +113,12 @@ export class SandboxPanel {
     const selectEngine = (kind: EngineKind) => {
       if (kind === shown) return;
       shown = kind;
-      abBtn.classList.toggle('hidden', !ENGINE_CATALOG[kind].afterburner);
+      abBtn.classList.toggle('hidden', !engineDesign(kind).afterburner);
       // Pilon ve kanat yalnız kaportalı yolcu turbofanında vardır
       pylonBtn.classList.toggle('hidden', kind !== 'turbofan');
       wingBtn.classList.toggle('hidden', kind !== 'turbofan');
       for (const b of engineSeg.children) b.classList.toggle('sel', (b as HTMLElement).dataset.kind === kind);
-      const d = ENGINE_CATALOG[kind];
+      const d = engineDesign(kind);
       summary.innerHTML = `<b>${d.name}</b><br>${d.summary}`;
     };
     for (const kind of Object.keys(ENGINE_CATALOG) as EngineKind[]) {

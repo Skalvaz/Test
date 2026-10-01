@@ -25,7 +25,8 @@ import { Rain } from '../core/rain';
 import { updateWeather, weather, wetUniforms } from '../core/weather';
 import { loadScans } from '../materials/scans.js';
 import { loadPanelDetails } from '../materials/textures.js';
-import { ENGINE_CATALOG, EngineSim, type EngineKind, type SimEvent } from '../sim';
+import { EngineSim, type EngineKind, type SimEvent } from '../sim';
+import { engineDesign } from '../design/catalog';
 import { Cockpit, type SwitchId } from '../ui/Cockpit';
 import { CycleDiagram } from '../ui/CycleDiagram';
 import { h, icon } from '../ui/dom';
@@ -323,6 +324,11 @@ export class App {
   }
 
   private layout() {
+    // Arayüz gizliyken (H) bütün ekran 3B görünümündür
+    if (document.body.classList.contains('ui-hidden')) {
+      this.rig.setInsets({ left: 0, right: 0, top: 0, bottom: 0 });
+      return;
+    }
     const W = window.innerWidth;
     const css = getComputedStyle(document.documentElement);
     const px = (name: string) => parseFloat(css.getPropertyValue(name)) || 0;
@@ -566,7 +572,7 @@ export class App {
    */
   setEngine(kind: EngineKind, idle: boolean) {
     if (this.sim.kind === kind && this.visual.kind === kind) return;
-    this.sim.setDesign(ENGINE_CATALOG[kind]);
+    this.sim.setDesign(engineDesign(kind));
     if (idle) this.sim.trim(0, 30);
     this.autoStart = false;
     this.rebuildVisual(kind);
@@ -878,7 +884,10 @@ export class App {
     else if (k === 'c') this.setCutaway(!this.cutaway);
     else if (k === 'd') this.setDiagram(!this.diagramVisible);
     else if (k === 'm') this.toggleMute();
-    else if (k === 'h') document.body.classList.toggle('ui-hidden');
+    else if (k === 'h') {
+      document.body.classList.toggle('ui-hidden');
+      this.layout();
+    }
     else if (/^[1-8]$/.test(k)) {
       const views = (Object.keys(VIEWS) as ViewName[]).filter((v) => v !== 'menu');
       const v = views[Number(k) - 1];

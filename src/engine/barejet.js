@@ -35,60 +35,13 @@ import {
 
 const deg = THREE.MathUtils.degToRad;
 
-/** İki varyantın ölçüleri (metre, motor ekseni Z, +Z egzoz yönü). */
-const VARIANTS = {
-  militaryTurbofan: {
-    R: 0.5,
-    throat: 0.465,
-    intakeZ: -2.2,
-    noseLen: 0.36,
-    igv: 0,
-    gas: {
-      lpc: { part: 'fan', stages: 3, z0: -2.02, z1: -1.62, hub: [0.19, 0.26], tip: [0.46, 0.43], blades: [28, 46], firstMaterial: 'titanium', firstChord: 1.25 },
-      hpc: { stages: 10, z0: -1.32, z1: -0.36, hub: [0.2, 0.27], tip: [0.335, 0.3], blades: [40, 72] },
-      combustor: { z0: -0.2, z1: 0.32, rIn: 0.2, rOut: 0.33, injectors: 18 },
-      hpt: { stages: 1, z0: 0.46, z1: 0.46, hub: [0.25, 0.25], tip: [0.335, 0.335], blades: [62, 62] },
-      lpt: { stages: 2, z0: 0.64, z1: 0.84, hub: [0.23, 0.23], tip: [0.37, 0.4], blades: [70, 76] },
-      casing: [[0.35, -1.45], [0.33, -0.9], [0.305, -0.35], [0.34, -0.18], [0.35, 0.3], [0.34, 0.45], [0.38, 0.7], [0.41, 0.92]],
-      shafts: { lp: [-2.1, 0.95, 0.07], hp: [-1.4, 0.52, 0.13] },
-    },
-    splitterZ: -1.5,
-    tailCone: [0.95, 1.55, 0.22],
-    ab: { z0: 1.0, z1: 2.55, R: 0.5, liner: 0.47 },
-    nozzle: { hingeR: 0.47, throat0: 0.305, primary: 0.3, divergent: 0.34, flaps: 16 },
-    mounts: [-0.9, 0.95],
-    flanges: [-2.2, -1.52, -0.42, 0.38, 1.0, 1.75, 2.5],
-    // Dış gövde: fan gövdesi biraz daha geniş, sonra baypas kanalı
-    shell: [[0.505, -2.08], [0.515, -1.95], [0.515, -1.55], [0.5, -1.45], [0.5, 0.98]],
-  },
-  turbojet: {
-    R: 0.43,
-    throat: 0.4,
-    intakeZ: -2.2,
-    noseLen: 0.3,
-    igv: 6,
-    gas: {
-      lpc: { part: 'booster', stages: 3, z0: -2.05, z1: -1.62, hub: [0.14, 0.2], tip: [0.395, 0.36], blades: [24, 40], firstMaterial: 'titanium', firstChord: 1.15 },
-      hpc: { stages: 3, z0: -1.42, z1: -1.02, hub: [0.21, 0.25], tip: [0.35, 0.33], blades: [42, 52] },
-      combustor: { z0: -0.82, z1: 0.0, rIn: 0.2, rOut: 0.36, injectors: 10 },
-      hpt: { stages: 1, z0: 0.16, z1: 0.16, hub: [0.26, 0.26], tip: [0.36, 0.36], blades: [58, 58] },
-      lpt: { stages: 1, z0: 0.38, z1: 0.38, hub: [0.26, 0.26], tip: [0.38, 0.38], blades: [64, 64] },
-      casing: [[0.4, -1.6], [0.36, -1.3], [0.35, -0.95], [0.37, -0.8], [0.37, 0.0], [0.365, 0.2], [0.385, 0.45], [0.4, 0.55]],
-      shafts: { lp: [-2.1, 0.45, 0.06], hp: [-1.5, 0.2, 0.12] },
-    },
-    splitterZ: null,
-    tailCone: [0.5, 1.0, 0.24],
-    ab: { z0: 0.55, z1: 2.6, R: 0.45, liner: 0.42 },
-    nozzle: { hingeR: 0.43, throat0: 0.285, primary: 0.3, divergent: 0, flaps: 14 },
-    mounts: [-1.1, 0.4],
-    flanges: [-2.2, -1.6, -0.95, -0.82, 0.05, 0.55, 1.4, 2.55],
-    // Kompresör gövdesi, yanma odası bölümünde şişkin gövde, türbin
-    shell: [[0.43, -2.08], [0.43, -1.0], [0.465, -0.88], [0.465, -0.02], [0.44, 0.14], [0.44, 0.53]],
-  },
-};
-
-export function buildBareJet(materials, kind) {
-  const v = VARIANTS[kind];
+/**
+ * @param kind  'militaryTurbofan' | 'turbojet' (dış donanım düzeni için)
+ * @param v     gaz yolu yerleşimi: design/flowpath.ts `BareJetLayout`
+ *              (modül grafiğinden fizikle hesaplanır; metre, motor ekseni Z,
+ *              +Z egzoz yönü)
+ */
+export function buildBareJet(materials, kind, v) {
   const group = new THREE.Group();
   group.name = kind;
 
@@ -261,17 +214,18 @@ export function buildBareJet(materials, kind) {
   const cbz = (cb.z0 + cb.z1) / 2;
   const turbojet = kind === 'turbojet';
 
-  // Değişken stator kanadı halkaları (turbojette kompresör gövdesi dışarıda)
-  if (turbojet) {
-    const zs = [-1.96, -1.82, -1.68, -1.4, -1.27, -1.14];
-    zs.forEach((zz, i) => vsvStage(group, prof, zz, 36 + i * 4, mats, i < 3 ? 'booster' : 'hpc'));
-    vsvActuator(group, prof, zs, 0.25, mats, 'hpc');
-    vsvActuator(group, prof, zs, Math.PI - 0.25, mats, 'hpc');
-  } else {
-    // Fan gövdesinde ön kademe VSV'leri
-    const zs = [-1.98, -1.84];
-    zs.forEach((zz) => vsvStage(group, prof, zz, 32, mats, 'fan'));
-    vsvActuator(group, prof, zs, 0.3, mats, 'fan');
+  // Değişken stator kanadı halkaları: kompresör gövdesi dışarıdaysa (turbojet)
+  // bütün VSV sıraları, baypaslı motorda yalnız fan gövdesindekiler
+  const vsvZ = v.vsv.flatMap((s) => s.z);
+  let k = 0;
+  for (const s of v.vsv) for (const zz of s.z) vsvStage(group, prof, zz, s.part === 'fan' ? 32 : 36 + 4 * k++, mats, s.part);
+  if (vsvZ.length) {
+    const fanOnly = v.vsv.every((s) => s.part === 'fan');
+    if (fanOnly) vsvActuator(group, prof, vsvZ, 0.3, mats, 'fan');
+    else {
+      vsvActuator(group, prof, vsvZ, 0.25, mats, 'hpc');
+      vsvActuator(group, prof, vsvZ, Math.PI - 0.25, mats, 'hpc');
+    }
   }
 
   // Yakıt manifoldu + pigtail'ler, ateşleyiciler

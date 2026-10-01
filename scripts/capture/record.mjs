@@ -117,6 +117,10 @@ export async function recordScene(page, spec, outDir, { gif = false } = {}) {
       a.rig.camera.position.set(...pos);
       a.rig.controls.target.set(...tgt);
       a.rig.camera.fov = fov;
+      // Paneller gizli: projeksiyon kaydırması/uzaklaştırması olmasın (eski
+      // sürümler arayüz gizliyken de panellere yer açıyordu)
+      a.rig.setInsets({ left: 0, right: 0, top: 0, bottom: 0 });
+      a.rig.resize(innerWidth, innerHeight);
       a.rig.camera.updateProjectionMatrix();
       a.rig.controls.update();
       a.setCutaway(!!cut);

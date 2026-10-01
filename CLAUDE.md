@@ -33,6 +33,12 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
 ## Kod haritası
 
 - `src/sim/` — termodinamik çevrim ve motor tipleri (testli).
+- `src/design/` — M4 modül grafiği: `types.ts` (modüller ve düğmeler),
+  `graph.ts` (kurallar, grafik → EngineDesign → sizeEngine),
+  `flowpath.ts` (istasyonlardan geometri, devir, kütle, uç Mach, AN²),
+  `templates.ts` (kalibre şablonlar), `catalog.ts` (oyunun kullandığı
+  tasarım + 3B yerleşim; `overrideGraph` ile çalışma anında değiştirilir,
+  `window.__design`). Turbofan ve turboprop M4b'ye kadar eski üreticide.
 - `src/app/App.ts` — ana döngü; test kancaları: `advance(s)`, `fixedDt` /
   `pendingSteps` / `framesRendered` (belirlenimli kare kaydı), `window.__app`.
 - `src/engine/visual.ts` — modeli simülasyona bağlar: lüle, termal kızıllık
@@ -105,6 +111,16 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
 - Işık katkısı ölçerken tek tek KAPATMA, doygun bölgede fark görünmez;
   her şeyi kapatıp tek tek AÇ (`scripts/blob.tmp.mjs`, gitignore'da).
 - PowerShell'de commit mesajında `"` olursa argüman bölünür: `git commit -F dosya`.
+- `CameraRig` panellere yer açmak için `setViewOffset` ile kaydırıp 1,8 kata
+  kadar uzaklaştırır. Kayıt betiği insets'i sıfırlar (eski sürümlerde de);
+  M4a'dan önceki kayıtlar bu yüzden kamera mesafesinden ~1,8 kat uzak görünür.
+- Kayıt sahnesinde değiştirilmiş motor: setup'ta
+  `D=window.__design; D.overrideGraph(kind, g); a.sim.setDesign(D.builtEngine(kind).design); a.rebuildVisual(kind);`
+  (önce `D.overrideGraph(kind, null)` ile şablona dön, sonra klonla).
+- Kalibrasyon: şablon düğmeleri eski ölçülerden tersine hesaplandı (Mach ←
+  alan, ψ ← Δh/((n−0,2)U²), k ← sayı·yükseklik/(2πr)); M4b'de turbofan ve
+  turboprop için aynı yol.
+- vitest `console.log` çıktısını göstermez; geçici testlerde dosyaya yaz.
 - Önce/sonra worktree'si `.claude/launch.json` → `once` (5174,
   `../turbofan-once`).
 - PowerShell'de `node … | Select-Object -First N` boruyu kapatınca node 255
@@ -112,7 +128,8 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
 
 ## Sıradaki işler
 
-1. M4a (ROADMAP'te kapsamı yazılı; Ekim 2026'da kullanıcıyla gözden
-   geçirildi: geometri fizikten türetilir, tam modül listesi, M4 a/b/c'ye
-   bölündü, M4'te yalnız geometriye bağlı hesaplar).
+1. M4b (ROADMAP): turboprop + yüksek baypaslı turbofan modül grafiğine.
+   Kapsam Ekim 2026'da kullanıcıyla gözden geçirildi: geometri fizikten
+   türetilir, tam modül listesi (yeniler M4c'de), M4'te yalnız geometriye
+   bağlı hesaplar; maliyet/gürültü/NOx/soğutma havası M5'te.
 2. ROADMAP Faz 3'ün sıradaki kilometre taşı.
