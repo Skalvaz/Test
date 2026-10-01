@@ -71,7 +71,13 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
 - Yanma odası efekt noktaları (`combustor.userData.injectors/igniters`)
   model uzayında; kesitte yalnız kesit düzlemine yakın 1–2 enjektör görünür,
   bu yüzden alevler yoğun ve HDR parlak olmalı.
-- Termal kızıllık ışıklı ortamda dışarıdan zor seçilir; gece + kesit kullan.
+- Termal kızıllık ışıklı ortamda dışarıdan zor seçilir; gece + kesit kullan
+  (`scenes/shutdown.json`). Görsel metal sıcaklığı (`visual.thermal`)
+  simülasyondan ayrıdır: `sim.trim` sonrası `a.advance(20)` olmadan soğuk
+  başlar. Tam güçten kapatınca kızıllık ~9 s'de söner (hpt 1062→756 K).
+- M2 (`c7ac8e4`) ile karşılaştırma için kayıt kancası (`fixedDt` /
+  `pendingSteps` / `framesRendered`) App.frame'e elle eklenir; M2'de
+  `advance` yok, sahne setup'ında `if (a.advance)` kullan.
 - İs izi (`effects.soot`) egzozun ~h/0,2 m arkasından başlar; kamera zemine
   ve egzoz arkasına bakmalı.
 - Art yakıcıyı yandan çek (alev kameraya doğru gelmesin): örn. cam
@@ -106,12 +112,4 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
 
 ## Sıradaki işler
 
-1. Kapatma sonrası soğuma karşılaştırması: dış görünümde kızıllık seçilmiyor.
-   Kesitte türbin + egzoz borusuna bakan yeni sahne (`scenes/shutdown.json`),
-   M2 (`c7ac8e4` + kayıt kancası) ile karşılaştır, `renders/47-m3-shutdown.gif`.
-   Kadraj: turbojet, gece, `cut:1`, `cam [1.15,0.5,1.25]`, `tgt
-   [0,-0.02,0.2]`, fov 34. `setup: sim.trim(1,40); a.advance(20);` (görsel
-   metal sıcaklığı ayrı tutulur, advance olmadan soğuk başlar), `frames 48,
-   dt 0.25`, 2. karede yakıt kes. Soğuma: hpt 1062→756 K, boru 946→686 K;
-   kızıllık ~9 s'de söner.
-2. Ardından ROADMAP Faz 3'ün sıradaki kilometre taşı.
+1. ROADMAP Faz 3'ün sıradaki kilometre taşı.

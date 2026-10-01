@@ -185,6 +185,7 @@ dalgalanır ve sıcak egzoz borusundan buhar yükselir.
 ![Soğuk ve nemli havada buhar](renders/43-m3-steam.gif)
 ![Yağmur ve ıslak zemin](renders/44-m3-rain.gif)
 ![Zeminde is birikimi](renders/45-m3-soot.gif)
+![Kapatma sonrası soğuma, kesit](renders/47-m3-shutdown.gif)
 ![Art yakıcı zonları](renders/40-m3-ab.gif)
 ![Çalıştırma, kesit](renders/41-m3-start.gif)
 
