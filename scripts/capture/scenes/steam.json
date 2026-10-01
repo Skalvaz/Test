@@ -1,0 +1,21 @@
+{
+ "kind": "turbofan",
+ "env": "Havaalanı — kapalı",
+ "quality": "high",
+ "w": 960,
+ "h": 540,
+ "cam": [
+  3.2,
+  0.2,
+  9.5
+ ],
+ "tgt": [
+  0,
+  -0.3,
+  4.5
+ ],
+ "fov": 44,
+ "setup": "sim.setFlight({isaDev:-30}, true); sim.trim(0.1, 20); import('/src/core/weather.ts').then(m=>{m.weather.humidity=0.9}).catch(()=>{});",
+ "frames": 24,
+ "dt": 0.1
+}

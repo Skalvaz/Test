@@ -1,0 +1,21 @@
+{
+ "kind": "turbofan",
+ "quality": "high",
+ "w": 960,
+ "h": 540,
+ "cam": [
+  0.62,
+  0.5,
+  1.86
+ ],
+ "tgt": [
+  0,
+  0.46,
+  1.75
+ ],
+ "fov": 40,
+ "cut": 1,
+ "setup": "a.sim.reset(); a.beginAutoStart(); a.advance(20.5);",
+ "frames": 56,
+ "dt": 0.2
+}

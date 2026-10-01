@@ -11,6 +11,7 @@
 
 import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 
 const OUT = process.argv[2] || 'playtest';
 // ONLY=2,5,sandbox → yalnızca bu bölümleri oynat
@@ -20,7 +21,10 @@ const URL = process.env.PLAYTEST_URL || 'http://localhost:4173/';
 await mkdir(OUT, { recursive: true });
 
 const browser = await chromium.launch({
-  executablePath: process.env.PW_CHROMIUM || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  // Bulut ortamındaki hazır Chromium; yoksa Playwright'ın kendi indirdiği
+  executablePath:
+    process.env.PW_CHROMIUM ||
+    (existsSync('/opt/pw-browsers/chromium-1194/chrome-linux/chrome') ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' : undefined),
   args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-dev-shm-usage'],
 });
 const page = await browser.newPage({ viewport: { width: 1440, height: 810 } });

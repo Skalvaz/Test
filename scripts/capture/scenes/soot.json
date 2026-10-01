@@ -1,0 +1,53 @@
+{
+ "kind": "turbojet",
+ "env": "Havaalanı — öğle",
+ "quality": "high",
+ "w": 960,
+ "h": 540,
+ "cam": [
+  7,
+  3.5,
+  3
+ ],
+ "tgt": [
+  0,
+  -2.2,
+  16
+ ],
+ "fov": 50,
+ "setup": "sim.trim(1, 15); if (a.visual.effects) a.visual.effects.soot = 0;",
+ "frames": 30,
+ "dt": 0.0667,
+ "actions": {
+  "0": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.000;",
+  "1": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.034;",
+  "2": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.068;",
+  "3": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.102;",
+  "4": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.136;",
+  "5": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.170;",
+  "6": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.204;",
+  "7": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.238;",
+  "8": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.272;",
+  "9": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.306;",
+  "10": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.340;",
+  "11": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.374;",
+  "12": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.408;",
+  "13": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.442;",
+  "14": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.476;",
+  "15": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.510;",
+  "16": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.544;",
+  "17": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.578;",
+  "18": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.612;",
+  "19": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.646;",
+  "20": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.680;",
+  "21": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.714;",
+  "22": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.748;",
+  "23": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.782;",
+  "24": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.816;",
+  "25": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.850;",
+  "26": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.884;",
+  "27": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.918;",
+  "28": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.952;",
+  "29": "if ('soot' in a.visual.effects) a.visual.effects.soot = 0.986;"
+ }
+}

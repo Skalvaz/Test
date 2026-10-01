@@ -1,0 +1,21 @@
+{
+ "kind": "turboprop",
+ "env": "Havaalanı — yağmur",
+ "quality": "high",
+ "w": 960,
+ "h": 540,
+ "cam": [
+  5.5,
+  -1.2,
+  -6.5
+ ],
+ "tgt": [
+  0,
+  -0.6,
+  -1.5
+ ],
+ "fov": 50,
+ "setup": "sim.trim(1, 15);",
+ "frames": 24,
+ "dt": 0.0667
+}
