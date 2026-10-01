@@ -178,6 +178,17 @@ uçlarındaki yoğuşmayı ayarlar; soğuk havada egzozdan buhar çıkar. Yeni
 **yağmurlu havaalanı** ortamında yağmur yağar, zemin ıslanır, su birikintileri
 dalgalanır ve sıcak egzoz borusundan buhar yükselir.
 
+Önce/sonra (solda M2, sağda M3; aynı sahne, aynı kareler —
+`scripts/capture` ile kaydedildi):
+
+![Surge](renders/42-m3-surge.gif)
+![Soğuk ve nemli havada buhar](renders/43-m3-steam.gif)
+![Yağmur ve ıslak zemin](renders/44-m3-rain.gif)
+![Kapatma sonrası soğuma](renders/46-m3-shutdown.gif)
+![Zeminde is birikimi](renders/45-m3-soot.gif)
+![Art yakıcı zonları](renders/40-m3-ab.gif)
+![Çalıştırma, kesit](renders/41-m3-start.gif)
+
 
 **Serbest mod** — test hücresinde bütün anahtarlar, FADEC'i manuele alma, irtifa /
 Mach / sıcaklık, simülasyon hızı (¼×–4×), arıza enjeksiyonu (kuş çarpması,
@@ -254,6 +265,15 @@ Otomatik oynanış testi bütün dersleri gerçek arayüz etkileşimleriyle
 ```bash
 npm run build && npx vite preview --port 4173 &
 node scripts/playtest.mjs ekran-goruntuleri/
+```
+
+Efekt sahneleri kare kare, belirlenimli olarak kaydedilir; iki sürüm yan
+yana GIF'e dönüştürülür (ayrıntı: [scripts/capture/README.md](scripts/capture/README.md)):
+
+```bash
+npx playwright install chromium   # bir kez
+npm run capture -- http://localhost:5173/ capture-output/after surge rain
+npm run capture:compare -- capture-output/before/surge capture-output/after/surge cmp.gif "surge"
 ```
 
 ### Blender varlık hattı

@@ -539,10 +539,12 @@ export class EngineVisual {
     th.lpt = follow(th.lpt, snap.lit ? cyc.stations['5'].T : ambT);
     th.pipe = follow(th.pipe, snap.lit ? cyc.stations['7'].T : ambT);
     const glow = (T: number, c: THREE.Color) => {
-      // kara cisim: ~750 K donuk kızıl → ~1400 K sarı-turuncu
+      // kara cisim: ~750 K donuk kızıl → ~1400 K sarı-turuncu. Şiddet
+      // fiziksel eğriden biraz erken başlar: ~900 K'lik egzoz borusu
+      // aydınlık ortamda da seçilebilsin
       const t = THREE.MathUtils.clamp((T - 750) / 650, 0, 1);
-      c.setRGB(1, 0.1 + 0.55 * t * t, 0.02 + 0.3 * t * t * t);
-      return Math.pow(THREE.MathUtils.clamp((T - 720) / 520, 0, 1), 2.2);
+      c.setRGB(1, 0.08 + 0.57 * t * t, 0.02 + 0.3 * t * t * t);
+      return Math.pow(THREE.MathUtils.clamp((T - 680) / 520, 0, 1), 1.6);
     };
     const gc = new THREE.Color();
     const hot = glow(th.pipe, gc);

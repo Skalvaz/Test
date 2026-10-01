@@ -53,7 +53,7 @@ export async function toGif(dir, out, { width = 480, fps = 12 } = {}) {
 export async function writeGif(frames, out, fps) {
   if (!frames.length) throw new Error('Kare yok');
   await sharp(frames, { join: { animated: true } })
-    .gif({ loop: 0, delay: Math.round(1000 / fps), effort: 7, dither: 0.8 })
+    .gif({ loop: 0, delay: Math.round(1000 / fps), effort: 7, dither: 0.6, interFrameMaxError: 6, interPaletteMaxError: 4 })
     .toFile(out);
   return fs.statSync(out).size;
 }

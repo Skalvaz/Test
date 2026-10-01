@@ -1,7 +1,8 @@
 /**
  * İki derleme kipi:
  *   vite build              → klasik çok dosyalı çıktı (dist/), sunucu ister
- *   SINGLE=1 vite build     → tek dosyaya gömülecek IIFE paketi (dist-single/)
+ *   vite build --mode single → tek dosyaya gömülecek IIFE paketi (dist-single/)
+ *                              (SINGLE=1 ortam değişkeni de olur)
  *
  * Tek dosya kipinde modül biçimi yerine IIFE kullanılır: tarayıcılar
  * file:// üzerinden ES modülü yüklemeyi güvenlik nedeniyle engeller, klasik
@@ -11,11 +12,9 @@
 
 import { defineConfig } from 'vite';
 
-const single = process.env.SINGLE === '1';
-
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: './',
-  build: single
+  build: mode === 'single' || process.env.SINGLE === '1'
     ? {
         outDir: 'dist-single',
         emptyOutDir: true,
@@ -35,4 +34,4 @@ export default defineConfig({
     : {
         chunkSizeWarningLimit: 4096,
       },
-});
+}));

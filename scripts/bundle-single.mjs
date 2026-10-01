@@ -1,7 +1,7 @@
 /**
  * dist-single/ çıktısını tek bir bağımsız HTML dosyasına gömer.
  *
- *   SINGLE=1 vite build && node scripts/bundle-single.mjs
+ *   npm run build:single
  *
  * Sonuç: turbofan.html — kurulum, sunucu ve internet gerektirmeden
  * çift tıklamayla açılır.
@@ -14,7 +14,7 @@ const DIR = 'dist-single';
 const OUT = process.argv[2] || 'turbofan.html';
 
 if (!existsSync(join(DIR, 'index.html'))) {
-  console.error(`${DIR}/index.html yok. Önce: SINGLE=1 npx vite build`);
+  console.error(`${DIR}/index.html yok. Önce: npx vite build --mode single`);
   process.exit(1);
 }
 

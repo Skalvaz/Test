@@ -1,20 +1,23 @@
 /**
  * Önce/sonra karşılaştırma GIF'i: iki kare klasörünü yan yana koyar.
  *
- *   node scripts/capture/compare.mjs <önce-klasörü> <sonra-klasörü> <çıktı.gif> "<etiket>" [genişlik=400] [fps=10]
+ *   node scripts/capture/compare.mjs <önce-klasörü> <sonra-klasörü> <çıktı.gif> "<etiket>" [genişlik=400] [fps=10] [adım=1]
+ *
+ * adım > 1 her n'inci kareyi alır (dosya küçülür; fps'i buna göre düşürün).
  */
 
 import sharp from 'sharp';
 import { frameFiles, labelSvg, writeGif } from './common.mjs';
 
-const [beforeDir, afterDir, out, label = '', w = '400', fps = '10'] = process.argv.slice(2);
+const [beforeDir, afterDir, out, label = '', w = '400', fps = '10', step = '1'] = process.argv.slice(2);
 if (!beforeDir || !afterDir || !out) {
   console.error('Kullanım: node scripts/capture/compare.mjs <önce> <sonra> <çıktı.gif> "<etiket>" [genişlik] [fps]');
   process.exit(1);
 }
 const W = Number(w);
-const B = frameFiles(beforeDir);
-const A = frameFiles(afterDir);
+const every = (l) => l.filter((_, i) => i % Number(step) === 0);
+const B = every(frameFiles(beforeDir));
+const A = every(frameFiles(afterDir));
 const n = Math.min(B.length, A.length);
 if (B.length !== A.length) console.warn(`Kare sayıları farklı (${B.length} / ${A.length}); ilk ${n} kare kullanılıyor.`);
 
