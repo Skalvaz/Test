@@ -4,13 +4,15 @@
 
 import './styles.css';
 import { App } from './app/App';
+import { weather } from './core/weather';
 
 const container = document.getElementById('app')!;
 const loader = document.getElementById('loading')!;
 const loaderText = document.getElementById('loading-text')!;
 
 const app = new App(container);
-(window as unknown as { __app: App }).__app = app;
+// Test ve kayıt kancaları (derlenmiş sürümde de erişilebilir)
+Object.assign(window, { __app: app, __weather: weather });
 
 app
   .init((t) => {

@@ -9,17 +9,27 @@ import sharp from 'sharp';
  * Chromium'u ekran kartıyla açar. --swiftshader yazılımsal çizime zorlar
  * (GPU'suz sunucular için), --headed pencereli açar (bazı sürücülerde
  * görünmez kipte GPU kapalı kalırsa).
+ *
+ * Profil klasörü kalıcıdır (node_modules/.cache/capture-profile): Chrome'un GPU shader
+ * önbelleği kayıtlar arasında korunur. Havaalanı + motor malzemelerinin
+ * D3D11 derlemesi boş önbellekle sahne başına bir dakikayı bulur.
+ * --fresh-profile önbelleği silip baştan başlar.
  */
 export async function launchBrowser(flags) {
   const soft = flags.has('--swiftshader');
   const args = soft
     ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']
     : ['--enable-gpu', '--ignore-gpu-blocklist', ...(process.platform === 'win32' ? ['--use-angle=d3d11'] : [])];
-  const browser = await chromium.launch({
+  // node_modules altında: Vite izleyicisi Chrome'un kilitli dosyalarına takılıp çökmesin
+  const profile = path.resolve('node_modules', '.cache', soft ? 'capture-profile-swiftshader' : 'capture-profile');
+  if (flags.has('--fresh-profile')) fs.rmSync(profile, { recursive: true, force: true });
+  // Kalıcı bağlam: browser.newPage / close ile aynı biçimde kullanılır
+  const browser = await chromium.launchPersistentContext(profile, {
     headless: !flags.has('--headed'),
     // 'chromium' kanalı yeni görünmez kipi kullanır: GPU hızlandırması açık
     channel: soft || flags.has('--headed') ? undefined : 'chromium',
     executablePath: process.env.CAPTURE_CHROMIUM || undefined,
+    viewport: null,
     args,
   });
   const probe = await browser.newPage();

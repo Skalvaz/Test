@@ -669,6 +669,11 @@ export class App {
     const capture = () => env.captureEnvironment([this.visual.root]);
     if (outdoorAirfield && this.envName !== AIRFIELD_NIGHT) {
       this.scene.environmentIntensity = 1;
+      // Gökyüzü yüklenirken de ortam hazır değil (yarım ortam çizilmesin;
+      // kayıt araçları envPending'i bekler). Eski bir derlemenin bitişi
+      // bayrağı erken indirmesin diye sıra numarası da ilerler.
+      this.envSerial++;
+      this.envPending = true;
       env
         .setHdri(this.envName)
         .then((ok: boolean) => {

@@ -80,16 +80,26 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   karşılaştırmada M2 tarafı için `Havaalanı — kapalı` kullan.
 - Kayıt sırasında `src/` dosyalarını düzenleme: Vite sayfayı yeniler ve kayıt
   bozulur. Ayar denemelerini ayrı worktree + ayrı portta yap.
+- Kayıt süresi neredeyse tamamen shader derlemesi (ANGLE D3D11): bir ortam
+  sayfada ilk açılınca öğle ~40 s, gece ~20 s (ışık sayısı değişir → her
+  malzeme yeniden derlenir), hücre ~10 s; aynı sayfada tekrar ~0,1 s. Kare
+  çizimi 5–10 ms, ekran görüntüsü ~150 ms. 7 sahne tek sayfada ~230 s
+  (eskiden sahne başı sayfa ile ~11 dk). `vite preview` yalnız ~%10 hızlı.
+- Kayıt tarayıcı profili proje içinde olmamalı: Vite izleyicisi Chrome'un
+  kilitli dosyalarında `EBUSY` ile çöküp dev sunucusunu kapatır. Profil
+  `node_modules/.cache/capture-profile`'da.
+- `envPending` gökyüzü yüklenirken de true (önceden yalnız derleme sırasında);
+  eski commit'lerde kayıt `envSerial` artışını bekleyerek doğru çalışır.
+- Sahne `setup`'ında nem: `window.__weather.humidity` (derlenmiş sürümde de).
+- PowerShell'de `node … | Select-Object -First N` boruyu kapatınca node 255
+  ile çıkar; hata sanma.
 
 ## Sıradaki işler
 
-1. Kayıt hızlandırma: `scripts/capture/batch.mjs` her sahnede tarayıcıyı ve
-   sayfayı yeniden açıyor (sahne başı ~2–3 dk yükleme). Tek sayfada sırayla
-   kaydet; kaydı `vite preview` (derlenmiş) üzerinden almayı dene.
-2. Kapatma sonrası soğuma karşılaştırması: dış görünümde kızıllık seçilmiyor.
+1. Kapatma sonrası soğuma karşılaştırması: dış görünümde kızıllık seçilmiyor.
    Kesitte türbin + egzoz borusuna bakan yeni sahne (`scenes/shutdown.json`),
    M2 (`c7ac8e4` + kayıt kancası) ile karşılaştır, `renders/46-m3-shutdown.gif`.
-3. Kesit görünümünde iç disk yüzlerinde aşırı parlak yansıma lekeleri var
+2. Kesit görünümünde iç disk yüzlerinde aşırı parlak yansıma lekeleri var
    (M2'den beri; motor kapalıyken de görünüyor). Disk malzemesinin
    pürüzlülüğü / ortam yansıması incelenecek.
-4. Ardından ROADMAP Faz 3'ün sıradaki kilometre taşı.
+3. Ardından ROADMAP Faz 3'ün sıradaki kilometre taşı.
