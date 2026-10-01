@@ -8,6 +8,12 @@
       "port": 5173
     },
     {
+      "name": "once",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "../turbofan-once", "--port", "5174", "--strictPort"],
+      "port": 5174
+    },
+    {
       "name": "preview",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "preview", "--port", "4173", "--strictPort"],

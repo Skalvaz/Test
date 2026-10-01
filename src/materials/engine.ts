@@ -180,7 +180,8 @@ function cavityOcclusion<T extends THREE.Material>(mat: T): T {
         `#include <lights_fragment_maps>
         #if defined( USE_ENVMAP ) && defined( RE_IndirectSpecular )
         {
-          float cav = mix(0.1, 1.0, cavityOpen(reflect(-geometryViewDir, geometryNormal)));
+          // İç sekmeler: metal yüzeyler birbirini yansıtır, kasa içi kapkara değil
+          float cav = mix(0.3, 1.0, cavityOpen(reflect(-geometryViewDir, geometryNormal)));
           radiance *= cav;
           #ifdef USE_CLEARCOAT
           clearcoatRadiance *= cav;
@@ -316,8 +317,10 @@ export function createEngineMaterials(scans: Scans) {
   };
   const mats = {
     // Tornalanmış disk ve kollar: çevresel torna izi (anizotropi u = θ)
-    diskMetal: scan(phys({ color: 0x9ba1a7, roughness: 0.36, anisotropy: 0.45, envMapIntensity: 1.0 }), 'brushed', 0.35),
-    turbineDisk: scan(phys({ color: 0x8a847e, roughness: 0.48, anisotropy: 0.3, envMapIntensity: 0.85 }), 'brushed', 0.35),
+    // Tornalanmış ama cilalı değil: ayna gibi pürüzlülükte nokta ışıklar
+    // disk alnında doygun beyaz leke yapıyordu
+    diskMetal: scan(phys({ color: 0x9ba1a7, roughness: 0.46, anisotropy: 0.45, envMapIntensity: 1.0 }), 'brushed', 0.35),
+    turbineDisk: scan(phys({ color: 0x8a847e, roughness: 0.56, anisotropy: 0.3, envMapIntensity: 0.85 }), 'brushed', 0.35),
     // Gövde iç yüzü: dövme/işlenmiş çelik, yer yer koyu
     caseInner: scan(phys({ color: 0x7a7d80, roughness: 0.46, envMapIntensity: 0.8 }), 'case', 0.6),
     turbineCase: scan(phys({ color: 0x5d5752, roughness: 0.55, envMapIntensity: 0.7 }), 'hot', 0.6),

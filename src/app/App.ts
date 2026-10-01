@@ -92,8 +92,13 @@ export class App {
   private soundBtn!: HTMLButtonElement;
 
   private clipPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0);
-  /** Kesit görünümünde iç kısmı aydınlatan, kameraya bağlı dolgu ışığı */
+  /**
+   * Kesit görünümünde iç kısmı aydınlatan, kameraya bağlı dolgu ışığı.
+   * Şiddeti pozlamaya bölünür: görünen parlaklığı her ortamda aynıdır
+   * (sabit şiddette gece ~5 kat parlak, kapalı havada sönük kalıyordu).
+   */
   private cutFill = new THREE.PointLight(0xfff4e8, 0, 14, 1.6);
+  private static readonly CUT_FILL = 2;
   /** Test hücresi ışık seviyesi: 1 açık, 0.35 loş, 0 gece */
   lightLevel = 1;
   private cutaway = false;
@@ -384,7 +389,7 @@ export class App {
     nm.needsUpdate = true;
     this.picker.clipPlanes = planes;
     if (on) this.aimCutaway();
-    this.cutFill.intensity = on ? 5 : 0;
+    if (!on) this.cutFill.intensity = 0;
     this.cutBtn?.classList.toggle('active', on);
   }
 
@@ -393,6 +398,7 @@ export class App {
    * böylece motorun etrafında dönerken iç kısım her açıdan görünür.
    */
   private aimCutaway() {
+    this.cutFill.intensity = App.CUT_FILL / Math.max(this.renderer.toneMappingExposure, 0.05);
     const c = this.rig.camera.position;
     const len = Math.hypot(c.x, c.y);
     if (len < 0.3) return; // tam eksenden bakarken son yön korunur
@@ -406,9 +412,18 @@ export class App {
     const a = base + Math.sign(d) * Math.max(0, Math.abs(d) - dz) * (Math.PI / 2 / (Math.PI / 2 - dz));
     this.clipPlane.normal.set(-Math.cos(a), -Math.sin(a), 0);
     setCutPlane(this.clipPlane);
-    // Dolgu ışığı kameranın biraz önünde, kesit düzlemine yakın
-    this.cutFill.position.copy(c);
+    // Dolgu ışığı kameranın üstünde ve biraz yanında: kamerayla aynı yerde
+    // olsaydı kameraya dönük her düz metal yüz (disk alınları) tam ayna
+    // açısında kalır, flaş gibi beyaz leke yapardı
+    const cam = this.rig.camera;
+    const dist = c.distanceTo(this.rig.controls.target);
+    this.cutFill.position
+      .copy(c)
+      .addScaledVector(this.tmpUp.setFromMatrixColumn(cam.matrixWorld, 1), 0.55 * dist)
+      .addScaledVector(this.tmpRight.setFromMatrixColumn(cam.matrixWorld, 0), -0.3 * dist);
   }
+  private tmpUp = new THREE.Vector3();
+  private tmpRight = new THREE.Vector3();
 
   private setDiagram(on: boolean) {
     this.diagramVisible = on;

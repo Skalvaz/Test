@@ -188,6 +188,15 @@ dalgalanır ve sıcak egzoz borusundan buhar yükselir.
 ![Art yakıcı zonları](renders/40-m3-ab.gif)
 ![Çalıştırma, kesit](renders/41-m3-start.gif)
 
+**Kesitte iç parçaların ışığı** — gölge atmayan apron projektörleri ve ortam
+yansıması kesitte kalan kasanın içinden geçip disk alınlarında doygun beyaz
+lekeler yapıyordu. İç parçalar artık ışığı ve yansımayı yalnız kesit
+açıklığından alır (boşluk örtmesi), kameraya bağlı dolgu ışığı kameranın
+üstüne kaydırıldı ve pozlamaya göre ayarlanır (her ortamda aynı parlaklık),
+disk yüzleri cilalı değil tornalanmış pürüzlülükte:
+
+![Kesitte iç parçaların yansımaları, önce/sonra](renders/46-kesit-yansima.jpg)
+
 
 **Serbest mod** — test hücresinde bütün anahtarlar, FADEC'i manuele alma, irtifa /
 Mach / sıcaklık, simülasyon hızı (¼×–4×), arıza enjeksiyonu (kuş çarpması,
