@@ -84,6 +84,8 @@ export const HDRI_PRESETS = {
   'Havaalanı — öğle': { url: [noonRgb, noonL], rotation: 150, key: 0.2, sunScale: 1.25, fog: 0.00028 },
   'Havaalanı — kapalı': { url: [overcastRgb, overcastL], rotation: 0, key: 0.24, sunScale: 0.5, fog: 0.0009 },
   'Havaalanı — gün batımı': { url: [sunsetRgb, sunsetL], rotation: 200, key: 0.17, sunScale: 1.1, fog: 0.00036 },
+  // Kapalı gökyüzü + yağmur: yoğun sis, zayıf güneş, ıslak zemin
+  'Havaalanı — yağmur': { url: [overcastRgb, overcastL], rotation: 40, key: 0.2, sunScale: 0.28, fog: 0.0024, rain: 1 },
 };
 
 export const PRESETS = {

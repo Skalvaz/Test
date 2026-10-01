@@ -1,7 +1,8 @@
-/** İrtifa / Mach / ISA sapması kaydırıcıları (test hücresi ve irtifa dersi). */
+/** İrtifa / Mach / ISA sapması / bağıl nem kaydırıcıları (test hücresi ve irtifa dersi). */
 
 import type { EngineSim } from '../sim';
 import { h } from './dom';
+import { weather } from '../core/weather';
 
 export class FlightControls {
   readonly el: HTMLDivElement;
@@ -34,8 +35,26 @@ export class FlightControls {
       field('altitude', 'İrtifa', 0, 12500, 50),
       field('mach', 'Uçuş Mach sayısı', 0, 0.85, 0.01),
       field('isaDev', 'Sıcaklık (ISA sapması)', -30, 40, 1),
+      this.humidityField(),
     ]);
     this.refresh();
+  }
+
+  /** Bağıl nem: yalnız görsel (yoğuşma halkaları, girdap, soğuk havada buhar) */
+  private humidityField() {
+    const out = h('span', { class: 'mono' });
+    const input = h('input', {
+      attrs: { type: 'range', min: '0', max: '100', step: '1', 'aria-label': 'Bağıl nem' },
+      on: {
+        input: () => {
+          weather.humidity = Number(input.value) / 100;
+          this.refresh();
+        },
+      },
+    });
+    this.readouts.humidity = out;
+    this.inputs.humidity = input;
+    return h('div', { class: 'field' }, [h('div', { class: 'field-row' }, [h('span', { text: 'Bağıl nem' }), out]), input]);
   }
 
   refresh() {
@@ -48,6 +67,8 @@ export class FlightControls {
     const arrow = (a: number, b: number) => (Math.abs(a - b) > 1e-3 ? ' →' : '');
     this.readouts.altitude.textContent = `${Math.round(f.altitude).toLocaleString('tr-TR')} m (${Math.round(f.altitude * 3.2808).toLocaleString('tr-TR')} ft)${arrow(f.altitude, t.altitude)}`;
     this.readouts.mach.textContent = `M ${f.mach.toFixed(2)} · ${Math.round(amb.V0 * 1.944)} kt${arrow(f.mach, t.mach)}`;
+    this.inputs.humidity.value = String(Math.round(weather.humidity * 100));
+    this.readouts.humidity.textContent = `%${Math.round(weather.humidity * 100)}${weather.rain > 0 ? ' · yağmur' : ''}`;
     this.readouts.isaDev.textContent = `ISA${t.isaDev >= 0 ? '+' : ''}${t.isaDev} · ${(amb.T0 - 273.15).toFixed(0)} °C`;
   }
 }

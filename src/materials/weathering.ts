@@ -16,6 +16,7 @@
  */
 
 import * as THREE from 'three';
+import { wetUniforms } from '../core/weather';
 
 type Patch = { key: string; apply: (sh: THREE.WebGLProgramParametersWithUniforms) => void };
 
@@ -297,4 +298,47 @@ export function groundAO(mat: THREE.MeshStandardMaterial, tex: THREE.Texture, re
         }`,
       );
   });
+}
+
+/**
+ * Islak zemin: yağmurda albedo koyulaşır, pürüzlülük düşer; yukarı bakan
+ * yüzeylerde düşük noktalarda (gürültüyle) su birikintileri ayna gibi olur,
+ * yağmur damlaları birikintilerde halka dalgacıklar açar. Islaklık
+ * paylaşılan uWet ile (yağmur başlayınca artar, durunca kurur).
+ */
+export function wetSurface(mat: THREE.MeshStandardMaterial, noise: THREE.Texture, puddles = true) {
+  addPatch(mat, `wet-v1-${puddles ? 1 : 0}`, (sh) => {
+    worldVaryings(sh);
+    noiseUniform(sh, noise);
+    sh.uniforms.uWet = wetUniforms.uWet;
+    sh.uniforms.uRainTime = wetUniforms.uRainTime;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uWet;\nuniform float uRainTime;')
+      .replace(
+        '#include <lights_fragment_begin>',
+        `if (uWet > 0.002) {
+          vec2 wp = vWxPos.xz;
+          float up = smoothstep(0.6, 0.95, normalize(vWxNrm).y);
+          float pud = ${puddles ? 'smoothstep(0.5, 0.6, wxN3(wp * 0.045) * 0.75 + wxN(wp * 0.21) * 0.25) * up * smoothstep(0.3, 0.8, uWet)' : '0.0'};
+          float wet = uWet * mix(0.55, 1.0, up);
+          material.diffuseColor *= mix(1.0, mix(0.6, 0.45, pud), wet);
+          material.diffuseContribution *= mix(1.0, mix(0.6, 0.45, pud), wet);
+          material.roughness = mix(material.roughness, mix(0.34, 0.035, pud), wet);
+          // birikinti: yüzey kabartısı söner, damla halkaları
+          if (pud > 0.01) {
+            vec2 cell = floor(wp / 0.7);
+            vec2 lp = fract(wp / 0.7) - 0.5 - (vec2(wxHash(cell), wxHash(cell + 3.7)) - 0.5) * 0.5;
+            float t = fract(uRainTime * 1.7 + wxHash(cell + 9.1));
+            float rr = length(lp);
+            float ring = sin((rr - t * 0.45) * 70.0) * exp(-abs(rr - t * 0.45) * 25.0) * (1.0 - t);
+            vec3 upV = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+            normal = normalize(mix(normal, upV, pud * wet));
+            vec3 tx = normalize((viewMatrix * vec4(lp.x, 0.0, lp.y, 0.0)).xyz + 1e-5);
+            normal = normalize(normal + tx * ring * 0.25 * pud * wet);
+          }
+        }
+        #include <lights_fragment_begin>`,
+      );
+  });
+  return mat;
 }

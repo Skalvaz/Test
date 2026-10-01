@@ -212,6 +212,9 @@ export class EngineVisual {
   private hpAngle = 0;
   private propAngle = 0;
   private nozzleArea = 1.4;
+  private dryNozzleArea = 1;
+  /** Metal sıcaklıkları (K): türbin kademeleri ve jet borusu */
+  private thermal = { hpt: 288, lpt: 288, pipe: 288 };
   private plumeBaseRadius: number;
   private highlighted: PartId | null = null;
   private time = 0;
@@ -284,6 +287,18 @@ export class EngineVisual {
     for (const m of [this.plume.mesh, this.exhaustFlame.mesh, this.inletFlame.mesh]) m.userData.noClip = true;
     this.effects.group.traverse((o) => (o.userData.noClip = true));
     this.root.add(this.effects.group);
+    // Yanma odası içi efekt noktaları: model uzayından efekt grubu uzayına
+    const comb = this.model.group.getObjectByName('combustor');
+    if (comb?.userData.injectors) {
+      this.root.updateMatrixWorld(true);
+      const m = new THREE.Matrix4().copy(this.effects.group.matrixWorld).invert().multiply(comb.matrixWorld);
+      const tr = (pts: number[][]) => pts.map((p) => new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(m).toArray());
+      this.effects.setCombustor({
+        igniters: tr(comb.userData.igniters),
+        injectors: tr(comb.userData.injectors),
+        flameZone: comb.userData.flameZone,
+      });
+    }
   }
 
   private cradle: THREE.Object3D | null = null;
@@ -439,6 +454,11 @@ export class EngineVisual {
     }
   }
 
+  /** Art yakıcı zon tutuşma sayacı (ses tetikleyicisi) */
+  get abZoneEvents(): number {
+    return this.effects?.zoneEvents ?? 0;
+  }
+
   setWingVisible(v: boolean) {
     if (this.model.wing) this.model.wing.visible = v;
   }
@@ -497,20 +517,40 @@ export class EngineVisual {
 
     // Değişken lüle: hidrolik aktüatör hızıyla izler
     if (m.nozzle) {
-      this.nozzleArea += (snap.nozzleArea - this.nozzleArea) * Math.min(1, dt * 4);
+      // Art yakıcıda lüle zonların tutuşmasıyla birlikte açılır: kuru
+      // (MIL) alandan art yakıcı alanına, yanan zon oranında
+      if (!snap.abLit) this.dryNozzleArea = snap.nozzleArea;
+      const target = snap.abLit ? this.dryNozzleArea + (snap.nozzleArea - this.dryNozzleArea) * this.effects.abZoneFrac : snap.nozzleArea;
+      this.nozzleArea += (target - this.nozzleArea) * Math.min(1, dt * 4);
       m.nozzle.set(this.nozzleArea, snap.abLevel);
       this.plume.mesh.scale.setScalar(this.model.exhaust.radius / this.plumeBaseRadius);
       this.plume.mesh.position.z = this.model.exhaust.z - 0.05;
     }
 
-    // Jet borusu sıcaklığı: art yakıcı yanmasa da eski turbojetin kuyruk
-    // konisi ve lülesi yüksek güçte donuk kızıl kor gibi görünür
-    const hot = THREE.MathUtils.smoothstep(cyc.stations['7'].T, 820, 1250);
+    // Metal sıcaklıkları: parçalar gaz sıcaklığını ısınırken hızlı (≈5 s),
+    // soğurken yavaş izler (≈40 s; dönen motorda hava akışı hızlandırır).
+    // Kapatılan sıcak bir motorun türbini ve egzoz konisi bir süre donuk
+    // kızıl kalır, sonra söner.
+    const th = this.thermal;
+    const ambT = snap.amb.T0;
+    const coolTau = 40 / (1 + 4 * snap.airflow);
+    const follow = (cur: number, gas: number) => cur + (gas - cur) * (1 - Math.exp(-dt / (gas > cur ? 5 : coolTau)));
+    th.hpt = follow(th.hpt, snap.lit ? cyc.stations['45'].T : ambT);
+    th.lpt = follow(th.lpt, snap.lit ? cyc.stations['5'].T : ambT);
+    th.pipe = follow(th.pipe, snap.lit ? cyc.stations['7'].T : ambT);
+    const glow = (T: number, c: THREE.Color) => {
+      // kara cisim: ~750 K donuk kızıl → ~1400 K sarı-turuncu
+      const t = THREE.MathUtils.clamp((T - 750) / 650, 0, 1);
+      c.setRGB(1, 0.1 + 0.55 * t * t, 0.02 + 0.3 * t * t * t);
+      return Math.pow(THREE.MathUtils.clamp((T - 720) / 520, 0, 1), 2.2);
+    };
+    const gc = new THREE.Color();
+    const hot = glow(th.pipe, gc);
     if (this.highlighted !== 'exhaust') {
       for (const mat of this.parts.get('exhaust')?.materials ?? []) {
-        if (mat.name !== 'sooted') continue;
-        mat.emissive.setRGB(1, 0.22, 0.04);
-        mat.emissiveIntensity = hot * 1.4 + snap.abLevel * 0.6;
+        if (mat.name !== 'sooted' && mat.name !== 'inconel') continue;
+        mat.emissive.copy(gc);
+        mat.emissiveIntensity = hot * (mat.name === 'sooted' ? 1.6 : 0.9) + snap.abLevel * 0.6;
       }
     }
 
@@ -519,26 +559,31 @@ export class EngineVisual {
     for (const part of ['afterburner', 'nozzle'] as PartId[]) {
       if (part === this.highlighted) continue;
       for (const mat of this.parts.get(part)?.materials ?? []) {
-        if (mat.name === 'abLiner') mat.emissiveIntensity = ab * 0.9 + hot * 0.15;
-        else if (mat.name === 'flameHolder') mat.emissiveIntensity = ab * 2.2 + hot * 0.4;
-        else if (mat.name === 'nozzleCeramic') mat.emissiveIntensity = ab * 0.55 + hot * 0.35;
+        if (mat.name === 'abLiner') mat.emissiveIntensity = ab * 0.9 + hot * 0.25;
+        else if (mat.name === 'flameHolder') mat.emissiveIntensity = ab * 2.2 + hot * 0.5;
+        else if (mat.name === 'nozzleCeramic') mat.emissiveIntensity = ab * 0.55 + hot * 0.45;
       }
     }
 
-    // Yanma odası parlaması (T4) ve aşırı ısınan türbin kanatları
+    // Yanma odası parlaması (T4)
     const t4 = cyc.stations['4'].T;
-    const glow = snap.lit ? THREE.MathUtils.clamp((t4 - 650) / (1750 - 650), 0, 1) : 0;
+    const cglow = snap.lit ? THREE.MathUtils.clamp((t4 - 650) / (1750 - 650), 0, 1) : 0;
     for (const m of this.parts.get('combustor')?.materials ?? []) {
       if (m.name !== 'combustorGlow') continue;
-      m.emissiveIntensity = snap.lit ? 0.4 + glow * 4.2 : 0.02;
-      m.emissive.setHSL(THREE.MathUtils.lerp(0.02, 0.11, glow), 1, THREE.MathUtils.lerp(0.3, 0.62, glow));
+      m.emissiveIntensity = snap.lit ? 0.4 + cglow * 4.2 : 0.02 + 0.6 * glow(th.hpt, gc);
+      if (snap.lit) m.emissive.setHSL(THREE.MathUtils.lerp(0.02, 0.11, cglow), 1, THREE.MathUtils.lerp(0.3, 0.62, cglow));
+      else m.emissive.copy(gc);
     }
+    // Türbin kanatları: metal sıcaklığıyla kızıllık (+ aşırı ısınmada parlak)
     const overheat = THREE.MathUtils.clamp((snap.egtTrue - 1000) / 700, 0, 1);
     for (const part of ['hpt', 'lpt'] as PartId[]) {
+      if (part === this.highlighted) continue;
+      const T = part === 'hpt' ? th.hpt : th.lpt;
+      const k = glow(T, gc);
       for (const m of this.parts.get(part)?.materials ?? []) {
         if (!['superalloy', 'hptBlade', 'hptVane', 'lptBlade', 'lptVane'].includes(m.name)) continue;
-        m.emissive.setRGB(1, 0.22, 0.04);
-        m.emissiveIntensity = overheat * (part === 'hpt' ? 3 : 2);
+        m.emissive.copy(gc).lerp(new THREE.Color(1, 0.22, 0.04), overheat);
+        m.emissiveIntensity = k * (part === 'hpt' ? 0.9 : 1.2) + overheat * (part === 'hpt' ? 3 : 2);
       }
     }
 
@@ -552,9 +597,9 @@ export class EngineVisual {
 
     // Surge: giriş ve egzozdan alev patlaması
     if (snap.surgeCount > this.lastSurgeCount) {
-      this.inletFlame.trigger(1.0, 3.2);
+      this.inletFlame.trigger(1.4, 3.0);
       this.exhaustFlame.trigger(1.1, 2.6);
-      this.shake = Math.max(this.shake, 1);
+      this.shake = Math.max(this.shake, 1.6);
     }
     this.lastSurgeCount = snap.surgeCount;
 

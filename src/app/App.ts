@@ -21,6 +21,8 @@ import { createMaterials } from '../materials/library.js';
 import { loadKit, setKitQuality } from '../engine/kit.js';
 import { setBladeQuality } from '../engine/blades.js';
 import { setCutPlane } from '../materials/engine';
+import { Rain } from '../core/rain';
+import { updateWeather, weather, wetUniforms } from '../core/weather';
 import { loadScans } from '../materials/scans.js';
 import { loadPanelDetails } from '../materials/textures.js';
 import { ENGINE_CATALOG, EngineSim, type EngineKind, type SimEvent } from '../sim';
@@ -95,6 +97,8 @@ export class App {
   /** Test hücresi ışık seviyesi: 1 açık, 0.35 loş, 0 gece */
   lightLevel = 1;
   private cutaway = false;
+  private lastZoneEvents = 0;
+  private rain = new Rain();
   private diagramVisible = false;
   private consoleVisible = false;
   private pickMode = false;
@@ -115,8 +119,6 @@ export class App {
   private floorY = -3.35;
   private last = performance.now();
   private sandboxAcc = 0;
-  private hazeA = new THREE.Vector3();
-  private hazeB = new THREE.Vector3();
 
   constructor(private container: HTMLElement) {
     const s = loadSettings();
@@ -204,6 +206,7 @@ export class App {
     this.visual = new EngineVisual(materials, this.sim.kind);
     this.scene.add(this.visual.root);
     this.scene.add(this.cutFill);
+    this.scene.add(this.rain.mesh);
 
     await step(onProgress, 'Termodinamik model dengeleniyor…');
     this.sim.trim(0);
@@ -645,6 +648,10 @@ export class App {
     const night = !inCell && hasAirfield && name === AIRFIELD_NIGHT;
     const legacy = !inCell && !hasAirfield && name in PRESETS;
     this.envName = inCell || sky || night || legacy ? name : hasAirfield ? AIRFIELD_DEFAULT : 'Altın saat';
+    // Yağmur yalnız açık havada ve yağmurlu ortamda
+    weather.rain = sky ? ((HDRI_PRESETS as Record<string, { rain?: number }>)[this.envName]?.rain ?? 0) : 0;
+    // Ortam seçilince zemin hemen o havaya uygun (ıslak/kuru) başlar
+    wetUniforms.uWet.value = weather.rain;
     const outdoorAirfield = !inCell && hasAirfield;
     if (this.cell) this.cell.root.visible = inCell;
     if (this.airfield) {
@@ -877,6 +884,7 @@ export class App {
       (sun.shadow as unknown as { map: THREE.WebGLRenderTarget | null }).map = null;
     }
     this.fx.gtao.enabled = p.gtao;
+    this.rain.setDensity(q === 'low' ? 0.35 : q === 'medium' ? 0.65 : 1);
     this.fx.bloom.enabled = p.bloom;
     this.resize();
   }
@@ -916,10 +924,24 @@ export class App {
     if (this.diagramVisible) this.diagram.update(snap, 0, true);
   }
 
+  /**
+   * Test kancası: sabit adımlı kare yakalama (GIF/video). fixedDt ayarlıyken
+   * her kare simülasyonu tam fixedDt ilerletir ve yalnız pendingSteps > 0
+   * iken çizilir; yazılım rasterleştiricide bile belirlenimli kayıt verir.
+   */
+  fixedDt: number | null = null;
+  pendingSteps = 0;
+  framesRendered = 0;
+
   private frame(now: number) {
     requestAnimationFrame(this.frame);
-    const dt = Math.min((now - this.last) / 1000, 0.1);
+    let dt = Math.min((now - this.last) / 1000, 0.1);
     this.last = now;
+    if (this.fixedDt !== null) {
+      if (this.pendingSteps <= 0) return;
+      this.pendingSteps--;
+      dt = this.fixedDt;
+    }
     const simDt = dt * (this.mode === 'sandbox' ? this.timeScale : 1);
 
     this.sim.step(simDt);
@@ -965,12 +987,20 @@ export class App {
       this.sim.eng.point.thrust,
     );
 
+    // Art yakıcı zonlarının tutuşma darbeleri
+    const ze = this.visual.abZoneEvents;
+    if (ze > this.lastZoneEvents) this.audio.whoomp(0.28);
+    this.lastZoneEvents = ze;
+
     this.picker.update();
     if (this.airfield?.root.visible) this.airfield.update(dt);
     this.rig.update(dt, this.visual.shake);
+    updateWeather(simDt);
+    this.rain.update(simDt, this.rig.camera, this.floorY);
     if (this.cutaway) this.aimCutaway();
     this.updateHaze(snap, dt);
     if (!this.envPending) this.fx.composer.render(dt);
+    this.framesRendered++;
   }
 
   /** Sahnedeki tüm görünür malzemeleri derler; bitene kadar çizim bekler */
@@ -986,17 +1016,36 @@ export class App {
   private updateHaze(snap: ReturnType<EngineSim['snapshot']>, dt: number) {
     const cam = this.rig.camera;
     const ex = this.visual.exhaustExit;
-    this.hazeA.set(0, 0, ex.z).project(cam);
-    this.hazeB.set(0, 0, ex.z + ex.radius * (12 + 14 * snap.abLevel)).project(cam);
     const u = this.fx.grade.uniforms;
-    u.uHazeA.value.set(this.hazeA.x * 0.5 + 0.5, this.hazeA.y * 0.5 + 0.5);
-    u.uHazeB.value.set(this.hazeB.x * 0.5 + 0.5, this.hazeB.y * 0.5 + 0.5);
-    const dist = cam.position.distanceTo(new THREE.Vector3(0, 0, ex.z + 1.2));
-    u.uHazeWidth.value = THREE.MathUtils.clamp((2.6 * ex.radius) / dist, 0.04, 0.3);
+    // Sıcak jet boyu ve genişlemesi: kuru jet ~12 lüle yarıçapı, art
+    // yakıcıda çok daha uzun; karışma katmanı ~0,1 eğimle genişler
+    const len = ex.radius * (12 + 16 * snap.abLevel);
+    const a = new THREE.Vector3(0, 0, ex.z);
+    const b = new THREE.Vector3(0, 0, ex.z + len);
+    // Kameranın arkasına düşen uç, izdüşüm ters dönmesin diye kırpılır
+    const toCam = (v: THREE.Vector3) => v.clone().applyMatrix4(cam.matrixWorldInverse).z;
+    const near = -cam.near * 4;
+    if (toCam(a) > near) {
+      u.uHaze.value = 0;
+      u.uTime.value += dt;
+      return;
+    }
+    const zb = toCam(b);
+    if (zb > near) {
+      const za = toCam(a);
+      b.lerpVectors(a, b, (za - near) / (za - zb));
+    }
+    const rB = ex.radius * (1.15 + (0.1 * a.distanceTo(b)) / ex.radius / 1.2);
+    const pxR = (r: number, v: THREE.Vector3) => r / (2 * Math.max(0.05, -toCam(v)) * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2));
+    u.uHazeWA.value = pxR(ex.radius * 1.15, a);
+    u.uHazeWB.value = pxR(rB * (1 + 0.5 * snap.abLevel), b);
+    const pa = a.clone().project(cam);
+    const pb = b.clone().project(cam);
+    u.uHazeA.value.set(pa.x * 0.5 + 0.5, pa.y * 0.5 + 0.5);
+    u.uHazeB.value.set(pb.x * 0.5 + 0.5, pb.y * 0.5 + 0.5);
     const hot = snap.cycle.stations['7'].T - snap.amb.T0;
-    // Art yakıcıda kırılma daha güçlü ve daha geniş bir bölgeye yayılır
-    u.uHaze.value = snap.lit ? THREE.MathUtils.smoothstep(hot, 80, 480) + 0.8 * snap.abLevel : 0;
-    u.uHazeWidth.value *= 1 + 0.8 * snap.abLevel;
+    // Art yakıcıda kırılma alevin çevresinde çok daha güçlü
+    u.uHaze.value = snap.lit ? THREE.MathUtils.smoothstep(hot, 80, 480) + 1.1 * snap.abLevel : 0;
     u.uTime.value += dt;
   }
 }

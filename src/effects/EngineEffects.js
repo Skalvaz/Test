@@ -17,6 +17,8 @@
 import * as THREE from 'three';
 import { ParticleSystem } from './Particles.js';
 import { AfterburnerFlame } from './AfterburnerFlame.js';
+import { cutUniforms } from '../materials/engine';
+import { effectiveHumidity, weather } from '../core/weather';
 
 const FLOOR_Y = -3.35;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -52,6 +54,93 @@ function floorGlow() {
   return { mesh, mat };
 }
 
+/**
+ * Egzoz arkasında zeminde biriken kurum: jetin genişleyip zemine değdiği
+ * yerden başlayan, akış yönünde uzayan koyu iz. Yoğunluğu çalışma boyunca
+ * birikir (eski turbojet ve art yakıcı hızlı karartır, modern turbofan
+ * rölantide neredeyse hiç).
+ */
+function sootDecal(noise) {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uAmount: { value: 0 }, uNoise: { value: noise } },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uAmount;
+      uniform sampler2D uNoise;
+      varying vec2 vUv;
+      void main() {
+        float x = (vUv.x - 0.5) * 2.0;
+        float along = vUv.y;
+        // iz genişler: jet zemine yayılır
+        float width = mix(0.3, 1.0, smoothstep(0.0, 0.6, along));
+        float lateral = 1.0 - smoothstep(width * 0.35, width, abs(x));
+        float lengthwise = smoothstep(0.0, 0.18, along) * (1.0 - smoothstep(0.55, 1.0, along));
+        float n = texture2D(uNoise, vec2(vUv.x * 1.5, vUv.y * 0.6)).r * 0.6 + texture2D(uNoise, vUv * vec2(4.0, 1.2)).g * 0.4;
+        float streak = texture2D(uNoise, vec2(vUv.x * 7.0, vUv.y * 0.22)).b;
+        float a = uAmount * 1.5 * lateral * lengthwise * (0.5 + 0.7 * n) * (0.75 + 0.5 * streak);
+        gl_FragColor = vec4(vec3(0.035, 0.03, 0.027), clamp(a, 0.0, 0.82));
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
+  const geo = new THREE.PlaneGeometry(1, 1);
+  geo.rotateX(Math.PI / 2); // v akış yönünde (+z)
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.renderOrder = 2;
+  mesh.name = 'exhaust-soot';
+  mesh.visible = false;
+  return { mesh, mat };
+}
+
+/**
+ * Surge basınç dalgası: girişten öne doğru genişleyen yoğuşma halkası
+ * (geri tepen akışın önündeki basınç cephesi nemli havayı bir anlığına
+ * yoğuşturur). Halka düzlemi motor eksenine dik.
+ */
+function shockRing() {
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uAlpha: { value: 0 }, uTime: { value: 0 } },
+    vertexShader: /* glsl */ `
+      varying vec2 vP;
+      void main() {
+        vP = position.xy;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uAlpha;
+      uniform float uTime;
+      varying vec2 vP;
+      void main() {
+        float r = length(vP);
+        float ring = smoothstep(0.55, 0.85, r) * (1.0 - smoothstep(0.88, 1.0, r));
+        float a = atan(vP.y, vP.x);
+        float ragged = 0.65 + 0.35 * sin(a * 23.0 + uTime * 40.0) * sin(a * 7.0 - uTime * 15.0);
+        gl_FragColor = vec4(vec3(0.95, 0.96, 0.98), ring * ragged * uAlpha);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(new THREE.CircleGeometry(1, 64), mat);
+  mesh.visible = false;
+  mesh.renderOrder = 5;
+  mesh.name = 'surge-shock-ring';
+  return { mesh, mat, t: 1 };
+}
+
 export class EngineEffects {
   /**
    * @param {object} geo { kind, intake:{z,radius,y}, exhaust:{z,radius} (canlı), prop?:{z,radius,blades} }
@@ -67,9 +156,13 @@ export class EngineEffects {
     this.smoke.floorY = this.glow.floorY = FLOOR_Y + 0.03;
     this.flame = new AfterburnerFlame(geo.kind === 'turbojet' ? 'sooty' : 'clean');
     this.floor = floorGlow();
+    this.sootDecal = sootDecal(noise);
+    this.shock = shockRing();
+    /** Zeminde birikmiş kurum 0..1 */
+    this.soot = 0;
     // Art yakıcı alevinin motoru aydınlatan ışığı
     this.abLight = new THREE.PointLight(0xff8a3a, 0, 12, 2);
-    this.group.add(this.smoke.mesh, this.glow.mesh, this.flame.mesh, this.floor.mesh, this.abLight);
+    this.group.add(this.smoke.mesh, this.glow.mesh, this.flame.mesh, this.floor.mesh, this.sootDecal.mesh, this.shock.mesh, this.abLight);
 
     // Girdap ekseni: girişin önünde, zeminden girişe
     const inl = geo.intake;
@@ -79,9 +172,25 @@ export class EngineEffects {
     this.acc = {};
     this.prev = { lit: false, surge: 0, ab: false, fuelRun: false, phase: 'off' };
     this.shutdownTimer = 0;
+    /** Art yakıcı: tutuşmuş zon sayısı (0..5, sürekli) ve hedef */
+    this.abZones = 0;
+    this.abZoneTarget = 0;
+    /** Her yeni zon tutuşmasında artar (ses için) */
+    this.zoneEvents = 0;
     this.vortexStrength = 0;
     /** Kaldırılabilir: kullanıcı ayarı */
     this.enabled = true;
+    /** Yanma odası iç noktaları (setCombustor) ve buji tıkırtı zamanlayıcısı */
+    this.comb = null;
+    this.ignT = 0;
+  }
+
+  /**
+   * Yanma odası içindeki efekt noktaları (efekt grubunun yerel uzayında):
+   * buji uçları, enjektör/swirler çıkışları, alev bölgesi
+   */
+  setCombustor(c) {
+    this.comb = c;
   }
 
   /** dt içinde ortalama `rate` adet/s olayı için tetikleme sayısı */
@@ -127,6 +236,10 @@ export class EngineEffects {
     }
     const g = this.geo;
     const ex = g.exhaust;
+    // Bağıl nem: yoğuşma efektleri (giriş girdabı, dudak, pervane ucu,
+    // surge halkası, soğuk havada buhar) buna bağlı
+    this.humidity = effectiveHumidity();
+    const hum = this.humidity;
     const R = ex.radius;
     const kind = g.kind;
     const c = snap.controls;
@@ -157,19 +270,38 @@ export class EngineEffects {
       this.sparks(28, 1);
     }
     if (snap.surgeCount > prev.surge) {
-      // Surge: girişten geri tepen ateş + egzozdan patlama
+      // Surge: kompresörde akış tersine döner; yanma odasındaki alev
+      // girişten öne doğru tükürülür, önünde bir basınç dalgası gider
       const inl = g.intake;
-      this.puff(this.glow, 36, () => {
+      this.shock.t = 0;
+      this.puff(this.glow, 70, () => {
         const a = Math.random() * Math.PI * 2;
-        const r = inl.radius * Math.sqrt(Math.random()) * 0.8;
+        const r = inl.radius * Math.sqrt(Math.random()) * 0.75;
+        const core = Math.random() < 0.3;
         return {
-          pos: [Math.cos(a) * r, (inl.y ?? 0) + Math.sin(a) * r, inl.z + 0.3],
-          vel: [rand(-1.5, 1.5), rand(-1, 1.5), -rand(5, 14)],
-          life: rand(0.25, 0.55),
-          size: [inl.radius * 0.3, inl.radius * rand(0.9, 1.6)],
-          color: [1.0, 0.42, 0.1, 1.6],
-          drag: 2.2,
+          pos: [Math.cos(a) * r, (inl.y ?? 0) + Math.sin(a) * r, inl.z + 0.4],
+          vel: [Math.cos(a) * rand(0, 3), Math.sin(a) * rand(0, 3) + rand(0, 1.5), -rand(8, 22)],
+          life: rand(0.3, 0.7),
+          size: [inl.radius * 0.3, inl.radius * rand(1.0, 2.0)],
+          color: core ? [1.0, 0.8, 0.5, 2.0] : [1.0, 0.4, 0.09, 1.6],
+          drag: 2.6,
+          lift: 1.5,
           fadeIn: 0.02,
+        };
+      });
+      // ardından girişten çıkan kirli duman
+      this.puff(this.smoke, 30, () => {
+        const a = Math.random() * Math.PI * 2;
+        const r = inl.radius * Math.sqrt(Math.random()) * 0.7;
+        return {
+          pos: [Math.cos(a) * r, (inl.y ?? 0) + Math.sin(a) * r, inl.z + 0.2],
+          vel: [rand(-1, 1), rand(0, 1.2), -rand(3, 8)],
+          life: rand(1.5, 3),
+          size: [inl.radius * 0.5, inl.radius * rand(2, 3.5)],
+          color: [0.22, 0.2, 0.19, 0.4],
+          drag: 1.5,
+          lift: 0.4,
+          fadeIn: 0.1,
         };
       });
       this.puff(this.glow, 30, () => ({
@@ -193,13 +325,13 @@ export class EngineEffects {
       this.sparks(40, 1.4);
     }
     if (snap.abLit && !prev.ab) {
-      this.flame.trigger();
-      this.puff(this.glow, 14, () => ({
+      this.flame.trigger(0.8);
+      this.puff(this.glow, 10, () => ({
         pos: this.exitPoint(0.6),
         vel: [rand(-0.8, 0.8), rand(-0.8, 0.8), rand(10, 20)],
-        life: rand(0.2, 0.4),
-        size: [R * 0.8, R * 2.6],
-        color: [1.0, 0.6, 0.3, 1.8],
+        life: rand(0.15, 0.3),
+        size: [R * 0.5, R * 1.6],
+        color: [1.0, 0.6, 0.3, 0.9],
         drag: 1.5,
         fadeIn: 0.02,
       }));
@@ -286,9 +418,79 @@ export class EngineEffects {
       }));
     }
 
+    /* ---------------- yanma odası içi (yalnız kesitte görünür) ---------------- */
+    if (this.comb && cutUniforms.uCutOn.value > 0.5) this.combustorFx(snap, dt);
+
+    /* ---------------- soğuk havada egzoz buharı ---------------- */
+    // Yanma ürünlerindeki su buharı soğuk ve nemli havada yoğuşur: beyaz,
+    // lülenin biraz gerisinde başlayan bulut (düşük güçte daha yoğun)
+    const steam = snap.lit ? clamp((281 - snap.amb.T0) / 18, 0, 1) * (0.35 + 0.65 * this.humidity) : 0;
+    if (steam > 0.02) {
+      const n = this.count('steam', 45 * steam, dt);
+      this.puff(this.smoke, n, () => {
+        const p = this.exitPoint(0.8);
+        p[2] += R * (2 + 4 * snap.thrustFrac) * rand(0.6, 1.2);
+        return {
+          pos: p,
+          vel: [rand(-0.4, 0.4), rand(0, 0.5), jetSpeed * rand(0.35, 0.6)],
+          life: rand(1.8, 3.2),
+          size: [R * 0.9, R * rand(4, 7)],
+          color: [0.93, 0.95, 0.97, 0.3 * steam],
+          drag: 1.2,
+          lift: 0.4,
+          fadeIn: 0.25,
+        };
+      });
+    }
+
+    // Yağmurda sıcak lüle ve egzoz konisi üzerine düşen damlalar buharlaşır
+    const hotPipe = smooth(snap.cycle.stations['7'].T, 600, 950);
+    if (weather.rain > 0.05 && hotPipe > 0.02) {
+      const n = this.count('rainSteam', 30 * weather.rain * hotPipe, dt);
+      this.puff(this.smoke, n, () => {
+        const a = rand(0.3, Math.PI - 0.3);
+        const r = R * rand(1.0, 1.15);
+        return {
+          pos: [Math.cos(a) * r, Math.sin(a) * r, ex.z - rand(0, R * 1.5)],
+          vel: [rand(-0.2, 0.2), rand(0.4, 0.9), rand(0.5, 2)],
+          life: rand(0.8, 1.6),
+          size: [R * 0.2, R * rand(0.8, 1.4)],
+          color: [0.92, 0.93, 0.95, 0.18 * weather.rain],
+          drag: 1,
+          lift: 0.6,
+          fadeIn: 0.2,
+        };
+      });
+    }
+
     /* ---------------- art yakıcı ---------------- */
-    const ab = snap.abLevel;
-    this.flame.update(dt, camera, ab, ex.z, R, Math.max(1.05, snap.cycle.jetMach));
+    // Kademeli yanma: zonlar sırayla (≈0,4 s arayla) tutuşur; gaz kolunun
+    // art yakıcı bölümü kaç zonun yanacağını belirler. Kapanırken hızla söner.
+    this.abZoneTarget = snap.abLit ? 1 + 4 * clamp(c.reheat ?? 1, 0, 1) : 0;
+    const prevZones = this.abZones;
+    if (this.abZones < this.abZoneTarget) this.abZones = Math.min(this.abZoneTarget, this.abZones + dt * 2.6);
+    else this.abZones = Math.max(this.abZoneTarget, this.abZones - dt * 6);
+    if (Math.floor(this.abZones) > Math.floor(prevZones) && this.abZones >= 1) {
+      const k = Math.floor(this.abZones);
+      this.zoneEvents++;
+      this.flame.trigger(0.35 + 0.06 * k);
+      // Tutuşan zonun halkasında kısa parlama
+      this.puff(this.glow, 10 + 3 * k, () => {
+        const a = Math.random() * Math.PI * 2;
+        const rr = R * ((k - 0.5) / 5) * rand(0.85, 1.15);
+        return {
+          pos: [Math.cos(a) * rr, Math.sin(a) * rr, ex.z + 0.05],
+          vel: [Math.cos(a) * rand(0, 1), Math.sin(a) * rand(0, 1), rand(8, 16)],
+          life: rand(0.12, 0.3),
+          size: [R * 0.25, R * 1.1],
+          color: [1.0, 0.62, 0.32, 1.4],
+          drag: 1.6,
+          fadeIn: 0.02,
+        };
+      });
+    }
+    const ab = snap.abLevel * clamp(this.abZones / 5 + 0.2, 0, 1);
+    this.flame.update(dt, camera, ab, ex.z, R, Math.max(1.05, snap.cycle.jetMach), this.abZones);
     const flicker = 0.85 + 0.3 * Math.random();
     const flameLen = R * (6 + 11 * Math.pow(ab, 0.8));
     this.floor.mesh.position.z = ex.z + flameLen * 0.45;
@@ -303,11 +505,44 @@ export class EngineEffects {
     su.uGlowColor.value.setRGB(1.0, 0.45, 0.15).multiplyScalar(glowAmt * flicker);
     su.uGlowRadius.value = 1.5 + flameLen * 0.35;
 
+    /* ---------------- surge basınç dalgası ---------------- */
+    {
+      const sh = this.shock;
+      sh.t += dt;
+      const life = 0.38;
+      sh.mesh.visible = sh.t < life;
+      if (sh.mesh.visible) {
+        const inl = g.intake;
+        const k = sh.t / life;
+        sh.mesh.position.set(0, inl.y ?? 0, inl.z - 0.3 - k * 1.2);
+        sh.mesh.scale.setScalar(inl.radius * (1.05 + 3.2 * Math.sqrt(k)));
+        sh.mat.uniforms.uAlpha.value = Math.pow(1 - k, 2) * (0.25 + 0.6 * this.humidity);
+        sh.mat.uniforms.uTime.value += dt;
+      }
+    }
+
+    /* ---------------- zeminde kurum ---------------- */
+    {
+      const sootRate = !snap.lit
+        ? 0
+        : (kind === 'turbojet' ? 0.6 + 0.8 * snap.N1 : kind === 'turboprop' ? 0.2 * snap.thrustFrac : 0.1 + 0.3 * snap.thrustFrac) + 1.6 * ab;
+      this.soot += (sootRate * dt * (1 - this.soot)) / 300;
+      // Jet (karışma katmanı ≈11° yarı açıyla genişler) zemine lüle yüksekliğine göre değer
+      const h = Math.max(0.2, -this.floorY - R);
+      const z0 = ex.z + h / 0.2;
+      const len = 10 + 8 * ab;
+      const d = this.sootDecal;
+      d.mesh.visible = this.soot > 0.005 && h < 3;
+      d.mesh.position.set(0, this.floorY + 0.03, z0 + len / 2 - 1.5);
+      d.mesh.scale.set(R * 7 + 1.2, 1, len);
+      d.mat.uniforms.uAmount.value = this.soot * THREE.MathUtils.clamp(1.6 - h / 2.5, 0.3, 1.2);
+    }
+
     /* ---------------- hava efektleri ---------------- */
     // Yerden girişe yoğuşma girdabı: giriş yüksekliği/çap < ~1.6 ve yüksek akışta
     const inl = g.intake;
     const hOverD = ((inl.y ?? 0) - this.floorY) / (2 * inl.radius);
-    const vortexTarget = kind === 'turboprop' ? 0 : smooth(snap.airflow, 0.55, 0.92) * smooth(2.0 - hOverD, 0, 0.6);
+    const vortexTarget = kind === 'turboprop' ? 0 : smooth(snap.airflow, 0.55, 0.92) * smooth(2.0 - hOverD, 0, 0.6) * smooth(hum, 0.25, 0.75);
     this.vortexStrength += (vortexTarget - this.vortexStrength) * Math.min(1, dt * 1.5);
     if (this.vortexStrength > 0.02) {
       // Girdap yerde gezinir: gerçek zemin girdabı sabit durmaz
@@ -325,7 +560,8 @@ export class EngineEffects {
       }));
     }
     // Giriş dudağında yoğuşma: yüksek akışta statik basınç/sıcaklık düşer
-    const lip = smooth(snap.airflow, 0.75, 1.0) * (kind === 'turboprop' ? 0 : 1);
+    // Dudakta statik sıcaklık düşer; ancak nemli havada çiy noktasının altına iner
+    const lip = smooth(snap.airflow, 0.75, 1.0) * (kind === 'turboprop' ? 0 : 1) * smooth(hum, 0.45, 0.9) * 1.4;
     if (lip > 0.02) {
       const n = this.count('lip', 220 * lip, dt);
       this.puff(this.smoke, n, () => {
@@ -360,7 +596,7 @@ export class EngineEffects {
     // Pervane: uç girdabı yoğuşması (sarmal iz) ve pervane rüzgârının tozu
     if (g.prop) {
       const p = g.prop;
-      const load = clamp(snap.torque, 0, 1.1) * smooth(snap.propRpm / 1200, 0.6, 0.95);
+      const load = clamp(snap.torque, 0, 1.1) * smooth(snap.propRpm / 1200, 0.6, 0.95) * (0.4 + 0.75 * smooth(hum, 0.4, 0.9));
       if (load > 0.35) {
         // Kare başına pervane büyük bir açı döner; iz sürekli bir sarmal
         // olsun diye önceki ve şimdiki pal açısı arası ara noktalarla doldurulur
@@ -406,6 +642,91 @@ export class EngineEffects {
     this.glow.update(dt);
   }
 
+  /**
+   * Yanma odası içi: bujilerin tıkırtılı kıvılcımı (ateşleme açıkken ~2 Hz),
+   * tutuşmadan önce enjektörlerden yakıt sisi, yanarken swirler çıkışlarında
+   * mavi çekirdekli turuncu alev dilleri. Kesit düzleminin kaldırılan
+   * tarafındaki noktalar atlanır (efektler kırpılmaz).
+   */
+  combustorFx(snap, dt) {
+    const c = this.comb;
+    const P = cutUniforms.uCutPlane.value;
+    const w = new THREE.Vector3();
+    const M = this.group.matrixWorld;
+    const kept = (p) => {
+      w.set(p[0], p[1], p[2]).applyMatrix4(M);
+      return P.x * w.x + P.y * w.y + P.z * w.z + P.w > 0.02;
+    };
+    const h = c.flameZone.h;
+    if (snap.igniting) {
+      this.ignT += dt;
+      while (this.ignT > 0.45) {
+        this.ignT -= 0.45;
+        for (const p of c.igniters) {
+          if (!kept(p)) continue;
+          this.glow.emit({ pos: p, life: 0.07, size: [h * 0.06, h * 0.2], color: [0.7, 0.8, 1.0, 2.5], fadeIn: 0.01 });
+          for (let k = 0; k < 7; k++) {
+            this.glow.emit({
+              pos: p,
+              vel: [rand(-1.5, 1.5), -rand(0.5, 2.5) * Math.sign(p[1] || 1), rand(-1, 2)],
+              life: rand(0.06, 0.16),
+              size: [h * 0.012, h * 0.006],
+              color: [1.0, 0.9, 0.7, 2.2],
+              drag: 3,
+              fadeIn: 0.01,
+            });
+          }
+        }
+      }
+    } else this.ignT = 0.44;
+    const mist = !snap.lit && snap.controls.fuelRun && snap.wf > 1e-5;
+    if (mist) {
+      for (const [i, p] of c.injectors.entries()) {
+        if (!kept(p)) continue;
+        const n = this.count(`mist${i}`, 14, dt);
+        for (let k = 0; k < n; k++) {
+          this.smoke.emit({
+            pos: [p[0], p[1], p[2]],
+            vel: [rand(-0.35, 0.35), rand(-0.35, 0.35), rand(0.6, 1.4)],
+            life: rand(0.4, 0.8),
+            size: [h * 0.03, h * 0.22],
+            color: [0.88, 0.9, 0.93, 0.22],
+            drag: 2.2,
+            fadeIn: 0.05,
+          });
+        }
+      }
+    }
+    if (snap.lit) {
+      // Alev dilleri gömleğin birincil bölgesinde kalır (≈ ilk %40):
+      // seyreltme havası alevi orada keser
+      const f = clamp(0.35 + snap.thrustFrac, 0.35, 1.3);
+      const reach = (c.flameZone.z1 - c.flameZone.zDome) * 0.4;
+      for (const [i, p] of c.injectors.entries()) {
+        if (!kept(p)) continue;
+        const n = this.count(`fl${i}`, 22 * f, dt);
+        for (let k = 0; k < n; k++) {
+          const blue = Math.random() < 0.35;
+          const life = rand(0.08, 0.16);
+          this.glow.emit({
+            pos: [p[0] + rand(-0.15, 0.15) * h * 0.2, p[1] + rand(-0.15, 0.15) * h * 0.2, p[2] + (blue ? 0 : h * 0.08)],
+            vel: [rand(-0.25, 0.25) * h, rand(-0.25, 0.25) * h, (reach / life) * rand(0.5, 1) * (blue ? 0.4 : 1)],
+            life,
+            size: blue ? [h * 0.04, h * 0.09] : [h * 0.06, h * 0.22],
+            color: blue ? [0.35, 0.45, 1.0, 0.5] : [1.0, 0.48, 0.14, 0.42 * f],
+            drag: 1.2,
+            fadeIn: 0.03,
+          });
+        }
+      }
+    }
+  }
+
+  /** Tutuşmuş zonların hedefe oranı (lüle açılması bununla senkron) */
+  get abZoneFrac() {
+    return this.abZoneTarget > 0 ? clamp(this.abZones / this.abZoneTarget, 0, 1) : 0;
+  }
+
   /** Egzozdan savrulan parlak kıvılcımlar (yerçekimiyle düşer, zeminde seker) */
   sparks(n, speed) {
     this.puff(this.glow, n, () => ({
@@ -428,5 +749,9 @@ export class EngineEffects {
     this.floor.mat.map.dispose();
     this.floor.mat.dispose();
     this.floor.mesh.geometry.dispose();
+    this.sootDecal.mat.dispose();
+    this.shock.mat.dispose();
+    this.shock.mesh.geometry.dispose();
+    this.sootDecal.mesh.geometry.dispose();
   }
 }

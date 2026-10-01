@@ -28,7 +28,9 @@ const GradeShader = {
     uHaze: { value: 0.0 },
     uHazeA: { value: new THREE.Vector2(0.5, 0.5) },
     uHazeB: { value: new THREE.Vector2(0.8, 0.5) },
-    uHazeWidth: { value: 0.12 },
+    /** Konik ısı pusu: uçlardaki ekran yarıçapları (yükseklik birimi) */
+    uHazeWA: { value: 0.05 },
+    uHazeWB: { value: 0.12 },
     uAspect: { value: 1.0 },
     uVignette: { value: 0.26 },
     uGrain: { value: 0.012 },
@@ -48,7 +50,8 @@ const GradeShader = {
     uniform float uHaze;
     uniform vec2 uHazeA;
     uniform vec2 uHazeB;
-    uniform float uHazeWidth;
+    uniform float uHazeWA;
+    uniform float uHazeWB;
     uniform float uAspect;
     uniform float uVignette;
     uniform float uGrain;
@@ -69,21 +72,32 @@ const GradeShader = {
     void main() {
       vec2 uv = vUv;
 
-      /* --- sıcak egzoz kırılması --- */
+      /* --- sıcak egzoz kırılması ---
+       * Maske jetin ekrana izdüşen hacmidir: lüle ağzında lüle yarıçapı,
+       * akış aşağısında jet genişledikçe büyür (kesik koni). Sapma lüle
+       * yakınında en güçlü, sıcak gaz çevreyle karıştıkça zayıflar; kenarda
+       * türbülanslı karışma katmanı daha dalgalı. */
       if (uHaze > 0.001) {
         vec2 p = vec2(uv.x * uAspect, uv.y);
         vec2 a = vec2(uHazeA.x * uAspect, uHazeA.y);
         vec2 b = vec2(uHazeB.x * uAspect, uHazeB.y);
-        float d = segmentDist(p, a, b);
-        float mask = 1.0 - smoothstep(0.0, uHazeWidth, d);
-        mask = pow(mask, 2.0);
+        vec2 pa = p - a;
+        vec2 ba = b - a;
+        float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
+        float d = length(pa - ba * h);
+        float w = mix(uHazeWA, uHazeWB, h);
+        float mask = 1.0 - smoothstep(w * 0.35, w, d);
+        // lüle ağzının gerisinde (h = 0 ucunda) yuvarlak kapanış yok
+        mask *= smoothstep(0.0, 0.04, dot(pa, ba) / max(length(ba), 1e-6) + w * 0.2);
+        mask *= mix(1.0, 0.3, h);
+        float shear = smoothstep(w * 0.3, w * 0.9, d);
 
         // İki farklı hızda kayan gürültü: yükselen sıcak hava
         vec2 n1 = texture2D(tNoise, uv * 2.6 + vec2(uTime * 0.05, -uTime * 0.28)).rg;
-        vec2 n2 = texture2D(tNoise, uv * 5.3 - vec2(uTime * 0.09, uTime * 0.42)).gb;
+        vec2 n2 = texture2D(tNoise, uv * (5.3 + 4.0 * shear) - vec2(uTime * 0.09, uTime * 0.42)).gb;
         // Sapma miktarı ekran genişliğinin yüzde birinin altındadır. Daha
         // büyük değerler görüntüyü eritip geometri bozukmuş gibi gösterir.
-        vec2 offset = ((n1 - 0.5) * 0.7 + (n2 - 0.5) * 0.3) * mask * uHaze * 0.0075;
+        vec2 offset = ((n1 - 0.5) * 0.7 + (n2 - 0.5) * (0.3 + 0.4 * shear)) * mask * uHaze * 0.0075;
         uv += offset;
       }
 

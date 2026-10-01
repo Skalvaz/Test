@@ -14,7 +14,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import airfieldUrl from '../assets/airfield.glb?url';
 import { scanParams } from '../materials/scans.js';
 import { buildTerrain, buildVillages } from './terrain';
-import { apronDetail, groundAO, weather, wornPaint } from '../materials/weathering';
+import { apronDetail, groundAO, weather, wetSurface, wornPaint } from '../materials/weathering';
 import { interiorUniforms, interiorWindows } from '../materials/interior';
 
 /** Pişirilmiş cephe/kapı/sac/levha dokuları (blender/facade_textures.py) */
@@ -324,6 +324,11 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
       aoTex.set(path.split('/').pop()!.replace('.webp', ''), t);
     }),
   );
+  // Yağmurda ıslanan zemin: koyulaşma, su birikintileri, damla halkaları
+  for (const k of ['apron', 'concrete', 'asphalt', 'road', 'taxiway', 'paint_yellow', 'paint_white', 'paint_red', 'paint_black', 'joint', 'hangar_floor']) {
+    if (mats[k]) wetSurface(mats[k] as THREE.MeshStandardMaterial, noise, k !== 'hangar_floor');
+  }
+  for (const k of ['gravel', 'grate', 'steel']) if (mats[k]) wetSurface(mats[k] as THREE.MeshStandardMaterial, noise, false);
   const gao = aoTex.get('ground');
   if (gao) {
     for (const k of ['apron', 'concrete', 'asphalt', 'road', 'taxiway', 'gravel', 'hangar_floor', 'paint_yellow', 'paint_white', 'paint_red', 'paint_black', 'joint', 'grate', 'steel']) {
@@ -389,6 +394,7 @@ export async function loadAirfield(scans: Scans | null, noise: THREE.Texture, re
   // Arazi, bitki örtüsü, donanım
   const terrain = buildTerrain(scans, noise);
   if (gao) groundAO(terrain.material as THREE.MeshStandardMaterial, gao, GROUND_AO);
+  wetSurface(terrain.material as THREE.MeshStandardMaterial, noise, false);
   root.add(terrain, buildVillages());
   const [veg, props] = await Promise.all([
     loadVegetation(renderer).catch((e) => {

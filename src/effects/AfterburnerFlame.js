@@ -64,6 +64,7 @@ const fragmentShader = /* glsl */ `
   uniform float uSpacing;
   uniform float uDiamonds;
   uniform float uPop;
+  uniform float uZones;
   uniform vec3 uHotA;
   uniform vec3 uHotB;
   uniform vec3 uTail;
@@ -128,12 +129,21 @@ const fragmentShader = /* glsl */ `
       // Türbülanslı yapı: alev homojen bir sis değil, akış yönünde uzayan dilimler
       float streak = fbm(vec3(atan(p.y, p.x) * 2.0, r * 6.0 / uR0, z * 0.9 - uTime * 10.0));
       float body = edge * tail * mix(0.25, 1.5, turb) * mix(0.5, 1.3, streak);
+      // Kademeli yanma: zon 1 çekirdekte, sonraki zonlar dışa doğru halkalar.
+      // Tutuşmuş zonların yarıçapına kadar alev; akış aşağısında karışır
+      float zi = clamp(r / max(R, 1e-3), 0.0, 1.2) * 5.0;
+      float zoneMask = clamp(uZones - zi + 0.6, 0.0, 1.0);
+      zoneMask = mix(zoneMask, clamp(uZones / 5.0, 0.0, 1.0), smoothstep(0.08, 0.6, s));
+      body *= zoneMask;
 
       // Mavi-mor öz (lüle ağzı yakını, ince)
-      float core = (1.0 - smoothstep(0.0, uR0 * 0.75, r)) * (1.0 - smoothstep(0.0, 0.22, s));
+      float core = (1.0 - smoothstep(0.0, uR0 * 0.75, r)) * (1.0 - smoothstep(0.0, 0.22, s)) * clamp(uZones, 0.0, 1.0);
 
       // Şok elmasları: Mach disklerinde parlak, konik uzantılı hücreler
-      float zd = z / uSpacing - 0.55;
+      // Mach diskleri hafifçe titrer: jet basınç dalgalanması hücre
+      // aralığını ve parlaklığını oynatır
+      float jit = 1.0 + 0.025 * sin(uTime * 23.0) + 0.02 * (vnoise(vec3(uTime * 11.0, 1.7, 0.0)) - 0.5);
+      float zd = z / (uSpacing * jit) - 0.55;
       float k = floor(zd + 0.5);
       float f = zd - k;
       // Elmas: eksen boyunca sivri uçlu, ortası (Mach diski) en geniş hücre
@@ -143,18 +153,22 @@ const fragmentShader = /* glsl */ `
         ? (1.0 - smoothstep(cellR * 0.78, cellR, r)) * mix(0.35, 1.0, smoothstep(0.42, 0.0, abs(f)))
         : 0.0;
       diamond *= step(0.0, k) * exp(-k * 0.42) * uDiamonds;
+      diamond *= 0.8 + 0.4 * vnoise(vec3(k * 3.1, uTime * 17.0, 2.3));
 
       vec3 hot = mix(uHotA, uHotB, edge);
       vec3 bodyCol = mix(hot, uTail, smoothstep(0.3, 0.9, s));
       vec3 coreCol = uCore;
       vec3 diaCol = mix(uDiaA, uDiaB, lvl);
 
-      acc += (bodyCol * body * (1.0 + 2.4 * lvl) + coreCol * core * uCoreGain + diaCol * diamond * 4.0) * dt;
+      // Lüle çıkışındaki sıcak çekirdek: ilk ~1 çapta sarı-beyaz, hızla
+      // pembe-turuncu gövdeye döner (tutuşmuş zonların içinde)
+      float hotCore = (1.0 - smoothstep(0.0, R * 0.85, r)) * exp(-s * 7.0) * zoneMask * (0.6 + 0.6 * turb);
+      acc += (bodyCol * body * (1.0 + 2.4 * lvl) + coreCol * core * uCoreGain + diaCol * diamond * 4.0 + vec3(1.0, 0.82, 0.55) * hotCore * 2.2) * dt;
       t += dt;
     }
     // Titreşim: yanma kararsızlığı
     float flick = 0.85 + 0.3 * vnoise(vec3(uTime * 9.0, 0.0, 0.0));
-    vec3 col = acc * (flick * (0.1 + 0.3 * pow(lvl, 0.7)) + uPop * 1.2) / uR0;
+    vec3 col = acc * (flick * (0.2 + 0.5 * pow(lvl, 0.7)) + uPop * 0.5) / uR0;
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -177,6 +191,7 @@ export class AfterburnerFlame {
         uSpacing: { value: 0.8 },
         uDiamonds: { value: 1 },
         uPop: { value: 0 },
+        uZones: { value: 5 },
         uHotA: v3(pal.hotA),
         uHotB: v3(pal.hotB),
         uTail: v3(pal.tail),
@@ -212,7 +227,7 @@ export class AfterburnerFlame {
    * @param {number} r0 lüle çıkış yarıçapı
    * @param {number} mach jet çıkış Mach sayısı
    */
-  update(dt, camera, level, exitZ, r0, mach) {
+  update(dt, camera, level, exitZ, r0, mach, zones = 5) {
     const u = this.material.uniforms;
     this.pop = Math.max(0, this.pop - dt * 3);
     const on = level > 0.01 || this.pop > 0.01;
@@ -226,8 +241,9 @@ export class AfterburnerFlame {
     u.uLen.value = len;
     u.uRmax.value = rMax;
     u.uPop.value = this.pop;
+    u.uZones.value = zones;
     u.uSpacing.value = Math.max(0.55 * 2 * r0, 1.22 * 2 * r0 * Math.sqrt(Math.max(mach * mach - 1, 0.25)));
-    u.uDiamonds.value = THREE.MathUtils.smoothstep(level, 0.15, 0.6);
+    u.uDiamonds.value = THREE.MathUtils.smoothstep(level, 0.15, 0.6) * THREE.MathUtils.smoothstep(zones, 1.5, 4.5);
     // Vekil silindir: yerel uzayda birim ölçek, shader ölçeksiz koordinat ister
     this.mesh.position.set(0, 0, exitZ);
     this.mesh.scale.set(rMax, rMax, len);
@@ -239,8 +255,8 @@ export class AfterburnerFlame {
     u.uCam.value.z -= exitZ;
   }
 
-  /** Art yakıcı tutuşması: kısa bir parlama */
-  trigger() {
-    this.pop = 1;
+  /** Art yakıcı tutuşması (ya da bir zonun tutuşması): kısa bir parlama */
+  trigger(strength = 1) {
+    this.pop = Math.max(this.pop, strength);
   }
 }

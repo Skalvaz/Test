@@ -232,7 +232,16 @@ export function buildCombustor(materials, c) {
       m.rotation.z = a;
       group.add(tagPart(m, part));
     }
+    // Efektler için: buji uçlarının gömlek içindeki konumu
+    const rt = outerR(zi) - 0.012;
+    group.userData.igniters = [0.55, -0.55].map((a) => [-Math.sin(a) * rt, Math.cos(a) * rt, zi]);
   }
+  // Enjektör/swirler çıkışları ve alev bölgesi (kesitte yakıt sisi ve alev)
+  group.userData.injectors = Array.from({ length: N }, (_, i) => {
+    const a = (i / N) * Math.PI * 2;
+    return [Math.sin(a) * mid, Math.cos(a) * mid, c.zDome + 0.004];
+  });
+  group.userData.flameZone = { zDome: c.zDome, z1: c.z1, mid, h };
 
   /* ---------------- difüzör ve iç kasa ---------------- */
   {
