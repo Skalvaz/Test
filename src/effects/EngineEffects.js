@@ -664,13 +664,13 @@ export class EngineEffects {
         this.ignT -= 0.45;
         for (const p of c.igniters) {
           if (!kept(p)) continue;
-          this.glow.emit({ pos: p, life: 0.07, size: [h * 0.06, h * 0.2], color: [0.7, 0.8, 1.0, 2.5], fadeIn: 0.01 });
-          for (let k = 0; k < 7; k++) {
+          this.glow.emit({ pos: p, life: 0.12, size: [h * 0.1, h * 0.3], color: [0.7, 0.8, 1.0, 2.5], fadeIn: 0.01 });
+          for (let k = 0; k < 14; k++) {
             this.glow.emit({
               pos: p,
               vel: [rand(-1.5, 1.5), -rand(0.5, 2.5) * Math.sign(p[1] || 1), rand(-1, 2)],
-              life: rand(0.06, 0.16),
-              size: [h * 0.012, h * 0.006],
+              life: rand(0.1, 0.28),
+              size: [h * 0.02, h * 0.008],
               color: [1.0, 0.9, 0.7, 2.2],
               drag: 3,
               fadeIn: 0.01,
@@ -683,14 +683,14 @@ export class EngineEffects {
     if (mist) {
       for (const [i, p] of c.injectors.entries()) {
         if (!kept(p)) continue;
-        const n = this.count(`mist${i}`, 14, dt);
+        const n = this.count(`mist${i}`, 40, dt);
         for (let k = 0; k < n; k++) {
           this.smoke.emit({
             pos: [p[0], p[1], p[2]],
             vel: [rand(-0.35, 0.35), rand(-0.35, 0.35), rand(0.6, 1.4)],
             life: rand(0.4, 0.8),
-            size: [h * 0.03, h * 0.22],
-            color: [0.88, 0.9, 0.93, 0.22],
+            size: [h * 0.04, h * 0.3],
+            color: [0.88, 0.9, 0.93, 0.55],
             drag: 2.2,
             fadeIn: 0.05,
           });
@@ -701,19 +701,19 @@ export class EngineEffects {
       // Alev dilleri gömleğin birincil bölgesinde kalır (≈ ilk %40):
       // seyreltme havası alevi orada keser
       const f = clamp(0.35 + snap.thrustFrac, 0.35, 1.3);
-      const reach = (c.flameZone.z1 - c.flameZone.zDome) * 0.4;
+      const reach = (c.flameZone.z1 - c.flameZone.zDome) * 0.55;
       for (const [i, p] of c.injectors.entries()) {
         if (!kept(p)) continue;
-        const n = this.count(`fl${i}`, 22 * f, dt);
+        const n = this.count(`fl${i}`, 90 * f, dt);
         for (let k = 0; k < n; k++) {
           const blue = Math.random() < 0.35;
-          const life = rand(0.08, 0.16);
+          const life = rand(0.1, 0.2);
           this.glow.emit({
             pos: [p[0] + rand(-0.15, 0.15) * h * 0.2, p[1] + rand(-0.15, 0.15) * h * 0.2, p[2] + (blue ? 0 : h * 0.08)],
             vel: [rand(-0.25, 0.25) * h, rand(-0.25, 0.25) * h, (reach / life) * rand(0.5, 1) * (blue ? 0.4 : 1)],
             life,
-            size: blue ? [h * 0.04, h * 0.09] : [h * 0.06, h * 0.22],
-            color: blue ? [0.35, 0.45, 1.0, 0.5] : [1.0, 0.48, 0.14, 0.42 * f],
+            size: blue ? [h * 0.06, h * 0.14] : [h * 0.1, h * 0.38],
+            color: blue ? [0.35, 0.45, 1.0, 1.4] : [1.0, 0.48, 0.14, 1.5 * (0.6 + 0.4 * f)],
             drag: 1.2,
             fadeIn: 0.03,
           });
