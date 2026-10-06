@@ -18,15 +18,17 @@ import type {
   CompressorModule,
   EngineGraph,
   EngineModule,
+  InletModule,
   MixerModule,
   NozzleModule,
+  PropellerModule,
   TurbineModule,
 } from './types';
 
 export class GraphError extends Error {}
 
 /** Akış yönünde modül sırası (aynı sırada birden çok modül olamaz) */
-const ORDER: EngineModule['type'][] = ['inlet', 'fan', 'lpc', 'hpc', 'combustor', 'hpt', 'lpt', 'mixer', 'afterburner', 'nozzle'];
+const ORDER: EngineModule['type'][] = ['propeller', 'inlet', 'fan', 'lpc', 'hpc', 'combustor', 'hpt', 'lpt', 'mixer', 'afterburner', 'nozzle'];
 
 /** Kuralları denetler; ilk ihlalde öğretici bir mesajla GraphError atar. */
 export function validateGraph(g: EngineGraph): void {
@@ -44,18 +46,32 @@ export function validateGraph(g: EngineGraph): void {
   for (const t of ['inlet', 'hpc', 'combustor', 'hpt', 'lpt', 'nozzle'] as const) {
     if (!has(t)) throw new GraphError(`Zorunlu modül eksik: "${t}".`);
   }
-  if (!has('fan') && !has('lpc')) throw new GraphError('LP milini çevirecek bir fan ya da alçak basınç kompresörü gerekli.');
+  const prop = has('propeller');
+  if (prop && has('fan')) throw new GraphError('Pervane ile fan aynı motorda olamaz: ikisi de LP milinin işini alır.');
+  if (!prop && !has('fan') && !has('lpc')) throw new GraphError('LP milini yükleyecek bir fan, alçak basınç kompresörü ya da pervane gerekli.');
   const fan = g.modules.find((m) => m.type === 'fan') as CompressorModule | undefined;
   const bpr = fan?.bypassRatio ?? 0;
+  const ab = has('afterburner');
+  const noz = g.modules.find((m) => m.type === 'nozzle') as NozzleModule;
+  const inlet = g.modules.find((m) => m.type === 'inlet') as InletModule;
   if (has('mixer') && bpr <= 0) throw new GraphError('Karıştırıcı baypas akışı ister: fanın baypas oranı sıfır.');
-  if (bpr > 0 && !has('mixer')) throw new GraphError('Ayrık akışlı (karıştırıcısız) baypas lülesi M4b ile gelecek.');
-  if (has('afterburner') && bpr > 0 && !has('mixer')) {
+  if (ab && bpr > 0 && !has('mixer')) {
     throw new GraphError('Art yakıcı tek bir jet borusu ister: baypas akışı önce karıştırılmalı.');
   }
-  const ab = g.modules.find((m) => m.type === 'afterburner');
-  const noz = g.modules.find((m) => m.type === 'nozzle') as NozzleModule | undefined;
-  if (!ab && noz?.style === 'cd') throw new GraphError('Yakınsak-ıraksak lüle M4a\'da yalnız art yakıcıyla (değişken kesit) birlikte.');
-  if (!ab) throw new GraphError('Art yakıcısız çıplak motor M4b ile gelecek.');
+  if (bpr > 0 && !has('mixer') && noz.style !== 'separate') throw new GraphError('Karıştırılmayan baypas akışı ayrı bir baypas lülesi ister (ayrık akışlı lüle).');
+  if (noz.style === 'separate' && (bpr <= 0 || has('mixer'))) throw new GraphError('Ayrık akışlı lüle, karıştırılmayan bir baypas akışı ister.');
+  if (prop && noz.style !== 'stub') throw new GraphError('Turboprop egzozu kısa bir borudur: itkinin çoğu pervaneden gelir.');
+  if (noz.style === 'stub' && !prop) throw new GraphError('Kısa egzoz borusu yalnız pervaneli motorda: jet motoru itkisini lüleden alır.');
+  if ((noz.style === 'cd' || noz.style === 'convergent') && !ab) {
+    throw new GraphError('Değişken kesitli lüle şimdilik yalnız art yakıcıyla birlikte.');
+  }
+  if (inlet.style === 'chin' && !prop) throw new GraphError('Çene girişi pervaneli motorun dişli kutusunun altındadır.');
+  if (inlet.style === 'nacelle' && noz.style !== 'separate') throw new GraphError('Kaportalı giriş şimdilik ayrık akışlı turbofanda.');
+  if (inlet.style === 'bellmouth' && !ab) throw new GraphError('Art yakıcısız çıplak motor henüz yok.');
+  const hpc = g.modules.find((m) => m.type === 'hpc') as CompressorModule;
+  if (hpc.centrifugal && (hpc.centrifugal.workFraction <= 0 || hpc.centrifugal.workFraction >= 1)) {
+    throw new GraphError('Santrifüj kademenin iş payı 0 ile 1 arasında olmalı.');
+  }
 }
 
 function mod<T extends EngineModule>(g: EngineGraph, type: T['type']): T | undefined {
@@ -77,7 +93,9 @@ export function toEngineDesign(g: EngineGraph): EngineDesign {
   const mixer = mod<MixerModule>(g, 'mixer');
   const ab = mod<AfterburnerModule>(g, 'afterburner');
   const noz = mod<NozzleModule>(g, 'nozzle')!;
-  const front = (fan ?? lpc)!;
+  const prop = mod<PropellerModule>(g, 'propeller');
+  // Simülasyonda LP milinin ilk kompresörü "fan"dır; pervaneli motorda yoktur
+  const front = fan ?? lpc;
   const booster = fan ? lpc : undefined;
   return {
     kind: g.kind,
@@ -85,13 +103,13 @@ export function toEngineDesign(g: EngineGraph): EngineDesign {
     summary: g.summary,
     massFlow: g.massFlow,
     bypassRatio: fan?.bypassRatio ?? 0,
-    fanPR: front.pr,
+    fanPR: front?.pr ?? 1,
     fanHubPRFraction: fan?.hubPRFraction ?? 1,
     boosterPR: booster?.pr ?? 1,
     hpcPR: hpc.pr,
     tit: comb.tit,
     eff: {
-      fan: front.eff,
+      fan: front?.eff ?? 0.9,
       booster: booster?.eff ?? 0.9,
       hpc: hpc.eff,
       hpt: hpt.eff,
@@ -115,6 +133,16 @@ export function toEngineDesign(g: EngineGraph): EngineDesign {
     afterburner: ab
       ? { t7Max: ab.t7Max, eta: ab.eta, dpDry: ab.dpDry, dpLit: ab.dpLit, mixerLoss: mixer?.loss ?? 0 }
       : undefined,
+    prop: prop
+      ? {
+          diameter: prop.diameter,
+          blades: prop.blades,
+          rpm: prop.rpm,
+          figureOfMerit: prop.figureOfMerit,
+          efficiency: prop.efficiency,
+          nozzlePR: noz.pressureRatio ?? 1.1,
+        }
+      : undefined,
   };
 }
 
@@ -128,13 +156,14 @@ export interface BuiltEngine {
 export function buildEngine(g: EngineGraph): BuiltEngine {
   const cycle = toEngineDesign(g);
   const flowpath = computeFlowpath(g, sizeEngine(cycle));
-  const lpc = flowpath.layout.gas.lpc;
+  // Pervaneli motorda "fan" pervanedir (ses ve EICAS bunu kullanır)
+  const prop = mod<PropellerModule>(g, 'propeller');
   const design: EngineDesign = {
     ...cycle,
     n1Rpm: flowpath.rpm.lp,
     n2Rpm: flowpath.rpm.hp,
-    fanDiameter: 2 * lpc.tip[0],
-    fanBlades: lpc.blades[0],
+    fanDiameter: flowpath.metrics.diameter,
+    fanBlades: prop ? prop.blades : flowpath.gas.front!.blades[0],
   };
   return { design, sized: sizeEngine(design), flowpath };
 }

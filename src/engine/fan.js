@@ -9,9 +9,11 @@ import { createBlade } from './blades.js';
 import { revolve, roundPoly } from './revolve.js';
 import { createBlurDiscTexture } from '../materials/textures.js';
 
-export const FAN_BLADE_COUNT = 22;
-
-export function buildFan(materials) {
+/**
+ * Fan M4 öncesi modelin ölçülerinde (uç 1,386 m, rotor z −0,28) kurulur;
+ * görsel model grubu fan ucu oranında ölçekler (visual.ts).
+ */
+export function buildFan(materials, FAN_BLADE_COUNT = 22) {
   const group = new THREE.Group();
   group.name = 'fan-rotor';
 

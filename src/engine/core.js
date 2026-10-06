@@ -5,24 +5,44 @@
  * çıkış yönlendirici kanatları (OGV) ve egzoz lülesi görünür. Kesit modunda
  * ise tam gaz yolu açığa çıkar:
  *   booster (LP kompresör) → HP kompresör → halka yanma odası →
- *   HP türbin → LP türbin → egzoz konisi
+ *   HP türbin → türbin geçiş kanalı → LP türbin → egzoz konisi
  *
  * İki ayrı mil grubu döndürülür: LP (fan + booster + LP türbin) ve
  * HP (HP kompresör + HP türbin), gerçekteki gibi farklı devirlerde.
+ *
+ * Bütün ölçüler gaz yolu yerleşiminden gelir (design/flowpath.ts
+ * `TurbofanLayout`): kademeler fizikten, çekirdek kaportası iç parçaların
+ * zarfından, lüle ağızları termodinamik alanlardan.
  */
 
 import * as THREE from 'three';
-import { smoothProfile, latheFromProfile, thickLathe, arcLengthV, bladeRow, radialInstances, pipeAlong, tagPart } from './geom.js';
+import { smoothProfile, thickLathe, bladeRow, radialInstances, pipeAlong, tagPart } from './geom.js';
 import { createStageBladeGeometry } from './airfoil.js';
 import { compressorModule, turbineModule, casingShell } from './stages.js';
 import { revolve, roundPoly } from './revolve.js';
 import { buildCombustor } from './combustor.js';
+import { profileAt } from '../design/flowpath';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
-export function buildCore(materials) {
+/** İki halka arasında yumuşak (smoothstep) geçiş kanalı: kalınlıklı duvar */
+function transitionWall(rA, rB, zA, zB, t) {
+  const pts = [];
+  for (let i = 0; i <= 12; i++) {
+    const u = i / 12;
+    const k = u * u * (3 - 2 * u);
+    pts.push([lerp(rA, rB, k), lerp(zA, zB, u)]);
+  }
+  for (let i = 12; i >= 0; i--) pts.push([pts[i][0] + t, pts[i][1]]);
+  return revolve(pts, { segments: 120, smooth: 40 });
+}
+
+export function buildCore(materials, L) {
   const group = new THREE.Group();
   group.name = 'core';
+  const s = L.s;
+  const [, , rLp] = L.shafts.lp;
+  const [, , rHp] = L.shafts.hp;
 
   const lpSpool = new THREE.Group();
   lpSpool.name = 'lp-spool';
@@ -33,23 +53,8 @@ export function buildCore(materials) {
   /* ================= dış yüzeyler ================= */
 
   // Çekirdek kaportası (baypas kanalının iç gövdesi)
-  const coreCowlProfile = smoothProfile(
-    [
-      [0.600, 0.020],
-      [0.686, 0.150],
-      [0.772, 0.400],
-      [0.832, 0.780],
-      [0.856, 1.180],
-      [0.845, 1.640],
-      [0.806, 2.120],
-      [0.752, 2.540],
-      [0.694, 2.880],
-      [0.655, 3.060],
-    ],
-    170,
-  );
   const coreCowl = new THREE.Mesh(
-    thickLathe(coreCowlProfile, 200, 0.012, 'in', { arcV: true }),
+    thickLathe(smoothProfile(L.coreCowl, 170), 200, 0.012, 'in', { arcV: true }),
     materials.coreDetail,
   );
   coreCowl.name = 'core-cowl';
@@ -58,43 +63,38 @@ export function buildCore(materials) {
   group.add(tagPart(coreCowl, 'coreCowl'));
 
   // Ayırıcı burnu: baypas ile çekirdek akışını bölen keskin halka
-  const splitterProfile = smoothProfile(
-    [
-      [0.600, 0.020],
-      [0.578, 0.060],
-      [0.566, 0.130],
-      [0.560, 0.240],
-    ],
-    40,
+  const { z: zs, r: rs } = L.splitter;
+  const splitter = new THREE.Mesh(
+    thickLathe(smoothProfile([[rs, zs], [rs - 0.022, zs + 0.04], [rs - 0.034, zs + 0.11], [rs - 0.04, zs + 0.22]], 40), 200, 0.01, 'out'),
+    materials.polishedLip,
   );
-  const splitter = new THREE.Mesh(thickLathe(splitterProfile, 200, 0.01, 'out'), materials.polishedLip);
   splitter.name = 'flow-splitter';
   group.add(tagPart(splitter, 'coreCowl'));
 
   /* ================= fan çıkış yönlendirici kanatları ================= */
 
-  const ogvGeo = createStageBladeGeometry(0.70, 1.392, {
+  const ogvGeo = createStageBladeGeometry(L.ogv.hub, L.ogv.tip, {
     sections: 12,
     samples: 46,
-    chord: [0.34, 0.30],
+    chord: [0.34 * s, 0.3 * s],
     twist: [THREE.MathUtils.degToRad(26), THREE.MathUtils.degToRad(8)],
-    thickness: [0.10, 0.06],
+    thickness: [0.1, 0.06],
     camber: [0.07, 0.045],
   });
-  const ogv = bladeRow(ogvGeo, materials.compVane ?? materials.hubMetal, 44, { z: 0.20 });
+  const ogv = bladeRow(ogvGeo, materials.compVane ?? materials.hubMetal, 44, { z: L.ogv.z });
   ogv.name = 'outlet-guide-vanes';
   group.add(tagPart(ogv, 'ogv'));
 
   // Yapısal fan çerçevesi kolları (kalın, yük taşıyan)
-  const strutGeo = createStageBladeGeometry(0.74, 1.390, {
+  const strutGeo = createStageBladeGeometry(L.struts.hub, L.struts.tip, {
     sections: 10,
     samples: 40,
-    chord: [0.62, 0.55],
+    chord: [0.62 * s, 0.55 * s],
     twist: [THREE.MathUtils.degToRad(6), THREE.MathUtils.degToRad(2)],
     thickness: [0.18, 0.12],
     camber: [0.0, 0.0],
   });
-  const struts = bladeRow(strutGeo, materials.compVane ?? materials.hubMetal, 8, { z: 0.62, phase: 0.12 });
+  const struts = bladeRow(strutGeo, materials.compVane ?? materials.hubMetal, 8, { z: L.struts.z, phase: 0.12 });
   struts.name = 'fan-frame-struts';
   group.add(tagPart(struts, 'ogv'));
 
@@ -102,165 +102,161 @@ export function buildCore(materials) {
   // Kademeler stages.js ile istasyon tablosundan üretilir: kanat + kök +
   // disk + ara kol + stator bandı + kalınlıklı gövde (bkz. stages.js)
 
-  /* ---------------- LP booster (3 kademe) ---------------- */
+  /* ---------------- LP booster ---------------- */
+  const b = L.booster;
   const booster = compressorModule(materials, {
     part: 'booster',
-    stages: 3,
-    z0: 0.2,
-    z1: 0.62,
-    hub: [0.437, 0.452],
-    tip: [0.542, 0.516],
-    blades: [38, 38],
-    vanes: [42, 46],
-    bore: [0.16, 0.03],
-    casing: { flanges: [0.45] },
-    cones: { front: [0.112, 0.06] },
+    stages: b.stages,
+    z0: b.z0,
+    z1: b.z1,
+    pitch: b.pitch,
+    hub: b.hub,
+    tip: b.tip,
+    blades: b.blades,
+    vanes: b.blades.map((n) => Math.round(n * 1.1)),
+    bore: [rLp + 0.055, 0.03],
+    casing: { flanges: [(b.z0 + b.z1) / 2] },
+    cones: { front: [rLp + 0.007, b.z0 - 0.14] },
   });
   lpSpool.add(booster.rotor);
   group.add(booster.stator);
 
-  /* ---------------- HP kompresör (IGV + 9 kademe) ---------------- */
+  /* ---------------- HP kompresör (IGV + eksenel kademeler) ---------------- */
+  const h = L.hpc;
   const hpc = compressorModule(materials, {
     part: 'hpc',
-    stages: 9,
-    z0: 0.82,
-    z1: 1.52,
-    hub: [0.312, 0.404],
-    tip: [0.522, 0.438],
-    blades: [44, 76],
-    bore: [0.215, 0.035],
+    stages: h.stages,
+    z0: h.z0,
+    z1: h.z1,
+    pitch: h.pitch,
+    hub: h.hub,
+    tip: h.tip,
+    blades: h.blades,
+    bore: [rHp + 0.02, 0.035],
     igv: true,
     vsv: 4,
-    casing: { flanges: [1.0, 1.36] },
-    cones: { front: [0.2, 0.7], aft: [0.2, 1.64] },
+    casing: { flanges: [h.z0 + 0.18, h.z0 + 0.54] },
+    cones: { front: [rHp + 0.005, h.z0 - 0.12], aft: [rHp + 0.005, h.z1 + 0.12] },
   });
   hpSpool.add(hpc.rotor);
   group.add(hpc.stator);
 
   // Booster çıkışından HPC girişine inen geçiş kanalı ("kuğu boynu")
-  const bEnd = booster.zBack;
-  const hStart = hpc.zFront;
-  const duct = (rA, rB, t) => {
-    const pts = [];
-    for (let i = 0; i <= 12; i++) {
-      const u = i / 12;
-      const k = u * u * (3 - 2 * u);
-      pts.push([lerp(rA, rB, k), lerp(bEnd, hStart, u)]);
-    }
-    for (let i = 12; i >= 0; i--) pts.push([pts[i][0] + t, pts[i][1]]);
-    return pts;
-  };
   const transition = new THREE.Group();
   transition.add(
-    new THREE.Mesh(revolve(duct(booster.casingAt(0.62), hpc.casingAt(0.82), 0.008), { segments: 120, smooth: 40 }), materials.caseInner),
-    new THREE.Mesh(revolve(duct(booster.hubAt(0.62) - 0.012, hpc.hubAt(0.82) - 0.012, 0.01), { segments: 120, smooth: 40 }), materials.caseInner),
+    new THREE.Mesh(transitionWall(booster.casingAt(b.z1), hpc.casingAt(h.z0), booster.zBack, hpc.zFront, 0.008), materials.caseInner),
+    new THREE.Mesh(transitionWall(booster.hubAt(b.z1) - 0.012, hpc.hubAt(h.z0) - 0.012, booster.zBack, hpc.zFront, 0.01), materials.caseInner),
   );
   group.add(tagPart(transition, 'hpc'));
 
-  // Yanma odası gövdesi (difüzör + dış kasa): HPC gövdesinden HPT'ye
-  const combCaseAt = (z) =>
-    z < 1.66 ? lerp(hpc.casingAt(1.52), 0.575, THREE.MathUtils.smoothstep(z, hpc.zBack, 1.66)) : z < 1.88 ? 0.585 : lerp(0.585, 0.5, THREE.MathUtils.smoothstep(z, 1.88, 1.97));
-  const combCase = casingShell(
-    { casing: materials.caseInner, bolt: materials.boltSteel },
-    {
-      inner: combCaseAt,
-      z0: hpc.zBack,
-      z1: 1.975,
-      t: 0.01,
-      steps: 24,
-      flanges: [1.66, 1.93],
-      part: 'combustor',
-    },
-  );
-  group.add(combCase);
-
-  /* ---------------- HP türbin (2 kademe) ---------------- */
+  /* ---------------- HP türbin ---------------- */
+  const t = L.hpt;
   const hpt = turbineModule(materials, {
     part: 'hpt',
-    stages: 2,
-    z0: 2.05,
-    z1: 2.21,
-    hub: [0.352, 0.358],
-    tip: [0.49, 0.503],
-    blades: [62, 68],
-    bore: [0.205, 0.06],
-    casing: { flanges: [2.13] },
-    cones: { front: [0.2, 1.95] },
+    stages: t.stages,
+    z0: t.z0,
+    z1: t.z1,
+    pitch: t.pitch,
+    hub: t.hub,
+    tip: t.tip,
+    blades: t.blades,
+    bore: [rHp + 0.01, 0.06],
+    casing: { flanges: [t.z0 + 0.08] },
+    cones: { front: [rHp + 0.005, t.z0 - 0.1] },
   });
   hpSpool.add(hpt.rotor);
   group.add(hpt.stator);
+
+  // Yanma odası gövdesi (difüzör + dış kasa): HPC gövdesinden HPT'ye
+  const cb = L.combustor;
+  const cDome = cb.z0 + 0.06;
+  const cEnd = t.z0 - 0.17;
+  const cNgv = t.z0 - 0.08;
+  const combCaseAt = (z) =>
+    z < cDome
+      ? lerp(hpc.casingAt(h.z1), cb.rOut + 0.035, THREE.MathUtils.smoothstep(z, hpc.zBack, cDome))
+      : z < cEnd
+        ? cb.rOut + 0.045
+        : lerp(cb.rOut + 0.045, t.tip[0] + 0.01, THREE.MathUtils.smoothstep(z, cEnd, cNgv));
+  group.add(
+    casingShell(
+      { casing: materials.caseInner, bolt: materials.boltSteel },
+      { inner: combCaseAt, z0: hpc.zBack, z1: cNgv + 0.005, t: 0.01, steps: 24, flanges: [cDome, cNgv - 0.04], part: 'combustor' },
+    ),
+  );
 
   /* ---------------- halka yanma odası ---------------- */
   const ngv = hpt.vanes[0];
   group.add(
     buildCombustor(materials, {
       z0: hpc.zBack,
-      zDome: 1.68,
+      zDome: cb.z0 + 0.08,
       z1: ngv.z - ngv.axial * 0.55,
-      rIn: 0.33,
-      rOut: 0.54,
-      inHub: hpc.hubAt(1.52),
-      inTip: hpc.casingAt(1.52),
+      rIn: cb.rIn,
+      rOut: cb.rOut,
+      inHub: hpc.hubAt(h.z1),
+      inTip: hpc.casingAt(h.z1),
       exHub: ngv.hub,
       exTip: ngv.tip - 0.004,
       caseAt: combCaseAt,
-      injectors: 20,
+      injectors: cb.injectors,
     }),
   );
 
-  /* ---------------- LP türbin (5 kademe) ---------------- */
+  /* ---------------- LP türbin ---------------- */
+  const l = L.lpt;
   const lpt = turbineModule(materials, {
     part: 'lpt',
-    stages: 5,
-    z0: 2.36,
-    z1: 2.84,
-    hub: [0.34, 0.356],
-    tip: [0.512, 0.602],
-    blades: [74, 98],
-    bore: [0.12, 0.03],
-    casingFrom: hpt.zBack,
-    casing: { flanges: [2.48, 2.72] },
-    cones: { aft: [0.11, 2.96] },
+    stages: l.stages,
+    z0: l.z0,
+    z1: l.z1,
+    pitch: l.pitch,
+    hub: l.hub,
+    tip: l.tip,
+    blades: l.blades,
+    bore: [rLp + 0.015, 0.03],
+    casing: { flanges: [l.z0 + 0.12, l.z1 - 0.12] },
+    cones: { aft: [rLp + 0.005, l.z1 + 0.12] },
   });
   lpSpool.add(lpt.rotor);
   group.add(lpt.stator);
 
-  /* ---------------- miller ---------------- */
-  const lpShaft = new THREE.Mesh(
-    revolve(
-      roundPoly(
-        [
-          [0.105, -1.55],
-          [0.105, 3.05],
-          [0.07, 3.05],
-          [0.07, -1.55],
-        ],
-        0.004,
-        1,
-      ),
-      { segments: 48 },
-    ),
-    materials.diskMetal,
-  );
-  lpSpool.add(tagPart(lpShaft, 'shafts'));
+  // Türbin geçiş kanalı: HPT çıkışından dışa açılarak LPT'nin büyük
+  // yarıçaplı halkasına; ortasında yağ/hava hatlarını taşıyan kollar
+  const itd0 = hpt.zBack;
+  const itd1 = lpt.zFront;
+  if (itd1 > itd0 + 0.02) {
+    const itd = new THREE.Group();
+    itd.add(
+      new THREE.Mesh(transitionWall(hpt.casingAt(t.z1), lpt.casingAt(l.z0), itd0, itd1, 0.01), materials.turbineCase ?? materials.caseInner),
+      new THREE.Mesh(transitionWall(hpt.hubAt(t.z1) - 0.014, lpt.hubAt(l.z0) - 0.014, itd0, itd1, 0.01), materials.turbineCase ?? materials.caseInner),
+    );
+    const zm = (itd0 + itd1) / 2;
+    const rIn = (hpt.hubAt(t.z1) + lpt.hubAt(l.z0)) / 2;
+    const rOut = (hpt.casingAt(t.z1) + lpt.casingAt(l.z0)) / 2;
+    const itdStrut = new THREE.BoxGeometry(0.03, rOut - rIn, Math.min(0.12, (itd1 - itd0) * 0.6));
+    itdStrut.translate(0, (rIn + rOut) / 2, 0);
+    itd.add(radialInstances(itdStrut, materials.turbineCase ?? materials.caseInner, 12, 0, zm, { phase: 0.15 }));
+    group.add(tagPart(itd, 'lpt'));
+  }
 
-  const hpShaft = new THREE.Mesh(
+  /* ---------------- miller ---------------- */
+  const tube = ([z0, z1, r], inner, segments) =>
     revolve(
       roundPoly(
         [
-          [0.195, 0.69],
-          [0.195, 2.0],
-          [0.168, 2.0],
-          [0.168, 0.69],
+          [r, z0],
+          [r, z1],
+          [r * inner, z1],
+          [r * inner, z0],
         ],
         0.004,
         1,
       ),
-      { segments: 56 },
-    ),
-    materials.diskMetal,
-  );
-  hpSpool.add(tagPart(hpShaft, 'shafts'));
+      { segments },
+    );
+  lpSpool.add(tagPart(new THREE.Mesh(tube(L.shafts.lp, 0.667, 48), materials.diskMetal), 'shafts'));
+  hpSpool.add(tagPart(new THREE.Mesh(tube(L.shafts.hp, 0.862, 56), materials.diskMetal), 'shafts'));
 
   /* ================= egzoz ================= */
 
@@ -270,14 +266,15 @@ export function buildCore(materials) {
    * türbin kanatlarını gizler; onsuz egzoz ağzı "içi görünen" bir delik
    * gibi durur.
    */
+  const rf = L.rearFrame;
   const rearFrameHub = new THREE.Mesh(
     thickLathe(
       smoothProfile(
         [
-          [0.344, 2.900],
-          [0.372, 2.945],
-          [0.392, 2.990],
-          [0.400, 3.030],
+          [rf.hub * 0.86, rf.z - 0.1],
+          [rf.hub * 0.93, rf.z - 0.055],
+          [rf.hub * 0.98, rf.z - 0.01],
+          [rf.hub, rf.z + 0.03],
         ],
         40,
       ),
@@ -289,86 +286,61 @@ export function buildCore(materials) {
   );
   group.add(tagPart(rearFrameHub, 'exhaust'));
 
-  const rearStrutGeo = new THREE.BoxGeometry(0.052, 0.235, 0.16);
-  rearStrutGeo.translate(0, 0.515, 0);
-  group.add(tagPart(radialInstances(rearStrutGeo, materials.sooted, 8, 0, 3.000, { phase: 0.2 }), 'exhaust'));
+  const rearStrutGeo = new THREE.BoxGeometry(0.052, rf.tip - rf.hub - 0.013, 0.16);
+  rearStrutGeo.translate(0, (rf.hub + rf.tip) / 2, 0);
+  group.add(tagPart(radialInstances(rearStrutGeo, materials.sooted, 8, 0, rf.z, { phase: 0.2 }), 'exhaust'));
 
   // Egzoz kanalı iç duvarı: türbin çıkışından lüle ağzına
-  const exhaustDuct = new THREE.Mesh(
-    thickLathe(
-      smoothProfile(
-        [
-          [0.648, 2.905],
-          [0.632, 2.990],
-          [0.618, 3.120],
-          [0.600, 3.260],
-          [0.590, 3.360],
-        ],
-        50,
-      ),
-      160,
-      0.01,
-      'out',
-    ),
-    materials.sooted,
-  );
+  const exhaustDuct = new THREE.Mesh(thickLathe(smoothProfile(L.exhaustDuct, 50), 160, 0.01, 'out'), materials.sooted);
   exhaustDuct.name = 'exhaust-duct';
   group.add(tagPart(exhaustDuct, 'exhaust'));
 
   const exhaust = new THREE.Group();
   exhaust.name = 'exhaust';
 
-  const nozzleProfile = smoothProfile(
-    [
-      [0.655, 3.060],
-      [0.628, 3.180],
-      [0.604, 3.290],
-      [0.590, 3.360],
-    ],
-    40,
+  const n = L.coreNozzle;
+  const primaryNozzle = new THREE.Mesh(
+    thickLathe(
+      smoothProfile(
+        [
+          [n.r0, n.z0],
+          [lerp(n.r0, n.r1, 0.42), lerp(n.z0, n.z1, 0.4)],
+          [lerp(n.r0, n.r1, 0.79), lerp(n.z0, n.z1, 0.77)],
+          [n.r1, n.z1],
+        ],
+        40,
+      ),
+      180,
+      0.008,
+      'out',
+    ),
+    materials.inconel,
   );
-  const primaryNozzle = new THREE.Mesh(thickLathe(nozzleProfile, 180, 0.008, 'out'), materials.inconel);
   primaryNozzle.castShadow = true;
   exhaust.add(primaryNozzle);
 
-  const plugProfile = smoothProfile(
-    [
-      [0.400, 3.030],
-      [0.397, 3.140],
-      [0.384, 3.290],
-      [0.352, 3.480],
-      [0.300, 3.690],
-      [0.232, 3.885],
-      [0.158, 4.045],
-      [0.086, 4.155],
-      [0.030, 4.212],
-      [0.000, 4.235],
-    ],
-    110,
-  );
-  const plug = new THREE.Mesh(thickLathe(plugProfile, 180, 0.01, 'in'), materials.inconel);
+  const plug = new THREE.Mesh(thickLathe(smoothProfile(L.plug, 110), 180, 0.01, 'in'), materials.inconel);
   plug.name = 'exhaust-plug';
   plug.castShadow = true;
   exhaust.add(plug);
 
   // Konik üzerindeki çevresel takviye halkaları
-  const ribGeo = new THREE.TorusGeometry(0.36, 0.008, 8, 90);
-  [3.18, 3.38].forEach((z, i) => {
-    const rib = new THREE.Mesh(ribGeo, materials.inconel);
-    rib.scale.setScalar(i === 0 ? 1.02 : 0.88);
+  for (const z of [n.z0 + 0.12, n.z0 + 0.32]) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(profileAt(L.plug, z) - 0.02, 0.008, 8, 90), materials.inconel);
     rib.position.z = z;
     exhaust.add(rib);
-  });
+  }
 
   group.add(tagPart(exhaust, 'exhaust'));
 
   /* ================= aksesuar kutusu ve tesisat ================= */
+  // Çekirdek kaportasının altında; konumlar HPC girişine, yarıçaplar
+  // kaportaya göre (M4 öncesi modelde HPC z 0,82, kaporta 0,856)
+  const zh = (z) => h.z0 + (z - 0.82);
+  const ky = Math.max(...L.coreCowl.map((p) => p[0])) / 0.856;
 
-  const gearbox = new THREE.Mesh(
-    new THREE.BoxGeometry(0.62, 0.30, 1.05, 1, 1, 1),
-    materials.machinery,
-  );
-  gearbox.position.set(0, -0.94, 0.85);
+  const gearbox = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.3, 1.05, 1, 1, 1), materials.machinery);
+  gearbox.position.set(0, -0.94 * ky, zh(0.85));
   gearbox.rotation.x = 0.06;
   gearbox.castShadow = true;
   group.add(tagPart(gearbox, 'gearbox'));
@@ -377,37 +349,15 @@ export function buildCore(materials) {
   pumpGeo.rotateZ(Math.PI / 2);
   [-0.18, 0.12, 0.42].forEach((z, i) => {
     const pump = new THREE.Mesh(pumpGeo, materials.machinery);
-    pump.position.set(0.22 * (i % 2 ? 1 : -1), -1.02, 0.55 + z);
+    pump.position.set(0.22 * (i % 2 ? 1 : -1), -1.02 * ky, zh(0.55 + z));
     group.add(tagPart(pump, 'gearbox'));
   });
 
+  const P = (x, y, z) => [x * ky, y * ky, zh(z)];
   const lines = [
-    pipeAlong(
-      [
-        [0.30, -0.86, 0.40],
-        [0.55, -0.70, 0.90],
-        [0.70, -0.42, 1.45],
-        [0.62, -0.20, 1.95],
-      ],
-      0.026,
-    ),
-    pipeAlong(
-      [
-        [-0.28, -0.88, 0.45],
-        [-0.58, -0.66, 1.00],
-        [-0.72, -0.34, 1.60],
-        [-0.60, -0.12, 2.10],
-      ],
-      0.022,
-    ),
-    pipeAlong(
-      [
-        [0.10, -0.98, 0.30],
-        [0.42, -0.86, 0.10],
-        [0.70, -0.52, -0.05],
-      ],
-      0.018,
-    ),
+    pipeAlong([P(0.3, -0.86, 0.4), P(0.55, -0.7, 0.9), P(0.7, -0.42, 1.45), P(0.62, -0.2, 1.95)], 0.026),
+    pipeAlong([P(-0.28, -0.88, 0.45), P(-0.58, -0.66, 1.0), P(-0.72, -0.34, 1.6), P(-0.6, -0.12, 2.1)], 0.022),
+    pipeAlong([P(0.1, -0.98, 0.3), P(0.42, -0.86, 0.1), P(0.7, -0.52, -0.05)], 0.018),
   ];
   for (const geo of lines) {
     const pipe = new THREE.Mesh(geo, materials.hose);
@@ -415,12 +365,8 @@ export function buildCore(materials) {
     group.add(tagPart(pipe, 'gearbox'));
   }
 
-  const clampGeo = new THREE.TorusGeometry(0.034, 0.010, 8, 16);
-  [
-    [0.55, -0.70, 0.90],
-    [0.70, -0.42, 1.45],
-    [-0.58, -0.66, 1.00],
-  ].forEach((p) => {
+  const clampGeo = new THREE.TorusGeometry(0.034, 0.01, 8, 16);
+  [P(0.55, -0.7, 0.9), P(0.7, -0.42, 1.45), P(-0.58, -0.66, 1.0)].forEach((p) => {
     const clamp = new THREE.Mesh(clampGeo, materials.brassFitting);
     clamp.position.set(...p);
     clamp.lookAt(0, 0, p[2]);
@@ -435,3 +381,4 @@ export function buildCore(materials) {
     exhaust,
   };
 }
+

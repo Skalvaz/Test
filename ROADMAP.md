@@ -248,11 +248,27 @@ M4 üç adımda:
   için ±%0,1 değişti
 - Düzeltilen: arayüz gizliyken (H) kamera hâlâ panellere yer açıyordu
 
-**M4b — Turboprop ve yüksek baypaslı turbofan**
-- Pervane + redüktör, santrifüj HPC kademesi, serbest güç türbini
-- Yüksek baypaslı fan, ayrık akışlı lüle, kaporta/pilon (`core.js`,
-  `fan.js`, `nacelle.js` yeni sistemde yeniden yazılır)
-- **Bitti sayılır:** dört motor yeni üreticide, eski üreticiler silinmiş
+**M4b — Turboprop ve yüksek baypaslı turbofan ✅**
+- ✅ Ortak gaz yolu (`computeGasPath`) + motor tipine özel yerleşimler
+  (çıplak jet, turboprop, kaportalı turbofan)
+- ✅ Turboprop: pervane + redüktör modülü, HPC'de santrifüj son kademe
+  (iş payı, çark yüklemesi, difüzör oranı; ara istasyon), serbest güç
+  türbini kendi uç hızıyla. `turboprop.js` sabit konumlar yerine çapalara
+  bağlı; `gaspath.js`'e kanatlı radyal difüzör
+- ✅ Yüksek baypaslı turbofan: fan + booster + HPC + ayrık akışlı lüle;
+  `core.js` yerleşimle yeniden yazıldı (türbin geçiş kanalı yeni), fan /
+  kaporta / pilon fan ucu oranında ölçeklenir, baypas lülesi A19'dan
+- ✅ Kullanıcı kararıyla turbofanın fizikle çelişen parçaları düzeltildi
+  (booster boğuluyordu, LPT ψ ≈ 6,6); turbofan 6,5 → 7,4 m uzadı, kamera
+  açıları güncellendi
+- ✅ 26 tasarım testi, otomatik oynanış testi (7 ders) geçti
+- Not (M5 uyarılarına): turboprop çekirdeği 9,5 kg/s akışına göre büyük
+  çizilmiş (HPT girişi Mach 0,05, yanma odası referans hızı 8 m/s, HPC uç
+  bağıl Mach 1,86, HPT AN² 7,2·10⁷); turbofanın HPT girişi ve yanma odası
+  da geniş (Mach 0,04, 12 m/s). Şablonlar eski görünüme kalibre edildi;
+  uyarılar gelince akış büyütülmeli ya da çekirdek küçültülmeli
+- **Bitti sayılır:** dört motor yeni üreticide, elle girilmiş ölçü tabloları
+  kalktı (sim/design.ts kataloğu yalnız termodinamik referans)
 
 **M4c — Yeni modüller ve hız**
 - Kutu (can) yanma odası, chevron lüle, ayrı karıştırıcı varyantları;

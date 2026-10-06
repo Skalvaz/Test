@@ -6,7 +6,7 @@
  * fan girişi Mach 0,4–0,6, kompresör yüklemesi 0,23–0,53, türbin 1–2,5.
  */
 
-import { MILITARY_TURBOFAN, TURBOJET } from '../sim/design';
+import { DEFAULT_DESIGN, MILITARY_TURBOFAN, TURBOJET, TURBOPROP } from '../sim/design';
 import type { EngineGraph } from './types';
 
 export const TURBOJET_GRAPH: EngineGraph = {
@@ -137,5 +137,155 @@ export const MILITARY_TURBOFAN_GRAPH: EngineGraph = {
     { type: 'mixer', loss: 0.01 },
     { type: 'afterburner', t7Max: 2000, eta: 0.9, dpDry: 0.03, dpLit: 0.065, mach: 0.192, lengthDiameter: 1.65 },
     { type: 'nozzle', style: 'cd', cv: 0.98, flaps: 16 },
+  ],
+};
+
+/**
+ * Turboprop: eksenel + santrifüj gaz jeneratörü, serbest güç türbini,
+ * pervane redüktörü. Not: çekirdek M4 öncesi modele kalibre edildi ve
+ * 9,5 kg/s'lik akışına göre büyük çizilmiştir (HPT girişi Mach 0,05,
+ * yanma odası referans hızı 8 m/s; gerçekte 0,1–0,15 ve 15–25 m/s).
+ * Santrifüj çark ise fizikten: uç hızı ~505 m/s, difüzör eski çark
+ * çapında.
+ */
+export const TURBOPROP_GRAPH: EngineGraph = {
+  kind: 'turboprop',
+  name: TURBOPROP.name,
+  summary: TURBOPROP.summary,
+  massFlow: 9.5,
+  mechEff: 0.985,
+  accessoryPower: 40e3,
+  inertia: { ...TURBOPROP.inertia },
+  hpcMap: { ...TURBOPROP.hpcMap },
+  limits: { ...TURBOPROP.limits },
+  start: { ...TURBOPROP.start },
+  modules: [
+    { type: 'propeller', diameter: 3.93, blades: 6, rpm: 1200, figureOfMerit: 0.72, efficiency: 0.85, gearboxLength: 1.36 },
+    { type: 'inlet', style: 'chin', length: 0, noseLength: 0, struts: 0 },
+    {
+      type: 'hpc',
+      spool: 'hp',
+      pr: 15,
+      eff: 0.83,
+      tipSpeed: 624,
+      mach: [0.252, 0.144],
+      hubTip: 0.5,
+      taper: 0.85,
+      loading: 0.253,
+      pitchSpan: 2,
+      bladeK: [2.76, 1.53],
+      centrifugal: { workFraction: 0.45, loading: 0.72, diffuserRatio: 1.608, gap: 1.143 },
+    },
+    {
+      type: 'combustor',
+      style: 'annular',
+      tit: 1440,
+      eff: 0.99,
+      dp: 0.05,
+      refVelocity: 8.29,
+      lengthHeight: 3.333,
+      meanShift: 0.0325,
+      gap: 1.429,
+      injectors: 14,
+    },
+    { type: 'hpt', spool: 'hp', eff: 0.88, mach: [0.0464, 0.152], hubTip: 0.682, taper: 1, loading: 1.478, pitchSpan: 2.286, bladeK: [2.65, 2.65], gap: 0.625 },
+    {
+      type: 'lpt',
+      spool: 'lp',
+      eff: 0.9,
+      tipSpeed: 491,
+      mach: [0.129, 0.271],
+      hubTip: 0.652,
+      taper: 1.13,
+      loading: 0.879,
+      pitchSpan: 1.684,
+      bladeK: [3.49, 4.95],
+      gap: 1.125,
+    },
+    { type: 'nozzle', style: 'stub', cv: 0.97, pressureRatio: 1.1, exitMach: 0.163 },
+  ],
+};
+
+/**
+ * Yüksek baypaslı ayrık akışlı turbofan (BPR 9). Fan, HPC, yanma odası ve
+ * HPT M4 öncesi modele kalibre. Booster ve LP türbin fiziğe uyduruldu
+ * (kullanıcı kararı, Ekim 2026): eski booster halkası 115 kg/s çekirdek
+ * akışında boğuluyordu (Mach 1), eski LPT fan devrinde ψ ≈ 6,6 yüklemeyle
+ * çalışıyordu. Şimdi booster Mach 0,42 / ψ 0,9 ile 3 kademe, LPT ince
+ * halka halinde dışarı açılıp (göbek/uç 0,9) ψ ≈ 2,9 ile 6 kademe —
+ * doğrudan tahrikli büyük turbofanlardaki gibi.
+ */
+export const TURBOFAN_GRAPH: EngineGraph = {
+  kind: 'turbofan',
+  name: DEFAULT_DESIGN.name,
+  summary: DEFAULT_DESIGN.summary,
+  massFlow: 1150,
+  mechEff: 0.99,
+  accessoryPower: 350e3,
+  bypassDuct: { dp: 0.015, mach: 0.45 },
+  inertia: { ...DEFAULT_DESIGN.inertia },
+  hpcMap: { ...DEFAULT_DESIGN.hpcMap },
+  limits: { ...DEFAULT_DESIGN.limits },
+  start: { ...DEFAULT_DESIGN.start },
+  modules: [
+    { type: 'inlet', style: 'nacelle', length: 1.385, noseLength: 0, struts: 0 },
+    {
+      type: 'fan',
+      spool: 'lp',
+      pr: 1.55,
+      eff: 0.915,
+      bypassRatio: 9,
+      hubPRFraction: 0.8,
+      tipSpeed: 370.1,
+      mach: [0.663, 0.389],
+      hubTip: 0.3283,
+      taper: 1,
+      loading: 0.695,
+      pitchSpan: 0.5,
+      bladeK: [3.541, 3.541],
+    },
+    {
+      type: 'lpc',
+      spool: 'lp',
+      pr: 1.95,
+      eff: 0.89,
+      mach: [0.42, 0.38],
+      hubTip: 0.8,
+      taper: 0.99,
+      loading: 0.9,
+      pitchSpan: 1.9,
+      bladeK: [2.12, 1.44],
+      gap: 1.421,
+    },
+    {
+      type: 'hpc',
+      spool: 'hp',
+      pr: 16.5,
+      eff: 0.87,
+      tipSpeed: 552.1,
+      mach: [0.2172, 0.1227],
+      hubTip: 0.5977,
+      taper: 0.8391,
+      loading: 0.317,
+      pitchSpan: 0.7172,
+      bladeK: [3.527, 0.977],
+      gap: 2.5,
+      vsv: 4,
+    },
+    {
+      type: 'combustor',
+      style: 'annular',
+      tit: 1680,
+      eff: 0.995,
+      dp: 0.04,
+      refVelocity: 11.84,
+      lengthHeight: 1.571,
+      meanShift: 0.014,
+      gap: 0.9143,
+      injectors: 20,
+    },
+    { type: 'hpt', spool: 'hp', eff: 0.9, mach: [0.0433, 0.1643], hubTip: 0.7184, taper: 1.027, loading: 1.496, pitchSpan: 1.131, bladeK: [3.235, 3.645], gap: 0.75 },
+    { type: 'lpt', spool: 'lp', eff: 0.92, mach: [0.3, 0.45], hubTip: 0.9, taper: 1.25, loading: 3.0, pitchSpan: 1.0, bladeK: [1.84, 6.85], gap: 1.8 },
+    { type: 'nozzle', style: 'separate', cv: 0.985 },
   ],
 };

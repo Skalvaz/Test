@@ -43,14 +43,43 @@ export interface AnnulusKnobs {
 
 export interface InletModule {
   type: 'inlet';
-  /** Test hücresi ağzı (çıplak motor) */
-  style: 'bellmouth';
+  /**
+   * bellmouth: test hücresi ağzı (çıplak motor), chin: turboprobun dişli
+   * kutusu altındaki çene girişi ve S-kanal, nacelle: kaportalı turbofanın
+   * pitot girişi
+   */
+  style: 'bellmouth' | 'chin' | 'nacelle';
   /** Giriş düzleminden ilk rotora mesafe / ilk kademe uç yarıçapı */
   length: number;
   /** Burun konisi boyu / ilk kademe uç yarıçapı */
   noseLength: number;
   /** Ön çerçeve dikmesi sayısı (0: yok) */
   struts: number;
+}
+
+/** Pervane ve redüksiyon dişli kutusu (turboprop). LP mili = güç türbini. */
+export interface PropellerModule {
+  type: 'propeller';
+  diameter: number;
+  blades: number;
+  /** %100 güç türbini devrinde pervane devri [rpm]; dişli oranı bundan */
+  rpm: number;
+  figureOfMerit: number;
+  efficiency: number;
+  /** Pervane düzleminden gaz jeneratörü HPC girişine eksenel mesafe [m] */
+  gearboxLength: number;
+}
+
+/** HPC'nin son kademesi santrifüj (turboprop gaz jeneratörleri) */
+export interface CentrifugalStage {
+  /** Toplam HPC işinin santrifüj çarkta yapılan oranı */
+  workFraction: number;
+  /** Çark yüklemesi Δh / U²uç (kayma × güç katsayısı, ~0,6–0,8) */
+  loading: number;
+  /** Difüzör çıkış yarıçapı / çark uç yarıçapı */
+  diffuserRatio: number;
+  /** Eksenel son rotordan çark eksenine aralık / eksenel kademe aralığı */
+  gap: number;
 }
 
 export interface CompressorModule extends AnnulusKnobs {
@@ -75,6 +104,8 @@ export interface CompressorModule extends AnnulusKnobs {
   blisk?: boolean;
   firstMaterial?: string;
   firstChord?: number;
+  /** HPC: son kademe santrifüj (eksenel kademeler kalan işi yapar) */
+  centrifugal?: CentrifugalStage;
 }
 
 export interface CombustorModule {
@@ -101,6 +132,11 @@ export interface TurbineModule extends AnnulusKnobs {
   eff: number;
   /** Önceki modülün sonundan ilk rotora aralık / bu modülün kademe aralığı */
   gap: number;
+  /**
+   * Serbest güç türbini: milinde kompresör yoksa devri bu uç hızından
+   * çıkar [m/s] (turboprobun LP mili pervaneyi dişliyle çevirir)
+   */
+  tipSpeed?: number;
 }
 
 export interface MixerModule {
@@ -123,13 +159,23 @@ export interface AfterburnerModule {
 
 export interface NozzleModule {
   type: 'nozzle';
-  /** convergent: yalnız yakınsak yapraklar, cd: yakınsak-ıraksak */
-  style: 'convergent' | 'cd';
+  /**
+   * convergent: değişken yakınsak yapraklar, cd: yakınsak-ıraksak,
+   * stub: turboprobun kısa egzoz borusu (artık itki), separate: ayrık akışlı
+   * turbofanın baypas + çekirdek lüleleri
+   */
+  style: 'convergent' | 'cd' | 'stub' | 'separate';
   cv: number;
-  flaps: number;
+  /** Değişken lülede yaprak sayısı */
+  flaps?: number;
+  /** stub: tasarım noktasında egzoz basınç oranı (P5/P0) */
+  pressureRatio?: number;
+  /** stub: egzoz borusu ağzında eksenel Mach → ağız yarıçapı */
+  exitMach?: number;
 }
 
 export type EngineModule =
+  | PropellerModule
   | InletModule
   | CompressorModule
   | CombustorModule

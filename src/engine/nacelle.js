@@ -56,9 +56,18 @@ function chevronBand({
   return geo;
 }
 
-export function buildNacelle(materials, dims) {
+/**
+ * Kaporta M4 öncesi modelin ölçülerinde (fan ucu 1,386 m) kurulur; görsel
+ * model grubu fan ucu oranında ölçekler (visual.ts).
+ * @param dims.ductExitR  baypas lülesi ağzında kaporta iç duvarı yarıçapı
+ *   (aynı ölçekte; termodinamik A19 alanından). Kaportanın arka kısmı
+ *   (z > 0,55) bu farka göre yumuşakça kayar, dudak ve fan bölümü aynı kalır.
+ */
+export function buildNacelle(materials, dims = {}) {
   const group = new THREE.Group();
   group.name = 'nacelle';
+  const d = (dims.ductExitR ?? 1.344) - 1.344;
+  const aft = (pts) => pts.map(([r, z]) => [r + d * THREE.MathUtils.smoothstep(z, 0.55, 1.52), z]);
 
   /* ---------------- hava girişi dudağı (parlatılmış) ---------------- */
   const lipProfile = smoothProfile(
@@ -84,7 +93,7 @@ export function buildNacelle(materials, dims) {
 
   /* ---------------- dış kaporta (boyalı) ---------------- */
   const cowlProfile = smoothProfile(
-    [
+    aft([
       [1.742, -1.72],
       [1.771, -1.46],
       [1.784, -1.10],
@@ -94,7 +103,7 @@ export function buildNacelle(materials, dims) {
       [1.638, 1.00],
       [1.560, 1.34],
       [1.516, 1.52],
-    ],
+    ]),
     180,
   );
   const cowl = new THREE.Mesh(
@@ -108,7 +117,7 @@ export function buildNacelle(materials, dims) {
 
   /* ---------------- baypas kanalı iç duvarı (akustik astar) ---------------- */
   const ductProfile = smoothProfile(
-    [
+    aft([
       [1.392, -1.35],
       [1.402, -0.95],
       [1.414, -0.60],
@@ -118,7 +127,7 @@ export function buildNacelle(materials, dims) {
       [1.372, 1.05],
       [1.352, 1.40],
       [1.344, 1.52],
-    ],
+    ]),
     160,
   );
   const duct = new THREE.Mesh(thickLathe(ductProfile, SEG, 0.014, 'out'), materials.acousticLiner);
@@ -145,7 +154,7 @@ export function buildNacelle(materials, dims) {
 
   /* ---------------- baypas lülesi: çevrikli arka kenar ---------------- */
   const outerChevrons = new THREE.Mesh(
-    chevronBand({ startR: 1.516, startZ: 1.52, endR: 1.478, endZ: 1.70, count: 18 }),
+    chevronBand({ startR: 1.516 + d, startZ: 1.52, endR: 1.478 + d, endZ: 1.70, count: 18 }),
     materials.cowlPaint,
   );
   outerChevrons.name = 'bypass-chevrons-outer';
@@ -153,7 +162,7 @@ export function buildNacelle(materials, dims) {
   group.add(tagPart(outerChevrons, 'bypassNozzle'));
 
   const innerChevrons = new THREE.Mesh(
-    chevronBand({ startR: 1.344, startZ: 1.52, endR: 1.382, endZ: 1.70, count: 18 }),
+    chevronBand({ startR: 1.344 + d, startZ: 1.52, endR: 1.382 + d, endZ: 1.70, count: 18 }),
     materials.acousticLinerOpen ?? materials.acousticLiner,
   );
   innerChevrons.name = 'bypass-chevrons-inner';
@@ -161,7 +170,7 @@ export function buildNacelle(materials, dims) {
 
   // Lüle arka kenarını kapatan ince halka
   const nozzleRing = new THREE.Mesh(
-    thickLathe([new THREE.Vector2(1.516, 1.52), new THREE.Vector2(1.344, 1.52)], SEG, 0.01, [1.43, 1.4]),
+    thickLathe([new THREE.Vector2(1.516 + d, 1.52), new THREE.Vector2(1.344 + d, 1.52)], SEG, 0.01, [1.43 + d, 1.4]),
     materials.composite,
   );
   group.add(tagPart(nozzleRing, 'bypassNozzle'));

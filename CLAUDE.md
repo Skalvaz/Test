@@ -38,7 +38,8 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   `flowpath.ts` (istasyonlardan geometri, devir, kütle, uç Mach, AN²),
   `templates.ts` (kalibre şablonlar), `catalog.ts` (oyunun kullandığı
   tasarım + 3B yerleşim; `overrideGraph` ile çalışma anında değiştirilir,
-  `window.__design`). Turbofan ve turboprop M4b'ye kadar eski üreticide.
+  `window.__design`). Dört motor da grafikten; `flowpath.ts`'te ortak
+  `computeGasPath` + yerleşimler (çıplak jet / turboprop / turbofan).
 - `src/app/App.ts` — ana döngü; test kancaları: `advance(s)`, `fixedDt` /
   `pendingSteps` / `framesRendered` (belirlenimli kare kaydı), `window.__app`.
 - `src/engine/visual.ts` — modeli simülasyona bağlar: lüle, termal kızıllık
@@ -121,6 +122,15 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   alan, ψ ← Δh/((n−0,2)U²), k ← sayı·yükseklik/(2πr)); M4b'de turbofan ve
   turboprop için aynı yol.
 - vitest `console.log` çıktısını göstermez; geçici testlerde dosyaya yaz.
+  Geçici testleri `scripts/` altına koy: `src/` altındakiler tip denetimine
+  girer (`node:fs` tipi yok).
+- Eski turbofan modeli fizikle çelişiyordu (booster Mach 1, LPT ψ ≈ 6,6);
+  kullanıcı "fiziğe uydur" dedi. Eski bir modele kalibre ederken önce
+  düğmelerin fiziksel aralıkta kalıp kalmadığına bak, çelişirse sor.
+- Bash heredoc'u içerikteki tırnaklarla bozulabiliyor: uzun yamaları
+  `scripts/*.tmp.py` dosyasına yazıp `python` ile çalıştır.
+- Oynanış testi: `npm run build`, launch.json `preview` (4173), sonra
+  `node scripts/playtest.mjs playtest-output` (swiftshader, ~10+ dk).
 - Önce/sonra worktree'si `.claude/launch.json` → `once` (5174,
   `../turbofan-once`).
 - PowerShell'de `node … | Select-Object -First N` boruyu kapatınca node 255
@@ -128,8 +138,8 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
 
 ## Sıradaki işler
 
-1. M4b (ROADMAP): turboprop + yüksek baypaslı turbofan modül grafiğine.
-   Kapsam Ekim 2026'da kullanıcıyla gözden geçirildi: geometri fizikten
-   türetilir, tam modül listesi (yeniler M4c'de), M4'te yalnız geometriye
-   bağlı hesaplar; maliyet/gürültü/NOx/soğutma havası M5'te.
-2. ROADMAP Faz 3'ün sıradaki kilometre taşı.
+1. M4c (ROADMAP): kutu yanma odası, chevron lüle, karıştırıcı varyantları;
+   artımlı yeniden üretim (< 150 ms). Kapsam Ekim 2026'da kullanıcıyla
+   gözden geçirildi: geometri fizikten, M4'te yalnız geometriye bağlı
+   hesaplar; maliyet/gürültü/NOx/soğutma havası M5'te.
+2. ROADMAP Faz 3'ün sıradaki kilometre taşı (M5 Motor Atölyesi).

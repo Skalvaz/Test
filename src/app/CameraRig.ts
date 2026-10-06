@@ -19,11 +19,11 @@ export const VIEWS = {
   front: { label: 'Üç çeyrek ön', position: [6.4, 1.9, -6.6], target: [0, 0, 0.25], fov: 32 },
   inlet: { label: 'Hava girişi', position: [1.7, 0.3, -5.6], target: [0, 0, -1.3], fov: 38 },
   fan: { label: 'Fan yakın', position: [1.05, 0.42, -3.05], target: [0.12, 0.18, -0.55], fov: 40 },
-  side: { label: 'Yan profil', position: [12, 0.7, 0.45], target: [0, 0, 0.45], fov: 22 },
-  exhaust: { label: 'Egzoz', position: [4.9, 1.05, 7.6], target: [0, 0, 2.6], fov: 30 },
+  side: { label: 'Yan profil', position: [12.5, 0.7, 1.3], target: [0, 0, 1.3], fov: 22 },
+  exhaust: { label: 'Egzoz', position: [4.9, 1.05, 8.6], target: [0, 0, 3.4], fov: 30 },
   top: { label: 'Üstten', position: [4.6, 5.4, -4.2], target: [0, 0.6, 0.2], fov: 30 },
-  cutaway: { label: 'Kesit', position: [7.8, 1.4, 0.7], target: [0, 0, 0.95], fov: 28, cutaway: true },
-  cutawayCore: { label: 'Kesit — çekirdek', position: [4.6, 0.9, 1.4], target: [0, 0, 1.55], fov: 30, cutaway: true },
+  cutaway: { label: 'Kesit', position: [8.6, 1.4, 1.3], target: [0, 0, 1.5], fov: 28, cutaway: true },
+  cutawayCore: { label: 'Kesit — çekirdek', position: [4.6, 0.9, 1.9], target: [0, 0, 2.05], fov: 30, cutaway: true },
   menu: { label: 'Menü', position: [7.4, 1.4, -5.2], target: [-1.6, 0.2, 0.6], fov: 30 },
 } satisfies Record<string, CameraView>;
 

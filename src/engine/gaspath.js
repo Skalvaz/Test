@@ -76,8 +76,21 @@ export function buildGasPath(materials, spec) {
     const vaneGeo = new THREE.BoxGeometry(0.008, (r1 - r0) * 0.9, 0.12);
     vaneGeo.translate(0, (r0 + r1) / 2, 0);
     hpSpool.add(tagPart(radialInstances(vaneGeo, materials.hubMetal, 17, 0, z + 0.02, { extraRotation: new THREE.Euler(0.35, 0, 0) }), 'hpc'));
-    // Difüzör halkası
-    const diffuser = new THREE.Mesh(new THREE.TorusGeometry(r1 + 0.03, 0.03, 12, 96), materials.superalloy);
+    // Kanatlı radyal difüzör: çark ucundan difüzör çıkışına (rd), akışı
+    // yavaşlatıp basınca çeviren eğik kanatlar; dış toplama halkası
+    const rd = spec.centrifugal.rd ?? r1;
+    if (rd > r1 + 0.02) {
+      const dv = new THREE.BoxGeometry(0.006, rd - r1 - 0.01, 0.07);
+      dv.rotateZ(0.55);
+      dv.translate(0, (r1 + rd) / 2, 0);
+      group.add(tagPart(radialInstances(dv, materials.superalloy, 21, 0, z + 0.075), 'hpc'));
+      const plate = new THREE.Mesh(
+        latheFromProfile(smoothProfile([[r1 + 0.005, z + 0.035], [rd, z + 0.035], [rd, z + 0.115], [r1 + 0.005, z + 0.115]], 8), 96),
+        materials.superalloy,
+      );
+      group.add(tagPart(plate, 'hpc'));
+    }
+    const diffuser = new THREE.Mesh(new THREE.TorusGeometry(rd + 0.03, 0.03, 12, 96), materials.superalloy);
     diffuser.position.z = z + 0.1;
     group.add(tagPart(diffuser, 'hpc'));
   }

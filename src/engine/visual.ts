@@ -11,7 +11,8 @@ import * as THREE from 'three';
 import type { EngineKind, SimSnapshot } from '../sim';
 import { buildNacelle } from './nacelle.js';
 import { buildBareJet } from './barejet.js';
-import { bareJetLayout } from '../design/catalog';
+import { bareJetLayout, turbofanLayout, turbopropLayout } from '../design/catalog';
+import type { TurbofanLayout } from '../design/flowpath';
 import { buildTurboprop } from './turboprop.js';
 import { buildFan } from './fan.js';
 import { buildCore } from './core.js';
@@ -157,8 +158,9 @@ interface EngineModel {
   bladeCount?: number;
   /** Kaportasız motorlar: hücre askısı ve yer standı için bağlantı noktaları */
   stand?: { yoke: THREE.Object3D; mounts: number[]; engineR: number };
-  /** Turboprop: pervane grubu ve pal açısı */
+  /** Turboprop: pervane grubu, pal açısı ve pervane diski (efektler için) */
   propeller?: THREE.Object3D;
+  prop?: { z: number; radius: number; blades: number };
   setPitch?: (load: number, feather: number) => void;
   /** Art yakıcılı motorlar: değişken lüle */
   nozzle?: { set(area: number, abLevel: number): void };
@@ -170,12 +172,24 @@ interface EngineModel {
   tick?: (lpAngle: number, propAngle: number) => void;
 }
 
-function buildTurbofanModel(materials: Materials): EngineModel {
+/**
+ * Kaportalı turbofan: çekirdek yerleşimden (design/flowpath.ts), fan,
+ * kaporta ve pilon M4 öncesi modelin ölçülerinde kurulup fan ucu oranında
+ * ölçeklenir; fan rotoru yerleşimdeki konuma oturur.
+ */
+function buildTurbofanModel(materials: Materials, L: TurbofanLayout): EngineModel {
   const group = new THREE.Group();
-  const nacelle = buildNacelle(materials);
-  const fan = buildFan(materials);
-  const core = buildCore(materials);
+  const nacelle = buildNacelle(materials, { ductExitR: L.bypassExit.rDuct / L.s });
+  const fan = buildFan(materials, L.fan.blades[0]);
+  const core = buildCore(materials, L);
   const pylon = buildPylon(materials);
+  const place = (o: THREE.Object3D) => {
+    o.scale.setScalar(L.s);
+    o.position.z = L.fan.z0 + 0.28 * L.s;
+  };
+  place(nacelle);
+  place(fan.group);
+  place(pylon.group);
   // Fan rotoru LP milinin ön ucudur
   core.lpSpool.add(fan.group);
   group.add(nacelle, core.group, pylon.group);
@@ -185,11 +199,11 @@ function buildTurbofanModel(materials: Materials): EngineModel {
     hpSpool: core.hpSpool,
     blurDisc: fan.blurDisc,
     blurMat: fan.blurMat,
-    bladeCount: 22,
+    bladeCount: L.fan.blades[0],
     wing: pylon.wing,
     mount: pylon.group,
-    intake: { z: -2.25, radius: 1.1 },
-    exhaust: { z: 3.35, radius: 0.5 },
+    intake: L.intake,
+    exhaust: L.exhaust,
   };
 }
 
@@ -229,9 +243,9 @@ export class EngineVisual {
     this.root.name = kind;
     this.model =
       kind === 'turbofan'
-        ? buildTurbofanModel(materials)
+        ? buildTurbofanModel(materials, turbofanLayout(kind)!)
         : kind === 'turboprop'
-          ? (buildTurboprop(materials) as unknown as EngineModel)
+          ? (buildTurboprop(materials, turbopropLayout(kind)) as unknown as EngineModel)
           : (buildBareJet(materials, kind, bareJetLayout(kind)) as unknown as EngineModel);
     const ex = this.model.exhaust;
     this.plume = buildExhaustPlume(ex.radius, ex.z);
@@ -261,7 +275,7 @@ export class EngineVisual {
 
     // Efektler (parçacıklar, art yakıcı alevi) gölge almaz ve seçilemez;
     // parça indekslemesinden sonra eklenmeleri için burada kurulur
-    const prop = kind === 'turboprop' ? { z: -2.08, radius: 1.965, blades: 6 } : undefined;
+    const prop = this.model.prop;
     this.effects = new EngineEffects(
       { kind, intake: this.model.intake, exhaust: this.model.exhaust, prop },
       createNoiseTexture(256, 777),

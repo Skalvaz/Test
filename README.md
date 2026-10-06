@@ -213,6 +213,20 @@ parametre değiştiğinde motor fizikten yeniden oluşur — bu, Motor Atölyesi
 
 ![Aynı turbojet, farklı parametreler](renders/48-m4a-parametrik.jpg)
 
+**M4b** — dört motorun hepsi artık modül grafiğinden üretilir. Turboprop:
+pervane + redüktör (dişli oranı güç türbini devrinden), eksenel + santrifüj
+gaz jeneratörü, serbest güç türbini. Santrifüj çark fizikten gelir (uç hızı
+~505 m/s) ve arkasında kanatlı radyal difüzör vardır. Yüksek baypaslı
+turbofanda eski modelin fizikle çeliştiği yerler düzeltildi: booster 115 kg/s
+çekirdek akışında boğuluyordu (Mach 1), artık daha dışta ve büyük (Mach
+0,42); LP türbin fan devrinde aşırı yükleniyordu (ψ ≈ 6,6), artık
+doğrudan tahrikli büyük turbofanlardaki gibi dışa açılan ince bir halkada
+6 kademe (ψ ≈ 2,9), HPT ile arasında türbin geçiş kanalı. Çekirdek kaportası
+iç parçaların zarfından, lüle ağızları termodinamik alanlardan (A9, A19)
+çıkar. Kütle tahmini 5,9 t (GEnx-1B sınıfı 5,8 t):
+
+![Turbofan ve turboprop, önce/sonra](renders/49-m4b-fizik.jpg)
+
 
 **Serbest mod** — test hücresinde bütün anahtarlar, FADEC'i manuele alma, irtifa /
 Mach / sıcaklık, simülasyon hızı (¼×–4×), arıza enjeksiyonu (kuş çarpması,

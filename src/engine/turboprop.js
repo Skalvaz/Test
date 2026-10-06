@@ -98,12 +98,26 @@ function ellipticDuct(path, segments = 40, radial = 32) {
 }
 
 const deg = THREE.MathUtils.degToRad;
-export const PROP_RADIUS = 1.965;
-const PROP_Z = -2.08;
 
-export function buildTurboprop(materials, blades = 6) {
+/**
+ * @param L  gaz yolu yerleşimi: design/flowpath.ts `TurbopropLayout`
+ *           (modül grafiğinden fizikle hesaplanır). Pervane göbeği, dişli
+ *           kutusu, giriş kanalı ve dış donanım bu çapalara göre yerleşir:
+ *           pervane düzlemi, dişli kutusu gövdesi, HPC girişi, yanma odası,
+ *           türbinler.
+ */
+export function buildTurboprop(materials, L) {
   const group = new THREE.Group();
   group.name = 'turboprop';
+  const PROP_Z = L.prop.z;
+  const PROP_RADIUS = L.prop.radius;
+  const blades = L.prop.blades;
+  const g = L.gas;
+  const hz = g.hpc.z0; // HPC girişi: giriş kanalı ve gövde donanımının çapası
+  const cb = g.combustor;
+  const cen = g.centrifugal;
+  // Dişli kutusu gövdesi: M4 öncesi modelde z −1,8 … −0,82 arası
+  const gbz = (z) => L.gearbox.z0 + ((z + 1.8) / 0.98) * (L.gearbox.z1 - L.gearbox.z0);
 
   /* ---------------- pervane ---------------- */
   const propeller = new THREE.Group();
@@ -112,12 +126,12 @@ export function buildTurboprop(materials, blades = 6) {
 
   const spinner = smoothProfile(
     [
-      [0.002, -2.62],
-      [0.12, -2.54],
-      [0.235, -2.38],
-      [0.305, -2.18],
-      [0.33, -1.96],
-      [0.335, -1.78],
+      [0.002, PROP_Z - 0.54],
+      [0.12, PROP_Z - 0.46],
+      [0.235, PROP_Z - 0.3],
+      [0.305, PROP_Z - 0.1],
+      [0.33, PROP_Z + 0.12],
+      [0.335, PROP_Z + 0.3],
     ],
     80,
   );
@@ -172,29 +186,29 @@ export function buildTurboprop(materials, blades = 6) {
   /* ---------------- redüksiyon dişli kutusu ---------------- */
   const rgb = smoothProfile(
     [
-      [0.3, -1.8],
-      [0.38, -1.62],
-      [0.45, -1.35],
-      [0.46, -1.1],
-      [0.4, -0.92],
-      [0.35, -0.82],
+      [0.3, gbz(-1.8)],
+      [0.38, gbz(-1.62)],
+      [0.45, gbz(-1.35)],
+      [0.46, gbz(-1.1)],
+      [0.4, gbz(-0.92)],
+      [0.35, gbz(-0.82)],
     ],
     60,
   );
   group.add(tagPart(new THREE.Mesh(latheFromProfile(rgb, 128), materials.castAlu), 'gearbox'));
   // Pervane valisi (dişli kutusunun üstünde) ve yağ karteri (altta)
   const gov = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.07, 0.14, 20), materials.castAlu);
-  gov.position.set(0, 0.49, -1.2);
+  gov.position.set(0, 0.49, gbz(-1.2));
   group.add(tagPart(gov, 'gearbox'));
   const govCap = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.03, 16), materials.anodized);
-  govCap.position.set(0, 0.575, -1.2);
+  govCap.position.set(0, 0.575, gbz(-1.2));
   group.add(tagPart(govCap, 'gearbox'));
   const sump = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.1, 0.34), materials.castAlu);
-  sump.position.set(0, -0.47, -1.25);
+  sump.position.set(0, -0.47, gbz(-1.25));
   group.add(tagPart(sump, 'gearbox'));
   const rgbBolt = new THREE.CylinderGeometry(0.008, 0.008, 0.03, 6);
   rgbBolt.rotateX(Math.PI / 2);
-  group.add(tagPart(radialInstances(rgbBolt, materials.machinery, 36, 0.455, -1.3), 'gearbox'));
+  group.add(tagPart(radialInstances(rgbBolt, materials.machinery, 36, 0.455, gbz(-1.3)), 'gearbox'));
 
   /* ---------------- planet dişli takımı (dişli kutusunun içi) ----------------
    * Güneş dişlisi güç türbini milindedir, çember dişli gövdeye sabittir,
@@ -203,7 +217,7 @@ export function buildTurboprop(materials, blades = 6) {
   const RS = 0.07;
   const RP = 0.1;
   const RR = RS + 2 * RP;
-  const gearZ = -1.32;
+  const gearZ = gbz(-1.32);
   const sun = new THREE.Mesh(gearGeometry(RS, 18, 0.1), materials.hubMetal);
   sun.position.z = gearZ;
   const ring = new THREE.Mesh(gearGeometry(RR, 54, 0.1, true, RR + 0.04), materials.machinery);
@@ -231,32 +245,16 @@ export function buildTurboprop(materials, blades = 6) {
   propeller.add(carrier);
 
   /* ---------------- gaz jeneratörü + güç türbini ---------------- */
-  const gas = buildGasPath(materials, {
-    hpc: { stages: 4, z0: -0.72, z1: -0.3, hub: [0.1, 0.13], tip: [0.2, 0.17], blades: [26, 36] },
-    centrifugal: { z: -0.14, r0: 0.12, r1: 0.26 },
-    combustor: { z0: 0.06, z1: 0.46, rIn: 0.14, rOut: 0.26, injectors: 14 },
-    hpt: { stages: 1, z0: 0.56, z1: 0.56, hub: [0.15, 0.15], tip: [0.22, 0.22], blades: [44, 44] },
-    lpt: { stages: 2, z0: 0.74, z1: 0.9, hub: [0.15, 0.15], tip: [0.23, 0.26], blades: [52, 58] },
-    casing: [[0.21, -0.78], [0.18, -0.3], [0.28, -0.05], [0.28, 0.45], [0.23, 0.56], [0.27, 0.95]],
-    shafts: { lp: [-1.7, 0.95, 0.035], hp: [-0.78, 0.6, 0.06] },
-  });
+  const gas = buildGasPath(materials, g);
   group.add(gas.group);
   gas.lpSpool.add(tagPart(sun, 'gearbox'));
 
-  const casePts = [
-    [0.3, -0.84],
-    [0.32, -0.6],
-    [0.3, -0.3],
-    [0.36, -0.1],
-    [0.37, 0.4],
-    [0.33, 0.62],
-    [0.32, 1.0],
-  ];
+  const casePts = L.case;
   group.add(tagPart(new THREE.Mesh(thickLathe(smoothProfile(casePts, 80), 128, 0.01, 'in'), materials.engineCase), 'fanCase'));
   const prof = radiusProfile(casePts.map(([r, z]) => [r, z]));
   // Kit parçaları (Blender'da modellenmiş dış donanım, bkz. kit.js)
   const kit = new KitBatch(materials);
-  for (const fz of [-0.84, -0.3, -0.08, 0.48, 1.0]) {
+  for (const fz of [hz - 0.12, g.hpc.z1, cen.z + 0.06, cb.z1 + 0.02, g.lpt.z1 + 0.1]) {
     const r = prof(fz);
     const fl = new THREE.Mesh(new THREE.TorusGeometry(r + 0.004, 0.01, 8, 96), materials.kitSteel ?? materials.machinery);
     fl.position.z = fz;
@@ -265,12 +263,16 @@ export function buildTurboprop(materials, blades = 6) {
   }
 
   // Egzoz: jet borusu
+  const ex = L.exhaust;
   const jetPipe = new THREE.Mesh(
-    thickLathe(smoothProfile([[0.3, 0.98], [0.29, 1.3], [0.27, 1.62]], 20), 96, 0.008, 'out'),
+    thickLathe(smoothProfile([[ex.r0, ex.z0], [(ex.r0 + ex.radius) / 2 + 0.005, (ex.z0 + ex.z1) / 2], [ex.radius, ex.z1]], 20), 96, 0.008, 'out'),
     materials.sooted,
   );
   group.add(tagPart(jetPipe, 'exhaust'));
-  const tail = new THREE.Mesh(thickLathe(smoothProfile([[0.15, 0.95], [0.1, 1.2], [0.01, 1.42]], 30), 48, 0.008, 'in'), materials.sooted);
+  const tail = new THREE.Mesh(
+    thickLathe(smoothProfile([[ex.coneR, ex.z0 - 0.03], [ex.coneR * 0.67, ex.z0 + 0.22], [0.01, ex.coneZ1]], 30), 48, 0.008, 'in'),
+    materials.sooted,
+  );
   group.add(tagPart(tail, 'exhaust'));
 
   /* ---------------- çene tipi hava girişi: S-kanal ---------------- */
@@ -278,18 +280,18 @@ export function buildTurboprop(materials, blades = 6) {
   // kıvrılarak kompresör girişinin altındaki toplama odasına bağlanır
   const duct = new THREE.Mesh(
     ellipticDuct([
-      [0, -0.6, -1.66, 0.25, 0.13],
-      [0, -0.6, -1.4, 0.24, 0.13],
-      [0, -0.55, -1.1, 0.22, 0.12],
-      [0, -0.42, -0.9, 0.2, 0.1],
-      [0, -0.3, -0.8, 0.2, 0.09],
+      [0, -0.6, hz - 0.94, 0.25, 0.13],
+      [0, -0.6, hz - 0.68, 0.24, 0.13],
+      [0, -0.55, hz - 0.38, 0.22, 0.12],
+      [0, -0.42, hz - 0.18, 0.2, 0.1],
+      [0, -0.3, hz - 0.08, 0.2, 0.09],
     ]),
     materials.engineCaseOpen ?? materials.engineCase,
   );
   group.add(tagPart(duct, 'inlet'));
   // Ağız dudağı: parlatılmış, eliptik
   const lipCurve = new THREE.EllipseCurve(0, 0, 0.25, 0.13);
-  const lipPts = lipCurve.getPoints(64).map((p) => new THREE.Vector3(p.x, p.y - 0.6, -1.66));
+  const lipPts = lipCurve.getPoints(64).map((p) => new THREE.Vector3(p.x, p.y - 0.6, hz - 0.94));
   const lip = new THREE.Mesh(
     new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lipPts, true), 96, 0.022, 10, true),
     materials.polishedLip,
@@ -297,7 +299,7 @@ export function buildTurboprop(materials, blades = 6) {
   group.add(tagPart(lip, 'inlet'));
   // Toplama odası (plenum): kompresör girişini saran halka
   const plenum = new THREE.Mesh(
-    latheFromProfile(smoothProfile([[0.24, -0.9], [0.32, -0.86], [0.33, -0.8], [0.3, -0.76]], 20), 96),
+    latheFromProfile(smoothProfile([[0.24, hz - 0.18], [0.32, hz - 0.14], [0.33, hz - 0.08], [0.3, hz - 0.04]], 20), 96),
     materials.castAlu,
   );
   group.add(tagPart(plenum, 'inlet'));
@@ -318,17 +320,17 @@ export function buildTurboprop(materials, blades = 6) {
     castKit: materials.kitCast,
     kit,
   };
-  fuelManifold(group, prof, 0.14, 14, mats, 'gearbox');
-  igniters(group, prof, 0.25, [-Math.PI / 2 - 0.8, -Math.PI / 2 + 0.8], 0.6, mats, 'gearbox');
-  borescopePorts(group, prof, [-0.5, 0.3, 0.56, 0.8], 0.4, mats);
-  oilTank(group, prof, { a: -0.15, z: -0.45, len: 0.28, r: 0.065 }, mats);
-  controlUnit(group, prof, { a: Math.PI + 0.25, z: -0.35, w: 0.18, d: 0.26 }, mats);
+  fuelManifold(group, prof, cb.z0 + 0.08, cb.injectors, mats, 'gearbox');
+  igniters(group, prof, cb.z0 + 0.19, [-Math.PI / 2 - 0.8, -Math.PI / 2 + 0.8], cb.z1 + 0.14, mats, 'gearbox');
+  borescopePorts(group, prof, [hz + 0.22, cb.z1 - 0.16, g.hpt.z0, g.lpt.z0 + 0.06], 0.4, mats);
+  oilTank(group, prof, { a: -0.15, z: hz + 0.27, len: 0.28, r: 0.065 }, mats);
+  controlUnit(group, prof, { a: Math.PI + 0.25, z: hz + 0.37, w: 0.18, d: 0.26 }, mats);
   const pipe = (a0, a1, z0, z1, rad, mat, gap = 0.012) => hugPipe(group, prof, { a0, a1, z0, z1, rad, gap, mat, kit });
-  pipe(0.35, 0.15, -0.8, 0.12, 0.013, materials.engineCase); // yakıt besleme
-  pipe(-0.3, -0.6, -0.4, 0.75, 0.009, materials.brassFitting, 0.01); // yağ dönüş
-  pipe(Math.PI - 0.4, Math.PI - 0.1, -0.75, 0.9, 0.009, materials.brassFitting, 0.01); // yağ basınç
-  pipe(Math.PI / 2 + 0.5, Math.PI / 2 + 0.2, -0.2, 0.4, 0.022, materials.engineCase, 0.016); // bleed
-  harness(group, prof, { a0: Math.PI + 0.15, a1: Math.PI + 0.55, z0: -0.2, z1: 0.95, mat: materials.hose, kit });
+  pipe(0.35, 0.15, hz - 0.08, cb.z0 + 0.06, 0.013, materials.engineCase); // yakıt besleme
+  pipe(-0.3, -0.6, hz + 0.32, g.lpt.z0 + 0.01, 0.009, materials.brassFitting, 0.01); // yağ dönüş
+  pipe(Math.PI - 0.4, Math.PI - 0.1, hz - 0.03, g.lpt.z1, 0.009, materials.brassFitting, 0.01); // yağ basınç
+  pipe(Math.PI / 2 + 0.5, Math.PI / 2 + 0.2, cen.z - 0.06, cb.z1 - 0.06, 0.022, materials.engineCase, 0.016); // bleed
+  harness(group, prof, { a0: Math.PI + 0.15, a1: Math.PI + 0.55, z0: cen.z - 0.06, z1: g.lpt.z1 + 0.05, mat: materials.hose, kit });
   // Dişli kutusunun arka yüzündeki aksesuarlar (eksenel, +Z): starter-jeneratör,
   // yakıt kontrol ünitesi/pompa, hidrolik pompa
   for (const [x, y, r, l, kind] of [
@@ -337,14 +339,14 @@ export function buildTurboprop(materials, blades = 6) {
     [0.3, -0.24, 0.05, 0.16, 'hydPump'],
   ]) {
     const s = r / 0.06;
-    kit.at(kind, Math.atan2(y, x), Math.hypot(x, y), -0.87, { pitch: Math.PI / 2, scale: [s, l / 0.145, s] }, 'gearbox');
+    kit.at(kind, Math.atan2(y, x), Math.hypot(x, y), L.gearbox.z1 - 0.05, { pitch: Math.PI / 2, scale: [s, l / 0.145, s] }, 'gearbox');
   }
-  probes(prof, 0.95, 6, { kit }, 0.3, 'lpt');
-  liftLugs(prof, [-0.55, 0.62], { kit });
+  probes(prof, g.lpt.z1 + 0.05, 6, { kit }, 0.3, 'lpt');
+  liftLugs(prof, [hz + 0.17, g.hpt.z0 + 0.06], { kit });
   group.add(kit.build());
 
   /* ---------------- test standı askısı ---------------- */
-  const yoke = buildStandYoke(materials, { mounts: [-1.25, 0.35], engineR: 0.42 });
+  const yoke = buildStandYoke(materials, { mounts: L.mounts, engineR: L.engineR });
   group.add(tagPart(yoke, 'stand'));
 
   /**
@@ -374,8 +376,9 @@ export function buildTurboprop(materials, blades = 6) {
     blurMat,
     bladeCount: blades * 2,
     setPitch,
-    stand: { yoke, mounts: [-1.25, 0.35], engineR: 0.42 },
-    intake: { z: -1.62, radius: 0.2, y: -0.62 },
-    exhaust: { z: 1.62, radius: 0.27 },
+    stand: { yoke, mounts: L.mounts, engineR: L.engineR },
+    intake: { z: hz - 0.9, radius: 0.2, y: -0.62 },
+    exhaust: { z: ex.z1, radius: ex.radius },
+    prop: { z: PROP_Z, radius: PROP_RADIUS, blades },
   };
 }
