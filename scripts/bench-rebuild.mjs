@@ -9,7 +9,6 @@
  */
 import { launchBrowser } from './capture/common.mjs';
 import { openPage } from './capture/record.mjs';
-import { writeFileSync } from 'node:fs';
 
 const browser = await launchBrowser(new Set());
 const page = await openPage(browser, 'http://localhost:5173/', { quality: process.argv[2] ?? 'high' });
@@ -58,6 +57,5 @@ const r = await page.evaluate(async () => {
   }
   return out.join('\n');
 });
-writeFileSync('scripts/bench.out.tmp', r);
 console.log(r);
 await browser.close();
