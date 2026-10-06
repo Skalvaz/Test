@@ -270,14 +270,30 @@ M4 üç adımda:
 - **Bitti sayılır:** dört motor yeni üreticide, elle girilmiş ölçü tabloları
   kalktı (sim/design.ts kataloğu yalnız termodinamik referans)
 
-**M4c — Yeni modüller ve hız**
-- Kutu (can) yanma odası, chevron lüle, ayrı karıştırıcı varyantları;
-  bunların simülasyon karşılıkları (basınç kaybı, karışma verimi, gürültü
-  için hazırlık)
-- Artımlı yeniden üretim: yalnız değişen modül ve komşu geçişleri yeniden
-  üretilir; kaydırıcı sürüklenirken düşük LOD önizleme
-- **Bitti sayılır:** parametre değişikliği < 150 ms'de modeli yeniden
-  üretiyor
+**M4c — Yeni modüller ve hız ✅**
+- ✅ Kutu (can) yanma odası: kutu sayısı düğmesi, toplam alan referans
+  hızdan, sığmazsa öğretici hata; kendi ekseni etrafında kutu gömlekleri
+  (örnekli), ateşleme geçiş boruları, NGV'ye geçiş kanalı
+- ✅ Chevron lüle (baypas/çekirdek sayıları ayrı): lüle başına itki
+  katsayısı −%0,25; şablon turbofanın baypas chevron'ları düğmeye taşındı
+- ✅ Düz / lobe'lu karıştırıcı; simülasyonda karışma verimi (`mixingEff`,
+  sizeEngine + cycle): kuru itki ayrı jetlerle tam karışmış jet arasında;
+  art yakıcı yanarken karışma tamamlanır. Askeri motor kuru itkisi bu
+  yüzden ~%0,15 düştü (düz karıştırıcı 0,85)
+- ✅ Artımlı üretim (`engine/buildCache.js`): nesil önbelleği, modüller
+  yerel z'de kurulup kaydırılır, kaporta/fan/pilon anahtarla taşınır,
+  ayrıntı seviyesi anahtarda. `App.applyDesign(kind, graph, draft)`:
+  taslakta düşük ayrıntı, 250 ms sonra tam ayrıntı; çalışan motor
+  sönmez (aynı gaz kolunda yeniden dengelenir)
+- ✅ Profilleyerek bulunan darboğazlar: eski model atılırken parça
+  malzemesi klonları shader programlarını siliyordu (sonraki karede ~60
+  program yeniden derleniyordu) → eski model ilk çizimden sonra atılır;
+  fbm dokuları her seferinde → önbellek; computeVertexNormals ve Y
+  ekseninde kurup döndürme → doğrudan z ekseninde, analitik normal
+- ✅ Ölçüm (`scripts/bench-rebuild.mjs`, RTX 4070): taslak 25–110 ms, tam
+  ayrıntı turbofan 115–160 ms, diğerleri 30–55 ms (önce 160–660 ms)
+- Not: kalınlıklı kabuklar artık silindirik uv1 alıyor (önce düzlemsel
+  izdüşüm, 45°'de dikişli); taramalarda fark görülmedi
 
 Maliyet, gürültü (jet hızı + fan ucu), NOx (T3/T4) ve türbin soğutma havası
 hesapları gösterilecekleri arayüzle birlikte M5'e alındı.

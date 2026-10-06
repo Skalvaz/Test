@@ -45,6 +45,8 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
 - `src/engine/visual.ts` — modeli simülasyona bağlar: lüle, termal kızıllık
   (`thermal` + `glow()`), yanma odası noktaları, surge.
 - `src/engine/*.js` — prosedürel motor parçaları (stages, combustor, nozzle…).
+  `buildCache.js`: artımlı üretim (nesil önbelleği; `reuse(key, build)`,
+  taşınan geometriler `isLive` ile eski modelle atılmaz).
 - `src/effects/` — `EngineEffects.js` (parçacıklar, is izi, şok halkası,
   yanma odası efektleri), `AfterburnerFlame.js` (raymarch alev, 5 zon),
   `Particles.js`.
@@ -133,13 +135,21 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   `node scripts/playtest.mjs playtest-output` (swiftshader, ~10+ dk).
 - Önce/sonra worktree'si `.claude/launch.json` → `once` (5174,
   `../turbofan-once`).
+- Yeniden üretim hızı: `node scripts/bench-rebuild.mjs [high|low]` (dev
+  sunucusu açıkken). Profil için CDP `Profiler.start/stop` (Playwright
+  `newCDPSession`); ilk kare süresindeki dev değerler sayfanın ilk ortam
+  derlemesidir, yeniden üretimle ilgisi yok.
+- Kütüphane malzemelerini klonlarken kesit kapağı (capify) yaması da gelir:
+  ince iki yüzlü sac (lobe'lu karıştırıcı) için yamasız yeni malzeme kullan,
+  yoksa kesitte arka yüzler kırmızı boyanır.
 - PowerShell'de `node … | Select-Object -First N` boruyu kapatınca node 255
   ile çıkar; hata sanma.
 
 ## Sıradaki işler
 
-1. M4c (ROADMAP): kutu yanma odası, chevron lüle, karıştırıcı varyantları;
-   artımlı yeniden üretim (< 150 ms). Kapsam Ekim 2026'da kullanıcıyla
-   gözden geçirildi: geometri fizikten, M4'te yalnız geometriye bağlı
-   hesaplar; maliyet/gürültü/NOx/soğutma havası M5'te.
-2. ROADMAP Faz 3'ün sıradaki kilometre taşı (M5 Motor Atölyesi).
+1. M5 Motor Atölyesi (ROADMAP). Hazır kancalar: `App.applyDesign(kind,
+   graph, draft)` (taslak/tam ayrıntı, < 150 ms), `window.__design`,
+   tasarım uyarıları için `flowpath.metrics` (uç Mach, AN², kütle).
+   M4'ten devreden: maliyet, gürültü (chevron etkisi), NOx, soğutma havası;
+   turboprop çekirdeği ve turbofan HPT/yanma odası şablonda büyük (ROADMAP
+   M4b notu) — uyarılar gelince düzeltilecek.

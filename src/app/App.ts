@@ -20,6 +20,16 @@ import { loadProgress, loadSettings, saveLessonResult, saveSettings, type Settin
 import { createMaterials } from '../materials/library.js';
 import { loadKit, setKitQuality } from '../engine/kit.js';
 import { setBladeQuality } from '../engine/blades.js';
+import { setDetailTag } from '../engine/buildCache.js';
+import { overrideGraph } from '../design/catalog';
+import type { EngineGraph } from '../design/types';
+
+/** Model ayrıntı seviyesi: kit parçaları, kanat örneklemesi, önbellek etiketi */
+function setDetail(q: Settings['quality']) {
+  setKitQuality(q);
+  setBladeQuality(q);
+  setDetailTag(q);
+}
 import { setCutPlane } from '../materials/engine';
 import { Rain } from '../core/rain';
 import { updateWeather, weather, wetUniforms } from '../core/weather';
@@ -162,8 +172,7 @@ export class App {
       return null;
     });
     await step(onProgress, 'Donanım parçaları yükleniyor…');
-    setKitQuality(this.settings.quality);
-    setBladeQuality(this.settings.quality);
+    setDetail(this.settings.quality);
     const kitTex = await loadKit(renderer).catch((err) => {
       console.error('Kit parçaları yüklenemedi', err);
       return null;
@@ -586,10 +595,43 @@ export class App {
     if (this.mode !== 'menu' && cur !== 'menu' && (KIND_VIEWS[kind][cur] || cur === 'fan' || cur === 'inlet')) this.rig.go(cur);
   }
 
+  /**
+   * Atölye kancası: bir motor tipinin tasarımını (modül grafiği) değiştirir,
+   * simülasyonu ve 3B modeli yeniden kurar. `draft` iken (kaydırıcı
+   * sürüklenirken) model düşük ayrıntıyla hemen üretilir; son değişiklikten
+   * 250 ms sonra seçili kalitede yeniden üretilir. Geçersiz grafikte hata
+   * atar, eski tasarım kalır. null şablona döndürür.
+   */
+  applyDesign(kind: EngineKind, graph: EngineGraph | null, draft = false) {
+    const built = overrideGraph(kind, graph);
+    if (!built) return;
+    if (this.sim.kind === kind) {
+      // Çalışan motor sönmesin: aynı gaz kolunda yeni tasarımla dengelenir
+      const lit = this.sim.lit;
+      const throttle = this.sim.controls.throttle;
+      this.sim.setDesign(built.design);
+      if (lit) this.sim.trim(throttle, 10);
+    }
+    clearTimeout(this.fullDetailTimer);
+    if (draft && this.settings.quality !== 'low') {
+      setDetail('low');
+      this.rebuildVisual(kind);
+      setDetail(this.settings.quality);
+      this.fullDetailTimer = setTimeout(() => this.rebuildVisual(kind), 250);
+    } else {
+      this.rebuildVisual(kind);
+    }
+  }
+  private fullDetailTimer: ReturnType<typeof setTimeout> | undefined;
+
   /** 3B motor modelini (aynı ya da yeni tip) yeniden üretir */
   private rebuildVisual(kind: EngineKind = this.visual.kind) {
     this.scene.remove(this.visual.root);
-    this.visual.dispose();
+    // Eski model, yeni model en az bir kez çizildikten sonra atılır: parça
+    // malzemesi klonları aynı shader programlarını paylaşır; önce atılırsa
+    // programların kullanım sayısı sıfıra düşer, three.js onları siler ve
+    // sonraki karede hepsini (turbofanda ~60 program) baştan derlerdi
+    this.disposeQueue.push(this.visual);
     this.visual = new EngineVisual(this.materials, kind);
     this.visual.setGround(this.floorY, this.envName === TEST_CELL);
     this.scene.add(this.visual.root);
@@ -623,8 +665,7 @@ export class App {
             this.applyQuality(q);
             saveSettings(this.settings);
             // Kit parçalarının detay seviyesi değişti: model yeniden üretilir
-            setKitQuality(q);
-            setBladeQuality(q);
+            setDetail(q);
             this.rebuildVisual();
           },
           onVolume: (v) => {
@@ -1028,9 +1069,14 @@ export class App {
     this.rain.update(simDt, this.rig.camera, this.floorY);
     if (this.cutaway) this.aimCutaway();
     this.updateHaze(snap, dt);
-    if (!this.envPending) this.fx.composer.render(dt);
+    if (!this.envPending) {
+      this.fx.composer.render(dt);
+      // Yeni model çizildi: eski modeller artık güvenle atılabilir
+      if (this.disposeQueue.length) for (const v of this.disposeQueue.splice(0)) v.dispose();
+    }
     this.framesRendered++;
   }
+  private disposeQueue: EngineVisual[] = [];
 
   /** Sahnedeki tüm görünür malzemeleri derler; bitene kadar çizim bekler */
   private precompile() {

@@ -97,88 +97,98 @@ export function buildCombustor(materials, c) {
   linerUniforms.uN.value = N;
   linerUniforms.uScale.value = h / 0.2;
 
-  /* ---------------- gömlekler (basamaklı soğutma halkaları) ---------------- */
-  const rings = low ? 0 : 5;
-  const step = h * 0.018;
-  // Dış gömlek merkez çizgisi: kubbeden yükselir, düz, çıkışa daralır
-  const outerR = (z) => {
-    const t = (z - c.zDome) / L;
-    const base = t < 0.22 ? lerp(c.rOut - h * 0.14, c.rOut, smooth(t / 0.22)) : t < 0.62 ? c.rOut : lerp(c.rOut, c.exTip + tw * 1.2, smooth((t - 0.62) / 0.38));
-    // bindirme basamakları: her halka önünde içe küçük bir sıçrama
-    const k = rings ? (t * (rings + 1)) % 1 : 0.5;
-    return base + (rings && t > 0.08 && t < 0.9 ? step * (k - 0.5) : 0);
-  };
-  const innerR = (z) => {
-    const t = (z - c.zDome) / L;
-    const base = t < 0.22 ? lerp(c.rIn + h * 0.14, c.rIn, smooth(t / 0.22)) : t < 0.6 ? c.rIn : lerp(c.rIn, c.exHub - tw * 1.2, smooth((t - 0.6) / 0.4));
-    const k = rings ? (t * (rings + 1)) % 1 : 0.5;
-    return base - (rings && t > 0.08 && t < 0.9 ? step * (k - 0.5) : 0);
-  };
-  const nL = low ? 20 : bladeQuality() === 'medium' ? 42 : 60;
-  group.add(solid(shell(outerR, c.zDome, c.z1, tw, nL, 1), liner, part, c.rOut, 50));
-  group.add(solid(shell(innerR, c.zDome, c.z1, tw, nL, -1), liner, part, c.rIn, 50));
-
-  /* ---------------- kubbe (perde) ---------------- */
-  const dR0 = c.rIn + h * 0.14 - tw;
-  const dR1 = c.rOut - h * 0.14 + tw;
-  const dt = Math.max(0.004, h * 0.03);
-  group.add(
-    solid(
-      roundPoly(
-        [
-          [dR1, c.zDome - dt],
-          [dR1, c.zDome + 0.002],
-          [dR0, c.zDome + 0.002],
-          [dR0, c.zDome - dt],
-        ],
-        0.0015,
-        1,
-      ),
-      metal,
-      part,
-      mid,
-    ),
-  );
-
-  /* ---------------- ön kaporta (iki dudak) ---------------- */
-  const cowlLen = L * 0.2;
-  for (const s of [1, -1]) {
-    const r0 = s > 0 ? dR1 : dR0;
-    const lip = (z) => {
-      const u = (c.zDome - z) / cowlLen; // 0 kubbe → 1 dudak ucu
-      return r0 - s * h * 0.22 * Math.sin(Math.min(1, u) * Math.PI * 0.5) * 0.9;
+  let outerR;
+  let dR0;
+  let dR1;
+  let cowlLen;
+  let cupR;
+  let cupL;
+  if (c.cans) {
+    ({ outerR, dR0, dR1, cowlLen, cupR, cupL } = canLiners(group, materials, c, { liner, metal, low, tw }));
+  } else {
+    /* ---------------- gömlekler (basamaklı soğutma halkaları) ---------------- */
+    const rings = low ? 0 : 5;
+    const step = h * 0.018;
+    // Dış gömlek merkez çizgisi: kubbeden yükselir, düz, çıkışa daralır
+    outerR = (z) => {
+      const t = (z - c.zDome) / L;
+      const base = t < 0.22 ? lerp(c.rOut - h * 0.14, c.rOut, smooth(t / 0.22)) : t < 0.62 ? c.rOut : lerp(c.rOut, c.exTip + tw * 1.2, smooth((t - 0.62) / 0.38));
+      // bindirme basamakları: her halka önünde içe küçük bir sıçrama
+      const k = rings ? (t * (rings + 1)) % 1 : 0.5;
+      return base + (rings && t > 0.08 && t < 0.9 ? step * (k - 0.5) : 0);
     };
-    group.add(solid(shell(lip, c.zDome - cowlLen, c.zDome, s * Math.max(0.003, h * 0.016), 16, 1), metal, part, r0));
-  }
+    const innerR = (z) => {
+      const t = (z - c.zDome) / L;
+      const base = t < 0.22 ? lerp(c.rIn + h * 0.14, c.rIn, smooth(t / 0.22)) : t < 0.6 ? c.rIn : lerp(c.rIn, c.exHub - tw * 1.2, smooth((t - 0.6) / 0.4));
+      const k = rings ? (t * (rings + 1)) % 1 : 0.5;
+      return base - (rings && t > 0.08 && t < 0.9 ? step * (k - 0.5) : 0);
+    };
+    const nL = low ? 20 : bladeQuality() === 'medium' ? 42 : 60;
+    group.add(solid(shell(outerR, c.zDome, c.z1, tw, nL, 1), liner, part, c.rOut, 50));
+    group.add(solid(shell(innerR, c.zDome, c.z1, tw, nL, -1), liner, part, c.rIn, 50));
 
-  /* ---------------- swirler kapları + venturi ---------------- */
-  const cupR = Math.min(h * 0.22, (Math.PI * mid) / N * 0.55);
-  const cupL = cupR * 0.9;
-  {
-    // kap: kısa silindirik halka (+Z yönünde), kubbenin önünde
-    const cup = new THREE.CylinderGeometry(cupR, cupR * 1.08, cupL, low ? 10 : 20, 1, true);
-    cup.rotateX(Math.PI / 2);
-    cup.translate(0, mid, c.zDome - cupL / 2);
-    const cupIn = new THREE.CylinderGeometry(cupR * 0.62, cupR * 0.45, cupL * 1.1, low ? 8 : 16, 1, true);
-    cupIn.rotateX(Math.PI / 2);
-    cupIn.translate(0, mid, c.zDome - cupL * 0.45);
-    group.add(ring(cup, metal, N, 0, part), ring(cupIn, metal, N, 0, part));
-    if (!low) {
-      // radyal swirler kanatçıkları
-      const nv = 10;
-      const vane = new THREE.BoxGeometry(cupR * 0.08, cupR * 0.42, cupL * 0.55);
-      vane.rotateZ(0.5);
-      const vanes = [];
-      for (let k = 0; k < nv; k++) {
-        const g = vane.clone();
-        const a = (k / nv) * Math.PI * 2;
-        g.translate(0, cupR * 0.8, 0);
-        g.rotateZ(a);
-        g.translate(0, mid, c.zDome - cupL * 0.55);
-        vanes.push(g);
+    /* ---------------- kubbe (perde) ---------------- */
+    dR0 = c.rIn + h * 0.14 - tw;
+    dR1 = c.rOut - h * 0.14 + tw;
+    const dt = Math.max(0.004, h * 0.03);
+    group.add(
+      solid(
+        roundPoly(
+          [
+            [dR1, c.zDome - dt],
+            [dR1, c.zDome + 0.002],
+            [dR0, c.zDome + 0.002],
+            [dR0, c.zDome - dt],
+          ],
+          0.0015,
+          1,
+        ),
+        metal,
+        part,
+        mid,
+      ),
+    );
+
+    /* ---------------- ön kaporta (iki dudak) ---------------- */
+    cowlLen = L * 0.2;
+    for (const s of [1, -1]) {
+      const r0 = s > 0 ? dR1 : dR0;
+      const lip = (z) => {
+        const u = (c.zDome - z) / cowlLen; // 0 kubbe → 1 dudak ucu
+        return r0 - s * h * 0.22 * Math.sin(Math.min(1, u) * Math.PI * 0.5) * 0.9;
+      };
+      group.add(solid(shell(lip, c.zDome - cowlLen, c.zDome, s * Math.max(0.003, h * 0.016), 16, 1), metal, part, r0));
+    }
+
+    /* ---------------- swirler kapları + venturi ---------------- */
+    cupR = Math.min(h * 0.22, (Math.PI * mid) / N * 0.55);
+    cupL = cupR * 0.9;
+    {
+      // kap: kısa silindirik halka (+Z yönünde), kubbenin önünde
+      const cup = new THREE.CylinderGeometry(cupR, cupR * 1.08, cupL, low ? 10 : 20, 1, true);
+      cup.rotateX(Math.PI / 2);
+      cup.translate(0, mid, c.zDome - cupL / 2);
+      const cupIn = new THREE.CylinderGeometry(cupR * 0.62, cupR * 0.45, cupL * 1.1, low ? 8 : 16, 1, true);
+      cupIn.rotateX(Math.PI / 2);
+      cupIn.translate(0, mid, c.zDome - cupL * 0.45);
+      group.add(ring(cup, metal, N, 0, part), ring(cupIn, metal, N, 0, part));
+      if (!low) {
+        // radyal swirler kanatçıkları
+        const nv = 10;
+        const vane = new THREE.BoxGeometry(cupR * 0.08, cupR * 0.42, cupL * 0.55);
+        vane.rotateZ(0.5);
+        const vanes = [];
+        for (let k = 0; k < nv; k++) {
+          const g = vane.clone();
+          const a = (k / nv) * Math.PI * 2;
+          g.translate(0, cupR * 0.8, 0);
+          g.rotateZ(a);
+          g.translate(0, mid, c.zDome - cupL * 0.55);
+          vanes.push(g);
+        }
+        const merged = mergeBoxes(vanes);
+        group.add(ring(merged, metal, N, 0, part));
       }
-      const merged = mergeBoxes(vanes);
-      group.add(ring(merged, metal, N, 0, part));
     }
   }
 
@@ -227,14 +237,15 @@ export function buildCombustor(materials, c) {
     const boss = new THREE.CylinderGeometry(0.018, 0.018, 0.014, 12);
     boss.translate(0, c.caseAt(zi) + 0.014, zi);
     const g = mergeBoxes([plug, boss]);
-    for (const a of [0.55, -0.55]) {
+    const ign = c.cans ? [(2 * Math.PI) / c.cans, -(2 * Math.PI) / c.cans] : [0.55, -0.55];
+    for (const a of ign) {
       const m = new THREE.Mesh(g, steel);
       m.rotation.z = a;
       group.add(tagPart(m, part));
     }
     // Efektler için: buji uçlarının gömlek içindeki konumu
     const rt = outerR(zi) - 0.012;
-    group.userData.igniters = [0.55, -0.55].map((a) => [-Math.sin(a) * rt, Math.cos(a) * rt, zi]);
+    group.userData.igniters = ign.map((a) => [-Math.sin(a) * rt, Math.cos(a) * rt, zi]);
   }
   // Enjektör/swirler çıkışları ve alev bölgesi (kesitte yakıt sisi ve alev)
   group.userData.injectors = Array.from({ length: N }, (_, i) => {
@@ -263,6 +274,93 @@ export function buildCombustor(materials, c) {
 
   mergeStatic(group);
   return group;
+}
+
+/**
+ * Kutu (can) gömlekleri: her kutu kendi ekseni etrafında dönel bir gömlek
+ * (kubbe, soğutma halkalı gövde, daralan çıkış), örnekleme ile ortalama
+ * yarıçapta çevreye dizilir. Gömlek shader'ı yerel konumu kullandığından
+ * delik deseni her kutunun kendi çevresine oturur. Komşu kutular ateşleme
+ * geçiş borularıyla bağlıdır (bir kutuda tutuşan alev diğerlerine geçer);
+ * kutu çıkışları geçiş kanalıyla NGV halkasına iner.
+ */
+function canLiners(group, materials, c, { liner, metal, low, tw }) {
+  const part = 'combustor';
+  const N = c.cans;
+  const rc = (c.rOut - c.rIn) / 2;
+  const mid = (c.rIn + c.rOut) / 2;
+  const L = c.z1 - c.zDome;
+  // Gömlek deseni kutunun kendi çevresine göre
+  linerUniforms.uRMid.value = rc;
+  linerUniforms.uN.value = 6;
+  linerUniforms.uScale.value = (2 * rc) / 0.2;
+  const atCan = (geo, mat, phase = 0) => {
+    const m = new THREE.InstancedMesh(geo, mat, N);
+    const R = new THREE.Matrix4();
+    const T = new THREE.Matrix4().makeTranslation(0, mid, 0);
+    for (let i = 0; i < N; i++) {
+      R.makeRotationZ(-(phase + (i / N) * Math.PI * 2));
+      m.setMatrixAt(i, R.clone().multiply(T));
+    }
+    m.instanceMatrix.needsUpdate = true;
+    m.castShadow = false;
+    return tagPart(m, part);
+  };
+  const sg = low ? 20 : 36;
+  // Gövde: kubbeden açılır, düz, çıkışa daralır (bindirme basamakları)
+  const zEnd = c.z1 - L * 0.16;
+  const rings = low ? 0 : 4;
+  const canR = (z) => {
+    const t = (z - c.zDome) / (zEnd - c.zDome);
+    const base = t < 0.18 ? lerp(rc * 0.55, rc, smooth(t / 0.18)) : t < 0.7 ? rc : lerp(rc, rc * 0.78, smooth((t - 0.7) / 0.3));
+    const k = rings ? (t * (rings + 1)) % 1 : 0.5;
+    return base + (rings && t > 0.1 && t < 0.9 ? rc * 0.03 * (k - 0.5) : 0);
+  };
+  group.add(atCan(revolve(shell(canR, c.zDome, zEnd, tw, low ? 16 : 40, 1), { segments: sg, smooth: 50 }), liner));
+  // Kubbe kapağı
+  const dt = Math.max(0.004, rc * 0.04);
+  group.add(atCan(revolve(roundPoly([[rc * 0.56, c.zDome - dt], [rc * 0.56, c.zDome + 0.002], [rc * 0.2, c.zDome + 0.002], [rc * 0.2, c.zDome - dt]], 0.0015, 1), { segments: sg }), metal));
+  // Dış kutu muhafazası (gömleği saran basınç kabı): kesitte görünür ince kabuk
+  const caseR = (z) => {
+    const t = (z - (c.zDome - L * 0.08)) / (zEnd - (c.zDome - L * 0.08));
+    return lerp(rc * 0.75, rc * 1.16, smooth(Math.min(1, t * 3))) - rc * 0.08 * smooth(Math.max(0, t - 0.8) / 0.2);
+  };
+  group.add(atCan(revolve(shell(caseR, c.zDome - L * 0.08, zEnd, Math.max(0.003, rc * 0.025), low ? 12 : 24, 1), { segments: sg, smooth: 50 }), metal));
+  // Ateşleme geçiş boruları: komşu kutuların arasında, kubbeye yakın
+  const half = Math.PI / N;
+  const chord = 2 * mid * Math.sin(half);
+  const tubeLen = Math.max(0.01, chord - 2 * rc * 0.92);
+  const tube = new THREE.CylinderGeometry(rc * 0.09, rc * 0.09, tubeLen, low ? 8 : 14);
+  tube.rotateZ(Math.PI / 2);
+  tube.translate(0, mid * Math.cos(half), c.zDome + L * 0.3);
+  group.add(atCanRing(tube, metal, N, half, part));
+  // Geçiş kanalı: kutu çıkışlarından NGV halkasına (iç ve dış duvar)
+  const zt0 = zEnd - L * 0.04;
+  const wall = Math.max(0.004, rc * 0.03);
+  const outerT = (z) => lerp(mid + rc * 0.8, c.exTip + tw, smooth((z - zt0) / (c.z1 - zt0)));
+  const innerT = (z) => lerp(mid - rc * 0.8, c.exHub - tw, smooth((z - zt0) / (c.z1 - zt0)));
+  group.add(solid(shell(outerT, zt0, c.z1, wall, 12, 1), liner, part, mid + rc, 50));
+  group.add(solid(shell(innerT, zt0, c.z1, wall, 12, -1), liner, part, mid - rc, 50));
+  // Swirler kapları: her kutunun kubbesinde
+  const cupR = rc * 0.32;
+  const cupL = cupR * 0.9;
+  const cup = new THREE.CylinderGeometry(cupR, cupR * 1.08, cupL, low ? 10 : 20, 1, true);
+  cup.rotateX(Math.PI / 2);
+  cup.translate(0, mid, c.zDome - cupL / 2);
+  group.add(atCanRing(cup, metal, N, 0, part));
+  return {
+    outerR: () => mid + rc * 1.16,
+    dR0: mid - rc * 0.75,
+    dR1: mid + rc * 0.75,
+    cowlLen: L * 0.12,
+    cupR,
+    cupL,
+  };
+}
+
+/** Motor ekseni etrafında örnekli yerleşim (geometri zaten +Y yarıçapında) */
+function atCanRing(geo, mat, count, phase, part) {
+  return ring(geo, mat, count, phase, part);
 }
 
 /** Aynı nitelik kümesine sahip geometrileri (indeksli/indekssiz) birleştirir */

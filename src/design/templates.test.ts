@@ -5,7 +5,7 @@ import { AIR, GAS } from '../sim/gas';
 import { flowFunction, machFromFlow, profileAt, type BareJetLayout, type TurbofanLayout, type TurbopropLayout } from './flowpath';
 import { buildEngine, GraphError, validateGraph } from './graph';
 import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_GRAPH, TURBOPROP_GRAPH } from './templates';
-import type { EngineGraph } from './types';
+import { CHEVRON_CV_LOSS, type CombustorModule, type EngineGraph, type MixerModule, type NozzleModule } from './types';
 
 /** M4 öncesi elle ölçülendirilmiş modeller (engine/barejet.js VARIANTS) */
 const OLD = {
@@ -219,6 +219,59 @@ describe('yüksek baypaslı turbofan şablonu', () => {
     const sim = new EngineSim(built.design);
     sim.trim(1, 30);
     expect(sim.snapshot().N1).toBeGreaterThan(0.95);
+  });
+});
+
+describe('M4c modülleri', () => {
+  const tweak = <T extends { type: string }>(g: EngineGraph, type: T['type'], f: (m: T) => void): EngineGraph => {
+    const c = structuredClone(g);
+    f(c.modules.find((m) => m.type === type) as unknown as T);
+    return c;
+  };
+
+  it('kutu yanma odası: toplam alan korunur, kutular çevreye dizilir', () => {
+    const g = tweak<CombustorModule>(TURBOJET_GRAPH, 'combustor', (m) => Object.assign(m, { style: 'can', cans: 8, refVelocity: 55 }));
+    const b = buildEngine(g);
+    const cb = b.flowpath.gas.combustor;
+    expect(cb.cans).toBe(8);
+    expect(cb.injectors).toBe(8);
+    const rc = (cb.rOut - cb.rIn) / 2;
+    const s3 = b.sized.point.stations['3'];
+    const area = s3.W / ((s3.P / (AIR.R * s3.T)) * 55);
+    expect((8 * Math.PI * rc * rc) / area).toBeCloseTo(1, 4);
+    // Termodinamik yalnız basınç kaybıyla değişir: aynı dp → aynı itki
+    expect(b.sized.point.thrust / buildEngine(TURBOJET_GRAPH).sized.point.thrust).toBeCloseTo(1, 6);
+  });
+
+  it('sığmayan kutu sayısı öğretici hatayla reddedilir', () => {
+    const g = tweak<CombustorModule>(TURBOJET_GRAPH, 'combustor', (m) => Object.assign(m, { style: 'can', cans: 12 }));
+    expect(() => buildEngine(g)).toThrow(/sığmıyor/);
+  });
+
+  it("chevron'lu lüle itkiden küçük bir pay götürür", () => {
+    const base = buildEngine(TURBOFAN_GRAPH);
+    const both = buildEngine(tweak<NozzleModule>(TURBOFAN_GRAPH, 'nozzle', (m) => (m.chevrons = { core: 20, bypass: 18 })));
+    const none = buildEngine(tweak<NozzleModule>(TURBOFAN_GRAPH, 'nozzle', (m) => (m.chevrons = { core: 0, bypass: 0 })));
+    // Kayıplar toplanır: iki chevron'lu lüle (1 − 2L), şablon (1 − L)
+    expect(both.design.nozzleCv / base.design.nozzleCv).toBeCloseTo((1 - 2 * CHEVRON_CV_LOSS) / (1 - CHEVRON_CV_LOSS), 6);
+    expect(none.design.nozzleCv / base.design.nozzleCv).toBeCloseTo(1 / (1 - CHEVRON_CV_LOSS), 6);
+    expect(both.sized.point.thrust).toBeLessThan(base.sized.point.thrust);
+    expect((both.flowpath.layout as TurbofanLayout).chevrons).toEqual({ core: 20, bypass: 18 });
+    expect(() => validateGraph(tweak<NozzleModule>(TURBOJET_GRAPH, 'nozzle', (m) => (m.chevrons = { core: 12 })))).toThrow(GraphError);
+  });
+
+  it("lobe'lu karıştırıcı daha iyi karıştırır ama ek kayıp getirir", () => {
+    const conf = buildEngine(MILITARY_TURBOFAN_GRAPH);
+    const lobedSameLoss = buildEngine(tweak<MixerModule>(MILITARY_TURBOFAN_GRAPH, 'mixer', (m) => Object.assign(m, { style: 'lobed', lobes: 14 })));
+    const lobed = buildEngine(tweak<MixerModule>(MILITARY_TURBOFAN_GRAPH, 'mixer', (m) => Object.assign(m, { style: 'lobed', lobes: 14, loss: 0.015 })));
+    expect(lobedSameLoss.design.afterburner!.mixingEff).toBeGreaterThan(conf.design.afterburner!.mixingEff!);
+    // Aynı kayıpta daha çok kuru itki; art yakıcıda karışma zaten tam
+    expect(lobedSameLoss.sized.point.thrust).toBeGreaterThan(conf.sized.point.thrust);
+    expect(lobedSameLoss.sized.point.thrustWet).toBeCloseTo(conf.sized.point.thrustWet, 0);
+    // Düşük baypasta kazanç küçük: ek %0,5 kayıp onu yer (gerçek askeri motorlar düz karıştırıcı kullanır)
+    expect(lobed.sized.point.thrust).toBeLessThan(lobedSameLoss.sized.point.thrust);
+    expect((lobed.flowpath.layout as BareJetLayout).mixer?.lobes).toBe(14);
+    expect(() => validateGraph(tweak<MixerModule>(MILITARY_TURBOFAN_GRAPH, 'mixer', (m) => Object.assign(m, { style: 'lobed', lobes: 3 })))).toThrow(GraphError);
   });
 });
 

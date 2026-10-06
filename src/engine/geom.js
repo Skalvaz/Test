@@ -33,10 +33,131 @@ export function smoothProfile(points, divisions = 160) {
  * +90° döndürülür.
  */
 export function latheFromProfile(profile, segments = 256, phiStart = 0, phiLength = Math.PI * 2) {
-  const geo = new THREE.LatheGeometry(profile, segments, phiStart, phiLength);
-  geo.rotateX(Math.PI / 2);
-  geo.computeVertexNormals();
+  const geo = fastLathe(profile, segments, phiStart, phiLength);
+  // Normaller profilden analitik (dikişte de pürüzsüz); computeVertexNormals
+  // yeniden üretim süresinin üçte birini alıyordu. Yalnız yön, üçgen
+  // sarımıyla tutarlı olmalı (dış = sarım).
+  alignNormalsToWinding(geo);
   return geo;
+}
+
+/**
+ * THREE.LatheGeometry + rotateX(π/2) ile aynı köşe düzeni, UV ve üçgenler;
+ * ama doğrudan motor ekseninde (z) ve tipli dizilerle kurulur (Y ekseninde
+ * kurup bütün köşeleri döndürmek artımlı üretimde pahalıydı). Gerçek
+ * malzeme taramaları için uv1 (metre) de burada yazılır.
+ */
+function fastLathe(points, segments, phiStart, phiLength) {
+  const n = points.length;
+  const cols = segments + 1;
+  const nv = cols * n;
+  const pos = new Float32Array(nv * 3);
+  const nrm = new Float32Array(nv * 3);
+  const uv = new Float32Array(nv * 2);
+  const uv1 = new Float32Array(nv * 2);
+  // Meridyen normalleri (r, z): komşu kenar normallerinin ortalaması
+  const nr = new Float64Array(n);
+  const nz = new Float64Array(n);
+  let pr = 0;
+  let pz = 0;
+  for (let j = 0; j < n; j++) {
+    let x = 0;
+    let y = 0;
+    if (j < n - 1) {
+      const dx = points[j + 1].x - points[j].x;
+      const dy = points[j + 1].y - points[j].y;
+      x = dy + (j > 0 ? pr : 0);
+      y = -dx + (j > 0 ? pz : 0);
+      pr = dy;
+      pz = -dx;
+    } else {
+      x = pr;
+      y = pz;
+    }
+    const l = Math.hypot(x, y) || 1;
+    nr[j] = x / l;
+    nz[j] = y / l;
+  }
+  const TAU = Math.PI * 2;
+  let v = 0;
+  for (let i = 0; i < cols; i++) {
+    const phi = phiStart + (i / segments) * phiLength;
+    const s = Math.sin(phi);
+    const c = Math.cos(phi);
+    const u = i / segments;
+    for (let j = 0; j < n; j++) {
+      const r = points[j].x;
+      const z = points[j].y;
+      // LatheGeometry (r·sinφ, z, r·cosφ) → X ekseninde +90° → (r·sinφ, −r·cosφ, z)
+      pos[v * 3] = r * s;
+      pos[v * 3 + 1] = -r * c;
+      pos[v * 3 + 2] = z;
+      nrm[v * 3] = nr[j] * s;
+      nrm[v * 3 + 1] = -nr[j] * c;
+      nrm[v * 3 + 2] = nz[j];
+      uv[v * 2] = u;
+      uv[v * 2 + 1] = j / (n - 1);
+      uv1[v * 2] = u * TAU * Math.abs(r);
+      uv1[v * 2 + 1] = z;
+      v++;
+    }
+  }
+  const idx = new (nv > 65535 ? Uint32Array : Uint16Array)(segments * (n - 1) * 6);
+  let k = 0;
+  for (let i = 0; i < segments; i++) {
+    for (let j = 0; j < n - 1; j++) {
+      const a = j + i * n;
+      const b = a + n;
+      const cc = a + n + 1;
+      const d = a + 1;
+      idx[k++] = a;
+      idx[k++] = b;
+      idx[k++] = d;
+      idx[k++] = cc;
+      idx[k++] = d;
+      idx[k++] = b;
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setAttribute('uv1', new THREE.BufferAttribute(uv1, 2));
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
+  let rMax = 0;
+  let zMin = Infinity;
+  let zMax = -Infinity;
+  for (const p of points) {
+    rMax = Math.max(rMax, p.x);
+    zMin = Math.min(zMin, p.y);
+    zMax = Math.max(zMax, p.y);
+  }
+  const hz = (zMax - zMin) / 2;
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, zMin + hz), Math.hypot(rMax, hz));
+  return g;
+}
+
+/** Köşe normallerini ilk dejenere olmayan üçgenin sarım yönüne göre çevirir */
+function alignNormalsToWinding(geo) {
+  const pos = geo.attributes.position;
+  const nrm = geo.attributes.normal;
+  const idx = geo.index.array;
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  for (let i = 0; i < idx.length; i += 3) {
+    a.fromBufferAttribute(pos, idx[i]);
+    b.fromBufferAttribute(pos, idx[i + 1]);
+    c.fromBufferAttribute(pos, idx[i + 2]);
+    const f = c.sub(b).cross(a.sub(b));
+    if (f.lengthSq() < 1e-14) continue;
+    const vn = b.fromBufferAttribute(nrm, idx[i]);
+    if (f.dot(vn) < 0) {
+      const arr = nrm.array;
+      for (let k = 0; k < arr.length; k++) arr[k] = -arr[k];
+    }
+    return;
+  }
 }
 
 /**

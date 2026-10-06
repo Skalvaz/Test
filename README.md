@@ -227,6 +227,30 @@ iç parçaların zarfından, lüle ağızları termodinamik alanlardan (A9, A19)
 
 ![Turbofan ve turboprop, önce/sonra](renders/49-m4b-fizik.jpg)
 
+**M4c** — yeni modüller ve hız:
+
+- **Kutu (can) yanma odası:** halka yerine N ayrı kutu gömlek (her birinde
+  kubbe, swirler, soğutma halkaları, delik sıraları), aralarında ateşleme
+  geçiş boruları, çıkışta NGV halkasına geçiş kanalı. Toplam kesit alanı
+  referans hızdan; kutular çevreye sığmazsa tasarım reddedilir.
+- **Chevron lüle:** baypas ve çekirdek lülesinin arka kenarında testere
+  dişleri (sayı düğmeyle, 0 = düz kenar). Lüle başına itki katsayısından
+  ~%0,25 götürür; karşılığı jet gürültüsünde azalma (M5).
+- **Lobe'lu karıştırıcı:** askeri turbofanda LPT çıkışında çiçek biçimli
+  sac. Simülasyona **karışma verimi** eklendi: kuru itki, ayrı iki jet ile
+  tam karışmış jet arasında (düz karıştırıcı ~0,85, lobe'lu ~0,97). Düşük
+  baypasta tam karışmanın kazancı yalnız ~%1: lobe'ların ek kaybı onu yer —
+  gerçek askeri motorların düz karıştırıcı kullanmasının nedeni.
+- **Hız:** bir parametre değişince model 25–110 ms'de yeniden üretilir
+  (kaydırıcı sürüklenirken düşük ayrıntılı taslak, bırakınca tam ayrıntı).
+  Değişmeyen modüller önbellekten taşınır, kademeler yerel konumda kurulup
+  kaydırılır; dönel yüzeyler doğrudan motor ekseninde ve analitik normalle,
+  prosedürel dokular önbellekte; eski model yeni model çizildikten sonra
+  atıldığı için shader programları yeniden derlenmez (turbofan yeniden
+  üretimi 660 ms + derleme takılmasından ~120 ms'ye).
+
+![Yeni modüller: kutu yanma odası, chevron lüle, lobe'lu karıştırıcı](renders/50-m4c-moduller.jpg)
+
 
 **Serbest mod** — test hücresinde bütün anahtarlar, FADEC'i manuele alma, irtifa /
 Mach / sıcaklık, simülasyon hızı (¼×–4×), arıza enjeksiyonu (kuş çarpması,

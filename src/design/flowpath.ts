@@ -24,6 +24,7 @@ import type {
   CompressorModule,
   EngineGraph,
   InletModule,
+  MixerModule,
   NozzleModule,
   PropellerModule,
   TurbineModule,
@@ -150,9 +151,12 @@ export interface CentrifugalGeometry {
 export interface CombustorGeometry {
   z0: number;
   z1: number;
+  /** Gömleklerin iç/dış zarfı (kutuda: ortalama yarıçap ∓ kutu yarıçapı) */
   rIn: number;
   rOut: number;
   injectors: number;
+  /** Kutu tipi: kutu sayısı (halkada yok) */
+  cans?: number;
 }
 
 /** Bütün motor tiplerinde ortak gaz yolu sıraları ve mil devirleri */
@@ -258,7 +262,17 @@ export function computeGasPath(graph: EngineGraph, sized: SizedEngine): GasPath 
   const rho3 = s3.P / (AIR.R * s3.T);
   const aComb = s3.W / (rho3 * comb.refVelocity);
   const rMean = (meanR(hpc, 1) + meanR(hpt, 0)) / 2 + comb.meanShift;
-  const H = aComb / (2 * Math.PI * rMean);
+  // Halka: yükseklik alandan. Kutu: toplam alan N kutuya bölünür, kutu çapı
+  // halka yüksekliğinin yerine geçer; kutular çevreye sığmalı
+  let H = aComb / (2 * Math.PI * rMean);
+  const cans = comb.style === 'can' ? Math.round(comb.cans ?? 8) : undefined;
+  if (cans) {
+    const rc = Math.sqrt(aComb / (cans * Math.PI));
+    if (cans * 2 * rc * 1.08 > 2 * Math.PI * rMean) {
+      throw new FlowpathError(`${cans} kutu çevreye sığmıyor (kutu çapı ${(2 * rc * 100).toFixed(0)} cm): daha az kutu ya da daha yüksek referans hızı.`);
+    }
+    H = 2 * rc;
+  }
   const cz0 = (centrifugal ? centrifugal.z : hpc.z1) + comb.gap * hpc.pitch;
   const cz1 = cz0 + comb.lengthHeight * H;
   place(hpt, cz1 + hptMod.gap * hpt.pitch);
@@ -273,7 +287,7 @@ export function computeGasPath(graph: EngineGraph, sized: SizedEngine): GasPath 
     booster,
     hpc,
     centrifugal,
-    combustor: { z0: cz0, z1: cz1, rIn: rMean - H / 2, rOut: rMean + H / 2, injectors: comb.injectors },
+    combustor: { z0: cz0, z1: cz1, rIn: rMean - H / 2, rOut: rMean + H / 2, injectors: cans ?? comb.injectors, cans },
     hpt,
     lpt,
     shafts: { lp: rLp, hp: rHp },
@@ -311,6 +325,8 @@ export interface BareJetLayout {
   shell: [number, number][];
   /** Değişken stator halkalarının eksenel konumları (dış donanım) */
   vsv: { z: number[]; part: string }[];
+  /** Lobe'lu karıştırıcı: LPT çıkışında çekirdek/baypas sınırında */
+  mixer?: { lobes: number; z0: number; z1: number; r: number; amp: number };
 }
 
 const mid = (a: number, b: number) => (a + b) / 2;
@@ -403,8 +419,14 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
     if (n > 0) vsv.push({ z: Array.from({ length: n }, (_, i) => row.z0 + (i + 0.5) * row.pitch * 0.62), part });
   }
 
+  const mixMod = find<MixerModule>(graph, 'mixer');
+  const mixer =
+    mixMod?.style === 'lobed'
+      ? { lobes: mixMod.lobes ?? 12, z0: lpt.z1 + 0.06, z1: coneZ0 + 0.3, r: lpt.tip[1] + 0.03, amp: 0.4 * (R - lpt.tip[1] - 0.03) }
+      : undefined;
   return {
     style: 'bare',
+    mixer,
     R,
     throat: lpc.tip[0] + 0.005,
     intakeZ: INTAKE_Z,
@@ -562,9 +584,12 @@ export interface TurbofanLayout {
   struts: { z: number; hub: number; tip: number };
   intake: { z: number; radius: number };
   exhaust: { z: number; radius: number };
+  /** Lüle arka kenarlarındaki chevron sayıları (0: düz kenar) */
+  chevrons: { core: number; bypass: number };
 }
 
-function turbofanLayout(sized: SizedEngine, gp: GasPath): TurbofanLayout {
+function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): TurbofanLayout {
+  const noz = find<NozzleModule>(graph, 'nozzle')!;
   const fan = gp.front!;
   const booster = gp.booster!;
   const { hpc, hpt, lpt, combustor: cb } = gp;
@@ -649,6 +674,7 @@ function turbofanLayout(sized: SizedEngine, gp: GasPath): TurbofanLayout {
     struts: { z: strutZ, hub: profileAt(cowl, strutZ) - 0.02, tip: 1.39 * s },
     intake: { z: fanZ - 1.97 * s, radius: 1.1 * s },
     exhaust: { z: zLip - 0.01, radius: r1 - 0.09 },
+    chevrons: { core: noz.chevrons?.core ?? 0, bypass: noz.chevrons?.bypass ?? 0 },
   };
 }
 
@@ -775,7 +801,7 @@ export function computeFlowpath(graph: EngineGraph, sized: SizedEngine): Flowpat
     // Durağan pervane ucu Mach'ı
     lpTipMach = (propOmega * L.prop.radius) / Math.sqrt(AIR.gamma * AIR.R * st('0').T);
   } else if (find<NozzleModule>(graph, 'nozzle')!.style === 'separate') {
-    const L = turbofanLayout(sized, gp);
+    const L = turbofanLayout(graph, sized, gp);
     layout = L;
     shaftLen = { lp: L.shafts.lp[1] - L.shafts.lp[0], hp: L.shafts.hp[1] - L.shafts.hp[0] };
     const f = L.fan;

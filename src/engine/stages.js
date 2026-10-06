@@ -23,6 +23,7 @@
  */
 
 import * as THREE from 'three';
+import { reuse, keyOf } from './buildCache.js';
 import { createBlade, bladeQuality } from './blades.js';
 import { bladeRow, tagPart } from './geom.js';
 import { revolve, roundPoly } from './revolve.js';
@@ -279,7 +280,7 @@ export function mergeStatic(group) {
  * }
  * @returns {{ rotor: Group, stator: Group, tipAt(z), hubAt(z), casingAt(z) }}
  */
-export function compressorModule(materials, c) {
+function compressorModuleRaw(materials, c) {
   const part = c.part ?? 'hpc';
   const rotor = new THREE.Group();
   rotor.name = `${part}-rotor`;
@@ -571,7 +572,7 @@ function vsvHardware(mats, z, r, count, part) {
  *   casing?: { t, flanges }, cones?: { front:[r,z], aft:[r,z] }
  * }
  */
-export function turbineModule(materials, c) {
+function turbineModuleRaw(materials, c) {
   const part = c.part ?? 'hpt';
   const hp = part === 'hpt';
   const rotor = new THREE.Group();
@@ -792,4 +793,50 @@ export function turbineModule(materials, c) {
   mergeStatic(rotor);
   mergeStatic(stator);
   return { rotor, stator, tipAt, hubAt, casingAt, zFront, zBack, stations: S, vanes: vaneAt };
+}
+
+/* ------------------------------------------------------------------ */
+/* Artımlı üretim: modüller yerel z'de kurulur, önbellekten taşınır    */
+/* ------------------------------------------------------------------ */
+
+/** Modül girdisinin bütün eksenel konumlarını dz kadar kaydırır */
+function shiftZ(c, dz) {
+  const o = { ...c, z0: c.z0 + dz, z1: c.z1 + dz };
+  if (c.casingFrom !== undefined) o.casingFrom = c.casingFrom + dz;
+  if (c.cones) o.cones = Object.fromEntries(Object.entries(c.cones).map(([k, v]) => [k, v ? [v[0], v[1] + dz] : v]));
+  if (c.casing && c.casing.flanges) o.casing = { ...c.casing, flanges: c.casing.flanges.map((f) => f + dz) };
+  return o;
+}
+
+/**
+ * Modülü ilk rotoru z = 0'da olacak şekilde kurar (önbellek anahtarı
+ * konumdan bağımsız) ve gruplarını gerçek konuma kaydırır. Önündeki bir
+ * modül uzadığında bu modül yeniden üretilmez, yalnız kayar.
+ */
+function cachedModule(prefix, raw, materials, c) {
+  const dz = c.z0;
+  const local = shiftZ(c, -dz);
+  const m = reuse(keyOf(prefix, local), () => raw(materials, local));
+  m.rotor.position.z = dz;
+  m.stator.position.z = dz;
+  return {
+    ...m,
+    zFront: m.zFront + dz,
+    zBack: m.zBack + dz,
+    stations: m.stations.map((st) => ({ ...st, z: st.z + dz })),
+    vanes: m.vanes.map((v) => ({ ...v, z: v.z + dz })),
+    tipAt: (z) => m.tipAt(z - dz),
+    hubAt: (z) => m.hubAt(z - dz),
+    casingAt: (z) => m.casingAt(z - dz),
+  };
+}
+
+/** Kompresör modülü (bkz. compressorModuleRaw) — artımlı */
+export function compressorModule(materials, c) {
+  return cachedModule('comp', compressorModuleRaw, materials, c);
+}
+
+/** Türbin modülü (bkz. turbineModuleRaw) — artımlı */
+export function turbineModule(materials, c) {
+  return cachedModule('turb', turbineModuleRaw, materials, c);
 }

@@ -17,7 +17,7 @@
 
 import type { Ambient } from './atmosphere';
 import type { SizedEngine, Stations } from './design';
-import { hptCapacityFactor } from './design';
+import { hptCapacityFactor, mixedJetThrust } from './design';
 import {
   AIR,
   GAS,
@@ -354,7 +354,17 @@ export function computeCycle(input: CycleInput): CycleResult {
     const P7 = mix.P * (1 - dp);
     const W7 = mix.W + wfAbBurned;
     const jet = idealJet(P7, T7, P0);
-    mixedThrust = P7 > P0 ? W7 * jet.velocity * d.nozzleCv : 0;
+    // Kuru ya da kısmi art yakıcıda eksik karışma payı (bkz. mixedJetThrust)
+    mixedThrust = mixedJetThrust(
+      P7 > P0 ? W7 * jet.velocity * d.nozzleCv : 0,
+      { W: W4, T: T5, P: P5 },
+      { W: W13, T: T13, P: P19t },
+      (1 - ab.mixerLoss) * (1 - dp),
+      P0,
+      d.nozzleCv,
+      ab.mixingEff,
+      abFraction,
+    );
     mixedBypass = 0;
     netThrust = mixedThrust - ramDrag;
     V9 = jet.velocity * d.nozzleCv;

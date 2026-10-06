@@ -22,6 +22,7 @@ import { compressorModule, turbineModule, casingShell } from './stages.js';
 import { revolve, roundPoly } from './revolve.js';
 import { buildCombustor } from './combustor.js';
 import { profileAt } from '../design/flowpath';
+import { chevronBand } from './nacelle.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -200,6 +201,7 @@ export function buildCore(materials, L) {
       exTip: ngv.tip - 0.004,
       caseAt: combCaseAt,
       injectors: cb.injectors,
+      cans: cb.cans,
     }),
   );
 
@@ -318,6 +320,22 @@ export function buildCore(materials, L) {
   );
   primaryNozzle.castShadow = true;
   exhaust.add(primaryNozzle);
+
+  // Çekirdek lülesi chevron'ları: ağızdan geriye testere dişli kenar, uçları
+  // jete hafif eğik (karışma katmanını hızlandırıp gürültüyü azaltır)
+  if (L.chevrons.core > 0) {
+    const len = 0.17 * s;
+    const outer = new THREE.Mesh(
+      chevronBand({ startR: n.r1 + 0.008, startZ: n.z1, endR: n.r1 - 0.028 * s, endZ: n.z1 + len, count: L.chevrons.core }),
+      materials.inconel,
+    );
+    const inner = new THREE.Mesh(
+      chevronBand({ startR: n.r1, startZ: n.z1, endR: n.r1 - 0.034 * s, endZ: n.z1 + len, count: L.chevrons.core }),
+      materials.inconel,
+    );
+    outer.castShadow = true;
+    exhaust.add(outer, inner);
+  }
 
   const plug = new THREE.Mesh(thickLathe(smoothProfile(L.plug, 110), 180, 0.01, 'in'), materials.inconel);
   plug.name = 'exhaust-plug';

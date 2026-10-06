@@ -12,6 +12,7 @@
 
 import { sizeEngine, type EngineDesign, type SizedEngine } from '../sim/design';
 import { computeFlowpath, type Flowpath } from './flowpath';
+import { CHEVRON_CV_LOSS, MIXING_EFF } from './types';
 import type {
   AfterburnerModule,
   CombustorModule,
@@ -61,6 +62,7 @@ export function validateGraph(g: EngineGraph): void {
   if (bpr > 0 && !has('mixer') && noz.style !== 'separate') throw new GraphError('Karıştırılmayan baypas akışı ayrı bir baypas lülesi ister (ayrık akışlı lüle).');
   if (noz.style === 'separate' && (bpr <= 0 || has('mixer'))) throw new GraphError('Ayrık akışlı lüle, karıştırılmayan bir baypas akışı ister.');
   if (prop && noz.style !== 'stub') throw new GraphError('Turboprop egzozu kısa bir borudur: itkinin çoğu pervaneden gelir.');
+  if (noz.chevrons && noz.style !== 'separate') throw new GraphError('Chevron’lar şimdilik ayrık akışlı turbofan lülelerinde.');
   if (noz.style === 'stub' && !prop) throw new GraphError('Kısa egzoz borusu yalnız pervaneli motorda: jet motoru itkisini lüleden alır.');
   if ((noz.style === 'cd' || noz.style === 'convergent') && !ab) {
     throw new GraphError('Değişken kesitli lüle şimdilik yalnız art yakıcıyla birlikte.');
@@ -69,6 +71,8 @@ export function validateGraph(g: EngineGraph): void {
   if (inlet.style === 'nacelle' && noz.style !== 'separate') throw new GraphError('Kaportalı giriş şimdilik ayrık akışlı turbofanda.');
   if (inlet.style === 'bellmouth' && !ab) throw new GraphError('Art yakıcısız çıplak motor henüz yok.');
   const hpc = g.modules.find((m) => m.type === 'hpc') as CompressorModule;
+  const mixer = g.modules.find((m) => m.type === 'mixer') as MixerModule | undefined;
+  if (mixer?.style === 'lobed' && !((mixer.lobes ?? 0) >= 6)) throw new GraphError("Lobe'lu karıştırıcı en az 6 lobe ister.");
   if (hpc.centrifugal && (hpc.centrifugal.workFraction <= 0 || hpc.centrifugal.workFraction >= 1)) {
     throw new GraphError('Santrifüj kademenin iş payı 0 ile 1 arasında olmalı.');
   }
@@ -119,7 +123,8 @@ export function toEngineDesign(g: EngineGraph): EngineDesign {
     },
     combustorDP: comb.dp,
     bypassDuctDP: g.bypassDuct?.dp ?? 0,
-    nozzleCv: noz.cv,
+    // Chevron'lu her lüle itki katsayısından küçük bir pay götürür
+    nozzleCv: noz.cv * (1 - CHEVRON_CV_LOSS * (((noz.chevrons?.core ?? 0) > 0 ? 1 : 0) + ((noz.chevrons?.bypass ?? 0) > 0 ? 1 : 0))),
     // Geometriden gelir (buildEngine doldurur)
     n1Rpm: 10000,
     n2Rpm: 10000,
@@ -131,7 +136,14 @@ export function toEngineDesign(g: EngineGraph): EngineDesign {
     limits: { ...g.limits },
     start: { ...g.start },
     afterburner: ab
-      ? { t7Max: ab.t7Max, eta: ab.eta, dpDry: ab.dpDry, dpLit: ab.dpLit, mixerLoss: mixer?.loss ?? 0 }
+      ? {
+          t7Max: ab.t7Max,
+          eta: ab.eta,
+          dpDry: ab.dpDry,
+          dpLit: ab.dpLit,
+          mixerLoss: mixer?.loss ?? 0,
+          mixingEff: mixer ? MIXING_EFF[mixer.style ?? 'confluent'] : undefined,
+        }
       : undefined,
     prop: prop
       ? {

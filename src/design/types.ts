@@ -110,14 +110,21 @@ export interface CompressorModule extends AnnulusKnobs {
 
 export interface CombustorModule {
   type: 'combustor';
-  style: 'annular';
+  /**
+   * annular: tek halka gömlek (modern motorlar); can: ayrı ayrı kutu
+   * gömlekler, aralarında ateşleme geçiş boruları (eski turbojetler, sanayi
+   * gaz türbinleri — daha ağır, basınç kaybı daha yüksek, bakımı kolay)
+   */
+  style: 'annular' | 'can';
+  /** Kutu sayısı (can) */
+  cans?: number;
   tit: number;
   eff: number;
   /** Toplam basınç kaybı (oran) */
   dp: number;
-  /** Gömlek halkası referans hızı [m/s] → halka yüksekliği */
+  /** Gömlek halkası (ya da kutuların toplam) referans hızı [m/s] → kesit alanı */
   refVelocity: number;
-  /** Boy / halka yüksekliği */
+  /** Boy / halka yüksekliği (kutuda: boy / kutu çapı) */
   lengthHeight: number;
   /** Halka ortalama yarıçapı: HPC çıkışı ile HPT girişi ortalamasına göre fark [m] */
   meanShift: number;
@@ -143,7 +150,18 @@ export interface MixerModule {
   type: 'mixer';
   /** Baypas–çekirdek karışma basınç kaybı */
   loss: number;
+  /**
+   * confluent: düz halka (iki akış yan yana girer, uzun jet borusunda
+   * kısmen karışır; karışma verimi ~0,85); lobed: çiçek biçimli lobe'lar
+   * akışları iç içe geçirir (~0,97) ama ek sürtünme kaybı getirir
+   */
+  style?: 'confluent' | 'lobed';
+  /** Lobe sayısı (lobed) */
+  lobes?: number;
 }
+
+/** Karıştırıcı tipine göre karışma verimi */
+export const MIXING_EFF = { confluent: 0.85, lobed: 0.97 } as const;
 
 export interface AfterburnerModule {
   type: 'afterburner';
@@ -172,7 +190,16 @@ export interface NozzleModule {
   pressureRatio?: number;
   /** stub: egzoz borusu ağzında eksenel Mach → ağız yarıçapı */
   exitMach?: number;
+  /**
+   * separate: lüle arka kenarlarında testere dişli çevrikler (chevron)
+   * sayısı, 0 = düz kenar. Jet gürültüsünü azaltır (karışma katmanını
+   * hızlandırır), lüle başına itki katsayısını ~%0,25 düşürür.
+   */
+  chevrons?: { core?: number; bypass?: number };
 }
+
+/** Chevron'lu lüle başına itki katsayısı kaybı */
+export const CHEVRON_CV_LOSS = 0.0025;
 
 export type EngineModule =
   | PropellerModule

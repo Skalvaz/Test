@@ -134,7 +134,7 @@ export const MILITARY_TURBOFAN_GRAPH: EngineGraph = {
     },
     { type: 'hpt', spool: 'hp', eff: 0.89, mach: [0.109, 0.286], hubTip: 0.746, taper: 1, loading: 2.53, pitchSpan: 1.882, bladeK: [2.87, 2.87], gap: 0.875 },
     { type: 'lpt', spool: 'lp', eff: 0.9, mach: [0.164, 0.238], hubTip: 0.622, taper: 1.081, loading: 0.988, pitchSpan: 1.29, bladeK: [5.2, 6.53], gap: 0.9 },
-    { type: 'mixer', loss: 0.01 },
+    { type: 'mixer', loss: 0.01, style: 'confluent' },
     { type: 'afterburner', t7Max: 2000, eta: 0.9, dpDry: 0.03, dpLit: 0.065, mach: 0.192, lengthDiameter: 1.65 },
     { type: 'nozzle', style: 'cd', cv: 0.98, flaps: 16 },
   ],
@@ -286,6 +286,7 @@ export const TURBOFAN_GRAPH: EngineGraph = {
     },
     { type: 'hpt', spool: 'hp', eff: 0.9, mach: [0.0433, 0.1643], hubTip: 0.7184, taper: 1.027, loading: 1.496, pitchSpan: 1.131, bladeK: [3.235, 3.645], gap: 0.75 },
     { type: 'lpt', spool: 'lp', eff: 0.92, mach: [0.3, 0.45], hubTip: 0.9, taper: 1.25, loading: 3.0, pitchSpan: 1.0, bladeK: [1.84, 6.85], gap: 1.8 },
-    { type: 'nozzle', style: 'separate', cv: 0.985 },
+    // cv düz kenarlı lüle için; baypas chevron'larıyla etkin değer 0,985
+    { type: 'nozzle', style: 'separate', cv: 0.98747, chevrons: { core: 0, bypass: 18 } },
   ],
 };

@@ -108,30 +108,55 @@ export function revolve(profile, opts = {}) {
     total += len[i];
   }
 
-  const P = [];
-  const N = [];
-  const UV = [];
-  const UV1 = [];
-  const I = [];
+  // Tipli diziler önceden ayrılır (köşe başına push yeniden üretimde yavaştı)
   const cols = segments + 1;
+  const nv = edges * cols * 2;
+  const P = new Float32Array(nv * 3);
+  const N = new Float32Array(nv * 3);
+  const UV = new Float32Array(nv * 2);
+  const UV1 = new Float32Array(nv * 2);
+  const I = new (nv > 65535 ? Uint32Array : Uint16Array)(edges * segments * 6);
+  const sinT = new Float64Array(cols);
+  const cosT = new Float64Array(cols);
+  for (let j = 0; j <= segments; j++) {
+    const th = phi0 + (j / segments) * phiLen;
+    sinT[j] = Math.sin(th);
+    cosT[j] = Math.cos(th);
+  }
+  let v = 0;
+  let k = 0;
+  let rMax = 0;
+  let zMin = Infinity;
+  let zMax = -Infinity;
   for (let i = 0; i < edges; i++) {
     const a = pts[i];
     const b = pts[(i + 1) % n];
     const na = vNormal(i, 0);
     const nb = vNormal(i, 1);
-    const base = P.length / 3;
+    const base = v;
+    rMax = Math.max(rMax, a[0], b[0]);
+    zMin = Math.min(zMin, a[1], b[1]);
+    zMax = Math.max(zMax, a[1], b[1]);
     for (let j = 0; j <= segments; j++) {
-      const th = phi0 + (j / segments) * phiLen;
-      const s = Math.sin(th);
-      const c = Math.cos(th);
-      for (const [p, nn, sv] of [
-        [a, na, s0[i]],
-        [b, nb, s0[i] + len[i]],
-      ]) {
-        P.push(s * p[0], c * p[0], p[1]);
-        N.push(s * nn[0], c * nn[0], nn[1]);
-        UV.push(j / segments, sv / total);
-        UV1.push((th - phi0) * p[0], sv);
+      const s = sinT[j];
+      const c = cosT[j];
+      const u = j / segments;
+      const th = (j / segments) * phiLen;
+      for (let e = 0; e < 2; e++) {
+        const p = e ? b : a;
+        const nn = e ? nb : na;
+        const sv = e ? s0[i] + len[i] : s0[i];
+        P[v * 3] = s * p[0];
+        P[v * 3 + 1] = c * p[0];
+        P[v * 3 + 2] = p[1];
+        N[v * 3] = s * nn[0];
+        N[v * 3 + 1] = c * nn[0];
+        N[v * 3 + 2] = nn[1];
+        UV[v * 2] = u;
+        UV[v * 2 + 1] = sv / total;
+        UV1[v * 2] = th * p[0];
+        UV1[v * 2 + 1] = sv;
+        v++;
       }
     }
     for (let j = 0; j < segments; j++) {
@@ -139,16 +164,23 @@ export function revolve(profile, opts = {}) {
       const B0 = A0 + 1;
       const A1 = base + ((j + 1) % cols) * 2;
       const B1 = A1 + 1;
-      I.push(A0, B0, A1, A1, B0, B1);
+      I[k++] = A0;
+      I[k++] = B0;
+      I[k++] = A1;
+      I[k++] = A1;
+      I[k++] = B0;
+      I[k++] = B1;
     }
   }
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-  g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
-  g.setAttribute('uv1', new THREE.Float32BufferAttribute(UV1, 2));
-  g.setIndex(I);
-  g.computeBoundingSphere();
+  g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(UV, 2));
+  g.setAttribute('uv1', new THREE.BufferAttribute(UV1, 2));
+  g.setIndex(new THREE.BufferAttribute(I, 1));
+  // Dönel yüzeyin sınır küresi analitik: eksen üzerinde, z aralığının ortası
+  const hz = (zMax - zMin) / 2;
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, zMin + hz), Math.hypot(rMax, hz));
   return g;
 }
 

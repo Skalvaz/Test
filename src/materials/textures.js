@@ -466,8 +466,28 @@ export function createTarmacMaps(size = 1024) {
 /* Hareket bulanıklığı diski ve ısı gürültüsü                          */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Bu dokular parametreleriyle belirlenir ve yalnız okunur: motor her yeniden
+ * üretildiğinde baştan hesaplanmasın diye önbellekte tutulur (fbm gürültüsü
+ * yeniden üretim süresinin üçte birini alıyordu). Bir tüketici dispose etse
+ * de three.js dokuyu bir sonraki kullanımda yeniden yükler.
+ */
+const textureCache = new Map();
+function cached(key, make) {
+  let t = textureCache.get(key);
+  if (!t) {
+    t = make();
+    textureCache.set(key, t);
+  }
+  return t;
+}
+
 /** Yüksek devirde fanın üzerine bindirilen radyal iz dokusu. */
 export function createBlurDiscTexture(size = 1024, blades = 22) {
+  return cached(`blur|${size}|${blades}`, () => makeBlurDisc(size, blades));
+}
+
+function makeBlurDisc(size, blades) {
   const canvas = makeCanvas(size, size);
   const ctx = canvas.getContext('2d');
   const img = ctx.createImageData(size, size);
@@ -504,6 +524,10 @@ export function createBlurDiscTexture(size = 1024, blades = 22) {
  * ve simülatörlerde pervanenin döndüğünü ilk bu çember belli eder).
  */
 export function createPropDiscTexture(size = 1024, blades = 6, hubR = 0.12) {
+  return cached(`prop|${size}|${blades}|${hubR}`, () => makePropDisc(size, blades, hubR));
+}
+
+function makePropDisc(size, blades, hubR) {
   const canvas = makeCanvas(size, size);
   const ctx = canvas.getContext('2d');
   const img = ctx.createImageData(size, size);
@@ -542,6 +566,10 @@ export function createPropDiscTexture(size = 1024, blades = 6, hubR = 0.12) {
 
 /** Isı dalgalanması ve egzoz türbülansı için sarmalanabilir gürültü. */
 export function createNoiseTexture(size = 512, seed = 99) {
+  return cached(`noise|${size}|${seed}`, () => makeNoise(size, seed));
+}
+
+function makeNoise(size, seed) {
   const a = fbm2D(size, size, { octaves: 5, frequency: 6, seed });
   const b = fbm2D(size, size, { octaves: 5, frequency: 11, seed: seed + 1 });
   const c = fbm2D(size, size, { octaves: 4, frequency: 21, seed: seed + 2 });

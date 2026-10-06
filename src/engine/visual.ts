@@ -22,6 +22,7 @@ import { createNoiseTexture } from '../materials/textures.js';
 import { EngineEffects } from '../effects/EngineEffects.js';
 import { buildGroundCradle, buildPylonGantry } from './stand.js';
 import { tagPart, ensureUV1 } from './geom.js';
+import { beginBuild, isLive, keyOf, reuse } from './buildCache.js';
 import { clonePatched } from '../materials/weathering';
 import type { createMaterials } from '../materials/library.js';
 
@@ -179,10 +180,14 @@ interface EngineModel {
  */
 function buildTurbofanModel(materials: Materials, L: TurbofanLayout): EngineModel {
   const group = new THREE.Group();
-  const nacelle = buildNacelle(materials, { ductExitR: L.bypassExit.rDuct / L.s });
-  const fan = buildFan(materials, L.fan.blades[0]);
+  // Kaporta, fan ve pilon yalnız kendi girdilerine bağlı: parametre
+  // değişikliğinde önbellekten taşınır (artımlı üretim)
+  const ductExitR = L.bypassExit.rDuct / L.s;
+  const chevrons = L.chevrons.bypass;
+  const nacelle = reuse(keyOf('nacelle', { ductExitR, chevrons }), () => buildNacelle(materials, { ductExitR, chevrons }));
+  const fan = reuse(keyOf('fan', L.fan.blades[0]), () => buildFan(materials, L.fan.blades[0]));
   const core = buildCore(materials, L);
-  const pylon = buildPylon(materials);
+  const pylon = reuse('pylon', () => buildPylon(materials));
   const place = (o: THREE.Object3D) => {
     o.scale.setScalar(L.s);
     o.position.z = L.fan.z0 + 0.28 * L.s;
@@ -241,6 +246,7 @@ export class EngineVisual {
     this.materials = materials;
     this.kind = kind;
     this.root.name = kind;
+    beginBuild();
     this.model =
       kind === 'turbofan'
         ? buildTurbofanModel(materials, turbofanLayout(kind)!)
@@ -372,7 +378,8 @@ export class EngineVisual {
     this.root.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
-      if (!mesh.geometry.userData.shared) geos.add(mesh.geometry);
+      // Paylaşılan ve yeni modele taşınmış (artımlı üretim) geometriler korunur
+      if (!mesh.geometry.userData.shared && !isLive(mesh.geometry)) geos.add(mesh.geometry);
       const m = mesh.material;
       for (const mm of Array.isArray(m) ? m : [m]) if (mm.userData.baseEmissive) mats.add(mm);
     });
@@ -394,7 +401,9 @@ export class EngineVisual {
       entry.meshes.push(mesh);
       this.pickables.push(mesh);
 
-      const src = mesh.material as EmissiveMaterial;
+      // Önbellekten taşınan parçada malzeme eski modelin klonudur; klon hep
+      // kütüphanedeki asıl malzemeden üretilir
+      const src = (mesh.userData.srcMaterial ??= mesh.material) as EmissiveMaterial;
       if (!src || !('emissive' in src)) return;
       const key = `${part}|${src.uuid}`;
       let mat = cache.get(key);

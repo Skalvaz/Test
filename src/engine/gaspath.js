@@ -147,6 +147,7 @@ export function buildGasPath(materials, spec) {
         exTip: ngv.tip - 0.004,
         caseAt,
         injectors: cb.injectors ?? 16,
+        cans: cb.cans,
       }),
     );
     group.add(

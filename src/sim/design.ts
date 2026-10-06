@@ -78,6 +78,37 @@ export interface AfterburnerSpec {
   dpLit: number;
   /** Baypas–çekirdek karıştırıcı basınç kaybı */
   mixerLoss: number;
+  /**
+   * Karışma verimi (0–1): kuru itki, ayrı iki jet ile tam karışmış jet
+   * arasında bu oranda (1: tam karışma). Düz (confluent) karıştırıcı ~0,85,
+   * lobe'lu ~0,97. Art yakıcı yanarken akış borunun içinde karışır.
+   */
+  mixingEff?: number;
+}
+
+/**
+ * Karışmış akışın kuru itkisi, eksik karışma payıyla: tam karışmış jet ile
+ * baypas ve çekirdeğin ayrı ayrı genişlediği iki jet arasında. `wet`
+ * (0–1) art yakıcının yanma oranı: yanarken karışma tamamlanır.
+ */
+export function mixedJetThrust(
+  fullyMixed: number,
+  hot: { W: number; T: number; P: number },
+  cold: { W: number; T: number; P: number },
+  pFactor: number,
+  pAmb: number,
+  cv: number,
+  mixingEff = 1,
+  wet = 0,
+): number {
+  const eta = mixingEff + (1 - mixingEff) * Math.min(1, Math.max(0, wet));
+  if (eta >= 1 || cold.W <= 1e-9) return fullyMixed;
+  const jet = (s: { W: number; T: number; P: number }, g: typeof GAS) => {
+    const p = s.P * pFactor;
+    return p > pAmb ? s.W * idealJet(p, s.T, pAmb, g).velocity * cv : 0;
+  };
+  const separate = jet(hot, GAS) + jet(cold, AIR);
+  return separate + eta * (fullyMixed - separate);
 }
 
 /** Pervane ve redüksiyon dişli kutusu (turboprop) */
@@ -264,7 +295,7 @@ export const MILITARY_TURBOFAN: EngineDesign = {
     idleN2: 0.64,
   },
   start: { starterTorque: 150, starterFadeN2: 0.7, farHigh: 0.0165, farLow: 0.0095 },
-  afterburner: { t7Max: 2000, eta: 0.9, dpDry: 0.03, dpLit: 0.065, mixerLoss: 0.01 },
+  afterburner: { t7Max: 2000, eta: 0.9, dpDry: 0.03, dpLit: 0.065, mixerLoss: 0.01, mixingEff: 0.85 },
 };
 
 /**
@@ -502,7 +533,10 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
     const mix = mixStreams(W4, T5, P5, W13, T13, P19t, ab.mixerLoss);
     const P7 = mix.P * (1 - ab.dpDry);
     const dry = idealJet(P7, mix.T, amb.P0);
-    thrust = mix.W * dry.velocity * d.nozzleCv - W2 * amb.V0;
+    const mixed = mix.W * dry.velocity * d.nozzleCv;
+    thrust =
+      mixedJetThrust(mixed, { W: W4, T: T5, P: P5 }, { W: W13, T: T13, P: P19t }, (1 - ab.mixerLoss) * (1 - ab.dpDry), amb.P0, d.nozzleCv, ab.mixingEff) -
+      W2 * amb.V0;
     A8dry = mix.W / dry.throatFlux;
     st7 = { T: mix.T, P: P7, W: mix.W };
     // Tam art yakıcı: kalan oksijenle t7Max'a ulaşan yakıt
