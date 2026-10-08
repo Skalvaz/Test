@@ -298,34 +298,28 @@ M4 üç adımda:
 Maliyet, gürültü (jet hızı + fan ucu), NOx (T3/T4) ve türbin soğutma havası
 hesapları gösterilecekleri arayüzle birlikte M5'e alındı.
 
-#### M5 — Motor Atölyesi arayüzü (v1)
-Ekran düzeni:
-```
-┌──────────────┬───────────────────────────────┬──────────────────┐
-│ Modül ağacı  │   3B motor (canlı)            │ Performans       │
-│ + parametre  │   · patlatılmış görünüm       │ itki · TSFC      │
-│   kaydırıcı  │   · kesit                     │ kütle · T/W      │
-│              │   · istasyon renkleri         │ maliyet · gürültü│
-│ Şablonlar    │                               │ ⚠ uyarılar       │
-├──────────────┴───────────────────────────────┴──────────────────┤
-│ Grafikler: kompresör haritası + çalışma hattı · itki–Mach–irtifa │
-│            · T–s · tasarım A/B karşılaştırma                     │
-└──────────────────────────────────────────────────────────────────┘
-```
-- Başlangıç şablonları: mevcut 4 motor
-- Modül değiştirme (ör. lüleyi YI yap, art yakıcı ekle, santrifüj kademe),
-  parametre kaydırıcıları, anında 3B güncelleme; **patlatılmış görünüm** ile
-  modüller eksen boyunca ayrılır
-- M4'ten ertelenen hesaplar: maliyet, gürültü, NOx, türbin soğutma havası
-- Uyarılar öğretir: "fan ucu Mach 1,7 — gürültü ve verim kaybı", "T4
-  malzeme sınırını aşıyor — soğutma havası ekle ya da tek kristal kanat seç";
-  her uyarı ilgili derse bağlanır
-- Geri al/yinele, kaydet/yükle (JSON dosyası + paylaşılabilir kısa kod)
-- **"Test hücresinde çalıştır"**: tasarım mevcut test hücresine gider;
-  çalıştırma, gaz kolu, arıza enjeksiyonu aynen çalışır
-- Atölye ortamı: Blender'da üretilen montaj hangarı (M1 hattıyla)
-- **Bitti sayılır:** otomatik oynanış testi atölyede sıfırdan bir motor
-  tasarlayıp test hücresinde çalıştırıyor; hatasız
+#### M5 — Motor Atölyesi
+Tasarım belgesi: **[docs/ATOLYE.md](docs/ATOLYE.md)** (kapsam Ekim 2026'da
+kullanıcıyla gözden geçirildi; Sprocket, Automation, Flyout ve GasTurb
+incelenerek). Özet:
+
+- **Aile/varyant** (Automation'dan): mimari kararları aile, itki sınıfı
+  ve ayar varyant; her mimari seçenek ödünleşimi ve gerçek örneğiyle bir kart
+- **Doğrudan düzenleme** (Sprocket'ten): 3B'de modül seçme ve tutamaç
+  sürükleme; fizik geri kalanı hesaplar. Temel tutamaçlar ilk sürümde
+- **Temel + uzman düğmeleri**; sonuç paneli; derslere bağlı öğretici uyarılar
+- **Teknoloji dönemleri** (M5c: veri + sınırlar; kariyer M6'da)
+- **Motor kartı**: Faz 4 uçak tasarımcısının girdisi (Flyout'taki motor seçimi gibi)
+- Mimari kataloğu: art yakıcısız çıplak, kaportalı karışık akış, turboşaft,
+  kutu-halka, çift santrifüj/ters akış, itki çevirici, dişli fan + VAFN,
+  3 milli, açık rotor
+- Şablonlar fiziğe uydurulur (uyarı vermez)
+- Bölünme: **M5a** atölye çekirdeği + simülasyon değişikliği gerektirmeyen
+  mimariler; **M5b** tutamaçlar, grafikler, kayıt, dişli fan, itki
+  çevirici; **M5c** maliyet/gürültü/NOx/soğutma/ömür, dönemler, motor kartı,
+  3 mil, açık rotor, montaj hangarı
+- **Bitti sayılır (M5a):** otomatik oynanış testi atölyede sıfırdan bir
+  motor tasarlayıp test hücresinde çalıştırıyor; hatasız
 
 #### M6 — Sertifikasyon ve ilerleme (atölye v2)
 - FAR/CS-33 esinli görevler: 5 s ivmelenme, kuş yutma, kanat kopması
