@@ -3,6 +3,7 @@
 import type { EngineVisual } from '../engine/visual';
 import { ENGINE_CATALOG, type EngineKind, type EngineSim } from '../sim';
 import type { SlotId } from '../design/catalog';
+import { fmtNum, type DesignSummary } from '../design/summary';
 import { h, icon } from './dom';
 import { FlightControls } from './FlightControls';
 
@@ -12,6 +13,14 @@ export interface SandboxCallbacks {
   onLights(level: number): void;
   onTimeScale(v: number): void;
   onExit(): void;
+  /** "Atölye tasarımı" düğmesi: atölye yuvasını test hücresinde kurar (M5a P10) */
+  onWorkshop?(): void;
+  /** "← Atölyeye dön" */
+  onBackToWorkshop?(): void;
+  /** Atölye tasarımının adı (tasarım yoksa null) */
+  workshopName?(): string | null;
+  /** Atölyenin tasarım noktası özeti (beklenen itki/güç) */
+  workshopExpected?(): DesignSummary | null;
 }
 
 export class SandboxPanel {
@@ -22,6 +31,13 @@ export class SandboxPanel {
   private resetShown: () => void = () => {};
   private applyView: () => void = () => {};
   private viewApplied: EngineVisual | null = null;
+  private cb: SandboxCallbacks;
+  private wsStrip: HTMLDivElement;
+  private wsName: HTMLElement;
+  private wsCompare: HTMLDivElement;
+  private wsBtn: HTMLButtonElement | null = null;
+  /** Simülasyonda atölye tasarımı mı (şerit görünür) */
+  private wsActive = false;
 
   constructor(
     private sim: EngineSim,
@@ -29,6 +45,23 @@ export class SandboxPanel {
     cb: SandboxCallbacks,
   ) {
     this.flight = new FlightControls(sim);
+    this.cb = cb;
+    // Atölye şeridi (M5a §6.9): tasarımın adı, geri dönüş, beklenen/ölçülen
+    this.wsName = h('b');
+    this.wsCompare = h('div', { class: 'ws-cell-compare mono' });
+    this.wsStrip = h('div', { class: 'ws-cell-strip hidden' }, [
+      h('div', { class: 'ws-cell-row' }, [
+        h('span', { text: 'Atölye tasarımı ' }),
+        this.wsName,
+        h('span', { class: 'spacer' }),
+        h('button', {
+          class: 'btn small',
+          attrs: { type: 'button', 'data-action': 'back-to-workshop' },
+          on: { click: () => cb.onBackToWorkshop?.() },
+        }, ['← Atölyeye dön']),
+      ]),
+      this.wsCompare,
+    ]);
 
     const quick = (label: string, fn: () => void, primary = false) =>
       h('button', { class: `btn small${primary ? ' primary' : ''}`, text: label, on: { click: fn } });
@@ -129,6 +162,8 @@ export class SandboxPanel {
     for (const kind of Object.keys(ENGINE_CATALOG) as EngineKind[]) {
       const b = h('button', { class: 'btn small', text: LABELS[kind], attrs: { 'data-kind': kind } });
       b.addEventListener('click', () => {
+        // Katalog motoru seçmek atölye şeridini kapatır (source = catalog)
+        this.setWorkshop(false);
         cb.onEngine(kind);
         applyView();
         selectEngine(kind);
@@ -136,7 +171,25 @@ export class SandboxPanel {
       });
       engineSeg.append(b);
     }
-    this.selectEngine = selectEngine;
+    // Atölye tasarımı (6. düğme): tasarım varsa görünür
+    const wsBtn = h('button', { class: 'btn small hidden', text: 'Atölye tasarımı', attrs: { 'data-kind': 'workshop' } });
+    wsBtn.addEventListener('click', () => {
+      cb.onWorkshop?.();
+      applyView();
+    });
+    engineSeg.append(wsBtn);
+    this.wsBtn = wsBtn;
+    this.selectEngine = (kind: EngineKind) => {
+      const fromWs = this.wsActive;
+      if (fromWs) {
+        // Atölye yuvası: katalog düğmeleri seçili görünmez
+        shown = null;
+        selectEngine(kind);
+        for (const b of engineSeg.children) b.classList.toggle('sel', (b as HTMLElement).dataset.kind === 'workshop');
+        return;
+      }
+      selectEngine(kind);
+    };
     this.resetShown = () => {
       shown = null;
     };
@@ -150,6 +203,7 @@ export class SandboxPanel {
         h('button', { class: 'btn small ghost icon', title: 'Menüye dön', on: { click: cb.onExit } }, [icon('close', 16)]),
       ]),
       h('div', { class: 'scroll panel-body' }, [
+        this.wsStrip,
         h('div', { class: 'section-label', text: 'Motor' }),
         engineSeg,
         summary,
@@ -232,7 +286,43 @@ export class SandboxPanel {
     this.selectEngine(this.sim.kind);
   }
 
+  /** Atölye tasarımı simülasyonda mı: şerit ve seçici durumu */
+  setWorkshop(on: boolean) {
+    this.wsActive = on;
+    this.wsStrip.classList.toggle('hidden', !on);
+    this.refreshWorkshopStrip();
+    this.refreshEngine();
+  }
+
+  private refreshWorkshopStrip() {
+    const name = this.cb.workshopName?.() ?? null;
+    this.wsBtn?.classList.toggle('hidden', !name);
+    if (!this.wsActive) return;
+    this.wsName.textContent = name ?? '';
+    // Beklenen (tasarım noktası, ISA deniz seviyesi) / ölçülen (canlı)
+    const exp = this.cb.workshopExpected?.() ?? null;
+    if (!exp) {
+      this.wsCompare.textContent = '';
+      return;
+    }
+    const shaft = exp.output !== 'thrust' && exp.shaftPower !== undefined;
+    const p = this.sim.eng.point as { thrust: number; shaftPower?: number };
+    const want = shaft ? exp.shaftPower! : exp.thrust;
+    const got = shaft ? (p.shaftPower ?? 0) : p.thrust;
+    const pct = want > 0 ? ((got - want) / want) * 100 : 0;
+    const unit = shaft ? 'kW' : 'kN';
+    const k = shaft ? 1e-3 : 1e-3;
+    const lit = this.sim.lit && this.sim.controls.throttle >= 0.99;
+    const why = !lit ? 'tam güçte ölçülür' : Math.abs(pct) <= 3 ? 'tasarımla uyumlu (±%3)' : this.sim.egtLimited ? 'EGT sınırlayıcı devrede' : 'devir sınırı ya da koşul farkı';
+    this.wsCompare.replaceChildren(
+      h('span', { text: `Beklenen ${fmtNum(want * k, shaft ? 0 : 1)} ${unit}` }),
+      h('span', { text: `Ölçülen ${fmtNum(got * k, shaft ? 0 : 1)} ${unit}${lit ? ` (${pct >= 0 ? '+' : '−'}%${fmtNum(Math.abs(pct), 1)})` : ''}` }),
+      h('span', { class: lit && Math.abs(pct) > 3 ? 'warn' : 'muted', text: why }),
+    );
+  }
+
   update() {
+    this.refreshWorkshopStrip();
     // Motor (ders ya da seçici ile) değiştiyse görünüm tercihleri yeni modele
     if (this.visual() !== this.viewApplied) this.applyView();
     this.flight.refresh();
