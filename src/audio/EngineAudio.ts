@@ -51,6 +51,14 @@ export type VoiceId =
   | 'propSub'
   | 'pt';
 
+/**
+ * Turboşaft ıslıklarının bölenleri: kanat geçiş frekansları duyulur bandın
+ * (ve dizüstü hoparlörünün) üstünde kalır; sabit bölen (oktav katlamanın
+ * aksine) devirle sürekli değişir, kalkışta ses sıçramaz.
+ */
+export const SHAFT_PT_DIV = 4;
+export const SHAFT_WHINE_DIV = 3;
+
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const smooth = (x: number, a: number, b: number) => {
   const t = clamp((x - a) / (b - a), 0, 1);
@@ -101,8 +109,9 @@ export function voiceTargets(
     propSub = { gain: 0.08 * load * near, freq: pbpf };
   }
 
-  // Turboşaft: güç türbini (N1 = NP) kanat geçişi, kHz bölgesinde ıslık
-  const ptf = n1rps * (e.turbineBlades ?? 60);
+  // Turboşaft: güç türbini (N1 = NP) kanat geçişi. Gerçek BPF ~20 kHz'te
+  // (NP valiyle %100'de sabit), duyulmaz: 4. alt harmoniği (~5 kHz) çalınır
+  const ptf = (n1rps * (e.turbineBlades ?? 60)) / SHAFT_PT_DIV;
   const pt: VoiceTarget = shaft ? { gain: 0.035 * Math.pow(s.N1, 1.6) * near, freq: ptf, filter: ptf } : { gain: 0 };
 
   // Art yakıcı: jet gürlemesinin üstüne derin gürleme ve rastgele çatırtılar
@@ -112,8 +121,9 @@ export function voiceTargets(
   const buzz = smooth(tipMach, 0.92, 1.12);
 
   // Çekirdek ıslığı (HPC ilk kademe; turboşaftta önden duyulan tek kompresör,
-  // kanat sayısı tasarımdan) ve dişli kutusu ıslığı
-  const coreBlades = shaft ? e.fanBlades : 38;
+  // kanat sayısı tasarımdan) ve dişli kutusu ıslığı. Turboşaftın küçük
+  // gaz jeneratörü 30–45 bin dev/dk döner, BPF 13–20 kHz: 3. alt harmonik
+  const coreBlades = shaft ? e.fanBlades / SHAFT_WHINE_DIV : 38;
 
   // Jet/yanma gürlemesi: itki ve jet hızıyla; arkada daha güçlü
   const roar = (s.lit ? 0.05 : 0) + 0.42 * Math.pow(thrustFrac, 0.85);

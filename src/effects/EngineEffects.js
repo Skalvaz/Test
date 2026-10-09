@@ -161,6 +161,12 @@ export class EngineEffects {
     this.smoky = !!t.smoky;
     /** Gaz jeneratörü (pervane / çıkış mili): girişi küçük, egzozu yavaş */
     this.gasGen = t.lpLoad === 'propeller' || t.lpLoad === 'shaft';
+    /**
+     * Fanlı motorda kurum çarpanı: baypas havası çekirdek egzozunu seyreltir.
+     * BPR ≥ 0,6'da 1 (askeri turbofan 0,68 ve yolcu turbofanı aynı kalır);
+     * çok düşük baypasta 3'e çıkar ve isli turbojetin hızına yaklaşır.
+     */
+    this.fanSoot = 1 + 2 * clamp(1 - (t.bpr ?? 0) / 0.6, 0, 1);
     this.flame = new AfterburnerFlame(this.smoky ? 'sooty' : 'clean');
     this.floor = floorGlow();
     this.sootDecal = sootDecal(noise);
@@ -530,10 +536,11 @@ export class EngineEffects {
     /* ---------------- zeminde kurum ---------------- */
     {
       // İsli turbojet hızla karartır; gaz jeneratörünün yavaş egzozu az,
-      // fanlı motorun (temiz yanma, soğuk baypas zarfı) itkiyle orantılı
+      // fanlı motorun (temiz yanma, soğuk baypas zarfı) itkiyle orantılı,
+      // düşük baypasta daha çok (fanSoot)
       const sootRate = !snap.lit
         ? 0
-        : (this.smoky ? 0.6 + 0.8 * snap.N1 : this.gasGen ? 0.2 * snap.thrustFrac : 0.1 + 0.3 * snap.thrustFrac) + 1.6 * ab;
+        : (this.smoky ? 0.6 + 0.8 * snap.N1 : this.gasGen ? 0.2 * snap.thrustFrac : (0.1 + 0.3 * snap.thrustFrac) * this.fanSoot) + 1.6 * ab;
       this.soot += (sootRate * dt * (1 - this.soot)) / 300;
       // Jet (karışma katmanı ≈11° yarı açıyla genişler) zemine lüle yüksekliğine göre değer
       const h = Math.max(0.2, -this.floorY - R);

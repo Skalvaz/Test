@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { voiceTargets, type AudioEngine } from '../audio/EngineAudio';
+import { SHAFT_WHINE_DIV, voiceTargets, type AudioEngine } from '../audio/EngineAudio';
 import { fitViews, frameDesign, frameOf, KIND_VIEWS, scaleViews, VIEWS, viewsFor, type CameraView, type ViewName } from '../app/CameraRig';
 import { CELL_BOUNDS } from '../core/testCell';
 import { builtFor, TEMPLATES } from '../design/catalog';
@@ -188,8 +188,13 @@ describe('ses', () => {
     expect(v.prop.gain).toBe(0);
     expect(v.pt.gain).toBeGreaterThan(0.02);
     expect(v.whine.gain).toBeGreaterThan(0.01);
-    // Çekirdek ıslığı HPC ilk kademe kanat sayısından
-    expect(v.whine.freq).toBeCloseTo((s.n2Rpm / 60) * e.fanBlades, 6);
+    // Çekirdek ıslığı HPC ilk kademe kanat sayısından (alt harmoniği)
+    expect(v.whine.freq).toBeCloseTo(((s.n2Rpm / 60) * e.fanBlades) / SHAFT_WHINE_DIV, 6);
+    // Islıklar duyulur bantta (gerçek BPF ~13–20 kHz; T700 NG ~45 bin dev/dk'da da)
+    expect(v.pt.freq).toBeLessThan(8000);
+    expect(v.whine.freq).toBeLessThan(8000);
+    const t700 = voiceTargets({ ...s, n2Rpm: 45000 }, e, 1, 1);
+    expect(t700.whine.freq).toBeLessThan(8000);
   }, SLOW);
 
   it('turbofanda fan tonu, pervanede pal vızıltısı; ikisinde de güç türbini ıslığı yok', () => {
