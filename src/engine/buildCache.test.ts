@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { beginBuild, endBuild, isLive, reuse, setDetailTag } from './buildCache.js';
+import { beginBuild, endBuild, isLive, retainDetails, reuse, setDetailTag } from './buildCache.js';
 
 const part = () => new THREE.Mesh(new THREE.BufferGeometry());
 const disposed = (o: THREE.Mesh) => {
@@ -62,6 +62,23 @@ describe('buildCache: ayrıntı başına nesil', () => {
     expect(drop.done).toBe(true);
     expect(shared.done).toBe(false);
     expect(isLive(a.drop.geometry)).toBe(false);
+  });
+
+  it('kalite değişince bırakılan seviyenin nesli atılır (yalnız yeni kalite + taslak canlı)', () => {
+    const hi = build('high', ['kq']);
+    const lo = build('low', ['kq']);
+    const hiGone = disposed(hi.kq);
+    retainDetails(['medium', 'low']);
+    const med = build('medium', ['kq']);
+    expect(isLive(hi.kq.geometry)).toBe(false);
+    expect(hiGone.done).toBe(true);
+    expect(isLive(med.kq.geometry)).toBe(true);
+    expect(isLive(lo.kq.geometry)).toBe(true); // taslak nesli korunur
+    // Kalite taslakla aynı seviyeye inerse yalnız 'low' kalır
+    const medGone = disposed(med.kq);
+    retainDetails(['low', 'low']);
+    expect(medGone.done).toBe(true);
+    expect(isLive(lo.kq.geometry)).toBe(true);
   });
 
   it('aynı nesilde aynı anahtar ikinci kez istenirse yenisi üretilir', () => {

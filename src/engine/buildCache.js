@@ -70,6 +70,26 @@ export function endBuild() {
   });
 }
 
+/**
+ * Yalnız verilen seviyelerin nesillerini tut (kalite değişiminde: yeni tam
+ * kalite + taslak). Bırakılan seviyelerin geometrileri, tutulan bir seviyede
+ * canlı değilse ve paylaşılmıyorsa atılır. Yoksa bırakılan kalitenin son
+ * nesli `isLive` sayesinde hiç atılmaz, bellekte kalırdı. Sahnedeki eski
+ * model bu çağrıdan hemen sonra yenisiyle değişmeli (bir kez daha çizilirse
+ * three tamponları yeniden yükler; eski modelin dispose'u onları da atar).
+ * @param {string[]} keep
+ */
+export function retainDetails(keep) {
+  const dropped = [];
+  for (const [tag, g] of gens) if (!keep.includes(tag)) {
+    dropped.push(g);
+    gens.delete(tag);
+  }
+  for (const g of dropped) for (const m of [g.prev, g.cur]) for (const v of m.values()) forEachGeometry(v, (geo) => {
+    if (!geo.userData?.shared && !isLive(geo)) geo.dispose();
+  });
+}
+
 /** Bir parçayı önceki nesilden al ya da üret */
 export function reuse(baseKey, build) {
   const key = `${detail}|${baseKey}`;

@@ -20,7 +20,7 @@ import { loadProgress, loadSettings, saveLessonResult, saveSettings, type Settin
 import { createMaterials } from '../materials/library.js';
 import { loadKit, setKitQuality } from '../engine/kit.js';
 import { setBladeQuality } from '../engine/blades.js';
-import { setDetailTag } from '../engine/buildCache.js';
+import { retainDetails, setDetailTag } from '../engine/buildCache.js';
 import { builtFor, designFor, setSlotBuilt, setSlotGraph, type SlotId } from '../design/catalog';
 import { isBuiltEngine, type BuildOptions, type BuiltEngine } from '../design/graph';
 import type { EngineGraph } from '../design/types';
@@ -774,7 +774,10 @@ export class App {
             this.settings.quality = q;
             this.applyQuality(q);
             saveSettings(this.settings);
-            // Kit parçalarının detay seviyesi değişti: model yeniden üretilir
+            // Kit parçalarının detay seviyesi değişti: model yeniden üretilir.
+            // Önbellek yalnız yeni kaliteyi ve taslağı tutar (bırakılan
+            // kalitenin son nesli bellekte kalmasın)
+            retainDetails([q, 'low']);
             setDetail(q);
             this.rebuildVisual();
           },
