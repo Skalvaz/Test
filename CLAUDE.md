@@ -162,9 +162,14 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
      Yarıda kalınca: `git branch --list "m5a/*"`, `git worktree list`;
      aynı oturumda `resumeFromRunId`, değilse eksikleri mevcut
      worktree'lerde devam ettiren yeni iş akışı.
-   - ⏳ Dalga 2: P6 karışık TF, P7 turboşaft, P9 tutamaçlar, P10 arayüz;
-     dalga 3: P11 entegrasyon, oynanış testi, belgeler. Dalga 2'ye
-     devreden açıklar: askeri TF türevi BPR 1,2'de `buildGasPath`
+   - ⏳ Dalga 2 (iş akışı `wf_4755b86f-c2f`, temel `9e57760`): P6 karışık
+     TF, P7 turboşaft, P9 tutamaçlar, P10 arayüz (P9 uygulamasından sonra,
+     P9 dalını birleştirerek), PX bakım; dallar `m5a/p6-karisik`,
+     `m5a/p7-turbosaft`, `m5a/p9-tutamac`, `m5a/p10-arayuz`,
+     `m5a/px-bakim`; entegratör P6→P7→PX→P9→P10. Sonra: kendi kontrolüm +
+     alanlara bölünmüş inceleme + düzeltme, push; dalga 3: P11 entegrasyon,
+     oynanış testi, belgeler. Dalga 2'ye devreden (paketlere verildi)
+     açıklar: askeri TF türevi BPR 1,2'de `buildGasPath`
      "Invalid typed array length" (1,3–1,5'te FlowpathError; aralık
      0,1–1,5 açık); turboşaft `solveMassFlow`/`card.ts` hâlâ
      `ref.shaftPower` (özet `ref.outputPower`); turboşaft light-off
