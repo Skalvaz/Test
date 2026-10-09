@@ -1314,7 +1314,22 @@ export class App {
       return;
     }
     if (this.mode === 'menu') return;
+    if (this.mode === 'workshop') {
+      // Atölyede tıklama modülü seçer (nabızlı küme vurgusu, sol panel bölümü)
+      const s = this.wsStore.state;
+      if (s.phase !== 'edit' || !s.last) return;
+      this.wsStore.select(moduleOfPart(part as PartTag, s.last.built.traits ?? deriveTraits(s.last.graph)));
+      return;
+    }
     this.stickyHighlight = this.stickyHighlight === part ? null : part;
+  }
+
+  /** Atölye vurgusu: sonuç panelinden (çubuk/uyarı) gelen parçalar, yoksa seçili modül */
+  private workshopHighlight(): PartId[] | PartId | null {
+    if (this.wsHover?.length) return this.wsHover;
+    const s = this.wsStore.state;
+    if (s.selected && s.last) return partsOfModule(s.selected, s.last.built.traits ?? deriveTraits(s.last.graph)) as PartId[];
+    return this.hoverPart;
   }
 
   private hoverPart: PartId | null = null;
@@ -1378,12 +1393,46 @@ export class App {
     const target = e.target as HTMLElement;
     if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT')) return;
     if (e.key === 'Escape') {
-      if (this.overlay && this.mode !== 'menu') this.closeOverlay();
+      if (this.overlay && this.mode === 'workshop' && this.wsStore.state.phase === 'start') this.showMenu();
+      else if (this.overlay && this.mode !== 'menu') this.closeOverlay();
+      // Atölyede önce seçim kalkar, sonra menü (otomatik kayıt: onay yok)
+      else if (this.mode === 'workshop' && this.wsStore.state.selected) this.wsStore.select(null);
       else if (this.mode !== 'menu') this.showMenu();
       return;
     }
     if (this.mode === 'menu' || this.overlay) return;
     const k = e.key.toLowerCase();
+    if (this.mode === 'workshop') {
+      // Gaz kolu tuşları (W/S, PgUp/PgDn, B, oklar) simülasyona gitmez
+      if (this.wsHandles?.onKey(e)) {
+        e.preventDefault();
+        return;
+      }
+      const store = this.wsStore;
+      if ((e.ctrlKey || e.metaKey) && k === 'z') {
+        if (e.shiftKey) store.redo();
+        else store.undo();
+      } else if ((e.ctrlKey || e.metaKey) && k === 'y') store.redo();
+      else if (k === 'u') store.setExpert(!store.state.project.expert);
+      else if (e.key === 'Tab') this.wsPanel.nextModule(e.shiftKey ? -1 : 1);
+      else if (k === 'c') this.setCutaway(!this.cutaway);
+      else if (k === 'm') this.toggleMute();
+      else if (k === 'h') {
+        document.body.classList.toggle('ui-hidden');
+        this.layout();
+      } else if (/^[1-8]$/.test(k)) {
+        const views = (Object.keys(VIEWS) as ViewName[]).filter((v) => v !== 'menu');
+        const v = views[Number(k) - 1];
+        if (v) {
+          const cut = this.cutaway;
+          this.rig.go(v);
+          this.setCutaway(cut);
+          this.viewSelect.value = v;
+        }
+      } else return;
+      e.preventDefault();
+      return;
+    }
     const fine = e.shiftKey ? 0.005 : 0.02;
     if (k === 'w' || e.key === 'ArrowUp') this.cockpit.nudge(fine);
     else if (k === 's' || e.key === 'ArrowDown') this.cockpit.nudge(-fine);
@@ -1502,7 +1551,8 @@ export class App {
       : this.hoverPart && this.diagramVisible && this.mode !== 'menu' && !this.stepHighlight
         ? this.hoverPart
         : this.stepHighlight ?? this.stickyHighlight;
-    this.visual.highlight(hl);
+    if (this.mode === 'workshop') this.visual.highlight(this.workshopHighlight());
+    else this.visual.highlight(hl);
 
     if (this.mode !== 'menu') {
       if (this.consoleVisible) {
@@ -1511,6 +1561,15 @@ export class App {
       }
       if (this.diagramVisible) this.diagram.update(snap, dt);
       if (this.runner) this.cockpit.flash(this.runner.flash(snap));
+      if (this.mode === 'workshop') {
+        this.wsAcc += dt;
+        if (this.wsAcc > 0.2) {
+          this.wsAcc = 0;
+          this.refreshWorkshop();
+          // Yasak bölgeler boşta (sürükleme ve bekleyen üretim yokken)
+          if (this.wsStore.idle) this.wsPanel.updateFeasible();
+        }
+      }
       if (this.mode === 'sandbox') {
         this.sandboxAcc += dt;
         if (this.sandboxAcc > 0.2) {
