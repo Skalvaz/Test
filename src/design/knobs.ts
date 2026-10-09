@@ -935,9 +935,18 @@ export const KNOB_MAP: ReadonlyMap<string, EngineKnob> = new Map(ENGINE_KNOBS.ma
 /** Eski kimlik → güncel kimlik (M5a'da boş) */
 export const KNOB_ALIASES: Record<string, KnobId> = {};
 
+/**
+ * Eski kimliğin güncel karşılığı. Yalnız öz alanlar: belgeden gelen
+ * 'constructor' ya da '__proto__' Object.prototype üyesine çözülmez.
+ */
+export function knobAlias(id: string): KnobId | undefined {
+  return Object.hasOwn(KNOB_ALIASES, id) ? KNOB_ALIASES[id] : undefined;
+}
+
 /** Kimliği (eski adlar dahil) düğmeye çevirir; bilinmiyorsa undefined */
 export function knobById(id: string): EngineKnob | undefined {
-  return KNOB_MAP.get(id) ?? (KNOB_ALIASES[id] ? KNOB_MAP.get(KNOB_ALIASES[id]) : undefined);
+  const alias = KNOB_MAP.has(id) ? undefined : knobAlias(id);
+  return KNOB_MAP.get(alias ?? id);
 }
 
 /** Düğmenin türetilmiş tipteki aralığı (bağlam nesnesi olmadan) */
