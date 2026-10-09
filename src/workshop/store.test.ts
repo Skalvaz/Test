@@ -75,12 +75,19 @@ describe('başlangıç', () => {
     expect(st.canUndo).toBe(false);
   });
 
-  // Turboşaft P7'de geldi; hâlâ eksik olan karışık kaportalı turbofan (P6)
-  it.skipIf(!!TEMPLATES.turbofanMixed)('henüz olmayan şablon bildirim verir, atmaz', () => {
-    const s = makeStore();
-    s.startFromTemplate('turbofanMixed');
-    expect(s.state.phase).toBe('start');
-    expect(s.state.notice?.text).toMatch(/henüz yok/);
+  // Eksik şablon yolu atlanmadan sınanır: turboşaft kaydı geçici olarak
+  // silinir (P6/P7 birleşme sırasından bağımsız)
+  it('henüz olmayan şablon bildirim verir, atmaz', () => {
+    const was = TEMPLATES.turboshaft;
+    delete TEMPLATES.turboshaft;
+    try {
+      const s = makeStore();
+      s.startFromTemplate('turboshaft');
+      expect(s.state.phase).toBe('start');
+      expect(s.state.notice?.text).toMatch(/henüz yok/);
+    } finally {
+      TEMPLATES.turboshaft = was;
+    }
   });
 
   it('sihirbaz: canlı önizleme, hedef itki, bitirince yeni aile', () => {
