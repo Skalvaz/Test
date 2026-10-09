@@ -1,0 +1,18 @@
+{
+  "kind": "turbojet",
+  "env": "Test hücresi",
+  "quality": "high",
+  "w": 960,
+  "h": 540,
+  "cam": [1.75, 0.45, -0.3],
+  "tgt": [0, 0.02, -0.3],
+  "fov": 38,
+  "cut": 1,
+  "setup": "const D = window.__design; const b = D.TEMPLATES.turbojetDry; window.__oda = (style) => ({ ...b, name: b.name + ' · ' + style, modules: b.modules.map((m) => (m.type !== 'combustor' ? m : style === 'annular' ? { ...m, style, cans: undefined, injectors: 16 } : { ...m, style })) }); D.setSlotGraph('workshop', window.__oda('annular')); a.setEngine('workshop', true); a.sim.trim(0.85, 30); if (a.advance) a.advance(10);",
+  "frames": 6,
+  "dt": 0.05,
+  "actions": {
+    "2": "a.applyDesign('workshop', window.__oda('can'));",
+    "4": "a.applyDesign('workshop', window.__oda('canAnnular'));"
+  }
+}

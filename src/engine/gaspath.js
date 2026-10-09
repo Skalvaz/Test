@@ -148,6 +148,7 @@ export function buildGasPath(materials, spec) {
         caseAt,
         injectors: cb.injectors ?? 16,
         cans: cb.cans,
+        style: cb.style,
       }),
     );
     group.add(
@@ -157,7 +158,9 @@ export function buildGasPath(materials, spec) {
           inner: caseAt,
           z0,
           z1,
-          t: 0.008,
+          // Kutu (can) tipinde her kutu kendi basınç kabında: ortak kasa yalnız
+          // bölümü kapatan ince kabuk (M5a)
+          t: cb.style === 'can' ? 0.005 : 0.008,
           steps: 24,
           flanges: [z0 + 0.012, z1 - 0.012],
           part: 'combustor',

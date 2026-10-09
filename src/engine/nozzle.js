@@ -20,8 +20,60 @@
  */
 
 import * as THREE from 'three';
-import { tagPart } from './geom.js';
+import { smoothProfile, tagPart, thickLathe } from './geom.js';
 import { revolve, roundPoly } from './revolve.js';
+
+/**
+ * Art yakıcısız motorun sabit yakınsak lülesi (M5a P5): jet borusu
+ * flanşından lüle ağzına daralan tavlanmış inconel koni. Hareketli parça
+ * yok (`set` yok): lüle alanı sabittir, motor tasarım noktasında boğulur.
+ *
+ *   gövde        kalınlıklı koni (kesitte et kalınlığı görünür); ağza
+ *                yakın kısımda düzleşen profil (akış ağızda eksenel çıkar)
+ *   iç kaplama   kurum tutmuş iç yüzey (sıcak gaz tarafı)
+ *   ağız halkası ağzı rijitleştiren dolu kenar (bead)
+ *   takviye      konik gövde üzerinde iki çevresel kaburga
+ *
+ * @param n { z0, z1, r0, rExit } (design/layouts/bare.ts FixedNozzleGeometry)
+ * @returns {{ group, exitZ, exitR }}
+ */
+export function buildFixedNozzle(materials, n) {
+  const group = new THREE.Group();
+  group.name = 'fixed-nozzle';
+  const { z0, z1, r0, rExit } = n;
+  const L = z1 - z0;
+  const t = Math.max(0.004, r0 * 0.012);
+  const seg = Math.round(THREE.MathUtils.clamp(r0 * 320, 64, 160));
+  // Profil: flanştan kısa silindir, sonra koni; son %15'te eksene paralel
+  const at = (u) => {
+    const s = THREE.MathUtils.smoothstep(u, 0.08, 0.88);
+    return [r0 + (rExit - r0) * s, z0 + u * L];
+  };
+  const prof = smoothProfile([0, 0.06, 0.2, 0.4, 0.6, 0.8, 0.92, 1].map(at), 48);
+  const shell = new THREE.Mesh(thickLathe(prof, seg, t, 'in'), materials.inconel ?? materials.nozzleFlap);
+  shell.name = 'fixed-nozzle-shell';
+  group.add(shell);
+  // İç yüzey: kurum (kesitte ve ağızdan bakınca görünür)
+  const inner = smoothProfile([0, 0.2, 0.5, 0.8, 1].map((u) => {
+    const [r, z] = at(u);
+    return [r - t - 0.0015, z];
+  }), 40);
+  const soot = new THREE.Mesh(thickLathe(inner, seg, 0.002, 'in'), materials.sooted ?? materials.nozzleFlap);
+  soot.name = 'fixed-nozzle-liner';
+  group.add(soot);
+  // Ağız halkası (bead) ve takviye kaburgaları
+  const ringMat = materials.nozzleMetal ?? materials.machinery;
+  const bead = new THREE.Mesh(new THREE.TorusGeometry(rExit + t * 0.5, t * 1.1, 10, seg), ringMat);
+  bead.position.z = z1 - t * 0.6;
+  group.add(bead);
+  for (const u of [0.32, 0.62]) {
+    const [r, z] = at(u);
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(r + t * 0.6, t * 0.9, 8, seg), ringMat);
+    rib.position.z = z;
+    group.add(rib);
+  }
+  return { group: tagPart(group, 'nozzle'), exitZ: z1, exitR: rExit };
+}
 
 /**
  * Kavisli yaprak plakası: +Z boyunca 0 → len, genişlik w0 → w1 (daralan),
