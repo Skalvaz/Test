@@ -594,14 +594,14 @@ tabloya geri yazar.
 | KnobId | Etiket | Birim (gösterim) | Aralık | Adım | Kapsam | Koşul | Bir cümle |
 |---|---|---|---|---|---|---|---|
 | `engine.massFlow` (log) | Hava akışı | kg/s | TJ/TJD 10–200 · MTF 30–250 · TF 150–1500 · TFM 50–600 · TP 3–30 · TS 1,5–15 | %1 | aile | – | "Motorun yuttuğu hava: itki onunla, çap karekökü ile büyür." |
-| `fan.pr` | Fan basınç oranı | – | 1,8–4,5 / 1,3–2,0 (TFM 1,4–2,4) | 0,01 | varyant | fan | "Baypas jetini hızlandırır; LPT'den daha çok iş ister." |
-| `fan.bypassRatio` | Baypas oranı | – | 0,1–1,5 / 1–12 (TFM 1–7) | 0,05 | varyant | fan | "Çekirdeğin yanından geçen hava: TSFC düşer, çap ve LPT büyür." |
+| `fan.pr` | Fan basınç oranı | – | 1,8–4,5 / **1,4–1,8** (TFM 1,4–2,4) | 0,01 | varyant | fan | "Baypas jetini hızlandırır; LPT'den daha çok iş ister." |
+| `fan.bypassRatio` | Baypas oranı | – | 0,1–1,5 / **3–11** (TFM 1–7) | 0,05 | varyant | fan | "Çekirdeğin yanından geçen hava: TSFC düşer, çap ve LPT büyür." |
 | `fan.tipSpeed` | Fan uç hızı | m/s | 300–560 | 1 | aile | fan | "Hızlı fan daha az LPT kademesi ister ama uçta şok yapar." |
-| `lpc.pr` | LPC / booster PR | – | LPC 1,5–5 · booster 1,1–2,5 | 0,01 | varyant | lpc | |
+| `lpc.pr` | LPC / booster PR | – | LPC **2,2–5** · booster 1,1–2,5 | 0,01 | varyant | lpc | |
 | `lpc.tipSpeed` | LPC uç hızı | m/s | 300–520 | 1 | aile | lpc ön (TJ) | |
-| `hpc.pr` | HPC basınç oranı | – | 2–25 (TP/TS toplam 6–20) | 0,1 | varyant | – | "OPR artar → TSFC düşer; kademe, T3 ve kütle artar." |
+| `hpc.pr` | HPC basınç oranı | – | **TJ/TJD 2–6 · MTF 4–12 · TF/TFM 8–25** (TP/TS toplam 6–20) | 0,1 | varyant | – | "OPR artar → TSFC düşer; kademe, T3 ve kütle artar." |
 | `hpc.centrifugal.workFraction` | Santrifüj iş payı | % | 0,2–0,8 | 0,01 | aile | centrifugal | "İşin ne kadarını çark yapar: eksenel kademe azalır, çap büyür." |
-| `combustor.tit` | T4 | K (°C da) | 1000–1900 | 5 | varyant | – | "Sıcak türbin girişi: itki artar; EGT payı ve kanat ömrü azalır." |
+| `combustor.tit` | T4 | K (°C da) | **TJ/TJD 1050–1650 · MTF 1300–1900 · TF 1500–1900 · TFM 1400–1900 · TP/TS 1150–1750** | 5 | varyant | – | "Sıcak türbin girişi: itki artar; EGT payı ve kanat ömrü azalır." |
 | `combustor.cans` | Kutu sayısı | adet | 6–16 | 1 | aile | can/canAnnular | |
 | `mixer.lobes` | Lobe sayısı | adet | 6–24 | 1 | aile | lobed | |
 | `afterburner.t7Max` | Art yakıcı T7 | K | 1600–2200 | 10 | varyant | AB | |
@@ -611,6 +611,8 @@ tabloya geri yazar.
 | `propeller.rpm` | Pervane devri | rpm | 900–2000 | 10 | varyant | prop | |
 | `shaft.rpm` | Çıkış devri | rpm | 3000–30000 | 50 | aile | shaft | "Yalnız redüktör oranını değiştirir; güç türbini devri uç hızından gelir." |
 
+**P4b bulanık testinden sonra (kalın değerler):** aile başına 200 rastgele temel düğme kümesinde geçerli oran %70'in altında kaldığı için T4, HPC PR, LPC PR ve TF fan PR/BPR aralıkları aile bağlamına göre daraltıldı (yüksek baypaslı fan sıcak çekirdek ister: TF'de T4 < 1500 K'de P5 ≤ P0; kısa iki milli turbojette HPC PR > 6'da HPT çıkış kanalı kapanır; LPC PR < 2,1'de LPC çıkış kanalı kapanır). Uzman aralıklarından hpc `.mach.0`, türbin `.mach.0` ve `.bladeK`, `bypassDuct.mach` şablon değerlerini kapsayacak kadar genişletildi.
+
 T4 üst sınırı M5a'da **1900 K**: soğutma havası modeli yok, çevrim yüksek
 T4'ün kazancını abartır (M5c'de dönem + soğutma ile açılır). Bir ailede en
 çok ~8 temel düğme görünür.
@@ -619,12 +621,12 @@ T4'ün kazancını abartır (M5c'de dönem + soğutma ile açılır). Bir ailede
 
 | Grup | KnobId (aralık) |
 |---|---|
-| engine | `engine.accessoryPower` (0–600 kW; `ops.accessoryPower`'a yazar, §2.8), `engine.mechEff` (0,97–0,995), `bypassDuct.dp` (0,005–0,05), `bypassDuct.mach` (0,3–0,55) |
+| engine | `engine.accessoryPower` (0–600 kW; `ops.accessoryPower`'a yazar, §2.8), `engine.mechEff` (0,97–0,995), `bypassDuct.dp` (0,005–0,05), `bypassDuct.mach` (**0,1**–0,55) |
 | inlet | `inlet.length` (0–2), `inlet.noseLength` (0–1,2), `inlet.struts` (0–12) |
-| fan/lpc/hpc | `.eff` (0,80–0,94), `.mach.0` (0,35–0,70), `.mach.1` (0,10–0,50), `.hubTip` (0,25–0,85), `.taper` (0,8–1,05), `.loading` (0,2–1,0; booster ≤ 1,2), `.pitchSpan` (0,4–2,5), `.bladeK.0/.1` (0,8–4,5), `.gap` (0,5–3), `.vsv` (0–6; lpc/hpc), `hpc.tipSpeed` (350–650), `fan.hubPRFraction` (0,6–1,0; `preview:'none'`). `fan.hubTip` **M5a'da gizli** (model fan göbeğini göstermez; M5b) |
+| fan/lpc/hpc | `.eff` (0,80–0,94), `.mach.0` (0,35–0,70; **hpc 0,20–0,60**), `.mach.1` (0,10–0,50), `.hubTip` (0,25–0,85), `.taper` (0,8–1,05), `.loading` (0,2–1,0; booster ≤ 1,2), `.pitchSpan` (0,4–2,5), `.bladeK.0/.1` (0,8–4,5), `.gap` (0,5–3), `.vsv` (0–6; lpc/hpc), `hpc.tipSpeed` (350–650), `fan.hubPRFraction` (0,6–1,0; `preview:'none'`). `fan.hubTip` **M5a'da gizli** (model fan göbeğini göstermez; M5b) |
 | centrifugal | `hpc.centrifugal.loading` (0,55–0,85), `.diffuserRatio` (1,3–2,0), `.gap` (0,5–2) |
 | combustor | `.refVelocity` (5–60 m/s), `.lengthHeight` (1,5–8), `.dp` (0,02–0,08), `.eff` (0,97–0,999), `.injectors` (6–40), `.meanShift` (−0,1–0,1 m), `.gap` (0,5–3) |
-| hpt/lpt | `.eff` (0,82–0,94), `.mach.0` (0,05–0,35), `.mach.1` (0,15–0,55), `.hubTip` (0,5–0,92), `.taper` (0,9–1,3), `.loading` (0,8–3,5), `.pitchSpan`, `.bladeK.*`, `.gap`; `lpt.tipSpeed` (300–550; serbest türbin) |
+| hpt/lpt | `.eff` (0,82–0,94), `.mach.0` (**0,04**–0,35), `.mach.1` (0,15–0,55), `.hubTip` (0,5–0,92), `.taper` (0,9–1,3), `.loading` (0,8–3,5), `.pitchSpan` (0,4–2,5), `.bladeK.*` (0,8–**7**), `.gap` (0,5–3); `lpt.tipSpeed` (300–550; serbest türbin) |
 | mixer | `mixer.loss` (0,005–0,03) |
 | afterburner | `.mach` (0,15–0,30), `.lengthDiameter` (1,2–3), `.eta` (0,8–0,95), `.dpDry` (0,02–0,06), `.dpLit` (0,04–0,10) |
 | nozzle | `.cv` (0,95–0,995), `.flaps` (8–24), `.exitMach` (0,08–0,5; stub), `.pressureRatio` (1,02–1,3; stub) |
