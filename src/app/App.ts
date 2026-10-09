@@ -49,8 +49,31 @@ import { Toasts } from '../ui/Toasts';
 import { CameraRig, VIEWS, viewsFor, type ViewName } from './CameraRig';
 import { needsReframe } from './reframe';
 import { Picker } from './Picker';
+import { WorkshopStore } from '../workshop/store';
+import { moduleOfPart, partsOfModule, type PartTag } from '../design/partsMap';
+import { deriveTraits } from '../design/traits';
+import { WorkshopPanel } from './workshop/WorkshopPanel';
+import { ResultsPanel } from './workshop/ResultsPanel';
+import { Coachmarks } from './workshop/Coachmarks';
+import { startScreen } from './workshop/StartScreen';
+import { WorkshopHandles } from './workshop/Handles';
+import { DesignGhost } from './workshop/Ghost';
+import { ScaleFigure } from './workshop/ScaleFigure';
+import { EnvelopeBox } from './workshop/EnvelopeBox';
+import type { Evaluation } from '../design/evaluate';
+import type { HandleScreen } from './workshop/Handles';
 
-type Mode = 'menu' | 'lesson' | 'sandbox';
+type Mode = 'menu' | 'lesson' | 'sandbox' | 'workshop';
+
+/** Atölye test kancası (M5A-SPEC §6.10) */
+export interface WorkshopHook {
+  store: WorkshopStore;
+  current(): Evaluation;
+  handles(): HandleScreen[];
+  readonly idle: boolean;
+  readonly lastBuildMs: number;
+  flush(): Promise<void>;
+}
 
 const ALL_SWITCHES: SwitchId[] = ['apuBleed', 'starter', 'ignition', 'fuelRun', 'fadec'];
 const DEFAULT_SWITCHES: SwitchId[] = ['apuBleed', 'starter', 'ignition', 'fuelRun'];
@@ -81,7 +104,24 @@ export class App {
   visual!: EngineVisual;
   audio = new EngineAudio();
   mode: Mode = 'menu';
+  /** Sahnedeki motorun kaynağı: katalog (kind yuvası) ya da atölye tasarımı */
+  source: 'catalog' | 'workshop' = 'catalog';
   timeScale = 1;
+
+  /* ---- Atölye (M5a P10) ---- */
+  private wsStore!: WorkshopStore;
+  private wsPanel!: WorkshopPanel;
+  private wsResults!: ResultsPanel;
+  private wsCoach!: Coachmarks;
+  private wsHandles: WorkshopHandles | null = null;
+  private wsGhost: DesignGhost | null = null;
+  private wsFigure: ScaleFigure | null = null;
+  private wsBox: EnvelopeBox | null = null;
+  private wsAcc = 0;
+  private wsHover: PartId[] | null = null;
+  /** Ders bitince/çıkınca dönülecek mod */
+  private returnTo: 'workshop' | null = null;
+  private wsHook = (dt: number) => this.workshopFrame(dt);
 
   private env!: ReturnType<typeof createEnvironment>;
   private materials!: ReturnType<typeof createMaterials>;
@@ -319,7 +359,51 @@ export class App {
         this.timeScale = v;
       },
       onExit: () => this.showMenu(),
+      onWorkshop: () => this.runWorkshopDesign(),
+      onBackToWorkshop: () => this.openWorkshop({ resume: true }),
+      workshopName: () => (this.wsStore.state.phase === 'start' ? null : this.workshopDesignName()),
+      workshopExpected: () => this.wsStore.state.last?.summary ?? null,
     });
+
+    // Atölye: mağaza (otomatik kayıt localStorage'da), paneller, koçluk
+    this.wsStore = new WorkshopStore({ onBuilt: (b, detail) => this.onWorkshopBuilt(b, detail) });
+    const openLesson = (id: string) => {
+      const l = LESSONS.find((x) => x.id === id);
+      if (l) this.startLesson(l, { returnTo: 'workshop' });
+    };
+    this.wsPanel = new WorkshopPanel(this.wsStore, {
+      onExit: () => this.showMenu(),
+      onNewFromTemplate: () => this.openWorkshopStart(),
+      onWizardCancel: () => this.openWorkshopStart(),
+      openLesson,
+      openGlossary: (id) => this.openGlossary(id),
+      onKnobDrag: (a) => {
+        const last = this.wsStore.state.last;
+        if (!this.wsGhost || !last) return;
+        if (a) this.wsGhost.begin(last.built);
+        else this.wsGhost.end();
+      },
+    });
+    this.wsResults = new ResultsPanel(this.wsStore, {
+      onRunInCell: () => this.runWorkshopDesign(),
+      onHighlight: (tags) => {
+        this.wsHover = tags ? (tags as PartId[]) : null;
+      },
+      openGlossary: (id) => this.openGlossary(id),
+      openLesson,
+    });
+    this.wsCoach = new Coachmarks();
+    this.wsStore.subscribe((s) => {
+      if (this.mode !== 'workshop') return;
+      // Kaydırıcı sürüklemesi: hayalet yeni şekli izler
+      if (this.wsGhost?.active && s.last && !this.wsHandles?.dragging) this.wsGhost.update(s.last.built);
+      if (s.notice && s.notice.seq !== this.wsNoticeSeq) {
+        this.wsNoticeSeq = s.notice.seq;
+        this.toasts.show(s.notice.text, 'info', 4500);
+      }
+      this.refreshWorkshop();
+    });
+    this.topbar.insertBefore(this.wsPanel.toolbar, this.topbar.querySelector('.spacer'));
 
     document.body.append(
       this.topbar,
@@ -327,9 +411,14 @@ export class App {
       this.diagram.el,
       this.lessonPanel.el,
       this.sandboxPanel.el,
+      this.wsPanel.el,
+      this.wsResults.el,
+      this.wsResults.summaryStrip,
+      this.wsCoach.el,
       this.toasts.el,
     );
   }
+  private wsNoticeSeq = 0;
 
   private setVisible(el: HTMLElement, v: boolean) {
     el.classList.toggle('hidden', !v);
@@ -345,7 +434,7 @@ export class App {
     const css = getComputedStyle(document.documentElement);
     const px = (name: string) => parseFloat(css.getPropertyValue(name)) || 0;
     const leftOpen = this.mode !== 'menu' && W > 720;
-    const rightOpen = this.diagramVisible && this.mode !== 'menu' && W > 1000;
+    const rightOpen = (this.diagramVisible || this.mode === 'workshop') && this.mode !== 'menu' && W > 1000;
     this.rig.setInsets({
       left: this.mode === 'menu' ? Math.min(620, W * 0.42) : leftOpen ? px('--left-w') + 12 : 0,
       right: rightOpen ? px('--right-w') + 12 : 0,
@@ -362,10 +451,18 @@ export class App {
     this.setVisible(this.diagram.el, m !== 'menu' && this.diagramVisible);
     this.setVisible(this.lessonPanel.el, m === 'lesson');
     this.setVisible(this.sandboxPanel.el, m === 'sandbox');
+    const ws = m === 'workshop';
+    document.body.classList.toggle('mode-workshop', ws);
+    this.setVisible(this.wsPanel.el, ws);
+    this.setVisible(this.wsResults.el, ws);
+    this.setVisible(this.wsResults.summaryStrip, ws);
+    this.setVisible(this.wsPanel.toolbar, ws && this.wsStore.state.phase === 'edit');
+    this.diagBtn.classList.toggle('hidden', ws);
+    if (!ws) this.wsCoach.el.classList.add('hidden');
     this.cutBtn.classList.toggle('active', this.cutaway);
     this.diagBtn.classList.toggle('active', this.diagramVisible);
     this.soundBtn.replaceChildren(icon(this.audio.muted ? 'mute' : 'sound'));
-    this.modeChip.textContent = m === 'lesson' ? 'Ders' : m === 'sandbox' ? 'Test hücresi' : '';
+    this.modeChip.textContent = m === 'lesson' ? 'Ders' : m === 'sandbox' ? 'Test hücresi' : ws ? 'Atölye' : '';
     this.layout();
   }
 
