@@ -8,18 +8,19 @@
  * hatalar (program hatası) yeniden atılır: gizlenmesin.
  */
 
+import { sizeEngine } from '../sim/design';
 import type { Finding } from './core/rules';
-import { FlowpathError } from './flowpath';
-import { buildEngine, type BuildOptions, type BuiltEngine } from './graph';
+import { computeGasPath, FlowpathError, type RowKey } from './flowpath';
+import { buildEngine, toEngineDesign, type BuildOptions, type BuiltEngine } from './graph';
 import { fmtNum, summarize, type DesignSummary, type LimitGauge } from './summary';
 import { TECH_MODERN, type TechLimits } from './tech';
 import type { CompressorModule, EngineGraph, TurbineModule } from './types';
 import {
+  assertFiniteSummary,
   evaluateGauges,
   evaluateWarnings,
   isDesignFailure,
   knobsPresent,
-  NonFiniteDesignError,
   translateError,
   type DesignGoal,
   type TeachingError,
@@ -44,25 +45,14 @@ export interface EvaluateOptions extends BuildOptions {
   remedies?: boolean;
 }
 
-/** Sonlu olmaması tasarımı anlamsızlaştıran büyüklükler */
-function assertFinite(s: DesignSummary): void {
-  const checks: [string, number | undefined][] = [
-    ['itki', s.thrust],
-    ['kütle', s.mass],
-    ['çap', s.diameter],
-    ['boy', s.length],
-    ['T4', s.t4],
-    ['mil gücü', s.output === 'thrust' ? 0 : s.shaftPower],
-  ];
-  for (const [what, v] of checks) if (v === undefined || !Number.isFinite(v)) throw new NonFiniteDesignError(what);
-}
-
 /**
  * Kanal düğmelerinin fiziksel aralığı. Grafik kuralları bunları ayırmıyor;
  * aralık dışı değerde (Mach 0, göbek/uç ≥ 1) gaz yolu NaN/∞ kademe ile döner
  * ve 3B yerleşimin kademe döngüleri bitmez, sekme donar. Atölyenin kaydırıcı
- * aralıkları dardır, ama dosyadan yüklenen proje de buradan geçer. Bu yalnız
- * güvenlik ağı: sınırlar düğme aralıklarından (§2.10) bilerek geniş.
+ * aralıkları dardır, ama dosyadan yüklenen proje de buradan geçer (aile
+ * tabanı içe aktarmada kırpılmaz). Bu yalnız güvenlik ağı: sınırlar düğme
+ * aralıklarından (§2.10) bilerek geniş. Kademe sayısı 1/(ψ·U²) ile büyür:
+ * asıl sınır gaz yolundaki kademe tavanıdır (checkStages).
  */
 const ROW_RANGES: { key: string; label: string; get: (m: CompressorModule | TurbineModule) => number | undefined; ok: (v: number) => boolean; range: string }[] = [
   { key: 'mach.0', label: "giriş Mach'ı", get: (m) => m.mach[0], ok: (v) => v > 0 && v < 1, range: '0–1' },
@@ -70,7 +60,8 @@ const ROW_RANGES: { key: string; label: string; get: (m: CompressorModule | Turb
   { key: 'hubTip', label: 'göbek/uç oranı', get: (m) => m.hubTip, ok: (v) => v >= 0 && v < 1, range: '0–1' },
   { key: 'taper', label: 'uç daralması', get: (m) => m.taper, ok: (v) => v > 0 && v < 3, range: '0–3' },
   { key: 'loading', label: 'kademe yüklemesi', get: (m) => m.loading, ok: (v) => v >= 0.05 && v <= 10, range: '0,05–10' },
-  { key: 'tipSpeed', label: 'uç hızı', get: (m) => m.tipSpeed, ok: (v) => v > 0 && v < 1000, range: '0–1000 m/s' },
+  // Düğmeler 300 m/s'den başlar; kademe ∝ 1/U², 100 m/s'de bile yüzlerce kademe
+  { key: 'tipSpeed', label: 'uç hızı', get: (m) => m.tipSpeed, ok: (v) => v >= 100 && v < 1000, range: '100–1000 m/s' },
 ];
 const ROW_MODULES = new Set(['fan', 'lpc', 'hpc', 'hpt', 'lpt']);
 
@@ -96,13 +87,52 @@ function checkRanges(g: EngineGraph): void {
   }
 }
 
+/**
+ * Bir sıranın kademe tavanı. Kademe sayısı x = Δh/(ψ·U²) kapalı biçimde
+ * hesaplanır ama kütle ve 3B yerleşim kademe kademe döner: dosyadan gelen
+ * uç hızı 0,1 m/s ile 49 milyon kademe sekmeyi dondururdu. Düğme
+ * aralıklarının uç birleşimleri de saçma uzun sıra kurabilir (TF: yavaş fan,
+ * BPR 11, düşük LPT yüklemesi ≈ 300 kademe; uyarı lptStages): tavan onları
+ * engellemez, yalnız donmayı önler.
+ */
+export const MAX_ROW_STAGES = 1000;
+
+const ROW_KEYS: RowKey[] = ['front', 'booster', 'hpc', 'hpt', 'lpt'];
+
+/**
+ * Kademe tavanı denetimi: gaz yolu (tasarım noktası + kanallar, kademe
+ * başına döngü yok) kütle ve yerleşimden önce kurulur (~0,01 ms; üretim
+ * ~0,1 ms).
+ */
+function checkStages(g: EngineGraph, opts: BuildOptions): void {
+  const gas = computeGasPath(g, sizeEngine(toEngineDesign(g, opts)), opts);
+  const has = (t: string) => g.modules.some((m) => m.type === t);
+  // Milin devrini belirleyen uç hızı düğmesi (warnings.ts spoolModule)
+  const lpTip = has('fan') ? 'fan.tipSpeed' : has('lpc') ? 'lpc.tipSpeed' : 'lpt.tipSpeed';
+  for (const k of ROW_KEYS) {
+    const n = gas[k]?.stages;
+    if (n === undefined || n <= MAX_ROW_STAGES) continue;
+    const type = k === 'front' ? (has('fan') ? 'fan' : 'lpc') : k === 'booster' ? 'lpc' : k;
+    const name = type === 'fan' ? 'Fan' : type.toUpperCase();
+    const tip = k === 'hpc' || k === 'hpt' ? 'hpc.tipSpeed' : lpTip;
+    throw new FlowpathError(
+      `${name} ${Number.isFinite(n) ? fmtNum(n) : String(n)} kademe istiyor (en çok ${MAX_ROW_STAGES}): uç hızı ya da kademe yüklemesi fiziksel aralığın çok dışında.`,
+      'knob.range',
+      type,
+      [tip, `${type}.loading`],
+      { value: n },
+    );
+  }
+}
+
 export function evaluate(g: EngineGraph, opts: EvaluateOptions = {}): Evaluation | { error: TeachingError } {
   try {
     checkRanges(g);
+    checkStages(g, opts);
     const built = buildEngine(g, opts);
     const summary = summarize(built);
-    assertFinite(summary);
-    const ctx: WarnCtx = { graph: g, built, s: summary, tech: opts.tech ?? TECH_MODERN, goal: opts.goal };
+    assertFiniteSummary(summary);
+    const ctx: WarnCtx = { graph: g, built, s: summary, tech: opts.tech ?? TECH_MODERN, goal: opts.goal, reference: opts.reference };
     return {
       graph: g,
       built,

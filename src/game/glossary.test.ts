@@ -32,6 +32,18 @@ describe('sözlük tutarlılığı', () => {
     }
   });
 
+  it('AN² birim çevirisi tutarlı: in² aralığı m² aralığının 1550 katı', () => {
+    // Eskiden 6,5–7,7·10¹⁰ yazıyordu: alt uç 4,2·10⁷'nin (caution) karşılığı, metindeki 4'ün değil
+    const body = GLOSSARY.find((e) => e.id === 'an2')!.body;
+    const m = /~([\d,]+)–([\d,]+)·10⁷ m²·rpm² \(([\d,]+)–([\d,]+)·10¹⁰ in²·rpm²\)/.exec(body);
+    expect(m, body).not.toBeNull();
+    const [lo, hi, loIn, hiIn] = m!.slice(1).map((s) => Number(s.replace(',', '.')));
+    const IN2_PER_M2 = 1 / 0.0254 ** 2;
+    const toIn = (v: number) => Math.round((v * 1e7 * IN2_PER_M2) / 1e9) / 10; // ·10¹⁰, bir ondalık
+    expect(loIn).toBe(toIn(lo));
+    expect(hiIn).toBe(toIn(hi));
+  });
+
   it('hata çevirisinin sözlük kimlikleri var', () => {
     const errs = [
       new DesignError('P5 ≤ P0'),
