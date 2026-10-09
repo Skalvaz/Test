@@ -97,6 +97,9 @@ export const TURBOJET_GRAPH: EngineGraph = {
  * çekirdek gazı baypas kanalına geri basar). Şimdi fan PR 4,3 / BPR 0,55
  * (OPR 35) ile P19t/P5t ≈ 0,98; aynı kademe sayıları için fan, HPC ve LPT
  * yüklemesi artırıldı. Kuru itki +%3, TSFC −%3 (karışma kaybı azaldı).
+ * Denge yalnız tasarım noktasında: kısmi gazda (%30–60) P19t/P5t ~1,26'ya
+ * çıkar (eskiden ~1,07); `mixerPR` yalnız tasarım noktasına bakar, kısmi güç
+ * denetimi açık iş (M5A-SPEC §4.2b, §9.1).
  */
 export const MILITARY_TURBOFAN_GRAPH: EngineGraph = {
   kind: 'militaryTurbofan',

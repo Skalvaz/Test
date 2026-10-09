@@ -265,9 +265,9 @@ aynı; çene girişi ağzı giriş akışından, toplama odası kompresör göz�
 yanma odası 12 → 20 m/s: HPT halkası ve yanma odası incelir (HPT AN²
 4,0 → 2,3·10⁷), LPT'ye tırmanan türbin geçiş kanalı uzar ve kosinüs
 eğrisiyle yumuşar; HPC basınç oranı 16,5 → 16,3 ile T3 962 → 958 K
-(1000 K sınırından %4 pay). İtki ve devirler aynı (turbopropun güç türbini
-devri 20 400 → 19 500 rpm; atalet dönme enerjisini koruyacak biçimde
-ölçeklendi):
+(1000 K sınırından %4 pay). Turbofanın itkisi ve devirleri aynı;
+turbopropun güç türbini 20 400 → 19 500 rpm, gaz jeneratörü 29 800 →
+29 700 rpm (atalet dönme enerjisini koruyacak biçimde ölçeklendi):
 
 ![Turboprop, yandan: önce/sonra](renders/m5a-tp-fizik-yan.gif)
 ![Turboprop, kesit: önce/sonra](renders/m5a-tp-fizik-kesit.gif)
@@ -279,7 +279,10 @@ tasarlanır, yoksa çekirdek gazı baypas kanalına geri basar). Fan basınç or
 3,1 → 4,3 ve baypas oranı 0,68 → 0,55 ile oran 0,98'e çıktı (F100-PW-229
 sınıfı: FPR 3,8, OPR 32); OPR 25 → 35. Kademe sayıları aynı; çekirdek
 incelir, motor 0,3 m kısalır, kütle 2055 → 1801 kg. Karışma kaybı azaldığı
-için kuru itki %3 arttı (80,9 → 83,4 kN), TSFC %3 düştü:
+için kuru itki %3 arttı (80,9 → 83,4 kN), TSFC %3 düştü. Denge tasarım
+noktasında kurulur; kısmi gazda oran ~1,26'ya çıkar. Yüksek basınç mili
+14 200 → 15 700 rpm'e hızlandı; atalet dönme enerjisini koruyacak biçimde
+ölçeklendi, motor rölantiye ~1,5 s daha erken ulaşır:
 
 ![Askeri turbofan, yandan: önce/sonra](renders/m5a-mtf-fizik-yan.gif)
 ![Askeri turbofan, kesit: önce/sonra](renders/m5a-mtf-fizik-kesit.gif)

@@ -312,7 +312,7 @@ export const MILITARY_TURBOFAN: EngineDesign = {
   nozzleCv: 0.98,
   n1Rpm: 10400,
   // M5a: çekirdek küçülünce N2 gaz yolundan 14 200 → 15 700 rpm; HP ataleti
-  // (n_eski/n_yeni)² ile ölçeklendi (dönme enerjisi ve ivmelenme aynı, eski 5)
+  // (n_eski/n_yeni)² ile ölçeklendi (dönme enerjisi aynı, eski 5)
   n2Rpm: 15700,
   inertia: { lp: 14, hp: 4.09 },
   fanDiameter: 0.93,
@@ -329,7 +329,9 @@ export const MILITARY_TURBOFAN: EngineDesign = {
     egtDamage: 1270,
     idleN2: 0.64,
   },
-  // Marş torku ×(I_yeni/I_eski)·(n_yeni/n_eski): marş süresi aynı (eski 150 N·m)
+  // Marş torku ×(I_yeni/I_eski)·(n_yeni/n_eski) (eski 150 N·m). Aksesuar ve
+  // aero tork devirle değiştiği için zamanlama biraz kayar: yakıt ~0,7 s geç
+  // açılır, rölantiye ~1,5 s erken varılır (36,2 → 34,6 s)
   start: { starterTorque: 135.7, starterFadeN2: 0.7, farHigh: 0.0165, farLow: 0.0095 },
   afterburner: { t7Max: 2000, eta: 0.9, dpDry: 0.03, dpLit: 0.065, mixerLoss: 0.01, mixingEff: 0.85 },
 };
