@@ -8,7 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { architectureOf } from '../design/architecture';
-import { builtFor, designFor, setSlotBuilt, setSlotGraph } from '../design/catalog';
+import { builtFor, designFor, setSlotBuilt, setSlotGraph, TEMPLATES } from '../design/catalog';
 import { evaluate } from '../design/evaluate';
 import { familyReady } from '../design/fuzz/fuzz';
 import { buildEngine, type BuiltEngine } from '../design/graph';
@@ -75,9 +75,10 @@ describe('başlangıç', () => {
     expect(st.canUndo).toBe(false);
   });
 
-  it('henüz olmayan şablon bildirim verir, atmaz', () => {
+  // Turboşaft P7'de geldi; hâlâ eksik olan karışık kaportalı turbofan (P6)
+  it.skipIf(!!TEMPLATES.turbofanMixed)('henüz olmayan şablon bildirim verir, atmaz', () => {
     const s = makeStore();
-    s.startFromTemplate('turboshaft');
+    s.startFromTemplate('turbofanMixed');
     expect(s.state.phase).toBe('start');
     expect(s.state.notice?.text).toMatch(/henüz yok/);
   });

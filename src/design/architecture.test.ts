@@ -872,7 +872,7 @@ describe('kart yolu: sihirbaz gibi uyarısız, EGT payı pozitif, düğmeler ara
 /** Tasarım noktası itkisi / mil gücü (yerleşimsiz; atölyenin referansıyla) */
 function measure(g: EngineGraph, a: Architecture) {
   const s = sizeEngine(toEngineDesign(g, { reference: referenceFor(a) }));
-  return { thrust: s.point.thrust, shaftPower: s.ref.shaftPower };
+  return { thrust: s.point.thrust, shaftPower: s.ref.outputPower };
 }
 
 /** Çıkış mili gücü simülasyonda modelleniyor mu (P1) */
@@ -910,7 +910,7 @@ describe('solveMassFlow: hedef itki / güç ±%1', () => {
     const g0 = graphFromArchitecture(TP, { massFlow: 9.5, name: '' });
     const W = solveMassFlow(g0, { shaftPower: 1.5e6 });
     const b = buildEngine(graphFromArchitecture(TP, { massFlow: W, name: '' }), { reference: referenceFor(TP) });
-    expect(Math.abs(b.sized.ref.shaftPower / 1.5e6 - 1)).toBeLessThan(0.01);
+    expect(Math.abs(b.sized.ref.outputPower / 1.5e6 - 1)).toBeLessThan(0.01);
   });
 
   it.skipIf(!shaftPowerModeled)('turboşaft 1,4 MW mil gücü', () => {

@@ -15,6 +15,7 @@ import type { EngineLayout } from './flowpath';
 import { buildEngine, GraphError, type BuildOptions, type BuiltEngine } from './graph';
 import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_GRAPH, TURBOPROP_GRAPH, type TemplateId } from './templates';
 import { TURBOJET_DRY_GRAPH } from './turbojetDry';
+import { TURBOSHAFT_GRAPH } from './turboshaft';
 import { traitsFromDesign, type EngineTraits } from './traits';
 import type { EngineGraph } from './types';
 
@@ -30,6 +31,7 @@ export const TEMPLATES: Partial<Record<TemplateId, EngineGraph>> = {
   militaryTurbofan: MILITARY_TURBOFAN_GRAPH,
   turboprop: TURBOPROP_GRAPH,
   turbofan: TURBOFAN_GRAPH,
+  turboshaft: TURBOSHAFT_GRAPH,
 };
 
 /** Motor tipi yuvasının şablonu (tipler şablon kimlikleriyle aynı adı taşır) */

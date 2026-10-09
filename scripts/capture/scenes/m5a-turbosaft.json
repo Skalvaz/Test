@@ -1,0 +1,19 @@
+{
+  "kind": "turboshaft",
+  "env": "Test hücresi",
+  "quality": "high",
+  "w": 960,
+  "h": 540,
+  "cam": [4.6, 0.55, -0.55],
+  "tgt": [0, 0, -0.55],
+  "fov": 32,
+  "cut": 0,
+  "setup": "a.sim.trim(0.85, 30); if (a.advance) a.advance(10);",
+  "frames": 8,
+  "dt": 0.05,
+  "actions": {
+    "2": "a.rig.camera.position.set(2.6, 0.45, -0.3); a.rig.controls.target.set(0, -0.02, -0.3); a.rig.controls.update(); a.setCutaway(true);",
+    "4": "a.setCutaway(false); a.rig.camera.position.set(2.2, 1.0, -3.6); a.rig.controls.target.set(0, 0, -1.2); a.rig.controls.update();",
+    "6": "a.rig.camera.position.set(-1.1, 0.35, -1.75); a.rig.controls.target.set(0, 0.02, -0.7); a.rig.controls.update();"
+  }
+}

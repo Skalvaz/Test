@@ -109,7 +109,8 @@ export function buildEngineCard(doc: EngineDocV1, variantId: string, b: BuiltEng
   const variant = doc.variants.find((v) => v.id === variantId);
   const shaft = b.graph.modules.find((m) => m.type === 'shaft') as ShaftModule | undefined;
   const egt = p.stations['45'].T - 273.15;
-  const shaftPower = ref.shaftPower > 0 ? ref.shaftPower : undefined;
+  // Çıkış gücü (turboşaftta aktarma kaybı sonrası): özetle aynı tanım
+  const shaftPower = ref.outputPower > 0 ? ref.outputPower : undefined;
   const takeoff: RatingPoint = {
     thrust: p.thrust,
     ...(shaftPower !== undefined ? { shaftPower } : {}),
