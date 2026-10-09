@@ -133,7 +133,8 @@ export class ScaleFigure {
     this.group.add(this.body);
     this.label = labelSprite('1,8 m', cssColor('--ink', '#e8eef4'));
     if (this.label) {
-      this.label.position.set(0, FIGURE_HEIGHT + 0.16, 0);
+      // Başın yanında (üstünde motorun altına girip örtülürdü)
+      this.label.position.set(0.42, FIGURE_HEIGHT - 0.12, 0);
       this.group.add(this.label);
     }
     // Zemindeki nesne: derinlik sınaması açık (motor önündeyse örter), kesit yok

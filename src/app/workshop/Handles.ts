@@ -441,7 +441,8 @@ export class WorkshopHandles {
       if (n !== undefined && this.dragRows.n0 !== undefined) geo = `${name} ${this.dragRows.n0} → ${n} kademe`;
     }
     const deltas = sum && cmp ? diffSummary(cmp, sum).slice(0, 3).map((d) => d.text).join(' · ') : '';
-    const why = sum && cmp ? explainDelta(cmp, sum).slice(0, 3).join(' · ') : '';
+    // Neden zinciri: ilk satırda yazan kademe değişimi yinelenmez
+    const why = sum && cmp ? explainDelta(cmp, sum).filter((x) => x !== geo).slice(0, 3).join(' · ') : '';
     return [geo, deltas || 'Sonuçta değişiklik yok', why];
   }
 

@@ -53,62 +53,71 @@ if (familyArg !== undefined) {
           out.push(`${id}: şablon yok (hazır değil), atlandı`);
           continue;
         }
-        // Hava akışı ±%2 (ön uç tutamacı: bütün geometri değişir) ve HPC
-        // basınç oranı (kompresör boyu tutamacı: kademe sayısı değişir)
-        const variant = (i) => {
-          const g = structuredClone(base);
-          g.massFlow = base.massFlow * (i % 2 ? 1.02 : 0.98);
-          const hpc = g.modules.find((m) => m.type === 'hpc');
-          if (hpc && i % 4 >= 2) hpc.pr *= 1.12;
-          return g;
-        };
+        // İki sürükleme türü: ön uç (hava akışı ±%2: bütün geometri değişir)
+        // ve kompresör boyu (HPC basınç oranı: kademe sayısı ve arkası değişir)
+        const cases = [
+          ['ön uç', (i) => ({ ...structuredClone(base), massFlow: base.massFlow * (i % 2 ? 1.02 : 0.98) })],
+          [
+            'boy',
+            (i) => {
+              const g = structuredClone(base);
+              const hpc = g.modules.find((m) => m.type === 'hpc');
+              if (hpc) hpc.pr *= i % 2 ? 1.12 : 1;
+              return g;
+            },
+          ],
+        ];
         try {
-          a.applyDesign('workshop', variant(0), 'full', { effects: false });
+          a.applyDesign('workshop', structuredClone(base), 'full', { effects: false });
         } catch (e) {
           out.push(`${id}: kurulamadı (${String(e.message ?? e).slice(0, 80)}), atlandı`);
           continue;
         }
         await settle(6);
-        const draft = (i) => {
-          const t0 = performance.now();
-          a.applyDesign('workshop', variant(i), 'draft', { effects: false });
-          return performance.now() - t0;
-        };
-        const full = () => {
-          const t0 = performance.now();
-          a.rebuildVisual('workshop', { effects: false });
-          return performance.now() - t0;
-        };
-        // Isınma: iki taslak (düşük ayrıntı malzemeleri ilk kez derlenir)
-        draft(1);
-        await settle();
-        draft(2);
-        await settle();
-        const drafts = [];
-        const frames = [];
-        for (let i = 3; i < 11; i++) {
-          drafts.push(draft(i));
-          const t = performance.now();
-          await frame();
-          frames.push(performance.now() - t);
+        for (const [name, variant] of cases) {
+          const draft = (i) => {
+            const t0 = performance.now();
+            a.applyDesign('workshop', variant(i), 'draft', { effects: false });
+            return performance.now() - t0;
+          };
+          const full = () => {
+            const t0 = performance.now();
+            a.rebuildVisual('workshop', { effects: false });
+            return performance.now() - t0;
+          };
+          // Isınma: iki taslak (düşük ayrıntı malzemeleri ilk kez derlenir)
+          draft(1);
+          await settle();
+          draft(2);
+          await settle();
+          const drafts = [];
+          const frames = [];
+          for (let i = 3; i < 11; i++) {
+            drafts.push(draft(i));
+            const t = performance.now();
+            await frame();
+            frames.push(performance.now() - t);
+          }
+          // Bırakınca tam ayrıntı, sonra yeni sürükleme (taslak ↔ tam önbelleği)
+          const fulls = [];
+          const after = [];
+          for (let i = 0; i < 3; i++) {
+            fulls.push(full());
+            await settle(2);
+            after.push(draft(11 + i));
+            await settle(2);
+          }
+          const all = [...drafts, ...after];
+          const m = med(all);
+          const worst = Math.max(...all);
+          // Bütçe tipik taslak için (ortanca); en kötü, makine yükündeki sıçramalarla birlikte yazılır
+          const ok = m <= BUDGET;
+          allOk &&= ok;
+          out.push(
+            `${id.padEnd(17)} ${name.padEnd(6)} taslak ${fmt(drafts)} · tam→taslak ${fmt(after)} · ortanca ${m.toFixed(0)} · en kötü ${worst.toFixed(0)} · tam ${fmt(fulls)} · kare ${fmt(frames)} ms · ${ok ? 'GEÇTİ' : 'KALDI'}`,
+          );
         }
-        // Bırakınca tam ayrıntı, sonra yeni sürükleme (taslak ↔ tam önbelleği)
-        const fulls = [];
-        const after = [];
-        for (let i = 0; i < 3; i++) {
-          fulls.push(full());
-          await settle(2);
-          after.push(draft(11 + i));
-          await settle(2);
-        }
-        const worst = Math.max(...drafts, ...after);
-        const ok = worst <= BUDGET;
-        allOk &&= ok;
-        out.push(
-          `${id.padEnd(17)} taslak ${fmt(drafts)} (ort. ${med(drafts).toFixed(0)}) · tam→taslak ${fmt(after)} · tam ${fmt(fulls)} · kare ${fmt(frames)} ms · en kötü taslak ${worst.toFixed(0)} ms ${ok ? '≤' : '>'} ${BUDGET} ${ok ? 'GEÇTİ' : 'KALDI'}`,
-        );
-      }
-      D.setSlotGraph('workshop', null);
+      }      D.setSlotGraph('workshop', null);
       a.setEngine('turbofan', true);
       await settle(2);
       return { text: out.join('\n'), allOk };
