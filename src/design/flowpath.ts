@@ -508,6 +508,9 @@ function extraCentroid(layout: EngineLayout, gp: GasPath, key: string): number {
       const ab = layout.ab as { z0: number; z1: number } | null | undefined;
       if (key === 'casing') return mid(INTAKE_Z, gp.lpt.z1);
       if (key === 'afterburner' && ab) return mid(ab.z0, ab.z1);
+      // Kuru motor (M5a P5): jet borusu ve sabit lüle kendi boylarının ortasında
+      if (key === 'jetPipe' && layout.jetPipe) return mid(layout.jetPipe.z0, layout.jetPipe.z1);
+      if (key === 'nozzle' && layout.nozzle.kind === 'fixed') return mid(layout.nozzle.z0, layout.nozzle.z1);
       if (key === 'nozzle') return mid(ab ? ab.z1 : gp.lpt.z1, exitZ);
       break;
     }
