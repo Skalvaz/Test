@@ -568,6 +568,50 @@ input[type='range'] { width: 100%; accent-color: var(--accent); }
 }
 .part-tip b { display: block; color: var(--accent); margin-bottom: 3px; }
 .part-tip p { margin: 0; color: var(--ink-2); }
+/* Atölye tutamaç okuması (P9, app/workshop/Handles.ts): geometri · sonuç deltası · neden */
+.ws-readout { max-width: 340px; padding: 8px 11px; font-variant-numeric: tabular-nums; transform: translate(14px, -50%); }
+.ws-readout p + p { margin-top: 2px; color: var(--muted); font-size: 11.5px; }
+/* Atölye tutamaç noktaları (P9): ekranda sabit 14 px, üzerinde/sürüklerken 18 px; paneller (z ≥ 10) örter */
+.ws-handles { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+.ws-guide { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; fill: none; stroke-linecap: round; }
+.ws-guide path { filter: drop-shadow(0 0 1.5px rgba(6, 9, 13, 0.9)); }
+.ws-guide-ok { stroke: var(--handle, var(--accent)); stroke-width: 2; stroke-dasharray: 6 5; }
+.ws-guide-bad { stroke: var(--red); stroke-width: 3; opacity: 0.9; }
+.ws-guide-ticks { stroke: var(--handle, var(--accent)); stroke-width: 2; }
+.ws-handle {
+  --hs: 14px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: auto;
+  cursor: grab;
+  outline: none;
+  touch-action: none;
+}
+.ws-handle::before,
+.ws-handle::after { content: ''; position: absolute; border-radius: 50%; transform: translate(-50%, -50%); }
+/* İsabet alanı (görünmez, 24 px) */
+.ws-handle::before { width: 24px; height: 24px; }
+.ws-handle::after {
+  width: var(--hs);
+  height: var(--hs);
+  box-sizing: border-box;
+  background: var(--handle, var(--accent));
+  border: 2px solid rgba(6, 9, 13, 0.9);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55), 0 0 10px 1px var(--accent-dim), 0 1px 4px rgba(0, 0, 0, 0.6);
+  transition: width 0.12s, height 0.12s, opacity 0.15s, background-color 0.15s;
+}
+.ws-handle.is-active { --hs: 18px; }
+.ws-handle.is-dragging { cursor: grabbing; }
+.ws-handle.is-dragging::after { box-shadow: 0 0 0 2px var(--handle, var(--accent)), 0 0 18px 4px var(--accent-dim), 0 1px 4px rgba(0, 0, 0, 0.6); }
+.ws-handle.is-dim::after { opacity: 0.35; }
+.ws-handle.is-dim.is-active::after { opacity: 0.85; }
+.ws-handle.is-blocked { cursor: not-allowed; }
+.ws-handle.is-blocked::after { background: var(--muted); }
+.ws-handle:focus-visible::after { box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--handle, var(--accent)); }
+body.ws-grabbing, body.ws-grabbing canvas { cursor: grabbing !important; }
 
 /* ---------------- modal / menüler ---------------- */
 .overlay {

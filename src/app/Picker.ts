@@ -2,6 +2,14 @@
  * 3B parça seçici: fare altındaki motor parçasını bulur, bilgi etiketi
  * gösterir ve tıklamayı bildirir. Kesit modunda kırpılmış taraftaki
  * yüzeyler atlanır (ışın izleme kırpma düzlemlerini kendisi bilmez).
+ *
+ * Atölye (M5a §6.7) iki kanca kullanır:
+ * - `exclude(obj, part)`: true dönen isabetler atlanır, ışın arkasındaki
+ *   parçaya geçer (ör. seçilemeyen stand/pilon; modülsüz parçalar).
+ * - `priority(x, y)`: imleç altında öncelikli bir etkileşim (tutamaç) varsa
+ *   true. O zaman parça üzerine gelme, tıklama ve çift tıklama bildirilmez;
+ *   basış tutamaçta başladıysa bırakış da (sürükleme bitişi) tıklama sayılmaz.
+ *   Tıklama/sürükleme ayrımı (6 px / 600 ms) aynen korunur.
  */
 
 import * as THREE from 'three';
@@ -26,7 +34,13 @@ export class Picker {
   private lastMove = 0;
   private pending: PointerEvent | null = null;
   private down = { x: 0, y: 0, t: 0 };
+  /** Son basış öncelikli etkileşimde (tutamaç) başladı: bırakış tıklama değil */
+  private claimed = false;
   clipPlanes: THREE.Plane[] = [];
+  /** Işın izlemede atlanacak isabetler (atölye: modülsüz parçalar) */
+  exclude?: (obj: THREE.Object3D, part: PartId) => boolean;
+  /** İmleç altında öncelikli etkileşim (atölye tutamacı) var mı (istemci pikseli) */
+  priority?: (clientX: number, clientY: number) => boolean;
 
   constructor(
     private dom: HTMLElement,
@@ -43,17 +57,18 @@ export class Picker {
     });
     dom.addEventListener('pointerdown', (e) => {
       this.down = { x: e.clientX, y: e.clientY, t: performance.now() };
+      this.claimed = !!this.priority?.(e.clientX, e.clientY);
       this.tip.classList.add('hidden');
     });
     dom.addEventListener('pointerup', (e) => {
-      // Sürükleme (kamera döndürme) tıklama sayılmaz
+      // Sürükleme (kamera döndürme ya da tutamaç) tıklama sayılmaz
       const moved = Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y);
-      if (!this.enabled || moved > 6 || performance.now() - this.down.t > 600) return;
+      if (!this.enabled || this.claimed || moved > 6 || performance.now() - this.down.t > 600) return;
       const part = this.hit(e);
       if (part) this.onPick?.(part);
     });
     dom.addEventListener('dblclick', (e) => {
-      if (!this.enabled) return;
+      if (!this.enabled || this.priority?.(e.clientX, e.clientY)) return;
       const part = this.hit(e);
       if (part) this.onFocus?.(part, this.lastPoint.clone());
     });
@@ -68,7 +83,7 @@ export class Picker {
       if (!hit.object.visible || !isVisibleInTree(hit.object)) continue;
       if (this.clipPlanes.some((p) => p.distanceToPoint(hit.point) < 0)) continue;
       const part = this.visual.partOf(hit.object);
-      if (part && part !== 'wing') {
+      if (part && part !== 'wing' && !this.exclude?.(hit.object, part)) {
         this.lastPoint.copy(hit.point);
         return part;
       }
@@ -101,7 +116,9 @@ export class Picker {
     this.lastMove = now;
     const e = this.pending;
     this.pending = null;
-    if (e.buttons) {
+    // Basılıyken (kamera döndürme, tutamaç sürükleme) ya da tutamaç
+    // üzerindeyken parça vurgulanmaz: tutamacın önceliği var
+    if (e.buttons || this.priority?.(e.clientX, e.clientY)) {
       this.setHover(null, null);
       return;
     }
