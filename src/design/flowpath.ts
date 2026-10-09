@@ -124,6 +124,7 @@ export function sizeRow(
       'annulus.closed',
       m.type,
       [`${m.type}.taper`, `${m.type}.mach.1`],
+      { mach1: m.mach[1], taper: m.taper },
     );
   }
   const hubOut = Math.sqrt(hub2);
@@ -158,6 +159,18 @@ export function sizeRow(
  * GraphError gibi yapısal alan taşır: öğretici çeviri (warnings.ts) metni
  * ayrıştırmadan modülü, düğmeleri ve sayıları okur.
  */
+/**
+ * LP milinin yükü (FlowpathError.data.lpLoad): LPT hatalarının öğretici
+ * metni buna göre seçilir (fan → BPR/FPR, LPC → LPC PR/T4, güç türbini → genel)
+ */
+export const LP_LOAD = { shaft: 0, fan: 1, lpc: 2 } as const;
+
+/** LPT hatasına milin yükünü ekler (FlowpathError değilse olduğu gibi) */
+export function withLpLoad(err: unknown, lpLoad: number): unknown {
+  if (!(err instanceof FlowpathError) || err.data?.lpLoad !== undefined) return err;
+  return new FlowpathError(err.message, err.code, err.group, err.knobs, { ...err.data, lpLoad });
+}
+
 export class FlowpathError extends Error {
   /** Hata kimliği (ör. 'annulus.closed', 'combustor.cansFit', 'layout.notReady') */
   readonly code: string;
@@ -302,7 +315,15 @@ export function computeGasPath(graph: EngineGraph, sized: SizedEngine, opts: Gas
   }
   const hpc = sizeRow(hpcMod, s25, axOut, w2, AIR, cpA * (axOut.T - s25.T), memory(prev?.hpc));
   const hpt = sizeRow(hptMod, st('4'), st('45'), w2, GAS, cpG * (st('4').T - st('45').T), memory(prev?.hpt));
-  const lpt = sizeRow(lptMod, st('45'), st('5'), w1, GAS, cpG * (st('45').T - st('5').T), memory(prev?.lpt));
+  // LPT'nin yükü hataya taşınır: öğretici metin (warnings.ts) fanı, LPC'yi
+  // ya da serbest güç türbinini ayırır, düğmeleri buna göre önerir
+  const lpLoad = fan ? LP_LOAD.fan : frontMod ? LP_LOAD.lpc : LP_LOAD.shaft;
+  let lpt: RowGeometry;
+  try {
+    lpt = sizeRow(lptMod, st('45'), st('5'), w1, GAS, cpG * (st('45').T - st('5').T), memory(prev?.lpt));
+  } catch (err) {
+    throw withLpLoad(err, lpLoad);
+  }
 
   // --- eksenel yerleşim ---
   const place = (row: RowGeometry, z0: number) => {

@@ -14,7 +14,7 @@ import { TEMPLATES } from './catalog';
 import type { Finding } from './core/rules';
 import { GraphError } from './errors';
 import { evaluate, isEvaluation, MAX_ROW_STAGES, type Evaluation } from './evaluate';
-import { FlowpathError } from './flowpath';
+import { FlowpathError, LP_LOAD } from './flowpath';
 import { buildEngine, type BuiltEngine } from './graph';
 import { clampEngineKnob, knobById, knobCtx } from './knobs';
 import { layoutNotReady } from './layouts/index';
@@ -542,14 +542,30 @@ describe('translateError', () => {
     const a = translateError(new FlowpathError('x', 'annulus.closed', 'hpt', ['hpt.taper', 'hpt.mach.1']));
     expect(a.text).toMatch(/^HPT çıkışında kanal kapanıyor: türbin kompresörü çevirmek için gazı çok genişletiyor/);
     expect(a.knobs).toEqual(['combustor.tit', 'hpc.pr', 'hpt.taper', 'hpt.mach.1']);
-    const l = translateError(new FlowpathError('x', 'annulus.closed', 'lpt', ['lpt.taper', 'lpt.mach.1']));
+    // Çıkış Mach'ı çok düşükse neden oyuncunun Mach'ı: genel metin, T4/HPC önerilmez
+    const am = translateError(new FlowpathError('x', 'annulus.closed', 'hpt', ['hpt.taper', 'hpt.mach.1'], { mach1: 0.15, taper: 1 }));
+    expect(am.text).toBe("HPT çıkışında kanal kapanıyor: uç çok daralıyor ya da çıkış Mach'ı çok düşük.");
+    expect(am.knobs).toEqual(['hpt.taper', 'hpt.mach.1']);
+    // LPT: metin ve düğmeler milin yüküne göre (flowpath.ts LP_LOAD)
+    const l = translateError(new FlowpathError('x', 'annulus.closed', 'lpt', ['lpt.taper', 'lpt.mach.1'], { mach1: 0.4, lpLoad: LP_LOAD.fan }));
     expect(l.text).toMatch(/fanı çevirmek için gazı çok genişletiyor.*BPR ya da FPR'yi düşür/);
     expect(l.knobs).toEqual(['fan.bypassRatio', 'fan.pr', 'lpt.taper', 'lpt.mach.1']);
-    // LPT diski mile sığmıyor (layouts/bare.ts checkLptDisk): sayılar data'dan
-    const d = translateError(new FlowpathError('x', 'turbine.diskRoom', 'lpt', ['fan.bypassRatio', 'fan.pr', 'lpt.taper', 'lpt.mach.1'], { hub: 0.053, shaft: 0.068 }));
+    const lc = translateError(new FlowpathError('x', 'annulus.closed', 'lpt', ['lpt.taper', 'lpt.mach.1'], { mach1: 0.4, lpLoad: LP_LOAD.lpc }));
+    expect(lc.text).toMatch(/LPC'yi çevirmek için.*LPC basınç oranını düşür ya da T4'ü artır/);
+    expect(lc.text).not.toMatch(/fan|BPR|FPR/);
+    expect(lc.knobs).toEqual(['lpc.pr', 'combustor.tit', 'lpt.taper', 'lpt.mach.1']);
+    const ls = translateError(new FlowpathError('x', 'annulus.closed', 'lpt', ['lpt.taper', 'lpt.mach.1'], { mach1: 0.4, lpLoad: LP_LOAD.shaft }));
+    expect(ls.text).toBe("LPT çıkışında kanal kapanıyor: uç çok daralıyor ya da çıkış Mach'ı çok düşük.");
+    // LPT diski mile sığmıyor (layouts/bare.ts checkLptDisk): sayılar ve gereken pay data'dan
+    const d = translateError(new FlowpathError('x', 'turbine.diskRoom', 'lpt', ['fan.bypassRatio', 'fan.pr', 'lpt.taper', 'lpt.mach.1'], { hub: 0.223, rim: 0.102, need: 0.143, shaft: 0.114, lpLoad: LP_LOAD.fan }));
     expect(d.title).toBe('LPT diski mile sığmıyor');
-    expect(d.text).toMatch(/göbek 5,3 cm, mil 6,8 cm/);
+    expect(d.text).toMatch(/göbeği 22,3 cm; kanat kökü ve jant bunun 12,1 cm içine iniyor \(jant tabanı 10,2 cm\)/);
+    expect(d.text).toMatch(/11,4 cm'lik mili sarması için jant tabanı en az 14,3 cm olmalı/);
+    expect(d.text).toMatch(/BPR ya da FPR'yi düşür/);
     expect(d.knobs).toEqual(['fan.bypassRatio', 'fan.pr', 'lpt.taper', 'lpt.mach.1']);
+    const dj = translateError(new FlowpathError('x', 'turbine.diskRoom', 'lpt', ['lpt.taper', 'lpt.mach.1'], { hub: 0.118, rim: 0.08, need: 0.085, shaft: 0.068, lpLoad: LP_LOAD.lpc }));
+    expect(dj.text).not.toMatch(/fan|BPR|FPR/);
+    expect(dj.knobs).toEqual(['lpc.pr', 'combustor.tit', 'lpt.taper', 'lpt.mach.1']);
     // Kademe sayısı hesaplanamıyor (sizeRow 'stages.invalid'): milin uç hızı ve yükleme
     const s = translateError(new FlowpathError('HPT kademe sayısı hesaplanamadı', 'stages.invalid', 'hpt', [], { value: Infinity }));
     expect(s.title).toBe('HPT kademe sayısı hesaplanamıyor');
@@ -558,6 +574,31 @@ describe('translateError', () => {
     expect(translateError(new FlowpathError('x', 'stages.invalid', 'lpt', [])).knobs).toEqual(['fan.tipSpeed', 'lpc.tipSpeed', 'lpt.tipSpeed', 'lpt.loading']);
     const c = translateError(new FlowpathError('x', 'combustor.cansFit', 'combustor', ['combustor.cans'], { cans: 14, canDiameter: 0.2 }));
     expect(c.text).toBe('14 kutu çevreye sığmıyor: kutu sayısını azalt ya da referans hızı artır.');
+  });
+
+  it('LPT hatası motor tipine göre: turbojet ve turbopropta fan/BPR/FPR önerilmez (bakım)', () => {
+    const fail = (g: EngineGraph) => {
+      try {
+        buildEngine(g);
+      } catch (err) {
+        return translateError(err);
+      }
+      throw new Error('hata bekleniyordu');
+    };
+    const lptOf = (g: EngineGraph) => g.modules.find((m) => m.type === 'lpt') as TurbineModule;
+    // Turbojet, LPT çıkış Mach'ı aralığın ucunda: neden Mach, genel metin
+    const tj = structuredClone(TURBOJET_GRAPH);
+    lptOf(tj).mach = [lptOf(tj).mach[0], 0.15];
+    const t1 = fail(tj);
+    expect(t1.group).toBe('lpt');
+    expect(t1.text).not.toMatch(/fan|BPR|FPR/);
+    expect(t1.knobs.some((k) => k.startsWith('fan.'))).toBe(false);
+    // Turboprop (serbest güç türbini): fan metni yok
+    const tp = structuredClone(TURBOPROP_GRAPH);
+    lptOf(tp).mach = [0.35, lptOf(tp).mach[1]];
+    const t2 = fail(tp);
+    expect(t2.text).not.toMatch(/fan|BPR|FPR/);
+    expect(t2.knobs.some((k) => k.startsWith('fan.'))).toBe(false);
   });
 
   it.each([

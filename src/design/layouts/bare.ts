@@ -14,6 +14,7 @@ import type { SizedEngine, StationId } from '../../sim/design';
 import type { MountPoint } from '../card';
 import {
   FlowpathError,
+  LP_LOAD,
   INTAKE_Z,
   RHO,
   SHELL_T,
@@ -136,7 +137,7 @@ export function nozzleExit(n: BareNozzleGeometry, z0: number): { z: number; radi
 export const LPT_DISK = { rootFrac: 0.38, boreFrac: 1.25 } as const;
 
 /** LPT kanat kökü + disk mil üstüne sığmıyorsa öğretici tipli hata */
-export function checkLptDisk(lpt: RowGeometry, rShaft: number): void {
+export function checkLptDisk(lpt: RowGeometry, rShaft: number, lpLoad: number = LP_LOAD.fan): void {
   let worst: { hub: number; rim: number } | null = null;
   for (const end of [0, 1] as const) {
     const hub = lpt.hub[end];
@@ -150,8 +151,8 @@ export function checkLptDisk(lpt: RowGeometry, rShaft: number): void {
     `LPT diski LP miline sığmıyor: son kademe göbeği ${cm(worst!.hub)} cm, kanat kökü ve jant için ${cm(worst!.hub - worst!.rim)} cm gerekir, mil ${cm(rShaft)} cm.`,
     'turbine.diskRoom',
     'lpt',
-    ['fan.bypassRatio', 'fan.pr', 'lpt.taper', 'lpt.mach.1'],
-    { hub: worst!.hub, rim: worst!.rim, need, shaft: rShaft },
+    lpLoad === LP_LOAD.fan ? ['fan.bypassRatio', 'fan.pr', 'lpt.taper', 'lpt.mach.1'] : ['lpt.taper', 'lpt.mach.1'],
+    { hub: worst!.hub, rim: worst!.rim, need, shaft: rShaft, lpLoad },
   );
 }
 
@@ -169,7 +170,7 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
   const { z0: cz0, z1: cz1, rOut } = gp.combustor;
   const bypass = !!fan && (fan.bypassRatio ?? 0) > 0;
   // Kuyruk konisi ve 3B disk LPT göbeğinden: göbek mile inmişse kurulamaz
-  checkLptDisk(lpt, gp.shafts.lp);
+  checkLptDisk(lpt, gp.shafts.lp, bypass ? LP_LOAD.fan : LP_LOAD.lpc);
 
   // --- türbin çıkış çerçevesi ve kuyruk konisi ---
   const coneR = lpt.hub[1] - 0.015;
