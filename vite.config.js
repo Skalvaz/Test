@@ -14,6 +14,11 @@ import { defineConfig } from 'vite';
 
 export default defineConfig(({ mode }) => ({
   base: './',
+  // vitest: ajan worktree'leri (.claude/worktrees) projenin içinde; onların
+  // test dosyaları ana kopyanın koşusuna karışmasın.
+  test: {
+    exclude: ['**/node_modules/**', '**/.git/**', '.claude/**'],
+  },
   build: mode === 'single' || process.env.SINGLE === '1'
     ? {
         outDir: 'dist-single',
