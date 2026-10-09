@@ -1246,6 +1246,19 @@ yeniden hesabı (`CameraRig.ts`, P2'nin dosyası değil) P8/P11'e açık iş.
 | `turbofanMixed` | CFM56-5C4 | itki 130–170 kN; BPR 6–7; OPR 28–38; TSFC 8,5–11 g/(kN·s); fan çapı 1,75–1,95 m; kütle 2300–3600 kg; `mixerPR` 0,98–1,06 |
 | `turboshaft` | T700-GE-701C | mil gücü 1,2–1,6 MW; SFC 260–330 g/(kW·h); kütle 150–320 kg; güç/ağırlık 5–8 kW/kg; çıkış 20 900 rpm; HPC son eksenel kanat ≥ 12,5 mm |
 
+**P7 sonucu (`TS-14`, `design/turboshaft.ts`):** 4,5 kg/s, HPC PR 17
+(5 eksenel + çark, iş payı 0,55, ψ 0,37), T4 1480 K, HPT 2 / güç türbini
+2 kademe (uç hızı 370 m/s → NP 20 875 rpm, çıkışla oran 0,999: redüktörsüz).
+Mil gücü 1 377 kW (çıkışta, ×0,985), SFC 277 g/(kW·h), kütle 181 kg,
+güç/ağırlık 7,6 kW/kg, çap 0,60 m, boy 1,51 m, son eksenel kanat 24,9 mm;
+uyarı 0. Çalışabilirlik: atalet {lp 0,2, hp 0,1}, marş torku 7 N·m
+(light-off ~24,5 s, rölanti ~49 s), ITT sınırları 900/940 °C, NP kırmızı
+çizgisi %107 (helikopter geçici sınırı; gaz adımında tepe ~%103).
+`shaft.reduction` bayrağı istek sayılır: güç türbini ile çıkış devri %5'ten
+çok farklıysa yerleşim redüktörü kendiliğinden takar (8,5 kg/kN·m), hata
+atmaz — `shaft.rpm` temel düğmesi (3000–30000) yalnız redüktör oranını
+değiştirir, `reduction` düğmesi yok (§2.5'teki FlowpathError yerine).
+
 Bant dışı kalan ölçü için kalibrasyon düğmeleri ayarlanır; kütle modeli
 (`estimateMass`) bandı tutturamıyorsa katsayı **değiştirilmez**, sapma
 `templates.test.ts`'te yorumla belgelenir ve kullanıcıya bildirilir.
