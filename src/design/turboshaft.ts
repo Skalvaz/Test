@@ -23,9 +23,11 @@ export const TURBOSHAFT_GRAPH: EngineGraph = {
   mechEff: 0.985,
   accessoryPower: 15e3,
   ops: {
-    inertia: { lp: 0.2, hp: 0.1 },
+    // Güç türbini + çıkış mili (T700 sınıfı, ~0,1 kg·m²): daha ağırı dinamometre
+    // valisinin gecikmesiyle gaz adımında NP'yi %104 sınırına taşır
+    inertia: { lp: 0.1, hp: 0.1 },
     hpcMap: { ...TURBOPROP.hpcMap },
-    limits: { ...TURBOPROP.limits, egtRedline: 940, egtAmber: 900, egtDamage: 1050, n1Redline: 1.07 },
+    limits: { ...TURBOPROP.limits, egtRedline: 940, egtAmber: 900, egtDamage: 1050 },
     start: { ...TURBOPROP.start, starterTorque: 7 },
   },
   modules: [

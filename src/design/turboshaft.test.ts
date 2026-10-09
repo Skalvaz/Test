@@ -269,9 +269,10 @@ describe('turboşaft test hücresinde (dinamometre)', () => {
     }
     expect(r.seen).not.toContain('n1Overspeed');
     expect(r.seen).not.toContain('surge');
-    // NP kırmızı çizgisi helikopter geçici sınırı (%107); tepe ondan en az %2 aşağıda
-    expect(sim.limits.n1Redline).toBeCloseTo(1.07, 9);
-    expect(peakN1).toBeLessThan(sim.limits.n1Redline - 0.02);
+    // NP sınırı turboproptaki gibi %104 (S5: eşik gevşetilmez); tepe valinin
+    // tavanından bağımsız olarak sınırın altında
+    expect(sim.limits.n1Redline).toBeCloseTo(1.04, 9);
+    expect(peakN1).toBeLessThan(1.04);
     expect(sim.surgeCount).toBe(0);
   }, HEAVY);
 
