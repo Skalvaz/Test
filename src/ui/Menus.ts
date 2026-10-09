@@ -11,6 +11,8 @@ export interface MenuCallbacks {
   onSandbox(): void;
   onGlossary(): void;
   onSettings(): void;
+  /** Motor tasarım atölyesi (M5a) */
+  onWorkshop(): void;
 }
 
 function stars(n: number, max = 3) {
@@ -20,10 +22,10 @@ function stars(n: number, max = 3) {
 
 export function mainMenu(cb: MenuCallbacks, progress: Progress, lessonCount: number): HTMLElement {
   const done = Object.keys(progress).length;
-  const item = (ico: Parameters<typeof icon>[0], title: string, desc: string, badge: string | null, action?: () => void) =>
+  const item = (ico: Parameters<typeof icon>[0], title: string, desc: string, badge: string | null, action?: () => void, menu?: string) =>
     h('button', {
       class: `menu-item${action ? '' : ' locked'}`,
-      attrs: action ? { type: 'button' } : { type: 'button', 'aria-disabled': 'true' },
+      attrs: { type: 'button', ...(action ? {} : { 'aria-disabled': 'true' }), ...(menu ? { 'data-menu': menu } : {}) },
       on: action ? { click: action } : {},
     }, [
       h('span', { class: 'ico' }, [icon(ico, 20)]),
@@ -43,14 +45,14 @@ export function mainMenu(cb: MenuCallbacks, progress: Progress, lessonCount: num
         item('flask', 'Test hücresi', 'Serbest mod: tüm kontroller, uçuş koşulları, arıza enjeksiyonu', null, cb.onSandbox),
         item('info', 'Bilgi bankası', 'N1, EGT, surge, Brayton… terimler ve açıklamalar', null, cb.onGlossary),
         item('gear', 'Ayarlar', 'Grafik kalitesi, ses, ortam', null, cb.onSettings),
-        item('wrench', 'Motor tasarım atölyesi', 'Kendi motorunu tasarla — ardından uçağını', 'YOL HARİTASI'),
+        item('wrench', 'Motor tasarım atölyesi', 'Kendi motorunu tasarla: mimari, kompresör, türbin, lüle — sonra test hücresinde çalıştır', 'YENİ', cb.onWorkshop, 'workshop'),
       ]),
       h('div', { class: 'menu-foot', html: 'Sürükle: döndür · Tekerlek: yakınlaş · Çift tık: parçaya odaklan · <kbd>Esc</kbd> menü · <kbd>H</kbd> arayüzü gizle' }),
     ]),
   ]);
 }
 
-function modal(title: string, body: HTMLElement, onClose: () => void, narrow = false): HTMLElement {
+export function modal(title: string, body: HTMLElement, onClose: () => void, narrow = false): HTMLElement {
   const overlay = h('div', { class: 'overlay' }, [
     h('div', { class: `modal panel${narrow ? ' narrow' : ''}`, attrs: { role: 'dialog', 'aria-label': title } }, [
       h('div', { class: 'modal-head' }, [
@@ -134,6 +136,21 @@ export function glossaryModal(onClose: () => void, initial?: string): HTMLElemen
   return modal('Bilgi bankası', h('div', { class: 'glossary' }, [list, entry]), onClose);
 }
 
+/** Bölümlü seçici (ayarlar, atölye üst çubuğu) */
+export function seg<T extends string>(options: [T, string][], value: T, onPick: (v: T) => void): HTMLElement {
+  const el = h('div', { class: 'seg' });
+  for (const [v, label] of options) {
+    const b = h('button', { text: label, class: v === value ? 'sel' : '' });
+    b.addEventListener('click', () => {
+      for (const x of el.children) x.classList.remove('sel');
+      b.classList.add('sel');
+      onPick(v);
+    });
+    el.append(b);
+  }
+  return el;
+}
+
 export interface SettingsCallbacks {
   onQuality(q: Settings['quality']): void;
   onVolume(v: number): void;
@@ -148,19 +165,6 @@ export function settingsModal(
   cb: SettingsCallbacks,
   onClose: () => void,
 ): HTMLElement {
-  const seg = <T extends string>(options: [T, string][], value: T, onPick: (v: T) => void) => {
-    const el = h('div', { class: 'seg' });
-    for (const [v, label] of options) {
-      const b = h('button', { text: label, class: v === value ? 'sel' : '' });
-      b.addEventListener('click', () => {
-        for (const x of el.children) x.classList.remove('sel');
-        b.classList.add('sel');
-        onPick(v);
-      });
-      el.append(b);
-    }
-    return el;
-  };
   const row = (label: string, hint: string, control: HTMLElement) =>
     h('div', { class: 'settings-row' }, [
       h('div', { class: 'l' }, [h('span', { text: label }), h('small', { text: hint })]),
