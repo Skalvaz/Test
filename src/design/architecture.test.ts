@@ -716,7 +716,12 @@ describe('applyArchitecture', () => {
         a = architectureOf(g);
         expect(a, `${id} adım ${step}: ${o.axis}=${String(o.value)}`).toEqual(next);
         expect(checkGraph(g)).toBeNull();
-        if (sameLp) expect(coreFlow(g)).toBeCloseTo(core0, 6);
+        // Çekirdek akışı korunur; yeni ailenin hava akışı aralığı izin
+        // vermiyorsa (ör. 1150 kg/s'lik yolcu turbofanı → karışık akışlı
+        // kaportalı, 50–600 kg/s) akış aralığın ucuna kırpılır (notlu)
+        const [wLo, wHi] = massFlowRangeFor(next);
+        const clipped = Math.abs(g.massFlow / wLo - 1) < 1e-9 || Math.abs(g.massFlow / wHi - 1) < 1e-9;
+        if (sameLp && !clipped) expect(coreFlow(g)).toBeCloseTo(core0, 6);
         if (!layoutNotReady(g)) {
           let b: BuiltEngine;
           try {

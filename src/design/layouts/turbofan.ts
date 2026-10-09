@@ -1,18 +1,25 @@
 /**
- * Kaportalı turbofan yerleşimi (yüksek baypas, ayrık akış). engine/core.js,
- * fan.js, nacelle.js, pylon.js girdisi.
+ * Kaportalı turbofan yerleşimi. engine/core.js, fan.js, nacelle.js,
+ * pylon.js girdisi. İki egzoz düzeni:
  *
- * READY: ayrık akışlı dal hazır; karışık akışlı (uzun kanallı, ortak lüleli)
- * dal M5a P6'da.
+ * - Ayrık akış (CFM56-7, LEAP): kısa fan kaportası, baypas lülesi çekirdek
+ *   kaportasının ortasında biter, çekirdek kendi lülesinden çıkar.
+ * - Karışık akış (M5a P6; CFM56-5C, TFE731, PW300): uzun kanallı kaporta
+ *   baypas havasını motorun sonuna kadar taşır. Çekirdek kaportası LPT
+ *   arkasındaki karıştırıcıda biter; iki akış karıştırma kanalında buluşur
+ *   ve ortak sabit yakınsak lüleden çıkar. Lüle ağzı tasarım noktasının
+ *   ortak lüle alanından (A9mix, sim/design.ts); kanal boyu ağız
+ *   yarıçapının 1,6 katı (karışma için L/D ≈ 0,8).
  */
 
 import { AIR } from '../../sim/gas';
-import type { SizedEngine } from '../../sim/design';
+import type { SizedEngine, Station } from '../../sim/design';
 import type { MountPoint } from '../card';
 import {
   FlowpathError,
   RHO,
   SHELL_T,
+  annulusArea,
   envelopeOf,
   moduleOf,
   profileAt,
@@ -22,13 +29,18 @@ import {
   type GasPath,
   type RowGeometry,
 } from '../flowpath';
-import type { CompressorModule, EngineGraph, NozzleModule } from '../types';
+import type { CompressorModule, EngineGraph, MixerModule, NozzleModule } from '../types';
 import type { LayoutResult } from './index';
 
 /** Ayrık akışlı dal hazır */
 export const READY = true;
-/** Karışık akışlı dal: P6 */
-export const READY_MIXED = false;
+/** Karışık akışlı (uzun kanallı, ortak lüleli) dal: M5a P6 */
+export const READY_MIXED = true;
+
+/** Karıştırma kanalı boyu / ortak lüle ağzı yarıçapı (şartname §3.4) */
+export const MIXING_DUCT_LD = 1.6;
+/** Ortak lüle ve karıştırıcı sacı et kalınlığı [m] (inconel, kütle) */
+const MIX_SHEET_T = 0.003;
 
 /** M4 öncesi elle modellenmiş turbofanın fan uç yarıçapı: fan/kaporta/pilon şekilleri buna göre ölçeklenir */
 export const TF_REF_FAN_TIP = 1.386;
@@ -71,12 +83,39 @@ export interface TurbofanLayout {
   mounts: MountPoint[];
   /** Dış zarf [z, r], z artan (kaporta + çekirdek kaportası + koni) */
   outerProfile: [number, number][];
+  /**
+   * Karışık akış (uzun kanallı kaporta); ayrık akışta yok. Varken
+   * `coreNozzle` çekirdek akışının karıştırıcıdan çıkışını, `bypassExit`
+   * baypas akışının karıştırma düzlemine girişini anlatır; `exhaustExit`
+   * ortak lüle ağzıdır.
+   */
+  mixed?: MixedExhaust;
+}
+
+/** Uzun kanallı kaportanın karıştırıcısı, karıştırma kanalı ve ortak lülesi */
+export interface MixedExhaust {
+  /** Karıştırıcı: çekirdek kaportasının arka kenarından başlar (lobe'lu: çıkışta ±amp) */
+  mixer: { z0: number; z1: number; r: number; amp: number; lobes: number; style: 'confluent' | 'lobed' };
+  /** Kaporta iç duvarı karıştırma düzleminde (karıştırıcı çıkışı) */
+  ductEnd: { z: number; r: number };
+  /** Ortak sabit yakınsak lüle: karıştırıcı çıkışından ağıza (rExit: ağız iç yarıçapı) */
+  nozzle: { z0: number; z1: number; r0: number; rExit: number };
+  /** Ağızdaki koni yarıçapı (koni lüleden çıkıyorsa > 0; ağız alanı halka) */
+  plugExitR: number;
+  /**
+   * Kaportanın fan çıkışından (nacelle.js referansında z 0,55) lüle ağzına
+   * iç duvar ve dış yüzey profilleri [r, z] (dünya); nacelle.js bunları
+   * kendi ölçeğine çevirip kaportanın arka kısmı yapar
+   */
+  duct: [number, number][];
+  outer: [number, number][];
 }
 
 /**
  * Kaportanın dış profili [r, z]: nacelle.js dudak ve dış kaporta noktaları
- * (fan ucu 1,386 m ölçeğinde, model grubu koordinatı). Arka kısmın baypas
- * ağzına göre kayması (nacelle.js `aft`) P0'da yok sayılır; P6 kesinleştirir.
+ * (fan ucu 1,386 m ölçeğinde, model grubu koordinatı). Ayrık akışta arka
+ * kısım (z > 0,55) baypas ağzının iç duvarıyla birlikte kayar (nacelle.js
+ * `aft`); karışık akışta z > 0,55 kısmı uzun kanalın profiliyle değişir.
  */
 const NACELLE_OUTER: [number, number][] = [
   [1.512, -2.243],
@@ -87,9 +126,33 @@ const NACELLE_OUTER: [number, number][] = [
   [1.638, 1.0],
   [1.516, 1.52],
 ];
+/** nacelle.js baypas kanalı iç duvarı (z ≤ 0,55: fan muhafazası ve OGV bölümü) ve dış kaportanın 0,55'teki yarıçapı */
+const NACELLE_DUCT_FRONT: [number, number][] = [
+  [1.392, -1.35],
+  [1.402, -0.95],
+  [1.414, -0.6],
+  [1.418, -0.3],
+  [1.412, 0.1],
+  [1.396, 0.55],
+];
+const NACELLE_OUTER_AT_055 = 1.706;
+/** Kaportanın sabit ön kısmının bittiği referans z (nacelle.js) */
+export const NACELLE_AFT_Z = 0.55;
+/** Ayrık akışta kaporta iç duvarının baypas ağzındaki referans yarıçapı (nacelle.js) */
+const NACELLE_DUCT_EXIT_REF = 1.344;
+
+const smooth01 = (x: number) => {
+  const u = Math.min(1, Math.max(0, x));
+  return u * u * (3 - 2 * u);
+};
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/** Toplam basınç ve sıcaklığı verilen akış (Station: T, P toplam) */
+const flowStation = (T: number, P: number, W: number): Station => ({ T, P, W });
 
 function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): TurbofanLayout {
   const noz = moduleOf<NozzleModule>(graph, 'nozzle')!;
+  const mixMod = moduleOf<MixerModule>(graph, 'mixer');
   const fan = gp.front;
   const booster = gp.booster;
   const { hpc, hpt, lpt, combustor: cb } = gp;
@@ -97,17 +160,32 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
   if (!booster) throw new FlowpathError('Kaportalı turbofan şimdilik booster (LPC) ister.', 'inlet.nacelleBooster', 'lpc');
   const s = fan.tip[0] / TF_REF_FAN_TIP;
   const fanZ = fan.z0;
+  // Kaporta referans koordinatından dünyaya (model grubu fan ucu oranında ölçeklenir)
+  const nacZ0 = fanZ + 0.28 * s;
+  const toWorld = ([r, z]: [number, number]): [number, number] => [r * s, nacZ0 + z * s];
 
   // Çekirdek kaportası: iç parçaların zarfı + boşluk (aksesuar, boru, bleed payı)
   const zS = fanZ + 0.3 * s;
   const rS = booster.tip[0] + 0.058;
   const rMax = Math.max(booster.tip[1] + 0.2, hpc.tip[0] + 0.31, cb.rOut + 0.32, lpt.tip[1] + 0.1);
-  const zLip = lpt.z1 + 0.52;
+  const zLipSep = lpt.z1 + 0.52;
+  // Egzoz kanalının dış duvarı (türbin arka çerçevesinin uç yarıçapı)
+  const ductR = lpt.tip[1] + 0.046;
+  // Karışık akışta karıştırıcı çekirdek kaportasının arka kenarından başlar
+  // (türbin arka çerçevesinin hemen arkası); yarıçapı egzoz kanalının dış duvarı
+  const mixR = ductR + 0.01;
+  const mz0 = lpt.z1 + 0.22;
+  const mz1 = mz0 + Math.max(0.3, 0.75 * mixR);
+  const A9mix = sized.ref.A9mix ?? sized.ref.A9 + sized.ref.A19;
   // Egzoz konisi: taban LPT çıkış göbeğinde; M4 öncesi modelin ojiv
-  // profili (taban 0,4 m, boy 1,2 m) taban yarıçapıyla orantılı ölçeklenir
+  // profili (taban 0,4 m, boy 1,2 m) taban yarıçapıyla orantılı ölçeklenir.
+  // Karışık akışta koni uzar, ucu ortak lülenin ağzından ~0,7 ağız yarıçapı
+  // çıkar (CFM56-5C gibi): ağız alanı koninin çevresinde halka olur
   const plugBase = lpt.hub[1] - 0.01;
   const k = plugBase / 0.4;
   const pz0 = lpt.z1 + 0.19;
+  const rExit0 = Math.sqrt(A9mix / Math.PI);
+  const kz = mixMod ? Math.max(k, (mz1 + (MIXING_DUCT_LD + 0.7) * rExit0 - pz0) / 1.205) : k;
   const plug: [number, number][] = (
     [
       [1, 0],
@@ -121,12 +199,13 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
       [0.075, 1.182],
       [0, 1.205],
     ] as [number, number][]
-  ).map(([r, dz]) => [plugBase * r, pz0 + dz * k]);
-  // Çekirdek lülesi ağzı: ağızdaki koni yarıçapının dışında, A9 kadar
-  const r1 = Math.sqrt(profileAt(plug, zLip) ** 2 + sized.ref.A9 / CD_CORE / Math.PI);
-  const zN0 = lpt.z1 + 0.22;
-  const rN0 = Math.max(r1 + 0.065, lpt.tip[1] + 0.05);
-  const cowl: [number, number][] = [
+  ).map(([r, dz]) => [plugBase * r, pz0 + dz * kz]);
+  const plugEnd = plug[plug.length - 1][1];
+  const plugAt = (z: number) => (z >= plugEnd ? 0 : profileAt(plug, z));
+  const ogvZ = fanZ + 0.48 * s;
+  const strutZ = booster.z1;
+  const rearZ = lpt.z1 + 0.16;
+  const cowlFront: [number, number][] = [
     [rS, zS],
     [rS + 0.35 * (rMax - rS), zS + 0.13],
     [rS + 0.75 * (rMax - rS), booster.z1 - 0.1],
@@ -134,32 +213,135 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
     [rMax, (hpc.z1 + cb.z0) / 2],
     [rMax * 0.985, cb.z1],
     [Math.max(rMax * 0.94, lpt.tip[1] + 0.12), hpt.z1 + 0.1],
-    [Math.max(rN0 + 0.05, lpt.tip[1] + 0.08), lpt.z1 - 0.05],
-    [rN0, zN0],
   ];
-  // Baypas lülesi: kaporta iç duvarı, ağızdaki çekirdek kaportasından A19 kadar dışarıda
-  const bz = fanZ + 1.8 * s;
-  const rCore = profileAt(cowl, bz);
-  const rDuct = Math.sqrt(rCore ** 2 + sized.ref.A19 / CD_BYPASS / Math.PI);
-  const ductR = lpt.tip[1] + 0.046;
-  const exhaustDuct: [number, number][] = [
-    [ductR, lpt.z1 + 0.065],
-    [ductR - 0.016, lpt.z1 + 0.15],
-    [(ductR + r1) / 2 + 0.01, lpt.z1 + 0.28],
-    [r1 + 0.01, lpt.z1 + 0.42],
-    [r1, zLip],
-  ];
-  const ogvZ = fanZ + 0.48 * s;
-  const strutZ = booster.z1;
-  const rearZ = lpt.z1 + 0.16;
 
-  // Motor kartı alanları (P0 yaklaşık; P6 kesinleştirir)
-  const nacOuter = NACELLE_OUTER.map(([r, z]): [number, number] => [r * s, fanZ + 0.28 * s + z * s]);
+  let cowl: [number, number][];
+  let coreNozzle: TurbofanLayout['coreNozzle'];
+  let bypassExit: TurbofanLayout['bypassExit'];
+  let exhaustDuct: [number, number][];
+  let exhaustExit: TurbofanLayout['exhaustExit'];
+  let mixed: MixedExhaust | undefined;
+  let nacOuter: [number, number][];
+
+  if (!mixMod) {
+    // --- ayrık akış: çekirdek lülesi + kısa kaportanın baypas lülesi ---
+    // Çekirdek lülesi ağzı: ağızdaki koni yarıçapının dışında, A9 kadar
+    const r1 = Math.sqrt(profileAt(plug, zLipSep) ** 2 + sized.ref.A9 / CD_CORE / Math.PI);
+    const zN0 = lpt.z1 + 0.22;
+    const rN0 = Math.max(r1 + 0.065, lpt.tip[1] + 0.05);
+    cowl = [...cowlFront, [Math.max(rN0 + 0.05, lpt.tip[1] + 0.08), lpt.z1 - 0.05], [rN0, zN0]];
+    // Baypas lülesi: kaporta iç duvarı, ağızdaki çekirdek kaportasından A19 kadar dışarıda
+    const bz = fanZ + 1.8 * s;
+    const rCore = profileAt(cowl, bz);
+    const rDuct = Math.sqrt(rCore ** 2 + sized.ref.A19 / CD_BYPASS / Math.PI);
+    exhaustDuct = [
+      [ductR, lpt.z1 + 0.065],
+      [ductR - 0.016, lpt.z1 + 0.15],
+      [(ductR + r1) / 2 + 0.01, lpt.z1 + 0.28],
+      [r1 + 0.01, lpt.z1 + 0.42],
+      [r1, zLipSep],
+    ];
+    coreNozzle = { z0: zN0, r0: rN0, z1: zLipSep, r1 };
+    bypassExit = { z: bz, rCore, rDuct };
+    exhaustExit = { z: zLipSep - 0.01, radius: r1 - 0.09 };
+    // Dış kaporta arka kısmı baypas ağzıyla kayar (nacelle.js `aft`)
+    const d = rDuct / s - NACELLE_DUCT_EXIT_REF;
+    nacOuter = NACELLE_OUTER.map(([r, z]) => toWorld([r + d * smooth01((z - NACELLE_AFT_Z) / (1.52 - NACELLE_AFT_Z)), z]));
+  } else {
+    // --- karışık akış: uzun kanallı kaporta, karıştırıcı, ortak lüle ---
+    const st = sized.point.stations;
+    cowl = [...cowlFront, [Math.max(mixR + 0.06, lpt.tip[1] + 0.08), lpt.z1 - 0.05], [mixR + 0.02, mz0]];
+    // Kaporta iç duvarı: OGV arkasındaki halka alanından karıştırma
+    // düzleminde baypas kanalı Mach'ına (bypassDuct.mach) göre gereken alana
+    // düzgün geçiş. Her z'de iç sınırın (çekirdek kaportası, karıştırıcı)
+    // dışında kalır; alan pozitif olduğu sürece duvar kaportayı kesmez.
+    const P19t = st['13'].P * (1 - (graph.bypassDuct?.dp ?? 0));
+    const Mb = graph.bypassDuct?.mach ?? 0.45;
+    const aMix = annulusArea(flowStation(st['13'].T, P19t, st['13'].W), Mb, AIR);
+    const [rA, zA] = toWorld([NACELLE_DUCT_FRONT[NACELLE_DUCT_FRONT.length - 1][0], NACELLE_AFT_Z]);
+    const inner = (z: number) => (z < mz0 ? profileAt(cowl, z) : mixR);
+    const a0 = Math.PI * Math.max(0, rA * rA - inner(zA) ** 2);
+    const wallAt = (z: number) => {
+      const u = (z - zA) / (mz1 - zA);
+      const a = lerp(a0, aMix, smooth01(u));
+      return Math.sqrt(inner(z) ** 2 + Math.max(a, 0.02 * aMix) / Math.PI);
+    };
+    const rW = wallAt(mz1);
+    // Ortak lüle ağzı: halka alanı A9mix (koni ağızdan çıkıyorsa halka);
+    // kanal boyu ağız yarıçapına bağlı olduğundan birkaç kez yinelenir
+    let rExit = rExit0;
+    let endZ = mz1 + MIXING_DUCT_LD * rExit;
+    for (let i = 0; i < 4; i++) {
+      rExit = Math.sqrt(plugAt(endZ) ** 2 + A9mix / Math.PI);
+      endZ = mz1 + MIXING_DUCT_LD * rExit;
+    }
+    const plugExitR = plugAt(endZ);
+    // Lobe genliği: tepeler kaporta iç duvarına, çukurlar koniye değmez
+    const amp =
+      mixMod.style === 'lobed' ? Math.max(0, Math.min(0.4 * (rW - mixR), 0.45 * (mixR - plugAt(mz1)), 0.35 * mixR)) : 0;
+    const mixer: MixedExhaust['mixer'] = {
+      z0: mz0,
+      z1: mz1,
+      r: mixR,
+      amp,
+      lobes: mixMod.style === 'lobed' ? (mixMod.lobes ?? 18) : 0,
+      style: mixMod.style ?? 'confluent',
+    };
+    // İç duvar: fan çıkışından karıştırıcıya alan kuralıyla, sonra karıştırma
+    // kanalı kısa bir düz bölümden sonra ağza konik yakınsar (yarı açı ~13°,
+    // ağızda ~19°)
+    const duct: [number, number][] = [];
+    const n = 10;
+    for (let i = 0; i <= n; i++) {
+      const z = lerp(zA, mz1, i / n);
+      duct.push([i === 0 ? rA : wallAt(z), z]);
+    }
+    const Lm = endZ - mz1;
+    for (const [u, f] of [
+      [0.2, 0.02],
+      [0.45, 0.25],
+      [0.72, 0.58],
+      [1, 1],
+    ] as const)
+      duct.push([lerp(rW, rExit, f), mz1 + u * Lm]);
+    // Dış yüzey: iç duvar + kaporta kalınlığı. Kalınlık fan kaportasının
+    // 0,55'teki değerinden (itki çevirici yuvası) ağızdaki ince arka kenara
+    // düzgün incelir; arka kısım lüleyle birlikte konik daralır (gemi kıçı)
+    const te = 0.012 + 0.008 * s;
+    const t0 = NACELLE_OUTER_AT_055 * s - rA;
+    const outer: [number, number][] = [];
+    for (let i = 0; i <= 16; i++) {
+      const u = i / 16;
+      const z = lerp(zA, endZ, u);
+      outer.push([profileAt(duct, z) + lerp(t0, te, smooth01(u)), z]);
+    }
+    mixed = {
+      mixer,
+      ductEnd: { z: mz1, r: rW },
+      nozzle: { z0: mz1, z1: endZ, r0: rW, rExit },
+      plugExitR,
+      duct,
+      outer,
+    };
+    exhaustDuct = [
+      [ductR, lpt.z1 + 0.065],
+      [ductR - 0.012, lpt.z1 + 0.14],
+      [ductR - 0.004, mz0 - 0.03],
+      [mixR - 0.002, mz0],
+    ];
+    // Çekirdek akışı karıştırıcıdan, baypas akışı karıştırma düzlemine çıkar
+    coreNozzle = { z0: mz0, r0: mixR, z1: mz1, r1: mixR };
+    bypassExit = { z: mz1, rCore: mixR, rDuct: rW };
+    exhaustExit = { z: endZ, radius: rExit };
+    nacOuter = [...NACELLE_OUTER.filter(([, z]) => z < NACELLE_AFT_Z).map(toWorld), ...outer];
+  }
+
+  // Motor kartı alanları
   const nacEnd = nacOuter[nacOuter.length - 1][1];
   const outerProfile = envelopeOf(
     nacOuter,
     cowl.filter(([, z]) => z > nacEnd),
-    plug.filter(([, z]) => z > zN0),
+    plug.filter(([, z]) => z > Math.max(nacEnd, coreNozzle.z0)),
   );
   const mounts: MountPoint[] = [
     { id: 'front', z: fanZ + 0.55 * s, r: profileAt(nacOuter, fanZ + 0.55 * s), angle: 0, type: 'pylon' },
@@ -181,19 +363,40 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
     },
     splitter: { z: zS, r: rS },
     coreCowl: cowl,
-    bypassExit: { z: bz, rCore, rDuct },
-    coreNozzle: { z0: zN0, r0: rN0, z1: zLip, r1 },
+    bypassExit,
+    coreNozzle,
     plug,
     rearFrame: { z: rearZ, hub: plugBase, tip: ductR },
     exhaustDuct,
     ogv: { z: ogvZ, hub: profileAt(cowl, ogvZ) + 0.014, tip: 1.392 * s },
     struts: { z: strutZ, hub: profileAt(cowl, strutZ) - 0.02, tip: 1.39 * s },
     intake: { z: fanZ - 1.97 * s, radius: 1.1 * s, y: 0 },
-    exhaustExit: { z: zLip - 0.01, radius: r1 - 0.09 },
-    chevrons: { core: noz.chevrons?.core ?? 0, bypass: noz.chevrons?.bypass ?? 0 },
+    exhaustExit,
+    chevrons: { core: mixed ? 0 : (noz.chevrons?.core ?? 0), bypass: noz.chevrons?.bypass ?? 0 },
     mounts,
     outerProfile,
+    ...(mixed ? { mixed } : {}),
   };
+}
+
+/**
+ * Egzoz kütlesi: egzoz konisi + çekirdek lülesi (ayrık) ya da karıştırıcı +
+ * ortak lüle (karışık). Uzun kanallı kaportanın kendisi (ayrık akıştaki fan
+ * kaportası gibi) motor kuru kütlesine sayılmaz; ortak lüle ve karıştırıcı
+ * motora aittir. Lobe'lu sacın alanı lobe dalgasının yay boyu oranında büyür.
+ */
+function exhaustMass(L: TurbofanLayout): number {
+  const plug = shellMass(L.rearFrame.hub, L.plug[L.plug.length - 1][1] - L.plug[0][1], 0.003, RHO.ni);
+  const m = L.mixed;
+  if (!m) return plug + shellMass(L.coreNozzle.r0, L.coreNozzle.z1 - L.coreNozzle.z0 + 0.3, 0.004, RHO.ni);
+  const mx = m.mixer;
+  // r + a·cos(Nθ) dalgasının ortalama yay boyu oranı (genlik çıkışta en büyük, ortalama ~a/2)
+  const k = mx.lobes > 0 ? Math.sqrt(1 + 0.5 * ((mx.amp / 2) * mx.lobes / mx.r) ** 2) : 1;
+  const mixer = shellMass(mx.r, mx.z1 - mx.z0, MIX_SHEET_T, RHO.ni) * k;
+  const n = m.nozzle;
+  // Ortak lüle: karıştırma kanalı + yakınsak bölüm, et kalınlığı 3 mm (inconel)
+  const nozzle = shellMass((n.r0 + n.rExit) / 2, n.z1 - n.z0, MIX_SHEET_T, RHO.ni);
+  return plug + mixer + nozzle;
 }
 
 /** Kaportalı turbofan: yerleşim + fan, muhafaza, gövde ve egzoz kütlesi + ölçüler */
@@ -210,12 +413,11 @@ export function nacelleLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPat
       // Fan muhafazası (kanat kopması muhafazası, kevlar sargılı)
       fanCase: shellMass(f.tip[0] + 0.06, 0.75 * L.s, 0.012, 2000),
       casing: shellMass(L.hpc.tip[0] + 0.05, L.lpt.z1 - L.hpc.z0, SHELL_T.casing, RHO.ti),
-      exhaust:
-        shellMass(L.coreNozzle.r0, L.coreNozzle.z1 - L.coreNozzle.z0 + 0.3, 0.004, RHO.ni) +
-        shellMass(L.rearFrame.hub, L.plug[L.plug.length - 1][1] - L.plug[0][1], 0.003, RHO.ni),
+      exhaust: exhaustMass(L),
     },
     diameter: 2 * f.tip[0],
-    length: L.plug[L.plug.length - 1][1] - L.intake.z,
+    // Karışık akışta ortak lüle ağzı koninin ucundan geride olabilir
+    length: Math.max(L.plug[L.plug.length - 1][1], L.mixed?.nozzle.z1 ?? -Infinity) - L.intake.z,
     lpTipMach: tipMachRel(sized.point.stations['2'], frontMod.mach[0], f.uTip, AIR),
   };
 }

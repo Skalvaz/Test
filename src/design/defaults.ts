@@ -76,9 +76,20 @@ export const DEFAULT_MODULES = {
     canAnnular: { cans: 8, dp: 0.05, refVelocityMin: 25, refVelocity: 35, lengthHeight: 4.5 },
     can: { cans: 10, dp: 0.06, refVelocityMin: 25, refVelocity: 35, lengthHeight: 4.5 },
   },
+  /**
+   * Karıştırıcı kayıpları (toplam basınç). Lobe'lu sacın ıslak alanı ve
+   * lobe'ların oluşturduğu eksenel girdaplar düz halkadan biraz fazla
+   * kayıp verir, ama düz karıştırıcı da aynı karışmayı ancak daha uzun bir
+   * boruda (sürtünme) yakalar: fark küçüktür, ikisi de yüzde bir
+   * mertebesinde. M5a P6: 0,015 → 0,012. Yüksek baypasta (BPR
+   * ~6,5) tam karışma kazancı ~%2,4, karışma verimi farkı (0,97 − 0,85)
+   * kazancın yalnız ~%0,3'ünü getirir; 0,015'te lobe'lu düzden kötüydü
+   * (başa baş ~0,0126). 0,012 düşük ve yüksek baypasta lobe'luyu öne koyar
+   * (turbofanMixed.test.ts).
+   */
   mixer: {
     confluent: { type: 'mixer', style: 'confluent', loss: 0.01 } as MixerModule,
-    lobed: { type: 'mixer', style: 'lobed', loss: 0.015, lobes: 18 } as MixerModule,
+    lobed: { type: 'mixer', style: 'lobed', loss: 0.012, lobes: 18 } as MixerModule,
   },
   shaft: { type: 'shaft', rpm: 20900, drive: 'front', reduction: false, transmissionEff: 0.985, gearboxLength: 0.35 } as ShaftModule,
   /**
@@ -153,7 +164,7 @@ const FALLBACKS: Partial<Record<TemplateId, () => EngineGraph>> = {
     Object.assign(modOf<CompressorModule>(g, 'hpc')!, { pr: 12.5 });
     Object.assign(modOf<CombustorModule>(g, 'combustor')!, { tit: 1600, refVelocity: 20, lengthHeight: 2.6 });
     const i = g.modules.findIndex((m) => m.type === 'nozzle');
-    g.modules.splice(i, 1, { type: 'mixer', style: 'lobed', lobes: 18, loss: 0.01 }, { type: 'nozzle', style: 'fixed', cv: 0.985 });
+    g.modules.splice(i, 1, { type: 'mixer', style: 'lobed', lobes: 18, loss: 0.012 }, { type: 'nozzle', style: 'fixed', cv: 0.985 });
     return g;
   },
   // §3.5: T700-GE-701C sınıfı; TP gaz jeneratörü, önden çıkışlı mil, halka giriş
