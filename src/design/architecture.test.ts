@@ -21,10 +21,26 @@ import {
   type Architecture,
 } from './architecture';
 import { TEMPLATES } from './catalog';
-import { DEFAULT_MODULES, donorFor, familyOf, graphFromArchitecture, graphSkeleton, MASS_FLOW_RANGE, referenceFor, solveMassFlow, templateGraph } from './defaults';
+import {
+  CAN_FIT_VREF_MAX,
+  DEFAULT_MODULES,
+  donorFor,
+  familyOf,
+  fanRangeFor,
+  fitCans,
+  graphFromArchitecture,
+  graphSkeleton,
+  massFlowRangeFor,
+  nextFitVelocity,
+  referenceFor,
+  setMassFlow,
+  solveMassFlow,
+  templateGraph,
+} from './defaults';
 import { evaluate } from './evaluate';
-import { FlowpathError } from './flowpath';
+import { computeGasPath, FlowpathError } from './flowpath';
 import { buildEngine, checkGraph, GRAPH_RULES, GraphError, toEngineDesign, type BuiltEngine } from './graph';
+import { ENGINE_KNOBS, knobCtx, knobRange } from './knobs';
 import { layoutNotReady } from './layouts/index';
 import type { TemplateId } from './templates';
 import { deriveTraits } from './traits';
@@ -134,6 +150,30 @@ const buildAny = (g: EngineGraph) => buildEngine(g, g.ops?.inertia ? {} : { refe
 
 const mod = <T extends { type: string }>(g: EngineGraph, type: T['type']) => g.modules.find((m) => m.type === type) as T | undefined;
 const coreFlow = (g: EngineGraph) => g.massFlow / (1 + (mod<CompressorModule>(g, 'fan')?.bypassRatio ?? 0));
+
+/**
+ * Sihirbazın ölçütü (üretilen grafik uyarısız) kart yolunda da: atölyenin
+ * referansıyla değerlendirme hatasız, caution/warning yok, EGT payı > 0.
+ */
+function expectWorkable(g: EngineGraph, label: string): void {
+  const ev = evaluate(g, { reference: referenceFor(architectureOf(g)) });
+  expect('error' in ev ? ev.error.title : null, label).toBeNull();
+  if ('error' in ev) return;
+  expect(ev.findings.filter((f) => f.severity !== 'info').map((f) => `${f.id}: ${f.title}`), label).toEqual([]);
+  expect(ev.summary.egtMargin, `${label}: EGT payı`).toBeGreaterThan(0);
+}
+
+/** Bütün sayısal düğmeler grafiğin aralığında (knobs.ts tek kaynak; panel aralık dışı değer göstermez) */
+function expectInKnobRanges(g: EngineGraph, label = ''): void {
+  const ctx = knobCtx(g);
+  for (const k of ENGINE_KNOBS) {
+    const v = k.get(g);
+    const r = k.range(ctx);
+    if (typeof v !== 'number' || !r || (k.type !== 'number' && k.type !== 'int')) continue;
+    expect(v, `${label} ${k.id} ∉ [${r[0]}, ${r[1]}]`).toBeGreaterThanOrEqual(r[0] - 1e-9);
+    expect(v, `${label} ${k.id} ∉ [${r[0]}, ${r[1]}]`).toBeLessThanOrEqual(r[1] + 1e-9);
+  }
+}
 
 /**
  * Otomatik çalıştırma (App.beginAutoStart / updateAutoStart ile aynı):
@@ -559,24 +599,32 @@ describe('applyArchitecture', () => {
     expect(g.kind).toBeUndefined();
   });
 
-  it('BPR değişiminde çekirdek akışı korunur; aile değişince ops atılır', () => {
-    // Kaportalı → çıplak: BPR 9 → 1,5
-    const g = applyArchitecture(TEMPLATES.turbofan!, normalizeArchitecture({ ...TF, installation: 'bare', exhaust: 'mixed' }));
-    expect(mod<CompressorModule>(g, 'fan')!.bypassRatio).toBe(1.5);
+  it('kurulum değişince fan, fan kanalı ve LPT ailenin; çekirdek akışı korunur; aile değişince ops atılır', () => {
+    // Kaportalı → çıplak: yolcu fanı (BPR 9) yerine askeri TF fanı, booster düşük PR'lı
+    const mtf = TEMPLATES.militaryTurbofan!;
+    const { graph: g, notes: gn } = applyArchitectureReport(TEMPLATES.turbofan!, normalizeArchitecture({ ...TF, installation: 'bare', exhaust: 'mixed' }));
+    expect(mod(g, 'fan')).toEqual(mod(mtf, 'fan'));
+    expect(mod(g, 'lpt')).toEqual(mod(mtf, 'lpt'));
+    expect(g.bypassDuct).toEqual(mtf.bypassDuct);
+    expect(mod<CompressorModule>(g, 'lpc')!.pr).toBe(DEFAULT_MODULES.bareBoosterPR);
     expect(coreFlow(g)).toBeCloseTo(coreFlow(TEMPLATES.turbofan!), 9);
+    expect(gn.map((n) => n.knob)).toEqual(expect.arrayContaining(['fan.pr', 'fan.bypassRatio', 'lpc.pr']));
     expect(g.ops).toBeUndefined();
     expect(mod<MixerModule>(g, 'mixer')).toBeDefined();
     expect(mod<NozzleModule>(g, 'nozzle')!.style).toBe('fixed');
     expect(mod<NozzleModule>(g, 'nozzle')!.chevrons).toBeUndefined();
-    // Çıplak → kaportalı: BPR 0,68 → 1, askeri fan PR'ı (3,1) kaportalı
-    // aralığa (≤ 2) çekilir, booster düşük PR'lı; motor kurulur, kırpmalar notta
-    const { graph: h, notes } = applyArchitectureReport(TEMPLATES.militaryTurbofan!, ok(resolveChange(MTF, 'exhaust', 'separate')).arch);
-    expect(mod<CompressorModule>(h, 'fan')!.bypassRatio).toBe(1);
-    expect(mod<CompressorModule>(h, 'fan')!.pr).toBeLessThanOrEqual(2);
-    expect(mod<CompressorModule>(h, 'lpc')!.pr).toBeLessThanOrEqual(2);
-    expect(coreFlow(h)).toBeCloseTo(coreFlow(TEMPLATES.militaryTurbofan!), 9);
+    // Çıplak → kaportalı (bulgu #7): askeri fanı (PR 4,3, BPR 0,55) kaportalı
+    // aralığa kırpmak motoru sıcak çalıştırıyordu (EGT payı −54 K, fan PR 2 ∉
+    // 1,4–1,8, BPR 1 ∉ 3–11, akış 144,5 ∉ 150–1500); fan yolcu TF'ninki
+    const { graph: h, notes } = applyArchitectureReport(mtf, ok(resolveChange(MTF, 'exhaust', 'separate')).arch);
+    const tf = TEMPLATES.turbofan!;
+    expect(mod<CompressorModule>(h, 'fan')!.pr).toBe(mod<CompressorModule>(tf, 'fan')!.pr);
+    expect(mod<CompressorModule>(h, 'fan')!.bypassRatio).toBe(mod<CompressorModule>(tf, 'fan')!.bypassRatio);
+    expect(mod<CompressorModule>(h, 'lpc')!.pr).toBe(mod<CompressorModule>(tf, 'lpc')!.pr);
+    expect(coreFlow(h)).toBeCloseTo(coreFlow(mtf), 9);
     expect(notes.map((n) => n.knob)).toEqual(expect.arrayContaining(['fan.pr', 'fan.bypassRatio']));
-    expect(Number.isFinite(buildAny(h).sized.point.thrust)).toBe(true);
+    expectInKnobRanges(h);
+    expectWorkable(h, 'MTF → ayrık');
     // Aynı ailede (yanma odası stili) ops kalır
     expect(applyArchitecture(TEMPLATES.turbojet!, { ...TJ, combustor: 'canAnnular' }).ops).toEqual(TEMPLATES.turbojet!.ops);
   });
@@ -590,12 +638,13 @@ describe('applyArchitecture', () => {
     const back = applyArchitecture(g, TJ);
     expect(coreFlow(back)).toBeCloseTo(coreFlow(tj), 9);
     expect(mod<CompressorModule>(back, 'lpc')!.tipSpeed).toBe(mod<CompressorModule>(g, 'fan')!.tipSpeed);
-    // Yeni fanın baypas oranı tablodan (çıplak 0,6)
-    expect(mod<CompressorModule>(g, 'fan')!.bypassRatio).toBe(DEFAULT_MODULES.newFanBPR.bare);
+    // Yeni fanın baypas oranı bağışçınınki (sihirbazla aynı; §2.4'ün 0,6'sı
+    // P2'nin kalibre fanıyla karıştırıcıda mixerPR uyarısı veriyordu)
+    expect(mod<CompressorModule>(g, 'fan')!.bypassRatio).toBe(mod<CompressorModule>(TEMPLATES.militaryTurbofan!, 'fan')!.bypassRatio);
     // Turbofan → turboprop: çekirdek akışı (115 kg/s) ailenin aralığına (§2.10 TP 3–30) kırpılır, notta
     const { graph: tp, notes } = applyArchitectureReport(TEMPLATES.turbofan!, normalizeArchitecture(TP));
-    expect(tp.massFlow).toBe(MASS_FLOW_RANGE.TP[1]);
-    expect(notes.find((n) => n.knob === 'engine.massFlow')).toMatchObject({ to: MASS_FLOW_RANGE.TP[1] });
+    expect(tp.massFlow).toBe(massFlowRangeFor(TP)[1]);
+    expect(notes.find((n) => n.knob === 'engine.massFlow')).toMatchObject({ to: massFlowRangeFor(TP)[1] });
     expect(notes.find((n) => n.knob === 'engine.massFlow')!.from).toBeCloseTo(coreFlow(TEMPLATES.turbofan!), 9);
     expect(architectureOf(tp)).toEqual(normalizeArchitecture(TP));
     expect(Number.isFinite(buildAny(tp).sized.point.thrust)).toBe(true);
@@ -616,12 +665,13 @@ describe('applyArchitecture', () => {
       }
       return graph;
     };
-    // TJ → fan → TJ: gaz jeneratörü (HPC) korunur; taşınan düğmeler dönüşte
-    // aynı. T4 taşınamayabilir: P2'nin askeri TF fanı (PR 4,3) TJ'nin 1230 K'iyle
-    // döndürülemez (P5 ≤ P0), aile değeri kalır ve not düşülür (check denetler).
+    // TJ → fan → TJ: taşınan düğmeler dönüşte aynı. T4 taşınamayabilir: P2'nin
+    // askeri TF fanı (PR 4,3) TJ'nin 1230 K'iyle döndürülemez (P5 ≤ P0). HPC
+    // PR'ı (2,9) aralığa (4–12) kırpılsa da ailenin T4'üyle EGT payı negatif
+    // (bulgu #1: −127 K, redline): ailenin değeri kalır, not düşülür (check)
     const tj = TEMPLATES.turbojet!;
     const fan = check(tj, ok(resolveChange(TJ, 'lpLoad', 'fan')).arch);
-    expect(mod<CompressorModule>(fan, 'hpc')!.pr).toBe(mod<CompressorModule>(tj, 'hpc')!.pr);
+    expectWorkable(fan, 'TJ → fan');
     const back = check(fan, TJ);
     for (const [, get] of KNOBS) if (get(fan) === get(tj)) expect(get(back)).toBe(get(tj));
     expect(Number.isFinite(buildAny(fan).sized.point.thrust)).toBe(true);
@@ -684,6 +734,138 @@ describe('applyArchitecture', () => {
 });
 
 /* ------------------------------------------------------------------ */
+/* Kart yolu: sihirbazla aynı ölçüt (inceleme 1: #1, #6, #7, #8, #21)  */
+/* ------------------------------------------------------------------ */
+
+/** Her şablondan her açık mimari kartı (tek adım; yerleşimi hazır olanlar) */
+const CARD_CASES: [string, TemplateId, Architecture][] = (Object.keys(TEMPLATES) as TemplateId[]).flatMap((id) => {
+  const a = architectureOf(TEMPLATES[id]!);
+  return ARCH_OPTIONS.filter((o) => a[o.axis] !== o.value && !o.blocked(a)).flatMap((o): [string, TemplateId, Architecture][] => {
+    const r = resolveChange(a, o.axis, o.value);
+    return 'blocked' in r || notReady(r.arch) ? [] : [[`${id}: ${o.axis}=${String(o.value)}`, id, r.arch]];
+  });
+});
+
+describe('kart yolu: sihirbaz gibi uyarısız, EGT payı pozitif, düğmeler aralıkta', () => {
+  it('kart kümesi dolu (LP yükü, kurulum ve yanma odası geçişleri dahil)', () => {
+    expect(CARD_CASES.length).toBeGreaterThanOrEqual(30);
+    expect(CARD_CASES.some(([k]) => k.includes('lpLoad='))).toBe(true);
+    expect(CARD_CASES.some(([k]) => k.includes('installation=') || k.includes('exhaust=separate'))).toBe(true);
+  });
+
+  it.skipIf(!WARNING_RULES.length).each(CARD_CASES)('%s', (label, id, next) => {
+    const { graph, notes } = applyArchitectureReport(TEMPLATES[id]!, next);
+    expect(archKey(architectureOf(graph))).toBe(archKey(next));
+    expectWorkable(graph, label);
+    expectInKnobRanges(graph, label);
+    // Değişen her taşınan düğme notta (kaynak değer seed'inki)
+    for (const n of notes) expect(Number.isFinite(n.from) && Number.isFinite(n.to) && n.reason.length > 0, `${label}: ${n.knob}`).toBe(true);
+  }, SLOW);
+
+  it('#1: J79 → fan: HPC PR (2,9) ve T4 sihirbazınki gibi, otomatik çalıştırmada rölanti ve tam güç (redline yok)', () => {
+    const tj = TEMPLATES.turbojet!;
+    const { graph, notes } = applyArchitectureReport(tj, ok(resolveChange(TJ, 'lpLoad', 'fan')).arch);
+    const wiz = graphFromArchitecture(architectureOf(graph), { massFlow: templateGraph('militaryTurbofan').massFlow, name: '' });
+    expect(mod<CompressorModule>(graph, 'hpc')!.pr).toBe(mod<CompressorModule>(wiz, 'hpc')!.pr);
+    expect(mod<CombustorModule>(graph, 'combustor')!.tit).toBe(mod<CombustorModule>(wiz, 'combustor')!.tit);
+    // Not seed'in değerinden ailenin değerine; neden uyarının başlığı
+    expect(notes.find((n) => n.knob === 'hpc.pr')).toMatchObject({ from: 2.9, to: mod<CompressorModule>(wiz, 'hpc')!.pr });
+    const r = autoStart(buildAny(graph));
+    expect(r.tIdle).toBeGreaterThan(0);
+    expect(r.tFull).toBeGreaterThanOrEqual(0);
+    expect(r.seen).not.toContain('egtRedline');
+    expect(r.seen).not.toContain('hotStart');
+  }, SLOW);
+
+  it('#1: HPC PR serbest türbinli motorla taşınmaz (anlamı toplam basınç oranı), notta', () => {
+    for (const [seed, next] of [
+      [TEMPLATES.turbofan!, TP],
+      [TEMPLATES.turboprop!, TJ],
+    ] as const) {
+      const { graph, notes } = applyArchitectureReport(seed, normalizeArchitecture(next));
+      const wiz = graphFromArchitecture(architectureOf(graph), { massFlow: graph.massFlow, name: '' });
+      expect(mod<CompressorModule>(graph, 'hpc')!.pr).toBe(mod<CompressorModule>(wiz, 'hpc')!.pr);
+      expect(notes.find((n) => n.knob === 'hpc.pr')?.reason).toMatch(/anlamı/);
+    }
+  });
+
+  it('#6: taşınan düğmeler yeni ailenin knobs.ts aralığına kırpılır ve notta (MTF → turbojet: HPC PR 8,2 ∉ 2–6, T4 1670 ∉ 1050–1650)', () => {
+    const mtf = TEMPLATES.militaryTurbofan!;
+    const { graph, notes } = applyArchitectureReport(mtf, ok(resolveChange(MTF, 'lpLoad', 'lpc')).arch);
+    const t = deriveTraits(graph);
+    const [, prHi] = knobRange('hpc.pr', t)!;
+    const [, titHi] = knobRange('combustor.tit', t)!;
+    expect(mod<CompressorModule>(graph, 'hpc')!.pr).toBeLessThanOrEqual(prHi);
+    expect(mod<CombustorModule>(graph, 'combustor')!.tit).toBeLessThanOrEqual(titHi);
+    expect(notes.find((n) => n.knob === 'hpc.pr')).toMatchObject({ from: 8.2 });
+    expect(notes.find((n) => n.knob === 'combustor.tit')).toMatchObject({ from: mod<CombustorModule>(mtf, 'combustor')!.tit });
+    expectInKnobRanges(graph);
+    // Kutu sayısı da düğmenin aralığında (knobs.ts 6–10; eski taşıma 6–16)
+    const can = applyArchitecture(TEMPLATES.turbojetDry!, { ...normalizeArchitecture({ ...TJ, afterburner: false }), combustor: 'can' });
+    const c14 = structuredClone(can);
+    mod<CombustorModule>(c14, 'combustor')!.cans = 14;
+    const back = applyArchitectureReport(c14, ok(resolveChange(architectureOf(c14), 'lpLoad', 'fan')).arch);
+    expectInKnobRanges(back.graph, 'kutu');
+  });
+
+  it('#7: fan aralıkları knobs.ts ile aynı (tek kaynak)', () => {
+    for (const a of [MTF, TF, normalizeArchitecture({ ...TF, exhaust: 'mixed', mixer: 'lobed' })]) {
+      const t = deriveTraits(templateGraph(familyOf(a)));
+      expect(fanRangeFor(a)).toEqual({ pr: knobRange('fan.pr', t), bpr: knobRange('fan.bypassRatio', t) });
+      expect(massFlowRangeFor(a)).toEqual(knobRange('engine.massFlow', t));
+    }
+    expect(fanRangeFor(TJ)).toBeUndefined();
+  });
+
+  it('#8: aynı LP yükünde BPR değişimiyle akış yeni ailenin aralığına kırpılır ve notta', () => {
+    // 250 kg/s askeri TF (aralığın üst ucu) → ayrık akış: çekirdek korunursa 1613 ∉ 150–1500
+    const big = setMassFlow(structuredClone(TEMPLATES.militaryTurbofan!), 250, 0);
+    const { graph, notes } = applyArchitectureReport(big, ok(resolveChange(MTF, 'exhaust', 'separate')).arch);
+    const [, hi] = massFlowRangeFor(TF);
+    expect(graph.massFlow).toBe(hi);
+    const n = notes.find((x) => x.knob === 'engine.massFlow')!;
+    expect(n.to).toBe(hi);
+    expect(n.from).toBeCloseTo(coreFlow(big) * (1 + mod<CompressorModule>(graph, 'fan')!.bypassRatio!), 6);
+    expectInKnobRanges(graph);
+  });
+
+  it('#21: kutu sığdırma her adımda ilerler, 0 ve 0,04 m/s referans hızda döngü biter', () => {
+    for (const v of [-1, 0, 0.04, 0.049, 1, 25, 49.99, Number.NaN]) {
+      const n = nextFitVelocity(v);
+      expect(n).toBeGreaterThan(Number.isFinite(v) && v > 0 ? v : 0);
+      expect(n).toBeLessThanOrEqual(CAN_FIT_VREF_MAX);
+    }
+    for (const vref of [0, 0.04]) {
+      const g = structuredClone(TEMPLATES.turbojetDry!);
+      const c = mod<CombustorModule>(g, 'combustor')!;
+      c.cans = 6;
+      // Sonsuz döngü eşzamanlı: vitest süre sınırı kesemez, yazım sayısı keser
+      let v = vref;
+      let writes = 0;
+      Object.defineProperty(c, 'refVelocity', {
+        get: () => v,
+        set: (x: number) => {
+          if (++writes > 1000) throw new Error(`fitCans ilerlemiyor (v=${v})`);
+          v = x;
+        },
+        enumerable: true,
+        configurable: true,
+      });
+      fitCans(g);
+      expect(v).toBeGreaterThan(vref);
+      expect(() => computeGasPath(g, sizeEngine(toEngineDesign(g)))).not.toThrow();
+    }
+    // Dosyadan gelen 0 m/s'lik kutu-halka yanma odalı motorda mimari kartı sayfayı dondurmaz
+    const doc = structuredClone(TEMPLATES.turbojetDry!);
+    mod<CombustorModule>(doc, 'combustor')!.refVelocity = 0;
+    const { graph, notes } = applyArchitectureReport(doc, normalizeArchitecture({ ...TJ, combustor: 'canAnnular' }));
+    expect(mod<CombustorModule>(graph, 'combustor')!.refVelocity).toBeGreaterThan(0);
+    expect(notes.find((n) => n.knob === 'combustor.refVelocity')).toMatchObject({ from: 0 });
+    expect(Number.isFinite(buildAny(graph).sized.point.thrust)).toBe(true);
+  });
+});
+
+/* ------------------------------------------------------------------ */
 /* solveMassFlow                                                       */
 /* ------------------------------------------------------------------ */
 
@@ -741,7 +923,7 @@ describe('solveMassFlow: hedef itki / güç ±%1', () => {
   // ister (P1 deriveOperability). P0 kimlik taslağında 120 kN'lik TF
   // rölantiye 77 s'de çıkar: P1 birleşince kendiliğinden koşar.
   const opsScaled = (() => {
-    const W = MASS_FLOW_RANGE.TJ[0] * 3;
+    const W = massFlowRangeFor(TJ)[0] * 3;
     return buildArch(TJ, W).b.design.inertia.hp !== referenceFor(TJ).design.inertia.hp;
   })();
   it.skipIf(!opsScaled)('sihirbaz hedefinde kurulan motor otomatik çalıştırmada rölantiye ve tam güce çıkar', () => {
@@ -762,8 +944,8 @@ describe('solveMassFlow: hedef itki / güç ±%1', () => {
 
   it('aralık dışı hedef aralığın ucunu verir', () => {
     const g = graphFromArchitecture(TJ, { massFlow: 66, name: '' });
-    expect(solveMassFlow(g, { thrust: 1e9 })).toBe(MASS_FLOW_RANGE.TJ[1]);
-    expect(solveMassFlow(g, { thrust: 1 })).toBe(MASS_FLOW_RANGE.TJ[0]);
+    expect(solveMassFlow(g, { thrust: 1e9 })).toBe(massFlowRangeFor(TJ)[1]);
+    expect(solveMassFlow(g, { thrust: 1 })).toBe(massFlowRangeFor(TJ)[0]);
   });
 
   it('ölçülemeyen hedef sessizce aralığın ucunu vermez: tipli hata', () => {
