@@ -326,19 +326,21 @@ export function bareLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath):
   const n = L.nozzle;
   const extra: Record<string, number> = { casing: shellMass(L.R, L.tailCone[0] - L.intakeZ, SHELL_T.casing, RHO.ti) };
   let length: number;
-  if (L.ab && n.kind !== 'fixed') {
-    extra.afterburner = shellMass(L.ab.R, L.ab.z1 - L.ab.z0, SHELL_T.afterburner, RHO.ni);
-    // Yapraklar + contalar + senkron halka + aktüatörler
-    extra.nozzle = shellMass(n.hingeR, n.primary + n.divergent, SHELL_T.nozzle, RHO.ni) * 1.3;
-    length = L.ab.z1 + n.primary + n.divergent - INTAKE_Z;
-  } else if (n.kind === 'fixed') {
+  // bareJetLayout art yakıcıyla her zaman değişken, art yakıcısız her zaman
+  // sabit lüle üretir (art yakıcısız değişken lüleyi graph.ts kuralı
+  // `nozzle.variableNeedsAb` daha önce reddeder)
+  if (n.kind === 'fixed') {
     // Art yakıcı kalemi yok; jet borusu gövde sacı kalınlığında, sabit lüle ince inconel koni
     const p = L.jetPipe!;
     extra.jetPipe = shellMass(p.r, p.z1 - p.z0, SHELL_T.casing, RHO.ni);
     extra.nozzle = shellMass(n.r0, n.z1 - n.z0, FIXED_NOZZLE_T, RHO.ni);
     length = n.z1 - INTAKE_Z;
   } else {
-    throw new FlowpathError('Değişken kesitli lüle art yakıcı ister.', 'nozzle.variableNeedsAb', 'nozzle');
+    const ab = L.ab!;
+    extra.afterburner = shellMass(ab.R, ab.z1 - ab.z0, SHELL_T.afterburner, RHO.ni);
+    // Yapraklar + contalar + senkron halka + aktüatörler
+    extra.nozzle = shellMass(n.hingeR, n.primary + n.divergent, SHELL_T.nozzle, RHO.ni) * 1.3;
+    length = ab.z1 + n.primary + n.divergent - INTAKE_Z;
   }
   return {
     layout: L,

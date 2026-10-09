@@ -12,7 +12,8 @@ import { EngineSim, type SimEventType } from '../../sim/engineSim';
 import { TEMPLATES } from '../catalog';
 import { INTAKE_Z, type BareJetLayout } from '../flowpath';
 import { buildEngine } from '../graph';
-import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_DRY_GRAPH, TURBOJET_GRAPH, TURBOPROP_GRAPH } from '../templates';
+import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_GRAPH, TURBOPROP_GRAPH } from '../templates';
+import { TURBOJET_DRY_GRAPH } from '../turbojetDry';
 import { deriveTraits } from '../traits';
 import type { CombustorModule, CombustorStyle, EngineGraph, EngineModule, NozzleModule } from '../types';
 import { LAYOUT_READY, layoutNotReady } from './index';
@@ -150,7 +151,11 @@ describe('art yakıcısız çıplak yerleşim', () => {
     expect(dry.parts.jetPipe).toBeGreaterThan(0);
     expect(dry.parts.nozzle).toBeLessThan(tj.parts.nozzle);
     expect(tj.total - dry.total).toBeGreaterThanOrEqual(tj.parts.afterburner);
-    // Kuru şablon da TJ'den hafif
+    // §7.1 kabulünün yorumu (§4.3 "sapma testte yorumla belgelenir"): ölçüt
+    // AYNI ÇEKİRDEKTE sınanır (yukarıda). Kuru şablonun kendisi TJ'den
+    // yalnız ~131 kg hafif (1326 / 1457 kg; AB kalemi ~237 kg): §4.3 J57
+    // bandı için çekirdek büyüdü (72 kg/s, OPR 13, HPC 4 kademe, 8 kutulu
+    // oda). Şablon için ölçüt yalnız "TJ'den hafif".
     expect(buildEngine(TURBOJET_DRY_GRAPH).flowpath.metrics.mass.total).toBeLessThan(tj.total);
   });
 
@@ -178,8 +183,12 @@ describe('art yakıcısız çıplak yerleşim', () => {
 
   it('uç hava akışlarında (10 ve 200 kg/s) kurulur, ölçüler sonlu ve oranlı', () => {
     const throats: number[] = [];
+    // Atölyedeki gibi: şablonun ops'u taşınmaz, çalışabilirlik şablondan
+    // ölçeklenir (reference; operability.ts deriveOperability)
+    const reference = buildEngine(TURBOJET_DRY_GRAPH);
+    const { ops: _ops, ...noOps } = TURBOJET_DRY_GRAPH;
     for (const massFlow of [10, 200]) {
-      const b = buildEngine({ ...TURBOJET_DRY_GRAPH, massFlow });
+      const b = buildEngine({ ...noOps, massFlow }, { reference });
       const L = b.flowpath.layout as BareJetLayout;
       if (L.nozzle.kind !== 'fixed') throw new Error('sabit lüle bekleniyordu');
       for (const v of [L.throat, L.nozzle.rExit, L.nozzle.z1, b.flowpath.metrics.mass.total]) expect(Number.isFinite(v)).toBe(true);

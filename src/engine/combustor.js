@@ -298,7 +298,11 @@ function buildCombustorLocal(materials, c) {
     const rt = outerR(zi) - 0.012;
     group.userData.igniters = ign.map((a) => [-Math.sin(a) * rt, Math.cos(a) * rt, zi]);
   }
-  // Enjektör/swirler çıkışları ve alev bölgesi (kesitte yakıt sisi ve alev)
+  // Enjektör/swirler çıkışları ve alev bölgesi (kesitte yakıt sisi ve alev).
+  // DİKKAT: bu noktalar ve flameZone'un z'leri oda grubunun YEREL ekseninde
+  // (giriş düzlemi z = 0; grup buildCombustor'da z0'a taşınır), model
+  // uzayında değil. Tüketici `matrixWorld` ile dönüştürür; flameZone'dan
+  // yalnız farklar (h, z1 − zDome) mutlak z'siz kullanılabilir
   group.userData.injectors = Array.from({ length: N }, (_, i) => {
     const a = (i / N) * Math.PI * 2;
     return [Math.sin(a) * mid, Math.cos(a) * mid, c.zDome + 0.004];

@@ -332,7 +332,9 @@ export function buildBareJet(materials, src) {
   if (ab) for (let i = 0; i < 6; i++) kit.at('bNut', 0.4 + (i / 6) * Math.PI * 2, prof(ab.z0 + 0.14), ab.z0 + 0.14, {}, 'afterburner');
   // Egzoz sıcaklık sondaları (türbin çıkışı çevresinde), kaldırma kulakları
   probes(prof, v.gas.lpt.z1 + 0.14, 8, { kit }, 0.2, 'lpt');
-  liftLugs(prof, [z + 0.35 * sa, ex.z0 + 0.3], { kit });
+  // Arka kulak egzoz bölümünün üstünde kalır: küçük kuru motorda jet borusu
+  // kısa (1,2·r), kulak lüle konisinin üstünde havada asılı kalmasın
+  liftLugs(prof, [z + 0.35 * sa, Math.min(ex.z0 + 0.3 * sa, ex.z1 - 0.05)], { kit });
 
   group.add(kit.build());
 

@@ -8,12 +8,12 @@
   "tgt": [0, 0, -0.4],
   "fov": 32,
   "cut": 0,
-  "setup": "const D = window.__design; window.__tjd = (mf) => ({ ...D.TEMPLATES.turbojetDry, massFlow: mf }); D.setSlotGraph('workshop', D.TEMPLATES.turbojetDry); a.setEngine('workshop', true); a.sim.trim(0.85, 30); if (a.advance) a.advance(10);",
+  "setup": "const D = window.__design; const { ops, ...g } = D.TEMPLATES.turbojetDry; window.__tjd = (mf) => ({ ...g, massFlow: mf }); window.__tjdRef = D.setSlotGraph('workshop', D.TEMPLATES.turbojetDry); a.setEngine('workshop', true); a.sim.trim(0.85, 30); if (a.advance) a.advance(10);",
   "frames": 8,
   "dt": 0.05,
   "actions": {
     "2": "a.rig.camera.position.set(4.6, 1.2, -0.4); a.rig.controls.target.set(0, -0.05, -0.4); a.rig.controls.update(); a.setCutaway(true);",
-    "4": "a.setCutaway(false); a.applyDesign('workshop', window.__tjd(10)); a.rig.camera.position.set(3.4, 0.4, -1.45); a.rig.controls.target.set(0, -0.05, -1.45); a.rig.controls.update();",
-    "6": "a.applyDesign('workshop', window.__tjd(200)); a.rig.camera.position.set(15.5, 1.6, 0.8); a.rig.controls.target.set(0, -0.1, 0.8); a.rig.controls.update();"
+    "4": "a.setCutaway(false); a.applyDesign('workshop', window.__tjd(10), 'full', { reference: window.__tjdRef }); a.rig.camera.position.set(3.4, 0.4, -1.45); a.rig.controls.target.set(0, -0.05, -1.45); a.rig.controls.update();",
+    "6": "a.applyDesign('workshop', window.__tjd(200), 'full', { reference: window.__tjdRef }); a.rig.camera.position.set(15.5, 1.6, 0.8); a.rig.controls.target.set(0, -0.1, 0.8); a.rig.controls.update();"
   }
 }
