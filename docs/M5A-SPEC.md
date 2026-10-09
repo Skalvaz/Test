@@ -1220,6 +1220,11 @@ OPR 4,3 × 1,3 × 8,2 = 45,8, T3 977 K, marş tepe EGT 898 °C > 800 →
 ailenin 1670 K'i notla kullanılır (test katı eşitlik değil not beklemeli).
 MTF şablonu bu yüzden yeniden değiştirilmez (S5). (3) Booster'sız MTF'de
 marş tepe EGT'si 614 → 734 °C (egtStart 800'den pay 66 °C).
+**Dalga 1 entegrasyonunda uygulanan:** (1) sabitleme yolu seçildi;
+`balanced()` hedefe ulaşamazsa hata atar. (2) HPC bölmesi ölçüldü (tepe
+EGT yalnız ~30 K iner, EGT payı 94 → 70 K) ve seçilmedi; onun yerine
+`DEFAULT_MODULES.bareBoosterPR` 1,3 → 1,1 (tepe 772/800 °C, OPR 38,8, T3
+926 K, EGT payı 94 K; HPC ve HP işi aynı). TJ→fan testi not kabul eder.
 
 TF devirleri değişmez (N2 HPC uç hızından). **Görsel etki:** HPT halkası
 küçülür, çekirdek kısalır, ITD (`core.js:226-243`) LPT'ye dik tırmanır →
