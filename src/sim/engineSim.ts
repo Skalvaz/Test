@@ -476,7 +476,7 @@ export class EngineSim {
     const lpDesignTorque = r.lpPower / r.omega1;
     const lpTorqueLoss = lpDesignTorque * (LP_FRICTION + 0.003 * this.N1);
     const hpTorqueAero = (cyc.hptPower * eta - cyc.hpcPower) / w2f;
-    this.updatePropeller(dt);
+    this.updateLoad(dt);
     const lpTorqueAero =
       (cyc.lptPower * eta - cyc.fanPower - cyc.boosterPower - this.propPower) / w1f;
 
@@ -636,9 +636,10 @@ export class EngineSim {
 
     // --- Yönetim (governing): hız biçimli PI döngüleri, min/max seçimi ---
     const theta2 = Math.sqrt(this.amb.T2 / r.T2);
-    // Turboprop'ta pervane devrini vali tutar; FADEC gaz jeneratörünü (N2)
-    // yönetir. Jet motorlarında itkiyi belirleyen N1 yönetilir.
-    const gasGen = d.kind === 'turboprop';
+    // Serbest türbinli motorda (turboprop, turboşaft) güç türbini devrini
+    // (NP) vali tutar; FADEC gaz jeneratörünü (N2) yönetir. Jet motorlarında
+    // itkiyi belirleyen N1 yönetilir.
+    const gasGen = !!(d.prop || d.shaft);
     let e1: number;
     if (gasGen) {
       const n2Target = Math.min(
@@ -735,14 +736,17 @@ export class EngineSim {
   }
 
   /**
-   * Turboprop pervanesi ve sabit devir valisi. Vali pal açısını değiştirerek
-   * pervanenin çektiği gücü güç türbininin ürettiğine eşitler ve NP'yi %100'de
-   * tutar. Güç yetmediğinde pal en ince konumda kalır ve NP düşer.
+   * Serbest güç türbininin yükü ve sabit devir valisi (turboprop: pervane;
+   * turboşaft: test hücresi su freni, dinamometre). Vali yükü (pervanede pal
+   * açısı, su frenine su seviyesi) değiştirerek emilen gücü güç türbininin
+   * ürettiğine eşitler ve NP'yi %100'de tutar. Güç yetmediğinde yük en
+   * küçükte kalır ve NP düşer. Emilen güç P = k·σ·n³ (k valinin çıkışı).
+   * Gaz kolu gaz jeneratörü devrini, yani gücü belirler (updateFuel).
    */
-  private updatePropeller(dt: number) {
+  private updateLoad(dt: number) {
     const d = this.eng.design;
     const prop = d.prop;
-    if (!prop) {
+    if (!prop && !d.shaft) {
       this.propPower = 0;
       this.propThrust = 0;
       return;
@@ -762,6 +766,11 @@ export class EngineSim {
     const n = Math.max(this.N1, 0);
     this.propPower = r.shaftPower * this.propPitch * n * n * n * sigma;
 
+    // Dinamometre itki üretmez: turboşaftın itkisi yalnız egzoz artığından
+    if (!prop) {
+      this.propThrust = 0;
+      return;
+    }
     // İtki: statikte momentum teorisi (başarı katsayısıyla), ileri uçuşta ηP/V
     const area = (Math.PI * prop.diameter * prop.diameter) / 4;
     const P = Math.max(this.propPower, 0);
@@ -848,7 +857,7 @@ export class EngineSim {
     });
     if (this.N2 < 0.5) {
       this.N2 = this.limits.idleN2;
-      this.N1 = this.eng.design.prop ? 0.9 : 0.22;
+      this.N1 = this.eng.design.prop || this.eng.design.shaft ? 0.9 : 0.22;
       this.wf = 0.07 * this.eng.ref.Wf;
     }
     this.governing = false;
@@ -863,6 +872,7 @@ export class EngineSim {
   snapshot(): SimSnapshot {
     const cyc = this.last;
     const d = this.eng.design;
+    const load = d.prop ?? d.shaft;
     return {
       time: this.time,
       N1: this.N1,
@@ -900,13 +910,17 @@ export class EngineSim {
       wfAb: this.wfAb,
       abLevel: cyc.abFraction,
       nozzleArea: this.nozzleSchedule(cyc),
-      propRpm: d.prop ? this.N1 * d.prop.rpm : 0,
-      torque: d.prop ? this.propPower / Math.max(this.eng.ref.shaftPower, 1) / Math.max(this.N1, 0.05) : 0,
+      // Pervane ya da turboşaft çıkış mili (devir ve tork aynı yükten)
+      propRpm: load ? this.N1 * load.rpm : 0,
+      torque: load ? this.propPower / Math.max(this.eng.ref.shaftPower, 1) / Math.max(this.N1, 0.05) : 0,
       shaftPower: this.propPower,
       propThrust: this.propThrust,
       propPitch: this.propPitch,
       airflow: cyc.stations['2'].W / d.massFlow,
-      thrustFrac: (cyc.netThrust + this.propThrust) / Math.max(1, this.eng.point.thrust + (d.prop ? 5e4 : 0)),
+      // Turboşaftta "itki" oranı yerine mil gücü oranı (efektler ve ses)
+      thrustFrac: d.shaft && !d.prop
+        ? this.propPower / Math.max(1, this.eng.ref.shaftPower)
+        : (cyc.netThrust + this.propThrust) / Math.max(1, this.eng.point.thrust + (d.prop ? 5e4 : 0)),
     };
   }
 

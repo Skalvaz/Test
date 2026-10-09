@@ -1,8 +1,93 @@
 import { describe, expect, it } from 'vitest';
+// Testte design/ kullanılır (sim/* design/'ı içe aktarmaz): grafikten
+// üretilen tipler (turboşaft) katalogda catalog.ts ile kaydolur
+import { TEMPLATES } from '../design/catalog';
+import { computeGasPath } from '../design/flowpath';
+import { buildEngine, toEngineDesign } from '../design/graph';
+import { layoutNotReady } from '../design/layouts/index';
+import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOPROP_GRAPH } from '../design/templates';
+import type { CombustorModule, CompressorModule, EngineGraph, EngineModule, InletModule, NozzleModule } from '../design/types';
 import { ambient, isaStatic } from './atmosphere';
 import { computeCycle, surgeFuelFlow } from './cycle';
-import { DEFAULT_DESIGN, ENGINE_CATALOG, sizeEngine, type EngineKind } from './design';
+import { DEFAULT_DESIGN, ENGINE_CATALOG, registerCatalogDesign, sizeEngine, type EngineDesign, type EngineKind } from './design';
 import { EngineSim, LIMITS, type SimEventType } from './engineSim';
+
+/* ------------------------------------------------------------------ */
+/* M5a tasarımları (grafikten)                                         */
+/* ------------------------------------------------------------------ */
+
+const rpmOf = (w: number) => (w * 60) / (2 * Math.PI);
+const modOf = <T extends EngineModule>(g: EngineGraph, t: T['type']) => g.modules.find((m) => m.type === t) as T;
+
+/**
+ * Grafikten simülasyon tasarımı. Yerleşimi hazırsa buildEngine; değilse
+ * (READY=false: kuru çıplak, karışık kaportalı, turboşaft yerleşimleri
+ * P5–P7'de) çevrim + gaz yolundan mil devirleri (dinamik devirle ölçeklenir,
+ * yer tutucu 10 000 rpm olmamalı). Turboşaftın gaz yolu yerleşimi (P7)
+ * gelene dek devirler aynı çekirdekli turboproptan alınır.
+ */
+function designOf(g: EngineGraph): EngineDesign {
+  if (!layoutNotReady(g)) return buildEngine(g).design;
+  const d = toEngineDesign(g);
+  let geo = g;
+  if (g.modules.some((m) => m.type === 'shaft')) {
+    geo = structuredClone(g);
+    geo.modules[geo.modules.findIndex((m) => m.type === 'shaft')] = structuredClone(modOf(TURBOPROP_GRAPH, 'propeller'));
+    modOf<InletModule>(geo, 'inlet').style = 'chin';
+  }
+  const gp = computeGasPath(geo, sizeEngine(toEngineDesign(geo)));
+  return { ...d, n1Rpm: rpmOf(gp.omega.lp), n2Rpm: rpmOf(gp.omega.hp) };
+}
+
+/**
+ * Kaportalı karışık akışlı turbofan (CFM56-5C sınıfı, §3.4): TF şablonu +
+ * lobe'lu karıştırıcı + sabit yakınsak ortak lüle. P6 şablonu gelene dek.
+ */
+function mixedTurbofanGraph(): EngineGraph {
+  const g = structuredClone(TURBOFAN_GRAPH);
+  delete g.kind;
+  g.massFlow = 465;
+  Object.assign(modOf<CompressorModule>(g, 'fan'), { pr: 1.6, bypassRatio: 6.5 });
+  modOf<CompressorModule>(g, 'lpc').pr = 1.9;
+  modOf<CompressorModule>(g, 'hpc').pr = 12.5;
+  modOf<CombustorModule>(g, 'combustor').tit = 1600;
+  g.modules.splice(g.modules.findIndex((m) => m.type === 'nozzle'), 0, { type: 'mixer', loss: 0.01, style: 'lobed', lobes: 18 });
+  const n = modOf<NozzleModule>(g, 'nozzle');
+  Object.assign(n, { style: 'fixed', cv: 0.985 });
+  delete n.chevrons;
+  return g;
+}
+
+/** Kuru düşük baypaslı karışık akışlı turbofan (Spey sınıfı, mimari 4): MTF − art yakıcı */
+function dryLowBypassGraph(): EngineGraph {
+  const g = structuredClone(MILITARY_TURBOFAN_GRAPH);
+  delete g.kind;
+  g.modules = g.modules.filter((m) => m.type !== 'afterburner');
+  Object.assign(modOf<NozzleModule>(g, 'nozzle'), { style: 'fixed' });
+  delete modOf<NozzleModule>(g, 'nozzle').flaps;
+  return g;
+}
+
+/**
+ * Turboşaft: P7 şablonu varsa o; yoksa TP çekirdeği + önden çıkışlı mil +
+ * halka giriş (contracts.test.ts ile aynı yol), egzoz basınç oranı 1,05
+ * (§3.5). Çalışabilirlik (marş, atalet) TP'nin.
+ */
+function turboshaftGraph(): EngineGraph {
+  if (TEMPLATES.turboshaft) return TEMPLATES.turboshaft;
+  const g = structuredClone(TURBOPROP_GRAPH);
+  delete g.kind;
+  g.name = 'TS (TP çekirdekli deneme turboşaftı)';
+  g.modules = g.modules.filter((m) => m.type !== 'propeller');
+  g.modules.unshift({ type: 'shaft', rpm: 20900, drive: 'front', reduction: false, transmissionEff: 0.985, gearboxLength: 0.35 });
+  modOf<InletModule>(g, 'inlet').style = 'annular';
+  modOf<NozzleModule>(g, 'nozzle').pressureRatio = 1.05;
+  return g;
+}
+
+// Turboşaft katalogda yoksa (P7 şablonu gelene dek) deneme tasarımıyla
+// kaydolur: tip testleri (KINDS) beş motoru da sınar
+if (!('turboshaft' in ENGINE_CATALOG)) registerCatalogDesign('turboshaft', designOf(turboshaftGraph()));
 
 function withEvents(sim: EngineSim) {
   const seen: SimEventType[] = [];
@@ -347,4 +432,179 @@ describe('motor tipleri', () => {
       expect(bad).toEqual([]);
     },
   );
+});
+
+describe('art yakıcısız karışık akış (M5a)', () => {
+  const amb = ambient();
+  const withEta = (d: EngineDesign, mixingEff: number, loss = d.mixer!.loss): EngineDesign => ({ ...d, mixer: { loss, mixingEff } });
+  /** Karıştırıcıya giren baypas/çekirdek toplam basınç oranı P19t/P5 */
+  const mixerPR = (d: EngineDesign) => {
+    const s = sizeEngine(d).point.stations;
+    return (s['13'].P * (1 - d.bypassDuctDP)) / s['5'].P;
+  };
+  /**
+   * Baypas oranını P19t = P5 olacak şekilde ikiye bölme ile ayarlar: BPR
+   * arttıkça LPT daha çok iş çeker, P5 düşer. Çekirdekte basınç kalmayan
+   * (DesignError) nokta "P5 çok düşük" sayılır.
+   */
+  function balanced(d: EngineDesign): EngineDesign {
+    const ratio = (bpr: number) => {
+      try {
+        return mixerPR({ ...d, bypassRatio: bpr });
+      } catch {
+        return Infinity;
+      }
+    };
+    let lo = 0.05;
+    let hi = 15;
+    for (let i = 0; i < 60; i++) {
+      const m = (lo + hi) / 2;
+      if (ratio(m) < 1) lo = m;
+      else hi = m;
+    }
+    return { ...d, bypassRatio: (lo + hi) / 2 };
+  }
+  const designs: [string, EngineDesign][] = [
+    ['kaportalı BPR 6,5', designOf(mixedTurbofanGraph())],
+    ['çıplak BPR 0,68', designOf(dryLowBypassGraph())],
+  ];
+
+  it('grafikten: art yakıcısız karıştırıcı design.mixer olur, afterburner yok', () => {
+    for (const [, d] of designs) {
+      expect(d.afterburner).toBeUndefined();
+      expect(d.mixer).toBeDefined();
+      const e = sizeEngine(d);
+      // Ortak sabit lüle tasarımda sabitlenir; 9 istasyonu ondan
+      expect(e.ref.A9mix).toBeGreaterThan(0);
+      expect(e.point.stations['9'].W).toBeCloseTo(e.point.stations['2'].W + e.point.wf, 6);
+    }
+    // Art yakıcılı motorda karışma afterburner'da kalır
+    expect(buildEngine(MILITARY_TURBOFAN_GRAPH).design.mixer).toBeUndefined();
+  });
+
+  it.each(designs)('%s: itki ayrık jetler (η=0) ile tam karışım (η=1) arasında; lobe\'lu > düz', (_n, d0) => {
+    for (const d of [d0, balanced(d0)]) {
+      const F = (eta: number) => sizeEngine(withEta(d, eta)).point.thrust;
+      const [sep, full, conf, lobed] = [F(0), F(1), F(0.85), F(0.97)];
+      const lo = Math.min(sep, full);
+      const hi = Math.max(sep, full);
+      for (const f of [conf, lobed]) {
+        expect(f).toBeGreaterThan(lo);
+        expect(f).toBeLessThan(hi);
+      }
+    }
+    // Basınçlar dengeliyken karışma kazanır: aynı kayıpta lobe'lu düzden iyi
+    const b = balanced(d0);
+    expect(sizeEngine(withEta(b, 0.97)).point.thrust).toBeGreaterThan(sizeEngine(withEta(b, 0.85)).point.thrust);
+  });
+
+  it.each(designs)('%s: P19t ≈ P5\'te karışma kazancı > 0 (ayrık akışlı lülelere göre)', (_n, d0) => {
+    const b = balanced(d0);
+    expect(Math.abs(mixerPR(b) - 1)).toBeLessThan(1e-6);
+    // Kayıpsız karıştırıcı: η=0 ayrık akışlı motorun iki lülesini aynen verir
+    const separate = sizeEngine({ ...b, mixer: undefined }).point.thrust;
+    const noMix = sizeEngine(withEta(b, 0, 0)).point.thrust;
+    expect(Math.abs(noMix / separate - 1)).toBeLessThan(1e-9);
+    const mixed = sizeEngine(withEta(b, 1, 0)).point.thrust;
+    expect(mixed).toBeGreaterThan(separate);
+    // Kazanç yüksek baypasta daha büyük (yüzde birkaç), düşükte küçük
+    expect(mixed / separate - 1).toBeLessThan(0.06);
+  });
+
+  it.each(designs)('%s: computeCycle(1, 1, Wf) tasarım itkisini ±%%1, T4\'ü ±25 K verir', (_n, d) => {
+    const e = sizeEngine(d);
+    const c = computeCycle({ eng: e, amb, N1: 1, N2: 1, wf: e.ref.Wf, lit: true, surging: false });
+    expect(Math.abs(c.netThrust / e.point.thrust - 1)).toBeLessThan(0.01);
+    expect(Math.abs(c.stations['4'].T - d.tit)).toBeLessThan(25);
+    expect(c.bypassThrust).toBe(0);
+    expect(c.nozzleArea).toBe(1);
+    expect(c.surgeMargin).toBeGreaterThan(0.1);
+  });
+
+  it.each(designs)('%s: rölanti ve %%60 gaz trim\'i yakınsar, itki gazda monoton', (_n, d) => {
+    const sim = new EngineSim(d);
+    const settled = (throttle: number) => {
+      sim.trim(throttle, 30);
+      const a = { N1: sim.N1, N2: sim.N2 };
+      run(sim, 5);
+      expect(sim.lit).toBe(true);
+      expect(Math.abs(sim.N1 - a.N1)).toBeLessThan(0.003);
+      expect(Math.abs(sim.N2 - a.N2)).toBeLessThan(0.003);
+      return sim.snapshot();
+    };
+    const idle = settled(0);
+    expect(idle.N2).toBeGreaterThan(sim.limits.idleN2 - 0.02);
+    expect(idle.thrust).toBeGreaterThan(0);
+    const mid = settled(0.6);
+    expect(mid.thrust).toBeGreaterThan(idle.thrust);
+    expect(sim.surgeCount).toBe(0);
+    // Gaz kolu boyunca itki kesin artan; tam güçte tasarım itkisi
+    const thrusts = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => {
+      sim.trim(t, 30);
+      return sim.snapshot().thrust;
+    });
+    for (let i = 1; i < thrusts.length; i++) expect(thrusts[i]).toBeGreaterThan(thrusts[i - 1]);
+    expect(Math.abs(thrusts[5] / sizeEngine(d).point.thrust - 1)).toBeLessThan(0.02);
+  }, 30000);
+});
+
+describe('turboşaft (M5a)', () => {
+  const d = ENGINE_CATALOG.turboshaft;
+
+  it('katalogda: çıkış mili var, pervane yok; tip testleri beş motoru sınar', () => {
+    expect(d.shaft).toBeDefined();
+    expect(d.prop).toBeUndefined();
+    expect(Object.keys(ENGINE_CATALOG)).toContain('turboshaft');
+    expect(sizeEngine(d).ref.shaftPower).toBeGreaterThan(0);
+  });
+
+  it('otomatik çalıştırma → tam güç: itki < 2 kN, mil gücü > %80, NP %100 ±%2', () => {
+    const sim = new EngineSim(d);
+    const seen = withEvents(sim);
+    let lightoff = -1;
+    sim.on((e) => {
+      if (e.type === 'lightoff') lightoff = e.time;
+    });
+    // App.beginAutoStart / updateAutoStart ile aynı sıra
+    Object.assign(sim.controls, { apuBleed: true, starter: true, ignition: true });
+    let peakEgt = -99;
+    run(sim, 60, () => {
+      if (!sim.controls.fuelRun && sim.N2 >= sim.limits.fuelOnMinN2 + 0.02) sim.controls.fuelRun = true;
+      peakEgt = Math.max(peakEgt, sim.egtSensor);
+    });
+    expect(lightoff).toBeGreaterThan(5);
+    expect(lightoff).toBeLessThan(40);
+    expect(seen).toContain('idle');
+    expect(seen).not.toContain('hotStart');
+    expect(peakEgt).toBeLessThan(sim.limits.egtStart);
+    sim.controls.ignition = false;
+    sim.controls.throttle = 1;
+    run(sim, 10);
+    const s = sim.snapshot();
+    const ref = sim.eng.ref;
+    expect(Math.abs(s.thrust)).toBeLessThan(2e3);
+    expect(s.propThrust).toBe(0);
+    expect(s.shaftPower / ref.shaftPower).toBeGreaterThan(0.8);
+    expect(Math.abs(s.N1 - 1)).toBeLessThan(0.02);
+    expect(s.propRpm).toBeCloseTo(s.N1 * d.shaft!.rpm, 6);
+    expect(s.thrustFrac).toBeCloseTo(s.shaftPower / ref.shaftPower, 9);
+    expect(sim.surgeCount).toBe(0);
+    // Gaz kolu gaz jeneratörünü (gücü) belirler; vali NP'yi %100'de tutar
+    sim.controls.throttle = 0.4;
+    run(sim, 10);
+    const part = sim.snapshot();
+    expect(Math.abs(part.N1 - 1)).toBeLessThan(0.02);
+    expect(part.N2).toBeLessThan(s.N2 - 0.02);
+    expect(part.shaftPower).toBeLessThan(0.8 * s.shaftPower);
+  }, 30000);
+
+  it('trim: rölantide güç türbini dönüyor, tam güçte NP %100', () => {
+    const sim = new EngineSim(d);
+    sim.trim(0, 30);
+    expect(sim.lit).toBe(true);
+    expect(sim.N2).toBeGreaterThan(sim.limits.idleN2 - 0.02);
+    sim.trim(1, 30);
+    expect(Math.abs(sim.N1 - 1)).toBeLessThan(0.02);
+    expect(sim.snapshot().shaftPower / sim.eng.ref.shaftPower).toBeGreaterThan(0.8);
+  });
 });
