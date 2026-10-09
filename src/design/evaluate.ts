@@ -113,23 +113,36 @@ function checkStages(g: EngineGraph, opts: BuildOptions): void {
   // buildEngine ile aynı sıra: grafik hatası, sonra hazır olmayan yerleşimin
   // öğretici hatası (yoksa gaz yolu yanıltıcı bir konum hatası verirdi)
   assertLayoutReady(g);
-  const gas = computeGasPath(g, sizeEngine(cycle), opts);
   const has = (t: string) => g.modules.some((m) => m.type === t);
   // Milin devrini belirleyen uç hızı düğmesi (warnings.ts spoolModule)
   const lpTip = has('fan') ? 'fan.tipSpeed' : has('lpc') ? 'lpc.tipSpeed' : 'lpt.tipSpeed';
-  for (const k of ROW_KEYS) {
-    const n = gas[k]?.stages;
-    if (n === undefined || n <= MAX_ROW_STAGES) continue;
-    const type = k === 'front' ? (has('fan') ? 'fan' : 'lpc') : k === 'booster' ? 'lpc' : k;
+  const tooMany = (type: string, n: number) => {
     const name = type === 'fan' ? 'Fan' : type.toUpperCase();
-    const tip = k === 'hpc' || k === 'hpt' ? 'hpc.tipSpeed' : lpTip;
-    throw new FlowpathError(
+    const tip = type === 'hpc' || type === 'hpt' ? 'hpc.tipSpeed' : lpTip;
+    return new FlowpathError(
       `${name} ${Number.isFinite(n) ? fmtNum(n) : String(n)} kademe istiyor (en çok ${MAX_ROW_STAGES}): uç hızı ya da kademe yüklemesi fiziksel aralığın çok dışında.`,
       'knob.range',
       type,
       [tip, `${type}.loading`],
       { value: n },
     );
+  };
+  let gas: ReturnType<typeof computeGasPath>;
+  try {
+    gas = computeGasPath(g, sizeEngine(cycle), opts);
+  } catch (e) {
+    // sizeRow'un tavanı (bozuk girdide sonsuz kademe döngüsüne karşı) burada
+    // düğmeleriyle birlikte öğretici hataya çevrilir
+    if (e instanceof FlowpathError && e.code === 'stages.invalid') {
+      const x = e.data?.value ?? NaN;
+      throw tooMany(e.group, Number.isFinite(x) ? Math.ceil(x) : x);
+    }
+    throw e;
+  }
+  for (const k of ROW_KEYS) {
+    const n = gas[k]?.stages;
+    if (n === undefined || n <= MAX_ROW_STAGES) continue;
+    throw tooMany(k === 'front' ? (has('fan') ? 'fan' : 'lpc') : k === 'booster' ? 'lpc' : k, n);
   }
 }
 

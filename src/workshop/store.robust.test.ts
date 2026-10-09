@@ -9,8 +9,10 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { parseProjectDoc } from '../design/engineDoc';
-import { knobById } from '../design/knobs';
-import type { TemplateId } from '../design/templates';
+import { evaluate } from '../design/evaluate';
+import { buildEngine } from '../design/graph';
+import { knobById, knobCtx } from '../design/knobs';
+import { TURBOFAN_GRAPH, type TemplateId } from '../design/templates';
 import { existingTemplate, referenceBuilt } from './project';
 import { WORKSHOP_STORAGE_KEY, WorkshopStore, type WorkshopStoreOptions } from './store';
 import { FAKE_DEPS, memoryStorage, rng } from './testing';
@@ -322,15 +324,28 @@ describe('#23 zarf var olan varyant değerini kapsar', () => {
 });
 
 describe('bulanık testin bulduğu: sıfır kademe yüklemesi', () => {
-  it('belgede yükleme "" (0): sonsuz kademe döngüsü yerine öğretici hata', () => {
+  it('belgede yükleme "" (0): sonsuz kademe döngüsü yok, taban aralığa kırpılır', () => {
     const d = engineDoc();
     const hpc = d.family.base.modules.find((m: Raw) => m.type === 'hpc');
     hpc.loading = '';
     const s = makeStore();
     s.startFromTemplate('turbofan');
-    expect(s.importDoc(JSON.stringify(d)).errors).toEqual([]);
-    expect(s.state.error?.raw).toMatch(/kademe sayısı/);
+    const r = s.importDoc(JSON.stringify(d));
+    expect(r.errors).toEqual([]);
+    // Taban düğme aralığına kırpılır ve bildirilir (§2.14, inceleme #5 doğrulaması)
+    expect(r.notes.some((n) => n.startsWith('Taban: HPC kademe yüklemesi'))).toBe(true);
+    const k = knobById('hpc.loading')!;
+    expect(knob(s, 'hpc.loading')).toBe(k.range!(knobCtx(s.state.graph))![0]);
+    expect(s.state.error).toBeNull();
     expect(() => s.exportDoc()).not.toThrow();
+  });
+
+  it('kırpılmamış grafikte sıfır yükleme: sonsuz döngü yerine hata', () => {
+    const g = structuredClone(TURBOFAN_GRAPH);
+    (g.modules.find((m) => m.type === 'hpc') as unknown as Raw).loading = 0;
+    expect(() => buildEngine(g)).toThrow(/kademe sayısı hesaplanamadı/);
+    const r = evaluate(g);
+    expect('error' in r && r.error.knobs).toContain('hpc.loading');
   });
 });
 
