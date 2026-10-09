@@ -66,6 +66,19 @@ interface PartEntry {
 
 const HIGHLIGHT = new THREE.Color(0x2ee6d6);
 
+/**
+ * Egzoz metalinin ısıl kızıllık çarpanı (jet borusu gaz sıcaklığıyla; 0:
+ * kızarmaz). Kurumlu iç yüz güçlü, inconel kabuk daha zayıf parlar. Kuru
+ * motorun sabit lülesi (engine/nozzle.js buildFixedNozzle) `nozzle`
+ * parçasıdır ama jet borusuyla aynı malzemeleri taşır: kızıllık lüle
+ * flanşında kesilmesin. Art yakıcılı lülenin malzemeleri (nozzleCeramic…)
+ * art yakıcı döngüsünde ayrıca işlenir.
+ */
+export function pipeGlowWeight(part: PartId, material: string): number {
+  if (part !== 'exhaust' && part !== 'nozzle') return 0;
+  return material === 'sooted' ? 1.6 : material === 'inconel' ? 0.9 : 0;
+}
+
 /* ------------------------------------------------------------------ */
 /* Alev efekti (surge / torching)                                      */
 /* ------------------------------------------------------------------ */
@@ -565,11 +578,15 @@ export class EngineVisual {
     };
     const gc = new THREE.Color();
     const hot = glow(th.pipe, gc);
-    if (this.highlighted !== 'exhaust') {
-      for (const mat of this.parts.get('exhaust')?.materials ?? []) {
-        if (mat.name !== 'sooted' && mat.name !== 'inconel') continue;
+    // Egzoz metali: jet borusu/egzoz kanalı ve kuru motorun sabit lülesi
+    // (`nozzle` parçası) aynı gaz sıcaklığıyla kızarır
+    for (const part of ['exhaust', 'nozzle'] as PartId[]) {
+      if (part === this.highlighted) continue;
+      for (const mat of this.parts.get(part)?.materials ?? []) {
+        const w = pipeGlowWeight(part, mat.name);
+        if (!w) continue;
         mat.emissive.copy(gc);
-        mat.emissiveIntensity = hot * (mat.name === 'sooted' ? 1.6 : 0.9) + snap.abLevel * 0.6;
+        mat.emissiveIntensity = hot * w + snap.abLevel * 0.6;
       }
     }
 

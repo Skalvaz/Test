@@ -150,7 +150,11 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
     const bp = graph.bypassDuct ?? { dp: 0, mach: 0.15 };
     const aBp = annulusArea(st('13'), bp.mach, AIR);
     const splitR = Math.max(hpc.tip[0], rOut) + 0.04;
-    R = Math.sqrt(splitR * splitR + aBp / Math.PI);
+    // Dış kabuk türbin gövdesini de sarar: düşük BPR'de (atölyede 0,1–0,35)
+    // çekirdek büyür, LPT ucu baypas alanından çıkan yarıçapı aşabiliyordu
+    // (jet borusu ve karıştırıcı türbin çıkışından dar kalıyordu). Şablonlarda
+    // alan koşulu baskın, R değişmez.
+    R = Math.max(Math.sqrt(splitR * splitR + aBp / Math.PI), lpt.tip[1] + 0.05);
     const fanR = lpc.tip[0] + 0.055;
     splitterZ = lpc.z1 + 0.12;
     shell = [
@@ -184,7 +188,9 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
   let exR: number;
   if (abMod) {
     // Jet borusu: kuru art yakıcıda karışmış akış (istasyon 7)
-    const liner = Math.sqrt(annulusArea(st('7'), abMod.mach, GAS) / Math.PI);
+    // Gömlek türbin çıkış kanalından dar olamaz (düşük BPR'de Mach'tan çıkan
+    // yarıçap LPT ucunun altında kalıyordu; gaz yolu içe basamak yapardı)
+    const liner = Math.max(Math.sqrt(annulusArea(st('7'), abMod.mach, GAS) / Math.PI), lpt.tip[1] + 0.01);
     exZ1 = exZ0 + abMod.lengthDiameter * 2 * liner;
     exR = liner + 0.03;
     ab = { z0: exZ0, z1: exZ1, R: exR, liner };
@@ -200,8 +206,9 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
     };
   } else {
     // Jet borusu iç yarıçapı: turbojette LPT çıkış kanalı, karışık akışta
-    // baypas kanalının dış duvarı (iki akış ortak boruda karışır)
-    const r = bypass ? R - 0.03 : lpt.tip[1] + 0.01;
+    // baypas kanalının dış duvarı (iki akış ortak boruda karışır); hiçbir
+    // zaman türbin çıkış kanalından dar değil
+    const r = Math.max(bypass ? R - 0.03 : 0, lpt.tip[1] + 0.01);
     exZ1 = exZ0 + 1.2 * r;
     exR = r + 0.03;
     jetPipe = { z0: exZ0, z1: exZ1, r };
@@ -240,10 +247,15 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
     if (n > 0) vsv.push({ z: Array.from({ length: n }, (_, i) => row.z0 + (i + 0.5) * row.pitch * 0.62), part });
   }
 
+  // Lobe'lu karıştırıcı: çekirdek/baypas sınırında; lobe tepeleri (r + amp)
+  // egzoz kanalının (jet borusu ya da art yakıcı gömleği) ve kabuğun içinde
+  // kalır. Genlik negatif olursa lobe'lar ters dönerdi (düşük BPR)
   const mixMod = moduleOf<MixerModule>(graph, 'mixer');
+  const mixWall = Math.min(R, jetPipe?.r ?? ab?.liner ?? R);
+  const mixR = Math.min(lpt.tip[1] + 0.03, mixWall - 0.01);
   const mixer =
     mixMod?.style === 'lobed'
-      ? { lobes: mixMod.lobes ?? 12, z0: lpt.z1 + 0.06, z1: coneZ0 + 0.3, r: lpt.tip[1] + 0.03, amp: 0.4 * (R - lpt.tip[1] - 0.03) }
+      ? { lobes: mixMod.lobes ?? 12, z0: lpt.z1 + 0.06, z1: coneZ0 + 0.3, r: mixR, amp: Math.max(0, Math.min(0.4 * (R - mixR), 0.8 * (mixWall - mixR))) }
       : undefined;
 
   // Motor kartı alanları: askı noktaları stand askısıyla aynı yerde, zarf

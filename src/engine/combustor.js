@@ -33,6 +33,7 @@ import { mergeStatic } from './stages.js';
 import { revolve, roundPoly } from './revolve.js';
 import { bladeQuality } from './blades.js';
 import { linerUniforms } from '../materials/engine';
+import { addPatch, clonePatched } from '../materials/weathering';
 import { keyOf, reuse } from './buildCache.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -84,9 +85,14 @@ function setLinerUniforms(c) {
   linerUniforms.uZ0.value = c.zDome;
   linerUniforms.uZ1.value = c.z1;
   if (c.cans) {
-    // Delik deseni kutunun kendi çevresine göre
+    // Delik deseni kutunun kendi çevresine göre. Kutu gömleği kendi ekseninde
+    // kurulur ve alev hep içtedir: alev tarafı her yerde eksene bakan yüz
+    // (uRMid = 0). Kutu yarıçapı (rc) verildiğinde kubbe ve daralan çıkışta
+    // (yerel yarıçap < rc) gömleğin DIŞ yüzü parlıyordu. Motor ekseni
+    // çerçevesindeki geçiş parçaları alev tarafını öznitelikle bildirir
+    // (gasSideMaterial).
     const rc = h / 2;
-    linerUniforms.uRMid.value = rc;
+    linerUniforms.uRMid.value = 0;
     linerUniforms.uN.value = 6;
     linerUniforms.uScale.value = (2 * rc) / 0.2;
   } else {
@@ -400,15 +406,21 @@ function canLiners(group, materials, c, { liner, metal, low, tw }) {
     const zt0 = zEnd - L * 0.05;
     const wall = Math.max(0.003, rc * 0.03);
     const tp = transitionPiece(c, { mid, a0: rc * 0.78 + tw + wall, z0: zt0, z1: c.z1, N, t: wall, nu: low ? 10 : 20, nt: low ? 24 : 48 });
-    group.add(atCanRing(tp, liner, N, 0, part));
+    group.add(atCanRing(tp, gasSideMaterial(liner), N, 0, part));
   } else {
-    // Geçiş kanalı: kutu çıkışlarından NGV halkasına (iç ve dış duvar)
+    // Geçiş kanalı: kutu çıkışlarından NGV halkasına (iç ve dış duvar). Motor
+    // ekseni çerçevesinde: alev tarafı öznitelikle (iç duvarda dışa bakan yüz)
     const zt0 = zEnd - L * 0.04;
     const wall = Math.max(0.004, rc * 0.03);
     const outerT = (z) => lerp(mid + rc * 0.8, c.exTip + tw, smooth((z - zt0) / (c.z1 - zt0)));
     const innerT = (z) => lerp(mid - rc * 0.8, c.exHub - tw, smooth((z - zt0) / (c.z1 - zt0)));
-    group.add(solid(shell(outerT, zt0, c.z1, wall, 12, 1), liner, part, mid + rc, 50));
-    group.add(solid(shell(innerT, zt0, c.z1, wall, 12, -1), liner, part, mid - rc, 50));
+    const duct = (center, side) => {
+      const m = solid(shell(center, zt0, c.z1, wall, 12, side), gasSideMaterial(liner), part, mid + side * rc, 50);
+      // Gaz tarafı: dış duvarda iç yüz (r = outerT), iç duvarda dış yüz (r = innerT)
+      markGasSide(m.geometry, (r, z) => side * (r - center(z)) < wall / 2);
+      return m;
+    };
+    group.add(duct(outerT, 1), duct(innerT, -1));
   }
   // Swirler kapları: her kutunun kubbesinde
   const cupR = rc * 0.32;
@@ -482,9 +494,50 @@ function transitionPiece(c, { mid, a0, z0, z1, N, t, nu, nt }) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
+  // Alev tarafı: boşluğa bakan iç yüzey (ikinci köşe takımı); dış yüzey
+  // iç kasadaki soğuk kompresör havasına bakar
+  const gas = new Float32Array(P.length / 3);
+  gas.fill(1, (nu + 1) * nt);
+  g.setAttribute('gasSide', new THREE.BufferAttribute(gas, 1));
   g.setIndex(I);
   g.computeVertexNormals();
   return g;
+}
+
+/** Gömlek shader'ına alev (gaz) tarafını bildiren köşe özniteliği: isGas(r, z) */
+function markGasSide(geo, isGas) {
+  const p = geo.attributes.position;
+  const a = new Float32Array(p.count);
+  for (let i = 0; i < p.count; i++) a[i] = isGas(Math.hypot(p.getX(i), p.getY(i)), p.getZ(i)) ? 1 : 0;
+  geo.setAttribute('gasSide', new THREE.BufferAttribute(a, 1));
+  return geo;
+}
+
+const gasSideCache = new WeakMap();
+
+/**
+ * Gömlek malzemesinin alev tarafını köşe özniteliğinden (`gasSide`) alan
+ * kopyası. Gömlek shader'ı (materials/engine.ts linerSurface) alev tarafını
+ * yerel konum ve normalden kestirir: halka gömlekte ve kendi ekseninde
+ * kurulan kutu gömleğinde doğru, ama motor ekseni çerçevesinde kurulan
+ * kutu geçiş parçalarında ve kanallarında ters yüzü (iç kasaya bakan soğuk
+ * yüzü) parlatıyordu. Adı aynı (`combustorGlow`): görsel T4 parlaması
+ * (engine/visual.ts) bunu da sürer. Kütüphane malzemesi başına bir kopya.
+ */
+function gasSideMaterial(liner) {
+  let m = gasSideCache.get(liner);
+  if (m) return m;
+  m = clonePatched(liner);
+  addPatch(m, 'liner-gas-side', (sh) => {
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float gasSide;\nvarying float vLGas;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvLGas = gasSide;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vLGas;')
+      .replace(/float lFlame = [^;]*;/, 'float lFlame = step(0.5, vLGas);');
+  });
+  gasSideCache.set(liner, m);
+  return m;
 }
 
 /** Motor ekseni etrafında örnekli yerleşim (geometri zaten +Y yarıçapında) */

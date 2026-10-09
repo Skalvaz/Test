@@ -6,3 +6,6 @@ import type { EngineModel, Materials, VisualSource } from './models';
  * `abZ`/`abR` (alev tutucu ekseni, gömlek yarıçapı) yalnız art yakıcılı motorda.
  */
 export declare function buildBareJet(materials: Materials, src: VisualSource): EngineModel & { abZ?: number; abR?: number };
+
+/** Baypas ayırıcısının profili ([r, z], z artan; splitterZ null olmayan yerleşimde) */
+export declare function splitterProfile(v: import('../design/flowpath').BareJetLayout, s: number): import('three').Vector2[];

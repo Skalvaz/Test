@@ -23,6 +23,7 @@ import { buildGasPath } from './gaspath.js';
 import { buildFixedNozzle, buildNozzle } from './nozzle.js';
 import { lobedMixer } from './mixer.js';
 import { REF_THROAT } from '../design/layouts/bare';
+import { profileAt } from '../design/flowpath';
 import { buildStandYoke } from './stand.js';
 import { createBlurDiscTexture } from '../materials/textures.js';
 import { KitBatch } from './kit.js';
@@ -44,6 +45,45 @@ import {
 } from './externals.js';
 
 const deg = THREE.MathUtils.degToRad;
+
+/**
+ * Baypas ayırıcısının profili (Vector2 [r, z], z artan): ayırıcı dudağından
+ * yanma odası çıkışına. Ön kısım fan çıkışında çekirdek girişini ayıran
+ * sabit yarıçaplı sac; yanma odası bölümünde gövdenin (gaspath.js caseAt,
+ * 8 mm et) dışında kalır ve odanın çıkışında gövdeye oturur. Türbin
+ * bölümünde baypas kanalının iç duvarı türbin gövdesinin kendisidir
+ * (F100/Spey gibi): eski profil karışma düzlemine dek sabit ~0,33 m'de
+ * uzanıyor, LPT kanatlarının ve türbin gövdesinin içinden geçiyordu.
+ *
+ * @param v  BareJetLayout (splitterZ null değil)
+ * @param s  sabit ölçülü parçaların ölçeği (şablonda 1)
+ */
+export function splitterProfile(v, s) {
+  const cb = v.gas.combustor;
+  const splitR = Math.max(v.gas.hpc.tip[0], cb.rOut) + 0.04;
+  const lip = 0.015 * s;
+  const z0 = v.splitterZ;
+  const z1 = Math.max(cb.z1, z0 + 0.2 * s);
+  // Yanma odası gövdesinin dış yüzü (kasa gaz yolu profilinden ya da
+  // gömleğin 3 cm dışından, hangisi büyükse; + et)
+  const caseZ0 = v.gas.casing[0][1];
+  const caseOut = (z) => Math.max(profileAt(v.gas.casing, z), cb.rOut + 0.03) + 0.008;
+  const land = Math.min(0.1 * s, (z1 - z0) * 0.15);
+  const n = 60;
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const z = z0 + ((z1 - z0) * i) / n;
+    // Dudak: ilk 0,1·s'de içe kıvrık
+    let r = splitR - lip * (1 - THREE.MathUtils.smoothstep(z, z0, z0 + 0.1 * s));
+    if (z >= caseZ0) {
+      const c = caseOut(z);
+      // Gövdenin 12 mm dışında; son `land` boyunca gövdeye iner (2 mm)
+      r = THREE.MathUtils.lerp(Math.max(r, c + 0.012), c + 0.002, THREE.MathUtils.smoothstep(z, z1 - land, z1));
+    }
+    pts.push(new THREE.Vector2(r, z));
+  }
+  return pts;
+}
 
 /**
  * @param src  görsel kaynak (engine/models.ts `VisualSource`): `src.layout`
@@ -141,18 +181,9 @@ export function buildBareJet(materials, src) {
   shell.name = 'engine-case';
   group.add(tagPart(shell, 'fanCase'));
 
-  // Baypas ayırıcısı (turbofan) / çekirdek iç duvarı: ayırıcı dudağından
-  // karışma düzlemine (LPT çıkışı), çekirdek gövdesinin hemen dışında
+  // Baypas ayırıcısı (turbofan): çekirdek ile baypas kanalını ayıran sac
   if (v.splitterZ !== null) {
-    const splitR = Math.max(v.gas.hpc.tip[0], v.gas.combustor.rOut) + 0.04;
-    const lip = 0.015 * s;
-    const split = new THREE.Mesh(
-      latheFromProfile(
-        smoothProfile([[splitR - lip, v.splitterZ], [splitR, v.splitterZ + 0.1 * s], [splitR - lip, v.gas.lpt.z1 + 0.06]], 40),
-        96,
-      ),
-      materials.hubMetal,
-    );
+    const split = new THREE.Mesh(latheFromProfile(splitterProfile(v, s), 96), materials.hubMetal);
     group.add(tagPart(split, 'bypassDuct'));
   }
 
