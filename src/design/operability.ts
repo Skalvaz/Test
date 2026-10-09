@@ -41,11 +41,17 @@ export function resolveOperability(g: EngineGraph, ref?: BuiltEngine): Operabili
 }
 
 /**
- * Marş torku ölçeğinin sınırları. Şartname (§2.8) ×[0,25, 4] diyordu; ama
- * mil sürüklemesi (kompresör, aksesuar) ∝ W^1,5 büyür ve ×3 hava akışında
- * gereken oran ~9'dur: 4'te kırpılan marş sürüklemeyi zor yener, motor 60
- * s'de rölantiye çıkamaz. Üst sınır 10, düğme aralığının üst ucunu (~×3)
- * karşılar.
+ * Marş torku ölçeğinin sınırları. I·ω oranı (≈ W²) ivmelendirme süresini
+ * yalnız mil sürüklemesi de aynı oranda ölçeklenirse korur; sürükleme
+ * torku (tasarım gücü / ω) ise ≈ W^1,5 değişir. Bu yüzden iki uçta da
+ * kırpma gerekir (ölçüm, otomatik çalıştırma, 60 s):
+ *  - Üst 10: şartname (§2.8) ×4 diyordu; ×3 hava akışında oran ~9 ve 4'te
+ *    kırpılan marş sürüklemeyi zor yener, rölanti yok. 10, düğme aralığının
+ *    üst ucunu (~×3) karşılar.
+ *  - Alt 0,25 (şartnameyle aynı): ×0,3'te oran ~0,09. Kırpılmasa kuru
+ *    turbojet ×1 ile aynı sürede (37 s) rölantiye çıkar, ama fanlı motorlar
+ *    (TF, MTF) sürüklemeyi yenemez, light-off olmaz. 0,25 ile küçük motor
+ *    daha çabuk çalışır (kuru TJ ×0,3: rölanti 14 s): süre korunmaz.
  */
 const STARTER_CLAMP: [number, number] = [0.25, 10];
 
@@ -75,10 +81,11 @@ function propJ(g: EngineGraph, gas: GasPath, mass: MassBreakdown): number {
  * Referans aileye (şablona) göre ölçeklenmiş çalışabilirlik (§2.8):
  *  - Atalet: I_s = I_s,ref · J_s / J_s,ref (J: rotorInertia, LP'de + pervane)
  *  - Marş torku: τ = τ_ref · (I_hp/I_hp,ref) · (n2/n2_ref), STARTER_CLAMP
- *    (marşın ivmelendirme süresi I·ω/τ korunur)
+ *    ile kırpılır (ivmelendirme süresi I·ω/τ yalnız kırpma içinde korunur)
  *  - Kompresör haritası, limitler (EGT malzeme sınırıdır, kaydırılmaz),
  *    marşın diğer alanları: referanstan aynen
- *  - `g.ops` alan alan üstüne yazar (şablon ya da uzman düzeltmesi)
+ *  - `g.ops` alan alan üstüne yazar (uzman düzeltmesi); atalet ve marşta
+ *    referansla aynı alt alanlar şablondan miras sayılır, ölçek kalır
  * Şablonun kendisine (ops'suz) uygulanınca bütün oranlar tam 1: aynı
  * hesap aynı sayıları verir. Aksesuar gücü ayrı: resolveAccessoryPower.
  */
@@ -100,9 +107,19 @@ export function deriveOperability(
     starterTorque: refOps.start.starterTorque * Math.min(STARTER_CLAMP[1], Math.max(STARTER_CLAMP[0], kStart)),
   };
   const o: Operability = { inertia, hpcMap: { ...refOps.hpcMap }, limits: { ...refOps.limits }, start };
-  // Grafiğin kendi alanları (verilmiş olanlar) üstüne yazar
+  const out = o as unknown as Record<string, unknown>;
+  // Grafiğin kendi alanları (verilmiş olanlar) üstüne yazar. Ölçeklenen
+  // alanlarda (atalet, marş) alt alan düzeyinde: şablondan klonlanan grafik
+  // `ops`'u referansın değerleriyle aynen taşır; referansla aynı alt alan
+  // miras sayılır ve ölçeklenmiş değer kalır, yalnız farklı olanlar uzman
+  // düzeltmesidir. Şablonun kendisinde ölçek 1 olduğundan sonuç aynı.
   for (const [k, v] of Object.entries(g.ops ?? {}) as [keyof Operability, unknown][]) {
-    if (v !== undefined) (o as unknown as Record<string, unknown>)[k] = typeof v === 'object' && v ? { ...v } : v;
+    if (v === undefined) continue;
+    if ((k === 'inertia' || k === 'start') && typeof v === 'object' && v) {
+      const inherited = refOps[k] as unknown as Record<string, unknown>;
+      const own = Object.entries(v).filter(([f, x]) => x !== undefined && x !== inherited[f]);
+      out[k] = { ...(out[k] as object), ...Object.fromEntries(own) };
+    } else out[k] = typeof v === 'object' && v ? { ...v } : v;
   }
   return o;
 }

@@ -9,12 +9,18 @@ import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOPROP_GRAPH } from '../des
 import type { CombustorModule, CompressorModule, EngineGraph, EngineModule, InletModule, NozzleModule } from '../design/types';
 import { ambient, isaStatic } from './atmosphere';
 import { computeCycle, surgeFuelFlow } from './cycle';
-import { DEFAULT_DESIGN, ENGINE_CATALOG, registerCatalogDesign, sizeEngine, type EngineDesign, type EngineKind } from './design';
+import { DEFAULT_DESIGN, ENGINE_CATALOG, MIXER_IMBALANCE_LOSS, registerCatalogDesign, sizeEngine, type EngineDesign, type EngineKind } from './design';
 import { EngineSim, LIMITS, type SimEventType } from './engineSim';
 
 /* ------------------------------------------------------------------ */
 /* M5a tasarımları (grafikten)                                         */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Ağır (sim koşan) testlerin süre sınırı. Testteki sınır CLI/config
+ * `testTimeout`'unu ezer: yük altında (CPU %100) bir koşu ~65 s sürebiliyor.
+ */
+const HEAVY = 120_000;
 
 const rpmOf = (w: number) => (w * 60) / (2 * Math.PI);
 const modOf = <T extends EngineModule>(g: EngineGraph, t: T['type']) => g.modules.find((m) => m.type === t) as T;
@@ -364,7 +370,7 @@ describe('motor tipleri', () => {
   });
 
   it.each(['militaryTurbofan', 'turbojet'] as EngineKind[])(
-    '%s: art yakıcı itkiyi ≥%%40 artırır, lüle açılır, çekirdek etkilenmez',
+    '%s: art yakıcı itkiyi en az yüzde 40 artırır, lüle açılır, çekirdek etkilenmez',
     (kind) => {
       const { sim, seen } = start(kind);
       sim.controls.throttle = 1;
@@ -443,11 +449,11 @@ describe('art yakıcısız karışık akış (M5a)', () => {
     return (s['13'].P * (1 - d.bypassDuctDP)) / s['5'].P;
   };
   /**
-   * Baypas oranını P19t = P5 olacak şekilde ikiye bölme ile ayarlar: BPR
-   * arttıkça LPT daha çok iş çeker, P5 düşer. Çekirdekte basınç kalmayan
+   * Baypas oranını P19t/P5 = target olacak şekilde ikiye bölme ile ayarlar:
+   * BPR arttıkça LPT daha çok iş çeker, P5 düşer. Çekirdekte basınç kalmayan
    * (DesignError) nokta "P5 çok düşük" sayılır.
    */
-  function balanced(d: EngineDesign): EngineDesign {
+  function balanced(d: EngineDesign, target = 1): EngineDesign {
     const ratio = (bpr: number) => {
       try {
         return mixerPR({ ...d, bypassRatio: bpr });
@@ -455,15 +461,18 @@ describe('art yakıcısız karışık akış (M5a)', () => {
         return Infinity;
       }
     };
-    let lo = 0.05;
+    let lo = 0.02;
     let hi = 15;
     for (let i = 0; i < 60; i++) {
       const m = (lo + hi) / 2;
-      if (ratio(m) < 1) lo = m;
+      if (ratio(m) < target) lo = m;
       else hi = m;
     }
     return { ...d, bypassRatio: (lo + hi) / 2 };
   }
+  /** Karışma kazancı: aynı tasarımın ayrık akışlı lülelerine göre itki oranı − 1 */
+  const gain = (d: EngineDesign, mixingEff: number, loss: number) =>
+    sizeEngine(withEta(d, mixingEff, loss)).point.thrust / sizeEngine({ ...d, mixer: undefined }).point.thrust - 1;
   const designs: [string, EngineDesign][] = [
     ['kaportalı BPR 6,5', designOf(mixedTurbofanGraph())],
     ['çıplak BPR 0,68', designOf(dryLowBypassGraph())],
@@ -482,7 +491,7 @@ describe('art yakıcısız karışık akış (M5a)', () => {
     expect(buildEngine(MILITARY_TURBOFAN_GRAPH).design.mixer).toBeUndefined();
   });
 
-  it.each(designs)('%s: itki ayrık jetler (η=0) ile tam karışım (η=1) arasında; lobe\'lu > düz', (_n, d0) => {
+  it.each(designs)('%s: itki ayrık jetler (η=0) ile tam karışım (η=1) arasında; aynı kayıpta lobe\'lu > düz', (_n, d0) => {
     for (const d of [d0, balanced(d0)]) {
       const F = (eta: number) => sizeEngine(withEta(d, eta)).point.thrust;
       const [sep, full, conf, lobed] = [F(0), F(1), F(0.85), F(0.97)];
@@ -493,9 +502,36 @@ describe('art yakıcısız karışık akış (M5a)', () => {
         expect(f).toBeLessThan(hi);
       }
     }
-    // Basınçlar dengeliyken karışma kazanır: aynı kayıpta lobe'lu düzden iyi
+    // Basınçlar dengeliyken karışma kazanır: aynı kayıpta (şablon §3.4:
+    // ikisi de 0,01) lobe'lu düzden iyi
     const b = balanced(d0);
     expect(sizeEngine(withEta(b, 0.97)).point.thrust).toBeGreaterThan(sizeEngine(withEta(b, 0.85)).point.thrust);
+  });
+
+  // Sihirbaz varsayılanları (§6.3: düz 0,01, lobe'lu 0,015) düşük baypasta
+  // lobe'luyu öne koyar. Yüksek baypasta (BPR ~7) tam karışma kazancı ~%2,4
+  // olduğundan η farkı (0,12) ancak ~0,0026 ek kaybı karşılar: orada lobe'lu
+  // ancak kaybı ≤ ~0,012 iken düzden iyidir (entegratör notu, defaults.ts).
+  it('düşük baypasta (BPR 0,68) sihirbaz kayıplarıyla da lobe\'lu > düz', () => {
+    const b = balanced(designs[1][1]);
+    expect(gain(b, 0.97, 0.015)).toBeGreaterThan(gain(b, 0.85, 0.01));
+    const hb = balanced(designs[0][1]);
+    expect(gain(hb, 0.97, 0.012)).toBeGreaterThan(gain(hb, 0.85, 0.01));
+  });
+
+  it.each(designs)('%s: karışma kazancı P19t ≈ P5\'te dengesiz karıştırıcıdakinden büyük', (_n, d0) => {
+    expect(MIXER_IMBALANCE_LOSS).toBeGreaterThan(0);
+    const eta = d0.mixer!.mixingEff;
+    const loss = d0.mixer!.loss;
+    const atBalance = gain(balanced(d0, 1), eta, loss);
+    // Aynı tasarım ailesinde yalnız BPR ile P19t/P5 kaydırılır
+    for (const r of [0.6, 1.5]) {
+      const d = balanced(d0, r);
+      expect(Math.abs(mixerPR(d) / r - 1)).toBeLessThan(1e-3);
+      expect(gain(d, eta, loss)).toBeLessThan(atBalance);
+    }
+    // Dengede ek kayıp yok: kazanç pozitif
+    expect(atBalance).toBeGreaterThan(0);
   });
 
   it.each(designs)('%s: P19t ≈ P5\'te karışma kazancı > 0 (ayrık akışlı lülelere göre)', (_n, d0) => {
@@ -511,7 +547,7 @@ describe('art yakıcısız karışık akış (M5a)', () => {
     expect(mixed / separate - 1).toBeLessThan(0.06);
   });
 
-  it.each(designs)('%s: computeCycle(1, 1, Wf) tasarım itkisini ±%%1, T4\'ü ±25 K verir', (_n, d) => {
+  it.each(designs)('%s: computeCycle(1, 1, Wf) tasarım itkisini yüzde 1, T4\'ü 25 K içinde verir', (_n, d) => {
     const e = sizeEngine(d);
     const c = computeCycle({ eng: e, amb, N1: 1, N2: 1, wf: e.ref.Wf, lit: true, surging: false });
     expect(Math.abs(c.netThrust / e.point.thrust - 1)).toBeLessThan(0.01);
@@ -521,7 +557,7 @@ describe('art yakıcısız karışık akış (M5a)', () => {
     expect(c.surgeMargin).toBeGreaterThan(0.1);
   });
 
-  it.each(designs)('%s: rölanti ve %%60 gaz trim\'i yakınsar, itki gazda monoton', (_n, d) => {
+  it.each(designs)('%s: rölanti ve 0,6 gaz trim\'i yakınsar, itki gazda monoton', (_n, d) => {
     const sim = new EngineSim(d);
     const settled = (throttle: number) => {
       sim.trim(throttle, 30);
@@ -538,14 +574,17 @@ describe('art yakıcısız karışık akış (M5a)', () => {
     const mid = settled(0.6);
     expect(mid.thrust).toBeGreaterThan(idle.thrust);
     expect(sim.surgeCount).toBe(0);
-    // Gaz kolu boyunca itki kesin artan; tam güçte tasarım itkisi
+    // Gaz kolu boyunca itki kesin artan; tam güçte tasarım itkisi. Her
+    // nokta soğuk motordan: trim önceki durumdan devam eder ve büyük
+    // ataletli LP mili tam güçten 30 s'de rölantiye oturmaz (geçmişe bağlı)
     const thrusts = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) => {
-      sim.trim(t, 30);
-      return sim.snapshot().thrust;
+      const s = new EngineSim(d);
+      s.trim(t, 30);
+      return s.snapshot().thrust;
     });
     for (let i = 1; i < thrusts.length; i++) expect(thrusts[i]).toBeGreaterThan(thrusts[i - 1]);
     expect(Math.abs(thrusts[5] / sizeEngine(d).point.thrust - 1)).toBeLessThan(0.02);
-  }, 30000);
+  }, HEAVY);
 });
 
 describe('turboşaft (M5a)', () => {
@@ -572,7 +611,10 @@ describe('turboşaft (M5a)', () => {
       if (!sim.controls.fuelRun && sim.N2 >= sim.limits.fuelOnMinN2 + 0.02) sim.controls.fuelRun = true;
       peakEgt = Math.max(peakEgt, sim.egtSensor);
     });
-    expect(lightoff).toBeGreaterThan(5);
+    // Şartname (§7.1 P1) light-off 20–40 s ister; bunu turboşaft şablonunun
+    // (P7) marş değerleri sağlar. Şablon gelene dek deneme turboşaftı TP'nin
+    // marşını kullanır (light-off ~12 s): alt sınır yalnız şablonla zorlanır.
+    expect(lightoff).toBeGreaterThan(TEMPLATES.turboshaft ? 20 : 5);
     expect(lightoff).toBeLessThan(40);
     expect(seen).toContain('idle');
     expect(seen).not.toContain('hotStart');
@@ -596,7 +638,7 @@ describe('turboşaft (M5a)', () => {
     expect(Math.abs(part.N1 - 1)).toBeLessThan(0.02);
     expect(part.N2).toBeLessThan(s.N2 - 0.02);
     expect(part.shaftPower).toBeLessThan(0.8 * s.shaftPower);
-  }, 30000);
+  }, HEAVY);
 
   it('trim: rölantide güç türbini dönüyor, tam güçte NP %100', () => {
     const sim = new EngineSim(d);

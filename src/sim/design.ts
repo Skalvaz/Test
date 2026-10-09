@@ -152,6 +152,27 @@ export function mixDry(
   return { W, T, P, gas: { cp, R, gamma: cp / (cp - R) } };
 }
 
+/**
+ * Karıştırıcıda toplam basınç dengesizliğinin kayıp katsayısı (k). Kütle
+ * ağırlıklı toplam basınç, farklı basınçtaki akımları kayıpsız "eşitler":
+ * jet hızı basınçla iç bükey arttığı için dengesizlik büyüdükçe karışma
+ * kazancı yapay olarak artardı. Gerçekte yüksek basınçlı akımın fazla
+ * dinamik basıncı kayma tabakasında harcanır ve kazanç P19t ≈ P5'te en
+ * büyüktür. k, P19t/P5 = 0,6 ve 1,25'te kazancı dengedekinin altına indirir
+ * (sim.test.ts); uyarı sınırlarında (0,85 / 1,20) ek kayıp ~%1.
+ */
+export const MIXER_IMBALANCE_LOSS = 0.4;
+
+/**
+ * Art yakıcısız karıştırıcının toplam basınç kaybı: sabit kayıp (stil,
+ * dinamik basınç) + dengesizlik kaybı k·ln²(P19t/P5). Dengede ek kayıp yok.
+ */
+export function mixerLoss(base: number, pHot: number, pCold: number): number {
+  if (!(pHot > 0 && pCold > 0)) return base;
+  const l = Math.log(pCold / pHot);
+  return Math.min(0.5, base + MIXER_IMBALANCE_LOSS * l * l);
+}
+
 /** Pervane ve redüksiyon dişli kutusu (turboprop) */
 export interface PropellerSpec {
   diameter: number;
@@ -645,13 +666,15 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
     // tasarımda sabitlenir (A9mix). Tasarım dışı P5 eşleşmesi art yakıcılı
     // motordaki gibi sanal çekirdek lülesiyle (A9) yapılır; A9mix kısıtı
     // uygulanmaz (bilinen basitleştirme, docs/M5A-SPEC.md §2.9).
+    // Kayıp: sabit + P19t/P5 dengesizliği (mixerLoss)
     const mx = d.mixer;
-    const mix = mixDry(W4, T5, P5, W13, T13, P19t, mx.loss);
+    const loss = mixerLoss(mx.loss, P5, P19t);
+    const mix = mixDry(W4, T5, P5, W13, T13, P19t, loss);
     const noz = convergentNozzle(mix.P, mix.T, amb.P0, mix.gas);
     A9mix = mix.W / noz.massFlux;
     const mixed = mix.W * (noz.velocity * d.nozzleCv + noz.pressureThrustPerFlow);
     thrust =
-      mixedJetThrust(mixed, { W: W4, T: T5, P: P5 }, { W: W13, T: T13, P: P19t }, 1 - mx.loss, amb.P0, d.nozzleCv, mx.mixingEff, 0, 'convergent') -
+      mixedJetThrust(mixed, { W: W4, T: T5, P: P5 }, { W: W13, T: T13, P: P19t }, 1 - loss, amb.P0, d.nozzleCv, mx.mixingEff, 0, 'convergent') -
       W2 * amb.V0;
     thrustWet = thrust;
     st7 = { T: mix.T, P: mix.P, W: mix.W };

@@ -17,7 +17,7 @@
 
 import type { Ambient } from './atmosphere';
 import type { SizedEngine, Stations } from './design';
-import { hptCapacityFactor, mixDry, mixedJetThrust } from './design';
+import { hptCapacityFactor, mixDry, mixedJetThrust, mixerLoss } from './design';
 import {
   AIR,
   GAS,
@@ -383,12 +383,15 @@ export function computeCycle(input: CycleInput): CycleResult {
     // gibi): oranı düzeltilmiş akışın karesiyle. Sabit oran rölantide
     // lüleye kalan küçük basınç farkını yer, itki sıfıra iner. Tasarım
     // noktasında (7 istasyonu, kayıp öncesi basınçla) tam mx.loss.
+    // Üstüne P19t/P5 dengesizlik kaybı (mixerLoss, design.ts): basınç
+    // oranından, dinamik basınç ölçeği olmadan.
     const mx = d.mixer;
     const raw = mixDry(W4, T5, P5, W13, T13, P19t, 0);
-    const s7 = eng.point.stations['7'];
-    const fpRef = (s7.W * Math.sqrt(s7.T)) / (s7.P / (1 - mx.loss));
+    const st = eng.point.stations;
+    const lossDesign = mixerLoss(mx.loss, st['5'].P, st['13'].P * (1 - d.bypassDuctDP));
+    const fpRef = (st['7'].W * Math.sqrt(st['7'].T)) / (st['7'].P / (1 - lossDesign));
     const fp = raw.P > 0 ? (raw.W * Math.sqrt(raw.T)) / raw.P : 0;
-    const loss = mx.loss * Math.min(2, (fp / fpRef) ** 2);
+    const loss = mx.loss * Math.min(2, (fp / fpRef) ** 2) + mixerLoss(0, P5, P19t);
     const mix = { W: raw.W, T: raw.T, P: raw.P * (1 - loss) };
     const noz = convergentNozzle(mix.P, mix.T, P0, raw.gas);
     mixedThrust = mixedJetThrust(

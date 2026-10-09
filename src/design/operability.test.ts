@@ -15,6 +15,12 @@ import { deriveOperability, opsOf, rotorInertia } from './operability';
 import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_GRAPH, TURBOPROP_GRAPH } from './templates';
 import type { EngineGraph, NozzleModule, Operability } from './types';
 
+/**
+ * Ağır (sim koşan) testlerin süre sınırı. Testteki sınır CLI/config
+ * `testTimeout`'unu ezer: yük altında (CPU %100) bir koşu ~65 s sürebiliyor.
+ */
+const HEAVY = 120_000;
+
 const TEMPLATE_GRAPHS: [string, EngineGraph][] = [
   ['turbojet', TURBOJET_GRAPH],
   ['militaryTurbofan', MILITARY_TURBOFAN_GRAPH],
@@ -67,6 +73,27 @@ describe('deriveOperability', () => {
     expect(b.design.inertia.hp).toBeGreaterThan(ref.design.inertia.hp * 2);
     expect(b.design.start.starterFadeN2).toBe(ref.design.start.starterFadeN2);
     expect(b.design.start.farHigh).toBe(ref.design.start.farHigh);
+  });
+
+  it('şablon klonu (ops referansla aynı) ölçeklenir; yalnız farklı alt alan uzman düzeltmesidir', () => {
+    // Atölye şablondan başlarken grafik ops'u aynen taşır: miras sayılmalı
+    const ref = buildEngine(TURBOFAN_GRAPH);
+    const clone = structuredClone(TURBOFAN_GRAPH);
+    delete clone.kind;
+    clone.massFlow *= 3;
+    const scaled = buildEngine(withoutOps(TURBOFAN_GRAPH, 3), { reference: ref }).design;
+    const b = buildEngine(clone, { reference: ref }).design;
+    expect(b.inertia).toEqual(scaled.inertia);
+    expect(b.start).toEqual(scaled.start);
+    expect(b.inertia.hp).toBeGreaterThan(ref.design.inertia.hp * 5);
+    expect(b.start.starterTorque).toBeGreaterThan(ref.design.start.starterTorque * 5);
+    // Uzman düzeltmesi (referanstan farklı alt alan) üstüne yazar, diğeri ölçekli kalır
+    clone.ops = { ...clone.ops, start: { ...clone.ops!.start!, starterTorque: 1234 } };
+    const own = buildEngine(clone, { reference: ref }).design;
+    expect(own.start.starterTorque).toBe(1234);
+    expect(own.inertia).toEqual(scaled.inertia);
+    // Şablonun kendisi (ops'lu) referansıyla: kimlik
+    expect(maxRelDiff(opsOf(buildEngine(TURBOFAN_GRAPH, { reference: ref }).design), opsOf(ref.design))).toBeLessThan(1e-12);
   });
 
   it('atalet geometrik ölçekle ~W^2,5 büyür; marş torku I·ω ile, sınırlar içinde', () => {
@@ -176,5 +203,25 @@ describe('ölçeklenmiş kuru turbojet (×0,3 / ×1 / ×3 hava akışı)', () =>
     expect(tFull).toBeGreaterThan(0);
     expect(sim.surgeCount).toBe(0);
     expect(seen).not.toContain('egtRedline');
-  }, 30000);
+  }, HEAVY);
+
+  // Alt kırpma (×0,25) fanlı motor için gerekli: kırpılmamış oran (~0,09)
+  // ×0,3 turbofanda sürüklemeyi yenemez, light-off olmaz (operability.ts)
+  it('×0,3 turbofan (alt kırpmada): 60 s içinde rölanti, sıcak çalıştırma yok', () => {
+    const ref = buildEngine(TURBOFAN_GRAPH);
+    const d = buildEngine(withoutOps(TURBOFAN_GRAPH, 0.3), { reference: ref }).design;
+    expect(d.start.starterTorque).toBeCloseTo(0.25 * ref.design.start.starterTorque, 9);
+    const sim = new EngineSim(d);
+    const seen: SimEventType[] = [];
+    sim.on((e) => seen.push(e.type));
+    Object.assign(sim.controls, { apuBleed: true, starter: true, ignition: true });
+    for (let t = 0; t < 60; t += 1 / 60) {
+      if (!sim.controls.fuelRun && sim.N2 >= sim.limits.fuelOnMinN2 + 0.02) sim.controls.fuelRun = true;
+      sim.step(1 / 60);
+    }
+    expect(seen).toContain('lightoff');
+    expect(seen).toContain('idle');
+    expect(seen).not.toContain('hotStart');
+    expect(seen).not.toContain('hungStart');
+  }, HEAVY);
 });
