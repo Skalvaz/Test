@@ -153,10 +153,22 @@ describe('düğme kataloğu', () => {
     expect(knobById('bypassDuct.mach')!.set(g, 0.4).bypassDuct?.mach).toBe(0.4);
   });
 
-  it('bağlamın mimarisi tembel: okunmadıkça architecture.ts çağrılmaz', () => {
+  it('bağlamın mimarisi tembel: değer ya da türetici verilir, okunmadıkça çağrılmaz', () => {
     expect(() => knobCtx(TURBOJET_GRAPH)).not.toThrow();
+    expect(() => knobCtx(TURBOJET_GRAPH).arch).toThrow(/mimari verilmedi/);
     const ctx = knobCtx(TURBOJET_GRAPH, { arch: { output: 'thrust' } as never });
     expect(ctx.arch.output).toBe('thrust');
+    let calls = 0;
+    const lazy = knobCtx(TURBOJET_GRAPH, {
+      arch: () => {
+        calls++;
+        return { output: 'thrust' } as never;
+      },
+    });
+    expect(calls).toBe(0);
+    expect(lazy.arch.output).toBe('thrust');
+    expect(lazy.arch.output).toBe('thrust');
+    expect(calls).toBe(1);
   });
 
   it('adım: log ölçekte görece, aralık sonunda geri', () => {

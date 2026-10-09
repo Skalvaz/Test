@@ -16,7 +16,6 @@
 
 import { DesignError } from '../sim/design';
 import type { Architecture } from './architecture';
-import { architectureOf } from './architecture';
 import type { Family } from './core/family';
 import { clampKnob, getPath, setPath, type KnobDef, type KnobValue, type Unit } from './core/knob';
 import { buildEngine, type BuildOptions, type BuiltEngine } from './graph';
@@ -948,18 +947,29 @@ export function clampEngineKnob(k: EngineKnob, v: KnobValue, ctx: KnobCtx): Knob
 }
 
 /**
- * Grafiğin düğme bağlamı. Mimari (`arch`) tembel: yalnız okunursa
- * architecture.ts'ten türetilir (aralıklar yalnız `traits` okur).
+ * Grafiğin düğme bağlamı. Aralıklar yalnız `traits` okur; mimari (`arch`)
+ * tembeldir ve yalnız verilmişse okunabilir: değer ya da `architectureOf`
+ * gibi bir türetici. knobs.ts architecture.ts'i içe AKTARMAZ: graph.ts →
+ * engineDoc.ts (graphRev) → knobs.ts → architecture.ts → graph.ts döngüsünde
+ * architecture.ts modül yüklenirken GRAPH_RULES'u okur ve henüz
+ * yüklenmemiş graph.ts yüzünden çöker. Mağaza (store.ts) kendi bağlamını
+ * `architectureOf` ile kurar.
  */
-export function knobCtx(g: EngineGraph, o: { family?: KnobCtx['family']; tech?: TechLimits; arch?: Architecture } = {}): KnobCtx {
+export function knobCtx(
+  g: EngineGraph,
+  o: { family?: KnobCtx['family']; tech?: TechLimits; arch?: Architecture | ((g: EngineGraph) => Architecture) } = {},
+): KnobCtx {
   const traits = deriveTraits(g);
-  let arch = o.arch;
+  let arch = typeof o.arch === 'function' ? undefined : o.arch;
+  const derive = typeof o.arch === 'function' ? o.arch : undefined;
   return {
     traits,
     tech: o.tech ?? TECH_MODERN,
     family: o.family,
     get arch(): Architecture {
-      return (arch ??= architectureOf(g));
+      if (arch) return arch;
+      if (!derive) throw new Error('knobCtx: mimari verilmedi (arch ya da architectureOf geçin).');
+      return (arch = derive(g));
     },
   };
 }
