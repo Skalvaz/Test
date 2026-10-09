@@ -11,10 +11,25 @@
  * mimariler (layouts READY=false) "yakında" diye kilitlidir.
  */
 
-import { DEFAULT_MODULES, annularCombustorFor, describeArchitecture, donorModule, familyOf, fitCans, graphFromArchitecture, graphSkeleton, referenceFor, setMassFlow, templateGraph } from './defaults';
+import { sizeEngine } from '../sim/design';
+import {
+  DEFAULT_MODULES,
+  annularCombustorFor,
+  describeArchitecture,
+  donorModule,
+  familyOf,
+  fanRangeFor,
+  fitCans,
+  graphFromArchitecture,
+  graphSkeleton,
+  massFlowRangeFor,
+  referenceFor,
+  setMassFlow,
+  templateGraph,
+} from './defaults';
 import { GraphError } from './errors';
-import { FlowpathError } from './flowpath';
-import { checkGraph, GRAPH_RULES } from './graph';
+import { computeGasPath, FlowpathError } from './flowpath';
+import { buildEngine, checkGraph, GRAPH_RULES, toEngineDesign, type BuiltEngine } from './graph';
 import { layoutNotReady } from './layouts/index';
 import { deriveTraits } from './traits';
 import { MODULE_ORDER } from './types';
@@ -65,6 +80,18 @@ export interface ArchOption {
 export type ArchChange =
   | { arch: Architecture; implied: { axis: keyof Architecture; from: unknown; to: unknown; reason: string }[] }
   | { blocked: string };
+
+/**
+ * Mimari uygulanırken seed'deki değeri korunamayan düğme (kırpıldı, motor
+ * onunla kurulamadı ya da kutular sığmadı). Kartın eksen listesi bunları
+ * göremez (grafiğe bağlı): atölye "Şunlar da değişti" bildiriminde gösterir.
+ */
+export interface ArchNote {
+  knob: string;
+  from: number;
+  to: number;
+  reason: string;
+}
 
 /* ------------------------------------------------------------------ */
 /* Grafik → mimari                                                     */
@@ -207,10 +234,40 @@ function nozzleStyleFor(a: Architecture): NozzleStyle {
  * kurulum ve lüle (§2.4 dönüşüm tablosu). Geçersiz hedef olduğu gibi
  * kurulur; kurallar buildEngine'de öğretici hata verir.
  * LP yükü değişimi burada değil (applyArchitecture: yeni gaz jeneratörü).
+ * `notes` verilirse korunamayan düğmeler (fan PR'ı, BPR) oraya yazılır.
  */
-export function reshapeGraph(g: EngineGraph, next: Architecture): EngineGraph {
+export function reshapeGraph(g: EngineGraph, next: Architecture, notes?: ArchNote[]): EngineGraph {
   const to = normalizeArchitecture(next);
   const hpc = find<CompressorModule>(g, 'hpc');
+
+  // Kurulum: giriş biçimi; fan PR'ı ve BPR ailenin aralığına (§2.10: çıplak
+  // PR 1,8–4,5 · BPR ≤ 1,5; kaportalı PR 1,3–2,0 · BPR ≥ 1; karışık
+  // kaportalı PR 1,4–2,4 · BPR 1–7). Çekirdek akışı korunur. Askeri fan
+  // (PR 3,1) kaportaya PR'ıyla girseydi BPR 1'de LPT çıkış kanalı kapanırdı.
+  const inlet = find<InletModule>(g, 'inlet');
+  if (inlet && !freeTurbine(to)) {
+    const want = to.installation === 'nacelle' ? 'nacelle' : 'bellmouth';
+    if (inlet.style !== want) {
+      const src = want === 'nacelle' ? templateGraph('turbofan') : templateGraph(to.lpLoad === 'fan' ? 'militaryTurbofan' : 'turbojet');
+      put(g, clone(find<InletModule>(src, 'inlet')!));
+    }
+    const fan = find<CompressorModule>(g, 'fan');
+    const range = fanRangeFor(to);
+    if (fan && range) {
+      const pr = clamp(fan.pr, range.pr[0], range.pr[1]);
+      if (pr !== fan.pr) {
+        notes?.push({ knob: 'fan.pr', from: fan.pr, to: pr, reason: `Bu kurulumda fan basınç oranı ${fmt(range.pr[0])}–${fmt(range.pr[1])}: sınıra çekildi.` });
+        fan.pr = pr;
+      }
+      const bpr = fan.bypassRatio ?? 0;
+      const nb = clamp(bpr, range.bpr[0], range.bpr[1]);
+      if (nb !== bpr) {
+        notes?.push({ knob: 'fan.bypassRatio', from: bpr, to: nb, reason: `Bu kurulumda baypas oranı ${fmt(range.bpr[0])}–${fmt(range.bpr[1])}: sınıra çekildi (çekirdek akışı korunur).` });
+        g.massFlow *= (1 + nb) / (1 + bpr);
+        fan.bypassRatio = nb;
+      }
+    }
+  }
 
   // Booster: çekirdeği önden besler, OPR onun basınç oranı kadar artar.
   // HPC basınç oranı ve fan.hubPRFraction olduğu gibi kalır: HP işi (dolayısıyla
@@ -221,7 +278,11 @@ export function reshapeGraph(g: EngineGraph, next: Architecture): EngineGraph {
     if (to.booster && !lpc) {
       const b = donorModule<CompressorModule>('lpc', to)!;
       delete b.tipSpeed;
-      if (to.installation === 'bare') b.pr = DEFAULT_MODULES.bareBoosterPR;
+      // Booster PR'ı mevcut fana göre: çıplak motorda ya da yüksek PR'lı
+      // (askeri) fanın arkasında yolcu TF booster'ı (1,95) fazla — askeri
+      // TF kaportaya alınınca (BPR 1) LPT çıkış kanalı kapanırdı.
+      const fanPR = find<CompressorModule>(g, 'fan')?.pr ?? 0;
+      if (to.installation === 'bare' || fanPR > DEFAULT_MODULES.boosterFanPRMax) b.pr = DEFAULT_MODULES.bareBoosterPR;
       put(g, b);
     } else if (!to.booster && lpc) {
       drop(g, 'lpc');
@@ -240,10 +301,14 @@ export function reshapeGraph(g: EngineGraph, next: Architecture): EngineGraph {
   const c = find<CombustorModule>(g, 'combustor');
   if (c && c.style !== to.combustor) convertCombustor(c, to);
 
-  // Egzoz: karıştırıcı (stil değişince varsayılanları), baypas kanalı
+  // Egzoz: karıştırıcı (stil değişince önce bağışçınınki — stili tutuyorsa
+  // kalibre kaybıyla, sihirbazla aynı motor — yoksa varsayılan), baypas kanalı
   const mixer = find<MixerModule>(g, 'mixer');
   if (to.exhaust === 'mixed') {
-    if (!mixer || (mixer.style ?? 'confluent') !== to.mixer) put(g, clone(DEFAULT_MODULES.mixer[to.mixer]));
+    if (!mixer || (mixer.style ?? 'confluent') !== to.mixer) {
+      const d = donorModule<MixerModule>('mixer', to);
+      put(g, d && (d.style ?? 'confluent') === to.mixer ? d : clone(DEFAULT_MODULES.mixer[to.mixer]));
+    }
   } else if (mixer) {
     drop(g, 'mixer');
   }
@@ -256,25 +321,6 @@ export function reshapeGraph(g: EngineGraph, next: Architecture): EngineGraph {
     if (ab) put(g, ab);
   } else if (!to.afterburner) {
     drop(g, 'afterburner');
-  }
-
-  // Kurulum: giriş biçimi; BPR kaportada ≥ 1, çıplakta ≤ 1,5 (çekirdek akışı korunur)
-  const inlet = find<InletModule>(g, 'inlet');
-  if (inlet && !freeTurbine(to)) {
-    const want = to.installation === 'nacelle' ? 'nacelle' : 'bellmouth';
-    if (inlet.style !== want) {
-      const src = want === 'nacelle' ? templateGraph('turbofan') : templateGraph(to.lpLoad === 'fan' ? 'militaryTurbofan' : 'turbojet');
-      put(g, clone(find<InletModule>(src, 'inlet')!));
-    }
-    const fan = find<CompressorModule>(g, 'fan');
-    if (fan) {
-      const bpr = fan.bypassRatio ?? 0;
-      const next = to.installation === 'nacelle' ? Math.max(bpr, 1) : Math.min(bpr, 1.5);
-      if (next !== bpr) {
-        g.massFlow *= (1 + next) / (1 + bpr);
-        fan.bypassRatio = next;
-      }
-    }
   }
 
   // Lüle: stil değişince bağışçıdan ya da varsayılandan
@@ -297,33 +343,192 @@ export function reshapeGraph(g: EngineGraph, next: Architecture): EngineGraph {
 }
 
 /**
+ * Aileler arası anlamlı düğmeler (§2.10 kimlikleri ve aralıkları): LP yükü
+ * değişince yeni gaz jeneratörüne seed'den taşınır, yeni ailenin aralığına
+ * kırpılır. Geometri düğmeleri (Mach, göbek/uç, yükleme, boy oranı, uç
+ * hızları) ailenin yerleşimine kalibre olduğu için bağışçıdan kalır.
+ */
+interface CarriedKnob {
+  id: string;
+  get(g: EngineGraph): number | undefined;
+  set(g: EngineGraph, v: number): void;
+  range(a: Architecture): [number, number];
+  int?: boolean;
+  /** Yanma odası stiline bağlı: yalnız seed'in stili hedefle aynıysa */
+  sameCombustor?: boolean;
+}
+
+function moduleKnob(type: EngineModule['type'], key: string, range: CarriedKnob['range'], extra: Partial<CarriedKnob> = {}): CarriedKnob {
+  const rec = (g: EngineGraph) => g.modules.find((m) => m.type === type) as unknown as Record<string, unknown> | undefined;
+  return {
+    id: `${type}.${key}`,
+    get: (g) => {
+      const v = rec(g)?.[key];
+      return typeof v === 'number' ? v : undefined;
+    },
+    set: (g, v) => {
+      const m = rec(g);
+      if (m) m[key] = v;
+    },
+    range,
+    ...extra,
+  };
+}
+
+const CARRIED: readonly CarriedKnob[] = [
+  moduleKnob('combustor', 'tit', () => [1000, 1900]),
+  moduleKnob('hpc', 'pr', (a) => (freeTurbine(a) ? [6, 20] : [2, 25])),
+  moduleKnob('hpc', 'eff', () => [0.8, 0.94]),
+  moduleKnob('hpt', 'eff', () => [0.82, 0.94]),
+  moduleKnob('lpt', 'eff', () => [0.82, 0.94]),
+  moduleKnob('combustor', 'eff', () => [0.97, 0.999]),
+  // Referans hız taşınmaz: aileye özgü boyutlandırma (TJ 43, TF/TP 8–20 m/s);
+  // turbofanınki turbojete taşınınca yanma odası iki kat büyür, kutular sığmaz.
+  moduleKnob('combustor', 'dp', () => [0.02, 0.08], { sameCombustor: true }),
+  moduleKnob('combustor', 'cans', () => [6, 16], { sameCombustor: true, int: true }),
+  moduleKnob('afterburner', 't7Max', () => [1600, 2200]),
+  moduleKnob('afterburner', 'eta', () => [0.8, 0.95]),
+  {
+    id: 'engine.mechEff',
+    get: (g) => g.mechEff,
+    set: (g, v) => {
+      g.mechEff = v;
+    },
+    range: () => [0.97, 0.995],
+  },
+];
+
+const fmt = (v: number) => Number(v.toPrecision(4)).toLocaleString('tr-TR');
+
+/**
+ * Grafik kurulabiliyor mu (kutular sığdırılmış kopyada). Yerleşimi henüz
+ * olmayan ailede gaz yoluna kadar denetlenir; o da yoksa doğrulanamaz.
+ */
+function buildCheck(g: EngineGraph, reference: BuiltEngine): { ok: true } | { ok: false; why: string } | { ok: null } {
+  const t = fitCans(clone(g), reference);
+  try {
+    buildEngine(t, { reference });
+    return { ok: true };
+  } catch (e) {
+    if (!(e instanceof FlowpathError && e.code === 'layout.notReady')) return { ok: false, why: (e as Error).message };
+  }
+  try {
+    computeGasPath(t, sizeEngine(toEngineDesign(t, { reference })));
+    return { ok: true };
+  } catch {
+    return { ok: null };
+  }
+}
+
+/**
+ * LP yükü değişimi: gaz jeneratörü yeni ailenin bağışçısından (fanlı
+ * turbofanın HPC'si turboprobun santrifüjlü HPC'sine dönüşemez), ortak
+ * düğmeler (CARRIED) seed'den. Taşınan değerle motor kurulamıyorsa
+ * bağışçının değeri kalır ve nedeni nota yazılır.
+ */
+function changeLpLoad(seed: EngineGraph, from: Architecture, to: Architecture, notes: ArchNote[]): EngineGraph {
+  const tpl = templateGraph(familyOf(to));
+  const g = graphFromArchitecture(to, { massFlow: tpl.massFlow, name: seed.name });
+  const reference = referenceFor(to);
+
+  // Yeni fanın baypas oranı tablodan (çıplak 0,6 / kaportalı 6)
+  const fan = find<CompressorModule>(g, 'fan');
+  if (fan && from.lpLoad !== 'fan') fan.bypassRatio = DEFAULT_MODULES.newFanBPR[to.installation];
+
+  // Çekirdek akışı korunur; ailenin hava akışı aralığına kırpılır (§2.10)
+  const want = (seed.massFlow / (1 + bprOf(seed))) * (1 + bprOf(g));
+  const [lo, hi] = massFlowRangeFor(to);
+  const W = clamp(want, lo, hi);
+  setMassFlow(g, W, tpl.massFlow);
+  if (Math.abs(W / want - 1) > 1e-9) {
+    notes.push({ knob: 'engine.massFlow', from: want, to: W, reason: `Yeni ailenin hava akışı aralığı ${fmt(lo)}–${fmt(hi)} kg/s: çekirdek akışı korunamadı.` });
+  }
+
+  // LPC ↔ fan uç hızı
+  const oldFront = find<CompressorModule>(seed, from.lpLoad === 'fan' ? 'fan' : 'lpc');
+  if (from.lpLoad === 'lpc' && to.lpLoad === 'fan' && oldFront?.tipSpeed) fan!.tipSpeed = clamp(oldFront.tipSpeed, 300, 560);
+  if (from.lpLoad === 'fan' && to.lpLoad === 'lpc' && oldFront?.tipSpeed) find<CompressorModule>(g, 'lpc')!.tipSpeed = clamp(oldFront.tipSpeed, 300, 520);
+
+  // Ortak düğmeler: önce bağışçı değerleriyle kurulabiliyor mu (değilse doğrulanamaz, hepsi taşınır)
+  const verify = buildCheck(g, reference).ok === true;
+  const sameComb = find<CombustorModule>(seed, 'combustor')?.style === to.combustor;
+  for (const k of CARRIED) {
+    if (k.sameCombustor && !sameComb) continue;
+    const old = k.get(seed);
+    const donor = k.get(g);
+    if (old === undefined || donor === undefined) continue;
+    const [a, b] = k.range(to);
+    let v = clamp(old, a, b);
+    if (k.int) v = Math.round(v);
+    if (v !== donor) {
+      k.set(g, v);
+      if (verify) {
+        const r = buildCheck(g, reference);
+        if (r.ok === false) {
+          k.set(g, donor);
+          notes.push({ knob: k.id, from: old, to: donor, reason: `Bu değerle yeni motor kurulamıyor (${r.why}): ailenin değeri kullanıldı.` });
+          continue;
+        }
+      }
+    }
+    if (v !== old) notes.push({ knob: k.id, from: old, to: v, reason: `Yeni ailenin aralığı ${fmt(a)}–${fmt(b)}: sınıra çekildi.` });
+  }
+  return g;
+}
+
+/**
  * Mimariye uygun grafik: modül ekler/çıkarır, ortak düğmeleri `seed`den
  * taşır. Çekirdek akışı korunur: massFlow' = massFlow·(1+bpr')/(1+bpr).
  *
- * LP yükü değişince gaz jeneratörü yeni ailenin şablonundan gelir (fanlı
- * turbofanın HPC'si turboprobun santrifüjlü HPC'sine dönüşemez); tablodaki
- * taşımalar uygulanır (LPC↔fan uç hızı). Aile değişince `ops` atılır:
- * çalışabilirlik yeni ailenin şablonundan ölçeklenir.
+ * LP yükü değişince gaz jeneratörü yeni ailenin şablonundan gelir, ortak
+ * düğmeler (T4, HPC PR, verimler, yanma odası) seed'den taşınır; tablodaki
+ * taşımalar (LPC↔fan uç hızı, yeni fanın BPR'ı) uygulanır. Aile değişince
+ * `ops` atılır: çalışabilirlik yeni ailenin şablonundan ölçeklenir.
+ * Korunamayan değerler `notes`'ta (kırpma, kurulamama, kutu sayısı).
  */
-export function applyArchitecture(seed: EngineGraph, next: Architecture): EngineGraph {
+export function applyArchitectureReport(seed: EngineGraph, next: Architecture): { graph: EngineGraph; notes: ArchNote[] } {
   const from = architectureOf(seed);
   const to = normalizeArchitecture(next);
+  const notes: ArchNote[] = [];
+  let g: EngineGraph;
   if (from.lpLoad !== to.lpLoad) {
-    const core = seed.massFlow / (1 + bprOf(seed));
-    const tpl = templateGraph(familyOf(to));
-    const g = graphFromArchitecture(to, { massFlow: tpl.massFlow, name: seed.name });
-    setMassFlow(g, core * (1 + bprOf(g)), tpl.massFlow);
-    const oldFront = find<CompressorModule>(seed, from.lpLoad === 'fan' ? 'fan' : 'lpc');
-    if (from.lpLoad === 'lpc' && to.lpLoad === 'fan' && oldFront?.tipSpeed) find<CompressorModule>(g, 'fan')!.tipSpeed = clamp(oldFront.tipSpeed, 300, 560);
-    if (from.lpLoad === 'fan' && to.lpLoad === 'lpc' && oldFront?.tipSpeed) find<CompressorModule>(g, 'lpc')!.tipSpeed = clamp(oldFront.tipSpeed, 300, 520);
-    return g;
+    g = changeLpLoad(seed, from, to, notes);
+  } else {
+    g = reshapeGraph(clone(seed), to, notes);
+    delete g.kind;
+    if (familyOf(from) !== familyOf(to)) delete g.ops;
+    if (archKey(from) !== archKey(to)) g.summary = describeArchitecture(to);
   }
-  const g = reshapeGraph(clone(seed), to);
-  delete g.kind;
-  if (familyOf(from) !== familyOf(to)) delete g.ops;
-  if (from.combustor !== to.combustor) fitCans(g, referenceFor(to));
-  if (archKey(from) !== archKey(to)) g.summary = describeArchitecture(to);
-  return g;
+  // Kutular her mimari değişiminde yeniden sığdırılır: booster, kurulum ya da
+  // akış değişimi çekirdeğin ortalama yarıçapını değiştirir
+  const c = find<CombustorModule>(g, 'combustor');
+  if (c && c.style !== 'annular') {
+    const sc = find<CombustorModule>(seed, 'combustor');
+    const seedCans = sc?.style === c.style ? sc.cans : undefined;
+    const vref = c.refVelocity;
+    fitCans(g, referenceFor(to));
+    if (seedCans !== undefined && c.cans !== undefined && c.cans < seedCans) {
+      addNote(notes, { knob: 'combustor.cans', from: seedCans, to: c.cans, reason: `${seedCans} kutu yeni çekirdeğin çevresine sığmıyor: sığana dek azaltıldı.` });
+    }
+    if (c.refVelocity > vref) {
+      // Aynı LP yükünde kullanıcının değerinden (stil dönüşümü de onu değiştirmiş olabilir)
+      const was = from.lpLoad === to.lpLoad && sc ? sc.refVelocity : vref;
+      addNote(notes, { knob: 'combustor.refVelocity', from: was, to: c.refVelocity, reason: 'En az kutuyla bile çevreye sığmıyor: kutular incelsin diye referans hız artırıldı.' });
+    }
+  }
+  return { graph: g, notes };
+}
+
+/** Aynı düğmenin notu varsa ilk değeri korunur, son değer ve neden güncellenir */
+function addNote(notes: ArchNote[], n: ArchNote): void {
+  const i = notes.findIndex((x) => x.knob === n.knob);
+  if (i < 0) notes.push(n);
+  else notes[i] = { ...n, from: notes[i].from };
+}
+
+/** applyArchitectureReport'un grafiği (§2.4 sözleşmesi) */
+export function applyArchitecture(seed: EngineGraph, next: Architecture): EngineGraph {
+  return applyArchitectureReport(seed, next).graph;
 }
 
 /* ------------------------------------------------------------------ */
@@ -347,10 +552,12 @@ const ARCH_MSG = {
  */
 export function checkArchitecture(a: Architecture): GraphError | FlowpathError | null {
   const n = normalizeArchitecture(a);
-  if (n.afterburner && freeTurbine(n)) return new GraphError(ARCH_MSG.freeTurbineAb, 'arch.freeTurbineAb', 'afterburner');
+  // Önce GRAPH_RULES: buildEngine ile aynı kural ve metin (yerel kural ancak
+  // kurallar sessizse; GRAPH_RULES'a eklenince kendiliğinden devre dışı kalır)
   const g = graphSkeleton(n, { massFlow: templateGraph(familyOf(n)).massFlow, name: '' });
   const e = checkGraph(g);
   if (e) return e;
+  if (n.afterburner && freeTurbine(n)) return new GraphError(ARCH_MSG.freeTurbineAb, 'arch.freeTurbineAb', 'afterburner');
   const why = layoutNotReady(g);
   if (why) return new FlowpathError(why, 'layout.notReady', 'engine');
   return null;

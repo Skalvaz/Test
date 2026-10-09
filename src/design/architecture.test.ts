@@ -7,10 +7,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { sizeEngine } from '../sim/design';
+import { DesignError, sizeEngine } from '../sim/design';
 import { EngineSim, type SimEventType } from '../sim/engineSim';
 import {
   applyArchitecture,
+  applyArchitectureReport,
   ARCH_OPTIONS,
   archKey,
   architectureOf,
@@ -54,21 +55,23 @@ const TS: Architecture = { ...TP, lpLoad: 'shaft', output: 'shaft' };
 const COMBUSTORS: CombustorStyle[] = ['annular', 'can', 'canAnnular'];
 const MIXERS = ['confluent', 'lobed'] as const;
 
+const AB_NOZZLES = ['convergent', 'cd'] as const;
+
 /**
  * §2.4 geçerli mimari kümesi: her satır × yanma odası (3) × karıştırıcı
- * stili (karışıkta 2). Satır 1'de iki değişken lüle de, satır 3–4'te
- * booster'lı ve booster'sız.
+ * stili (karışıkta 2). Art yakıcılı satırlarda (1, 3) iki değişken lüle
+ * de, satır 3–4'te booster'lı ve booster'sız.
  */
 function validSet(): [string, Architecture][] {
   const out: Architecture[] = [];
   for (const combustor of COMBUSTORS) {
     // 1: J79 (bugünkü TJ) · 2: J57 kuru
-    for (const abNozzle of ['convergent', 'cd'] as const) out.push({ ...TJ, combustor, abNozzle });
+    for (const abNozzle of AB_NOZZLES) out.push({ ...TJ, combustor, abNozzle });
     out.push({ ...TJ, combustor, afterburner: false });
-    // 3: F100 (bugünkü MTF) · 4: Spey (kuru düşük baypas)
+    // 3: F100 (bugünkü MTF; TJ'den fana geçişte yakınsak lüle korunur) · 4: Spey (kuru düşük baypas)
     for (const booster of [false, true]) {
       for (const mixer of MIXERS) {
-        out.push({ ...MTF, combustor, booster, mixer });
+        for (const abNozzle of AB_NOZZLES) out.push({ ...MTF, combustor, booster, mixer, abNozzle });
         out.push({ ...MTF, combustor, booster, mixer, afterburner: false });
       }
     }
@@ -89,6 +92,36 @@ const SLOW = 60_000;
 
 /** Yerleşimi hazır değil mi (P5/P6/P7 bayrağı açınca false olur) */
 const notReady = (a: Architecture) => checkArchitecture(a) instanceof FlowpathError;
+
+/** Hazır olanlar koşar; olmayanlar vitest özetinde "atlandı" görünür */
+const VALID_READY = VALID.filter(([, a]) => !notReady(a));
+const VALID_NOT_READY = VALID.filter(([, a]) => notReady(a));
+
+/** Bütün eksen değerleri (kartlar, tam uzay taraması) */
+const AXIS_VALUES: { [K in keyof Architecture]: readonly Architecture[K][] } = {
+  output: ['thrust', 'shaft'],
+  lpLoad: ['lpc', 'fan', 'propeller', 'shaft'],
+  booster: [true, false],
+  centrifugal: [true, false],
+  combustor: COMBUSTORS,
+  exhaust: ['single', 'separate', 'mixed'],
+  mixer: MIXERS,
+  afterburner: [true, false],
+  abNozzle: AB_NOZZLES,
+  installation: ['bare', 'nacelle'],
+};
+
+/** Eksenlerin bütün birleşimleri, normalleştirilmiş ve tekil (anahtar → mimari) */
+function fullSpace(): Map<string, Architecture> {
+  let all: Partial<Architecture>[] = [{}];
+  for (const [axis, values] of Object.entries(AXIS_VALUES)) all = all.flatMap((p) => values.map((v) => ({ ...p, [axis]: v })));
+  const out = new Map<string, Architecture>();
+  for (const a of all) {
+    const n = normalizeArchitecture(a as Architecture);
+    out.set(archKey(n), n);
+  }
+  return out;
+}
 
 /** Mimariden grafik + referanslı üretim (atölyenin yaptığı) */
 function buildArch(a: Architecture, massFlow?: number): { g: EngineGraph; b: BuiltEngine } {
@@ -268,14 +301,28 @@ describe('graphFromArchitecture', () => {
 /* ------------------------------------------------------------------ */
 
 describe('geçerli mimari kümesi (§2.4): kurulur, otomatik çalıştırılır', () => {
-  it.each(VALID)('%s', (key, a) => {
-    if (notReady(a)) {
-      // Yerleşimi yok (P5/P6/P7): tipli hata, kart "yakında"
-      const e = checkArchitecture(a) as FlowpathError;
-      expect(e.code).toBe('layout.notReady');
+  it('kümeyi checkArchitecture belirler: kabul edilen (ya da yalnız yerleşimi bekleyen) her mimari kümede, tersi de', () => {
+    const accepted = [...fullSpace()]
+      .filter(([, a]) => {
+        const e = checkArchitecture(a);
+        return e === null || (e instanceof FlowpathError && e.code === 'layout.notReady');
+      })
+      .map(([k]) => k);
+    expect(new Set(accepted)).toEqual(new Set(VALID.map(([k]) => k)));
+  });
+
+  it('yerleşimi hazır olmayanlar (P5/P6/P7) tipli hata verir, grafikleri kurallardan geçer', () => {
+    for (const [, a] of VALID_NOT_READY) {
+      // Kart "yakında": FlowpathError layout.notReady
+      expect((checkArchitecture(a) as FlowpathError).code).toBe('layout.notReady');
       expect(checkGraph(graphFromArchitecture(a, { massFlow: templateGraph(familyOf(a)).massFlow, name: '' }))).toBeNull();
-      return;
     }
+  });
+
+  // Yerleşimi hazır olmayanlar vitest özetinde "atlandı" görünür; bayrak açılınca koşar
+  if (VALID_NOT_READY.length) it.skip.each(VALID_NOT_READY)('%s (yerleşim hazır değil)', () => {});
+
+  it.each(VALID_READY)('%s', (key, a) => {
     expect(checkArchitecture(a)).toBeNull();
     const { g, b } = buildArch(a);
     expect(b.traits.layout).toBe(deriveTraits(g).layout);
@@ -300,8 +347,7 @@ describe('geçerli mimari kümesi (§2.4): kurulur, otomatik çalıştırılır'
     expect(r.sim.turbineDamaged).toBe(false);
   }, SLOW);
 
-  it.skipIf(!WARNING_RULES.length).each(VALID)('%s: üretilen grafik uyarısız (caution/warning 0)', (_k, a) => {
-    if (notReady(a)) return;
+  it.skipIf(!WARNING_RULES.length).each(VALID_READY)('%s: üretilen grafik uyarısız (caution/warning 0)', (_k, a) => {
     const g = graphFromArchitecture(a, { massFlow: templateGraph(familyOf(a)).massFlow, name: 'x' });
     const ev = evaluate(g, { reference: referenceFor(a) });
     expect('error' in ev ? ev.error : null).toBeNull();
@@ -522,10 +568,15 @@ describe('applyArchitecture', () => {
     expect(mod<MixerModule>(g, 'mixer')).toBeDefined();
     expect(mod<NozzleModule>(g, 'nozzle')!.style).toBe('fixed');
     expect(mod<NozzleModule>(g, 'nozzle')!.chevrons).toBeUndefined();
-    // Çıplak → kaportalı: BPR 0,68 → 1
-    const h = applyArchitecture(TEMPLATES.militaryTurbofan!, ok(resolveChange(MTF, 'exhaust', 'separate')).arch);
+    // Çıplak → kaportalı: BPR 0,68 → 1, askeri fan PR'ı (3,1) kaportalı
+    // aralığa (≤ 2) çekilir, booster düşük PR'lı; motor kurulur, kırpmalar notta
+    const { graph: h, notes } = applyArchitectureReport(TEMPLATES.militaryTurbofan!, ok(resolveChange(MTF, 'exhaust', 'separate')).arch);
     expect(mod<CompressorModule>(h, 'fan')!.bypassRatio).toBe(1);
+    expect(mod<CompressorModule>(h, 'fan')!.pr).toBeLessThanOrEqual(2);
+    expect(mod<CompressorModule>(h, 'lpc')!.pr).toBeLessThanOrEqual(2);
     expect(coreFlow(h)).toBeCloseTo(coreFlow(TEMPLATES.militaryTurbofan!), 9);
+    expect(notes.map((n) => n.knob)).toEqual(expect.arrayContaining(['fan.pr', 'fan.bypassRatio']));
+    expect(Number.isFinite(buildAny(h).sized.point.thrust)).toBe(true);
     // Aynı ailede (yanma odası stili) ops kalır
     expect(applyArchitecture(TEMPLATES.turbojet!, { ...TJ, combustor: 'canAnnular' }).ops).toEqual(TEMPLATES.turbojet!.ops);
   });
@@ -539,14 +590,66 @@ describe('applyArchitecture', () => {
     const back = applyArchitecture(g, TJ);
     expect(coreFlow(back)).toBeCloseTo(coreFlow(tj), 9);
     expect(mod<CompressorModule>(back, 'lpc')!.tipSpeed).toBe(mod<CompressorModule>(g, 'fan')!.tipSpeed);
-    // Turbofan → turboprop: çekirdek akışı 115 kg/s, pervane sınırda
-    const tp = applyArchitecture(TEMPLATES.turbofan!, normalizeArchitecture(TP));
-    expect(tp.massFlow).toBeCloseTo(coreFlow(TEMPLATES.turbofan!), 9);
+    // Yeni fanın baypas oranı tablodan (çıplak 0,6)
+    expect(mod<CompressorModule>(g, 'fan')!.bypassRatio).toBe(DEFAULT_MODULES.newFanBPR.bare);
+    // Turbofan → turboprop: çekirdek akışı (115 kg/s) ailenin aralığına (§2.10 TP 3–30) kırpılır, notta
+    const { graph: tp, notes } = applyArchitectureReport(TEMPLATES.turbofan!, normalizeArchitecture(TP));
+    expect(tp.massFlow).toBe(MASS_FLOW_RANGE.TP[1]);
+    expect(notes.find((n) => n.knob === 'engine.massFlow')).toMatchObject({ to: MASS_FLOW_RANGE.TP[1] });
+    expect(notes.find((n) => n.knob === 'engine.massFlow')!.from).toBeCloseTo(coreFlow(TEMPLATES.turbofan!), 9);
     expect(architectureOf(tp)).toEqual(normalizeArchitecture(TP));
+    expect(Number.isFinite(buildAny(tp).sized.point.thrust)).toBe(true);
   });
 
-  it('ardışık uygulamada architectureOf ile tutarlı (tohumlu rastgele yürüyüş, 4 × 60 adım)', () => {
-    const starts: TemplateId[] = ['turbojet', 'militaryTurbofan', 'turbofan', 'turboprop'];
+  it('LP yükü değişiminde ortak düğmeler (T4, HPC PR, verimler) seed\'den taşınır ya da değişimi notta bildirilir', () => {
+    const KNOBS: [string, (g: EngineGraph) => number | undefined][] = [
+      ['combustor.tit', (g) => mod<CombustorModule>(g, 'combustor')?.tit],
+      ['hpc.pr', (g) => mod<CompressorModule>(g, 'hpc')?.pr],
+      ['hpc.eff', (g) => mod<CompressorModule>(g, 'hpc')?.eff],
+    ];
+    const check = (seed: EngineGraph, next: Architecture) => {
+      const { graph, notes } = applyArchitectureReport(seed, next);
+      for (const [id, get] of KNOBS) {
+        const was = get(seed)!;
+        const now = get(graph)!;
+        if (now !== was) expect(notes.find((n) => n.knob === id), `${id}: ${was} → ${now} bildirilmedi`).toMatchObject({ from: was, to: now });
+      }
+      return graph;
+    };
+    // TJ → fan → TJ: gaz jeneratörü (HPC, yanma odası) korunur, dönüşte aynı motor
+    const tj = TEMPLATES.turbojet!;
+    const fan = check(tj, ok(resolveChange(TJ, 'lpLoad', 'fan')).arch);
+    expect(mod<CombustorModule>(fan, 'combustor')!.tit).toBe(mod<CombustorModule>(tj, 'combustor')!.tit);
+    expect(mod<CompressorModule>(fan, 'hpc')!.pr).toBe(mod<CompressorModule>(tj, 'hpc')!.pr);
+    const back = check(fan, TJ);
+    for (const [, get] of KNOBS) expect(get(back)).toBe(get(tj));
+    expect(Number.isFinite(buildAny(fan).sized.point.thrust)).toBe(true);
+    // Aralık dışı değer (turboprop HPC PR ≥ 6) kırpılır ve bildirilir
+    check(tj, normalizeArchitecture(TP));
+    check(TEMPLATES.turbofan!, normalizeArchitecture(TP));
+    check(TEMPLATES.turboprop!, normalizeArchitecture(MTF));
+    check(TEMPLATES.turboprop!, normalizeArchitecture(TJ));
+  });
+
+  it('karıştırıcı: mimari kartından ve sihirbazdan aynı modül (kalibre kayıp)', () => {
+    const a = normalizeArchitecture({ ...TF, exhaust: 'mixed', mixer: 'lobed' });
+    const viaCard = mod<MixerModule>(applyArchitecture(TEMPLATES.turbofan!, a), 'mixer');
+    const viaWizard = mod<MixerModule>(graphFromArchitecture(a, { massFlow: 465, name: '' }), 'mixer');
+    expect(viaCard).toEqual(viaWizard);
+  });
+
+  it('kutu yanma odalı çıplak fanlı motora booster: kutular yeniden sığdırılır', () => {
+    for (const combustor of ['can', 'canAnnular'] as const) {
+      const g0 = applyArchitecture(TEMPLATES.militaryTurbofan!, { ...MTF, combustor });
+      const g = applyArchitecture(g0, { ...MTF, combustor, booster: true });
+      expect(mod<CompressorModule>(g, 'lpc')).toBeDefined();
+      expect(Number.isFinite(buildAny(g).sized.point.thrust)).toBe(true);
+    }
+  });
+
+  it('ardışık uygulamada architectureOf ile tutarlı, hazır yerleşimde kurulur (tohumlu rastgele yürüyüş, 20 × 60 adım)', () => {
+    const templates: TemplateId[] = ['turbojet', 'militaryTurbofan', 'turbofan', 'turboprop'];
+    const starts = Array.from({ length: 20 }, (_, i) => templates[i % templates.length]);
     let built = 0;
     for (const [i, id] of starts.entries()) {
       const rand = rng(1000 + i);
@@ -564,13 +667,18 @@ describe('applyArchitecture', () => {
         expect(checkGraph(g)).toBeNull();
         if (sameLp) expect(coreFlow(g)).toBeCloseTo(core0, 6);
         if (!layoutNotReady(g)) {
-          const b = buildAny(g);
+          let b: BuiltEngine;
+          try {
+            b = buildAny(g);
+          } catch (e) {
+            throw new Error(`${id} tohum ${1000 + i} adım ${step}: ${o.axis}=${String(o.value)} → ${archKey(a)} kurulamadı: ${(e as Error).message}`);
+          }
           expect(Number.isFinite(b.sized.point.thrust)).toBe(true);
           built++;
         }
       }
     }
-    expect(built).toBeGreaterThan(60);
+    expect(built).toBeGreaterThan(300);
   }, SLOW);
 });
 
@@ -655,6 +763,16 @@ describe('solveMassFlow: hedef itki / güç ±%1', () => {
     const g = graphFromArchitecture(TJ, { massFlow: 66, name: '' });
     expect(solveMassFlow(g, { thrust: 1e9 })).toBe(MASS_FLOW_RANGE.TJ[1]);
     expect(solveMassFlow(g, { thrust: 1 })).toBe(MASS_FLOW_RANGE.TJ[0]);
+  });
+
+  it('ölçülemeyen hedef sessizce aralığın ucunu vermez: tipli hata', () => {
+    // Turbojette mil gücü yok
+    expect(() => solveMassFlow(graphFromArchitecture(TJ, { massFlow: 66, name: '' }), { shaftPower: 1e6 })).toThrow(DesignError);
+    // Geçersiz grafik GraphError olarak çağırana gider
+    const bad = graphFromArchitecture({ ...TJ, exhaust: 'mixed' }, { massFlow: 66, name: '' });
+    expect(() => solveMassFlow(bad, { thrust: 30e3 })).toThrow(GraphError);
+    // Mil gücü henüz modellenmeyen turboşaftta (P1 öncesi) DesignError
+    if (!shaftPowerModeled) expect(() => solveMassFlow(graphFromArchitecture(TS, { massFlow: 4.5, name: '' }), { shaftPower: 1.4e6 })).toThrow(DesignError);
   });
 
   it('şablon (ops tam) referanssız çözülür ve kendi itkisini verir', () => {

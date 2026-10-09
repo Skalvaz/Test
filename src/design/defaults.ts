@@ -14,7 +14,7 @@
  * referenceFor(a) })` ile kurulur.
  */
 
-import { sizeEngine } from '../sim/design';
+import { DesignError, sizeEngine } from '../sim/design';
 import { architectureOf, normalizeArchitecture, reshapeGraph, type Architecture } from './architecture';
 import { TEMPLATES } from './catalog';
 import { computeGasPath, FlowpathError } from './flowpath';
@@ -100,6 +100,14 @@ export const DEFAULT_MODULES = {
    * (askeri TF'de 1,7'de sıcak çalıştırma, 1,3'te tepe 709/800 °C).
    */
   bareBoosterPR: 1.3,
+  /**
+   * Bu fan basınç oranının üstünde (askeri, çıplak sınıf fan; kaportalı fan
+   * aralığı 1,3–2,0) eklenen booster da düşük PR'lı (bareBoosterPR) olur:
+   * PR 3,1'lik fanın arkasına 1,95'lik booster LPT çıkış kanalını kapatır.
+   */
+  boosterFanPRMax: 2.0,
+  /** LP yükü fana dönünce yeni fanın baypas oranı (§2.4: çıplak 0,6 / kaportalı 6) */
+  newFanBPR: { bare: 0.6, nacelle: 6 },
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -202,6 +210,23 @@ export function familyOf(a: Architecture): TemplateId {
       if (a.installation === 'nacelle') return a.exhaust === 'mixed' ? 'turbofanMixed' : 'turbofan';
       return 'militaryTurbofan';
   }
+}
+
+/** Mimarinin ailesinin hava akışı aralığı [kg/s] (§2.10) */
+export function massFlowRangeFor(a: Architecture): [number, number] {
+  return MASS_FLOW_RANGE[TEMPLATE_DONOR[familyOf(normalizeArchitecture(a))]];
+}
+
+/** Fanlı ailelerde fan basınç oranı ve baypas oranı aralıkları (§2.10 `fan.pr`, `fan.bypassRatio`) */
+const FAN_RANGE: Partial<Record<TemplateId, { pr: [number, number]; bpr: [number, number] }>> = {
+  militaryTurbofan: { pr: [1.8, 4.5], bpr: [0.1, 1.5] },
+  turbofan: { pr: [1.3, 2.0], bpr: [1, 12] },
+  turbofanMixed: { pr: [1.4, 2.4], bpr: [1, 7] },
+};
+
+/** Mimarinin ailesindeki fan aralıkları (fansızda undefined) */
+export function fanRangeFor(a: Architecture): { pr: [number, number]; bpr: [number, number] } | undefined {
+  return FAN_RANGE[familyOf(normalizeArchitecture(a))];
 }
 
 /** Modül tipinin bağışçısı (§2.4): çoğu modül ailenin şablonundan */
@@ -322,12 +347,20 @@ export function setMassFlow(g: EngineGraph, massFlow: number, tplMassFlow: numbe
 }
 
 /**
- * Kutu sayısını çevreye sığacak kadar azaltır (en az 6). Kutu çapı toplam
- * kesitten (referans hız) çıkar; ortalama yarıçapı küçük motorda (TJ, askeri
- * TF) varsayılan 10/8 kutu sığmaz. Sığma ölçekten bağımsızdır (bütün
- * uzunluklar √W ile büyür). Yalnız çevrim + gaz yolu (~0,3 ms/deneme);
- * başka bir hata (geçersiz grafik, hazır olmayan gaz yolu) olduğu gibi
- * bırakılır, buildEngine raporlar.
+ * Kutu referans hızının sığdırmada çıkılabilecek üst sınırı [m/s]: kutu
+ * yanma odası uyarısının (combustorVelHigh caution 52) %4 içinde.
+ */
+export const CAN_FIT_VREF_MAX = 50;
+
+/**
+ * Kutu sayısını çevreye sığacak kadar azaltır (en az 6); 6 kutu da
+ * sığmıyorsa referans hızı (kutular incelir) %10'luk adımlarla en çok
+ * CAN_FIT_VREF_MAX'a çıkarır. Kutu çapı toplam kesitten (referans hız)
+ * çıkar; ortalama yarıçapı küçük motorda (TJ, askeri TF) varsayılan 10/8
+ * kutu sığmaz. Sığma ölçekten bağımsızdır (bütün uzunluklar √W ile
+ * büyür). Yalnız çevrim + gaz yolu (~0,3 ms/deneme); başka bir hata
+ * (geçersiz grafik, hazır olmayan gaz yolu) olduğu gibi bırakılır,
+ * buildEngine raporlar.
  */
 export function fitCans(g: EngineGraph, reference?: BuiltEngine): EngineGraph {
   const c = modOf<CombustorModule>(g, 'combustor');
@@ -338,8 +371,10 @@ export function fitCans(g: EngineGraph, reference?: BuiltEngine): EngineGraph {
       computeGasPath(g, sizeEngine(toEngineDesign(g, { reference: ref })));
       return g;
     } catch (e) {
-      if (!(e instanceof FlowpathError && e.code === 'combustor.cansFit' && c.cans > 6)) return g;
-      c.cans--;
+      if (!(e instanceof FlowpathError && e.code === 'combustor.cansFit')) return g;
+      if (c.cans > 6) c.cans--;
+      else if (c.refVelocity < CAN_FIT_VREF_MAX) c.refVelocity = Math.min(CAN_FIT_VREF_MAX, Number((c.refVelocity * 1.1).toFixed(2)));
+      else return g;
     }
   }
 }
@@ -384,27 +419,45 @@ const hasFullOps = (g: EngineGraph) => !!(g.ops?.inertia && g.ops.hpcMap && g.op
  * çekirdek akışıyla ölçeklenir (operability.ts). Pervane çapı itkiyi
  * etkilemez (pervane itkisi tasarım noktasında yok): sonucu
  * graphFromArchitecture / setMassFlow ile yaz.
+ *
+ * Hatalar: geçersiz grafik (GraphError) olduğu gibi fırlar; aralığın üst
+ * ucunda bile çıktı yoksa (mil gücü vermeyen motor, çözülemeyen çevrim)
+ * DesignError — sessizce aralığın ucunu döndürmez. Aralık içinde hedefe
+ * ulaşılamıyorsa uç değer döner (çağıran ölçüp "en çok …" diyebilir).
  */
 export function solveMassFlow(g: EngineGraph, target: { thrust?: number; shaftPower?: number }): number {
   const a = architectureOf(g);
-  const [lo0, hi0] = MASS_FLOW_RANGE[TEMPLATE_DONOR[familyOf(a)]];
+  const [lo0, hi0] = massFlowRangeFor(a);
   const reference = hasFullOps(g) ? undefined : referenceFor(a);
   const power = target.shaftPower !== undefined;
   const goal = power ? target.shaftPower! : (target.thrust ?? NaN);
   if (!(goal > 0)) return g.massFlow;
+  if (power) {
+    const d = toEngineDesign(g, { reference });
+    if (!d.prop && !d.shaft) throw new DesignError('Bu motor mil gücü vermiyor: hedefi itki olarak ver ya da LP yükü olarak pervane ya da çıkış mili seç.');
+  }
+  let failure: DesignError | undefined;
   const measure = (W: number): number => {
+    let v: number;
     try {
       const s = sizeEngine(toEngineDesign({ ...g, massFlow: W }, { reference }));
-      const v = power ? s.ref.shaftPower : s.point.thrust;
-      return Number.isFinite(v) ? v : -Infinity;
-    } catch {
-      // Çok küçük motorda aksesuar payı HPT'yi aşabilir: "yetersiz" say
+      v = power ? s.ref.shaftPower : s.point.thrust;
+    } catch (e) {
+      // Yalnız çevrim hatası (ör. çok küçük motorda aksesuar payı HPT'yi
+      // aşar): bu akışta "yetersiz" say. Grafik hataları çağırana gider.
+      if (!(e instanceof DesignError)) throw e;
+      failure = e;
       return -Infinity;
     }
+    return Number.isFinite(v) ? v : -Infinity;
   };
+  const top = measure(hi0);
+  if (!(top > 0)) {
+    throw failure ?? new DesignError(power ? 'Tasarım noktasında mil gücü hesaplanamıyor: bu motorun çıkış gücü modellenmiyor.' : 'Tasarım noktasında itki çıkmıyor: hava akışı çözülemedi.');
+  }
   let lo = Math.log(lo0);
   let hi = Math.log(hi0);
-  if (measure(hi0) <= goal) return hi0;
+  if (top <= goal) return hi0;
   if (measure(lo0) >= goal) return lo0;
   for (let i = 0; i < 30; i++) {
     const mid = (lo + hi) / 2;
