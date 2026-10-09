@@ -91,6 +91,8 @@ describe.each([
     }
     const c = L.gas.combustor;
     for (const f of ['z0', 'z1', 'rIn', 'rOut'] as const) near(c[f], old.combustor[f], `combustor.${f}`);
+    // Art yakıcılı şablon: art yakıcı kanalı ve değişken lüle var (M5a P5: tipte isteğe bağlı)
+    if (!L.ab || L.nozzle.kind === 'fixed') throw new Error('turbojet şablonu art yakıcılı olmalı');
     for (const f of ['z0', 'z1', 'liner'] as const) near(L.ab[f], old.ab[f], `ab.${f}`);
     near(L.nozzle.throat0, old.throat0, 'lüle boğazı');
   });

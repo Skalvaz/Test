@@ -13,7 +13,7 @@
 import { ENGINE_CATALOG, registerCatalogDesign, type EngineDesign, type EngineKind } from '../sim/design';
 import type { EngineLayout } from './flowpath';
 import { buildEngine, GraphError, type BuildOptions, type BuiltEngine } from './graph';
-import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_GRAPH, TURBOPROP_GRAPH, type TemplateId } from './templates';
+import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_DRY_GRAPH, TURBOJET_GRAPH, TURBOPROP_GRAPH, type TemplateId } from './templates';
 import { traitsFromDesign, type EngineTraits } from './traits';
 import type { EngineGraph } from './types';
 
@@ -25,6 +25,7 @@ export type SlotId = EngineKind | 'workshop';
  */
 export const TEMPLATES: Partial<Record<TemplateId, EngineGraph>> = {
   turbojet: TURBOJET_GRAPH,
+  turbojetDry: TURBOJET_DRY_GRAPH,
   militaryTurbofan: MILITARY_TURBOFAN_GRAPH,
   turboprop: TURBOPROP_GRAPH,
   turbofan: TURBOFAN_GRAPH,

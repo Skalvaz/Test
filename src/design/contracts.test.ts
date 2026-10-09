@@ -148,11 +148,10 @@ describe('grafik kuralları (GRAPH_RULES)', () => {
 });
 
 describe('hazır olmayan yerleşimler tipli hata verir', () => {
-  it('art yakıcısız çıplak motor (P5)', () => {
+  it('art yakıcısız çıplak motor (P5: hazır, kurulur)', () => {
     const dry = tweak<NozzleModule>(without(TURBOJET_GRAPH, 'afterburner'), 'nozzle', (n) => (n.style = 'fixed'));
     validateGraph(dry); // eski "bellmouth" kuralı kalktı
-    expect(() => buildEngine(dry)).toThrow(FlowpathError);
-    expect(() => buildEngine(dry)).toThrow(/Art yakıcısız çıplak motor yerleşimi henüz yok/);
+    expect(buildEngine(dry).flowpath.layout).toMatchObject({ style: 'bare', ab: null, nozzle: { kind: 'fixed' } });
   });
 
   it('karışık akışlı kaportalı turbofan (P6)', () => {
@@ -202,7 +201,7 @@ describe('yuvalar ve inşa', () => {
   });
 
   it('şablonlar katalogda; turboşaft henüz yok ve tipli hata verir', () => {
-    expect(Object.keys(TEMPLATES).sort()).toEqual(['militaryTurbofan', 'turbofan', 'turbojet', 'turboprop']);
+    expect(Object.keys(TEMPLATES).sort()).toEqual(['militaryTurbofan', 'turbofan', 'turbojet', 'turbojetDry', 'turboprop']);
     expect(Object.keys(ENGINE_GRAPHS).sort()).toEqual(['militaryTurbofan', 'turbofan', 'turbojet', 'turboprop']);
     expect(builtFor('turboshaft')).toBeUndefined();
     expect(() => designFor('turboshaft')).toThrow(GraphError);

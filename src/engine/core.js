@@ -202,6 +202,7 @@ export function buildCore(materials, L) {
       caseAt: combCaseAt,
       injectors: cb.injectors,
       cans: cb.cans,
+      style: cb.style,
     }),
   );
 

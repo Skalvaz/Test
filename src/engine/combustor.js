@@ -1,6 +1,8 @@
 /**
- * Halka (annular) yanma odası (M2).
+ * Yanma odası (M2; kutu ve kutu-halka M4c/M5a): halka (annular), kutu (can)
+ * ve kutu-halka (canAnnular).
  *
+ * Halka:
  *   difüzör       HPC çıkışından genişleyen ön difüzör kanalı (iç/dış duvar)
  *   ön kaporta    kubbenin önünde, difüzör havasını gömleklerin iç ve dış
  *                 tarafına bölen iki dudak
@@ -13,7 +15,16 @@
  *   ateşleyiciler iki buji: gövdeden dış gömleğe
  *   iç kasa       gömleklerin altında HPC iç duvarından NGV desteğine
  *
- * Bütün dönel parçalar kapalı katılardır (kesitte dolu).
+ * Kutu: her kutu kendi basınç kabında (gömlek + kap), kısa geçiş kanalı
+ * ortak NGV halkasına iner; dış ortak kasa yalnız bölümü kapatan ince
+ * bir kabuktur. Kutu-halka: kutular ortak halka kasanın içinde durur,
+ * kendi kapları yoktur; gömlek kısa, her kutunun uzun geçiş parçası
+ * daireden halka dilimine dönüşür ve komşularıyla NGV'de ortak çıkış
+ * halkasını oluşturur (J57, JT8D, sanayi gaz türbinleri).
+ *
+ * Bütün dönel parçalar kapalı katılardır (kesitte dolu). Oda kendi giriş
+ * düzlemine (z0) göre yerel eksende üretilir ve artımlı üretimde yeniden
+ * kullanılır (buildCache.reuse): yalnız eksenel kayan oda yeniden üretilmez.
  */
 
 import * as THREE from 'three';
@@ -22,6 +33,7 @@ import { mergeStatic } from './stages.js';
 import { revolve, roundPoly } from './revolve.js';
 import { bladeQuality } from './blades.js';
 import { linerUniforms } from '../materials/engine';
+import { keyOf, reuse } from './buildCache.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const smooth = (t) => t * t * (3 - 2 * t);
@@ -64,6 +76,27 @@ function ring(geo, mat, count, phase, part) {
 }
 
 /**
+ * Gömlek shader'ının geometri uniform'ları (tek motor sahnede: paylaşılan).
+ * Oda yeniden kullanılsa da her kurulumda yazılır.
+ */
+function setLinerUniforms(c) {
+  const h = c.rOut - c.rIn;
+  linerUniforms.uZ0.value = c.zDome;
+  linerUniforms.uZ1.value = c.z1;
+  if (c.cans) {
+    // Delik deseni kutunun kendi çevresine göre
+    const rc = h / 2;
+    linerUniforms.uRMid.value = rc;
+    linerUniforms.uN.value = 6;
+    linerUniforms.uScale.value = (2 * rc) / 0.2;
+  } else {
+    linerUniforms.uRMid.value = (c.rIn + c.rOut) / 2;
+    linerUniforms.uN.value = c.injectors;
+    linerUniforms.uScale.value = h / 0.2;
+  }
+}
+
+/**
  * @param materials kütüphane
  * @param c {
  *   z0      difüzör başlangıcı (HPC çıkışı)
@@ -74,9 +107,34 @@ function ring(geo, mat, count, phase, part) {
  *   exHub, exTip  NGV girişinde gaz yolu
  *   caseAt(z)    dış gövde iç yarıçapı (enjektör saplarının başladığı yer)
  *   injectors    enjektör sayısı
+ *   cans?        kutu sayısı (kutu ve kutu-halka)
+ *   style?       'can' | 'canAnnular' (kutu sayısı varken; yoksa 'can')
  * }
  */
 export function buildCombustor(materials, c) {
+  // Yerel eksen: oda giriş düzlemi z = 0
+  const dz = c.z0;
+  const local = { ...c, z0: 0, zDome: c.zDome - dz, z1: c.z1 - dz, caseAt: (z) => c.caseAt(z + dz) };
+  setLinerUniforms(local);
+  // Anahtar bütün girdileri içerir: gövde iç yarıçapı örneklenir (enjektör
+  // flanşları ve bujiler ona oturur)
+  const L = local.z1;
+  const caseAt = Array.from({ length: 16 }, (_, i) => local.caseAt(-0.3 * L + (1.3 * L * i) / 15));
+  const key = keyOf('combustor', {
+    style: c.cans ? (c.style ?? 'can') : 'annular',
+    cans: c.cans ?? 0,
+    zDome: local.zDome,
+    z1: local.z1,
+    r: [c.rIn, c.rOut, c.inHub, c.inTip, c.exHub, c.exTip],
+    injectors: c.injectors,
+    caseAt,
+  });
+  const group = reuse(key, () => buildCombustorLocal(materials, local));
+  group.position.z = dz;
+  return group;
+}
+
+function buildCombustorLocal(materials, c) {
   const part = 'combustor';
   const group = new THREE.Group();
   group.name = 'combustor';
@@ -89,13 +147,6 @@ export function buildCombustor(materials, c) {
   const L = c.z1 - c.zDome;
   const tw = Math.max(0.0025, h * 0.014); // gömlek et kalınlığı
   const N = c.injectors;
-
-  // Gömlek shader'ı için geometri (tek motor sahnede: paylaşılan uniform'lar)
-  linerUniforms.uRMid.value = mid;
-  linerUniforms.uZ0.value = c.zDome;
-  linerUniforms.uZ1.value = c.z1;
-  linerUniforms.uN.value = N;
-  linerUniforms.uScale.value = h / 0.2;
 
   let outerR;
   let dR0;
@@ -277,23 +328,26 @@ export function buildCombustor(materials, c) {
 }
 
 /**
- * Kutu (can) gömlekleri: her kutu kendi ekseni etrafında dönel bir gömlek
- * (kubbe, soğutma halkalı gövde, daralan çıkış), örnekleme ile ortalama
- * yarıçapta çevreye dizilir. Gömlek shader'ı yerel konumu kullandığından
- * delik deseni her kutunun kendi çevresine oturur. Komşu kutular ateşleme
- * geçiş borularıyla bağlıdır (bir kutuda tutuşan alev diğerlerine geçer);
- * kutu çıkışları geçiş kanalıyla NGV halkasına iner.
+ * Kutu (can) ve kutu-halka gömlekleri: her kutu kendi ekseni etrafında
+ * dönel bir gömlek (kubbe, soğutma halkalı gövde, daralan çıkış), örnekleme
+ * ile ortalama yarıçapta çevreye dizilir. Gömlek shader'ı yerel konumu
+ * kullandığından delik deseni her kutunun kendi çevresine oturur. Komşu
+ * kutular ateşleme geçiş borularıyla bağlıdır (bir kutuda tutuşan alev
+ * diğerlerine geçer).
+ *
+ *   kutu        her kutunun gömleğini saran kendi basınç kabı; kutu
+ *               çıkışları kısa bir halka geçiş kanalıyla NGV'ye iner
+ *   kutu-halka  kap yok (ortak halka kasa); gömlek kısa, her kutunun uzun
+ *               geçiş parçası daireden halka dilimine dönüşür ve NGV
+ *               girişinde komşularıyla ortak çıkış halkasını oluşturur
  */
 function canLiners(group, materials, c, { liner, metal, low, tw }) {
   const part = 'combustor';
   const N = c.cans;
+  const shared = c.style === 'canAnnular';
   const rc = (c.rOut - c.rIn) / 2;
   const mid = (c.rIn + c.rOut) / 2;
   const L = c.z1 - c.zDome;
-  // Gömlek deseni kutunun kendi çevresine göre
-  linerUniforms.uRMid.value = rc;
-  linerUniforms.uN.value = 6;
-  linerUniforms.uScale.value = (2 * rc) / 0.2;
   const atCan = (geo, mat, phase = 0) => {
     const m = new THREE.InstancedMesh(geo, mat, N);
     const R = new THREE.Matrix4();
@@ -307,8 +361,9 @@ function canLiners(group, materials, c, { liner, metal, low, tw }) {
     return tagPart(m, part);
   };
   const sg = low ? 20 : 36;
-  // Gövde: kubbeden açılır, düz, çıkışa daralır (bindirme basamakları)
-  const zEnd = c.z1 - L * 0.16;
+  // Gövde: kubbeden açılır, düz, çıkışa daralır (bindirme basamakları).
+  // Kutu-halkada gömlek kısa: odanın son üçte biri geçiş parçasıdır
+  const zEnd = c.z1 - L * (shared ? 0.36 : 0.16);
   const rings = low ? 0 : 4;
   const canR = (z) => {
     const t = (z - c.zDome) / (zEnd - c.zDome);
@@ -320,12 +375,14 @@ function canLiners(group, materials, c, { liner, metal, low, tw }) {
   // Kubbe kapağı
   const dt = Math.max(0.004, rc * 0.04);
   group.add(atCan(revolve(roundPoly([[rc * 0.56, c.zDome - dt], [rc * 0.56, c.zDome + 0.002], [rc * 0.2, c.zDome + 0.002], [rc * 0.2, c.zDome - dt]], 0.0015, 1), { segments: sg }), metal));
-  // Dış kutu muhafazası (gömleği saran basınç kabı): kesitte görünür ince kabuk
-  const caseR = (z) => {
-    const t = (z - (c.zDome - L * 0.08)) / (zEnd - (c.zDome - L * 0.08));
-    return lerp(rc * 0.75, rc * 1.16, smooth(Math.min(1, t * 3))) - rc * 0.08 * smooth(Math.max(0, t - 0.8) / 0.2);
-  };
-  group.add(atCan(revolve(shell(caseR, c.zDome - L * 0.08, zEnd, Math.max(0.003, rc * 0.025), low ? 12 : 24, 1), { segments: sg, smooth: 50 }), metal));
+  if (!shared) {
+    // Dış kutu muhafazası (gömleği saran basınç kabı): kesitte görünür ince kabuk
+    const caseR = (z) => {
+      const t = (z - (c.zDome - L * 0.08)) / (zEnd - (c.zDome - L * 0.08));
+      return lerp(rc * 0.75, rc * 1.16, smooth(Math.min(1, t * 3))) - rc * 0.08 * smooth(Math.max(0, t - 0.8) / 0.2);
+    };
+    group.add(atCan(revolve(shell(caseR, c.zDome - L * 0.08, zEnd, Math.max(0.003, rc * 0.025), low ? 12 : 24, 1), { segments: sg, smooth: 50 }), metal));
+  }
   // Ateşleme geçiş boruları: komşu kutuların arasında, kubbeye yakın
   const half = Math.PI / N;
   const chord = 2 * mid * Math.sin(half);
@@ -334,13 +391,21 @@ function canLiners(group, materials, c, { liner, metal, low, tw }) {
   tube.rotateZ(Math.PI / 2);
   tube.translate(0, mid * Math.cos(half), c.zDome + L * 0.3);
   group.add(atCanRing(tube, metal, N, half, part));
-  // Geçiş kanalı: kutu çıkışlarından NGV halkasına (iç ve dış duvar)
-  const zt0 = zEnd - L * 0.04;
-  const wall = Math.max(0.004, rc * 0.03);
-  const outerT = (z) => lerp(mid + rc * 0.8, c.exTip + tw, smooth((z - zt0) / (c.z1 - zt0)));
-  const innerT = (z) => lerp(mid - rc * 0.8, c.exHub - tw, smooth((z - zt0) / (c.z1 - zt0)));
-  group.add(solid(shell(outerT, zt0, c.z1, wall, 12, 1), liner, part, mid + rc, 50));
-  group.add(solid(shell(innerT, zt0, c.z1, wall, 12, -1), liner, part, mid - rc, 50));
+  if (shared) {
+    // Geçiş parçaları: kutu çıkışından (gömleğin üstüne binerek) NGV girişine
+    const zt0 = zEnd - L * 0.05;
+    const wall = Math.max(0.003, rc * 0.03);
+    const tp = transitionPiece(c, { mid, a0: rc * 0.78 + tw + wall, z0: zt0, z1: c.z1, N, t: wall, nu: low ? 10 : 20, nt: low ? 24 : 48 });
+    group.add(atCanRing(tp, liner, N, 0, part));
+  } else {
+    // Geçiş kanalı: kutu çıkışlarından NGV halkasına (iç ve dış duvar)
+    const zt0 = zEnd - L * 0.04;
+    const wall = Math.max(0.004, rc * 0.03);
+    const outerT = (z) => lerp(mid + rc * 0.8, c.exTip + tw, smooth((z - zt0) / (c.z1 - zt0)));
+    const innerT = (z) => lerp(mid - rc * 0.8, c.exHub - tw, smooth((z - zt0) / (c.z1 - zt0)));
+    group.add(solid(shell(outerT, zt0, c.z1, wall, 12, 1), liner, part, mid + rc, 50));
+    group.add(solid(shell(innerT, zt0, c.z1, wall, 12, -1), liner, part, mid - rc, 50));
+  }
   // Swirler kapları: her kutunun kubbesinde
   const cupR = rc * 0.32;
   const cupL = cupR * 0.9;
@@ -349,13 +414,73 @@ function canLiners(group, materials, c, { liner, metal, low, tw }) {
   cup.translate(0, mid, c.zDome - cupL / 2);
   group.add(atCanRing(cup, metal, N, 0, part));
   return {
-    outerR: () => mid + rc * 1.16,
+    // Bujiler gömleğe iner: kutu-halkada kap yok, gömleğin dışı
+    outerR: () => mid + rc * (shared ? 1.0 : 1.16),
     dR0: mid - rc * 0.75,
     dR1: mid + rc * 0.75,
     cowlLen: L * 0.12,
     cupR,
     cupL,
   };
+}
+
+/**
+ * Kutu-halka geçiş parçası: kutu çıkışındaki daireden (yarıçap a0, eksen
+ * ortalama yarıçapta) NGV girişindeki halka dilimine (göbek–uç, ~2π/N açı)
+ * yumuşak geçen kalınlıklı kabuk. Kesit süperelips: üs 2'den (daire) 10'a
+ * (köşeleri yuvarlak dikdörtgen). Kapalı katı (dış + iç yüzey + iki uç
+ * halkası): kesitte dolu görünür. Geometri +Y ekseninde tek kutu için;
+ * örnekleme ile çevreye dizilir.
+ */
+function transitionPiece(c, { mid, a0, z0, z1, N, t, nu, nt }) {
+  const rcE = (c.exHub + c.exTip) / 2;
+  const aE = (c.exTip - c.exHub) / 2 + t;
+  // Komşu parçalarla aralarında ince bir yarık kalır (gerçekte yan contalar)
+  const bE = (Math.PI / N) * 0.97 * rcE;
+  const P = [];
+  const UV = [];
+  const section = (u, off) => {
+    const k = smooth(u);
+    const rcU = lerp(mid, rcE, k);
+    const a = lerp(a0, aE, k) - off;
+    const b = lerp(a0, bE, k) - off;
+    const p = lerp(2, 10, Math.pow(k, 0.7));
+    const z = lerp(z0, z1, u);
+    for (let j = 0; j < nt; j++) {
+      const th = (j / nt) * Math.PI * 2;
+      const cs = Math.cos(th);
+      const sn = Math.sin(th);
+      const X = a * Math.sign(cs) * Math.pow(Math.abs(cs), 2 / p);
+      const Y = b * Math.sign(sn) * Math.pow(Math.abs(sn), 2 / p);
+      const r = rcU + X;
+      const phi = Y / rcU;
+      P.push(r * Math.sin(phi), r * Math.cos(phi), z);
+      UV.push(j / nt, u);
+    }
+  };
+  for (let i = 0; i <= nu; i++) section(i / nu, 0);
+  for (let i = 0; i <= nu; i++) section(i / nu, t);
+  const outer = (i, j) => i * nt + (j % nt);
+  const inner = (i, j) => (nu + 1) * nt + i * nt + (j % nt);
+  const I = [];
+  // a=(i,j) b=(i,j+1) c=(i+1,j) d=(i+1,j+1); flip: normal (c−a)×(b−a)
+  const quad = (a, b, cc, d, flip) => (flip ? I.push(a, cc, b, b, cc, d) : I.push(a, b, cc, b, d, cc));
+  for (let i = 0; i < nu; i++) {
+    for (let j = 0; j < nt; j++) {
+      quad(outer(i, j), outer(i, j + 1), outer(i + 1, j), outer(i + 1, j + 1), true); // dışa
+      quad(inner(i, j), inner(i, j + 1), inner(i + 1, j), inner(i + 1, j + 1), false); // boşluğa
+    }
+  }
+  for (let j = 0; j < nt; j++) {
+    quad(outer(0, j), outer(0, j + 1), inner(0, j), inner(0, j + 1), false); // −z
+    quad(outer(nu, j), outer(nu, j + 1), inner(nu, j), inner(nu, j + 1), true); // +z
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
+  g.setIndex(I);
+  g.computeVertexNormals();
+  return g;
 }
 
 /** Motor ekseni etrafında örnekli yerleşim (geometri zaten +Y yarıçapında) */

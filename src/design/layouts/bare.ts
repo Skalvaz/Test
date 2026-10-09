@@ -1,9 +1,12 @@
 /**
- * Çıplak motor yerleşimi (test hücresi): turbojet ve art yakıcılı düşük
- * baypaslı turbofan. engine/barejet.js girdisi.
+ * Çıplak motor yerleşimi (test hücresi): turbojet ve düşük baypaslı karışık
+ * akışlı turbofan, art yakıcılı ya da art yakıcısız. engine/barejet.js girdisi.
  *
- * READY: art yakıcılı dal hazır; art yakıcısız (kuru) dal M5a P5'te
- * (sabit yakınsak lüle, jet borusu, AB kalemsiz kütle).
+ * Art yakıcılı motorda türbinin arkasında art yakıcı kanalı ve değişken
+ * kesitli lüle vardır. Art yakıcısız (kuru) motorda kısa bir jet borusu ve
+ * sabit yakınsak lüle (J57, JT8D çekirdeği, Spey gibi): jet borusu LPT
+ * çıkışından lüleye uzanır, lüle ağzı tasarım noktası alanından
+ * (karışık akışta ortak lüle alanı A9mix).
  */
 
 import { AIR, GAS } from '../../sim/gas';
@@ -30,11 +33,43 @@ import type { LayoutResult } from './index';
 
 /** Art yakıcılı dal hazır */
 export const READY = true;
-/** Art yakıcısız (kuru) dal: P5 */
-export const READY_DRY = false;
+/** Art yakıcısız (kuru) dal: sabit lüle, jet borusu (M5a P5) */
+export const READY_DRY = true;
 
 /** Değişken lüle boğazı akış katsayısı (etkin / geometrik alan) */
 const NOZZLE_CD = 0.77;
+/** Sabit lüle konisinin yarı açısı: yakınsak lülelerde 10–15° */
+const FIXED_NOZZLE_HALF_ANGLE = (14 * Math.PI) / 180;
+/** Sabit lüle et kalınlığı [m] (inconel sac, kütle) */
+const FIXED_NOZZLE_T = 0.003;
+
+/** Art yakıcısız motorun sabit yakınsak lülesi: jet borusu ucundan lüle ağzına koni */
+export interface FixedNozzleGeometry {
+  kind: 'fixed';
+  z0: number;
+  z1: number;
+  /** Giriş (jet borusu) iç yarıçapı */
+  r0: number;
+  /** Lüle ağzı yarıçapı √(A9/π) */
+  rExit: number;
+}
+
+/**
+ * Art yakıcılı motorun değişken kesitli lülesi (yakınsak ya da yakınsak-
+ * ıraksak, engine/nozzle.js buildNozzle). `kind` altın yerleşim testi
+ * değişmesin diye yazılmaz: `kind !== 'fixed'` değişken lüle demektir.
+ */
+export interface VariableNozzleGeometry {
+  kind?: 'variable';
+  hingeR: number;
+  throat0: number;
+  primary: number;
+  /** 0: yakınsak; > 0: yakınsak-ıraksak */
+  divergent: number;
+  flaps: number;
+}
+
+export type BareNozzleGeometry = FixedNozzleGeometry | VariableNozzleGeometry;
 
 /** engine/barejet.js girdisi */
 export interface BareJetLayout {
@@ -55,8 +90,14 @@ export interface BareJetLayout {
   };
   splitterZ: number | null;
   tailCone: [number, number, number];
-  ab: { z0: number; z1: number; R: number; liner: number };
-  nozzle: { hingeR: number; throat0: number; primary: number; divergent: number; flaps: number };
+  /** Art yakıcı kanalı; art yakıcısız motorda null */
+  ab: { z0: number; z1: number; R: number; liner: number } | null;
+  /**
+   * Jet borusu (yalnız art yakıcısız motorda): LPT çıkışından lüleye, boy
+   * 1,2·r. Art yakıcılı motorda jet borusu art yakıcı kanalının kendisidir.
+   */
+  jetPipe?: { z0: number; z1: number; r: number };
+  nozzle: BareNozzleGeometry;
   /** Test standı askı noktaları (eksenel konum): ön ve arka */
   standZ: [number, number];
   flanges: number[];
@@ -75,47 +116,39 @@ export interface BareJetLayout {
   exhaustExit: { z: number; radius: number };
 }
 
+/** Lüle ağzı ekseni ve yarıçapı (tasarım noktası, kuru) */
+export function nozzleExit(n: BareNozzleGeometry, z0: number): { z: number; radius: number } {
+  return n.kind === 'fixed' ? { z: n.z1, radius: n.rExit } : { z: z0 + n.primary + n.divergent, radius: n.throat0 };
+}
+
 function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): BareJetLayout {
   const st = (id: StationId) => sized.point.stations[id];
   const inlet = moduleOf<InletModule>(graph, 'inlet')!;
   const fan = moduleOf<CompressorModule>(graph, 'fan');
   const frontMod = (fan ?? moduleOf<CompressorModule>(graph, 'lpc'))!;
   const hpcMod = moduleOf<CompressorModule>(graph, 'hpc')!;
-  const ab = moduleOf<AfterburnerModule>(graph, 'afterburner');
+  const abMod = moduleOf<AfterburnerModule>(graph, 'afterburner');
   const noz = moduleOf<NozzleModule>(graph, 'nozzle')!;
   const lpc = gp.front;
   if (!lpc) throw new FlowpathError('Çıplak motor LP milinin ilk kompresörünü (fan ya da LPC) ister.', 'lpLoad.required', 'lpc');
   const { hpc, hpt, lpt } = gp;
   const { z0: cz0, z1: cz1, rOut } = gp.combustor;
+  const bypass = !!fan && (fan.bypassRatio ?? 0) > 0;
 
-  // --- egzoz ve art yakıcı ---
+  // --- türbin çıkış çerçevesi ve kuyruk konisi ---
   const coneR = lpt.hub[1] - 0.015;
   const coneZ0 = lpt.z1 + 0.12;
   const tailCone: [number, number, number] = [coneZ0, coneZ0 + 2.4 * coneR, coneR];
-  // Jet borusu: kuru art yakıcıda karışmış akış (istasyon 7)
-  const liner = ab ? Math.sqrt(annulusArea(st('7'), ab.mach, GAS) / Math.PI) : lpt.tip[1];
-  const abZ0 = coneZ0 + 0.05;
-  const abZ1 = abZ0 + (ab ? ab.lengthDiameter * 2 * liner : 0.6);
-  // Lüle boğazı: kuru tasarım noktası etkin alanından; geometrik boğaz
-  // akış katsayısı kadar (~0,77) büyüktür
-  const A8 = sized.ref.A8dry > 0 ? sized.ref.A8dry : sized.ref.A9;
-  const nozzle = {
-    hingeR: liner + 0.01,
-    throat0: Math.sqrt(A8 / Math.PI / NOZZLE_CD),
-    primary: 0.3,
-    divergent: noz.style === 'cd' ? 0.34 : 0,
-    flaps: noz.flaps ?? 14,
-  };
 
   // --- gövde ---
   const turbTip = Math.max(hpt.tip[0], lpt.tip[1]);
   let shell: [number, number][];
   let R: number;
   let splitterZ: number | null = null;
-  if (fan && (fan.bypassRatio ?? 0) > 0) {
+  if (bypass) {
     // Baypas kanalı: çekirdek gövdesinin dışında, verilen Mach'ta
-    const bypass = graph.bypassDuct ?? { dp: 0, mach: 0.15 };
-    const aBp = annulusArea(st('13'), bypass.mach, AIR);
+    const bp = graph.bypassDuct ?? { dp: 0, mach: 0.15 };
+    const aBp = annulusArea(st('13'), bp.mach, AIR);
     const splitR = Math.max(hpc.tip[0], rOut) + 0.04;
     R = Math.sqrt(splitR * splitR + aBp / Math.PI);
     const fanR = lpc.tip[0] + 0.055;
@@ -141,6 +174,46 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
     ];
   }
 
+  // --- egzoz: art yakıcı + değişken lüle ya da jet borusu + sabit lüle ---
+  let ab: BareJetLayout['ab'] = null;
+  let jetPipe: BareJetLayout['jetPipe'];
+  let nozzle: BareNozzleGeometry;
+  // Egzoz bölümünün başı ve sonu (flanşlar, dış zarf)
+  const exZ0 = coneZ0 + 0.05;
+  let exZ1: number;
+  let exR: number;
+  if (abMod) {
+    // Jet borusu: kuru art yakıcıda karışmış akış (istasyon 7)
+    const liner = Math.sqrt(annulusArea(st('7'), abMod.mach, GAS) / Math.PI);
+    exZ1 = exZ0 + abMod.lengthDiameter * 2 * liner;
+    exR = liner + 0.03;
+    ab = { z0: exZ0, z1: exZ1, R: exR, liner };
+    // Lüle boğazı: kuru tasarım noktası etkin alanından; geometrik boğaz
+    // akış katsayısı kadar (~0,77) büyüktür
+    const A8 = sized.ref.A8dry > 0 ? sized.ref.A8dry : sized.ref.A9;
+    nozzle = {
+      hingeR: liner + 0.01,
+      throat0: Math.sqrt(A8 / Math.PI / NOZZLE_CD),
+      primary: 0.3,
+      divergent: noz.style === 'cd' ? 0.34 : 0,
+      flaps: noz.flaps ?? 14,
+    };
+  } else {
+    // Jet borusu iç yarıçapı: turbojette LPT çıkış kanalı, karışık akışta
+    // baypas kanalının dış duvarı (iki akış ortak boruda karışır)
+    const r = bypass ? R - 0.03 : lpt.tip[1] + 0.01;
+    exZ1 = exZ0 + 1.2 * r;
+    exR = r + 0.03;
+    jetPipe = { z0: exZ0, z1: exZ1, r };
+    // Lüle ağzı tasarım noktası alanından: karışık akışta ortak lüle (A9mix,
+    // P1); simülasyon henüz ayrık hesaplıyorsa iki lülenin toplamı
+    const A9 = bypass ? (sized.ref.A9mix ?? sized.ref.A9 + (sized.ref.A19 || 0)) : sized.ref.A9;
+    const rExit = Math.sqrt(A9 / Math.PI);
+    // Koni ~14° yarı açıyla daralır; kuyruk konisinin ucu lüle içinde kalır
+    const len = Math.max((r - rExit) / Math.tan(FIXED_NOZZLE_HALF_ANGLE), tailCone[1] + 0.1 * r - exZ1, 0.45 * r);
+    nozzle = { kind: 'fixed', z0: exZ1, z1: exZ1 + len, r0: r, rExit };
+  }
+
   // Yanma odası bölümü gövdesi (HPC çıkışından HPT girişine)
   const casing: [number, number][] = [
     [hpc.tip[1] + 0.04, hpc.z1 - 0.02],
@@ -150,15 +223,18 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
     [lpt.tip[1] + 0.02, lpt.z1 + 0.17],
   ];
 
-  // Flanşlar: modül sınırlarında
-  const flanges = [INTAKE_Z, mid(lpc.z1, hpc.z0), hpc.z1 + 0.07, cz0 + 0.02, mid(cz1, hpt.z0) + 0.04, abZ0, mid(abZ0, abZ1), abZ1 - 0.05];
+  // Flanşlar: modül sınırlarında (art yakıcıda kanalın ortası da; kuru
+  // motorda jet borusu ↔ lüle flanşı)
+  const flanges = [INTAKE_Z, mid(lpc.z1, hpc.z0), hpc.z1 + 0.07, cz0 + 0.02, mid(cz1, hpt.z0) + 0.04, exZ0];
+  if (abMod) flanges.push(mid(exZ0, exZ1), exZ1 - 0.05);
+  else flanges.push(exZ1);
   if (fan) flanges.splice(1, 1, lpc.z1 + 0.1);
 
   // VSV halkaları (dış donanım): kompresörlerin ön stator sıraları. Baypaslı
   // motorda HPC baypas kanalının altında kalır, halkaları dışarıdan görünmez
   const vsv: BareJetLayout['vsv'] = [];
   const outer: [RowGeometry, CompressorModule, string][] = [[lpc, frontMod, fan ? 'fan' : 'booster']];
-  if (!fan || !(fan.bypassRatio! > 0)) outer.push([hpc, hpcMod, 'hpc']);
+  if (!bypass) outer.push([hpc, hpcMod, 'hpc']);
   for (const [row, mod, part] of outer) {
     const n = Math.min(mod.vsv ?? 0, row.stages);
     if (n > 0) vsv.push({ z: Array.from({ length: n }, (_, i) => row.z0 + (i + 0.5) * row.pitch * 0.62), part });
@@ -170,20 +246,28 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
       ? { lobes: mixMod.lobes ?? 12, z0: lpt.z1 + 0.06, z1: coneZ0 + 0.3, r: lpt.tip[1] + 0.03, amp: 0.4 * (R - lpt.tip[1] - 0.03) }
       : undefined;
 
-  // Motor kartı alanları (P0 yaklaşık; P5 kesinleştirir): askı noktaları
-  // stand askısıyla aynı yerde, zarf gövde + art yakıcı kanalı + lüle
+  // Motor kartı alanları: askı noktaları stand askısıyla aynı yerde, zarf
+  // gövde + art yakıcı kanalı (ya da jet borusu) + lüle
   const standZ: [number, number] = [mid(hpc.z0, hpc.z1), lpt.z1 + 0.05];
-  const abR = liner + 0.03;
-  const exitZ = abZ1 + nozzle.primary + nozzle.divergent;
+  const exit = nozzleExit(nozzle, exZ1);
   const throat = lpc.tip[0] + 0.005;
+  // Bellmouth dudağı giriş boğazıyla orantılı (barejet.js ile aynı oran)
+  const sc = throat / (fan ? REF_THROAT.fan : REF_THROAT.lpc);
+  const bell = { r: 0.38 * sc, z: 0.45 * sc };
   const outerProfile = envelopeOf(
-    [[throat + 0.38, INTAKE_Z - 0.45]],
+    [[throat + bell.r, INTAKE_Z - bell.z]],
     shell,
-    [
-      [abR, abZ0 + 0.12],
-      [abR, abZ1],
-      [nozzle.hingeR, exitZ],
-    ],
+    nozzle.kind === 'fixed'
+      ? [
+          [exR, exZ0 + 0.12],
+          [exR, exZ1],
+          [nozzle.rExit + FIXED_NOZZLE_T + 0.004, nozzle.z1],
+        ]
+      : [
+          [exR, exZ0 + 0.12],
+          [exR, exZ1],
+          [nozzle.hingeR, exit.z],
+        ],
   );
   const mounts: MountPoint[] = standZ.map((z, i) => ({
     id: i === 0 ? 'front' : 'rear',
@@ -212,7 +296,8 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
     },
     splitterZ,
     tailCone,
-    ab: { z0: abZ0, z1: abZ1, R: abR, liner },
+    ab,
+    jetPipe,
     nozzle,
     standZ,
     flanges,
@@ -221,26 +306,46 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
     mounts,
     outerProfile,
     intake: { z: INTAKE_Z - 0.1, radius: throat, y: 0 },
-    exhaustExit: { z: exitZ, radius: nozzle.throat0 },
+    exhaustExit: exit,
   };
 }
+
+/**
+ * Bugünkü şablonların giriş boğazı yarıçapı [m] (LPC'li turbojet, fanlı
+ * askeri turbofan). Gaz yolundan gelmeyen sabit ölçülü parçalar (bellmouth,
+ * burun, giriş dikmeleri, aksesuarlar; engine/barejet.js) bu tabana
+ * oranlanır: şablonlarda ölçek 1, görüntü aynı.
+ */
+export const REF_THROAT = { lpc: 0.39992, fan: 0.46491 };
 
 /** Çıplak motor: yerleşim + gaz yolu dışı kütle kalemleri + ölçüler */
 export function bareLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): LayoutResult {
   const L = bareJetLayout(graph, sized, gp);
   const front = gp.front!;
   const frontMod = (moduleOf<CompressorModule>(graph, 'fan') ?? moduleOf<CompressorModule>(graph, 'lpc'))!;
+  const n = L.nozzle;
+  const extra: Record<string, number> = { casing: shellMass(L.R, L.tailCone[0] - L.intakeZ, SHELL_T.casing, RHO.ti) };
+  let length: number;
+  if (L.ab && n.kind !== 'fixed') {
+    extra.afterburner = shellMass(L.ab.R, L.ab.z1 - L.ab.z0, SHELL_T.afterburner, RHO.ni);
+    // Yapraklar + contalar + senkron halka + aktüatörler
+    extra.nozzle = shellMass(n.hingeR, n.primary + n.divergent, SHELL_T.nozzle, RHO.ni) * 1.3;
+    length = L.ab.z1 + n.primary + n.divergent - INTAKE_Z;
+  } else if (n.kind === 'fixed') {
+    // Art yakıcı kalemi yok; jet borusu gövde sacı kalınlığında, sabit lüle ince inconel koni
+    const p = L.jetPipe!;
+    extra.jetPipe = shellMass(p.r, p.z1 - p.z0, SHELL_T.casing, RHO.ni);
+    extra.nozzle = shellMass(n.r0, n.z1 - n.z0, FIXED_NOZZLE_T, RHO.ni);
+    length = n.z1 - INTAKE_Z;
+  } else {
+    throw new FlowpathError('Değişken kesitli lüle art yakıcı ister.', 'nozzle.variableNeedsAb', 'nozzle');
+  }
   return {
     layout: L,
     shaftLen: { lp: L.gas.shafts.lp[1] - L.gas.shafts.lp[0], hp: L.gas.shafts.hp[1] - L.gas.shafts.hp[0] },
-    extra: {
-      casing: shellMass(L.R, L.tailCone[0] - L.intakeZ, SHELL_T.casing, RHO.ti),
-      afterburner: shellMass(L.ab.R, L.ab.z1 - L.ab.z0, SHELL_T.afterburner, RHO.ni),
-      // Yapraklar + contalar + senkron halka + aktüatörler
-      nozzle: shellMass(L.nozzle.hingeR, L.nozzle.primary + L.nozzle.divergent, SHELL_T.nozzle, RHO.ni) * 1.3,
-    },
+    extra,
     diameter: 2 * front.tip[0],
-    length: L.ab.z1 + L.nozzle.primary + L.nozzle.divergent - INTAKE_Z,
+    length,
     lpTipMach: tipMachRel(sized.point.stations['2'], frontMod.mach[0], front.uTip, AIR),
   };
 }

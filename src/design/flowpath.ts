@@ -202,6 +202,10 @@ export interface CombustorGeometry {
   injectors: number;
   /** Kutu tipi: kutu sayısı (halkada yok) */
   cans?: number;
+  /** Kutu stili (M5a P5): ayrı kaplı kutu ya da ortak kasalı kutu-halka (halkada yok) */
+  style?: 'can' | 'canAnnular';
+  /** Kutu gömleği yarıçapı [m] (halkada yok) */
+  canR?: number;
 }
 
 /** Bütün motor tiplerinde ortak gaz yolu sıraları ve mil devirleri */
@@ -355,7 +359,16 @@ export function computeGasPath(graph: EngineGraph, sized: SizedEngine, opts: Gas
     booster,
     hpc,
     centrifugal,
-    combustor: { z0: cz0, z1: cz1, rIn: rMean - H / 2, rOut: rMean + H / 2, injectors: cans ?? comb.injectors, cans },
+    combustor: {
+      z0: cz0,
+      z1: cz1,
+      rIn: rMean - H / 2,
+      rOut: rMean + H / 2,
+      injectors: cans ?? comb.injectors,
+      cans,
+      // Halkada alan yazılmaz (şablon yerleşimleri ve altın test aynı kalır)
+      ...(cans ? { style: comb.style as 'can' | 'canAnnular', canR: H / 2 } : {}),
+    },
     hpt,
     lpt,
     shafts: { lp: rLp, hp: rHp },
