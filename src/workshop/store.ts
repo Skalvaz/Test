@@ -20,7 +20,10 @@
  *  - Otomatik kayıt: localStorage['turbofan-akademi:workshop:v1'] =
  *    WorkshopProjectDocV1 (try/catch; okunamazsa sessizce boş başlar).
  *    Kurulamayan aile yerine son geçerli hali yazılır ("Devam et" hatayla
- *    açılmaz).
+ *    açılmaz); serileşemeyen tek aile bütün kaydı durdurmaz.
+ *  - Geri al yalnız geçmişe ait alanları getirir: aileler, etkin aile,
+ *    seçim ve aile başına yan bilgiler. Uzman kipi, görev ve kıyas sabiti
+ *    geçmişe girmez; geri al onları değiştirmez.
  *  - Mimari değişimi yeni aile açar; eski aile listede kalır.
  *  - Aile/varyant: aile kapsamlı düğme tabanı değiştirir. Varyant kapsamlı
  *    düğme tek varyantlı ailede de tabanı değiştirir (zarf kardeş
@@ -213,11 +216,35 @@ export const WIZARD_DEFAULT_ARCH: Architecture = {
   installation: 'bare',
 };
 
-/** Geri al yığınının durumu */
+/**
+ * Geri al yığınının durumu. Aile başına haritalar (yan bilgi, ilk taban,
+ * son geçerli) yazınca kopyalanır (asla yerinde değişmez): anlık görüntü
+ * yalnız başvuruyu tutar. Geri al yalnız geçmişe ait alanları getirir:
+ * aileler, etkin aile, seçim ve bu haritalar. Uzman kipi, görev ve kıyas
+ * sabiti geçmişe girmez (restore geçerli değerlerini korur).
+ */
 interface Snap {
   project: WorkshopProject;
   selected: ModuleRef | null;
+  extras: ReadonlyMap<string, DocExtras>;
+  initialBase: ReadonlyMap<string, EngineGraph>;
+  lastGood: ReadonlyMap<string, LastGood>;
 }
+
+/** Ailenin son geçerli hali: aile (etkin varyantıyla) ve değerlendirmesi */
+interface LastGood {
+  family: EngineFamily;
+  evaluation: Evaluation;
+}
+
+/** Haritaya yazınca kopyala */
+const withEntry = <V>(m: ReadonlyMap<string, V>, k: string, v: V): ReadonlyMap<string, V> => new Map(m).set(k, v);
+const withoutEntry = <V>(m: ReadonlyMap<string, V>, k: string): ReadonlyMap<string, V> => {
+  if (!m.has(k)) return m;
+  const c = new Map(m);
+  c.delete(k);
+  return c;
+};
 
 const clone = <T>(x: T): T => structuredClone(x);
 const sameValue = (a: unknown, b: unknown) =>
@@ -262,12 +289,16 @@ export class WorkshopStore {
   private readonly storage: Storage | null;
   private listeners: ((s: WorkshopState) => void)[] = [];
   private history = new EditHistory<Snap>();
+  /*
+   * Aile başına haritalar: yazınca kopyalanır (withEntry/withoutEntry), geri
+   * al anlık görüntüsüne girer ve projede olmayan aileler budanır (prune).
+   */
   /** Aile başına belge yan bilgileri (meta, ext, bilinmeyen alanlar) */
-  private extras = new Map<string, DocExtras>();
+  private extras: ReadonlyMap<string, DocExtras> = new Map();
   /** Ailenin ilk tabanı ("Şablon değerlerine dön"; sihirbaz aileleri için) */
-  private initialBase = new Map<string, EngineGraph>();
+  private initialBase: ReadonlyMap<string, EngineGraph> = new Map();
   /** Aile başına son geçerli hal: ailenin kendisi (etkin varyantıyla) ve değerlendirmesi */
-  private lastGood = new Map<string, { family: EngineFamily; evaluation: Evaluation }>();
+  private lastGood: ReadonlyMap<string, LastGood> = new Map();
   private noticeSeq = 0;
   // Kısma ve yayın
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
@@ -358,7 +389,21 @@ export class WorkshopStore {
   }
 
   private snap(): Snap {
-    return { project: clone(this.s.project), selected: this.s.selected };
+    return { project: clone(this.s.project), selected: this.s.selected, extras: this.extras, initialBase: this.initialBase, lastGood: this.lastGood };
+  }
+
+  /**
+   * Projede olmayan ailelerin harita girdilerini atar. Geri al için
+   * gerekenler anlık görüntülerin kendi haritalarında durur; böylece
+   * haritalar mimari dene + geri al döngüsünde sınırsız büyümez.
+   */
+  private prune(): void {
+    const ids = new Set(this.s.project.families.map((f) => f.id));
+    const keep = <V>(m: ReadonlyMap<string, V>): ReadonlyMap<string, V> =>
+      [...m.keys()].every((k) => ids.has(k)) ? m : new Map([...m].filter(([k]) => ids.has(k)));
+    this.extras = keep(this.extras);
+    this.initialBase = keep(this.initialBase);
+    this.lastGood = keep(this.lastGood);
   }
 
   private showcaseGraph(): EngineGraph {
@@ -372,9 +417,17 @@ export class WorkshopStore {
     return p.families.find((f) => f.id === p.activeFamily);
   }
 
+  /** Ailenin referans motoru; köken bozuksa türetilmiş tipin şablonu, o da kurulamazsa turbofan (atmaz) */
   private referenceFor(f: EngineFamily | undefined, g: EngineGraph): BuiltEngine {
-    const id = (f?.origin.template as TemplateId | undefined) ?? templateFor(deriveTraits(g));
-    return referenceBuilt(id);
+    for (const id of [() => f?.origin.template as TemplateId | undefined, () => templateFor(deriveTraits(g))]) {
+      try {
+        const t = id();
+        if (t) return referenceBuilt(t);
+      } catch {
+        // sıradaki aday
+      }
+    }
+    return referenceBuilt('turbofan');
   }
 
   /** `last` etkin aile ve varyanta ait (tutamaç, ters çözüm, aralık bunu ister) */
@@ -431,19 +484,28 @@ export class WorkshopStore {
    * koyar. Varyant adı kilitli değilse itkiden otomatik ad verilir.
    */
   private recompute(phase: 'input' | 'change', drag = false): void {
+    this.prune();
     const p = this.s.project;
     const fam = this.activeFamily(p);
     if (!fam) return;
-    let graph = resolveFamilyVariant(fam, fam.active);
-    const opts: WorkshopEvalOptions = {
-      reference: this.referenceFor(fam, graph),
-      ...(drag && this.ownsLast() ? { previous: this.s.last.built.flowpath.gas, stageHysteresis: DRAG_STAGE_HYSTERESIS } : {}),
-      ...(p.goal ? { goal: p.goal } : {}),
-      // "Düzelt" önerisi yalnız tam değerlendirmede (input aşamasında < 2 ms bütçe)
-      remedies: phase === 'change',
-      // Öneri writeKnob gibi varyant zarfına kırpılarak sınanır
-      family: fam,
-    };
+    let graph: EngineGraph;
+    let opts: WorkshopEvalOptions;
+    // Çözüm ve referans da korumalı: bozuk aile (belgeden) mağazayı atırtmaz
+    try {
+      graph = resolveFamilyVariant(fam, fam.active);
+      opts = {
+        reference: this.referenceFor(fam, graph),
+        ...(drag && this.ownsLast() ? { previous: this.s.last.built.flowpath.gas, stageHysteresis: DRAG_STAGE_HYSTERESIS } : {}),
+        ...(p.goal ? { goal: p.goal } : {}),
+        // "Düzelt" önerisi yalnız tam değerlendirmede (input aşamasında < 2 ms bütçe)
+        remedies: phase === 'change',
+        // Öneri writeKnob gibi varyant zarfına kırpılarak sınanır
+        family: fam,
+      };
+    } catch (e) {
+      this.set({ error: this.safeTranslate(e) });
+      return;
+    }
     let r = this.safeEvaluate(graph, opts);
     if ('error' in r) {
       this.set({ graph, error: r.error });
@@ -470,7 +532,7 @@ export class WorkshopStore {
     }
     if (this.opFindings?.rev === r.built.rev) r = withOperability(r, this.opFindings.findings);
     const good = this.activeFamily()!;
-    this.lastGood.set(good.id, { family: clone(good), evaluation: r });
+    this.lastGood = withEntry(this.lastGood, good.id, { family: clone(good), evaluation: r });
     this.set({ graph, last: r, lastFor: { familyId: good.id, variantId: good.active }, error: null });
     this.publish(phase);
   }
@@ -566,8 +628,9 @@ export class WorkshopStore {
     if (last?.built.rev === b.rev && this.opFindings.findings.length) {
       const next = withOperability(last, this.opFindings.findings);
       // Ailenin saklı son geçerli hali de bulgularla (aileye dönünce aynısı görünsün)
-      const good = this.s.lastFor && this.lastGood.get(this.s.lastFor.familyId);
-      if (good && good.evaluation === last) good.evaluation = next;
+      const fid = this.s.lastFor?.familyId;
+      const good = fid !== undefined ? this.lastGood.get(fid) : undefined;
+      if (fid !== undefined && good && good.evaluation === last) this.lastGood = withEntry(this.lastGood, fid, { ...good, evaluation: next });
       this.set({ last: next });
     }
   }
@@ -624,6 +687,8 @@ export class WorkshopStore {
           else variant.values[k.id] = v;
         } else {
           f.base = k.set(f.base, v);
+          // Aile düğmesi varyantta durmaz (belge okuyucu tabana taşır; yine de kalmışsa tabanı ezmesin)
+          if (k.scope !== 'variant') for (const x of f.variants) delete x.values[k.id];
           // Tek varyantta: varyantta kalmış değer tabanı ezmesin; zarf tabanla birlikte kayar
           if (f.variants.length === 1) {
             delete variant.values[k.id];
@@ -657,20 +722,20 @@ export class WorkshopStore {
       active: vid,
       origin,
     };
-    this.initialBase.set(f.id, clone(base));
-    this.extras.set(f.id, { meta: { created: new Date().toISOString(), modified: new Date().toISOString() } });
+    this.initialBase = withEntry(this.initialBase, f.id, clone(base));
+    this.extras = withEntry(this.extras, f.id, { meta: { created: new Date().toISOString(), modified: new Date().toISOString() } });
     return f;
   }
 
-  /** Aileyi ekler (8 sınırı: en eski etkin olmayan aile çıkar) */
+  /**
+   * Aileyi ekler (8 sınırı: en eski etkin olmayan aile çıkar). Çıkan ailenin
+   * harita girdileri budamayla gider; geri al anlık görüntüden getirir.
+   */
   private addFamily(p: WorkshopProject, f: EngineFamily): string | null {
     let dropped: string | null = null;
     if (p.families.length >= MAX_FAMILIES) {
       const i = p.families.findIndex((x) => x.id !== p.activeFamily);
-      const id = p.families[i].id;
       dropped = p.families[i].code;
-      this.extras.delete(id);
-      this.lastGood.delete(id);
       p.families.splice(i, 1);
     }
     p.families.push(f);
@@ -684,7 +749,8 @@ export class WorkshopStore {
   }
 
   startFromTemplate(id: TemplateId): void {
-    const tmpl = TEMPLATES[id];
+    // Yalnız öz alan: 'constructor' gibi kimlik Object.prototype üyesine çözülmez
+    const tmpl = Object.hasOwn(TEMPLATES, id) ? TEMPLATES[id] : undefined;
     if (!tmpl) {
       this.notify('Bu şablon henüz yok.');
       return;
@@ -819,10 +885,11 @@ export class WorkshopStore {
   }
 
   /** Belgeden gelen projeyi bellek durumuna koyar: aile başına eski durum atılır (kimlikler çakışabilir) */
-  private loadProject(project: WorkshopProject, extras: Map<string, DocExtras>): void {
+  private loadProject(project: WorkshopProject, extras: ReadonlyMap<string, DocExtras>): void {
+    // Yeni harita nesneleri: önceki anlık görüntülerin haritalarına dokunulmaz
     this.extras = extras;
-    this.lastGood.clear();
-    this.initialBase.clear();
+    this.lastGood = new Map();
+    this.initialBase = new Map();
     this.s = { ...this.s, project, lastFor: null };
   }
 
@@ -841,13 +908,53 @@ export class WorkshopStore {
    */
   private autosave(): void {
     if (!this.storage || !this.s.project.families.length) return;
+    const { json, written } = this.projectJson(true);
+    // Hiçbir aile yazılamadıysa eski kayıt korunur
+    if (!written) return;
     try {
-      const p = this.s.project;
-      const saved = { ...p, families: p.families.map((f) => this.lastGood.get(f.id)?.family ?? f) };
-      this.storage.setItem(WORKSHOP_STORAGE_KEY, serializeProjectDoc(projectToDoc(saved, this.extras)));
+      this.storage.setItem(WORKSHOP_STORAGE_KEY, json);
     } catch {
       // Kota ya da gizli kip: otomatik kayıt yalnız kolaylık
     }
+  }
+
+  /**
+   * Proje belgesi (kanonik JSON); hiçbir girdide atmaz. Serileşemeyen aile
+   * (ör. sonlu olmayan sayı) bütün projeyi durdurmaz: yerine son geçerli
+   * hali yazılır, o da yoksa aile atlanır (`skipped`, aile kodları).
+   * `preferLastGood`: kurulamayan ailenin yerine son geçerli hali (otomatik kayıt).
+   */
+  private projectJson(preferLastGood: boolean): { json: string; written: number; skipped: string[] } {
+    const p = this.s.project;
+    const write = (families: EngineFamily[]) => serializeProjectDoc(projectToDoc({ ...p, families }, this.extras));
+    const first = (f: EngineFamily) => (preferLastGood ? (this.lastGood.get(f.id)?.family ?? f) : f);
+    try {
+      return { json: write(p.families.map(first)), written: p.families.length, skipped: [] };
+    } catch {
+      // aile başına dene
+    }
+    const families: EngineFamily[] = [];
+    const skipped: string[] = [];
+    for (const f of p.families) {
+      const ok = [first(f), f, this.lastGood.get(f.id)?.family].find((c) => {
+        if (!c) return false;
+        try {
+          write([c]);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+      if (ok) families.push(ok);
+      else skipped.push(f.code);
+    }
+    let json = '';
+    try {
+      json = write(families);
+    } catch {
+      return { json: '', written: 0, skipped: p.families.map((f) => f.code) };
+    }
+    return { json, written: families.length, skipped };
   }
 
   /* ------------------------------------------------------------------ */
@@ -873,7 +980,7 @@ export class WorkshopStore {
       case 'family':
         if (e.op === 'select') return this.selectFamily(e.id);
         if (e.op === 'rename') return this.renameFamily(e.name ?? '');
-        if (e.op === 'new' && TEMPLATES[e.id as TemplateId]) return this.startFromTemplate(e.id as TemplateId);
+        if (e.op === 'new' && Object.hasOwn(TEMPLATES, e.id)) return this.startFromTemplate(e.id as TemplateId);
         return;
     }
   }
@@ -1020,7 +1127,9 @@ export class WorkshopStore {
     this.commit({ t: 'variant', op: 'add', id: vid }, 'change', (p) => {
       const f = this.activeFamily(p)!;
       const cur = f.variants.find((x) => x.id === f.active)!;
-      if (f.variants.length === 1 && !Object.keys(f.envelope).length) f.envelope = defaultEnvelope(f.base, this.ctx(f.base));
+      // Zarf var olan varyant değerlerini de kapsar (içe aktarılan tek varyantlı aile tabandan uzak olabilir)
+      if (f.variants.length === 1 && !Object.keys(f.envelope).length)
+        f.envelope = defaultEnvelope(f.base, this.ctx(f.base), f.variants.map((v) => v.values));
       f.variants.push({ id: vid, name: cur.name, nameLocked: false, values: { ...cur.values } });
       f.active = vid;
     });
@@ -1029,6 +1138,8 @@ export class WorkshopStore {
   removeVariant(id: string): void {
     const fam = this.activeFamily();
     if (!fam || fam.variants.length <= 1 || !fam.variants.some((v) => v.id === id)) return;
+    // Yinelenen kimlik (bozuk belge) aileyi boşaltmasın
+    if (fam.variants.every((v) => v.id === id)) return;
     this.commit({ t: 'variant', op: 'remove', id }, 'change', (p) => {
       const f = this.activeFamily(p)!;
       f.variants = f.variants.filter((v) => v.id !== id);
@@ -1152,8 +1263,18 @@ export class WorkshopStore {
     this.restore(next);
   }
 
+  /** Anlık görüntüyü geri yükler: yalnız geçmişe ait alanlar (bkz. Snap) */
   private restore(s: Snap): void {
-    this.s = { ...this.s, project: clone(s.project), selected: s.selected, dragging: null };
+    const cur = this.s.project;
+    const project: WorkshopProject = { ...clone(s.project), expert: cur.expert };
+    if (cur.goal) project.goal = cur.goal;
+    else delete project.goal;
+    if (cur.baseline) project.baseline = cur.baseline;
+    else delete project.baseline;
+    this.extras = s.extras;
+    this.initialBase = s.initialBase;
+    this.lastGood = s.lastGood;
+    this.s = { ...this.s, project, selected: s.selected, dragging: null };
     this.recompute('change');
     this.set({});
     this.autosave();
@@ -1233,8 +1354,11 @@ export class WorkshopStore {
   /* Belge                                                               */
   /* ------------------------------------------------------------------ */
 
+  /** Proje belgesi; atmaz (yazılamayan aile son geçerli haliyle ya da hiç yazılmaz, bildirilir) */
   exportDoc(): string {
-    return serializeProjectDoc(projectToDoc(this.s.project, this.extras));
+    const { json, skipped } = this.projectJson(false);
+    if (skipped.length) this.notify(`Yazılamayan aile belgeye girmedi: ${skipped.join(', ')}.`);
+    return json;
   }
 
   /** Atölye belgesi projeyi değiştirir; tek motor belgesi yeni aile olarak eklenir */
@@ -1249,6 +1373,8 @@ export class WorkshopStore {
     const fail = (e: unknown) => ({ errors: [`Belge okunamadı: ${e instanceof Error ? e.message : String(e)}`], notes: [] });
     // Boş atölyeye (başlangıç ekranı) içe aktarma geri al yığınına girmez
     const fresh = this.s.project.families.length === 0;
+    // Geri al içe aktarmadan ÖNCEKİ durumu (aile yan bilgileri dahil) getirir
+    const before = this.snap();
     const write = (edit: Edit, mutate: (p: WorkshopProject) => void) => {
       this.enterEdit();
       if (fresh) {
@@ -1258,7 +1384,7 @@ export class WorkshopStore {
         this.s = { ...this.s, project: p };
         this.recompute('change');
         this.autosave();
-      } else this.commit(edit, 'change', mutate);
+      } else this.commit(edit, 'change', mutate, { before });
       if (this.s.last) this.set({ compare: this.s.last.summary });
     };
     if (format === 'tfa-engine') {
@@ -1279,9 +1405,10 @@ export class WorkshopStore {
           f.id = newDocId('f_');
           notes.push('Aynı kimlikli aile zaten açık: kopya yeni kimlikle eklendi.');
         }
-        this.extras.set(f.id, extras);
+        this.extras = withEntry(this.extras, f.id, extras);
         // Kimlik başka bir eski aileden kalmış olabilir
-        this.lastGood.delete(f.id);
+        this.lastGood = withoutEntry(this.lastGood, f.id);
+        this.initialBase = withoutEntry(this.initialBase, f.id);
         const dropped = this.addFamily(p, f);
         if (dropped) notes.push(`En çok ${MAX_FAMILIES} aile: ${dropped} kapatıldı.`);
       });

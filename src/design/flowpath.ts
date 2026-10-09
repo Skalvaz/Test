@@ -130,6 +130,8 @@ export function sizeRow(
   const r = (rms(hubIn, tipIn) + rms(hubOut, tipOut)) / 2;
   const uMean = omega * r;
   const x = dh / (m.loading * uMean * uMean);
+  // Bozuk girdi (sıfır uç hızı ya da yükleme): sonsuz kademe döngüsü yerine öğretici hata
+  if (!(x <= 1000)) throw new FlowpathError(`${m.type.toUpperCase()} kademe sayısı hesaplanamadı: uç hızı ya da yükleme sıfıra çok yakın.`, 'stages.invalid', m.type);
   let stages = Math.max(1, Math.ceil(x - 1e-9));
   if (prev && prev.hysteresis > 0 && Math.abs(stages - prev.stages) === 1 && Math.abs(x - Math.round(x)) < prev.hysteresis) {
     stages = Math.max(1, prev.stages);

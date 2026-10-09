@@ -14,7 +14,7 @@ import type { KnobValue } from './core/knob';
 import { canonicalJson, fnv1a64, type Migrator } from './core/doc';
 import { resolveVariant, type Family } from './core/family';
 import { checkGraph } from './graph';
-import { clampEngineKnob, ENGINE_KNOBS, knobById, knobCtx, KNOB_ALIASES, KNOB_MAP } from './knobs';
+import { clampEngineKnob, ENGINE_KNOBS, knobAlias, knobById, knobCtx, KNOB_MAP } from './knobs';
 import { MODULE_ORDER, type EngineGraph } from './types';
 import type { TemplateId } from './templates';
 
@@ -51,8 +51,28 @@ export interface WorkshopProjectDocV1 {
   goal?: string;
 }
 
-/** Kanonik sıralama: modül dizisi akış sırasında */
-export const DOC_ORDER = { modules: MODULE_ORDER } as const;
+/**
+ * Kanonik sıralama: modül dizisi akış sırasında. Prototipsiz nesne:
+ * canonicalJson `order[anahtar]` okur; belgede 'constructor' ya da
+ * '__proto__' adlı alan Object.prototype üyesini sıralama listesi sanmasın.
+ */
+export const DOC_ORDER: { readonly modules: typeof MODULE_ORDER } = Object.assign(Object.create(null) as object, { modules: MODULE_ORDER });
+
+/** Bilinen şablon kimlikleri (Record: TemplateId'ye yeni üye eklenince derleme burayı ister) */
+const TEMPLATE_KEYS: Record<TemplateId, true> = {
+  turbojet: true,
+  turbojetDry: true,
+  militaryTurbofan: true,
+  turbofanMixed: true,
+  turbofan: true,
+  turboprop: true,
+  turboshaft: true,
+};
+
+/** Belgeden gelen dizge bilinen bir şablon kimliği mi (prototip adları değil) */
+export function isTemplateId(x: unknown): x is TemplateId {
+  return typeof x === 'string' && Object.hasOwn(TEMPLATE_KEYS, x);
+}
 
 /** Grafiğin kimliği: 'r' + fnv1a64(kanonik(grafik \ kind)). Aynı grafik, aynı rev. */
 export function graphRev(g: EngineGraph): string {
@@ -134,8 +154,8 @@ export function familyToDoc(f: Family<EngineGraph, unknown>, extras: DocExtras =
 const KNOWN_KEYS = new Set(['format', 'v', 'family', 'variants', 'active', 'meta', 'ext']);
 
 export function familyFromDoc(d: EngineDocV1): { family: Family<EngineGraph, unknown>; extras: DocExtras } {
-  const unknown: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(d)) if (!KNOWN_KEYS.has(k)) unknown[k] = v;
+  // fromEntries öz alan kurar: '__proto__' adlı bilinmeyen alan prototipe yazılmaz, korunur
+  const unknown: Record<string, unknown> = Object.fromEntries(Object.entries(d).filter(([k]) => !KNOWN_KEYS.has(k)));
   return {
     family: {
       id: d.family.id,
@@ -145,7 +165,7 @@ export function familyFromDoc(d: EngineDocV1): { family: Family<EngineGraph, unk
       envelope: structuredClone(d.family.envelope ?? {}),
       variants: d.variants.map((v) => ({ id: v.id, name: v.name, nameLocked: !!v.nameLocked, values: { ...v.values } })),
       active: d.active,
-      origin: { from: d.family.origin?.from ?? 'import', template: d.family.origin?.template },
+      origin: { from: d.family.origin?.from ?? 'import', template: isTemplateId(d.family.origin?.template) ? d.family.origin.template : undefined },
     },
     extras: {
       meta: { ...d.meta },
@@ -278,6 +298,13 @@ function parseDocObjectUnsafe(input: unknown): Parsed<EngineDocV1> {
   }
   const o = migrate(input, errors, notes);
   if (!o) return { errors, notes };
+  // Sonlu olmayan sayı kanonik JSON'u (otomatik kayıt, dışa aktarma) atırtır: belge reddedilir.
+  // Varyant değerleri ve zarf kendi denetiminden geçer (girdi başına atlanır).
+  const bad = findBadValue(o, (path) => path === 'variants' || path === 'family.envelope');
+  if (bad) {
+    errors.push(`Belge okunamadı: ${bad}.`);
+    return { errors, notes };
+  }
   const fam = o.family;
   if (!isObj(fam) || typeof fam.id !== 'string' || typeof fam.code !== 'string' || typeof fam.name !== 'string' || !isObj(fam.base) || !Array.isArray(fam.base.modules)) {
     errors.push('Belgede aile bilgisi eksik (kimlik, kod, ad, taban grafik).');
@@ -298,6 +325,8 @@ function parseDocObjectUnsafe(input: unknown): Parsed<EngineDocV1> {
   }
   const famName = fam.name.length > NAME_MAX ? fam.name.slice(0, NAME_MAX) : fam.name;
   if (famName !== fam.name) notes.push('Aile adı çok uzundu, kısaltıldı.');
+  const famId = fam.id || newDocId('f_');
+  if (!fam.id) notes.push('Aile kimliği boştu, yeni kimlik verildi.');
   let base = structuredClone(fam.base) as unknown as EngineGraph;
   if ('kind' in base) delete base.kind;
   const ctx = knobCtx(base);
@@ -314,20 +343,34 @@ function parseDocObjectUnsafe(input: unknown): Parsed<EngineDocV1> {
     notes.push(`Taban: ${k.label} aralık dışındaydı (${quote(String(v), 16)} → ${String(c)}).`);
     base = k.set(base, c);
   }
+  // Zarf önce: zarf dışı varyant değeri okurken kırpılır ve bildirilir (çözümde sessizce kırpılırdı)
+  const envelope = readEnvelope(fam.envelope, notes);
   const variants: EngineDocV1['variants'] = [];
+  const seenIds = new Set<string>();
+  // Varyantta bulunan aile kapsamlı düğmeler (tabana taşınır)
+  const familyValues = new Map<string, { variant: string; value: KnobValue }[]>();
   for (const [i, raw] of o.variants.entries()) {
     if (!isObj(raw) || typeof raw.id !== 'string' || typeof raw.name !== 'string') {
       errors.push(`${i + 1}. varyant okunamadı.`);
       continue;
     }
+    // Kimlik tekil olmalı: yinelenen kimlikte silme ikisini birden siler, ikincisi seçilemez
+    let vid = raw.id;
+    if (!vid || seenIds.has(vid)) {
+      do vid = newDocId('v_');
+      while (seenIds.has(vid));
+      notes.push(`${i + 1}. varyantın kimliği ${raw.id ? 'yineleniyordu' : 'boştu'}: yeni kimlik verildi.`);
+    }
+    seenIds.add(vid);
     const name = raw.name.length > NAME_MAX ? raw.name.slice(0, NAME_MAX) : raw.name;
     if (name !== raw.name) notes.push(`${i + 1}. varyantın adı çok uzundu, kısaltıldı.`);
     const vn = quote(name);
     const values: Record<string, KnobValue> = {};
     for (const [id0, val0] of Object.entries(isObj(raw.values) ? raw.values : {})) {
       let id = id0;
-      if (!KNOB_MAP.has(id) && KNOB_ALIASES[id]) {
-        id = KNOB_ALIASES[id];
+      const alias = KNOB_MAP.has(id) ? undefined : knobAlias(id);
+      if (alias) {
+        id = alias;
         notes.push(`"${quote(id0)}" düğmesinin yeni adı "${id}".`);
       }
       const k = KNOB_MAP.get(id);
@@ -335,15 +378,28 @@ function parseDocObjectUnsafe(input: unknown): Parsed<EngineDocV1> {
         notes.push(`"${vn}" varyantında bilinmeyen düğme "${quote(id0)}" atlandı.`);
         continue;
       }
-      if (typeof val0 !== 'number' && typeof val0 !== 'string' && typeof val0 !== 'boolean') {
+      if ((typeof val0 !== 'number' && typeof val0 !== 'string' && typeof val0 !== 'boolean') || (typeof val0 === 'number' && !Number.isFinite(val0))) {
         notes.push(`"${vn}" varyantında "${id}" değeri okunamadı, atlandı.`);
         continue;
       }
-      const val = k.range(ctx) ? clampEngineKnob(k, val0, ctx) : val0;
+      let val = k.range(ctx) ? clampEngineKnob(k, val0, ctx) : val0;
       if (!sameValue(val, val0)) notes.push(`"${vn}": ${k.label} aralık dışındaydı (${quote(String(val0), 16)} → ${String(val)}).`);
+      if (k.scope !== 'variant') {
+        // Aile düğmesi varyantta durursa kaydırıcı yalnız tabanı yazar, değer "takılı" kalırdı
+        const list = familyValues.get(id) ?? [];
+        list.push({ variant: vid, value: val });
+        familyValues.set(id, list);
+        continue;
+      }
+      const env = envelope?.[id];
+      if (env && typeof val === 'number' && (val < env[0] || val > env[1])) {
+        const c = Math.min(env[1], Math.max(env[0], val));
+        notes.push(`"${vn}": ${k.label} varyant zarfının dışındaydı (${String(val)} → ${String(c)}).`);
+        val = c;
+      }
       values[id] = val;
     }
-    variants.push({ id: raw.id, name, ...(raw.nameLocked === true ? { nameLocked: true } : {}), values });
+    variants.push({ id: vid, name, ...(raw.nameLocked === true ? { nameLocked: true } : {}), values });
   }
   if (!variants.length) return { errors, notes };
   let active = typeof o.active === 'string' ? o.active : '';
@@ -351,24 +407,38 @@ function parseDocObjectUnsafe(input: unknown): Parsed<EngineDocV1> {
     if (active) notes.push('Etkin varyant bulunamadı: ilk varyant seçildi.');
     active = variants[0].id;
   }
+  // Aile düğmeleri tabana: etkin varyantın değeri (yoksa ilk varyantınki)
+  for (const [id, list] of familyValues) {
+    const k = KNOB_MAP.get(id)!;
+    const pick = list.find((x) => x.variant === active) ?? list[0];
+    base = k.set(base, pick.value);
+    const lost = list.some((x) => !sameValue(x.value, pick.value));
+    notes.push(`${k.label} aile düğmesi: varyanttaki değer tabana taşındı${lost ? ' (varyantlar arasındaki fark atıldı)' : ''}.`);
+  }
   const meta = isObj(o.meta) ? (o.meta as EngineDocV1['meta']) : { created: now(), modified: now() };
   const originRaw = isObj(fam.origin) ? fam.origin : undefined;
   const from = originRaw && ['template', 'wizard', 'import'].includes(originRaw.from as string) ? (originRaw.from as 'template' | 'wizard' | 'import') : 'import';
-  const envelope = readEnvelope(fam.envelope, notes);
+  // Şablon kimliği yalnız bilinen şablon ('constructor' gibi adlar TEMPLATES'te prototip üyesine çözülürdü)
+  const template = isTemplateId(originRaw?.template) ? originRaw.template : undefined;
+  if (originRaw?.template !== undefined && !template) notes.push(`Bilinmeyen şablon "${quote(String(originRaw.template), 24)}" atlandı.`);
+  // Aile alanları: bilinmeyenler korunur; zarf ve köken yalnız denetlenmiş halleriyle
+  const famRest: Record<string, unknown> = { ...fam };
+  delete famRest.envelope;
+  delete famRest.origin;
   const doc: EngineDocV1 = {
     ...o,
     format: 'tfa-engine',
     v: 1,
     family: {
-      ...fam,
-      id: fam.id,
+      ...famRest,
+      id: famId,
       code: fam.code,
       name: famName,
       base,
       ...(envelope ? { envelope } : {}),
       origin: {
         from,
-        ...(typeof originRaw?.template === 'string' ? { template: originRaw.template as TemplateId } : {}),
+        ...(template ? { template } : {}),
         app: typeof originRaw?.app === 'string' ? originRaw.app : APP_ID,
       },
     },
@@ -390,6 +460,34 @@ function parseDocObjectUnsafe(input: unknown): Parsed<EngineDocV1> {
   return { doc, errors, notes };
 }
 
+/** Belge ağacının izin verilen derinliği (kanonik JSON özyinelemeyle yazar) */
+const MAX_DEPTH = 32;
+
+/**
+ * Sonlu olmayan sayı (JSON'da 1e999 → Infinity; nesne girdisinde NaN) ya da
+ * aşırı derin iç içe yapı arar; ilk bulduğunu yoluyla döner. `skip` verilen
+ * yolları atlar (kendi denetimi olan alanlar). Özyinelemesiz.
+ */
+function findBadValue(root: unknown, skip: (path: string) => boolean): string | undefined {
+  const seen = new Set<object>();
+  const stack: [unknown, string, number][] = [[root, '', 0]];
+  while (stack.length) {
+    const [x, path, depth] = stack.pop()!;
+    if (typeof x === 'number') {
+      if (!Number.isFinite(x)) return `sonlu olmayan sayı (${quote(path || 'kök', 60)})`;
+      continue;
+    }
+    if (x === null || typeof x !== 'object' || seen.has(x)) continue;
+    seen.add(x);
+    if (depth > MAX_DEPTH) return `çok derin iç içe yapı (${quote(path, 60)})`;
+    for (const [k, v] of Object.entries(x)) {
+      const p = path ? `${path}.${k}` : k;
+      if (!skip(p)) stack.push([v, p, depth + 1]);
+    }
+  }
+  return undefined;
+}
+
 /**
  * Varyant zarfı: bilinen varyant düğmesi, iki sonlu uç, lo ≤ hi. Geçmeyen
  * girdi atılır ve `notes`'a yazılır (bozuk zarf kırpmada NaN üretirdi).
@@ -402,7 +500,7 @@ function readEnvelope(raw: unknown, notes: string[]): Record<string, [number, nu
   }
   const env: Record<string, [number, number]> = {};
   for (const [id0, e] of Object.entries(raw)) {
-    const id = KNOB_MAP.has(id0) ? id0 : (KNOB_ALIASES[id0] ?? id0);
+    const id = KNOB_MAP.has(id0) ? id0 : (knobAlias(id0) ?? id0);
     const k = KNOB_MAP.get(id);
     const ok = k && k.scope === 'variant' && Array.isArray(e) && e.length === 2 && e.every((x) => typeof x === 'number' && Number.isFinite(x)) && e[0] <= e[1];
     if (ok) env[id] = [e[0], e[1]];
@@ -442,11 +540,23 @@ export function parseProjectDoc(json: string): Parsed<WorkshopProjectDocV1> {
     return { errors, notes };
   }
   const families: EngineDocV1[] = [];
+  const seenIds = new Set<string>();
   for (const [i, f] of p.families.entries()) {
     const r = parseDocObject(f);
     errors.push(...r.errors.map((e) => `${i + 1}. aile: ${e}`));
     notes.push(...r.notes.map((n) => `${i + 1}. aile: ${n}`));
-    if (r.doc) families.push(r.doc);
+    if (!r.doc) continue;
+    // Aile kimliği tekil olmalı: yan bilgi haritası ezilir, ikinci aile seçilemezdi
+    let doc = r.doc;
+    if (!doc.family.id || seenIds.has(doc.family.id)) {
+      let id: string;
+      do id = newDocId('f_');
+      while (seenIds.has(id));
+      doc = { ...doc, family: { ...doc.family, id } };
+      notes.push(`${i + 1}. aile: kimliği ${r.doc.family.id ? 'yineleniyordu' : 'boştu'}, yeni kimlik verildi.`);
+    }
+    seenIds.add(doc.family.id);
+    families.push(doc);
   }
   if (!families.length) return { errors, notes };
   let active = typeof p.active === 'string' ? p.active : '';

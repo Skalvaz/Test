@@ -9,6 +9,7 @@
 
 import type { Architecture } from '../design/architecture';
 import type { Family } from '../design/core/family';
+import type { KnobValue } from '../design/core/knob';
 import { TEMPLATES } from '../design/catalog';
 import {
   familyFromDoc,
@@ -69,9 +70,14 @@ export function templateFor(t: EngineTraits): TemplateId {
   }
 }
 
-/** Var olan şablon (yoksa en yakını) */
+/**
+ * Var olan şablon (yoksa en yakını). Yalnız öz alanlar: belgeden gelen
+ * 'constructor' ya da 'toString' Object.prototype üyesine çözülüp
+ * buildEngine'e işlev olarak gitmez; bilinmeyen kimlik turbofan olur.
+ */
 export function existingTemplate(id: TemplateId): TemplateId {
-  return TEMPLATES[id] ? id : (TEMPLATE_FALLBACK[id] ?? 'turbofan');
+  if (Object.hasOwn(TEMPLATES, id) && TEMPLATES[id]) return id;
+  return (Object.hasOwn(TEMPLATE_FALLBACK, id) && TEMPLATE_FALLBACK[id]) || 'turbofan';
 }
 
 const refCache = new Map<TemplateId, BuiltEngine>();
@@ -131,9 +137,11 @@ export function familyBase(g: EngineGraph): EngineGraph {
 
 /**
  * Varyant zarfı: her varyant düğmesi için taban değerinin ±%15'i (basınç
- * oranında ±%10) ile düğme aralığının kesişimi.
+ * oranında ±%10) ile düğme aralığının kesişimi. `values` (var olan
+ * varyantların değerleri) verilirse zarf onları da kapsayacak kadar
+ * genişler: zarf kurulunca var olan varyantın tasarımı sessizce kırpılmaz.
  */
-export function defaultEnvelope(base: EngineGraph, ctx: KnobRangeCtx): Record<string, [number, number]> {
+export function defaultEnvelope(base: EngineGraph, ctx: KnobRangeCtx, values: readonly Record<string, KnobValue>[] = []): Record<string, [number, number]> {
   const env: Record<string, [number, number]> = {};
   for (const k of ENGINE_KNOBS) {
     if (k.scope !== 'variant') continue;
@@ -141,7 +149,15 @@ export function defaultEnvelope(base: EngineGraph, ctx: KnobRangeCtx): Record<st
     const v = k.get(base);
     if (!r || typeof v !== 'number') continue;
     const f = k.id.endsWith('.pr') ? 0.1 : 0.15;
-    env[k.id] = [Math.max(r[0], v * (1 - f)), Math.min(r[1], v * (1 + f))];
+    let lo = Math.max(r[0], v * (1 - f));
+    let hi = Math.min(r[1], v * (1 + f));
+    for (const vals of values) {
+      const x = Object.hasOwn(vals, k.id) ? vals[k.id] : undefined;
+      if (typeof x !== 'number' || !Number.isFinite(x)) continue;
+      lo = Math.min(lo, x);
+      hi = Math.max(hi, x);
+    }
+    env[k.id] = [lo, hi];
   }
   return env;
 }
