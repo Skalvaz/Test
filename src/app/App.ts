@@ -753,7 +753,7 @@ export class App {
           if (store.state.project.families.length && store.state.phase !== 'start') {
             if (store.state.phase === 'wizard') store.resume();
             this.publishWorkshop();
-          } else if (!store.resume()) this.toasts.show('Kayıt okunamadı: yeni bir tasarıma başla.', 'warn');
+          } else if (!store.resume()) this.toasts.show('Kayıt okunamadı: yeni bir tasarıma başla.', 'caution');
           this.source = 'workshop';
           this.refreshChrome();
           this.refreshWorkshop();
