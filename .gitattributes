@@ -1,0 +1,2 @@
+# vitest anlık görüntüleri LF yazar; Windows CRLF dönüşümü her koşuda sahte fark üretiyordu
+*.snap text eol=lf
