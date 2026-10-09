@@ -348,7 +348,7 @@ export class App {
     this.diagram = new CycleDiagram({ onHoverPart: (p) => this.onHover(p) });
 
     this.lessonPanel = new LessonPanel(this.sim);
-    this.lessonPanel.onExit = () => this.showMenu();
+    this.lessonPanel.onExit = () => (this.returnTo === 'workshop' ? this.openWorkshop({ resume: true }) : this.showMenu());
 
     this.applyEngineUi(this.visual.source);
     this.sandboxPanel = new SandboxPanel(this.sim, () => this.visual, {
@@ -562,6 +562,8 @@ export class App {
   /* ================================================================ */
 
   showMenu(first = false) {
+    if (this.mode === 'workshop') this.leaveWorkshop();
+    this.returnTo = null;
     this.mode = 'menu';
     this.runner = null;
     this.timeScale = 1;
@@ -594,6 +596,7 @@ export class App {
           onSandbox: () => this.openSandbox(),
           onGlossary: () => this.openGlossary(),
           onSettings: () => this.openSettings(),
+          onWorkshop: () => this.openWorkshop(),
         },
         progress,
         LESSONS.length,
@@ -607,9 +610,12 @@ export class App {
     this.openOverlay(lessonSelect(LESSONS, loadProgress(), (l) => this.startLesson(l), back));
   }
 
-  startLesson(lesson: Lesson) {
+  startLesson(lesson: Lesson, opts: { returnTo?: 'workshop' } = {}) {
     this.closeOverlay();
-    // Dersler yüksek baypaslı turbofan üzerine yazıldı
+    if (this.mode === 'workshop') this.leaveWorkshop();
+    this.returnTo = opts.returnTo ?? null;
+    this.source = 'catalog';
+    // Dersler yüksek baypaslı turbofan üzerine yazıldı (kind yuvası: atölye tasarımı dersi etkilemez)
     this.setEngine('turbofan', false);
     this.mode = 'lesson';
     this.currentLessonIndex = LESSONS.indexOf(lesson);
@@ -641,6 +647,12 @@ export class App {
     saveLessonResult(r.lesson.id, r.stars);
     const idx = LESSONS.indexOf(r.lesson);
     const hasNext = idx + 1 < LESSONS.length;
+    // Atölyeden açılan ders bitince atölyeye dönülür
+    if (this.returnTo === 'workshop') {
+      this.toasts.show(`${r.lesson.title} tamamlandı. Atölyeye dönüldü.`, 'info', 4000);
+      this.openWorkshop({ resume: true });
+      return;
+    }
     this.openOverlay(
       resultModal(r, hasNext, {
         next: () => this.startLesson(LESSONS[idx + 1]),
@@ -655,9 +667,12 @@ export class App {
     this.openLessons();
   }
 
-  openSandbox() {
+  openSandbox(opts: { from?: 'workshop' } = {}) {
     this.audio.resume();
     this.closeOverlay();
+    if (this.mode === 'workshop') this.leaveWorkshop();
+    this.returnTo = null;
+    this.sandboxPanel.setWorkshop(opts.from === 'workshop');
     this.mode = 'sandbox';
     this.runner = null;
     this.rig.autoRotate = false;
@@ -671,7 +686,253 @@ export class App {
     this.diagramVisible = window.innerWidth > 1000;
     this.rig.go('front');
     this.refreshChrome();
-    this.toasts.show('Test hücresi: motor rölantide. Soldaki panelden koşulları ve arızaları değiştirebilirsin.', 'info', 5500);
+    if (opts.from === 'workshop') this.toasts.show("Tasarımın test hücresinde. 'Otomatik çalıştır' ile başlat.", 'info', 5500);
+    else this.toasts.show('Test hücresi: motor rölantide. Soldaki panelden koşulları ve arızaları değiştirebilirsin.', 'info', 5500);
+  }
+
+  /* ================================================================ */
+  /* Motor tasarım atölyesi (M5a P10, M5A-SPEC §6)                    */
+  /* ================================================================ */
+
+  /**
+   * Atölyeye girer (openSandbox kalıbı): gaz kolu yok, simülasyon soğuk,
+   * ortam test hücresi, efektsiz model. `resume`: test hücresinden ya da
+   * dersten dönüş (seçim, kıyas, sekme korunur); yoksa başlangıç ekranı.
+   */
+  openWorkshop(opts: { resume?: boolean } = {}) {
+    this.audio.resume();
+    this.closeOverlay();
+    const wasWorkshop = this.mode === 'workshop';
+    this.mode = 'workshop';
+    this.runner = null;
+    this.returnTo = null;
+    this.rig.autoRotate = false;
+    this.pickMode = false;
+    this.picker.showLabels = false;
+    this.stepHighlight = null;
+    this.stickyHighlight = null;
+    this.autoStart = false;
+    this.timeScale = 1;
+    this.cockpit.flash(null);
+    this.consoleVisible = false;
+    this.diagramVisible = false;
+    this.sim.reset();
+    if (this.envName !== TEST_CELL && this.cell) this.applyEnvironment(TEST_CELL);
+    const cut = this.cutaway;
+    if (!wasWorkshop) this.rig.go('front');
+    // Atölyede kesit kullanıcı anahtarıdır: açı geçişi onu değiştirmez
+    this.setCutaway(cut);
+    this.enterWorkshopScene();
+    const st = this.wsStore.state;
+    if (st.phase === 'testing') this.wsStore.setTesting(false);
+    if (opts.resume && (st.phase === 'edit' || st.phase === 'testing')) {
+      this.source = 'workshop';
+      this.publishWorkshop();
+    } else if (st.phase === 'edit' && wasWorkshop) {
+      this.publishWorkshop();
+    } else {
+      this.openWorkshopStart();
+    }
+    this.refreshChrome();
+    this.refreshWorkshop();
+  }
+
+  /** Başlangıç ekranı (yeni aile/şablon) */
+  private openWorkshopStart() {
+    const store = this.wsStore;
+    const close = () => {
+      this.closeOverlay();
+      // Proje yoksa atölye boş kalmaz: menüye dön
+      if (store.state.phase === 'start') this.showMenu();
+    };
+    this.openOverlay(
+      startScreen({
+        hasSaved: store.state.project.families.length > 0 || store.hasSaved(),
+        onResume: () => {
+          this.closeOverlay();
+          if (store.state.project.families.length && store.state.phase !== 'start') {
+            if (store.state.phase === 'wizard') store.resume();
+            this.publishWorkshop();
+          } else if (!store.resume()) this.toasts.show('Kayıt okunamadı: yeni bir tasarıma başla.', 'warn');
+          this.source = 'workshop';
+          this.refreshChrome();
+          this.refreshWorkshop();
+        },
+        onTemplate: (id) => {
+          this.closeOverlay();
+          this.source = 'workshop';
+          store.startFromTemplate(id);
+          this.wsPanel.setTab('tune');
+          this.refreshChrome();
+          this.refreshWorkshop();
+        },
+        onScratch: () => {
+          this.closeOverlay();
+          this.source = 'workshop';
+          this.wsPanel.wizard.reset();
+          store.startWizard();
+          this.refreshChrome();
+          this.refreshWorkshop();
+        },
+        onClose: close,
+      }),
+    );
+  }
+
+  /** Mağazanın son geçerli tasarımını sahneye koyar (dönüşte) */
+  private publishWorkshop() {
+    const last = this.wsStore.state.last;
+    if (!last) return;
+    try {
+      this.applyDesign('workshop', last.built, 'full', { effects: false });
+    } catch (err) {
+      console.warn('Atölye tasarımı kurulamadı', err);
+    }
+    this.placeWorkshopHelpers();
+  }
+
+  /** Mağaza yeni tasarım üretti: 3B model (taslak/tam), ölçek figürü, zarf */
+  private onWorkshopBuilt(b: BuiltEngine, detail: 'draft' | 'full') {
+    if (this.mode !== 'workshop') return;
+    this.source = 'workshop';
+    const t0 = performance.now();
+    this.applyDesign('workshop', b, detail, { effects: false });
+    this.wsBuildMs = performance.now() - t0;
+    this.placeWorkshopHelpers();
+  }
+  private wsBuildMs = 0;
+
+  private placeWorkshopHelpers() {
+    const last = this.wsStore.state.last;
+    if (!last) return;
+    this.wsFigure?.place(last.built, this.floorY);
+    this.wsBox?.set(this.wsStore.state.project.goal?.require ?? null, last.built);
+  }
+
+  /** Tutamaçlar, hayalet, ölçek figürü ve zarf kutusu sahneye */
+  private enterWorkshopScene() {
+    if (!this.wsGhost) this.wsGhost = new DesignGhost(this.scene);
+    if (!this.wsHandles) {
+      this.wsHandles = new WorkshopHandles(
+        {
+          camera: this.rig.camera,
+          dom: this.renderer.domElement,
+          controls: this.rig.controls,
+          cutPlane: () => (this.cutaway ? this.clipPlane : null),
+        },
+        this.wsStore,
+        { ghost: this.wsGhost },
+      );
+    }
+    if (!this.wsFigure) this.wsFigure = new ScaleFigure(this.scene);
+    if (!this.wsBox) this.wsBox = new EnvelopeBox(this.scene);
+    this.wsHandles.setVisible(true);
+    this.wsFigure.setVisible(true);
+    this.picker.priority = (x, y) => this.mode === 'workshop' && this.wsHandles?.hitTest(x, y) != null;
+    this.frameHooks.add(this.wsHook);
+  }
+
+  /** Atölyeden çıkış: kaplamalar gizlenir, otomatik kayıt mağazada */
+  private leaveWorkshop() {
+    this.wsStore.flush();
+    this.frameHooks.delete(this.wsHook);
+    this.wsHandles?.setVisible(false);
+    this.wsFigure?.setVisible(false);
+    this.wsBox?.set(null, null);
+    this.wsGhost?.end();
+    this.picker.priority = undefined;
+    this.picker.showLabels = true;
+    this.wsHover = null;
+    document.body.classList.remove('mode-workshop');
+  }
+
+  private workshopFrame(_dt: number) {
+    if (this.mode !== 'workshop') return;
+    this.wsHandles?.frame();
+    if (this.wsFigure) this.wsFigure.frame(this.rig.camera);
+    this.wsBox?.frame(this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight);
+  }
+
+  /** Paneller ve vurgu (mağaza değişince ve 0,2 s'de bir) */
+  private refreshWorkshop() {
+    if (this.mode !== 'workshop') return;
+    const s = this.wsStore.state;
+    this.wsPanel.update(s);
+    this.wsResults.update(s);
+    this.wsCoach.update(s, !this.wsCoach.done);
+    this.setVisible(this.wsPanel.toolbar, s.phase === 'edit');
+    this.wsHandles?.setVisible(s.phase === 'edit');
+    if (this.wsStore.state.project.goal !== this.wsGoalShown) {
+      this.wsGoalShown = this.wsStore.state.project.goal;
+      this.placeWorkshopHelpers();
+    }
+  }
+  private wsGoalShown: unknown = undefined;
+
+  /** Etkin atölye varyantının adı */
+  private workshopDesignName(): string {
+    const f = this.wsStore.activeFamily();
+    return f?.variants.find((v) => v.id === f.active)?.name ?? this.wsStore.state.graph.name;
+  }
+
+  /**
+   * "Test hücresinde çalıştır" (§6.9): atölye yuvasını tam ayrıntıyla ve
+   * efektlerle kurar, motor soğuk; test hücresi şeridi geri dönüş ve
+   * beklenen/ölçülen itkiyi gösterir.
+   */
+  runWorkshopDesign() {
+    const store = this.wsStore;
+    store.flush();
+    const last = store.state.last;
+    if (!last || store.state.phase === 'start' || store.state.phase === 'wizard') {
+      this.toasts.show('Önce atölyede bir tasarım oluştur.', 'info');
+      return;
+    }
+    clearTimeout(this.fullDetailTimer);
+    // Yuvaya adıyla yazılır: test hücresinde ve simülasyonda varyant adı görünür
+    const g = { ...last.graph, name: this.workshopDesignName() };
+    try {
+      setSlotGraph('workshop', g, store.buildOptions(last.graph));
+    } catch {
+      setSlotBuilt('workshop', last.built);
+    }
+    this.leaveWorkshop();
+    this.mode = 'sandbox';
+    this.setEngine('workshop', false, { effects: true });
+    this.sim.reset();
+    this.source = 'workshop';
+    store.setTesting(true);
+    this.openSandbox({ from: 'workshop' });
+    this.sandboxPanel.refreshEngine();
+  }
+
+  /** Test kancası (§6.10): window.__app.workshop */
+  get workshop(): WorkshopHook {
+    const app = this;
+    const store = this.wsStore;
+    return {
+      store,
+      current: () => store.state.last,
+      handles: () => app.wsHandles?.handles() ?? [],
+      get idle() {
+        return store.idle && !app.visualDraft;
+      },
+      get lastBuildMs() {
+        return Math.max(store.lastBuildMs, app.wsBuildMs);
+      },
+      flush: async () => {
+        store.flush();
+        // Bekleyen tam ayrıntı modeli hemen
+        if (app.visualDraft && app.visual.slot === 'workshop') {
+          clearTimeout(app.fullDetailTimer);
+          app.rebuildVisual('workshop');
+        }
+        const n = app.framesRendered;
+        const t0 = performance.now();
+        while (app.framesRendered <= n + 1 && performance.now() - t0 < 5000) await new Promise((r) => requestAnimationFrame(() => r(null)));
+        app.refreshWorkshop();
+      },
+    };
   }
 
   /**
