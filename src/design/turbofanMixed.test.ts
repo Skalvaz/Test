@@ -11,10 +11,10 @@ import type { Architecture } from './architecture';
 import { TEMPLATES } from './catalog';
 import { DEFAULT_MODULES, graphFromArchitecture, referenceFor } from './defaults';
 import { evaluate } from './evaluate';
-import { profileAt, type TurbofanLayout } from './flowpath';
+import { FlowpathError, profileAt, type TurbofanLayout } from './flowpath';
 import { buildEngine, type BuiltEngine } from './graph';
 import { LOCKED, nozzleAnchor, nozzleCoupling, nozzleRange, rebuilderFor } from './inverse';
-import { MIXING_DUCT_LD } from './layouts/turbofan';
+import { MIXING_DUCT_LD, PLUG_PROTRUSION } from './layouts/turbofan';
 import { TURBOFAN_GRAPH } from './templates';
 import { TURBOFAN_MIXED_GRAPH } from './turbofanMixed';
 import type { EngineGraph, MixerModule, NozzleModule } from './types';
@@ -24,6 +24,7 @@ const TFM = TURBOFAN_MIXED_GRAPH;
 const built = buildEngine(TFM);
 const L = built.flowpath.layout as TurbofanLayout;
 const M = L.mixed!;
+const lerpZ = (a: number, b: number, u: number) => a + (b - a) * u;
 
 /** Aynı gaz yolu, ayrık akışlı egzoz (karıştırıcı yok, ayrık lüle, aynı cv) */
 function separateTwin(g: EngineGraph): EngineGraph {
@@ -64,6 +65,58 @@ describe('lüle alanı ve uzun kanal geometrisi', () => {
     // Koni ağızdan çıkar (CFM56-5C): ağızda koni yarıçapı > 0
     expect(M.plugExitR).toBeGreaterThan(0);
     expect(L.plug[L.plug.length - 1][1]).toBeGreaterThan(M.nozzle.z1);
+  });
+
+  it('koni ucu ortak lüle ağzından 0,7 ağız yarıçapı çıkar (koni ve ağız birlikte yakınsar)', () => {
+    const tip = L.plug[L.plug.length - 1][1];
+    expect((tip - M.nozzle.z1) / M.nozzle.rExit).toBeCloseTo(PLUG_PROTRUSION, 2);
+    expect(Math.PI * (M.nozzle.rExit ** 2 - M.plugExitR ** 2) / built.sized.ref.A9mix!).toBeCloseTo(1, 3);
+  });
+
+  it('düğme aralığının uçlarında (BPR 1/7, hava akışı 50/600) ya fan kanalı açık ya da öğretici FlowpathError', () => {
+    const fanOf = (g: EngineGraph) => g.modules.find((m) => m.type === 'fan') as { bypassRatio: number; pr: number };
+    const cases: [string, (g: EngineGraph) => void][] = [
+      ['BPR 1', (g) => (fanOf(g).bypassRatio = 1)],
+      ['BPR 2', (g) => (fanOf(g).bypassRatio = 2)],
+      ['BPR 7', (g) => (fanOf(g).bypassRatio = 7)],
+      ['W 50', (g) => (g.massFlow = 50)],
+      ['W 100', (g) => (g.massFlow = 100)],
+      ['W 600', (g) => (g.massFlow = 600)],
+      ['fan.pr 1,4 + BPR 3', (g) => Object.assign(fanOf(g), { pr: 1.4, bypassRatio: 3 })],
+    ];
+    const closed: string[] = [];
+    for (const [label, f] of cases) {
+      const g = structuredClone(TFM);
+      f(g);
+      let b: BuiltEngine;
+      try {
+        b = buildEngine(g);
+      } catch (e) {
+        expect((e as FlowpathError).code, label).toBe('bypassDuct.closed');
+        expect((e as FlowpathError).knobs).toEqual(['fan.bypassRatio', 'engine.massFlow']);
+        closed.push(label);
+        continue;
+      }
+      const l = b.flowpath.layout as TurbofanLayout;
+      // Kurulduysa OGV ve destek kanatları pozitif açıklıklı, kanal duvarı çekirdeğin dışında
+      expect(l.ogv.tip - l.ogv.hub, label).toBeGreaterThan(0.03);
+      expect(l.struts.tip - l.struts.hub, label).toBeGreaterThan(0.03);
+      const m = l.mixed!;
+      for (let i = 0; i <= 50; i++) {
+        const z = lerpZ(m.duct[0][1], m.mixer.z0, i / 50);
+        expect(profileAt(m.duct, z) - profileAt(l.coreCowl, z), `${label} z ${z.toFixed(2)}`).toBeGreaterThan(0.02);
+      }
+    }
+    // Ölçüm (P6 denetimi): çekirdek mutlak paylı, kanal fan oranında → BPR ≤ 2 ve W ≤ 100 kapanır
+    expect(closed).toEqual(expect.arrayContaining(['BPR 1', 'BPR 2', 'W 50', 'W 100']));
+    expect(closed).not.toContain('BPR 7');
+    expect(closed).not.toContain('W 600');
+  });
+
+  it('karışma basıncı yetersizken (A9mix NaN) TypeError yerine öğretici FlowpathError', () => {
+    const g = structuredClone(TFM);
+    g.modules = g.modules.map((m) => (m.type === 'fan' ? { ...m, pr: 1.3 } : m));
+    expect(() => buildEngine(g)).toThrow(expect.objectContaining({ name: 'FlowpathError', code: 'mixer.area' }));
   });
 
   it('kaporta iç duvarı her z’de çekirdek kaportasının, karıştırıcının ve koninin dışında; dış yüzey iç duvarın dışında', () => {

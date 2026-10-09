@@ -39,8 +39,25 @@ export const READY_MIXED = true;
 
 /** Karıştırma kanalı boyu / ortak lüle ağzı yarıçapı (şartname §3.4) */
 export const MIXING_DUCT_LD = 1.6;
+/** Karışık akışta egzoz konisi ucunun ortak lüle ağzından çıkıntısı / ağız yarıçapı (şartname §3.4) */
+export const PLUG_PROTRUSION = 0.7;
 /** Ortak lüle ve karıştırıcı sacı et kalınlığı [m] (inconel, kütle) */
 const MIX_SHEET_T = 0.003;
+/** Karışık akış: çekirdek kaportasının fan kanalı iç duvarına en az açıklığı (fan ucu oranında) */
+const MIN_DUCT_GAP = 0.04;
+/** Egzoz konisinin M4 öncesi ojiv profili: [taban yarıçapı oranı, boy (taban 0,4 m'de)] */
+const PLUG_SHAPE: readonly [number, number][] = [
+  [1, 0],
+  [0.993, 0.11],
+  [0.96, 0.26],
+  [0.88, 0.45],
+  [0.75, 0.66],
+  [0.58, 0.855],
+  [0.395, 1.015],
+  [0.215, 1.125],
+  [0.075, 1.182],
+  [0, 1.205],
+];
 
 /** M4 öncesi elle modellenmiş turbofanın fan uç yarıçapı: fan/kaporta/pilon şekilleri buna göre ölçeklenir */
 export const TF_REF_FAN_TIP = 1.386;
@@ -177,6 +194,16 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
   const mz0 = lpt.z1 + 0.22;
   const mz1 = mz0 + Math.max(0.3, 0.75 * mixR);
   const A9mix = sized.ref.A9mix ?? sized.ref.A9 + sized.ref.A19;
+  // `??` NaN'ı geçirir: karışma basıncı yetersizken (karışma düzleminde
+  // statik basınç eşitlenemez) bütün uzun kanal profilleri NaN olurdu
+  if (mixMod && !(Number.isFinite(A9mix) && A9mix > 0))
+    throw new FlowpathError(
+      'Ortak lüle alanı hesaplanamadı: karışma düzleminde baypas basıncı yetersiz. Fan basınç oranını artır ya da baypas oranını azalt.',
+      'mixer.area',
+      'nozzle',
+      ['fan.pr', 'fan.bypassRatio'],
+      { value: A9mix },
+    );
   // Egzoz konisi: taban LPT çıkış göbeğinde; M4 öncesi modelin ojiv
   // profili (taban 0,4 m, boy 1,2 m) taban yarıçapıyla orantılı ölçeklenir.
   // Karışık akışta koni uzar, ucu ortak lülenin ağzından ~0,7 ağız yarıçapı
@@ -184,24 +211,22 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
   const plugBase = lpt.hub[1] - 0.01;
   const k = plugBase / 0.4;
   const pz0 = lpt.z1 + 0.19;
-  const rExit0 = Math.sqrt(A9mix / Math.PI);
-  const kz = mixMod ? Math.max(k, (mz1 + (MIXING_DUCT_LD + 0.7) * rExit0 - pz0) / 1.205) : k;
-  const plug: [number, number][] = (
-    [
-      [1, 0],
-      [0.993, 0.11],
-      [0.96, 0.26],
-      [0.88, 0.45],
-      [0.75, 0.66],
-      [0.58, 0.855],
-      [0.395, 1.015],
-      [0.215, 1.125],
-      [0.075, 1.182],
-      [0, 1.205],
-    ] as [number, number][]
-  ).map(([r, dz]) => [plugBase * r, pz0 + dz * kz]);
-  const plugEnd = plug[plug.length - 1][1];
-  const plugAt = (z: number) => (z >= plugEnd ? 0 : profileAt(plug, z));
+  const plugFor = (kz: number): [number, number][] =>
+    PLUG_SHAPE.map(([r, dz]) => [plugBase * r, pz0 + dz * kz] as [number, number]);
+  let plug = plugFor(k);
+  const plugAt = (z: number) => (z >= plug[plug.length - 1][1] ? 0 : profileAt(plug, z));
+  // Ortak lüle ağzı: halka alanı A9mix (koni ağızdan çıkıyorsa halka). Koni
+  // boyu ağız yarıçapına, ağız yarıçapı ağızdaki koni kesitine, kanal boyu da
+  // ağız yarıçapına bağlı: üçü birlikte yinelenerek yakınsar (sabit nokta)
+  let rExit = Math.sqrt(A9mix / Math.PI);
+  let endZ = mz1 + MIXING_DUCT_LD * rExit;
+  if (mixMod) {
+    for (let i = 0; i < 8; i++) {
+      plug = plugFor(Math.max(k, (mz1 + (MIXING_DUCT_LD + PLUG_PROTRUSION) * rExit - pz0) / 1.205));
+      rExit = Math.sqrt(plugAt(endZ) ** 2 + A9mix / Math.PI);
+      endZ = mz1 + MIXING_DUCT_LD * rExit;
+    }
+  }
   const ogvZ = fanZ + 0.48 * s;
   const strutZ = booster.z1;
   const rearZ = lpt.z1 + 0.16;
@@ -260,21 +285,32 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
     const aMix = annulusArea(flowStation(st['13'].T, P19t, st['13'].W), Mb, AIR);
     const [rA, zA] = toWorld([NACELLE_DUCT_FRONT[NACELLE_DUCT_FRONT.length - 1][0], NACELLE_AFT_Z]);
     const inner = (z: number) => (z < mz0 ? profileAt(cowl, z) : mixR);
-    const a0 = Math.PI * Math.max(0, rA * rA - inner(zA) ** 2);
+    // Fan kanalının ön kısmı (OGV, destek kanatları, itki çevirici başı) fan
+    // ucu oranında ölçeklenir, çekirdek kaportası ise çekirdek parçalarının
+    // zarfından mutlak payla: düşük BPR ya da küçük hava akışında çekirdek
+    // kaportası kanal duvarını geçer. Sessizce kırpmak yerine öğretici hata.
+    const ductFront = NACELLE_DUCT_FRONT.map(toWorld);
+    let gap = Infinity;
+    for (let i = 0; i <= 16; i++) {
+      const z = lerp(Math.min(ogvZ, strutZ), Math.max(zA, strutZ), i / 16);
+      gap = Math.min(gap, profileAt(ductFront, z) - inner(z));
+    }
+    if (!(gap >= MIN_DUCT_GAP * s))
+      throw new FlowpathError(
+        'Fan kanalı kapanıyor: çekirdek kaportası baypas kanalının dış duvarına dayanıyor (çekirdek fana göre çok büyük). Baypas oranını ya da hava akışını artır.',
+        'bypassDuct.closed',
+        'fan',
+        ['fan.bypassRatio', 'engine.massFlow'],
+        { value: gap },
+      );
+    const a0 = Math.PI * (rA * rA - inner(zA) ** 2);
     const wallAt = (z: number) => {
       const u = (z - zA) / (mz1 - zA);
       const a = lerp(a0, aMix, smooth01(u));
       return Math.sqrt(inner(z) ** 2 + Math.max(a, 0.02 * aMix) / Math.PI);
     };
     const rW = wallAt(mz1);
-    // Ortak lüle ağzı: halka alanı A9mix (koni ağızdan çıkıyorsa halka);
-    // kanal boyu ağız yarıçapına bağlı olduğundan birkaç kez yinelenir
-    let rExit = rExit0;
-    let endZ = mz1 + MIXING_DUCT_LD * rExit;
-    for (let i = 0; i < 4; i++) {
-      rExit = Math.sqrt(plugAt(endZ) ** 2 + A9mix / Math.PI);
-      endZ = mz1 + MIXING_DUCT_LD * rExit;
-    }
+    // Ortak lüle ağzı (rExit, endZ) koniyle birlikte yukarıda yakınsadı
     const plugExitR = plugAt(endZ);
     // Lobe genliği: tepeler kaporta iç duvarına, çukurlar koniye değmez
     const amp =

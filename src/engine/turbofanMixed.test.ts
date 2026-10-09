@@ -7,12 +7,13 @@
 
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import type { TurbofanLayout } from '../design/flowpath';
+import { profileAt, type TurbofanLayout } from '../design/flowpath';
 import { buildEngine } from '../design/graph';
 import { TURBOFAN_GRAPH } from '../design/templates';
 import { TURBOFAN_MIXED_GRAPH } from '../design/turbofanMixed';
 import type { EngineGraph, MixerModule } from '../design/types';
 import { buildCore } from './core.js';
+import { smoothProfile } from './geom.js';
 import { buildNacelle } from './nacelle.js';
 import { longDuctOf } from './turbofanModel';
 
@@ -48,6 +49,21 @@ function model(g: EngineGraph) {
     parts.set(p, [...(parts.get(p) ?? []), mesh]);
   });
   return { L, core, parts };
+}
+
+/** Fan düğmeleri değişmiş şablon kopyası */
+function withFan(f: Record<string, number>): EngineGraph {
+  const g = structuredClone(TURBOFAN_MIXED_GRAPH);
+  g.modules = g.modules.map((m) => (m.type === 'fan' ? { ...m, ...f } : m));
+  return g;
+}
+function withMassFlow(w: number): EngineGraph {
+  return { ...structuredClone(TURBOFAN_MIXED_GRAPH), massFlow: w };
+}
+function confluent(): EngineGraph {
+  const g = structuredClone(TURBOFAN_MIXED_GRAPH);
+  (g.modules.find((x) => x.type === 'mixer') as MixerModule).style = 'confluent';
+  return g;
 }
 
 /** Ağların dünya uzayındaki sınır kutusu */
@@ -92,6 +108,58 @@ describe('karışık akışlı turbofan modeli', () => {
     expect((aft.material as THREE.Material).userData.capped).toBe(true);
     // Lüle ağzı yarıçapı (ölçekli kaporta) yerleşimle aynı
     expect(boxOf(nozzle).max.y).toBeGreaterThan(M.nozzle.rExit);
+  });
+
+  it('akustik astar ile ortak lüle karıştırıcı başında birleşir (iç duvarda halka boşluğu yok)', () => {
+    for (const g of [TURBOFAN_MIXED_GRAPH, withFan({ bypassRatio: 3 }), withMassFlow(600), confluent()]) {
+      const c = model(g);
+      const liner = (c.parts.get('bypassDuct') ?? []).filter((o) => o.name === 'bypass-duct');
+      const noz = (c.parts.get('nozzle') ?? []).filter((o) => o.name === 'common-nozzle');
+      // Kalınlıklı kabukların uç halkaları normal yönünde ~1 mm taşar (önceden 12–37 cm boşluk)
+      expect(Math.abs(boxOf(noz).min.z - boxOf(liner).max.z)).toBeLessThan(0.003);
+      expect(boxOf(liner).max.z).toBeCloseTo(c.L.mixed!.mixer.z0, 2);
+    }
+  });
+
+  it('derz halkaları ve çevirici kapak kenarları ağı üreten yumuşatılmış yüzeyin üstünde (gömülmez)', () => {
+    const long = longDuctOf(L)!;
+    const sm = smoothProfile(long.outer, 200).map((v: THREE.Vector2) => [v.x, v.y] as [number, number]);
+    const surf = (z: number) => profileAt(sm, z);
+    const nacelle = parts.get('nacelle') ?? [];
+    const seams = nacelle.filter((o) => o.name === 'cowl-seam');
+    const edges = nacelle.filter((o) => o.name === 'reverser-door-edge');
+    expect(seams.length).toBe(3);
+    expect(edges.length).toBe(4);
+    const p = new THREE.Vector3();
+    for (const s of seams) {
+      // Dış yüz her açıda yüzeyin 3–5 mm üstünde (kaporta referans ölçeğinde)
+      // Dış yüz: çizim aralığının ilk `outerCount` indisi (thickLathe)
+      const pos = s.geometry.attributes.position;
+      const idx = s.geometry.index!;
+      const oc = s.geometry.userData.outerCount as number;
+      expect(oc).toBeGreaterThan(0);
+      for (let k = 0; k < oc; k++) {
+        p.fromBufferAttribute(pos, idx.getX(k));
+        const h = Math.hypot(p.x, p.y) - surf(p.z);
+        expect(h).toBeGreaterThan(0.003);
+        expect(h).toBeLessThan(0.005);
+      }
+    }
+    for (const e of edges) {
+      // Tüp halkası başına en dış nokta yüzeyin ~8 mm üstünde (her yerde aynı kabartı)
+      const pos = e.geometry.attributes.position;
+      const ring = 9;
+      for (let j = 0; j + ring <= pos.count; j += ring) {
+        let top = -Infinity;
+        let zc = 0;
+        for (let i = j; i < j + ring; i++) {
+          p.fromBufferAttribute(pos, i);
+          top = Math.max(top, Math.hypot(p.x, p.y));
+          zc += p.z / ring;
+        }
+        expect(top - surf(zc)).toBeGreaterThan(0.0065);
+      }
+    }
   });
 
   it('düz karıştırıcı: ince kenarlı kısa halka, aynı parça', () => {

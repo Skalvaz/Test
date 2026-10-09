@@ -41,32 +41,37 @@ const COWL_POINTS = [
 ];
 
 /**
- * Uzun kanallı kaportanın arka kısmının boyası: fan kaportasıyla aynı
- * vernikli beyaz, ama pişirilmiş derz/yazı dokusu yok (doku kısa fan
- * kaportasının boyuna göre çizildi; uzun kanala gerilince yazılar ve kuşak
- * bandı yanlış yere düşer). Derzler geometriyle. Kesitte kesik yüzey
- * kapağı (capify) kütüphane malzemeleri gibi. Oturum boyunca tek malzeme.
+ * Uzun kanallı kaportanın arka kısmının boyası: kütüphanenin `cowlPaint`
+ * malzemesinden (fan kaportasıyla aynı boya dokusu, ton ve tarama ayarları),
+ * ama pişirilmiş derz/yazı dokusu (`cowlDetail`) yok: o doku kısa fan
+ * kaportasının boyuna göre çizildi, uzun kanala gerilince yazılar ve kuşak
+ * bandı yanlış yere düşer. Derzler geometriyle. Kesitte kesik yüzey kapağı
+ * (capify) kütüphanedeki kapalı kabuklar gibi. Kütüphane başına tek kopya.
  */
-let aftPaint = null;
-function aftCowlPaint() {
-  aftPaint ??= capify(
-    new THREE.MeshPhysicalMaterial({
-      name: 'aftCowlPaint',
-      color: 0xe3e6e9,
-      metalness: 0.12,
-      roughness: 0.32,
-      clearcoat: 0.85,
-      clearcoatRoughness: 0.12,
-      envMapIntensity: 1.15,
-      side: THREE.DoubleSide,
-    }),
-  );
-  return aftPaint;
+const aftPaints = new WeakMap();
+function aftCowlPaint(materials) {
+  const base = materials.cowlPaint;
+  if (!base) return materials.cowlDetail;
+  let m = aftPaints.get(base);
+  if (!m) {
+    m = capify(base.clone());
+    m.name = 'aftCowlPaint';
+    aftPaints.set(base, m);
+  }
+  return m;
 }
-/** Derz yivleri: koyu, mat */
+/** Derz yivleri: koyu, mat; yüzeyle derinlik çekişmesin diye öne itilir */
 let seamMat = null;
 function seamMaterial() {
-  seamMat ??= new THREE.MeshStandardMaterial({ name: 'cowlSeam', color: 0x5d6670, metalness: 0.2, roughness: 0.6 });
+  seamMat ??= new THREE.MeshStandardMaterial({
+    name: 'cowlSeam',
+    color: 0x5d6670,
+    metalness: 0.2,
+    roughness: 0.6,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
   return seamMat;
 }
 
@@ -176,7 +181,11 @@ export function buildNacelle(materials, dims = {}) {
     cowl = new THREE.Mesh(geo, materials.cowlDetail);
     // Arka kısım: itki çevirici kapakları ve sabit arka kaporta (CFM56-5C'de
     // dört dönen kapaklı çevirici), lüle ağzına daralan uzun gövde
-    const aftCowl = new THREE.Mesh(thickLathe(smoothProfile(long.outer, 200), SEG, 0.012, 'in'), aftCowlPaint());
+    // Ağı üreten yumuşatılmış profil; derz ve kapak kenarları da bu yüzeyden
+    // ölçülür (doğrusal profil Catmull-Rom yüzeyinden ~5 mm sapar, yivler gömülür)
+    const outerSm = smoothProfile(long.outer, 200);
+    const outerAt = (z) => profileAt(outerSm.map((v) => [v.x, v.y]), z);
+    const aftCowl = new THREE.Mesh(thickLathe(outerSm, SEG, 0.012, 'in'), aftCowlPaint(materials));
     aftCowl.name = 'aft-cowl';
     aftCowl.castShadow = true;
     aftCowl.receiveShadow = true;
@@ -185,13 +194,12 @@ export function buildNacelle(materials, dims = {}) {
     const z0 = long.outer[0][1];
     const z1 = long.outer[long.outer.length - 1][1];
     for (const z of [z0 + 0.004, z0 + 0.3 * (z1 - z0), z0 + 0.72 * (z1 - z0)]) {
-      // Yüzeyin hemen üstünde dar koyu bant (ince torus uzaktan kesik kesik görünür)
-      const ring = new THREE.Mesh(
-        new THREE.CylinderGeometry(profileAt(long.outer, z + 0.007) + 0.0012, profileAt(long.outer, z - 0.007) + 0.0012, 0.014, 220, 1, true),
-        seamMaterial(),
-      );
-      ring.rotation.x = Math.PI / 2;
-      ring.position.z = z;
+      // Yüzeyin hemen üstünde dar koyu bant: kalınlıklı halka (dış yüz +4 mm,
+      // iç yüz yüzeyin 2 mm içinde), açısal çözünürlük kaportayla aynı
+      const band = [];
+      for (const dz of [-0.007, 0.007]) band.push([outerAt(z + dz) + 0.004, z + dz]);
+      const ring = new THREE.Mesh(thickLathe(band, SEG, 0.006, 'in'), seamMaterial());
+      ring.name = 'cowl-seam';
       group.add(tagPart(ring, 'nacelle'));
     }
     // Çevirici kapaklarının boyuna kenarları (dört kapak, kapak arası derz)
@@ -203,10 +211,12 @@ export function buildNacelle(materials, dims = {}) {
       const pts = [];
       for (let i = 0; i <= 12; i++) {
         const z = za + ((zb - za) * i) / 12;
-        const r = profileAt(long.outer, z) + 0.0015;
+        // Tüp merkezi yüzeyin 2 mm üstünde: her yerde aynı ~8 mm kabartı
+        const r = outerAt(z) + 0.002;
         pts.push(new THREE.Vector3(Math.sin(a) * r, Math.cos(a) * r, z));
       }
-      const e = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.0065, 6, false), seamMaterial());
+      const e = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, 0.006, 8, false), seamMaterial());
+      e.name = 'reverser-door-edge';
       group.add(tagPart(e, 'nacelle'));
     }
   }
@@ -232,14 +242,18 @@ export function buildNacelle(materials, dims = {}) {
     ],
     long?.duct,
   );
-  const ductCold = long ? ductAll.filter(([, z]) => z <= long.mixZ + 1e-6) : ductAll;
+  // Ayrım noktası iki parçada da ortak: profilin örnek ızgarası karıştırıcı
+  // başına (mixZ) denk gelmez; eklenmezse astar ile lüle arasında halka
+  // biçimli bir boşluk kalır (kesitte duvar delik görünür)
+  const split = long ? [profileAt(ductAll, long.mixZ), long.mixZ] : null;
+  const ductCold = long ? [...ductAll.filter(([, z]) => z < long.mixZ - 1e-6), split] : ductAll;
   const duct = new THREE.Mesh(thickLathe(smoothProfile(ductCold, long ? 220 : 160), SEG, 0.014, 'out'), materials.acousticLiner);
   duct.name = 'bypass-duct';
   duct.receiveShadow = true;
   group.add(tagPart(duct, 'bypassDuct'));
   if (long) {
     // Ortak lüle (karıştırma kanalı + yakınsak bölüm): astarın bittiği yerden ağza
-    const hot = ductAll.filter(([, z]) => z >= long.mixZ - 1e-6);
+    const hot = [split, ...ductAll.filter(([, z]) => z > long.mixZ + 1e-6)];
     const nozzle = new THREE.Mesh(thickLathe(smoothProfile(hot, 120), SEG, 0.014, 'out'), materials.sooted ?? materials.inconel);
     nozzle.name = 'common-nozzle';
     nozzle.receiveShadow = true;
