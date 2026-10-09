@@ -22,9 +22,13 @@ export interface MountPoint {
 
 export interface RatingPoint {
   thrust: number;
+  /** Çıkış gücü [W] (turboşaftta ×transmissionEff; summary.ts ile aynı tanım) */
   shaftPower?: number;
   fuelFlow: number;
+  /** İtkiye göre yakıt tüketimi [kg/(N·s)]; mil motorunda anlamsız (itki yalnız egzoz artığı) */
   tsfc: number;
+  /** Mil motorunda güce göre yakıt tüketimi [g/(kW·h)] (M5a P7) */
+  sfc?: number;
   airflow: number;
   egt: number;
 }
@@ -113,7 +117,7 @@ export function buildEngineCard(doc: EngineDocV1, variantId: string, b: BuiltEng
   const shaftPower = ref.outputPower > 0 ? ref.outputPower : undefined;
   const takeoff: RatingPoint = {
     thrust: p.thrust,
-    ...(shaftPower !== undefined ? { shaftPower } : {}),
+    ...(shaftPower !== undefined ? { shaftPower, sfc: (p.wf / shaftPower) * 3.6e9 } : {}),
     fuelFlow: p.wf,
     tsfc: p.tsfc,
     airflow: d.massFlow,
