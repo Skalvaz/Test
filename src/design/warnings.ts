@@ -1318,6 +1318,22 @@ export function translateError(e: unknown): TeachingError {
     const name = MODULE_NAMES[e.group] ?? e.group.toUpperCase();
     switch (e.code) {
       case 'annulus.closed':
+        // Türbin çıkışı: kanal gazın genişlemesiyle büyür (LPT'de fanın
+        // işi, HPT'de kompresörün işi); oyuncunun temel düğmeleri de önerilir
+        if (e.group === 'lpt' || e.group === 'hpt') {
+          const lp = e.group === 'lpt';
+          return {
+            title: `${name} kanalı kapanıyor`,
+            text: lp
+              ? `${name} çıkışında kanal kapanıyor: türbin fanı çevirmek için gazı çok genişletiyor, çıkışta büyüyen akış uç daralmasıyla kanala sığmıyor. BPR ya da FPR'yi düşür; uzman ayarda ${name} uç genişlemesini (taper) ya da çıkış Mach'ını artır.`
+              : `${name} çıkışında kanal kapanıyor: türbin kompresörü çevirmek için gazı çok genişletiyor, çıkışta büyüyen akış uç daralmasıyla kanala sığmıyor. T4'ü artır ya da HPC basınç oranını düşür; uzman ayarda ${name} uç genişlemesini (taper) ya da çıkış Mach'ını artır.`,
+            knobs: [...(lp ? ['fan.bypassRatio', 'fan.pr'] : ['combustor.tit', 'hpc.pr']), ...(e.knobs.length ? e.knobs : [`${e.group}.taper`, `${e.group}.mach.1`])],
+            glossary: lp ? 'bpr' : 'stageLoading',
+            source: 'flowpath',
+            group: e.group,
+            raw,
+          };
+        }
         return {
           title: `${name} kanalı kapanıyor`,
           text: `${name} çıkışında kanal kapanıyor: uç çok daralıyor ya da çıkış Mach'ı çok düşük.`,
@@ -1336,6 +1352,35 @@ export function translateError(e: unknown): TeachingError {
           glossary: 'refVelocity',
           source: 'flowpath',
           group: 'combustor',
+          raw,
+        };
+      }
+      case 'turbine.diskRoom': {
+        // layouts/bare.ts checkLptDisk: göbek kanat kökü + disk payıyla mile iniyor
+        const hub = e.data?.hub;
+        const shaft = e.data?.shaft;
+        const cm = (v: number | undefined) => (v !== undefined ? `${fmtNum(v * 100, 1)} cm` : '?');
+        return {
+          title: `${name} diski mile sığmıyor`,
+          text: `${name} son kademesinin göbeği mile çok yaklaştı (göbek ${cm(hub)}, mil ${cm(shaft)}): kanat kökü, jant ve disk göbeği için yer kalmadı. Türbin fanı çevirmek için gazı çok genişletiyor; büyüyen çıkış kanalı içe, mile doğru açılıyor. BPR ya da FPR'yi düşür; uzman ayarda ${name} uç genişlemesini (taper) ya da çıkış Mach'ını artır.`,
+          knobs: e.knobs.length ? [...e.knobs] : ['fan.bypassRatio', 'fan.pr', `${e.group}.taper`, `${e.group}.mach.1`],
+          glossary: 'bpr',
+          source: 'flowpath',
+          group: e.group,
+          raw,
+        };
+      }
+      case 'stages.invalid': {
+        // sizeRow: x = Δh/(ψ·U²) sonlu değil ya da > 1000 (evaluate bunu
+        // önceden 'knob.range'e çevirir; doğrudan buildEngine çağrısında buradan)
+        const tip = e.group === 'hpc' || e.group === 'hpt' ? ['hpc.tipSpeed'] : e.group === 'lpt' ? ['fan.tipSpeed', 'lpc.tipSpeed', 'lpt.tipSpeed'] : e.group === 'lpc' ? ['lpc.tipSpeed', 'fan.tipSpeed'] : [`${e.group}.tipSpeed`];
+        return {
+          title: `${name} kademe sayısı hesaplanamıyor`,
+          text: `${name} kademe sayısı hesaplanamıyor: kademe başına iş uç hızının karesi ve yüklemeyle orantılı, ikisi sıfıra yaklaşınca kademe sayısı sonsuza gider. Milin uç hızını ya da ${name} kademe yüklemesini artır.`,
+          knobs: e.knobs.length ? [...e.knobs] : [...tip, `${e.group}.loading`],
+          glossary: 'stageLoading',
+          source: 'flowpath',
+          group: e.group,
           raw,
         };
       }

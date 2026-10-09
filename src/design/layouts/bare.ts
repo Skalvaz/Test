@@ -121,6 +121,40 @@ export function nozzleExit(n: BareNozzleGeometry, z0: number): { z: number; radi
   return n.kind === 'fixed' ? { z: n.z1, radius: n.rExit } : { z: z0 + n.primary + n.divergent, radius: n.throat0 };
 }
 
+/**
+ * LPT diskinin yeri (askeri TF türevi, dalga 1 açığı): kanat kökü, platform
+ * ve disk jantı kanat boyunun ~%38'i kadar göbeğin içine iner; disk göbeği
+ * (bore) LP milini en az mil yarıçapının %25'i kalınlıkta sarar. Fanın işi
+ * büyüdükçe (yüksek BPR ya da FPR) LPT gazı daha çok genişletir, P5 düşer,
+ * çıkış kanalı büyür; uç daralması (`lpt.taper`) sabitken kanal göbeğe,
+ * yani mile doğru açılır. Askeri TF şablonunda (FPR 4,3) BPR 1,2'de son
+ * kademe göbeği LP milinin İÇİNE düşüyordu (göbek 5,3 cm, mil 6,8 cm): 3B
+ * disk ters dönüp üretici çöküyordu (RangeError), 1,25'te kanal kapanıyordu.
+ * Ölçü boyutsuz (kanat boyu ve mil yarıçapı oranı): küçük ve büyük motorda
+ * aynı kural.
+ */
+export const LPT_DISK = { rootFrac: 0.38, boreFrac: 1.25 } as const;
+
+/** LPT kanat kökü + disk mil üstüne sığmıyorsa öğretici tipli hata */
+export function checkLptDisk(lpt: RowGeometry, rShaft: number): void {
+  let worst: { hub: number; rim: number } | null = null;
+  for (const end of [0, 1] as const) {
+    const hub = lpt.hub[end];
+    const rim = hub - LPT_DISK.rootFrac * (lpt.tip[end] - hub);
+    if (!worst || rim < worst.rim) worst = { hub, rim };
+  }
+  const need = LPT_DISK.boreFrac * rShaft;
+  if (worst && worst.rim >= need) return;
+  const cm = (v: number) => (v * 100).toFixed(1).replace('.', ',');
+  throw new FlowpathError(
+    `LPT diski LP miline sığmıyor: son kademe göbeği ${cm(worst!.hub)} cm, kanat kökü ve jant için ${cm(worst!.hub - worst!.rim)} cm gerekir, mil ${cm(rShaft)} cm.`,
+    'turbine.diskRoom',
+    'lpt',
+    ['fan.bypassRatio', 'fan.pr', 'lpt.taper', 'lpt.mach.1'],
+    { hub: worst!.hub, rim: worst!.rim, need, shaft: rShaft },
+  );
+}
+
 function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): BareJetLayout {
   const st = (id: StationId) => sized.point.stations[id];
   const inlet = moduleOf<InletModule>(graph, 'inlet')!;
@@ -134,6 +168,8 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
   const { hpc, hpt, lpt } = gp;
   const { z0: cz0, z1: cz1, rOut } = gp.combustor;
   const bypass = !!fan && (fan.bypassRatio ?? 0) > 0;
+  // Kuyruk konisi ve 3B disk LPT göbeğinden: göbek mile inmişse kurulamaz
+  checkLptDisk(lpt, gp.shafts.lp);
 
   // --- türbin çıkış çerçevesi ve kuyruk konisi ---
   const coneR = lpt.hub[1] - 0.015;

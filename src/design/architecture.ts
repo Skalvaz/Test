@@ -94,6 +94,12 @@ export interface ArchNote {
   from: number;
   to: number;
   reason: string;
+  /**
+   * Değer değişmedi (from === to): yeni motorda kalan bir uyarının
+   * bildirimi. Ailenin değerlerine dönmek uyarıyı gidermiyorsa yazılır;
+   * `knob` uyarıyı giderebilecek düğme (çoğu zaman hava akışı).
+   */
+  residual?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -558,8 +564,11 @@ function clampMassFlow(g: EngineGraph, to: Architecture, notes: ArchNote[], reas
 
 const RANK: Record<Severity, number> = { info: 0, caution: 1, warning: 2 };
 
-/** Değerlendirme sorunları: bulgu kimliği → önem (caution 1, warning 2; kurulamazsa 'build' 3) ve başlık */
-type Problems = Map<string, { rank: number; title: string }>;
+/**
+ * Değerlendirme sorunları: bulgu kimliği → önem (caution 1, warning 2;
+ * kurulamazsa 'build' 3), başlık, düzeltme önerisi ve ilgili düğmeler
+ */
+type Problems = Map<string, { rank: number; title: string; fix: string; knobs: string[] }>;
 
 /**
  * Grafiğin sorunları (kutular sığdırılmış kopyada, atölyenin referansıyla).
@@ -575,15 +584,19 @@ function problemsOf(g: EngineGraph, reference: BuiltEngine): Problems | null {
   }
   const out: Problems = new Map();
   if ('error' in ev) {
-    out.set('build', { rank: 3, title: ev.error.title });
+    out.set('build', { rank: 3, title: ev.error.title, fix: ev.error.text, knobs: ev.error.knobs });
     return out;
   }
   for (const f of ev.findings) {
     const rank = RANK[f.severity];
-    if (rank > 0 && rank > (out.get(f.id)?.rank ?? 0)) out.set(f.id, { rank, title: f.title });
+    if (rank > 0 && rank > (out.get(f.id)?.rank ?? 0)) out.set(f.id, { rank, title: f.title, fix: f.fix, knobs: f.knobs });
   }
   return out;
 }
+
+/** Sorun kümesinin ağırlığı: en yüksek önem, sonra sayı (küçük iyi) */
+const severityOf = (p: Problems): [number, number] => [Math.max(0, ...[...p.values()].map((v) => v.rank)), p.size];
+const lighter = (a: [number, number], b: [number, number]) => a[0] < b[0] || (a[0] === b[0] && a[1] < b[1]);
 
 /** `p`'de olup izinlilerde aynı ya da daha yüksek önemle olmayan sorunlar */
 function newProblems(p: Problems, allowed: Problems[]): Problems {
@@ -626,28 +639,74 @@ function ensureWorkable(seed: EngineGraph, from: Architecture, g: EngineGraph, t
     clampMassFlow(c, to, [], '');
     return c;
   };
-  const accept = (c: EngineGraph) => {
+  /** Geri alma denemesi: kalan yeni sorunlar (değerlendirilemezse null) */
+  const trial = (ids: KnobId[]) => {
+    const c = revert(g, ids);
     const q = problemsOf(c, reference);
-    return q !== null && newProblems(q, allowed).size === 0;
+    return { ids, c, q: q && newProblems(q, allowed) };
   };
+  const trials: ReturnType<typeof trial>[] = [];
+  const accepted = (t: ReturnType<typeof trial>) => (trials.push(t), t.q !== null && t.q.size === 0);
 
-  let chosen: KnobId[] | undefined = changed.map((id) => [id]).find((ids) => accept(revert(g, ids)));
-  if (!chosen) {
-    for (let i = 1; i <= changed.length; i++) {
-      chosen = changed.slice(0, i);
-      if (accept(revert(g, chosen))) break;
-    }
+  // Önce tek tek (sırayla ilk yeten), yetmezse sırayla birikerek
+  let hit = changed.map((id) => [id]).map(trial).find(accepted);
+  for (let i = 2; !hit && i <= changed.length; i++) {
+    const t = trial(changed.slice(0, i));
+    if (accepted(t)) hit = t;
   }
-  if (!chosen?.length) return g;
-  const why = [...bad.values()].map((v) => v.title).join('; ');
-  const out = revert(g, chosen);
-  for (const id of chosen) {
-    addNote(notes, { knob: id, from: readKnob(g, id)!, to: readKnob(out, id)!, reason: `Bu değerle yeni motor sınırı aşıyor (${why}): ailenin değeri kullanıldı.` });
+  const titles = (p: Problems) => [...p.values()].map((v) => v.title).join('; ');
+  if (hit) {
+    revertNotes(g, hit.c, hit.ids, `Bu değerle yeni motor sınırı aşıyor (${titles(bad)}): ailenin değeri kullanıldı.`, notes);
+    return hit.c;
   }
+
+  // Hiçbir geri alma kümesi uyarıyı tamamen gidermiyor (örn. turboprop →
+  // fan → ayrık akış: korunan küçük çekirdekte HPC son kanadı kısa; ailenin
+  // değerleri EGT payını düzeltir ama kanadı kısaltır). Yanıltıcı "ailenin
+  // değeri kullanıldı" notu yerine: sorunu en çok hafifleten en küçük
+  // küme (yoksa hiçbir şey) geri alınır, giderdiği sorun yazılır; kalan
+  // sorun, değeri değişmeyen `residual` notla nedeni ve önerisiyle bildirilir.
+  let best = { ids: [] as KnobId[], c: g, q: bad };
+  for (const t of trials) {
+    if (!t.q) continue;
+    const [a, b] = [severityOf(t.q), severityOf(best.q)];
+    // Daha hafif ya da eşit ağırlıkta daha az geri alma (hiç geri almamak eşitlikte kalır)
+    const fewer = best.ids.length > 0 && t.ids.length < best.ids.length && !lighter(b, a);
+    if (lighter(a, b) || fewer) best = { ids: t.ids, c: t.c, q: t.q };
+  }
+  // Gereksiz geri almaları ayıkla: çıkarınca ağırlık artmıyorsa düğme kalır
+  for (const id of [...best.ids]) {
+    if (best.ids.length <= 1) break;
+    const t = trial(best.ids.filter((x) => x !== id));
+    if (t.q && !lighter(severityOf(best.q), severityOf(t.q))) best = { ids: t.ids, c: t.c, q: t.q };
+  }
+  if (best.ids.length) {
+    const fixed = new Map([...bad].filter(([id, v]) => (best.q.get(id)?.rank ?? 0) < v.rank));
+    revertNotes(g, best.c, best.ids, `Bu değerle yeni motor sınırı aşıyordu (${titles(fixed)}): ailenin değeri kullanıldı; bu onu giderdi ama motorda başka bir sorun kalıyor.`, notes);
+  }
+  const out = best.c;
+  for (const v of best.q.values()) {
+    // Öneri düğmesi: motorda olan, geri alınmamış ilk TEMEL düğme (yoksa hava akışı)
+    const usable = (k: string) => !best.ids.includes(k as KnobId) && knobById(k as KnobId)?.level === 'basic' && readKnob(out, k as KnobId) !== undefined;
+    const knob = (v.knobs.find(usable) ?? 'engine.massFlow') as KnobId;
+    const val = readKnob(out, knob) ?? out.massFlow;
+    notes.push({
+      knob,
+      from: val,
+      to: val,
+      residual: true,
+      reason: `Yeni motor bu mimaride uyarı veriyor (${v.title}); ailenin değerlerine dönmek bunu gidermiyor. ${v.fix}`,
+    });
+  }
+  return out;
+}
+
+/** Geri alınan düğmelerin notları (BPR geri alınınca hava akışı da) */
+function revertNotes(g: EngineGraph, out: EngineGraph, ids: readonly KnobId[], reason: string, notes: ArchNote[]): void {
+  for (const id of ids) addNote(notes, { knob: id, from: readKnob(g, id)!, to: readKnob(out, id)!, reason });
   if (Math.abs(out.massFlow / g.massFlow - 1) > 1e-9) {
     addNote(notes, { knob: 'engine.massFlow', from: g.massFlow, to: out.massFlow, reason: 'Baypas oranı ailenin değerine alındı: çekirdek akışı korunur.' });
   }
-  return out;
 }
 
 /**

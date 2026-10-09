@@ -534,9 +534,28 @@ describe('translateError', () => {
   });
 
   it('FlowpathError: kod ve sayılardan (metin ayrıştırılmaz)', () => {
+    // Kompresör çıkışı: uç daralması / Mach
+    const k = translateError(new FlowpathError('x', 'annulus.closed', 'hpc', ['hpc.taper', 'hpc.mach.1']));
+    expect(k.text).toBe("HPC çıkışında kanal kapanıyor: uç çok daralıyor ya da çıkış Mach'ı çok düşük.");
+    expect(k.knobs).toEqual(['hpc.taper', 'hpc.mach.1']);
+    // Türbin çıkışı: genişleme (bakım: oyuncunun temel düğmeleri de önerilir)
     const a = translateError(new FlowpathError('x', 'annulus.closed', 'hpt', ['hpt.taper', 'hpt.mach.1']));
-    expect(a.text).toBe("HPT çıkışında kanal kapanıyor: uç çok daralıyor ya da çıkış Mach'ı çok düşük.");
-    expect(a.knobs).toEqual(['hpt.taper', 'hpt.mach.1']);
+    expect(a.text).toMatch(/^HPT çıkışında kanal kapanıyor: türbin kompresörü çevirmek için gazı çok genişletiyor/);
+    expect(a.knobs).toEqual(['combustor.tit', 'hpc.pr', 'hpt.taper', 'hpt.mach.1']);
+    const l = translateError(new FlowpathError('x', 'annulus.closed', 'lpt', ['lpt.taper', 'lpt.mach.1']));
+    expect(l.text).toMatch(/fanı çevirmek için gazı çok genişletiyor.*BPR ya da FPR'yi düşür/);
+    expect(l.knobs).toEqual(['fan.bypassRatio', 'fan.pr', 'lpt.taper', 'lpt.mach.1']);
+    // LPT diski mile sığmıyor (layouts/bare.ts checkLptDisk): sayılar data'dan
+    const d = translateError(new FlowpathError('x', 'turbine.diskRoom', 'lpt', ['fan.bypassRatio', 'fan.pr', 'lpt.taper', 'lpt.mach.1'], { hub: 0.053, shaft: 0.068 }));
+    expect(d.title).toBe('LPT diski mile sığmıyor');
+    expect(d.text).toMatch(/göbek 5,3 cm, mil 6,8 cm/);
+    expect(d.knobs).toEqual(['fan.bypassRatio', 'fan.pr', 'lpt.taper', 'lpt.mach.1']);
+    // Kademe sayısı hesaplanamıyor (sizeRow 'stages.invalid'): milin uç hızı ve yükleme
+    const s = translateError(new FlowpathError('HPT kademe sayısı hesaplanamadı', 'stages.invalid', 'hpt', [], { value: Infinity }));
+    expect(s.title).toBe('HPT kademe sayısı hesaplanamıyor');
+    expect(s.knobs).toEqual(['hpc.tipSpeed', 'hpt.loading']);
+    expect(translateError(new FlowpathError('x', 'stages.invalid', 'fan', [])).knobs).toEqual(['fan.tipSpeed', 'fan.loading']);
+    expect(translateError(new FlowpathError('x', 'stages.invalid', 'lpt', [])).knobs).toEqual(['fan.tipSpeed', 'lpc.tipSpeed', 'lpt.tipSpeed', 'lpt.loading']);
     const c = translateError(new FlowpathError('x', 'combustor.cansFit', 'combustor', ['combustor.cans'], { cans: 14, canDiameter: 0.2 }));
     expect(c.text).toBe('14 kutu çevreye sığmıyor: kutu sayısını azalt ya da referans hızı artır.');
   });
