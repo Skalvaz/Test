@@ -136,6 +136,21 @@ describe('turboşaft yerleşimi', () => {
     expect(r.sized.ref.outputPower).toBe(b.sized.ref.outputPower);
   });
 
+  it('redüktör gövdesi halka girişin merkez gövdesinin içinde kalır (ağız açık)', () => {
+    const cases: [number, boolean][] = [[3000, false], [6000, false], [20900, true]];
+    for (const [rpm, red] of cases) {
+      const g = structuredClone(TS);
+      const sh = mod<ShaftModule>(g, 'shaft');
+      sh.rpm = rpm;
+      sh.reduction = red;
+      const Lr = buildEngine(g).flowpath.layout;
+      if (Lr.style !== 'turboshaft') throw new Error('yerleşim');
+      expect(Lr.output.reduction).toBe(true);
+      expect(Lr.housing.gearboxR).toBeLessThan(Lr.inlet.rInner);
+      expect(Lr.inlet.rOuter).toBeGreaterThan(Lr.inlet.rInner);
+    }
+  });
+
   it('turboprop gaz jeneratörü aynı ortak koddan, ölçek 1 (altın sayılar golden.test.ts)', () => {
     const tp = buildEngine(TURBOPROP_GRAPH).flowpath.layout;
     if (tp.style !== 'turboprop') throw new Error('yerleşim');

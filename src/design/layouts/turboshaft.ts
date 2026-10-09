@@ -81,20 +81,17 @@ function turboshaftGeometry(graph: EngineGraph, sized: SizedEngine, gp: GasPath)
   // sarar); dış yarıçap ağız alanından (giriş akışı, INLET_MACH)
   const z0 = SHAFT_Z + shaft.gearboxLength;
   const z1 = Math.max(hpc.z0, z0 + 0.04 * k);
-  const rInner = Math.max(hpc.hub[0] * 1.05, flangeR * 1.15);
+  // Mil gövdesi önce: redüktör varsa planet takımını alacak kadar şişkin;
+  // halka giriş merkez gövdesi onu sarar (Makila gibi ağız dışa kayar)
+  const housingR = Math.max(radius * 1.9, flangeR * 0.85);
+  const gearboxR = reduction ? housingR * 1.9 : housingR;
+  const rInner = Math.max(hpc.hub[0] * 1.05, flangeR * 1.15, gearboxR * 1.05);
   const area = annulusArea(sized.point.stations['2'], INLET_MACH, AIR);
   const rOuter = Math.sqrt(area / Math.PI + rInner * rInner);
   const inlet = { z0, z1, rOuter, rInner, separator: inletMod.separator ?? false };
 
-  // Mil gövdesi: flanşın hemen arkasından merkez gövdeye; redüktör varsa
-  // gövde planet takımını alacak kadar şişkin
-  const housingR = Math.max(radius * 1.9, flangeR * 0.85);
-  const housing = {
-    z0: SHAFT_Z + 0.03 * k,
-    z1: z0,
-    r: housingR,
-    gearboxR: reduction ? Math.max(housingR * 1.9, rInner * 0.95) : housingR,
-  };
+  // Mil gövdesi: flanşın hemen arkasından merkez gövdeye
+  const housing = { z0: SHAFT_Z + 0.03 * k, z1: z0, r: housingR, gearboxR };
 
   // Askı noktaları: santrifüj difüzör gövdesi (en geniş yer) ve egzoz
   // çerçevesi; üstte aksesuar dişli kutusu olduğundan giriş çerçevesine değil
