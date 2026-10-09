@@ -10,3 +10,6 @@ __pycache__/
 build/
 dist-af/
 capture-output/
+
+# Ajan iş akışlarının worktree'leri
+.claude/worktrees/
