@@ -789,6 +789,35 @@ describe.skipIf(!realReady)('gerçek değerlendirme ve mimari ile', () => {
     expect(s.sensitivity('combustor.tit').length).toBeGreaterThan(0);
   });
 
+  // Gerileme: öneri yalnız düğme aralığına kırpılarak sınanıyordu; çok
+  // varyantlı ailede writeKnob zarfa kırpınca (BPR 0,82 → 0,6325) bulgu
+  // sürüyor ve "Bu fark yeni bir aile ister" çıkıyordu
+  it('çok varyantlı aile: "Düzelt" önerisi varyant zarfının içinde kalır', () => {
+    for (const [knob, value] of [['combustor.tit', 1750], ['fan.eff', 0.94]] as const) {
+      const s = real();
+      s.startFromTemplate('militaryTurbofan');
+      s.addVariant();
+      const env = s.activeFamily()!.envelope;
+      expect(env['fan.bypassRatio'], knob).toBeDefined();
+      s.setKnob(knob, value, 'change');
+      expect(s.state.error).toBeNull();
+      const fs = s.state.last.findings.filter((f) => f.severity !== 'info' && f.remedy);
+      for (const f of fs) {
+        const range = env[f.remedy!.knob];
+        if (range && typeof f.remedy!.value === 'number') {
+          expect(f.remedy!.value, `${knob} ${f.id}`).toBeGreaterThanOrEqual(range[0]);
+          expect(f.remedy!.value, `${knob} ${f.id}`).toBeLessThanOrEqual(range[1]);
+        }
+        const before = s.state.project;
+        s.applyRemedy(f);
+        expect(s.state.notice?.text ?? '', `${knob} ${f.id}`).not.toMatch(/yeni bir aile/);
+        expect(s.state.last.findings.map((x) => x.id), `${knob} ${f.id}`).not.toContain(f.id);
+        s.undo();
+        expect(s.state.project).toEqual(before);
+      }
+    }
+  });
+
   it('mimari değişimi yeni aile açar (gerçek dönüşüm)', () => {
     const s = real();
     s.startFromTemplate('turbofan');

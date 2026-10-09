@@ -12,6 +12,8 @@ import { sizeEngine } from '../sim/design';
 import type { Finding } from './core/rules';
 import { computeGasPath, FlowpathError, type RowKey } from './flowpath';
 import { buildEngine, toEngineDesign, type BuildOptions, type BuiltEngine } from './graph';
+import type { KnobCtx } from './knobs';
+import { assertLayoutReady } from './layouts/index';
 import { fmtNum, summarize, type DesignSummary, type LimitGauge } from './summary';
 import { TECH_MODERN, type TechLimits } from './tech';
 import type { CompressorModule, EngineGraph, TurbineModule } from './types';
@@ -43,6 +45,8 @@ export interface EvaluateOptions extends BuildOptions {
   tech?: TechLimits;
   /** false: pahalı "Düzelt" hesapları atlanır (sürükleme taslağı) */
   remedies?: boolean;
+  /** Etkin aile: "Düzelt" önerisi varyant zarfına göre sınanır (WarnCtx.family) */
+  family?: KnobCtx['family'];
 }
 
 /**
@@ -105,7 +109,11 @@ const ROW_KEYS: RowKey[] = ['front', 'booster', 'hpc', 'hpt', 'lpt'];
  * ~0,1 ms).
  */
 function checkStages(g: EngineGraph, opts: BuildOptions): void {
-  const gas = computeGasPath(g, sizeEngine(toEngineDesign(g, opts)), opts);
+  const cycle = toEngineDesign(g, opts);
+  // buildEngine ile aynı sıra: grafik hatası, sonra hazır olmayan yerleşimin
+  // öğretici hatası (yoksa gaz yolu yanıltıcı bir konum hatası verirdi)
+  assertLayoutReady(g);
+  const gas = computeGasPath(g, sizeEngine(cycle), opts);
   const has = (t: string) => g.modules.some((m) => m.type === t);
   // Milin devrini belirleyen uç hızı düğmesi (warnings.ts spoolModule)
   const lpTip = has('fan') ? 'fan.tipSpeed' : has('lpc') ? 'lpc.tipSpeed' : 'lpt.tipSpeed';
@@ -132,7 +140,7 @@ export function evaluate(g: EngineGraph, opts: EvaluateOptions = {}): Evaluation
     const built = buildEngine(g, opts);
     const summary = summarize(built);
     assertFiniteSummary(summary);
-    const ctx: WarnCtx = { graph: g, built, s: summary, tech: opts.tech ?? TECH_MODERN, goal: opts.goal, reference: opts.reference };
+    const ctx: WarnCtx = { graph: g, built, s: summary, tech: opts.tech ?? TECH_MODERN, goal: opts.goal, reference: opts.reference, family: opts.family };
     return {
       graph: g,
       built,

@@ -383,18 +383,21 @@ describe('sondalar: her uyarı bir grafikle tetiklenir', () => {
 
 describe('hız', () => {
   /**
-   * 100 tekrar (5 × 20) [ms/çağrı]: en iyi dilimin ortalaması. Paralel
+   * 100 tekrar (20 × 5) [ms/çağrı]: en iyi dilimin ortalaması. Paralel
    * çalışan başka işler (CPU %100) tek tek çağrıları kesintiye uğratır.
+   * "Düzelt" sınaması her öneri için motoru kurar (altı uyarılı TP ≈ 0,6 ms
+   * boşta): dilim kısa tutulur (≈ 3 ms) ki yük altında da kesintisiz bir
+   * dilim bulunsun (5 × 20 dilimle typecheck ile paralel koşuda 2,36 ms).
    */
   function timeWarnings(g: EngineGraph, remedies: boolean): number {
     const b = buildEngine(g);
     const ctx: WarnCtx = { graph: g, built: b, s: summarize(b), tech: TECH_MODERN };
     for (let i = 0; i < 10; i++) evaluateWarnings(ctx, { remedies }); // ısınma
     let best = Infinity;
-    for (let k = 0; k < 5; k++) {
+    for (let k = 0; k < 20; k++) {
       const t0 = performance.now();
-      for (let i = 0; i < 20; i++) evaluateWarnings(ctx, { remedies });
-      best = Math.min(best, (performance.now() - t0) / 20);
+      for (let i = 0; i < 5; i++) evaluateWarnings(ctx, { remedies });
+      best = Math.min(best, (performance.now() - t0) / 5);
     }
     return best;
   }

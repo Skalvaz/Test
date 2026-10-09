@@ -161,7 +161,7 @@ export interface HandleSpec {
  * öneri atlanır, bırakınca hesaplanır). P3'ün `EvaluateOptions`'ıyla uyumlu;
  * bilmeyen değerlendirici fazla alanları yok sayar.
  */
-export type WorkshopEvalOptions = BuildOptions & { goal?: DesignGoal; remedies?: boolean };
+export type WorkshopEvalOptions = BuildOptions & { goal?: DesignGoal; remedies?: boolean; family?: EngineFamily };
 
 /** Enjekte edilebilir bağımlılıklar (varsayılan: gerçek modüller) */
 export interface WorkshopDeps {
@@ -441,6 +441,8 @@ export class WorkshopStore {
       ...(p.goal ? { goal: p.goal } : {}),
       // "Düzelt" önerisi yalnız tam değerlendirmede (input aşamasında < 2 ms bütçe)
       remedies: phase === 'change',
+      // Öneri writeKnob gibi varyant zarfına kırpılarak sınanır
+      family: fam,
     };
     let r = this.safeEvaluate(graph, opts);
     if ('error' in r) {

@@ -17,7 +17,7 @@ import type { KnobValue } from './core/knob';
 import { GraphError } from './errors';
 import { FlowpathError, flowFunction, machFromFlow, type RowKey } from './flowpath';
 import { buildEngine, type BuiltEngine } from './graph';
-import { clampEngineKnob, knobById, knobCtx, knobRange } from './knobs';
+import { clampEngineKnob, knobById, knobCtx, knobRange, type KnobCtx } from './knobs';
 import { fmtNum, fmtSci, summarize, type DesignSummary, type LimitGauge } from './summary';
 import { TECH_MODERN, type Lim, type TechLimits } from './tech';
 import type { CompressorModule, EngineGraph, EngineModule, NozzleModule, PropellerModule, TurbineModule } from './types';
@@ -59,6 +59,12 @@ export interface WarnCtx {
    * önerisi motoru bununla kurar, yoksa her öneri kurulamaz sayılırdı.
    */
   reference?: BuiltEngine;
+  /**
+   * Etkin aile (atölye; evaluate'in seçeneği). Çok varyantlı ailede varyant
+   * kapsamlı düğme aile zarfına kırpılır (store.ts writeKnob): "Düzelt"
+   * önerisi de aynı kırpmayla sınanır, zarf dışı öneri gösterilmez.
+   */
+  family?: KnobCtx['family'];
 }
 
 /** §2.11 tablosundaki kimlikler ('fanTipMach', 'an2Hpt', 'egtMargin'…) */
@@ -889,15 +895,19 @@ function sameKnobValue(a: KnobValue, b: KnobValue): boolean {
 
 /**
  * Öneri uygulanmış motorun uyarıları; uygulanamıyorsa null. Mağaza gibi
- * uygular: değer düğmenin aralığına kırpılır (store.ts writeKnob) ve motor
- * ailenin referansıyla kurulur. Kırpma değeri değiştiriyorsa öneri
- * geçersizdir: oyuncunun alacağı değer etikettekinden farklı olur.
+ * uygular: değer düğmenin aralığına, çok varyantlı ailede varyant düğmesi
+ * ayrıca aile zarfına kırpılır (store.ts writeKnob) ve motor ailenin
+ * referansıyla kurulur. Kırpma değeri değiştiriyorsa öneri geçersizdir:
+ * oyuncunun alacağı değer etikettekinden farklı olur.
  */
 function findingsAfter(ctx: WarnCtx, rem: NonNullable<Finding['remedy']>): Finding[] | null {
   const k = knobById(rem.knob);
-  const kc = knobCtx(ctx.graph, { tech: ctx.tech });
+  const kc = knobCtx(ctx.graph, { tech: ctx.tech, family: ctx.family });
   if (!k || !k.range(kc)) return null;
-  const v = clampEngineKnob(k, rem.value, kc);
+  let v = clampEngineKnob(k, rem.value, kc);
+  const fam = ctx.family;
+  const env = k.scope === 'variant' && fam && fam.variants.length > 1 ? fam.envelope[k.id] : undefined;
+  if (env && typeof v === 'number') v = Math.min(env[1], Math.max(env[0], v));
   if (!sameKnobValue(v, rem.value)) return null;
   const graph = k.set(ctx.graph, v);
   try {
