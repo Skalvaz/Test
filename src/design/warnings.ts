@@ -12,12 +12,13 @@
  * pervane ucu ve yüksek irtifa sönmesi M5c'de (performans tablosu).
  */
 
-import { evaluateRules, type Finding, type Rule } from './core/rules';
+import { evaluateRules, type Finding, type Rule, type Severity } from './core/rules';
 import type { KnobValue } from './core/knob';
 import { GraphError } from './errors';
-import { FlowpathError, computeGasPath, flowFunction, machFromFlow, type RowKey } from './flowpath';
-import { toEngineDesign, type BuiltEngine } from './graph';
-import { fmtNum, fmtSci, type DesignSummary, type LimitGauge } from './summary';
+import { FlowpathError, flowFunction, machFromFlow, type RowKey } from './flowpath';
+import { buildEngine, type BuiltEngine } from './graph';
+import { clampEngineKnob, knobById, knobCtx, knobRange, type KnobCtx } from './knobs';
+import { fmtNum, fmtSci, summarize, type DesignSummary, type LimitGauge } from './summary';
 import { TECH_MODERN, type Lim, type TechLimits } from './tech';
 import type { CompressorModule, EngineGraph, EngineModule, NozzleModule, PropellerModule, TurbineModule } from './types';
 import { DesignError, sizeEngine, type EngineDesign } from '../sim/design';
@@ -52,6 +53,18 @@ export interface WarnCtx {
   s: DesignSummary;
   tech: TechLimits;
   goal?: DesignGoal;
+  /**
+   * Ailenin referans motoru (evaluate'in BuildOptions.reference'ı). Atölye
+   * grafiklerinde çalışabilirlik (ops) yok (familyBase siler): "Düzelt"
+   * önerisi motoru bununla kurar, yoksa her öneri kurulamaz sayılırdı.
+   */
+  reference?: BuiltEngine;
+  /**
+   * Etkin aile (atölye; evaluate'in seçeneği). Çok varyantlı ailede varyant
+   * kapsamlı düğme aile zarfına kırpılır (store.ts writeKnob): "Düzelt"
+   * önerisi de aynı kırpmayla sınanır, zarf dışı öneri gösterilmez.
+   */
+  family?: KnobCtx['family'];
 }
 
 /** §2.11 tablosundaki kimlikler ('fanTipMach', 'an2Hpt', 'egtMargin'…) */
@@ -81,6 +94,22 @@ const rowName = (k: RowKey, g: EngineGraph) =>
   k === 'front' ? (mod(g, 'fan') ? 'Fan' : 'LPC') : ({ booster: 'Booster', hpc: 'HPC', hpt: 'HPT', lpt: 'LPT' } as const)[k];
 
 const remedy = (knob: string, value: KnobValue, label: string): Finding['remedy'] => ({ knob, value, label });
+
+/** Düğmenin bu motordaki aralığı (knobs.ts §2.10); düğme yoksa sınırsız */
+function rangeOf(c: WarnCtx, knob: string): [number, number] {
+  const k = knobById(knob);
+  return (k && knobRange(k, c.built.traits)) || [-Infinity, Infinity];
+}
+
+/**
+ * Öneriyi düğme aralığına kırpar (mağaza da kırpar; etiket oyuncunun
+ * alacağı değeri göstersin). Kırpılmış değerin bulguyu kaldırıp
+ * kaldırmadığını evaluateWarnings sınar.
+ */
+function clampTo(c: WarnCtx, knob: string, v: number): number {
+  const [lo, hi] = rangeOf(c, knob);
+  return Math.min(hi, Math.max(lo, v));
+}
 
 /**
  * Bağıl uç Mach'ını hedefe getiren uç hızı. Mrel² = M² + (U/a)² (M eksenel
@@ -162,6 +191,12 @@ interface GaugeSpec {
 interface WarnRule extends Rule<WarnCtx> {
   groupOf?(c: WarnCtx): string;
   knobsOf?(c: WarnCtx): string[];
+  /**
+   * Ana öneri (`remedy`) yoksa ya da sınamadan geçmezse sırayla denenen
+   * başka düğmeler (ör. fan PR aralığı yetmezse baypas oranı). Tembel:
+   * pahalı hesaplar yalnız gerekince yapılır.
+   */
+  alternatives?: ((c: WarnCtx) => Finding['remedy'])[];
   gauge?: GaugeSpec;
 }
 
@@ -231,8 +266,38 @@ function tipRemedy(c: WarnCtx, spool: 'lp' | 'hp', name: string): Finding['remed
   const m = spoolModule(c.graph, spool);
   const cap = tipSpeedCap(c, spool);
   if (!m?.tipSpeed || cap === undefined || cap >= m.tipSpeed) return undefined;
-  const v = floorTo(cap, 1);
+  const v = clampTo(c, `${m.type}.tipSpeed`, floorTo(cap, 1));
+  if (v >= m.tipSpeed) return undefined;
   return remedy(`${m.type}.tipSpeed`, v, `${name} uç hızı ${fmtNum(m.tipSpeed)} → ${fmtNum(v)} m/s`);
+}
+
+/**
+ * Karıştırıcı dengesi "Düzelt"i: P19t/P5t'yi 1,02'ye getiren fan PR ya da
+ * BPR, düğmenin aralığı içinde. Oran ikisiyle de artar (fan PR: baypas
+ * basıncı ↑ ve LPT işi ↑ → P5 ↓; BPR: LPT işi ↑ → P5 ↓). Aralıkta çözüm
+ * yoksa öneri yok (kırpılan değer uyarıyı kaldırmaz).
+ */
+function mixerRemedy(c: WarnCtx, knob: 'fan.pr' | 'fan.bypassRatio'): Finding['remedy'] {
+  const fan = mod<CompressorModule>(c.graph, 'fan');
+  const d = c.built.design;
+  if (!fan) return undefined;
+  const isPr = knob === 'fan.pr';
+  const x0 = isPr ? fan.pr : fan.bypassRatio;
+  if (!(x0 !== undefined && x0 > 0)) return undefined;
+  const ratio = (x: number) => {
+    const s = resized(d, isPr ? { fanPR: x } : { bypassRatio: x });
+    return (s['13'].P * (1 - d.bypassDuctDP)) / s['5'].P;
+  };
+  const [rlo, rhi] = rangeOf(c, knob);
+  const lo = Math.max(rlo, isPr ? 1.05 : 0.01);
+  const hi = Math.min(rhi, isPr ? Math.max(6, fan.pr * 2) : 20);
+  if (!(hi > lo)) return undefined;
+  // Yüksek FPR/BPR'de çekirdekte basınç kalmaz (P5 ≤ P0): oran sınırsız büyür
+  const x = secant(ratio, x0, x0 * 1.05, 1.02, lo, hi, Infinity, 1e-4);
+  if (x === undefined) return undefined;
+  const v = clean(Math.min(hi, Math.max(lo, Math.round(x * 100) / 100)));
+  const name = isPr ? 'Fan basınç oranı' : 'Baypas oranı';
+  return remedy(knob, v, `${name} ${fmtNum(x0, 2)} → ${fmtNum(v, 2)}`);
 }
 
 const an2Rule = (t: 'hpt' | 'lpt'): WarnRule => ({
@@ -262,7 +327,7 @@ const an2Rule = (t: 'hpt' | 'lpt'): WarnRule => ({
     const target = INSIDE * c.tech.an2[t].caution;
     const f = flowFunction(m.mach[1], GAS) * (v / target);
     if (f < flowFunction(0.55, GAS)) {
-      const M1 = clean(ceilTo(machFromFlow(f, GAS), 0.001));
+      const M1 = clean(clampTo(c, `${t}.mach.1`, ceilTo(machFromFlow(f, GAS), 0.001)));
       return remedy(`${t}.mach.1`, M1, `${t.toUpperCase()} çıkış Mach'ı ${fmtNum(m.mach[1], 3)} → ${fmtNum(M1, 3)}`);
     }
     // Çıkış Mach'ı düğme aralığının dışına çıkardı: mil devrini düşür
@@ -359,7 +424,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
         const p = mod<PropellerModule>(c.graph, 'propeller');
         const m = c.built.flowpath.metrics.tipMachRel.lp;
         if (!p || !(m > 0)) return undefined;
-        const v = floorTo((p.rpm * INSIDE * c.tech.propTipMach.caution) / m, 10);
+        const v = clampTo(c, 'propeller.rpm', floorTo((p.rpm * INSIDE * c.tech.propTipMach.caution) / m, 10));
         return remedy('propeller.rpm', v, `Pervane devri ${fmtNum(p.rpm)} → ${fmtNum(v)} rpm`);
       },
       gauge: { label: 'Pervane ucu Mach', unit: '', level: 'basic' },
@@ -415,7 +480,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
         const cen = mod<CompressorModule>(c.graph, 'hpc')?.centrifugal;
         const u = c.s.impellerUTip;
         if (!cen || !u) return undefined;
-        const v = clean(floorTo(cen.workFraction * ((INSIDE * c.tech.impellerUTip.caution) / u) ** 2, 0.01));
+        const v = clean(clampTo(c, 'hpc.centrifugal.workFraction', floorTo(cen.workFraction * ((INSIDE * c.tech.impellerUTip.caution) / u) ** 2, 0.01)));
         return remedy('hpc.centrifugal.workFraction', v, `Santrifüj iş payı ${fmtNum(cen.workFraction * 100)} → ${fmtNum(v * 100)} %`);
       },
       gauge: { label: 'Çark ucu hızı', unit: 'm/s', level: 'expert' },
@@ -439,7 +504,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       glossary: 'tit',
       lesson: 'brayton',
       remedy: (c) => {
-        const v = floorTo(INSIDE * c.tech.t4.caution, 5);
+        const v = clampTo(c, 'combustor.tit', floorTo(INSIDE * c.tech.t4.caution, 5));
         return remedy('combustor.tit', v, `T4 ${fmtNum(c.s.t4)} → ${fmtNum(v)} K`);
       },
       gauge: { label: 'T4', unit: 'K', level: 'basic' },
@@ -467,7 +532,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
         const T25 = c.built.sized.point.stations['25'].T;
         const k = (AIR.gamma - 1) / AIR.gamma;
         const pr = Math.pow(1 + hpc.eff * ((INSIDE * c.tech.t3.caution) / T25 - 1), 1 / k);
-        const v = clean(floorTo(pr, 0.1));
+        const v = clean(clampTo(c, 'hpc.pr', floorTo(pr, 0.1)));
         return remedy('hpc.pr', v, `HPC basınç oranı ${fmtNum(hpc.pr, 1)} → ${fmtNum(v, 1)}`);
       },
       gauge: { label: 'T3', unit: 'K', level: 'basic' },
@@ -483,9 +548,9 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       title: (v) => `EGT payı ${fmtNum(v)} K`,
       text: (v) =>
         `EGT payı ${fmtNum(v)} K: kalkış gücünde türbin çıkışı sürekli sınırın üstünde. Test hücresinde FADEC itkiyi kısacak. Yeni motorda 40–60 K bırakılır.`,
-      fix: 'T4’ü düşür.',
+      fix: 'T4’ü düşür ya da HPC basınç oranını artır.',
       tags: () => ['hpt', 'lpt'],
-      knobs: ['combustor.tit'],
+      knobs: ['combustor.tit', 'hpc.pr'],
       glossary: 'egtMargin',
       lesson: 'fadec',
       remedy: (c) => {
@@ -496,11 +561,30 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
         const T3 = c.built.sized.point.stations['3'].T;
         // Düşük T4'te HPT işi çıkaramaz (hata): o uçta pay "sınırsız" sayılır
         const negMargin = (x: number) => -(amber - (resized(d, { tit: x })['45'].T - KELVIN));
-        const t4 = secant(negMargin, d.tit, d.tit - 40, -want, T3 + 50, d.tit, -Infinity, 0.05);
+        const lo = Math.max(T3 + 50, rangeOf(c, 'combustor.tit')[0]);
+        const t4 = secant(negMargin, d.tit, d.tit - 40, -want, lo, d.tit, -Infinity, 0.05);
         if (t4 === undefined) return undefined;
-        const v = floorTo(t4, 5);
+        const v = clampTo(c, 'combustor.tit', floorTo(t4, 5));
         return remedy('combustor.tit', v, `T4 ${fmtNum(d.tit)} → ${fmtNum(v)} K`);
       },
+      alternatives: [
+        (c) => {
+          // T4 düşürmek başka sınırı bozuyorsa (karışık akışta karıştırıcı
+          // dengesi): OPR artınca HPT daha çok iş çeker, çıkışı soğur
+          const hpc = mod<CompressorModule>(c.graph, 'hpc');
+          const d = c.built.design;
+          const hi = rangeOf(c, 'hpc.pr')[1];
+          if (!hpc || !(hi > hpc.pr)) return undefined;
+          const amber = d.limits.egtAmber;
+          const want = c.tech.egtMargin.caution / INSIDE;
+          // Çok yüksek OPR'de HPT işi çıkaramaz (hata): o uçta çözüm yok
+          const margin = (x: number) => amber - (resized(d, { hpcPR: x })['45'].T - KELVIN);
+          const pr = secant(margin, hpc.pr, Math.min(hi, hpc.pr * 1.05), want, hpc.pr, hi, -Infinity, 0.05);
+          if (pr === undefined) return undefined;
+          const v = clean(Math.min(hi, ceilTo(pr, 0.1)));
+          return remedy('hpc.pr', v, `HPC basınç oranı ${fmtNum(hpc.pr, 1)} → ${fmtNum(v, 1)}`);
+        },
+      ],
       gauge: { label: 'EGT payı', unit: 'K', level: 'basic' },
     },
     {
@@ -536,7 +620,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       knobs: ['combustor.refVelocity'],
       glossary: 'refVelocity',
       remedy: (c) => {
-        const v = clean(ceilTo(c.tech.combustorVref.low.caution / INSIDE, 0.1));
+        const v = clean(clampTo(c, 'combustor.refVelocity', ceilTo(c.tech.combustorVref.low.caution / INSIDE, 0.1)));
         return remedy('combustor.refVelocity', v, `Referans hız ${fmtNum(c.s.combustor.vref, 1)} → ${fmtNum(v, 1)} m/s`);
       },
     },
@@ -558,7 +642,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       lesson: 'start',
       remedy: (c) => {
         const l = c.s.combustor.style === 'annular' ? c.tech.combustorVref.highAnnular : c.tech.combustorVref.highCan;
-        const v = clean(floorTo(INSIDE * l.caution, 0.1));
+        const v = clean(clampTo(c, 'combustor.refVelocity', floorTo(INSIDE * l.caution, 0.1)));
         return remedy('combustor.refVelocity', v, `Referans hız ${fmtNum(c.s.combustor.vref, 1)} → ${fmtNum(v, 1)} m/s`);
       },
     },
@@ -577,7 +661,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       tags: () => ['hpt'],
       knobs: ['hpt.mach.0'],
       remedy: (c) => {
-        const v = clean(ceilTo(c.tech.hptInletMach.caution / INSIDE, 0.001));
+        const v = clean(clampTo(c, 'hpt.mach.0', ceilTo(c.tech.hptInletMach.caution / INSIDE, 0.001)));
         return remedy('hpt.mach.0', v, `HPT giriş Mach'ı ${fmtNum(c.s.hptInletMach, 3)} → ${fmtNum(v, 3)}`);
       },
       gauge: { label: 'HPT giriş Mach', unit: '', level: 'expert' },
@@ -602,7 +686,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
         // Gerçek ψ ≤ düğmedeki ψ (kademe sayısı yukarı yuvarlanır)
         const m = mod<CompressorModule>(c.graph, 'hpc');
         if (!m) return undefined;
-        const v = clean(floorTo(Math.min(m.loading, INSIDE * c.tech.loading.hpc.caution), 0.001));
+        const v = clean(clampTo(c, 'hpc.loading', floorTo(Math.min(m.loading, INSIDE * c.tech.loading.hpc.caution), 0.001)));
         return remedy('hpc.loading', v, `HPC yüklemesi ${fmtNum(m.loading, 3)} → ${fmtNum(v, 3)}`);
       },
     },
@@ -624,7 +708,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       remedy: (c) => {
         const m = mod<CompressorModule>(c.graph, 'lpc');
         if (!m) return undefined;
-        const v = clean(floorTo(Math.min(m.loading, INSIDE * c.tech.loading.booster.caution), 0.001));
+        const v = clean(clampTo(c, 'lpc.loading', floorTo(Math.min(m.loading, INSIDE * c.tech.loading.booster.caution), 0.001)));
         return remedy('lpc.loading', v, `Booster yüklemesi ${fmtNum(m.loading, 3)} → ${fmtNum(v, 3)}`);
       },
     },
@@ -649,7 +733,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
         const k = (worstRow(c, TURBINES, (r) => r.loading) ?? 'lpt') as 'hpt' | 'lpt';
         const m = mod<TurbineModule>(c.graph, k);
         if (!m) return undefined;
-        const v = clean(floorTo(Math.min(m.loading, INSIDE * c.tech.loading.turbine.caution), 0.001));
+        const v = clean(clampTo(c, `${k}.loading`, floorTo(Math.min(m.loading, INSIDE * c.tech.loading.turbine.caution), 0.001)));
         return remedy(`${k}.loading`, v, `${k.toUpperCase()} yüklemesi ${fmtNum(m.loading, 3)} → ${fmtNum(v, 3)}`);
       },
     },
@@ -663,11 +747,15 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       digits: 0,
       title: (v) => `LPT ${fmtNum(v)} kademe`,
       text: (v) =>
-        `LPT ${fmtNum(v)} kademe: yavaş dönen LP milinde türbin işi ancak çok kademeyle çıkar; motor uzar ve ağırlaşır. LP milini hızlandır (fan uç hızı) ya da BPR'yi düşür. Büyük turbofanlarda bu yüzden dişli fan kullanılır.`,
-      fix: 'LP milini hızlandır (uç hızı) ya da baypas oranını düşür.',
+        `LPT ${fmtNum(v)} kademe: yavaş dönen LP milinde türbin işi ancak çok kademeyle çıkar; motor uzar ve ağırlaşır. LP milini hızlandır (fan uç hızı), LPT kademe yüklemesini artır ya da BPR'yi düşür. Büyük turbofanlarda bu yüzden dişli fan kullanılır.`,
+      fix: 'LP milini hızlandır (uç hızı), LPT kademe yüklemesini artır ya da baypas oranını düşür.',
       tags: () => ['lpt'],
       knobs: ['fan.tipSpeed'],
-      knobsOf: (c) => [frontModule(c.graph) ? tipKnobOf(c, 'front') : 'lpt.tipSpeed', ...(mod(c.graph, 'fan') ? ['fan.bypassRatio'] : [])],
+      knobsOf: (c) => [
+        frontModule(c.graph) ? tipKnobOf(c, 'front') : 'lpt.tipSpeed',
+        'lpt.loading',
+        ...(mod(c.graph, 'fan') ? ['fan.bypassRatio'] : []),
+      ],
       glossary: 'bpr',
       remedy: (c) => {
         // Kademe x = Δh/(ψ·U²); U ∝ uç hızı. x'i 7·0,98'e indiren uç hızı
@@ -678,9 +766,27 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
         if (!r || !lpt || !knobMod?.tipSpeed) return undefined;
         const x = (r.stages * r.loading) / lpt.loading;
         const v = ceilTo(knobMod.tipSpeed * Math.sqrt(x / (INSIDE * c.tech.lptStages.caution)), 1);
+        // Aynı mildeki devir sınırları (fan ucu Mach'ı, AN²) ve düğme aralığı:
+        // gereken hız bunları aşıyorsa uç hızı önerilmez (yükleme denenir)
+        const cap = Math.min(tipSpeedCap(c, 'lp') ?? Infinity, rangeOf(c, `${knobMod.type}.tipSpeed`)[1]);
+        if (v > cap) return undefined;
         const name = front ? rowName('front', c.graph) : 'Güç türbini';
         return remedy(`${knobMod.type}.tipSpeed`, v, `${name} uç hızı ${fmtNum(knobMod.tipSpeed)} → ${fmtNum(v)} m/s`);
       },
+      alternatives: [
+        (c) => {
+          // x ∝ 1/ψ: kademe sayısını 7·0,98'e indiren yükleme. Gerçek ψ ≤
+          // düğmedeki ψ (kademe yukarı yuvarlanır): türbin yükleme sınırının
+          // %2 içinde kalmalı
+          const r = c.s.rows.lpt;
+          const lpt = mod<TurbineModule>(c.graph, 'lpt');
+          if (!r || !lpt) return undefined;
+          const x = (r.stages * r.loading) / lpt.loading;
+          const v = clean(ceilTo((lpt.loading * x) / (INSIDE * c.tech.lptStages.caution), 0.01));
+          if (v > Math.min(INSIDE * c.tech.loading.turbine.caution, rangeOf(c, 'lpt.loading')[1])) return undefined;
+          return remedy('lpt.loading', v, `LPT yüklemesi ${fmtNum(lpt.loading, 2)} → ${fmtNum(v, 2)}`);
+        },
+      ],
       gauge: { label: 'LPT kademesi', unit: 'adet', level: 'expert' },
     },
     {
@@ -693,26 +799,13 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       digits: 3,
       title: (v) => `Karıştırıcı basınç oranı ${fmtNum(v, 3)}`,
       text: (v) =>
-        `Karıştırıcıda baypas/çekirdek basınç oranı ${fmtNum(v, 3)}: akışlar eşit basınçta buluşmazsa karışma kaybı büyür ve biri ötekini tıkar. 'Düzelt' fan basınç oranını dengeler.`,
-      fix: 'Fan basınç oranını dengele (P19t ≈ P5t).',
+        `Karıştırıcıda baypas/çekirdek basınç oranı ${fmtNum(v, 3)}: akışlar eşit basınçta buluşmazsa karışma kaybı büyür ve biri ötekini tıkar. 'Düzelt' fan basınç oranını (aralığı yetmezse baypas oranını) dengeler.`,
+      fix: 'Fan basınç oranını ya da baypas oranını dengele (P19t ≈ P5t).',
       tags: () => ['mixer'],
-      knobs: ['fan.pr'],
+      knobs: ['fan.pr', 'fan.bypassRatio'],
       glossary: 'mixer',
-      remedy: (c) => {
-        // P19t/P5t fan PR ile artar (baypas basıncı ↑, LPT işi ↑ → P5 ↓)
-        const fan = mod<CompressorModule>(c.graph, 'fan');
-        const d = c.built.design;
-        if (!fan) return undefined;
-        const ratio = (fpr: number) => {
-          const s = resized(d, { fanPR: fpr });
-          return (s['13'].P * (1 - d.bypassDuctDP)) / s['5'].P;
-        };
-        // Yüksek FPR'de çekirdekte basınç kalmaz (P5 ≤ P0): oran sınırsız büyür
-        const fpr = secant(ratio, fan.pr, fan.pr * 1.05, 1.02, 1.05, Math.max(6, fan.pr * 2), Infinity, 1e-4);
-        if (fpr === undefined) return undefined;
-        const v = clean(Math.round(fpr * 100) / 100);
-        return remedy('fan.pr', v, `Fan basınç oranı ${fmtNum(fan.pr, 2)} → ${fmtNum(v, 2)}`);
-      },
+      remedy: (c) => mixerRemedy(c, 'fan.pr'),
+      alternatives: [(c) => mixerRemedy(c, 'fan.bypassRatio')],
       gauge: { label: 'Karıştırıcı P19t/P5t', unit: '', level: 'expert' },
     },
     {
@@ -792,49 +885,86 @@ export function knobsPresent(g: EngineGraph, knobs: readonly string[]): string[]
   });
 }
 
-/**
- * Düğme kimliğinin yolu (`<modül>.<alan>[.<alt>]`, sayısal parça dizi
- * indisi) üzerinden değer yazılmış klon. "Düzelt" önerisini sınamak için;
- * düğme tanımlarının kendi `set`'i (knobs.ts) ile aynı yolu izler.
- */
-function withKnob(g: EngineGraph, id: string, v: KnobValue): EngineGraph | null {
-  const [m, ...path] = id.split('.');
-  const c = structuredClone(g);
-  let o: unknown = m === 'engine' ? c : c.modules.find((x) => x.type === m);
-  for (let i = 0; i < path.length - 1 && o; i++) o = (o as Record<string, unknown>)[path[i]];
-  if (!o || typeof o !== 'object' || !path.length) return null;
-  (o as Record<string, unknown>)[path[path.length - 1]] = v;
-  return c;
+const SEVERITY_RANK: Record<Severity, number> = { info: 0, caution: 1, warning: 2 };
+
+/** Kırpma değeri değiştirdi mi (kayan nokta artığı sayılmaz) */
+function sameKnobValue(a: KnobValue, b: KnobValue): boolean {
+  if (typeof a === 'number' && typeof b === 'number') return Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(b));
+  return a === b;
 }
 
 /**
- * Öneri uygulanınca motor kurulabiliyor mu (kurulamıyorsa "Düzelt"
- * gösterilmez). Hata kaynakları kurallar, tasarım noktası ve gaz yolu
- * kanallarıdır; 3B yerleşim (pahalı kısım) atlanır.
+ * Öneri uygulanmış motorun uyarıları; uygulanamıyorsa null. Mağaza gibi
+ * uygular: değer düğmenin aralığına, çok varyantlı ailede varyant düğmesi
+ * ayrıca aile zarfına kırpılır (store.ts writeKnob) ve motor ailenin
+ * referansıyla kurulur. Kırpma değeri değiştiriyorsa öneri geçersizdir:
+ * oyuncunun alacağı değer etikettekinden farklı olur.
  */
-function remedyBuilds(g: EngineGraph, f: Finding): boolean {
-  const next = f.remedy && withKnob(g, f.remedy.knob, f.remedy.value);
-  if (!next) return false;
+function findingsAfter(ctx: WarnCtx, rem: NonNullable<Finding['remedy']>): Finding[] | null {
+  const k = knobById(rem.knob);
+  const kc = knobCtx(ctx.graph, { tech: ctx.tech, family: ctx.family });
+  if (!k || !k.range(kc)) return null;
+  let v = clampEngineKnob(k, rem.value, kc);
+  const fam = ctx.family;
+  const env = k.scope === 'variant' && fam && fam.variants.length > 1 ? fam.envelope[k.id] : undefined;
+  if (env && typeof v === 'number') v = Math.min(env[1], Math.max(env[0], v));
+  if (!sameKnobValue(v, rem.value)) return null;
+  const graph = k.set(ctx.graph, v);
   try {
-    computeGasPath(next, sizeEngine(toEngineDesign(next)));
-    return true;
-  } catch {
-    return false;
+    const built = buildEngine(graph, { reference: ctx.reference });
+    const s = summarize(built);
+    assertFiniteSummary(s);
+    return evaluateRules(WARNING_RULES, { ...ctx, graph, built, s }, { remedies: false });
+  } catch (e) {
+    if (isDesignFailure(e)) return null;
+    throw e;
   }
 }
 
 /**
- * < 2 ms, taslakta da çağrılır. "Düzelt" önerileri hesaplanır ve uygulanınca
- * motorun kurulduğu sınanır; sürükleme taslağında `remedies: false` ile
- * atlanır.
+ * "Düzelt" önerisi geçerli mi: (a) motor referansla kurulur, (b) aralığa
+ * kırpılmış değerle bulgu kalkar, (c) öncekinde olmayan (ya da daha hafif
+ * olan) hiçbir caution/warning doğmaz. `cache`: aynı öneri (ör. iki uç
+ * hızı bulgusu aynı LP devrini önerir) bir kez kurulur.
+ */
+function remedyHolds(
+  ctx: WarnCtx,
+  f: Finding,
+  rem: NonNullable<Finding['remedy']>,
+  before: Map<string, number>,
+  cache: Map<string, Finding[] | null>,
+): boolean {
+  const key = `${rem.knob}=${String(rem.value)}`;
+  let after = cache.get(key);
+  if (after === undefined) cache.set(key, (after = findingsAfter(ctx, rem)));
+  if (!after) return false;
+  return after.every((a) => a.severity === 'info' || (a.id !== f.id && (before.get(a.id) ?? -1) >= SEVERITY_RANK[a.severity]));
+}
+
+/**
+ * < 2 ms, taslakta da çağrılır. "Düzelt" önerileri hesaplanır ve
+ * `remedyHolds` ile sınanır; geçmeyen öneri yerine kuralın öteki düğmeleri
+ * (`alternatives`) denenir, hiçbiri geçmezse öneri gösterilmez. Sürükleme
+ * taslağında `remedies: false` ile atlanır.
  */
 export function evaluateWarnings(ctx: WarnCtx, opts: { remedies?: boolean } = {}): Finding[] {
   const out = evaluateRules(WARNING_RULES, ctx, opts);
+  const before = new Map(out.map((f) => [f.id, SEVERITY_RANK[f.severity]]));
+  const cache = new Map<string, Finding[] | null>();
   for (const f of out) {
     const r = RULE_BY_ID.get(f.id);
     if (r?.groupOf) f.group = r.groupOf(ctx);
     f.knobs = knobsPresent(ctx.graph, r?.knobsOf ? r.knobsOf(ctx) : f.knobs);
-    if (f.remedy && !remedyBuilds(ctx.graph, f)) f.remedy = undefined;
+    if (opts.remedies === false || f.severity === 'info') continue;
+    let rem = f.remedy && remedyHolds(ctx, f, f.remedy, before, cache) ? f.remedy : undefined;
+    for (const alt of rem ? [] : (r?.alternatives ?? [])) {
+      const a = alt(ctx);
+      if (a && remedyHolds(ctx, f, a, before, cache)) {
+        rem = a;
+        break;
+      }
+    }
+    f.remedy = rem;
   }
   return out;
 }
@@ -1147,6 +1277,23 @@ export class NonFiniteDesignError extends Error {
     super(`Tasarım noktası çözülemedi (${what} sonlu değil).`);
     this.name = 'NonFiniteDesignError';
   }
+}
+
+/**
+ * Sonlu olmaması tasarımı anlamsızlaştıran büyüklükler (evaluate ve
+ * "Düzelt" sınaması): NaN'lı özette kurallar hiçbir şey bulmaz, motor
+ * sağlıklı sanılırdı.
+ */
+export function assertFiniteSummary(s: DesignSummary): void {
+  const checks: [string, number | undefined][] = [
+    ['itki', s.thrust],
+    ['kütle', s.mass],
+    ['çap', s.diameter],
+    ['boy', s.length],
+    ['T4', s.t4],
+    ['mil gücü', s.output === 'thrust' ? 0 : s.shaftPower],
+  ];
+  for (const [what, v] of checks) if (v === undefined || !Number.isFinite(v)) throw new NonFiniteDesignError(what);
 }
 
 /** Beklenen tasarım hatası mı (atölye yakalar; konsola düşmez) */

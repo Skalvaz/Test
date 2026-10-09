@@ -13,9 +13,10 @@ import { DesignError } from '../sim/design';
 import { TEMPLATES } from './catalog';
 import type { Finding } from './core/rules';
 import { GraphError } from './errors';
-import { evaluate, isEvaluation, type Evaluation } from './evaluate';
+import { evaluate, isEvaluation, MAX_ROW_STAGES, type Evaluation } from './evaluate';
 import { FlowpathError } from './flowpath';
-import { buildEngine } from './graph';
+import { buildEngine, type BuiltEngine } from './graph';
+import { clampEngineKnob, knobById, knobCtx } from './knobs';
 import { layoutNotReady } from './layouts/index';
 import { diffSummary, explainDelta, fmtNum, fmtSci, summarize } from './summary';
 import { TECH_MODERN } from './tech';
@@ -48,14 +49,62 @@ function setKnob(g: EngineGraph, id: string, v: unknown): EngineGraph {
   return c;
 }
 
-function ev(g: EngineGraph, goal?: DesignGoal): Evaluation {
-  const r = evaluate(g, { goal });
+function ev(g: EngineGraph, goal?: DesignGoal, reference?: BuiltEngine): Evaluation {
+  const r = evaluate(g, { goal, reference });
   if (!isEvaluation(r)) throw new Error(`beklenmeyen hata: ${r.error.raw}`);
   return r;
 }
 
 const serious = (f: Finding[]) => f.filter((x) => x.severity !== 'info');
 const ids = (f: Finding[]) => f.map((x) => `${x.severity}:${x.id}`);
+const RANK = { info: 0, caution: 1, warning: 2 } as const;
+
+/** Atölye ailesinin tabanı (workshop/project.ts familyBase): kind ve ops atılır, aksesuar gücü kalır */
+function familyOf(g: EngineGraph): EngineGraph {
+  const c = structuredClone(g);
+  delete c.kind;
+  const acc = c.ops?.accessoryPower;
+  delete c.ops;
+  if (acc !== undefined) c.ops = { accessoryPower: acc };
+  return c;
+}
+
+/** Şablon referansları (store.ts referenceFor): sondanın kind'ından */
+const REFS = new Map([TURBOFAN_GRAPH, TURBOJET_GRAPH, MILITARY_TURBOFAN_GRAPH, TURBOPROP_GRAPH].map((t) => [t.kind, buildEngine(t)]));
+
+/** Aynı motor iki yoldan: ops'lu şablon grafiği ve atölye grafiği (familyBase + referans) */
+function bothPaths(g: EngineGraph): { path: string; g: EngineGraph; reference?: BuiltEngine }[] {
+  const reference = REFS.get(g.kind);
+  if (!reference) throw new Error(`referans yok: ${g.kind}`);
+  return [
+    { path: 'şablon', g },
+    { path: 'atölye', g: familyOf(g), reference },
+  ];
+}
+
+/** "Düzelt"i mağaza gibi uygular (store.ts applyRemedy → writeKnob): değer aralığa kırpılır */
+function applyRemedy(g: EngineGraph, rem: NonNullable<Finding['remedy']>): EngineGraph {
+  const k = knobById(rem.knob);
+  expect(k, rem.knob).toBeDefined();
+  const v = clampEngineKnob(k!, rem.value, knobCtx(g));
+  // Öneri düğme aralığında: kırpma değeri (ve etiketi) değiştirmez
+  expect(v, `${rem.knob} ${rem.label}`).toBe(rem.value);
+  return k!.set(g, v);
+}
+
+/** Öncekinde olmayan ya da ağırlaşan caution/warning */
+function newFindings(before: Finding[], after: Finding[]): string[] {
+  const was = new Map(before.map((f) => [f.id, RANK[f.severity] as number]));
+  return ids(serious(after).filter((f) => (was.get(f.id) ?? -1) < RANK[f.severity]));
+}
+
+/** "Düzelt" uygulanınca bulgu kalkar ve yeni uyarı doğmaz (atölyenin gördüğü yol) */
+function expectCleanRemedy(g: EngineGraph, before: Finding[], f: Finding, reference?: BuiltEngine, goal?: DesignGoal): Evaluation {
+  const fixed = ev(applyRemedy(g, f.remedy!), goal, reference);
+  expect(ids(fixed.findings.filter((x) => x.id === f.id)), `${f.id}: ${f.remedy!.label}`).toEqual([]);
+  expect(newFindings(before, fixed.findings), `${f.id}: ${f.remedy!.label}`).toEqual([]);
+  return fixed;
+}
 
 /** Bugünkü (uydurulmamış) turboprop: §4.1 "Bugün" sütunu. P2 şablonu değiştirse de sonda sabit kalır. */
 function legacyTurboprop(): EngineGraph {
@@ -162,12 +211,14 @@ const PROBES: Probe[] = [
   { name: 'TF chevron', graph: () => TF, expect: [{ id: 'chevronCost', severity: 'info' }] },
 ];
 
-const RANK = { info: 0, caution: 1, warning: 2 } as const;
-
 describe('sondalar: her uyarı bir grafikle tetiklenir', () => {
-  it.each(PROBES.map((p) => [p.name, p] as const))('%s', (_n, p) => {
-    const g = p.graph();
-    const r = ev(g, p.goal);
+  /**
+   * İki yoldan: ops'lu şablon grafiği ve atölyenin gördüğü grafik (familyBase:
+   * ops yok, çalışabilirlik referanstan). "Düzelt" mağaza gibi uygulanır
+   * (aralığa kırpılır): bulgu kalkar ve yeni caution/warning doğmaz.
+   */
+  it.each(PROBES.flatMap((p) => bothPaths(p.graph()).map((b) => [`${p.name} (${b.path})`, p, b] as const)))('%s', (_n, p, { g, reference }) => {
+    const r = ev(g, p.goal, reference);
     for (const e of p.expect) {
       const f = r.findings.find((x) => x.id === e.id);
       expect(f, `${e.id} bekleniyordu: ${ids(r.findings)}`).toBeDefined();
@@ -181,10 +232,8 @@ describe('sondalar: her uyarı bir grafikle tetiklenir', () => {
         expect(f!.remedy).toBeUndefined();
         continue;
       }
-      // "Düzelt": önerilen değer uygulanınca o bulgu kalkar
       expect(f!.remedy, `${e.id} için Düzelt`).toBeDefined();
-      const fixed = ev(setKnob(g, f!.remedy!.knob, f!.remedy!.value), p.goal);
-      expect(ids(fixed.findings.filter((x) => x.id === e.id))).toEqual([]);
+      expectCleanRemedy(g, r.findings, f!, reference, p.goal);
     }
   });
 
@@ -223,6 +272,58 @@ describe('sondalar: her uyarı bir grafikle tetiklenir', () => {
     const mtf = ev(setKnob(MILITARY_TURBOFAN_GRAPH, 'fan.tipSpeed', 560)).findings.find((f) => f.id === 'frontTipMach')!;
     expect(mtf.knobs).toEqual(['fan.tipSpeed']);
     expect(mtf.group).toBe('fan');
+  });
+
+  /**
+   * Bir bulgunun Düzelt'i her iki yoldan sınanır: `want` verilmişse öneri o
+   * düğmede olmalı, null ise öneri olmamalı (aralıkta temiz çözüm yok),
+   * undefined ise öneri yoksa da kabul (varsa temiz olmalı).
+   */
+  function checkRemedy(g: EngineGraph, id: string, want: string | null | undefined): void {
+    for (const b of bothPaths(g)) {
+      const r = ev(b.g, undefined, b.reference);
+      const f = r.findings.find((x) => x.id === id);
+      expect(f, `${b.path}: ${id} bekleniyordu: ${ids(r.findings)}`).toBeDefined();
+      if (want === null) expect(f!.remedy, b.path).toBeUndefined();
+      else if (want !== undefined) expect(f!.remedy?.knob, `${b.path}: ${f!.remedy?.label}`).toBe(want);
+      if (f!.remedy) expectCleanRemedy(b.g, r.findings, f!, b.reference);
+    }
+  }
+
+  it('mixerPR Düzelt’i fan PR aralığını aşmaz; aralık yetmezse baypas oranı (inceleme #3)', () => {
+    // Eskiden fan PR 4,86–5,68 öneriliyordu: mağaza 4,5'e kırpıyor, uyarı kalıyordu
+    const M = MILITARY_TURBOFAN_GRAPH;
+    checkRemedy(setKnob(M, 'fan.pr', 2.5), 'mixerPR', 'fan.pr');
+    checkRemedy(setKnob(M, 'fan.bypassRatio', 0.1), 'mixerPR', 'fan.bypassRatio');
+    checkRemedy(setKnob(M, 'fan.bypassRatio', 0.24), 'mixerPR', 'fan.bypassRatio');
+    checkRemedy(setKnob(M, 'combustor.tit', 1750), 'mixerPR', 'fan.bypassRatio');
+    checkRemedy(setKnob(M, 'fan.eff', 0.94), 'mixerPR', 'fan.bypassRatio');
+    // T4 1840: tek düğmeyle temiz çözüm yok (BPR dengeyi kurar ama T4 uyarıları zaten var)
+    checkRemedy(setKnob(M, 'combustor.tit', 1840), 'mixerPR', undefined);
+  });
+
+  it('lptStages Düzelt’i fan ucu Mach sınırını ve uç hızı aralığını aşmaz; yükleme önerir (inceleme #4)', () => {
+    // Eskiden fan uç hızı 487–661 m/s öneriliyordu: fanTipMach doğuyor ya da 560'a kırpılıyordu
+    checkRemedy(setKnob(TF, 'fan.bypassRatio', 10), 'lptStages', 'fan.tipSpeed');
+    checkRemedy(setKnob(TF, 'lpt.loading', 1.475), 'lptStages', 'lpt.loading');
+    checkRemedy(setKnob(TF, 'lpt.loading', 1.07), 'lptStages', 'lpt.loading');
+    checkRemedy(setKnob(TF, 'lpt.loading', 0.8), 'lptStages', 'lpt.loading');
+    // Göbek/uç 0,815: gereken yükleme türbin yükleme sınırını aşar
+    checkRemedy(setKnob(TF, 'lpt.hubTip', 0.815), 'lptStages', undefined);
+  });
+
+  it('egtMargin Düzelt’i karıştırıcı dengesini bozmaz: T4 yerine HPC PR (inceleme #19)', () => {
+    // Eskiden T4 1570 öneriliyordu: EGT payı kalkıyor, caution:mixerPR 1,196 doğuyordu
+    checkRemedy(setKnob(MILITARY_TURBOFAN_GRAPH, 'hpc.pr', 4), 'egtMargin', 'hpc.pr');
+    checkRemedy(setKnob(MILITARY_TURBOFAN_GRAPH, 'hpc.pr', 4.5), 'egtMargin', 'hpc.pr');
+    // Ayrı akışlı TF'de T4 düşürmek yan etkisiz: öneri T4 kalır
+    checkRemedy(setKnob(TF, 'combustor.tit', 1780), 'egtMargin', 'combustor.tit');
+  });
+
+  it('uç hızı önerisi düğme aralığına kırpılmış gelir: etiket oyuncunun alacağı değer', () => {
+    // TJ LPC 560 (dosyadan; aralık 300–520): sınırların istediği 540 değil 520
+    const tj = ev(setKnob(TURBOJET_GRAPH, 'lpc.tipSpeed', 560)).findings.find((f) => f.id === 'frontTipMach')!;
+    expect(tj.remedy).toMatchObject({ knob: 'lpc.tipSpeed', value: 520, label: 'LPC uç hızı 560 → 520 m/s' });
   });
 
   it('remedies: false pahalı Düzelt hesabını atlar', () => {
@@ -282,18 +383,21 @@ describe('sondalar: her uyarı bir grafikle tetiklenir', () => {
 
 describe('hız', () => {
   /**
-   * 100 tekrar (5 × 20) [ms/çağrı]: en iyi dilimin ortalaması. Paralel
+   * 100 tekrar (20 × 5) [ms/çağrı]: en iyi dilimin ortalaması. Paralel
    * çalışan başka işler (CPU %100) tek tek çağrıları kesintiye uğratır.
+   * "Düzelt" sınaması her öneri için motoru kurar (altı uyarılı TP ≈ 0,6 ms
+   * boşta): dilim kısa tutulur (≈ 3 ms) ki yük altında da kesintisiz bir
+   * dilim bulunsun (5 × 20 dilimle typecheck ile paralel koşuda 2,36 ms).
    */
   function timeWarnings(g: EngineGraph, remedies: boolean): number {
     const b = buildEngine(g);
     const ctx: WarnCtx = { graph: g, built: b, s: summarize(b), tech: TECH_MODERN };
     for (let i = 0; i < 10; i++) evaluateWarnings(ctx, { remedies }); // ısınma
     let best = Infinity;
-    for (let k = 0; k < 5; k++) {
+    for (let k = 0; k < 20; k++) {
       const t0 = performance.now();
-      for (let i = 0; i < 20; i++) evaluateWarnings(ctx, { remedies });
-      best = Math.min(best, (performance.now() - t0) / 20);
+      for (let i = 0; i < 5; i++) evaluateWarnings(ctx, { remedies });
+      best = Math.min(best, (performance.now() - t0) / 5);
     }
     return best;
   }
@@ -477,6 +581,26 @@ describe('translateError', () => {
     expect(!isEvaluation(b) && b.error.text).toMatch(/^HPC göbek\/uç oranı 1,000: fiziksel aralığın/);
     const c = evaluate(setKnob(TF, 'engine.massFlow', Number.NaN));
     expect(!isEvaluation(c) && c.error.knobs).toEqual(['engine.massFlow']);
+  });
+
+  it('evaluate: dosyadan gelen küçük uç hızı ya da kademe patlaması donmaz (inceleme #5)', () => {
+    // Eskiden uç hızı 0,1 m/s geçiyordu: HPC 49 milyon kademe, evaluate ~0,5 s; 0,01'de ~90 s
+    for (const u of [50, 1, 0.1, 1e-5]) {
+      const t0 = performance.now();
+      const r = evaluate(setKnob(TURBOJET_GRAPH, 'hpc.tipSpeed', u));
+      expect(performance.now() - t0).toBeLessThan(50);
+      expect(!isEvaluation(r) && r.error).toMatchObject({ source: 'flowpath', group: 'hpc', knobs: ['hpc.tipSpeed'] });
+    }
+    // Ağın içinde (fan 100 m/s, LPT ψ 0,05) ama LPT kademesi binleri bulur: gaz yolundaki tavan yakalar;
+    // düğmesi LP milinin uç hızı
+    const t0 = performance.now();
+    const many = evaluate(setKnob(setKnob(TF, 'fan.tipSpeed', 100), 'lpt.loading', 0.05));
+    expect(performance.now() - t0).toBeLessThan(50);
+    expect(!isEvaluation(many) && many.error).toMatchObject({ source: 'flowpath', group: 'lpt', knobs: ['fan.tipSpeed', 'lpt.loading'] });
+    expect(!isEvaluation(many) && many.error.text).toMatch(new RegExp(`^LPT [\\d.]+ kademe istiyor \\(en çok ${MAX_ROW_STAGES}\\)`));
+    // Aralık içi uç tasarım (yavaş fan, düşük LPT yüklemesi) tavana takılmaz
+    const slow = evaluate(setKnob(setKnob(TF, 'fan.tipSpeed', 300), 'lpt.loading', 0.8));
+    expect(isEvaluation(slow) && slow.built.flowpath.gas.lpt.stages).toBeGreaterThan(20);
   });
 
   it('evaluate: program hatası gizlenmez', () => {

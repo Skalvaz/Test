@@ -137,7 +137,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     id: 'an2',
     term: 'AN²',
     abbr: 'Kanal alanı × devir²',
-    body: '<p>Türbin diskinin merkezkaç yükünün kaba ölçüsü: kanadın taradığı halka alanı (A, m²) çarpı devrin karesi (N², rpm²). Kanat kökündeki gerilme bu çarpımla orantılıdır. Uzun kanat ya da hızlı mil diski zorlar; sınırı aşan disk parçalanabilir. Bugünün nikel alaşımlı türbinlerinde ~4–5·10⁷ m²·rpm² (6,5–7,7·10¹⁰ in²·rpm²) dolayındadır.</p>',
+    body: '<p>Türbin diskinin merkezkaç yükünün kaba ölçüsü: kanadın taradığı halka alanı (A, m²) çarpı devrin karesi (N², rpm²). Kanat kökündeki gerilme bu çarpımla orantılıdır. Uzun kanat ya da hızlı mil diski zorlar; sınırı aşan disk parçalanabilir. Bugünün nikel alaşımlı türbinlerinde ~4–5·10⁷ m²·rpm² (6,2–7,8·10¹⁰ in²·rpm²) dolayındadır.</p>',
   },
   {
     id: 'tit',

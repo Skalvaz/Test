@@ -20,8 +20,9 @@ import {
   type EngineDocV1,
 } from './engineDoc';
 import { buildEngine } from './graph';
-import { KNOB_ALIASES } from './knobs';
-import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_GRAPH } from './templates';
+import { TEMPLATES } from './catalog';
+import { KNOB_ALIASES, knobById, knobCtx } from './knobs';
+import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_GRAPH, TURBOPROP_GRAPH } from './templates';
 import type { EngineGraph } from './types';
 
 function family(g: EngineGraph, values: Record<string, number> = {}): Family<EngineGraph, unknown> {
@@ -147,6 +148,35 @@ describe('motor belgesi', () => {
     raw.family.base.modules = raw.family.base.modules.filter((m: { type: string }) => m.type !== 'combustor');
     const bad = parseDoc(JSON.stringify(raw));
     expect(bad.errors.join(' ')).toMatch(/Zorunlu modül eksik/);
+  });
+
+  // Gerileme: taban kırpılmıyordu; evaluate'in ağı içindeki uç birleşimler
+  // (HPC ucu 100 m/s + HPT yüklemesi 0,05) ≈ 770 kademelik sıra kuruyordu
+  it('aralık dışı taban değeri de kırpılır (notes); şablon tabanları değişmez', () => {
+    const raw = JSON.parse(serializeDoc(familyToDoc(family(TURBOPROP_GRAPH))));
+    const mod = (type: string) => raw.family.base.modules.find((m: { type: string }) => m.type === type);
+    mod('hpc').tipSpeed = 100;
+    mod('hpt').loading = 0.05;
+    mod('lpt').loading = 0.05;
+    const p = parseDoc(JSON.stringify(raw));
+    expect(p.errors).toEqual([]);
+    const notes = p.notes.filter((n) => n.startsWith('Taban:'));
+    expect(notes.length).toBe(3);
+    const ctx = knobCtx(p.doc!.family.base);
+    for (const id of ['hpc.tipSpeed', 'hpt.loading', 'lpt.loading']) {
+      const k = knobById(id)!;
+      expect(k.get(p.doc!.family.base), id).toBe(k.range(ctx)![0]);
+    }
+    const gas = buildEngine(p.doc!.family.base).flowpath.gas;
+    for (const row of [gas.hpc, gas.hpt, gas.lpt]) expect(row!.stages).toBeLessThan(40);
+    // Şablon tabanları aralık içinde: okuma not düşmez, gidiş-dönüş aynı
+    for (const [id, g] of Object.entries(TEMPLATES)) {
+      if (!g) continue;
+      const s = serializeDoc(familyToDoc(family(g)));
+      const q = parseDoc(s);
+      expect(q.notes.filter((n) => n.startsWith('Taban:')), id).toEqual([]);
+      expect(serializeDoc(q.doc!), id).toBe(s);
+    }
   });
 
   it('bozuk girdide atmaz: modül listesi, aile kodu, zarf, uzun ad', () => {

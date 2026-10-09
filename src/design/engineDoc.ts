@@ -14,7 +14,7 @@ import type { KnobValue } from './core/knob';
 import { canonicalJson, fnv1a64, type Migrator } from './core/doc';
 import { resolveVariant, type Family } from './core/family';
 import { checkGraph } from './graph';
-import { clampEngineKnob, knobById, knobCtx, KNOB_ALIASES, KNOB_MAP } from './knobs';
+import { clampEngineKnob, ENGINE_KNOBS, knobById, knobCtx, KNOB_ALIASES, KNOB_MAP } from './knobs';
 import { MODULE_ORDER, type EngineGraph } from './types';
 import type { TemplateId } from './templates';
 
@@ -298,9 +298,22 @@ function parseDocObjectUnsafe(input: unknown): Parsed<EngineDocV1> {
   }
   const famName = fam.name.length > NAME_MAX ? fam.name.slice(0, NAME_MAX) : fam.name;
   if (famName !== fam.name) notes.push('Aile adı çok uzundu, kısaltıldı.');
-  const base = structuredClone(fam.base) as unknown as EngineGraph;
+  let base = structuredClone(fam.base) as unknown as EngineGraph;
   if ('kind' in base) delete base.kind;
   const ctx = knobCtx(base);
+  // Taban da düğme aralıklarına kırpılır (§2.14): evaluate'in ağı (uç hızı
+  // ≥ 100 m/s, sıra başına ≤ 1000 kademe) yalnız donmayı önler; ağ içi uç
+  // birleşimler (HPC ucu 100 m/s + HPT yüklemesi 0,05 ≈ 770 kademe) 3B
+  // yerleşime gitmesin. Atölyenin ürettiği tabanlar aralık içindedir
+  // (writeKnob, mimari dönüşümü ve sihirbaz kırpar): gidiş-dönüş değişmez.
+  for (const k of ENGINE_KNOBS) {
+    const v = k.get(base);
+    if (v === undefined || !k.range(ctx)) continue;
+    const c = clampEngineKnob(k, v, ctx);
+    if (sameValue(c, v)) continue;
+    notes.push(`Taban: ${k.label} aralık dışındaydı (${quote(String(v), 16)} → ${String(c)}).`);
+    base = k.set(base, c);
+  }
   const variants: EngineDocV1['variants'] = [];
   for (const [i, raw] of o.variants.entries()) {
     if (!isObj(raw) || typeof raw.id !== 'string' || typeof raw.name !== 'string') {

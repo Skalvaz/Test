@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { ENGINE_CATALOG, type EngineKind } from '../sim/design';
 import { builtFor, designFor, ENGINE_GRAPHS, overrideGraph, setSlotBuilt, setSlotGraph, TEMPLATES } from './catalog';
+import { evaluate, isEvaluation } from './evaluate';
 import { FlowpathError } from './flowpath';
 import { buildEngine, checkGraph, GRAPH_RULES, GraphError, isBuiltEngine, toEngineDesign, validateGraph } from './graph';
 import { LAYOUT_READY, LAYOUTS } from './layouts/index';
@@ -288,6 +289,22 @@ describe('FlowpathError yapısal alanlar', () => {
 
   it('hazır olmayan yerleşim: layout.notReady', () => {
     expect(() => buildEngine(turboshaftGraph())).toThrow(expect.objectContaining({ code: 'layout.notReady', name: 'FlowpathError' }));
+  });
+
+  // Gerileme: evaluate'in kademe tavanı denetimi gaz yolunu buildEngine'den
+  // önce kuruyordu; hazır olmayan yerleşimde "HPC konumlanamıyor" dönüyordu
+  it.skipIf(LAYOUT_READY.turboshaft)('hazır olmayan yerleşim: evaluate de layout.notReady çevirisini döndürür', () => {
+    const ts = turboshaftGraph();
+    // Atölye yolu: aile tabanı (kind ve ops atılır) + turboprop referansı
+    const base = structuredClone(ts);
+    delete base.kind;
+    delete base.ops;
+    for (const r of [evaluate(ts), evaluate(base, { reference: buildEngine(TURBOPROP_GRAPH) })]) {
+      expect(isEvaluation(r)).toBe(false);
+      if (isEvaluation(r)) continue;
+      expect(r.error).toMatchObject({ title: 'Bu mimari yakında', source: 'flowpath' });
+      expect(r.error.raw).toMatch(/yerleşimi henüz yok/);
+    }
   });
 });
 
