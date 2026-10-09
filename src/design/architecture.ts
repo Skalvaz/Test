@@ -27,13 +27,16 @@ import {
   setMassFlow,
   templateGraph,
 } from './defaults';
+import type { Severity } from './core/rules';
 import { GraphError } from './errors';
+import { evaluate } from './evaluate';
 import { computeGasPath, FlowpathError } from './flowpath';
 import { buildEngine, checkGraph, GRAPH_RULES, toEngineDesign, type BuiltEngine } from './graph';
+import { clampEngineKnob, ENGINE_KNOBS, knobById, knobCtx, type KnobId } from './knobs';
 import { layoutNotReady } from './layouts/index';
 import { deriveTraits } from './traits';
 import { MODULE_ORDER } from './types';
-import type { CombustorModule, CombustorStyle, CompressorModule, EngineGraph, EngineModule, InletModule, MixerModule, NozzleModule, NozzleStyle } from './types';
+import type { CombustorModule, CombustorStyle, CompressorModule, EngineGraph, EngineModule, InletModule, MixerModule, NozzleModule, NozzleStyle, TurbineModule } from './types';
 
 /** LP milini ne çeviriyor: alçak basınç kompresörü, fan, pervane ya da çıkış mili */
 export type LpLoad = 'lpc' | 'fan' | 'propeller' | 'shaft';
@@ -221,12 +224,26 @@ function convertCombustor(c: CombustorModule, to: Architecture): void {
   c.lengthHeight = d.lengthHeight;
 }
 
+/**
+ * Fanlı motorda booster'ın basınç oranı (sihirbazla aynı kural): çıplak
+ * motorda ya da yüksek PR'lı (askeri) fanın arkasında yolcu TF booster'ı
+ * (1,95) fazla — askeri TF kaportaya alınınca LPT çıkış kanalı kapanırdı;
+ * orada düşük PR'lı booster (bareBoosterPR), değilse bağışçınınki.
+ */
+function boosterPR(to: Architecture, fanPR: number): number | undefined {
+  if (to.installation === 'bare' || fanPR > DEFAULT_MODULES.boosterFanPRMax) return DEFAULT_MODULES.bareBoosterPR;
+  return donorModule<CompressorModule>('lpc', to)?.pr;
+}
+
 /** Mimarinin istediği lüle stili */
 function nozzleStyleFor(a: Architecture): NozzleStyle {
   if (freeTurbine(a)) return 'stub';
   if (a.exhaust === 'separate') return 'separate';
   return a.afterburner ? a.abNozzle : 'fixed';
 }
+
+/** Kurulum değişince fan, fan kanalı ve LPT ile birlikte değişen ve notta bildirilen düğmeler */
+const REFAN_KNOBS: readonly KnobId[] = ['fan.pr', 'fan.bypassRatio', 'fan.hubPRFraction', 'fan.eff', 'fan.tipSpeed', 'bypassDuct.dp', 'bypassDuct.mach', 'lpt.eff', 'lpt.tipSpeed'];
 
 /**
  * Grafiği (yerinde) aynı LP yükündeki başka bir mimariye getirir: booster,
@@ -240,20 +257,50 @@ export function reshapeGraph(g: EngineGraph, next: Architecture, notes?: ArchNot
   const to = normalizeArchitecture(next);
   const hpc = find<CompressorModule>(g, 'hpc');
 
-  // Kurulum: giriş biçimi; fan PR'ı ve BPR ailenin aralığına (§2.10: çıplak
-  // PR 1,8–4,5 · BPR ≤ 1,5; kaportalı PR 1,3–2,0 · BPR ≥ 1; karışık
-  // kaportalı PR 1,4–2,4 · BPR 1–7). Çekirdek akışı korunur. Askeri fan
-  // (PR 3,1) kaportaya PR'ıyla girseydi BPR 1'de LPT çıkış kanalı kapanırdı.
+  // Kurulum: giriş biçimi. Kurulum değişince fan ve fan kanalı ailenin
+  // fanıdır (bağışçı modül: askeri fan ↔ yolcu fanı) ve booster'ın PR'ı
+  // sihirbazınki gibi seçilir; çekirdek akışı korunur. Askeri fanı (PR 4,3,
+  // BPR 0,55) kaportalı aralığa (knobs.ts: PR 1,4–1,8, BPR 3–11) kırpmak
+  // yetmez: sınırda fan kanalı kapanır, aradaki değerlerde motor sıcak
+  // çalışır (EGT payı −54 K); yalnız PR/BPR'ı almak da (askeri fanın
+  // geometrisi ve verimiyle) fan kanalını kapatır. Kurulum aynıyken fan
+  // PR'ı ve BPR yeni ailenin aralığına kırpılır.
   const inlet = find<InletModule>(g, 'inlet');
   if (inlet && !freeTurbine(to)) {
     const want = to.installation === 'nacelle' ? 'nacelle' : 'bellmouth';
-    if (inlet.style !== want) {
+    const reinstalled = inlet.style !== want;
+    if (reinstalled) {
       const src = want === 'nacelle' ? templateGraph('turbofan') : templateGraph(to.lpLoad === 'fan' ? 'militaryTurbofan' : 'turbojet');
       put(g, clone(find<InletModule>(src, 'inlet')!));
     }
     const fan = find<CompressorModule>(g, 'fan');
     const range = fanRangeFor(to);
-    if (fan && range) {
+    if (fan && reinstalled) {
+      const where = to.installation === 'nacelle' ? 'Kaportalı' : 'Çıplak';
+      const before = notes ? REFAN_KNOBS.map((id) => readKnob(g, id)) : [];
+      const d = donorModule<CompressorModule>('fan', to)!;
+      put(g, d);
+      // LPT fanı çevirir: kanalı fanın baypas oranına kalibre (askeri TF'nin
+      // tek kademeli LPT'si BPR 9'luk fanla çıkış kanalını kapatır)
+      const lpt = donorModule<TurbineModule>('lpt', to);
+      if (lpt) put(g, lpt);
+      g.massFlow *= (1 + (d.bypassRatio ?? 0)) / (1 + (fan.bypassRatio ?? 0));
+      g.bypassDuct = clone(templateGraph(familyOf(to)).bypassDuct ?? { dp: 0.02, mach: 0.45 });
+      REFAN_KNOBS.forEach((id, i) => {
+        const was = before[i];
+        const now = readKnob(g, id);
+        if (was !== undefined && now !== undefined && was !== now) {
+          notes?.push({ knob: id, from: was, to: now, reason: `${where} motorun fanı, fan kanalı ve LPT'si ailenin fanınınkidir: kurulum değişince ondan alındı (çekirdek akışı korunur).` });
+        }
+      });
+      // Var olan booster yeni fana göre (eklenen booster aşağıda aynı kuralla)
+      const lpc = to.lpLoad === 'fan' ? find<CompressorModule>(g, 'lpc') : undefined;
+      const bp = lpc && boosterPR(to, d.pr);
+      if (lpc && bp !== undefined && bp !== lpc.pr) {
+        notes?.push({ knob: 'lpc.pr', from: lpc.pr, to: bp, reason: `${where} motorun booster'ı yeni fana göre: basınç oranı ailenin değerine alındı.` });
+        lpc.pr = bp;
+      }
+    } else if (fan && range) {
       const pr = clamp(fan.pr, range.pr[0], range.pr[1]);
       if (pr !== fan.pr) {
         notes?.push({ knob: 'fan.pr', from: fan.pr, to: pr, reason: `Bu kurulumda fan basınç oranı ${fmt(range.pr[0])}–${fmt(range.pr[1])}: sınıra çekildi.` });
@@ -278,11 +325,7 @@ export function reshapeGraph(g: EngineGraph, next: Architecture, notes?: ArchNot
     if (to.booster && !lpc) {
       const b = donorModule<CompressorModule>('lpc', to)!;
       delete b.tipSpeed;
-      // Booster PR'ı mevcut fana göre: çıplak motorda ya da yüksek PR'lı
-      // (askeri) fanın arkasında yolcu TF booster'ı (1,95) fazla — askeri
-      // TF kaportaya alınınca (BPR 1) LPT çıkış kanalı kapanırdı.
-      const fanPR = find<CompressorModule>(g, 'fan')?.pr ?? 0;
-      if (to.installation === 'bare' || fanPR > DEFAULT_MODULES.boosterFanPRMax) b.pr = DEFAULT_MODULES.bareBoosterPR;
+      b.pr = boosterPR(to, find<CompressorModule>(g, 'fan')?.pr ?? 0) ?? b.pr;
       put(g, b);
     } else if (!to.booster && lpc) {
       drop(g, 'lpc');
@@ -343,60 +386,60 @@ export function reshapeGraph(g: EngineGraph, next: Architecture, notes?: ArchNot
 }
 
 /**
- * Aileler arası anlamlı düğmeler (§2.10 kimlikleri ve aralıkları): LP yükü
- * değişince yeni gaz jeneratörüne seed'den taşınır, yeni ailenin aralığına
- * kırpılır. Geometri düğmeleri (Mach, göbek/uç, yükleme, boy oranı, uç
- * hızları) ailenin yerleşimine kalibre olduğu için bağışçıdan kalır.
+ * Aileler arası anlamlı düğmeler (§2.10 kimlikleri): LP yükü değişince
+ * yeni gaz jeneratörüne seed'den taşınır, yeni ailenin aralığına kırpılır.
+ * Aralıklar tek kaynaktan: knobs.ts `knobRange` (yeni grafiğin tipiyle).
+ * Geometri düğmeleri (Mach, göbek/uç, yükleme, boy oranı, uç hızları)
+ * ailenin yerleşimine kalibre olduğu için bağışçıdan kalır.
  */
 interface CarriedKnob {
-  id: string;
-  get(g: EngineGraph): number | undefined;
-  set(g: EngineGraph, v: number): void;
-  range(a: Architecture): [number, number];
-  int?: boolean;
+  id: KnobId;
   /** Yanma odası stiline bağlı: yalnız seed'in stili hedefle aynıysa */
   sameCombustor?: boolean;
 }
 
-function moduleKnob(type: EngineModule['type'], key: string, range: CarriedKnob['range'], extra: Partial<CarriedKnob> = {}): CarriedKnob {
-  const rec = (g: EngineGraph) => g.modules.find((m) => m.type === type) as unknown as Record<string, unknown> | undefined;
-  return {
-    id: `${type}.${key}`,
-    get: (g) => {
-      const v = rec(g)?.[key];
-      return typeof v === 'number' ? v : undefined;
-    },
-    set: (g, v) => {
-      const m = rec(g);
-      if (m) m[key] = v;
-    },
-    range,
-    ...extra,
-  };
-}
-
 const CARRIED: readonly CarriedKnob[] = [
-  moduleKnob('combustor', 'tit', () => [1000, 1900]),
-  moduleKnob('hpc', 'pr', (a) => (freeTurbine(a) ? [6, 20] : [2, 25])),
-  moduleKnob('hpc', 'eff', () => [0.8, 0.94]),
-  moduleKnob('hpt', 'eff', () => [0.82, 0.94]),
-  moduleKnob('lpt', 'eff', () => [0.82, 0.94]),
-  moduleKnob('combustor', 'eff', () => [0.97, 0.999]),
+  { id: 'combustor.tit' },
+  { id: 'hpc.pr' },
+  { id: 'hpc.eff' },
+  { id: 'hpt.eff' },
+  { id: 'lpt.eff' },
+  { id: 'combustor.eff' },
   // Referans hız taşınmaz: aileye özgü boyutlandırma (TJ 43, TF/TP 8–20 m/s);
   // turbofanınki turbojete taşınınca yanma odası iki kat büyür, kutular sığmaz.
-  moduleKnob('combustor', 'dp', () => [0.02, 0.08], { sameCombustor: true }),
-  moduleKnob('combustor', 'cans', () => [6, 16], { sameCombustor: true, int: true }),
-  moduleKnob('afterburner', 't7Max', () => [1600, 2200]),
-  moduleKnob('afterburner', 'eta', () => [0.8, 0.95]),
-  {
-    id: 'engine.mechEff',
-    get: (g) => g.mechEff,
-    set: (g, v) => {
-      g.mechEff = v;
-    },
-    range: () => [0.97, 0.995],
-  },
+  { id: 'combustor.dp', sameCombustor: true },
+  { id: 'combustor.cans', sameCombustor: true },
+  { id: 'afterburner.t7Max' },
+  { id: 'afterburner.eta' },
+  { id: 'engine.mechEff' },
 ];
+
+/**
+ * Kart yolu motoru uyarı veriyorsa ailenin (sihirbazın) değerine geri
+ * alınabilen düğmeler, deneme sırasıyla: çevrimi en çok değiştirenler önce.
+ */
+const REVERTIBLE: readonly KnobId[] = [
+  'combustor.tit',
+  'hpc.pr',
+  'fan.pr',
+  'fan.bypassRatio',
+  'fan.hubPRFraction',
+  'lpc.pr',
+  ...CARRIED.map((k) => k.id).filter((id) => id !== 'combustor.tit' && id !== 'hpc.pr'),
+];
+
+const knobOf = (id: KnobId) => knobById(id)!;
+
+/** Sayısal düğme değeri (yoksa undefined) */
+function readKnob(g: EngineGraph, id: KnobId): number | undefined {
+  const v = knobOf(id).get(g);
+  return typeof v === 'number' ? v : undefined;
+}
+
+/** Düğmeyi grafiğe yerinde yazar (knobs.ts set'i klon döndürür; modül başvuruları eskir) */
+function writeKnob(g: EngineGraph, id: KnobId, v: number): void {
+  Object.assign(g, knobOf(id).set(g, v));
+}
 
 const fmt = (v: number) => Number(v.toPrecision(4)).toLocaleString('tr-TR');
 
@@ -431,9 +474,10 @@ function changeLpLoad(seed: EngineGraph, from: Architecture, to: Architecture, n
   const g = graphFromArchitecture(to, { massFlow: tpl.massFlow, name: seed.name });
   const reference = referenceFor(to);
 
-  // Yeni fanın baypas oranı tablodan (çıplak 0,6 / kaportalı 6)
+  // Yeni fanın baypas oranı bağışçınınki (sihirbazla aynı): §2.4 tablosundaki
+  // çıplak 0,6, P2'nin karışma dengesine kalibre ettiği askeri TF fanıyla
+  // (PR 4,3, BPR 0,55) karıştırıcıda P19t/P5t 1,15 verir (mixerPR uyarısı)
   const fan = find<CompressorModule>(g, 'fan');
-  if (fan && from.lpLoad !== 'fan') fan.bypassRatio = DEFAULT_MODULES.newFanBPR[to.installation];
 
   // Çekirdek akışı korunur; ailenin hava akışı aralığına kırpılır (§2.10)
   const want = (seed.massFlow / (1 + bprOf(seed))) * (1 + bprOf(g));
@@ -452,28 +496,158 @@ function changeLpLoad(seed: EngineGraph, from: Architecture, to: Architecture, n
   // Ortak düğmeler: önce bağışçı değerleriyle kurulabiliyor mu (değilse doğrulanamaz, hepsi taşınır)
   const verify = buildCheck(g, reference).ok === true;
   const sameComb = find<CombustorModule>(seed, 'combustor')?.style === to.combustor;
+  const ctx = knobCtx(g);
   for (const k of CARRIED) {
     if (k.sameCombustor && !sameComb) continue;
-    const old = k.get(seed);
-    const donor = k.get(g);
-    if (old === undefined || donor === undefined) continue;
-    const [a, b] = k.range(to);
-    let v = clamp(old, a, b);
-    if (k.int) v = Math.round(v);
+    const old = readKnob(seed, k.id);
+    const donor = readKnob(g, k.id);
+    const range = knobOf(k.id).range(ctx);
+    if (old === undefined || donor === undefined || !range) continue;
+    // HPC PR'ın anlamı serbest türbinli gaz jeneratöründe toplam basınç
+    // oranı, diğerlerinde LPC'nin/fanın arkasındaki oran: taşınmaz
+    if (k.id === 'hpc.pr' && freeTurbine(from) !== freeTurbine(to)) {
+      if (old !== donor) addNote(notes, { knob: k.id, from: old, to: donor, reason: `HPC basınç oranının anlamı değişiyor (serbest türbinli motorda toplam basınç oranı): ailenin değeri (${fmt(donor)}) kullanıldı.` });
+      continue;
+    }
+    const v = clampEngineKnob(knobOf(k.id), old, ctx) as number;
     if (v !== donor) {
-      k.set(g, v);
+      writeKnob(g, k.id, v);
       if (verify) {
         const r = buildCheck(g, reference);
         if (r.ok === false) {
-          k.set(g, donor);
-          notes.push({ knob: k.id, from: old, to: donor, reason: `Bu değerle yeni motor kurulamıyor (${r.why}): ailenin değeri kullanıldı.` });
+          writeKnob(g, k.id, donor);
+          addNote(notes, { knob: k.id, from: old, to: donor, reason: `Bu değerle yeni motor kurulamıyor (${r.why}): ailenin değeri kullanıldı.` });
           continue;
         }
       }
     }
-    if (v !== old) notes.push({ knob: k.id, from: old, to: v, reason: `Yeni ailenin aralığı ${fmt(a)}–${fmt(b)}: sınıra çekildi.` });
+    if (v !== old) addNote(notes, { knob: k.id, from: old, to: v, reason: `Yeni ailenin aralığı ${fmt(range[0])}–${fmt(range[1])}: sınıra çekildi.` });
   }
   return g;
+}
+
+/**
+ * Bütün sayısal düğmeleri grafiğin (yeni ailenin) aralığına kırpar
+ * (knobs.ts tek kaynak): panel aralık dışı değer göstermesin, ilk
+ * dokunuşta değer sıçramasın. Kırpılanlar notta.
+ */
+function clampToKnobRanges(g: EngineGraph, notes: ArchNote[]): void {
+  const ctx = knobCtx(g);
+  for (const k of ENGINE_KNOBS) {
+    if (k.type !== 'number' && k.type !== 'int') continue;
+    const v = k.get(g);
+    const r = k.range(ctx);
+    if (typeof v !== 'number' || !r) continue;
+    const c = clampEngineKnob(k, v, ctx) as number;
+    if (c === v) continue;
+    Object.assign(g, k.set(g, c));
+    addNote(notes, { knob: k.id, from: v, to: c, reason: `Yeni ailenin aralığı ${fmt(r[0])}–${fmt(r[1])}: sınıra çekildi.` });
+  }
+}
+
+/** Hava akışını ailenin aralığına kırpar (pervane akışla ölçeklenir) */
+function clampMassFlow(g: EngineGraph, to: Architecture, notes: ArchNote[], reason: string): void {
+  const [lo, hi] = massFlowRangeFor(to);
+  const W = clamp(g.massFlow, lo, hi);
+  if (Math.abs(W / g.massFlow - 1) <= 1e-9) return;
+  addNote(notes, { knob: 'engine.massFlow', from: g.massFlow, to: W, reason: `Yeni ailenin hava akışı aralığı ${fmt(lo)}–${fmt(hi)} kg/s: ${reason}` });
+  setMassFlow(g, W, g.massFlow);
+}
+
+/* ---------------------------- çalışabilirlik ---------------------------- */
+
+const RANK: Record<Severity, number> = { info: 0, caution: 1, warning: 2 };
+
+/** Değerlendirme sorunları: bulgu kimliği → önem (caution 1, warning 2; kurulamazsa 'build' 3) ve başlık */
+type Problems = Map<string, { rank: number; title: string }>;
+
+/**
+ * Grafiğin sorunları (kutular sığdırılmış kopyada, atölyenin referansıyla).
+ * Yerleşimi hazır olmayan ya da değerlendirilemeyen grafikte null.
+ */
+function problemsOf(g: EngineGraph, reference: BuiltEngine): Problems | null {
+  if (layoutNotReady(g)) return null;
+  let ev: ReturnType<typeof evaluate>;
+  try {
+    ev = evaluate(fitCans(clone(g), reference), { reference, remedies: false });
+  } catch {
+    return null;
+  }
+  const out: Problems = new Map();
+  if ('error' in ev) {
+    out.set('build', { rank: 3, title: ev.error.title });
+    return out;
+  }
+  for (const f of ev.findings) {
+    const rank = RANK[f.severity];
+    if (rank > 0 && rank > (out.get(f.id)?.rank ?? 0)) out.set(f.id, { rank, title: f.title });
+  }
+  return out;
+}
+
+/** `p`'de olup izinlilerde aynı ya da daha yüksek önemle olmayan sorunlar */
+function newProblems(p: Problems, allowed: Problems[]): Problems {
+  const out: Problems = new Map();
+  for (const [id, v] of p) if (!allowed.some((a) => (a.get(id)?.rank ?? 0) >= v.rank)) out.set(id, v);
+  return out;
+}
+
+/**
+ * Kart yolunun çalışabilirlik güvencesi (sihirbazla aynı ölçüt): taşınan ya
+ * da korunan değerlerle motor, seed'de ve sihirbazın motorunda olmayan bir
+ * uyarı (caution/warning; EGT payı ≤ 0 dahil) veriyorsa REVERTIBLE
+ * düğmeleri ailenin değerine (sihirbazın aynı mimarideki grafiği) geri
+ * alır: önce tek tek (sırayla ilk yeten), yetmezse sırayla birikerek.
+ * Geri alınanlar nedeniyle notta. BPR geri alınınca çekirdek akışı korunur.
+ */
+function ensureWorkable(seed: EngineGraph, from: Architecture, g: EngineGraph, to: Architecture, notes: ArchNote[]): EngineGraph {
+  const reference = referenceFor(to);
+  const p = problemsOf(g, reference);
+  if (!p || p.size === 0) return g;
+  const seedP = problemsOf(seed, referenceFor(from)) ?? new Map();
+  if (newProblems(p, [seedP]).size === 0) return g;
+  const wizard = graphFromArchitecture(to, { massFlow: templateGraph(familyOf(to)).massFlow, name: g.name });
+  const allowed = [seedP, problemsOf(wizard, reference) ?? new Map()];
+  const bad = newProblems(p, allowed);
+  if (bad.size === 0) return g;
+
+  const changed = REVERTIBLE.filter((id) => {
+    const a = readKnob(g, id);
+    const b = readKnob(wizard, id);
+    return a !== undefined && b !== undefined && a !== b;
+  });
+  const revert = (base: EngineGraph, ids: readonly KnobId[]): EngineGraph => {
+    const c = clone(base);
+    for (const id of ids) {
+      const v = readKnob(wizard, id)!;
+      if (id === 'fan.bypassRatio') c.massFlow *= (1 + v) / (1 + (readKnob(c, id) ?? 0));
+      writeKnob(c, id, v);
+    }
+    clampMassFlow(c, to, [], '');
+    return c;
+  };
+  const accept = (c: EngineGraph) => {
+    const q = problemsOf(c, reference);
+    return q !== null && newProblems(q, allowed).size === 0;
+  };
+
+  let chosen: KnobId[] | undefined = changed.map((id) => [id]).find((ids) => accept(revert(g, ids)));
+  if (!chosen) {
+    for (let i = 1; i <= changed.length; i++) {
+      chosen = changed.slice(0, i);
+      if (accept(revert(g, chosen))) break;
+    }
+  }
+  if (!chosen?.length) return g;
+  const why = [...bad.values()].map((v) => v.title).join('; ');
+  const out = revert(g, chosen);
+  for (const id of chosen) {
+    addNote(notes, { knob: id, from: readKnob(g, id)!, to: readKnob(out, id)!, reason: `Bu değerle yeni motor sınırı aşıyor (${why}): ailenin değeri kullanıldı.` });
+  }
+  if (Math.abs(out.massFlow / g.massFlow - 1) > 1e-9) {
+    addNote(notes, { knob: 'engine.massFlow', from: g.massFlow, to: out.massFlow, reason: 'Baypas oranı ailenin değerine alındı: çekirdek akışı korunur.' });
+  }
+  return out;
 }
 
 /**
@@ -484,7 +658,10 @@ function changeLpLoad(seed: EngineGraph, from: Architecture, to: Architecture, n
  * düğmeler (T4, HPC PR, verimler, yanma odası) seed'den taşınır; tablodaki
  * taşımalar (LPC↔fan uç hızı, yeni fanın BPR'ı) uygulanır. Aile değişince
  * `ops` atılır: çalışabilirlik yeni ailenin şablonundan ölçeklenir.
- * Korunamayan değerler `notes`'ta (kırpma, kurulamama, kutu sayısı).
+ * Mimari değişince bütün düğmeler yeni ailenin aralığına (knobs.ts)
+ * kırpılır; motor seed'de ve sihirbazda olmayan bir uyarı veriyorsa
+ * taşınan değerler ailenin değerine geri alınır (ensureWorkable).
+ * Korunamayan değerler `notes`'ta (kırpma, kurulamama, uyarı, kutu sayısı).
  */
 export function applyArchitectureReport(seed: EngineGraph, next: Architecture): { graph: EngineGraph; notes: ArchNote[] } {
   const from = architectureOf(seed);
@@ -498,6 +675,13 @@ export function applyArchitectureReport(seed: EngineGraph, next: Architecture): 
     delete g.kind;
     if (familyOf(from) !== familyOf(to)) delete g.ops;
     if (archKey(from) !== archKey(to)) g.summary = describeArchitecture(to);
+    // BPR değişince çekirdek akışı korunur; sonuç ailenin aralığına
+    clampMassFlow(g, to, notes, 'çekirdek akışı korunamadı.');
+  }
+  // Aralıklar yeni ailenin (knobs.ts), sonra çalışabilirlik (sihirbazla aynı ölçüt)
+  if (archKey(from) !== archKey(to)) {
+    clampToKnobRanges(g, notes);
+    g = ensureWorkable(seed, from, g, to, notes);
   }
   // Kutular her mimari değişiminde yeniden sığdırılır: booster, kurulum ya da
   // akış değişimi çekirdeğin ortalama yarıçapını değiştirir

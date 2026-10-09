@@ -19,7 +19,9 @@ import { architectureOf, normalizeArchitecture, reshapeGraph, type Architecture 
 import { TEMPLATES } from './catalog';
 import { computeGasPath, FlowpathError } from './flowpath';
 import { buildEngine, toEngineDesign, type BuiltEngine } from './graph';
+import { knobRange } from './knobs';
 import type { TemplateId } from './templates';
+import { deriveTraits, type EngineTraits } from './traits';
 import type {
   CombustorModule,
   CombustorStyle,
@@ -59,20 +61,6 @@ const TEMPLATE_DONOR: Record<TemplateId, Donor> = {
 };
 
 /**
- * Aile başına hava akışı aralığı [kg/s] (§2.10 `engine.massFlow`):
- * `solveMassFlow` bu aralıkta arar.
- */
-export const MASS_FLOW_RANGE: Record<Donor, [number, number]> = {
-  TJ: [10, 200],
-  TJD: [10, 200],
-  MTF: [30, 250],
-  TF: [150, 1500],
-  TFM: [50, 600],
-  TP: [3, 30],
-  TS: [1.5, 15],
-};
-
-/**
  * Bağışçısı olmayan ya da biçim değiştiren modüllerin varsayılanları
  * (§2.4 dönüşüm tablosu, §6.3): sabit lüle, kutu / kutu-halka yanma odası,
  * düz ve lobe'lu karıştırıcı, çıkış mili.
@@ -108,12 +96,11 @@ export const DEFAULT_MODULES = {
   bareBoosterPR: 1.1,
   /**
    * Bu fan basınç oranının üstünde (askeri, çıplak sınıf fan; kaportalı fan
-   * aralığı 1,3–2,0) eklenen booster da düşük PR'lı (bareBoosterPR) olur:
-   * PR 3,1'lik fanın arkasına 1,95'lik booster LPT çıkış kanalını kapatır.
+   * aralığı knobs.ts'te ayrık 1,4–1,8, karışık 1,4–2,4) eklenen booster da
+   * düşük PR'lı (bareBoosterPR) olur: PR 3,1'lik fanın arkasına 1,95'lik
+   * booster LPT çıkış kanalını kapatır.
    */
   boosterFanPRMax: 2.0,
-  /** LP yükü fana dönünce yeni fanın baypas oranı (§2.4: çıplak 0,6 / kaportalı 6) */
-  newFanBPR: { bare: 0.6, nacelle: 6 },
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -218,21 +205,35 @@ export function familyOf(a: Architecture): TemplateId {
   }
 }
 
-/** Mimarinin ailesinin hava akışı aralığı [kg/s] (§2.10) */
-export function massFlowRangeFor(a: Architecture): [number, number] {
-  return MASS_FLOW_RANGE[TEMPLATE_DONOR[familyOf(normalizeArchitecture(a))]];
+const familyTraitsCache = new Map<TemplateId, EngineTraits>();
+
+/**
+ * Mimarinin ailesinin türetilmiş tipi (aile şablonundan): aile düzeyindeki
+ * düğme aralıkları (hava akışı, fan) için. Aralıklar tek kaynaktan,
+ * knobs.ts `knobRange`'den gelir (§2.10). Yanma odası stiline ya da art
+ * yakıcıya bağlı aralıklar için grafiğin kendi tipi kullanılmalı.
+ */
+function familyTraits(a: Architecture): EngineTraits {
+  const fam = familyOf(normalizeArchitecture(a));
+  let t = familyTraitsCache.get(fam);
+  if (!t) {
+    t = deriveTraits(templateGraph(fam));
+    familyTraitsCache.set(fam, t);
+  }
+  return t;
 }
 
-/** Fanlı ailelerde fan basınç oranı ve baypas oranı aralıkları (§2.10 `fan.pr`, `fan.bypassRatio`) */
-const FAN_RANGE: Partial<Record<TemplateId, { pr: [number, number]; bpr: [number, number] }>> = {
-  militaryTurbofan: { pr: [1.8, 4.5], bpr: [0.1, 1.5] },
-  turbofan: { pr: [1.3, 2.0], bpr: [1, 12] },
-  turbofanMixed: { pr: [1.4, 2.4], bpr: [1, 7] },
-};
+/** Mimarinin ailesinin hava akışı aralığı [kg/s] (§2.10 `engine.massFlow`; `solveMassFlow` bu aralıkta arar) */
+export function massFlowRangeFor(a: Architecture): [number, number] {
+  return knobRange('engine.massFlow', familyTraits(a))!;
+}
 
-/** Mimarinin ailesindeki fan aralıkları (fansızda undefined) */
+/** Mimarinin ailesindeki fan basınç oranı ve baypas oranı aralıkları (§2.10 `fan.pr`, `fan.bypassRatio`; fansızda undefined) */
 export function fanRangeFor(a: Architecture): { pr: [number, number]; bpr: [number, number] } | undefined {
-  return FAN_RANGE[familyOf(normalizeArchitecture(a))];
+  const t = familyTraits(a);
+  const pr = knobRange('fan.pr', t);
+  const bpr = knobRange('fan.bypassRatio', t);
+  return pr && bpr ? { pr, bpr } : undefined;
 }
 
 /** Modül tipinin bağışçısı (§2.4): çoğu modül ailenin şablonundan */
@@ -357,6 +358,10 @@ export function setMassFlow(g: EngineGraph, massFlow: number, tplMassFlow: numbe
  * yanma odası uyarısının (combustorVelHigh caution 52) %4 içinde.
  */
 export const CAN_FIT_VREF_MAX = 50;
+/** Sığdırmada referans hızın en küçük artışı [m/s] */
+const FIT_VREF_STEP = 0.1;
+/** Sığdırma denemesi üst sınırı: 16 → 6 kutu + 0 → 50 m/s yaklaşık 60 adım */
+const FIT_MAX_TRIES = 200;
 
 /**
  * Kutu sayısını çevreye sığacak kadar azaltır (en az 6); 6 kutu da
@@ -367,22 +372,34 @@ export const CAN_FIT_VREF_MAX = 50;
  * büyür). Yalnız çevrim + gaz yolu (~0,3 ms/deneme); başka bir hata
  * (geçersiz grafik, hazır olmayan gaz yolu) olduğu gibi bırakılır,
  * buildEngine raporlar.
+ *
+ * Her adım ilerler (en az FIT_VREF_STEP m/s): dosyadan gelen 0 ya da
+ * 0,04 m/s'lik referans hızda %10 adım iki basamağa yuvarlanınca yerinde
+ * sayardı (0,04·1,1 → 0,04) ve döngü ana iş parçacığını kilitlerdi. Deneme
+ * sayısı da sınırlı (FIT_MAX_TRIES).
  */
 export function fitCans(g: EngineGraph, reference?: BuiltEngine): EngineGraph {
   const c = modOf<CombustorModule>(g, 'combustor');
   if (!c || c.style === 'annular' || c.cans === undefined) return g;
   const ref = hasFullOps(g) ? undefined : (reference ?? referenceFor(architectureOf(g)));
-  for (;;) {
+  for (let tries = 0; tries < FIT_MAX_TRIES; tries++) {
     try {
       computeGasPath(g, sizeEngine(toEngineDesign(g, { reference: ref })));
       return g;
     } catch (e) {
       if (!(e instanceof FlowpathError && e.code === 'combustor.cansFit')) return g;
       if (c.cans > 6) c.cans--;
-      else if (c.refVelocity < CAN_FIT_VREF_MAX) c.refVelocity = Math.min(CAN_FIT_VREF_MAX, Number((c.refVelocity * 1.1).toFixed(2)));
+      else if (c.refVelocity < CAN_FIT_VREF_MAX) c.refVelocity = nextFitVelocity(c.refVelocity);
       else return g;
     }
   }
+  return g;
+}
+
+/** Sığdırmada sonraki referans hızı: %10 (iki basamak), en az FIT_VREF_STEP, en çok CAN_FIT_VREF_MAX */
+export function nextFitVelocity(v: number): number {
+  const base = Number.isFinite(v) && v > 0 ? v : 0;
+  return Math.min(CAN_FIT_VREF_MAX, Math.max(Number((base * 1.1).toFixed(2)), base + FIT_VREF_STEP));
 }
 
 /**
