@@ -55,9 +55,10 @@ function tryBuild(g: EngineGraph, reference: ReturnType<typeof buildEngine>, mod
 const FAMILIES = (Object.keys(TEMPLATES) as TemplateId[]).filter((id) => TEMPLATES[id]);
 
 /**
- * 3B: çıplak motorlarda (sorunun yerleşimi) her noktada; kaportalı ve
- * pervaneli modeller ağır (nokta başına ~0,5 s), onlarda hava akışı
- * uçlarında (boyut uçları). Bütün ailelerde bütün temel düğmelerin 3B
+ * Tasarım her noktada; 3B (nokta başına 0,1–0,5 s, varsayılan takımda
+ * başka dosyaların 5 s'lik testlerini zaman aşımına düşürmesin diye):
+ * çıplak motorlarda (sorunun yerleşimi) aralık uçlarında, kaportalı ve
+ * pervaneli modellerde hava akışı uçlarında (boyut uçları). Bütün ailelerde bütün temel düğmelerin 3B
  * taraması (21 nokta) bir kez elle koşuldu: tipsiz hata yalnız bu açık.
  */
 describe('temel düğme taraması (3B dahil): tipli hata ya da kurulmuş model', () => {
@@ -75,7 +76,8 @@ describe('temel düğme taraması (3B dahil): tipli hata ya da kurulmuş model',
       const N = 4;
       for (let i = 0; i <= N; i++) {
         const v = k.scale === 'log' ? r[0] * Math.pow(r[1] / r[0], i / N) : r[0] + ((r[1] - r[0]) * i) / N;
-        const model = bare || (k.id === 'engine.massFlow' && (i === 0 || i === N));
+        const end = i === 0 || i === N;
+        const model = bare ? end : k.id === 'engine.massFlow' && end;
         const res = tryBuild(k.set(base, clampEngineKnob(k, v, ctx)), reference, model);
         if ('untyped' in res) bad.push(`${k.id}=${v}: ${res.untyped}`);
         if ('ok' in res) built++;
