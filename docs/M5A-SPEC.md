@@ -1075,7 +1075,7 @@ export interface TurbofanLayout { style: 'nacelle'; /* fan, booster, hpc, …, s
 - Ortak lüle: halka ağız alanı `A9mix` (`rExit = √(r_koni² + A9mix/π)`,
   koni ağızdan çıkıyorsa halka), karıştırma kanalı boyu `1,6·rExit`
   (karışma için L/D ≈ 0,8), son bölüm konik yakınsar (ağızda ~19°).
-- Egzoz konisi uzar: ucu ağızdan ~0,7 ağız yarıçapı çıkar (CFM56-5C'deki
+- Egzoz konisi uzar: ucu ağızdan 0,7 ağız yarıçapı çıkar (CFM56-5C'deki
   gibi). Şartnamenin "konik kısalır" maddesi yerine (koni kısalınca uzun
   kanalın ağzı içi boş bir boru gibi görünüyordu).
 - Dış yüzey = iç duvar + kaporta kalınlığı; kalınlık fan kaportasının
@@ -1086,17 +1086,29 @@ export interface TurbofanLayout { style: 'nacelle'; /* fan, booster, hpc, …, s
   akıştaki fan kaportası gibi motor kuru kütlesine sayılmaz.
 - Test (`turbofanMixed.test.ts`): ağız alanı A9mix ±%3; kaporta iç duvarı
   her z'de çekirdek kaportasının, lobe tepelerinin ve koninin dışında; dış
-  yüzey iç duvarın dışında.
+  yüzey iç duvarın dışında; koni çıkıntısı 0,70·rExit (koni boyu ve ağız
+  birlikte yakınsar).
+- Geometri sınırı: fan kanalının ön kısmı fan ucu oranında, çekirdek
+  kaportası mutlak payla ölçeklenir; düşük BPR (≤ 2) ya da küçük hava akışı
+  (≤ ~150 kg/s) çekirdek kaportasını kanal duvarına dayar. Bu durumda
+  FlowpathError `bypassDuct.closed` (düğmeler BPR, hava akışı); A9mix
+  hesaplanamazsa `mixer.area`. **Açık (P9/P11):** karışık ailenin
+  aralığı `knobs.ts`'te [1, 7] / [50, 600]; ya alt sınırlar (BPR ≳ 3,5,
+  W ≳ 200) çekilmeli ya da çekirdek kaportası payları çekirdekle ölçeklenmeli.
+- Lüle ağzı tutamacı TFM'de **kilitli** (§6.7 istisnası, aşağıda).
 
 **3B:**
 - `nacelle.js`: `dims.long = { duct, outer, mixZ }` (kaporta referansında;
   `turbofanModel.ts longDuctOf` çevirir). Fan kaportası (z ≤ 0,55)
   ayrık akıştakinin aynısı ve pişirilmiş dokusu aynı ölçekte (v = s / L,
-  yazılar yerinde). Arka kısım ayrı ağ: dokusuz aynı boya (doku kısa
-  kaportaya çizildi; uzun kanala gerilince yazılar ve kuşak bandı yanlış
-  yere düşüyordu), `capify` ile kesit kapağı; derzler (fan kaportası /
-  çevirici / arka kaporta) ve dört itki çevirici kapağının kenarları
-  geometriyle. İç duvar iki ağ: karıştırıcıya dek akustik astar
+  yazılar yerinde). Arka kısım ayrı ağ: kütüphanenin `cowlPaint` klonu
+  (aynı boya dokusu ve ton; pişirilmiş `cowlDetail` dokusu kısa kaportaya
+  çizildi, uzun kanala gerilince yazılar ve kuşak bandı yanlış yere
+  düşüyordu), `capify` ile kesit kapağı; derzler (fan kaportası /
+  çevirici / arka kaporta; kalınlıklı bant) ve dört itki çevirici
+  kapağının kenarları (tüp) geometriyle, ağı üreten yumuşatılmış profilden
+  ölçülür. **Açık (P11):** pilon ayrık TF'ninki, uzun kaportanın yalnız ön
+  ~1/3'ünü örtüyor; CFM56-5C/A340'taki gibi kaporta boyunca uzatılmalı. İç duvar iki ağ: karıştırıcıya dek akustik astar
   (`bypassDuct`), sonrası is tutmuş metal ortak lüle (`nozzle`). Chevron ve
   `nozzleRing` lüle ağzında. Reuse anahtarı profilleri içerir.
 - `core.js`: `mixed` dalında `primaryNozzle` ve çekirdek chevron'u yok;
@@ -1555,7 +1567,18 @@ zinciri.
 | `nozzleExit` (radyal) | TP / TS | `L.exhaust.radius` @ `z1` | `nozzle.exitMach = machFromFlow(W5√T5/(P5·πr'²))`, [0,08, 0,5] | `nozzle.exitMach` |
 | | ayrık TF (baypas ağzı) | `L.bypassExit.rDuct` @ `z` | A19 hedefi: `fan.pr ∈ [1,25, 2,0]` 14 adımlı ikiye bölme (monoton) | `fan.pr` |
 | | çıplak (AB'li/AB'siz) | `nozzle.exitR` @ `exitZ` | **varsayılan (§9.2 S2):** "lüle trimi" — A9/A8dry hedefi için `combustor.tit` ikiye bölmesi (monoton: TJ'de T4 1100→1550 iken A9 0,2075→0,1682) | `combustor.tit` |
-| | karışık (MTF, TFM) | ortak lüle ağzı | A8dry/A9mix hedefi için `fan.bypassRatio` ikiye bölmesi (MTF: BPR 0,3→1,5 iken A8dry 0,202→0,249) | `fan.bypassRatio` |
+| | karışık (MTF, TFM) | ortak lüle ağzı | A8dry/A9mix hedefi için `fan.bypassRatio` ikiye bölmesi (MTF: BPR 0,3→1,5 iken A8dry 0,202→0,249). **TFM istisnası: kilitli** (aşağıda) | `fan.bypassRatio` |
+
+**TFM istisnası (P6 ölçümü, kullanıcı kararı bekliyor).** Kaportalı karışık
+turbofanda A9mix tasarım noktasında en küçüktür: akışlar eşit basınçta
+buluşunca karışma kaybı en az, alan en küçük. Eşleme hiçbir aday düğmede
+tekdüze değil: BPR 1 → 6,5 iken ağız 0,93 → 0,72 m daralır, 7'de yeniden
+açılır; `fan.pr` 1,4 → 1,7 iken 0,883 → 0,723 m daralır, 1,8'de 0,744 m'ye
+açılır, ≥ 2,0'da çevrim çözülmez. Bu yüzden ikiye bölme yapılamaz, tutamaç
+§6.7 tekdüzelik kuralıyla **kilitli** görünür (S2 alternatif (a) davranışı:
+kilitli + açıklama). S2 varsayılanından bu sapma kullanıcıya sorulmalı;
+seçenekler: kilitli kalır, ya da M5b'nin `nozzleAreaFactor`'ı (S2 (b))
+yalnız TFM için öne çekilir.
 
 Lüle okumasının ilk satırı bağı açıkça yazar: "Lüle trimi: daha geniş ağız
 → türbin daha az genişletir → aynı hava ve basınç oranında T4 1230 → 1180 K
@@ -2014,7 +2037,10 @@ Her biri için **varsayılan** (onay gelmezse uygulanan) yazılı.
   (çıplakta T4, karışıkta BPR; TP/TS'de tam, ayrık TF'de FPR) ve okumada
   bağın açık anlatımı. Alternatifler: (a) bu mimarilerde kilitli +
   açıklama; (b) M5b'deki "tasarım noktası kayar" (`nozzleAreaFactor`,
-  sim değişikliği) M5a'ya çekilir.
+  sim değişikliği) M5a'ya çekilir. **Not (P6):** kaportalı karışık TF'de
+  (TFM) A9mix ne BPR'de ne FPR'de tekdüze (tasarım noktası en küçük alan);
+  tutamaç orada kilitli, yani fiilen (a). Ayrıntı ve karar §6.7 TFM
+  istisnasında.
 - **S3 — `EngineKind`'a `'turboshaft'` eklenmesi** ve test hücresi motor
   listesinde 5. hazır motor olarak turboşaft (dinamometreli). Varsayılan:
   evet.
