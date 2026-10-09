@@ -3,9 +3,9 @@
  * kimliği tutarlılığı game/glossary.test.ts'te (katman kuralı).
  *
  * Şablon testi: yedi aile şablonunda caution/warning 0 (§4). Henüz olmayan
- * ya da fiziğe uydurulmamış şablon (P2 turboprop/turbofan, P5–P7 yeni
- * aileler) o şablon birleşene kadar atlanır; "uydurulmuş" ölçütü §4'teki
- * hedef düğmelerdir, uyarıların kendisi değil.
+ * ya da yerleşimi hazır olmayan şablon (P6/P7 yeni aileler) birleşene kadar
+ * atlanır. P2'nin uydurduğu turboprop ve turbofan dalga 1 entegrasyonundan
+ * beri koşulsuz sınanır.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -72,30 +72,18 @@ function legacyTurboprop(): EngineGraph {
 /* Şablonlar uyarısız                                                  */
 /* ------------------------------------------------------------------ */
 
-/** §4 uydurma hedefleri (P2): uydurulmamış şablonda test atlanır */
-const FITTED: Partial<Record<TemplateId, (g: EngineGraph) => boolean>> = {
-  turbofan: (g) => mod<CombustorModule>(g, 'combustor').refVelocity >= 18 && mod<TurbineModule>(g, 'hpt').mach[0] >= 0.1,
-  turboprop: (g) => (mod<CompressorModule>(g, 'hpc').tipSpeed ?? 999) <= 480,
-};
-
 /**
  * Bilinen açık işler (P3 kabulünde "açık", "geçti" sayılmaz): şablonun bugün
- * aştığı eşik. Eşik gevşetilmez (§9.2 S5); şablon eşiğe uydurulur ve bu
- * satır entegrasyonda silinir.
- * - militaryTurbofan: karıştırıcıda P19t/P5t 0,69 (warning). Şablon P2'de
- *   karışma dengesine uydurulur (fan PR ≈ 4,2; MTF altın satırı gerekçeyle
- *   güncellenir).
- * TF T3 payı (962/1000 K, %3,8 < %4) uyarı üretmez, yalnız pay raporunda
- * görünür; o da P2'de (HPC PR ≤ 16,3) düzelir.
+ * aştığı eşik. Eşik gevşetilmez (§9.2 S5); şablon eşiğe uydurulur ve satır
+ * silinir. Dalga 1 entegrasyonunda boş: P2 MTF'yi karışma dengesine (fan PR
+ * 4,3, BPR 0,55) ve TF'nin T3 payını HPC PR 16,3 ile %4'ün üstüne çekti.
  */
-const OPEN: Partial<Record<TemplateId, string[]>> = {
-  militaryTurbofan: ['mixerPR'],
-};
+const OPEN: Partial<Record<TemplateId, string[]>> = {};
 
 const ALL: TemplateId[] = ['turbojet', 'turbojetDry', 'militaryTurbofan', 'turbofanMixed', 'turbofan', 'turboprop', 'turboshaft'];
 const ready = (id: TemplateId) => {
   const g = TEMPLATES[id];
-  return !!g && layoutNotReady(g) === null && (FITTED[id]?.(g) ?? true);
+  return !!g && layoutNotReady(g) === null;
 };
 
 describe('şablonlar uyarısız (caution/warning 0)', () => {
@@ -109,7 +97,6 @@ describe('şablonlar uyarısız (caution/warning 0)', () => {
       expect(ids(serious(evaluateOperability(buildEngine(TEMPLATES[id]!))))).toEqual([]);
     });
   }
-  it.todo('militaryTurbofan: karıştırıcı dengesi (mixerPR 0,69) — P2 şablonu uydurunca OPEN satırı silinir');
 });
 
 /* ------------------------------------------------------------------ */
