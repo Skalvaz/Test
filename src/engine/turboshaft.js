@@ -17,7 +17,7 @@
 import * as THREE from 'three';
 import { smoothProfile, latheFromProfile, thickLathe, radialInstances, tagPart } from './geom.js';
 import { buildGasGenerator, planetSet } from './gasgen.js';
-import { buildStandYoke, BEAM_Y } from './stand.js';
+import { buildStandYoke, BEAM_Y, CELL_FLOOR_Y } from './stand.js';
 import { radiusProfile, accessoryGearbox, hugPipe, flangeBolts } from './externals.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -447,7 +447,7 @@ function buildDynamometer(materials, L, beamZ1) {
   group.add(lcBox);
 
   // --- Su giriş/çıkış boruları: zemindeki kanala iner ---
-  const floorY = -3.35;
+  const floorY = CELL_FLOOR_Y;
   const pipeTo = (pts, r, mat) => {
     const c = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
     group.add(new THREE.Mesh(new THREE.TubeGeometry(c, 64, r, 14, false), mat));
