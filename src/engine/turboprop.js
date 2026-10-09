@@ -346,7 +346,7 @@ export function buildTurboprop(materials, L) {
   group.add(kit.build());
 
   /* ---------------- test standı askısı ---------------- */
-  const yoke = buildStandYoke(materials, { mounts: L.mounts, engineR: L.engineR });
+  const yoke = buildStandYoke(materials, { mounts: L.standZ, engineR: L.engineR });
   group.add(tagPart(yoke, 'stand'));
 
   /**
@@ -376,7 +376,7 @@ export function buildTurboprop(materials, L) {
     blurMat,
     bladeCount: blades * 2,
     setPitch,
-    stand: { yoke, mounts: L.mounts, engineR: L.engineR },
+    stand: { yoke, mounts: L.standZ, engineR: L.engineR },
     intake: { z: hz - 0.9, radius: 0.2, y: -0.62 },
     exhaust: { z: ex.z1, radius: ex.radius },
     prop: { z: PROP_Z, radius: PROP_RADIUS, blades },

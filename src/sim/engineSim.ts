@@ -802,6 +802,17 @@ export class EngineSim {
     this.recoveryTimer = 0;
     this.overTempTime = 0;
     this.governing = false;
+    // Önceki motordan kalan zamanlayıcı ve önbellekler: pompalama yakıt
+    // sınırı önbelleği kalırsa (ör. turboproptan turbofana) yeni motorun
+    // ilk adımında küçük eski sınır yakıtı keser ve motor söner
+    this.surgeTimer = 0;
+    this.ignitionTimer = 0;
+    this.hungTimer = 0;
+    this.prevN2 = 0;
+    this.prevN1Err = 0;
+    this.prevN2Err = 0;
+    this.surgeWfCache = Infinity;
+    this.surgeWfAge = 99;
     this.flags.clear();
     Object.assign(this.controls, {
       apuBleed: false,

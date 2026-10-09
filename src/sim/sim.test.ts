@@ -246,6 +246,7 @@ describe('motor tipleri', () => {
       militaryTurbofan: [70e3, 95e3],
       turbojet: [35e3, 55e3],
       turboprop: [0.5e3, 5e3], // artık jet itkisi; asıl itki pervaneden
+      turboshaft: [0, 2e3], // artık jet itkisi; güç çıkış milinden (M5a P7)
     };
     const [lo, hi] = expected[kind];
     expect(e.point.thrust).toBeGreaterThan(lo);
@@ -316,6 +317,17 @@ describe('motor tipleri', () => {
     // Momentum teorisi: T ∝ P^(2/3)
     const ratio = mid.propThrust / hi.propThrust;
     expect(Math.abs(ratio - (mid.shaftPower / hi.shaftPower) ** (2 / 3))).toBeLessThan(0.02);
+  });
+
+  it.each([30, 30 + 1 / 60])('turboproptan turbofana geçişte trim edilen motor sönmez (önceki trim %s s)', (secs) => {
+    // reset() önbellekleri (pompalama yakıt sınırı vb.) sıfırlamalı: yoksa
+    // turbopropun küçük sınırı turbofanın ilk adımında yakıtı keser
+    const sim = new EngineSim(ENGINE_CATALOG.turboprop);
+    sim.trim(0, secs);
+    sim.setDesign(ENGINE_CATALOG.turbofan);
+    sim.trim(0, 30);
+    expect(sim.lit).toBe(true);
+    expect(sim.N2).toBeGreaterThan(0.55);
   });
 
   it.each(Object.keys(ENGINE_CATALOG) as EngineKind[])(

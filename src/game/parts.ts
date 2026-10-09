@@ -128,6 +128,27 @@ export const PARTS: Record<PartId, PartInfo> = {
     name: 'Test standı',
     short: 'Motoru itki ölçüm çerçevesine asan çelik kiriş. Motorun ittiği kuvvet buradan yük hücresine aktarılır.',
   },
+  // M5a yeni parçaları (yer tutucu kartlar; P8 genişletir)
+  mixer: {
+    name: 'Karıştırıcı (mixer)',
+    short:
+      'Türbin çıkışında sıcak çekirdek akışı ile soğuk baypas akışını ortak bir jet borusunda buluşturur. Lobe\'lu karıştırıcı iki akışı iç içe geçirerek hızlı karıştırır: jet hızı düşer, itki verimi artar, ses azalır.',
+  },
+  outputShaft: {
+    name: 'Çıkış mili',
+    short:
+      'Turboşaftta serbest güç türbininin gücünü dışarı (helikopter rotor dişli kutusuna, jeneratöre ya da pompaya) taşıyan mil. Gaz jeneratörüne mekanik bağı yoktur; yalnız gaz akışıyla çevrilir.',
+  },
+  engineCase: {
+    name: 'Motor gövdesi',
+    short:
+      'Kaportasız motorun dış kabuğu: kompresör, yanma odası ve türbin kasalarının flanşlarla birleşmiş dizisi. Basıncı taşır, yatakları ve dış donanımı tutar.',
+  },
+  accessories: {
+    name: 'Aksesuar dişli kutusu',
+    short:
+      'HP milinden güç alır: yakıt ve yağ pompaları, hidrolik pompa, jeneratör buraya bağlıdır. Marş motoru da motoru buradan çevirir.',
+  },
 };
 
 /**

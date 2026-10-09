@@ -13,6 +13,7 @@ import { smoothProfile, latheFromProfile, thickLathe, bladeRow, radialInstances,
 import { createStageBladeGeometry } from './airfoil.js';
 import { buildGasPath } from './gaspath.js';
 import { buildNozzle } from './nozzle.js';
+import { lobedMixer } from './mixer.js';
 import { buildStandYoke } from './stand.js';
 import { createBlurDiscTexture } from '../materials/textures.js';
 import { KitBatch } from './kit.js';
@@ -36,63 +37,16 @@ import {
 const deg = THREE.MathUtils.degToRad;
 
 /**
- * @param kind  'militaryTurbofan' | 'turbojet' (dış donanım düzeni için)
- * @param v     gaz yolu yerleşimi: design/flowpath.ts `BareJetLayout`
- *              (modül grafiğinden fizikle hesaplanır; metre, motor ekseni Z,
- *              +Z egzoz yönü)
+ * @param src  görsel kaynak (engine/models.ts `VisualSource`): `src.layout`
+ *             gaz yolu yerleşimi, design/flowpath.ts `BareJetLayout`
+ *             (modül grafiğinden fizikle hesaplanır; metre, motor ekseni Z,
+ *             +Z egzoz yönü); `src.traits` dış donanım düzeni için
  */
-let mixerMat = null;
-function lobedMixer(m) {
-  const nu = m.lobes * 16;
-  const nv = 22;
-  const pos = new Float32Array((nu + 1) * (nv + 1) * 3);
-  const uv = new Float32Array((nu + 1) * (nv + 1) * 2);
-  let k = 0;
-  for (let j = 0; j <= nv; j++) {
-    const t = j / nv;
-    const z = m.z0 + (m.z1 - m.z0) * t;
-    const a = m.amp * THREE.MathUtils.smootherstep(t, 0, 1);
-    for (let i = 0; i <= nu; i++) {
-      const th = (i / nu) * Math.PI * 2;
-      const r = m.r + a * Math.cos(m.lobes * th);
-      pos[k * 3] = Math.sin(th) * r;
-      pos[k * 3 + 1] = Math.cos(th) * r;
-      pos[k * 3 + 2] = z;
-      uv[k * 2] = i / nu;
-      uv[k * 2 + 1] = t;
-      k++;
-    }
-  }
-  const idx = [];
-  for (let j = 0; j < nv; j++)
-    for (let i = 0; i < nu; i++) {
-      const a = j * (nu + 1) + i;
-      const b = a + nu + 1;
-      idx.push(a, b, a + 1, a + 1, b, b + 1);
-    }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  // İnce sac: iki yüzlü, kesit kapağı yok (kütüphane malzemeleri kesitte
-  // arka yüzleri kırmızı kesik yüzey boyar); oturum boyunca tek malzeme
-  mixerMat ??= new THREE.MeshPhysicalMaterial({
-    name: 'lobedMixer',
-    color: 0x8c8780,
-    metalness: 1,
-    roughness: 0.42,
-    side: THREE.DoubleSide,
-    envMapIntensity: 0.8,
-  });
-  const mesh = new THREE.Mesh(g, mixerMat);
-  mesh.name = 'lobed-mixer';
-  return mesh;
-}
-
-export function buildBareJet(materials, kind, v) {
+export function buildBareJet(materials, src) {
+  const v = src.layout;
+  const traits = src.traits;
   const group = new THREE.Group();
-  group.name = kind;
+  group.name = traits.presentation;
 
   const gas = buildGasPath(materials, v.gas);
   group.add(gas.group);
@@ -267,7 +221,7 @@ export function buildBareJet(materials, kind, v) {
   const B = -Math.PI / 2; // alt
   const cb = v.gas.combustor;
   const cbz = (cb.z0 + cb.z1) / 2;
-  const turbojet = kind === 'turbojet';
+  const turbojet = traits.presentation === 'turbojet';
 
   // Değişken stator kanadı halkaları: kompresör gövdesi dışarıdaysa (turbojet)
   // bütün VSV sıraları, baypaslı motorda yalnız fan gövdesindekiler
@@ -335,7 +289,7 @@ export function buildBareJet(materials, kind, v) {
   group.add(kit.build());
 
   /* ---------------- test standı askısı ---------------- */
-  const yoke = buildStandYoke(materials, { mounts: v.mounts, engineR: R });
+  const yoke = buildStandYoke(materials, { mounts: v.standZ, engineR: R });
   group.add(tagPart(yoke, 'stand'));
 
   return {
@@ -346,7 +300,7 @@ export function buildBareJet(materials, kind, v) {
     blurDisc,
     blurMat,
     bladeCount: lpc.blades[0],
-    stand: { yoke, mounts: v.mounts, engineR: R },
+    stand: { yoke, mounts: v.standZ, engineR: R },
     intake: { z: z - 0.1, radius: t },
     exhaust: {
       get z() {

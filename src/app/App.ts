@@ -21,8 +21,10 @@ import { createMaterials } from '../materials/library.js';
 import { loadKit, setKitQuality } from '../engine/kit.js';
 import { setBladeQuality } from '../engine/blades.js';
 import { setDetailTag } from '../engine/buildCache.js';
-import { overrideGraph } from '../design/catalog';
+import { builtFor, designFor, setSlotBuilt, setSlotGraph, type SlotId } from '../design/catalog';
+import { isBuiltEngine, type BuildOptions, type BuiltEngine } from '../design/graph';
 import type { EngineGraph } from '../design/types';
+import { visualSourceFor, type VisualSource } from '../engine/models';
 
 /** Model ayrıntı seviyesi: kit parçaları, kanat örneklemesi, önbellek etiketi */
 function setDetail(q: Settings['quality']) {
@@ -36,7 +38,6 @@ import { updateWeather, weather, wetUniforms } from '../core/weather';
 import { loadScans } from '../materials/scans.js';
 import { loadPanelDetails } from '../materials/textures.js';
 import { EngineSim, type EngineKind, type SimEvent } from '../sim';
-import { engineDesign } from '../design/catalog';
 import { Cockpit, type SwitchId } from '../ui/Cockpit';
 import { CycleDiagram } from '../ui/CycleDiagram';
 import { h, icon } from '../ui/dom';
@@ -74,6 +75,8 @@ export class App {
   scene = new THREE.Scene();
   rig!: CameraRig;
   sim = new EngineSim();
+  /** Simülasyondaki ve sahnedeki motorun yuvası (kind yuvası ya da 'workshop') */
+  slot: SlotId = 'turbofan';
   visual!: EngineVisual;
   audio = new EngineAudio();
   mode: Mode = 'menu';
@@ -218,7 +221,7 @@ export class App {
     }
 
     await step(onProgress, 'Motor geometrisi oluşturuluyor…');
-    this.visual = new EngineVisual(materials, this.sim.kind);
+    this.visual = new EngineVisual(materials, visualSourceFor(this.slot));
     this.scene.add(this.visual.root);
     this.scene.add(this.cutFill);
     this.scene.add(this.rain.mesh);
@@ -310,7 +313,7 @@ export class App {
     this.cockpit.setEngineKind(this.sim.kind);
     this.sandboxPanel = new SandboxPanel(this.sim, () => this.visual, {
       autoStart: () => this.beginAutoStart(),
-      onEngine: (kind) => this.setEngine(kind, true),
+      onEngine: (slot) => this.setEngine(slot, true),
       onLights: (level) => this.setLights(level),
       onTimeScale: (v) => {
         this.timeScale = v;
@@ -575,64 +578,144 @@ export class App {
   }
 
   /**
-   * Başka bir motor tipine geçer: simülasyonu yeniden boyutlandırır, 3B modeli
-   * değiştirir, gaz kolu kademelerini ve kesit durumunu yeniden kurar.
-   * `idle` ile yeni motor rölantide çalışır halde gelir.
+   * Başka bir motora (yuvaya) geçer: simülasyonu yeniden boyutlandırır, 3B
+   * modeli değiştirir, gaz kolu kademelerini ve kesit durumunu yeniden
+   * kurar. `idle` ile yeni motor rölantide çalışır halde gelir. Aynı yuvada
+   * aynı tasarım (rev) aynı görsel seçeneklerle (efektler, tam ayrıntı)
+   * zaten kuruluysa yeniden kurmaz; `idle` iken sönmüş motoru rölantiye
+   * getirir. Yuvanın tasarımı yoksa ATAR ve hiçbir şey değişmez.
    */
-  setEngine(kind: EngineKind, idle: boolean) {
-    if (this.sim.kind === kind && this.visual.kind === kind) return;
-    this.sim.setDesign(engineDesign(kind));
+  setEngine(slot: SlotId, idle: boolean, opts: { effects?: boolean } = {}) {
+    const effects = opts.effects ?? true;
+    // Bekleyen tam ayrıntı üretimi başka bir yuvanın modelini getirmesin
+    clearTimeout(this.fullDetailTimer);
+    if (
+      this.slot === slot &&
+      this.visual.slot === slot &&
+      // rev yalnız grafiği tanır; aynı grafik başka seçeneklerle (kademe
+      // histerezisi, referans) farklı motor olabilir: nesne kimliği
+      this.visual.source.built === builtFor(slot) &&
+      this.visualEffects === effects &&
+      !this.visualDraft
+    ) {
+      if (idle && !this.sim.lit) {
+        this.autoStart = false;
+        this.sim.trim(0, 30);
+      }
+      return;
+    }
+    // Önce tasarım ve görsel kaynak: hata burada atılır, durum değişmez
+    const design = designFor(slot);
+    const src = visualSourceFor(slot);
+    this.sim.setDesign(design);
+    this.slot = slot;
     if (idle) this.sim.trim(0, 30);
     this.autoStart = false;
-    this.rebuildVisual(kind);
+    this.installVisual(src, { effects });
+    const kind = this.sim.kind;
     this.cockpit.setEngineKind(kind);
     this.setCutaway(this.cutaway);
     this.stickyHighlight = null;
     this.stepHighlight = null;
     this.applyKindViews(kind);
+    this.sandboxPanel.refreshEngine();
     // Yeni motor farklı boyda: motora bağlı bir yakın açıdaysak yeniden kadrajla
     const cur = this.rig.current;
     if (this.mode !== 'menu' && cur !== 'menu' && (KIND_VIEWS[kind][cur] || cur === 'fan' || cur === 'inlet')) this.rig.go(cur);
   }
 
   /**
-   * Atölye kancası: bir motor tipinin tasarımını (modül grafiği) değiştirir,
-   * simülasyonu ve 3B modeli yeniden kurar. `draft` iken (kaydırıcı
-   * sürüklenirken) model düşük ayrıntıyla hemen üretilir; son değişiklikten
-   * 250 ms sonra seçili kalitede yeniden üretilir. Geçersiz grafikte hata
-   * atar, eski tasarım kalır. null şablona döndürür.
+   * Atölye kancası: bir yuvanın tasarımını değiştirir, simülasyonu ve 3B
+   * modeli yeniden kurar. Simülasyon başka yuvadaysa o yuvaya geçer
+   * (setEngine, soğuk motor); aynı yuvada çalışan motor sönmez.
+   *
+   * `src`: modül grafiği (opts'taki BuildOptions ile üretilir), atölye
+   * mağazasının zaten ürettiği BuiltEngine (yeniden üretilmeden yuvaya
+   * yazılır: sayılar ve model aynı tasarımı gösterir) ya da null (kind
+   * yuvası şablona döner, workshop boşalır).
+   *
+   * `detail` 'draft' (ya da true) iken (kaydırıcı sürüklenirken) model düşük
+   * ayrıntıyla hemen üretilir; son değişiklikten 250 ms sonra seçili
+   * kalitede yeniden üretilir. `opts.effects` false: parçacık/alev kapalı
+   * (atölye); verilmezse yuvanın görseli neyse o kalır. Geçersiz grafikte
+   * hata atar, eski tasarım kalır.
    */
-  applyDesign(kind: EngineKind, graph: EngineGraph | null, draft = false) {
-    const built = overrideGraph(kind, graph);
+  applyDesign(
+    slot: SlotId,
+    src: EngineGraph | BuiltEngine | null,
+    detail: 'draft' | 'full' | boolean = 'full',
+    opts: BuildOptions & { effects?: boolean } = {},
+  ) {
+    const { effects, ...build } = opts;
+    const draft = detail === true || detail === 'draft';
+    const prev = builtFor(slot);
+    const built = src && isBuiltEngine(src) ? setSlotBuilt(slot, src) : setSlotGraph(slot, src, build);
     if (!built) return;
-    if (this.sim.kind === kind) {
-      // Çalışan motor sönmesin: aynı gaz kolunda yeni tasarımla dengelenir
-      const lit = this.sim.lit;
-      const throttle = this.sim.controls.throttle;
-      this.sim.setDesign(built.design);
-      if (lit) this.sim.trim(throttle, 10);
+    // Simülasyon bu yuvada mı: App.slot ya da yuvanın önceki tasarımı
+    // doğrudan sim.setDesign ile kurulmuş (CLAUDE.md kayıt tarifi)
+    const onSlot = this.slot === slot || (prev !== undefined && this.sim.eng.design === prev.design);
+    if (!onSlot) {
+      // Simülasyon başka yuvada: model tek başına değişirse sahnedeki motor
+      // başka motorun devir/EGT'siyle oynatılırdı. Bu yuvaya geçilir (soğuk).
+      this.setEngine(slot, false, { effects: effects ?? true });
+      return;
     }
+    this.slot = slot;
+    // Çalışan motor sönmesin: aynı gaz kolunda yeni tasarımla dengelenir
+    const lit = this.sim.lit;
+    const throttle = this.sim.controls.throttle;
+    this.sim.setDesign(built.design);
+    if (lit) this.sim.trim(throttle, 10);
+    this.sandboxPanel.refreshEngine();
     clearTimeout(this.fullDetailTimer);
-    if (draft && this.settings.quality !== 'low') {
-      setDetail('low');
-      this.rebuildVisual(kind);
-      setDetail(this.settings.quality);
-      this.fullDetailTimer = setTimeout(() => this.rebuildVisual(kind), 250);
-    } else {
-      this.rebuildVisual(kind);
+    this.rebuildVisual(slot, { effects, draft });
+    if (this.visualDraft) {
+      // Tam ayrıntı yalnız o yuvanın taslak modeli hâlâ sahnedeyse
+      this.fullDetailTimer = setTimeout(() => {
+        if (this.visual.slot === slot && this.visualDraft) this.rebuildVisual(slot);
+      }, 250);
     }
   }
   private fullDetailTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Sahnedeki modelin seçenekleri (setEngine erken dönüşü ve yeniden üretim için) */
+  private visualEffects = true;
+  private visualDraft = false;
 
-  /** 3B motor modelini (aynı ya da yeni tip) yeniden üretir */
-  private rebuildVisual(kind: EngineKind = this.visual.kind) {
+  /**
+   * 3B motor modelini (aynı ya da başka yuva) yuvanın güncel tasarımından
+   * yeniden üretir. Kayıt ve ölçüm betikleri de çağırır (`rebuildVisual(kind)`).
+   * `effects` verilmezse aynı yuvada eski seçenek korunur, başka yuvada
+   * açık; `draft` düşük ayrıntılı taslak üretir (kalite 'low' değilse).
+   * Simülasyon zaten bu yuvanın tasarımındaysa (kayıt tarifi: sim.setDesign
+   * + rebuildVisual) App.slot da bu yuvaya geçer.
+   */
+  rebuildVisual(slot: SlotId = this.visual.slot, opts: { effects?: boolean; draft?: boolean } = {}) {
+    const src = visualSourceFor(slot);
+    const effects = opts.effects ?? (slot === this.visual.slot ? this.visualEffects : true);
+    this.installVisual(src, { effects, draft: opts.draft });
+    if (slot !== this.slot && this.sim.eng.design === src.built.design) this.slot = slot;
+  }
+
+  /** Yeni modeli kurar, eskisini sahneden alıp atılmak üzere sıraya koyar */
+  private installVisual(src: VisualSource, opts: { effects: boolean; draft?: boolean }) {
+    const draft = !!opts.draft && this.settings.quality !== 'low';
+    // Önce yeni model: üretim hata atarsa sahnede eski model kalır
+    if (draft) setDetail('low');
+    let next: EngineVisual;
+    try {
+      next = new EngineVisual(this.materials, src, { effects: opts.effects });
+    } finally {
+      if (draft) setDetail(this.settings.quality);
+    }
     this.scene.remove(this.visual.root);
     // Eski model, yeni model en az bir kez çizildikten sonra atılır: parça
     // malzemesi klonları aynı shader programlarını paylaşır; önce atılırsa
     // programların kullanım sayısı sıfıra düşer, three.js onları siler ve
     // sonraki karede hepsini (turbofanda ~60 program) baştan derlerdi
     this.disposeQueue.push(this.visual);
-    this.visual = new EngineVisual(this.materials, kind);
+    this.visual = next;
+    this.visualEffects = opts.effects;
+    this.visualDraft = draft;
     this.visual.setGround(this.floorY, this.envName === TEST_CELL);
     this.scene.add(this.visual.root);
     this.picker.visual = this.visual;

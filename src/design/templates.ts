@@ -9,6 +9,21 @@
 import { DEFAULT_DESIGN, MILITARY_TURBOFAN, TURBOJET, TURBOPROP } from '../sim/design';
 import type { EngineGraph } from './types';
 
+/**
+ * Aile şablonları (M5a: 7 aile). Bugün dördü var; kuru turbojet (P5),
+ * karışık akışlı kaportalı turbofan (P6) ve turboşaft (P7) eklenecek.
+ * `kind` alanı etiket olarak kalır; motor tipi modüllerden türetilir.
+ * Çalışabilirlik (`ops`) şablonda tam verilir.
+ */
+export type TemplateId =
+  | 'turbojet'
+  | 'turbojetDry'
+  | 'militaryTurbofan'
+  | 'turbofanMixed'
+  | 'turbofan'
+  | 'turboprop'
+  | 'turboshaft';
+
 export const TURBOJET_GRAPH: EngineGraph = {
   kind: 'turbojet',
   name: TURBOJET.name,
@@ -16,10 +31,12 @@ export const TURBOJET_GRAPH: EngineGraph = {
   massFlow: 66,
   mechEff: 0.985,
   accessoryPower: 60e3,
-  inertia: { ...TURBOJET.inertia },
-  hpcMap: { ...TURBOJET.hpcMap },
-  limits: { ...TURBOJET.limits },
-  start: { ...TURBOJET.start },
+  ops: {
+    inertia: { ...TURBOJET.inertia },
+    hpcMap: { ...TURBOJET.hpcMap },
+    limits: { ...TURBOJET.limits },
+    start: { ...TURBOJET.start },
+  },
   modules: [
     { type: 'inlet', style: 'bellmouth', length: 0.38, noseLength: 0.76, struts: 6 },
     {
@@ -80,10 +97,12 @@ export const MILITARY_TURBOFAN_GRAPH: EngineGraph = {
   mechEff: 0.99,
   accessoryPower: 120e3,
   bypassDuct: { dp: 0.03, mach: 0.124 },
-  inertia: { ...MILITARY_TURBOFAN.inertia },
-  hpcMap: { ...MILITARY_TURBOFAN.hpcMap },
-  limits: { ...MILITARY_TURBOFAN.limits },
-  start: { ...MILITARY_TURBOFAN.start },
+  ops: {
+    inertia: { ...MILITARY_TURBOFAN.inertia },
+    hpcMap: { ...MILITARY_TURBOFAN.hpcMap },
+    limits: { ...MILITARY_TURBOFAN.limits },
+    start: { ...MILITARY_TURBOFAN.start },
+  },
   modules: [
     { type: 'inlet', style: 'bellmouth', length: 0.391, noseLength: 0.783, struts: 0 },
     {
@@ -155,10 +174,12 @@ export const TURBOPROP_GRAPH: EngineGraph = {
   massFlow: 9.5,
   mechEff: 0.985,
   accessoryPower: 40e3,
-  inertia: { ...TURBOPROP.inertia },
-  hpcMap: { ...TURBOPROP.hpcMap },
-  limits: { ...TURBOPROP.limits },
-  start: { ...TURBOPROP.start },
+  ops: {
+    inertia: { ...TURBOPROP.inertia },
+    hpcMap: { ...TURBOPROP.hpcMap },
+    limits: { ...TURBOPROP.limits },
+    start: { ...TURBOPROP.start },
+  },
   modules: [
     { type: 'propeller', diameter: 3.93, blades: 6, rpm: 1200, figureOfMerit: 0.72, efficiency: 0.85, gearboxLength: 1.36 },
     { type: 'inlet', style: 'chin', length: 0, noseLength: 0, struts: 0 },
@@ -223,10 +244,12 @@ export const TURBOFAN_GRAPH: EngineGraph = {
   mechEff: 0.99,
   accessoryPower: 350e3,
   bypassDuct: { dp: 0.015, mach: 0.45 },
-  inertia: { ...DEFAULT_DESIGN.inertia },
-  hpcMap: { ...DEFAULT_DESIGN.hpcMap },
-  limits: { ...DEFAULT_DESIGN.limits },
-  start: { ...DEFAULT_DESIGN.start },
+  ops: {
+    inertia: { ...DEFAULT_DESIGN.inertia },
+    hpcMap: { ...DEFAULT_DESIGN.hpcMap },
+    limits: { ...DEFAULT_DESIGN.limits },
+    start: { ...DEFAULT_DESIGN.start },
+  },
   modules: [
     { type: 'inlet', style: 'nacelle', length: 1.385, noseLength: 0, struts: 0 },
     {

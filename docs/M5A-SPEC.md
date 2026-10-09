@@ -402,6 +402,14 @@ Değişen ve eklenen kurallar (diğerleri aynen kalır):
 | yeni | `shaft.drive === 'rear'` | "Arkadan çıkışlı mil M5b'de." |
 | yeni | `bare && bpr > 1.5` | "Çıplak karışık akışlı motor düşük baypas içindir (BPR ≤ 1,5); yüksek baypas kaporta ister." |
 | 65 chevron | korunur | — |
+| yeni | `separate && inlet ≠ nacelle` (`nozzle.separateNacelle`) | "Ayrık akışlı lüle kaportalı turbofan içindir: çıplak motorda baypas akışı karıştırılır." |
+| yeni | `propeller && inlet ≠ chin` (`inlet.propChin`) | "Pervaneli motor havayı dişli kutusunun altındaki çene girişinden alır." |
+| yeni | `shaft && inlet ≠ annular` (`inlet.shaftAnnular`) | "Önden çıkışlı mil girişin ortasından geçer: turboşaft halka giriş ister." |
+
+`FlowpathError` de `GraphError` gibi yapısaldır: `code` (`annulus.closed`,
+`combustor.cansFit`, `tipSpeed.missing`, `layout.notReady`, …), `group`
+(modül), `knobs`, `data` (mesajdaki sayılar, ör. `{cans, canDiameter}`).
+Öğretici çeviri (P3) metni ayrıştırmaz.
 
 `shaft.reduction === false` iken devir tutarlılığı `flowpath` aşamasında
 denetlenir (güç türbini devri orada belli): `FlowpathError("Redüktörsüz
@@ -473,6 +481,8 @@ export function layoutFor(slot: SlotId): EngineLayout | undefined;
 export function setSlotGraph(slot: SlotId, g: EngineGraph | null, opts?: BuildOptions): BuiltEngine | undefined;
 /** Kayıt kancası uyumu (CLAUDE.md tarifi): yalnız kind yuvaları */
 export const overrideGraph: (kind: EngineKind, g: EngineGraph | null) => BuiltEngine | undefined;
+/** Mağazanın (kendi seçenekleriyle) ürettiği motoru yeniden üretmeden yuvaya yazar */
+export function setSlotBuilt(slot: SlotId, b: BuiltEngine): BuiltEngine;
 export const TEMPLATES: Record<TemplateId, EngineGraph>;     // 7 aile şablonu
 ```
 
@@ -500,7 +510,12 @@ export function rotorInertia(gas: GasPath, spool: 'lp' | 'hp', mass: MassBreakdo
   hpc (+çark) + hpt + HP mili.
 - **Marş torku:** `τ = τ_ref · (I_hp/I_hp,ref) · (n2Rpm/n2Rpm,ref)`,
   ×[0,25, 4] kırpılır (ivmelenme süresi I·ω/τ korunur).
-- **Aksesuar gücü:** `P = P_ref · W25/W25,ref`, ×[0,3, 3].
+- **Aksesuar gücü:** `P = P_ref · W25/W25,ref`, ×[0,3, 3] (W25 =
+  `massFlow/(1+bpr)`, grafikten). Tasarım noktasına (HPT işi) girdiği için
+  `resolveAccessoryPower(g, ref)` ile `toEngineDesign`'da, yani
+  boyutlandırmadan **önce** çözülür (P0'da yazıldı). Öncelik:
+  `g.ops.accessoryPower` (uzman düzeltmesi, `Operability.accessoryPower?`)
+  > referanstan ölçek > `g.accessoryPower` (taban/şablon değeri).
 - **Limitler:** EGT sınırları (°C) **malzeme sınırıdır, kaydırılmaz**;
   aileden aynen alınır (Tasarım 2'deki ΔT5 kaydırması reddedildi: EGT payı
   uyarısını anlamsızlaştırıyordu). `n1/n2Redline`, `idleN2`,
@@ -604,7 +619,7 @@ T4'ün kazancını abartır (M5c'de dönem + soğutma ile açılır). Bir ailede
 
 | Grup | KnobId (aralık) |
 |---|---|
-| engine | `engine.accessoryPower` (0–600 kW), `engine.mechEff` (0,97–0,995), `bypassDuct.dp` (0,005–0,05), `bypassDuct.mach` (0,3–0,55) |
+| engine | `engine.accessoryPower` (0–600 kW; `ops.accessoryPower`'a yazar, §2.8), `engine.mechEff` (0,97–0,995), `bypassDuct.dp` (0,005–0,05), `bypassDuct.mach` (0,3–0,55) |
 | inlet | `inlet.length` (0–2), `inlet.noseLength` (0–1,2), `inlet.struts` (0–12) |
 | fan/lpc/hpc | `.eff` (0,80–0,94), `.mach.0` (0,35–0,70), `.mach.1` (0,10–0,50), `.hubTip` (0,25–0,85), `.taper` (0,8–1,05), `.loading` (0,2–1,0; booster ≤ 1,2), `.pitchSpan` (0,4–2,5), `.bladeK.0/.1` (0,8–4,5), `.gap` (0,5–3), `.vsv` (0–6; lpc/hpc), `hpc.tipSpeed` (350–650), `fan.hubPRFraction` (0,6–1,0; `preview:'none'`). `fan.hubTip` **M5a'da gizli** (model fan göbeğini göstermez; M5b) |
 | centrifugal | `hpc.centrifugal.loading` (0,55–0,85), `.diffuserRatio` (1,3–2,0), `.gap` (0,5–2) |
@@ -1202,7 +1217,7 @@ Bant dışı kalan ölçü için kalibrasyon düğmeleri ayarlanır; kütle mode
 | `app/App.ts:221, 234, 310` | kurulum kind | slot | P0 |
 | `app/App.ts:513` | `setEngine('turbofan')` | aynen; yuva ayrıldığı için güvenli. `returnTo:'workshop'` seçeneği | P10 |
 | `app/App.ts:582-596` | erken dönüş kind | `slot` + `built.rev` | P0 |
-| `app/App.ts:605-624, 628-640` | `applyDesign(kind)`, `rebuildVisual` | `(slot, graph, draft)`, `VisualSource`, `{effects}` | P0 |
+| `app/App.ts:605-624, 628-640` | `applyDesign(kind)`, `rebuildVisual` | `applyDesign(slot, EngineGraph \| BuiltEngine \| null, 'draft' \| 'full', BuildOptions & {effects})`; `rebuildVisual(slot, {effects, draft})`; `setEngine(slot, idle, {effects})`; `VisualSource` | P0 |
 | `app/App.ts:643-650` | `applyKindViews` | `viewsFor(src)` | P8 |
 | `app/App.ts:1051-1058` | ses girdisi | `fanBlades/fanDiameter` tasarımdan; TS'de HPC | P8 |
 | `app/CameraRig.ts:45-56` | `KIND_VIEWS` | + `turboshaft`; şablon yuvalarında değişmez (kayıtlar bozulmaz); `workshop` yuvasında `frameDesign(metrics)` / `scaleViews` | P8 |

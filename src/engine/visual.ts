@@ -9,25 +9,24 @@
 
 import * as THREE from 'three';
 import type { EngineKind, SimSnapshot } from '../sim';
-import { buildNacelle } from './nacelle.js';
-import { buildBareJet } from './barejet.js';
-import { bareJetLayout, turbofanLayout, turbopropLayout } from '../design/catalog';
-import type { TurbofanLayout } from '../design/flowpath';
-import { buildTurboprop } from './turboprop.js';
-import { buildFan } from './fan.js';
-import { buildCore } from './core.js';
-import { buildPylon } from './pylon.js';
+import type { SlotId } from '../design/catalog';
 import { buildExhaustPlume } from './exhaust.js';
 import { createNoiseTexture } from '../materials/textures.js';
 import { EngineEffects } from '../effects/EngineEffects.js';
 import { buildGroundCradle, buildPylonGantry } from './stand.js';
 import { tagPart, ensureUV1 } from './geom.js';
-import { beginBuild, isLive, keyOf, reuse } from './buildCache.js';
+import { beginBuild, isLive } from './buildCache.js';
 import { clonePatched } from '../materials/weathering';
-import type { createMaterials } from '../materials/library.js';
+import { MODEL_BUILDERS, type EngineModel, type Materials, type VisualSource } from './models';
 
-export type Materials = ReturnType<typeof createMaterials>;
+export type { Materials, VisualSource } from './models';
 
+/**
+ * 3B parça etiketleri (ders seçme görevleri, bilgi kartları, vurgulama).
+ * M5a: mixer (karıştırıcı), outputShaft (turboşaft çıkış mili), engineCase
+ * (çıplak/TP gövdesi; şablonlarda bugün fanCase), accessories (aksesuar
+ * dişli kutusu; bugün gearbox). Şablonlar P5–P8'de yeniden etiketlenir.
+ */
 export type PartId =
   | 'spinner'
   | 'inlet'
@@ -52,7 +51,11 @@ export type PartId =
   | 'afterburner'
   | 'nozzle'
   | 'propeller'
-  | 'stand';
+  | 'stand'
+  | 'mixer'
+  | 'outputShaft'
+  | 'engineCase'
+  | 'accessories';
 
 type EmissiveMaterial = THREE.MeshStandardMaterial;
 
@@ -148,74 +151,18 @@ class Flame {
 
 /* ------------------------------------------------------------------ */
 
-/** Motor tipinden bağımsız görsel model arayüzü */
-interface EngineModel {
-  group: THREE.Group;
-  lpSpool: THREE.Object3D;
-  hpSpool: THREE.Object3D;
-  blurDisc?: THREE.Mesh;
-  blurMat?: THREE.MeshBasicMaterial;
-  /** Önden görünen rotor kademesinin kanat sayısı (stroboskop sınırı için) */
-  bladeCount?: number;
-  /** Kaportasız motorlar: hücre askısı ve yer standı için bağlantı noktaları */
-  stand?: { yoke: THREE.Object3D; mounts: number[]; engineR: number };
-  /** Turboprop: pervane grubu, pal açısı ve pervane diski (efektler için) */
-  propeller?: THREE.Object3D;
-  prop?: { z: number; radius: number; blades: number };
-  setPitch?: (load: number, feather: number) => void;
-  /** Art yakıcılı motorlar: değişken lüle */
-  nozzle?: { set(area: number, abLevel: number): void };
-  wing?: THREE.Object3D;
-  mount?: THREE.Object3D;
-  intake: { z: number; radius: number; y?: number };
-  exhaust: { z: number; radius: number };
-  /** Modele özel ek animasyon (ör. planet dişliler) */
-  tick?: (lpAngle: number, propAngle: number) => void;
-}
-
-/**
- * Kaportalı turbofan: çekirdek yerleşimden (design/flowpath.ts), fan,
- * kaporta ve pilon M4 öncesi modelin ölçülerinde kurulup fan ucu oranında
- * ölçeklenir; fan rotoru yerleşimdeki konuma oturur.
- */
-function buildTurbofanModel(materials: Materials, L: TurbofanLayout): EngineModel {
-  const group = new THREE.Group();
-  // Kaporta, fan ve pilon yalnız kendi girdilerine bağlı: parametre
-  // değişikliğinde önbellekten taşınır (artımlı üretim)
-  const ductExitR = L.bypassExit.rDuct / L.s;
-  const chevrons = L.chevrons.bypass;
-  const nacelle = reuse(keyOf('nacelle', { ductExitR, chevrons }), () => buildNacelle(materials, { ductExitR, chevrons }));
-  const fan = reuse(keyOf('fan', L.fan.blades[0]), () => buildFan(materials, L.fan.blades[0]));
-  const core = buildCore(materials, L);
-  const pylon = reuse('pylon', () => buildPylon(materials));
-  const place = (o: THREE.Object3D) => {
-    o.scale.setScalar(L.s);
-    o.position.z = L.fan.z0 + 0.28 * L.s;
-  };
-  place(nacelle);
-  place(fan.group);
-  place(pylon.group);
-  // Fan rotoru LP milinin ön ucudur
-  core.lpSpool.add(fan.group);
-  group.add(nacelle, core.group, pylon.group);
-  return {
-    group,
-    lpSpool: core.lpSpool,
-    hpSpool: core.hpSpool,
-    blurDisc: fan.blurDisc,
-    blurMat: fan.blurMat,
-    bladeCount: L.fan.blades[0],
-    wing: pylon.wing,
-    mount: pylon.group,
-    intake: L.intake,
-    exhaust: L.exhaust,
-  };
-}
-
 export class EngineVisual {
   readonly root = new THREE.Group();
   readonly pickables: THREE.Object3D[] = [];
+  /** Sunum tipi (traits.presentation): arayüz tabloları ve efektler */
   readonly kind: EngineKind;
+  /** Modelin kaynağı: yuva, üretilmiş motor ve türetilmiş tip */
+  readonly source: VisualSource;
+  /** Yuva ve tasarım kimliği: aynı tipte yeni tasarımı ayırt eder */
+  readonly slot: SlotId;
+  readonly rev: string;
+  /** false: efektsiz kuruldu (atölye); görünüm tercihleri efektleri açmaz */
+  readonly effectsAllowed: boolean;
   /** Motor dışı titreşim (kamera sarsıntısı için) 0..1 */
   shake = 0;
   /** Görsel devir ölçeği: gerçek devir göz için çok hızlıdır */
@@ -242,17 +189,21 @@ export class EngineVisual {
 
   private materials: Materials;
 
-  constructor(materials: Materials, kind: EngineKind = 'turbofan') {
+  /**
+   * @param src  yuvanın görsel kaynağı (models.ts visualSourceFor)
+   * @param opts.effects  false: parçacık/alev efektleri kapalı (atölye)
+   */
+  constructor(materials: Materials, src: VisualSource, opts: { effects?: boolean } = {}) {
     this.materials = materials;
+    this.source = src;
+    this.slot = src.slot;
+    this.rev = src.built.rev;
+    const kind = src.traits.presentation;
     this.kind = kind;
     this.root.name = kind;
     beginBuild();
-    this.model =
-      kind === 'turbofan'
-        ? buildTurbofanModel(materials, turbofanLayout(kind)!)
-        : kind === 'turboprop'
-          ? (buildTurboprop(materials, turbopropLayout(kind)) as unknown as EngineModel)
-          : (buildBareJet(materials, kind, bareJetLayout(kind)) as unknown as EngineModel);
+    // Model üreticisi yerleşim stilinden (kind'dan değil)
+    this.model = MODEL_BUILDERS[src.traits.layout](materials, src);
     const ex = this.model.exhaust;
     this.plume = buildExhaustPlume(ex.radius, ex.z);
     this.plumeBaseRadius = ex.radius;
@@ -286,6 +237,9 @@ export class EngineVisual {
       { kind, intake: this.model.intake, exhaust: this.model.exhaust, prop },
       createNoiseTexture(256, 777),
     );
+    // Atölye: efektler kapalı (P9 kurulumu da atlar)
+    this.effectsAllowed = opts.effects !== false;
+    if (!this.effectsAllowed) this.effects.enabled = false;
     const noShadow = [this.plume.mesh, this.exhaustFlame.mesh, this.inletFlame.mesh];
     if (this.model.blurDisc) noShadow.push(this.model.blurDisc);
     for (const m of noShadow) {

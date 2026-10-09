@@ -45,6 +45,11 @@ const DETENTS: Record<EngineKind, Detent[]> = {
     { v: 0.75, label: 'CLB' },
     { v: 1, label: 'MAX' },
   ],
+  // Gaz jeneratörü gücü: rölanti / uçuş (yer tutucu; M5a P8 kesinleştirir)
+  turboshaft: [
+    { v: 0, label: 'IDLE' },
+    { v: 1, label: 'FLY' },
+  ],
 };
 
 export interface CockpitCallbacks {

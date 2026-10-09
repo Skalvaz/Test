@@ -1,8 +1,8 @@
 /**
  * Modüler motor tanımı (M4): motor, akış yönünde sıralı modüllerden oluşur.
  *
- *   Giriş → Fan/LPC → HPC → Yanma odası → HPT → LPT → [Karıştırıcı]
- *         → [Art yakıcı] → Lüle
+ *   [Pervane | Çıkış mili] → Giriş → Fan/LPC → HPC → Yanma odası → HPT
+ *         → LPT → [Karıştırıcı] → [Art yakıcı] → Lüle
  *
  * Her modül iki tür düğme taşır:
  *  - Termodinamik: basınç oranı, verim, T4, basınç kaybı… → EngineDesign
@@ -18,6 +18,28 @@
 import type { CompressorMapShape, EngineKind, EngineLimits, StartSystem } from '../sim/design';
 
 export type Spool = 'lp' | 'hp';
+
+/**
+ * annular: tek halka gömlek (modern motorlar); can: ayrı ayrı kutu
+ * gömlekler, her biri kendi basınç kabında (eski turbojetler, sanayi gaz
+ * türbinleri — daha ağır, basınç kaybı yüksek, bakımı kolay); canAnnular:
+ * kutu gömlekler ortak bir halka kasanın içinde (J57, JT8D, J79)
+ */
+export type CombustorStyle = 'annular' | 'can' | 'canAnnular';
+/**
+ * fixed: art yakıcısız motorun sabit yakınsak lülesi; convergent / cd: art
+ * yakıcılı motorun değişken yakınsak / yakınsak-ıraksak lülesi; stub:
+ * serbest türbinli motorun kısa egzoz borusu (artık itki); separate: ayrık
+ * akışlı turbofanın baypas + çekirdek lüleleri
+ */
+export type NozzleStyle = 'fixed' | 'convergent' | 'cd' | 'stub' | 'separate';
+/**
+ * bellmouth: test hücresi ağzı (çıplak motor), chin: turboprobun dişli
+ * kutusu altındaki çene girişi ve S-kanal, nacelle: kaportalı turbofanın
+ * pitot girişi, annular: turboşaftın önden çıkışlı milinin çevresindeki
+ * halka giriş
+ */
+export type InletStyle = 'bellmouth' | 'chin' | 'nacelle' | 'annular';
 
 /** Kompresör ve türbinlerin ortak kanal düğmeleri */
 export interface AnnulusKnobs {
@@ -43,18 +65,15 @@ export interface AnnulusKnobs {
 
 export interface InletModule {
   type: 'inlet';
-  /**
-   * bellmouth: test hücresi ağzı (çıplak motor), chin: turboprobun dişli
-   * kutusu altındaki çene girişi ve S-kanal, nacelle: kaportalı turbofanın
-   * pitot girişi
-   */
-  style: 'bellmouth' | 'chin' | 'nacelle';
+  style: InletStyle;
   /** Giriş düzleminden ilk rotora mesafe / ilk kademe uç yarıçapı */
   length: number;
   /** Burun konisi boyu / ilk kademe uç yarıçapı */
   noseLength: number;
   /** Ön çerçeve dikmesi sayısı (0: yok) */
   struts: number;
+  /** annular (turboşaft): entegre parçacık ayırıcı. M5a: yalnız görsel. */
+  separator?: boolean;
 }
 
 /** Pervane ve redüksiyon dişli kutusu (turboprop). LP mili = güç türbini. */
@@ -67,6 +86,21 @@ export interface PropellerModule {
   figureOfMerit: number;
   efficiency: number;
   /** Pervane düzleminden gaz jeneratörü HPC girişine eksenel mesafe [m] */
+  gearboxLength: number;
+}
+
+/** Serbest güç türbininin çıkış mili (turboşaft). Akış dışı modül. */
+export interface ShaftModule {
+  type: 'shaft';
+  /** %100 NP'de çıkış devri [rpm] */
+  rpm: number;
+  /** M5a: yalnız 'front' (kural) */
+  drive: 'front' | 'rear';
+  /** |ω_pt/ω_çıkış − 1| > 0,05 ise zorunlu (flowpath denetler) */
+  reduction: boolean;
+  /** Aktarma verimi (0,97–0,995) */
+  transmissionEff: number;
+  /** Çıkış flanşından HPC girişine [m] */
   gearboxLength: number;
 }
 
@@ -100,7 +134,10 @@ export interface CompressorModule extends AnnulusKnobs {
   gap?: number;
   /** Değişken stator sırası sayısı (dış donanımda VSV halkaları) */
   vsv?: number;
-  /** Fan/LPC: kanat + disk tek parça (blisk) */
+  /**
+   * Fan/LPC: kanat + disk tek parça (blisk).
+   * @deprecated Okunmuyor (gaspath.js sabit kodlu); M5a düğme kataloğunda yok.
+   */
   blisk?: boolean;
   firstMaterial?: string;
   firstChord?: number;
@@ -110,13 +147,9 @@ export interface CompressorModule extends AnnulusKnobs {
 
 export interface CombustorModule {
   type: 'combustor';
-  /**
-   * annular: tek halka gömlek (modern motorlar); can: ayrı ayrı kutu
-   * gömlekler, aralarında ateşleme geçiş boruları (eski turbojetler, sanayi
-   * gaz türbinleri — daha ağır, basınç kaybı daha yüksek, bakımı kolay)
-   */
-  style: 'annular' | 'can';
-  /** Kutu sayısı (can) */
+  /** Gömlek düzeni (kutular arasında ateşleme geçiş boruları) */
+  style: CombustorStyle;
+  /** Kutu sayısı (can, canAnnular: 6–16, kural) */
   cans?: number;
   tit: number;
   eff: number;
@@ -177,12 +210,7 @@ export interface AfterburnerModule {
 
 export interface NozzleModule {
   type: 'nozzle';
-  /**
-   * convergent: değişken yakınsak yapraklar, cd: yakınsak-ıraksak,
-   * stub: turboprobun kısa egzoz borusu (artık itki), separate: ayrık akışlı
-   * turbofanın baypas + çekirdek lüleleri
-   */
-  style: 'convergent' | 'cd' | 'stub' | 'separate';
+  style: NozzleStyle;
   cv: number;
   /** Değişken lülede yaprak sayısı */
   flaps?: number;
@@ -203,6 +231,7 @@ export const CHEVRON_CV_LOSS = 0.0025;
 
 export type EngineModule =
   | PropellerModule
+  | ShaftModule
   | InletModule
   | CompressorModule
   | CombustorModule
@@ -211,25 +240,69 @@ export type EngineModule =
   | AfterburnerModule
   | NozzleModule;
 
+export type ModuleType = EngineModule['type'];
+
+/** Akış yönünde modül sırası (aynı tipten birden çok modül olamaz); graph.ts ORDER */
+export const MODULE_ORDER: readonly ModuleType[] = [
+  'propeller',
+  'shaft',
+  'inlet',
+  'fan',
+  'lpc',
+  'hpc',
+  'combustor',
+  'hpt',
+  'lpt',
+  'mixer',
+  'afterburner',
+  'nozzle',
+];
+
+/** Geometriden henüz türetilmeyen çalışabilirlik alanları */
+export interface Operability {
+  /** Mil atalet momentleri [kg·m²] */
+  inertia: { lp: number; hp: number };
+  hpcMap: CompressorMapShape;
+  limits: EngineLimits;
+  start: StartSystem;
+  /**
+   * Aksesuar gücü uzman düzeltmesi [W] (`engine.accessoryPower` düğmesi
+   * buraya yazar). Verilmezse referanslı grafikte çekirdek akışıyla
+   * ölçeklenir, referanssızda `EngineGraph.accessoryPower` (operability.ts
+   * resolveAccessoryPower). Boyutlandırmadan ÖNCE çözülür: HPT işine girer.
+   */
+  accessoryPower?: number;
+}
+
 /**
- * Modül grafiği. M4a'da gaz yolu doğrusal bir zincir; baypas fan
- * modülünün bypassRatio'sundan, karışma mixer modülünden gelir.
+ * Modül grafiği. Gaz yolu doğrusal bir zincir; baypas fan modülünün
+ * bypassRatio'sundan, karışma mixer modülünden gelir.
  */
 export interface EngineGraph {
-  kind: EngineKind;
+  /**
+   * ARTIK TÜRETİLMİŞ (traits.ts presentationKind): şablonlarda etiket olarak
+   * kalır, buildEngine okumaz. Belgeye yazılmaz.
+   */
+  kind?: EngineKind;
   name: string;
   summary: string;
   /** Fan yüzü toplam kütle akışı (kalkış, deniz seviyesi) [kg/s] */
   massFlow: number;
   modules: EngineModule[];
-  /** Mekanik verim ve aksesuar gücü (HP milinden) */
+  /**
+   * Mekanik verim ve aksesuar gücü (HP milinden). accessoryPower taban
+   * değerdir (şablon/bağışçı); atölyede aile şablonundan ölçeklenen değer
+   * ya da `ops.accessoryPower` düzeltmesi önce gelir.
+   */
   mechEff: number;
   accessoryPower: number;
   /** Baypas kanalı: basınç kaybı ve eksenel Mach (kanal genişliği) */
   bypassDuct?: { dp: number; mach: number };
-  /** Motor düzeyinde (henüz modüllerden türetilmeyen) alanlar */
-  inertia: { lp: number; hp: number };
-  hpcMap: CompressorMapShape;
-  limits: EngineLimits;
-  start: StartSystem;
+  /**
+   * Çalışabilirlik (atalet, kompresör haritası, limitler, marş). Şablonlarda
+   * tam verilir (bugünkü değerler, davranış aynı); atölye grafiklerinde yok
+   * ya da kısmi: operability.ts aile şablonundan ölçekler. Verilen alanlar
+   * alan alan üstüne yazar.
+   */
+  ops?: Partial<Operability>;
 }

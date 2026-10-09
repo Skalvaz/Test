@@ -37,8 +37,13 @@ export type StationId = '0' | '2' | '13' | '19' | '21' | '25' | '3' | '4' | '45'
  *  - militaryTurbofan: düşük baypaslı, karışık akışlı, art yakıcılı askeri turbofan
  *  - turbojet: iki milli, art yakıcılı turbojet (baypas yok)
  *  - turboprop: gaz jeneratörü + serbest güç türbini + pervane
+ *  - turboshaft: gaz jeneratörü + serbest güç türbini + çıkış mili (M5a)
+ *
+ * M5a'dan beri modüllerden türetilen SUNUM tipidir (design/traits.ts):
+ * kuru turbojet `turbojet`, karışık akışlı kaportalı turbofan `turbofan`
+ * sunumunu kullanır; farkları `EngineTraits` taşır.
  */
-export type EngineKind = 'turbofan' | 'militaryTurbofan' | 'turbojet' | 'turboprop';
+export type EngineKind = 'turbofan' | 'militaryTurbofan' | 'turbojet' | 'turboprop' | 'turboshaft';
 
 /** Sınır değerler (EICAS kırmızı/amber çizgileri ve prosedür limitleri). */
 export interface EngineLimits {
@@ -125,6 +130,27 @@ export interface PropellerSpec {
   nozzlePR: number;
 }
 
+/**
+ * Art yakıcısız karışık akış (M5a): baypas ve çekirdek ortak sabit lüleden
+ * çıkar. Art yakıcılı motorda karışma `AfterburnerSpec`'tedir.
+ */
+export interface MixerSpec {
+  /** Karıştırıcı basınç kaybı */
+  loss: number;
+  /** Karışma verimi (düz ~0,85, lobe'lu ~0,97) */
+  mixingEff: number;
+}
+
+/** Turboşaft çıkış mili (serbest güç türbini, M5a) */
+export interface ShaftOutputSpec {
+  /** %100 NP'de çıkış devri [rpm] */
+  rpm: number;
+  /** Tasarım noktasında egzoz basınç oranı (P5/P0) */
+  nozzlePR: number;
+  /** Redüktör/aktarma verimi */
+  transmissionEff: number;
+}
+
 export interface Station {
   /** Toplam sıcaklık [K] (0, 9 ve 19 için statik) */
   T: number;
@@ -194,6 +220,10 @@ export interface EngineDesign {
   start: StartSystem;
   afterburner?: AfterburnerSpec;
   prop?: PropellerSpec;
+  /** Art yakıcısız karışık akış (yalnız `afterburner` yokken) */
+  mixer?: MixerSpec;
+  /** Turboşaft çıkış mili */
+  shaft?: ShaftOutputSpec;
 }
 
 /** Yüksek baypaslı sivil turbofanın limitleri (dersler bu motorla yazıldı). */
@@ -376,13 +406,30 @@ export const TURBOPROP: EngineDesign = {
   prop: { diameter: 3.93, blades: 6, rpm: 1200, figureOfMerit: 0.72, efficiency: 0.85, nozzlePR: 1.1 },
 };
 
-/** Oyunda seçilebilen motorlar */
-export const ENGINE_CATALOG: Record<EngineKind, EngineDesign> = {
+/**
+ * Oyunda seçilebilen motorlar. El yazımı dört tasarım burada; grafikten
+ * üretilen tipler (turboşaft, M5a P7) `registerCatalogDesign` ile başlangıçta
+ * eklenir (sim katmanı design/'ı içe aktarmaz). Kaydı olmayan tip için
+ * `catalogDesign` tipli hata atar.
+ */
+export const ENGINE_CATALOG = {
   turbofan: DEFAULT_DESIGN,
   militaryTurbofan: MILITARY_TURBOFAN,
   turbojet: TURBOJET,
   turboprop: TURBOPROP,
-};
+} as Record<EngineKind, EngineDesign>;
+
+/** Grafikten üretilen bir tipi katalogda kaydeder (design/catalog.ts başlangıçta) */
+export function registerCatalogDesign(kind: EngineKind, d: EngineDesign) {
+  ENGINE_CATALOG[kind] = d;
+}
+
+/** Katalogdaki tasarım; kaydı olmayan tipte DesignError (undefined değil) */
+export function catalogDesign(kind: EngineKind): EngineDesign {
+  const d = ENGINE_CATALOG[kind] as EngineDesign | undefined;
+  if (!d) throw new DesignError(`"${kind}" motoru henüz katalogda yok.`);
+  return d;
+}
 
 /** Tasarım noktasında sabitlenen ve tasarım dışı hesapta kullanılan değerler. */
 export interface EngineReference {
@@ -423,6 +470,8 @@ export interface EngineReference {
   A8dry: number;
   /** Turboprop: tasarım mil gücü [W] */
   shaftPower: number;
+  /** Art yakıcısız karışık akış: ortak sabit lüle alanı [m²] (M5a P1 doldurur) */
+  A9mix?: number;
 }
 
 export interface DesignPoint {

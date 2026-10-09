@@ -53,6 +53,8 @@ export const KIND_VIEWS: Record<EngineKind, Partial<Record<ViewName, CameraView>
     exhaust: { label: 'Egzoz', position: [2.2, 0.5, 4.4], target: [0, 0, 1.4], fov: 30 },
     cutawayCore: { label: 'Kesit — çekirdek', position: [3.0, 0.6, -0.5], target: [0, 0, -0.3], fov: 32, cutaway: true },
   },
+  // Turboşaft: kaportasız küçük gaz jeneratörü (yer tutucu; M5a P8 yerleşimden hesaplar)
+  turboshaft: BARE,
 };
 
 export interface ScreenInsets {

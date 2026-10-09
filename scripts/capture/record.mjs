@@ -91,7 +91,8 @@ export async function recordScene(page, spec, outDir, { gif = false } = {}) {
     a.setCutaway(false);
     if (window.__weather) window.__weather.humidity = 0.6;
     a.sim.setFlight({ altitude: 0, mach: 0, isaDev: 0 }, true);
-    if (a.sim.kind === kind) {
+    // Yuva (M5a: atölye yuvası da var); eski commit'lerde a.slot yok → sunum tipi
+    if ((a.slot ?? a.sim.kind) === kind) {
       a.sim.setDesign(a.sim.eng.design);
       a.sim.trim(0, 30);
       a.rebuildVisual(kind);
