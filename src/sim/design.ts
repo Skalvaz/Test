@@ -539,9 +539,16 @@ export interface EngineReference {
   A8dry: number;
   /**
    * Turboprop/turboşaft: tasarım mil gücü [W], güç türbini milinde (redüktör
-   * ve aktarma kaybı öncesi; turboşaftın çıkış flanşında ×transmissionEff)
+   * ve aktarma kaybı öncesi). Dinamometre/pervane yükü bunu emer.
    */
   shaftPower: number;
+  /**
+   * Çıkış gücü [W]: turboşaftta çıkış flanşında (shaftPower ×
+   * transmissionEff, outputEff); turbopropta shaftPower (redüktör kaybı
+   * pervanenin verimlerinde); jet motorunda 0. Sonuç özeti, mil gücü
+   * göstergesi ve SFC bunu okur.
+   */
+  outputPower: number;
   /** Art yakıcısız karışık akış: ortak sabit lüle alanı [m²] (M5a P1 doldurur) */
   A9mix?: number;
 }
@@ -569,6 +576,17 @@ export function hptCapacityFactor(p4OverP0: number): number {
 }
 
 export class DesignError extends Error {}
+
+/**
+ * Güç türbini milinden çıkışa aktarma verimi: turboşaftta çıkış milinin
+ * redüktör/aktarma verimi (transmissionEff); pervaneli ve jet motorunda 1
+ * (turbopropun redüktör kaybı pervanenin verimlerinde). Çıkış gücü =
+ * güç türbini gücü × outputEff, tasarımda (ref.outputPower) ve anlık
+ * (snapshot.shaftPower) aynı çarpanla.
+ */
+export function outputEff(d: EngineDesign): number {
+  return d.shaft && !d.prop ? d.shaft.transmissionEff : 1;
+}
 
 /** Tasarım noktası çevrim analizi ve donanım boyutlandırması. */
 export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)): SizedEngine {
@@ -723,6 +741,7 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
     wfAbMax,
     A8dry,
     shaftPower,
+    outputPower: shaftPower * outputEff(d),
     ...(A9mix !== undefined ? { A9mix } : {}),
   };
 

@@ -639,7 +639,7 @@ describe('turboşaft (M5a)', () => {
     expect(s.shaftPower / ref.shaftPower).toBeGreaterThan(0.8);
     expect(Math.abs(s.N1 - 1)).toBeLessThan(0.02);
     expect(s.propRpm).toBeCloseTo(s.N1 * d.shaft!.rpm, 6);
-    expect(s.thrustFrac).toBeCloseTo(s.shaftPower / ref.shaftPower, 9);
+    expect(s.thrustFrac).toBeCloseTo(s.shaftPower / ref.outputPower, 9);
     expect(sim.surgeCount).toBe(0);
     // Gaz kolu gaz jeneratörünü (gücü) belirler; vali NP'yi %100'de tutar
     sim.controls.throttle = 0.4;

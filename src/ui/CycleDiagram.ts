@@ -29,12 +29,17 @@ export function cycleRows(s: SimSnapshot, t: DiagramTraits, bypass: boolean): [s
   const c = s.cycle;
   const st = c.stations;
   const coreShare = c.coreThrust / Math.max(1, c.coreThrust + c.bypassThrust);
+  // Turboşaftın ürünü mil gücü: SFC g/(kW·h); öbürlerinde TSFC g/(kN·s)
+  const sfc =
+    t.output === 'shaft'
+      ? s.sfc > 0 ? `${(s.sfc * 3.6e9).toFixed(0)} g/kW·h` : '—'
+      : s.tsfc > 0 ? `${(s.tsfc * 1e6).toFixed(2)} g/kN·s` : '—';
   const rows: [string, string][] = [
     ['Toplam basınç oranı (OPR)', c.opr.toFixed(1)],
     ...(bypass ? ([['Baypas oranı (BPR)', c.bypassRatio.toFixed(1)]] as [string, string][]) : []),
     ['Türbin giriş sıcaklığı T4', `${(st['4'].T - K).toFixed(0)} °C`],
     ['Yakıt / hava oranı', c.far.toFixed(4)],
-    ['Özgül yakıt tüketimi', s.tsfc > 0 ? `${(s.tsfc * 1e6).toFixed(2)} g/kN·s` : '—'],
+    ['Özgül yakıt tüketimi', sfc],
     ['Surge payı (HPC)', `${(c.surgeMargin * 100).toFixed(1)} %`],
     ['HPC harita konumu β', c.beta.toFixed(2)],
   ];

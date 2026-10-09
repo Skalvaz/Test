@@ -47,6 +47,7 @@ import { glossaryModal, lessonSelect, mainMenu, resultModal, settingsModal } fro
 import { SandboxPanel } from '../ui/SandboxPanel';
 import { Toasts } from '../ui/Toasts';
 import { CameraRig, VIEWS, viewsFor, type ViewName } from './CameraRig';
+import { needsReframe } from './reframe';
 import { Picker } from './Picker';
 
 type Mode = 'menu' | 'lesson' | 'sandbox';
@@ -610,15 +611,18 @@ export class App {
     this.slot = slot;
     if (idle) this.sim.trim(0, 30);
     this.autoStart = false;
-    // Arayüz (gaz kolu, EICAS, açılar) installVisual → applyEngineUi ile
+    // Arayüz (gaz kolu, EICAS, açılar) installVisual → applyEngineUi ile;
+    // eski açı takımı yeniden kadraj kararı için (açıları değiştirir)
+    const viewsBefore = this.rig.overrides;
     this.installVisual(src, { effects });
     this.setCutaway(this.cutaway);
     this.stickyHighlight = null;
     this.stepHighlight = null;
     this.sandboxPanel.refreshEngine();
-    // Yeni motor farklı boyda: motora bağlı bir yakın açıdaysak yeniden kadrajla
+    // Yeni motor farklı boyda: motora bağlı bir açıdaysak (eski ya da yeni
+    // takımda) yeniden kadrajla
     const cur = this.rig.current;
-    if (this.mode !== 'menu' && cur !== 'menu' && (this.rig.overrides[cur] || cur === 'fan' || cur === 'inlet')) this.rig.go(cur);
+    if (this.mode !== 'menu' && needsReframe(cur, viewsBefore, this.rig.overrides)) this.rig.go(cur);
   }
 
   /**
