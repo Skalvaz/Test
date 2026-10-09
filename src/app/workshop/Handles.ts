@@ -245,7 +245,7 @@ export class WorkshopHandles {
 
     window.addEventListener('pointermove', this.onMove);
     window.addEventListener('pointerup', this.onUp);
-    window.addEventListener('pointercancel', this.onUp);
+    window.addEventListener('pointercancel', this.onCancel);
     this.unsub = store.subscribe((s) => this.onState(s));
     this.sync();
   }
@@ -533,9 +533,15 @@ export class WorkshopHandles {
     const id = this.dragging;
     if (!id) return;
     const spec = this.specs.find((s) => s.id === id);
-    const t = spec && e.type === 'pointerup' ? this.targetAt(spec, e.clientX, e.clientY) : null;
+    const t = spec ? this.targetAt(spec, e.clientX, e.clientY) : null;
     const target = t ?? this.pending ?? this.dragValue;
     this.finishDrag(() => this.store.dragHandle(id, target, 'end'));
+  };
+
+  /** İşletim sistemi/tarayıcı hareketi kesti: kullanıcı bırakmadı, sürükleme geri alınır */
+  private onCancel = (e: PointerEvent): void => {
+    if (this.pointerId === null || e.pointerId !== this.pointerId) return;
+    this.cancelDrag();
   };
 
   private finishDrag(commit: (() => void) | null): void {
@@ -557,10 +563,14 @@ export class WorkshopHandles {
     if (was) this.opts.onDrag?.(null);
   }
 
+  /**
+   * Yarım kalan sürüklemeyi geri alır (iptal, gizleme, atma): tasarım
+   * başlangıç değerine döner; kullanıcının bırakmadığı ara değer işlenmez.
+   */
   private cancelDrag(): void {
     const id = this.dragging;
     if (!id) return;
-    const v = this.dragValue;
+    const v = this.dragStart;
     this.finishDrag(() => this.store.dragHandle(id, v, 'end'));
   }
 
@@ -611,7 +621,7 @@ export class WorkshopHandles {
     this.unsub();
     window.removeEventListener('pointermove', this.onMove);
     window.removeEventListener('pointerup', this.onUp);
-    window.removeEventListener('pointercancel', this.onUp);
+    window.removeEventListener('pointercancel', this.onCancel);
     this.layer.remove();
     this.readout.remove();
   }
