@@ -123,7 +123,9 @@ export function fmtSigned(v: number, digits = 0): string {
 /** Bilimsel gösterim: 4,20·10⁷ */
 export function fmtSci(v: number, digits = 2): string {
   if (v === 0) return '0';
-  const e = Math.floor(Math.log10(Math.abs(v)));
+  let e = Math.floor(Math.log10(Math.abs(v)));
+  // Mantis yuvarlanınca 10'a ulaşırsa üs kayar (9,996·10⁷ → 1,00·10⁸)
+  if (Math.abs(Number((v / 10 ** e).toFixed(digits))) >= 10) e++;
   const sup = String(e)
     .split('')
     .map((c) => '⁰¹²³⁴⁵⁶⁷⁸⁹'[Number(c)] ?? (c === '-' ? '⁻' : c))

@@ -190,6 +190,51 @@ function tipKnobOf(c: WarnCtx, k: RowKey): string {
   return `${frontModule(c.graph)?.type ?? 'lpc'}.tipSpeed`;
 }
 
+/** Milin devrini belirleyen modül: HP'de HPC, LP'de ilk kompresör (yoksa güç türbini) */
+function spoolModule(g: EngineGraph, spool: 'lp' | 'hp'): CompressorModule | TurbineModule | undefined {
+  if (spool === 'hp') return mod<CompressorModule>(g, 'hpc');
+  return frontModule(g) ?? mod<TurbineModule>(g, 'lpt');
+}
+
+/**
+ * Bir milin uç hızı düğmesi için üst sınır: aynı mildeki bütün devir
+ * sınırlarını (ilk kademe bağıl Mach'ı, eksenel uç hızı, türbin AN²) %2
+ * içeride bırakan en büyük uç hızı. Devir uç hızıyla orantılı, kanal
+ * alanları devirden bağımsız: uç hızı ∝ U, AN² ∝ U². "Düzelt" bunu kullanır;
+ * böylece bir sınırı düzeltirken aynı düğmeye bağlı öteki sınır aşık kalmaz.
+ */
+function tipSpeedCap(c: WarnCtx, spool: 'lp' | 'hp'): number | undefined {
+  const m = spoolModule(c.graph, spool);
+  const U = m?.tipSpeed;
+  if (!m || !U) return undefined;
+  const caps: (number | undefined)[] = [];
+  const axial: RowKey[] = spool === 'hp' ? ['hpc'] : ['front', 'booster'];
+  for (const k of axial) {
+    const r = c.s.rows[k];
+    if (r?.uTip) caps.push((U * INSIDE * c.tech.axialUTip.caution) / r.uTip);
+  }
+  // İlk kademe bağıl Mach'ı: sıra düğmenin kendi modülü (fan/LPC ya da HPC)
+  const first = spool === 'hp' ? c.s.rows.hpc : m.type === 'lpt' ? undefined : c.s.rows.front;
+  if (first?.mrelTip) {
+    const lim = spool === 'hp' ? c.tech.tipMachRel.hpc : c.s.bpr >= 1 ? c.tech.tipMachRel.fan : c.tech.tipMachRel.front;
+    caps.push(tipSpeedFor(first.mrelTip, m.mach[0], U, INSIDE * lim.caution));
+  }
+  const t = spool === 'hp' ? 'hpt' : 'lpt';
+  const an2 = c.s.rows[t]?.an2;
+  if (an2) caps.push(U * Math.sqrt((INSIDE * c.tech.an2[t].caution) / an2));
+  const ok = caps.filter((x): x is number => x !== undefined && Number.isFinite(x) && x > 0);
+  return ok.length ? Math.min(...ok) : undefined;
+}
+
+/** Uç hızı "Düzelt"i: milin bütün devir sınırlarını içeride bırakan değer */
+function tipRemedy(c: WarnCtx, spool: 'lp' | 'hp', name: string): Finding['remedy'] {
+  const m = spoolModule(c.graph, spool);
+  const cap = tipSpeedCap(c, spool);
+  if (!m?.tipSpeed || cap === undefined || cap >= m.tipSpeed) return undefined;
+  const v = floorTo(cap, 1);
+  return remedy(`${m.type}.tipSpeed`, v, `${name} uç hızı ${fmtNum(m.tipSpeed)} → ${fmtNum(v)} m/s`);
+}
+
 const an2Rule = (t: 'hpt' | 'lpt'): WarnRule => ({
   id: t === 'hpt' ? 'an2Hpt' : 'an2Lpt',
   group: t,
@@ -204,6 +249,10 @@ const an2Rule = (t: 'hpt' | 'lpt'): WarnRule => ({
   fix: `${t.toUpperCase()} çıkış Mach'ını artır (kanatlar kısalır) ya da mil devrini düşür.`,
   tags: () => [t],
   knobs: [`${t}.mach.1`],
+  knobsOf: (c) => {
+    const m = spoolModule(c.graph, t === 'hpt' ? 'hp' : 'lp');
+    return [`${t}.mach.1`, ...(m?.tipSpeed ? [`${m.type}.tipSpeed`] : [])];
+  },
   glossary: 'an2',
   remedy: (c) => {
     // AN² = A_çıkış · rpm²; A_çıkış ∝ 1/F(M1), devir M1'den bağımsız
@@ -212,9 +261,15 @@ const an2Rule = (t: 'hpt' | 'lpt'): WarnRule => ({
     if (!m || !v) return undefined;
     const target = INSIDE * c.tech.an2[t].caution;
     const f = flowFunction(m.mach[1], GAS) * (v / target);
-    if (f >= flowFunction(0.55, GAS)) return undefined; // düğme aralığının dışı
-    const M1 = clean(ceilTo(machFromFlow(f, GAS), 0.001));
-    return remedy(`${t}.mach.1`, M1, `${t.toUpperCase()} çıkış Mach'ı ${fmtNum(m.mach[1], 3)} → ${fmtNum(M1, 3)}`);
+    if (f < flowFunction(0.55, GAS)) {
+      const M1 = clean(ceilTo(machFromFlow(f, GAS), 0.001));
+      return remedy(`${t}.mach.1`, M1, `${t.toUpperCase()} çıkış Mach'ı ${fmtNum(m.mach[1], 3)} → ${fmtNum(M1, 3)}`);
+    }
+    // Çıkış Mach'ı düğme aralığının dışına çıkardı: mil devrini düşür
+    const spool = t === 'hpt' ? 'hp' : 'lp';
+    const sm = spoolModule(c.graph, spool);
+    const name = sm?.type === 'hpc' ? 'HPC' : sm?.type === 'lpt' ? 'Güç türbini' : rowName('front', c.graph);
+    return tipRemedy(c, spool, name);
   },
   gauge: { label: `${t.toUpperCase()} AN²`, unit: 'm²·rpm²', level: 'basic' },
 });
@@ -238,15 +293,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       knobs: ['fan.tipSpeed'],
       glossary: 'tipMach',
       lesson: 'birdstrike',
-      remedy: (c) => {
-        const fan = mod<CompressorModule>(c.graph, 'fan');
-        const r = c.s.rows.front;
-        if (!fan?.tipSpeed || !r?.mrelTip) return undefined;
-        const u = tipSpeedFor(r.mrelTip, fan.mach[0], fan.tipSpeed, INSIDE * c.tech.tipMachRel.fan.caution);
-        if (!u) return undefined;
-        const v = floorTo(u, 1);
-        return remedy('fan.tipSpeed', v, `Fan uç hızı ${fmtNum(fan.tipSpeed)} → ${fmtNum(v)} m/s`);
-      },
+      remedy: (c) => (mod(c.graph, 'fan') ? tipRemedy(c, 'lp', 'Fan') : undefined),
       gauge: { label: 'Fan ucu Mrel', unit: '', level: 'basic' },
     },
     {
@@ -268,15 +315,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       knobsOf: (c) => [tipKnobOf(c, 'front')],
       glossary: 'tipMach',
       lesson: 'surge',
-      remedy: (c) => {
-        const m = frontModule(c.graph);
-        const r = c.s.rows.front;
-        if (!m?.tipSpeed || !r?.mrelTip) return undefined;
-        const u = tipSpeedFor(r.mrelTip, m.mach[0], m.tipSpeed, INSIDE * c.tech.tipMachRel.front.caution);
-        if (!u) return undefined;
-        const v = floorTo(u, 1);
-        return remedy(`${m.type}.tipSpeed`, v, `${rowName('front', c.graph)} uç hızı ${fmtNum(m.tipSpeed)} → ${fmtNum(v)} m/s`);
-      },
+      remedy: (c) => (frontModule(c.graph) ? tipRemedy(c, 'lp', rowName('front', c.graph)) : undefined),
       gauge: { label: (c) => `${rowName('front', c.graph)} ucu Mrel`, unit: '', level: 'basic' },
     },
     {
@@ -295,15 +334,7 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       knobs: ['hpc.tipSpeed'],
       glossary: 'tipMach',
       lesson: 'surge',
-      remedy: (c) => {
-        const m = mod<CompressorModule>(c.graph, 'hpc');
-        const r = c.s.rows.hpc;
-        if (!m?.tipSpeed || !r?.mrelTip) return undefined;
-        const u = tipSpeedFor(r.mrelTip, m.mach[0], m.tipSpeed, INSIDE * c.tech.tipMachRel.hpc.caution);
-        if (!u) return undefined;
-        const v = floorTo(u, 1);
-        return remedy('hpc.tipSpeed', v, `HPC uç hızı ${fmtNum(m.tipSpeed)} → ${fmtNum(v)} m/s`);
-      },
+      remedy: (c) => tipRemedy(c, 'hp', 'HPC'),
       gauge: { label: 'HPC ucu Mrel', unit: '', level: 'basic' },
     },
     {
@@ -357,14 +388,11 @@ export const WARNING_RULES: readonly Rule<WarnCtx>[] = (
       knobsOf: (c) => [tipKnobOf(c, worstRow(c, AXIAL, (r) => r.uTip) ?? 'hpc')],
       lesson: 'birdstrike',
       remedy: (c) => {
-        const k = worstRow(c, AXIAL, (r) => r.uTip);
-        const r = k && c.s.rows[k];
-        if (!k || !r) return undefined;
-        const m = k === 'hpc' ? mod<CompressorModule>(c.graph, 'hpc') : frontModule(c.graph);
-        if (!m?.tipSpeed) return undefined;
         // Booster fanla aynı milde: fan uç hızı aynı oranda düşer
-        const v = floorTo((m.tipSpeed * INSIDE * c.tech.axialUTip.caution) / r.uTip, 1);
-        return remedy(`${m.type}.tipSpeed`, v, `${m.type === 'hpc' ? 'HPC' : rowName('front', c.graph)} uç hızı ${fmtNum(m.tipSpeed)} → ${fmtNum(v)} m/s`);
+        const k = worstRow(c, AXIAL, (r) => r.uTip);
+        if (!k) return undefined;
+        if (k === 'hpc') return tipRemedy(c, 'hp', 'HPC');
+        return frontModule(c.graph) ? tipRemedy(c, 'lp', rowName('front', c.graph)) : undefined;
       },
       gauge: { label: 'Eksenel uç hızı', unit: 'm/s', level: 'expert' },
     },
@@ -880,8 +908,21 @@ export interface OpCtx {
   built: BuiltEngine;
   tech: TechLimits;
   idle: { lit: boolean; N2: number; idleN2: number };
-  full: { N1: number; egtLimited: boolean; surgeMargin: number };
+  /**
+   * Tam güç. `N1`/`N2`: ölçülen devir ile FADEC hedefinden küçüğü (devir
+   * sınırına dayanan hedef pencerede henüz oturmamış olabilir). `power`:
+   * pervaneli/mil çıkışlı motorda mil gücü / tasarım mil gücü.
+   */
+  full: { N1: number; N2: number; power?: number; egtLimited: boolean; surgeMargin: number };
 }
+
+/** Tam güç ölçüsü eşikleri: jet N1, pervaneli/mil çıkışlı motorda mil gücü */
+const FULL_N1_MIN = 0.95;
+/**
+ * Mil gücü N2 ile hızla (≈ N2⁵) düşer: %90 güç ≈ N2 %98. Jette N1 %95 ≈ itki
+ * %85–87; güç ölçüsü 1 s'lik pencerede henüz oturmadığı için biraz sıkı.
+ */
+const FULL_POWER_MIN = 0.9;
 
 /** Trim bulguları (sözlük/ders tutarlılık testi okur) */
 export const OPERABILITY_RULES: readonly Rule<OpCtx>[] = [
@@ -925,16 +966,25 @@ export const OPERABILITY_RULES: readonly Rule<OpCtx>[] = [
   {
     id: 'fullTrim',
     group: 'lpt',
-    metric: (c) => (c.full.egtLimited ? 0 : c.full.N1),
+    // Pervaneli/mil çıkışlı motorda N1 güç türbini devridir ve onu pervane
+    // valisi %100'de tutar: ölçü teslim edilen mil gücü
+    metric: (c) => (c.full.egtLimited ? 0 : (c.full.power ?? c.full.N1)),
     dir: 'below',
-    limits: () => ({ caution: 0.95 }),
+    limits: (c) => ({ caution: c.full.power !== undefined ? FULL_POWER_MIN : FULL_N1_MIN }),
     unit: '',
     digits: 2,
-    title: (_v, c) => (c.full.egtLimited ? 'Tam güçte EGT sınırlayıcı devrede' : `Tam güçte N1 %${fmtNum(c.full.N1 * 100)}`),
+    title: (_v, c) =>
+      c.full.egtLimited
+        ? 'Tam güçte EGT sınırlayıcı devrede'
+        : c.full.power !== undefined
+          ? `Tam güçte mil gücü %${fmtNum(c.full.power * 100)}`
+          : `Tam güçte N1 %${fmtNum(c.full.N1 * 100)}`,
     text: (_v, _l, c) =>
       c.full.egtLimited
         ? 'Tam güçte EGT sürekli sınıra dayanıyor: FADEC yakıtı kısıyor, tasarım itkisine ulaşılamıyor.'
-        : `Tam güçte N1 %${fmtNum(c.full.N1 * 100)}: motor tasarım devrine çıkamıyor, itki beklenenden az.`,
+        : c.full.power !== undefined
+          ? `Tam güçte mil gücü tasarımın %${fmtNum(c.full.power * 100)}'i (gaz jeneratörü N2 %${fmtNum(c.full.N2 * 100)}): gaz jeneratörü tasarım devrine çıkamıyor; güç türbini devrini vali tutuyor ama teslim edilen güç beklenenden az.`
+          : `Tam güçte N1 %${fmtNum(c.full.N1 * 100)}: motor tasarım devrine çıkamıyor, itki beklenenden az.`,
     fix: 'T4’ü düşür ya da EGT payını artır.',
     tags: () => ['lpt'],
     knobs: ['combustor.tit'],
@@ -946,21 +996,33 @@ export const OPERABILITY_RULES: readonly Rule<OpCtx>[] = [
 /** Bütçe [ms]: aşılırsa tam güç trim'i kısalır */
 const OPERABILITY_BUDGET_MS = 30;
 /**
- * Benzetim süreleri [s]: rölanti trim'i rölanti devrinden başlar ve oturur,
- * tam güç tasarım noktasından ~0,6 s'de kararlı. Benzetim saniyesi 7–14 ms;
- * süre bütçeyi aşacaksa adım sayısı azalır (en az MIN_SECONDS).
+ * Benzetim süreleri [s]: rölanti trim'i rölanti devrinden başlar ve oturur;
+ * tam güç tasarım noktasında (denge) başlar, sağlıklı motor orada kalır.
+ * Tasarımı tutamayan motor pencerede oturmaz, ama sapma yönü görünür: yakıt
+ * sınırında (surge) N1 1 s'de %92'ye iner, devir sınırında FADEC hedefi ilk
+ * adımdan bellidir (ölçüye katılır). Benzetim saniyesi 7–14 ms; süre bütçeyi
+ * aşacaksa adım sayısı azalır (en az MIN_SECONDS). Yüklü makinede ve ilk
+ * çağrıda (JIT ısınması) bütçe aşılabilir; çağrı yalnız boşta yapılır.
  */
 const IDLE_SECONDS = 2;
 const FULL_SECONDS = 1;
 const MIN_SECONDS = 0.5;
 const DT = 1 / 60;
 
-/** trim(0 s) durumu kurar; adımlar bütçe içinde (saate bakarak) atılır */
+/**
+ * trim(0 s) durumu kurar; adımlar bütçe içinde (saate bakarak) atılır. Bir
+ * sonraki adım süre sınırını aşacaksa (en pahalı adım kadar pay) durur.
+ */
 function trimWithin(sim: EngineSim, throttle: number, seconds: number, deadline: number): void {
   sim.trim(throttle, 0);
+  let now = performance.now();
+  let stepMax = 0;
   for (let t = 0; t < seconds; t += DT) {
-    if (t >= MIN_SECONDS && performance.now() > deadline) break;
+    if (t >= MIN_SECONDS && now + stepMax > deadline) break;
     sim.step(DT);
+    const after = performance.now();
+    stepMax = Math.max(stepMax, after - now);
+    now = after;
   }
 }
 
@@ -981,8 +1043,20 @@ export function evaluateOperability(b: BuiltEngine, tech: TechLimits = TECH_MODE
   hot.N1 = 1;
   hot.N2 = 1;
   hot.wf = r.Wf;
+  // Pervaneli/mil çıkışlı motorda FADEC gaz jeneratörünü (N2) yönetir, güç
+  // türbini devrini yük valisi tutar. Pal tasarım noktasındaki dengede
+  // (güç = tasarım mil gücü) başlar; ince palla başlasa pencere güç
+  // türbininin geçici aşırı devrini (%109–114) ölçerdi.
+  const shaftOut = b.traits.output !== 'thrust';
+  if (shaftOut) hot.propPitch = 1;
   trimWithin(hot, 1, FULL_SECONDS, t0 + OPERABILITY_BUDGET_MS);
-  const full = { N1: hot.N1, egtLimited: hot.egtLimited, surgeMargin: hot.cycle.surgeMargin };
+  const full = {
+    N1: Math.min(hot.N1, hot.n1Command ?? hot.N1),
+    N2: Math.min(hot.N2, hot.n2Command ?? hot.N2),
+    power: shaftOut ? hot.propPower / Math.max(r.shaftPower, 1) : undefined,
+    egtLimited: hot.egtLimited,
+    surgeMargin: hot.cycle.surgeMargin,
+  };
   return evaluateRules(OPERABILITY_RULES, { built: b, tech, idle, full });
 }
 
@@ -1120,6 +1194,9 @@ export function translateError(e: unknown): TeachingError {
       }
       case 'layout.notReady':
         return { title: 'Bu mimari yakında', text: raw, knobs: [...e.knobs], source: 'flowpath', group: e.group, raw };
+      case 'knob.range':
+        // Metin evaluate.ts'te sayıyla kurulur (zaten öğretici)
+        return { title: `${name}: değer aralık dışında`, text: raw, knobs: [...e.knobs], source: 'flowpath', group: e.group, raw };
       case 'tipSpeed.missing':
         return { title: `${name} uç hızı eksik`, text: raw, knobs: [...e.knobs], source: 'flowpath', group: e.group, raw };
       default:

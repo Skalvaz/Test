@@ -1,5 +1,6 @@
 /**
- * M5a P3: sonuç özeti, öğretici uyarılar, hata çevirisi ve sözlük.
+ * M5a P3: sonuç özeti, öğretici uyarılar ve hata çevirisi. Sözlük ve ders
+ * kimliği tutarlılığı game/glossary.test.ts'te (katman kuralı).
  *
  * Şablon testi: yedi aile şablonunda caution/warning 0 (§4). Henüz olmayan
  * ya da fiziğe uydurulmamış şablon (P2 turboprop/turbofan, P5–P7 yeni
@@ -8,10 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { GLOSSARY } from '../game/glossary';
-import { LESSONS } from '../game/lessons/index';
 import { DesignError } from '../sim/design';
-import { EngineSim } from '../sim/engineSim';
 import { TEMPLATES } from './catalog';
 import type { Finding } from './core/rules';
 import { GraphError } from './errors';
@@ -19,7 +17,7 @@ import { evaluate, isEvaluation, type Evaluation } from './evaluate';
 import { FlowpathError } from './flowpath';
 import { buildEngine } from './graph';
 import { layoutNotReady } from './layouts/index';
-import { diffSummary, explainDelta, fmtNum, summarize } from './summary';
+import { diffSummary, explainDelta, fmtNum, fmtSci, summarize } from './summary';
 import { TECH_MODERN } from './tech';
 import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_GRAPH, TURBOPROP_GRAPH, type TemplateId } from './templates';
 import type { CombustorModule, CompressorModule, EngineGraph, TurbineModule } from './types';
@@ -81,10 +79,14 @@ const FITTED: Partial<Record<TemplateId, (g: EngineGraph) => boolean>> = {
 };
 
 /**
- * Bilinen açık işler: şablonun bugün aştığı eşik (kullanıcı kararı bekliyor,
- * eşik gevşetilmez). militaryTurbofan: karıştırıcıda P19t/P5t 0,69 (warning).
- * Çevrim karışma düzleminde dengesiz; düzeltmek MTF şablonunu (FPR/BPR/T4)
- * değiştirir, altın test ise MTF'nin değişmemesini istiyor.
+ * Bilinen açık işler (P3 kabulünde "açık", "geçti" sayılmaz): şablonun bugün
+ * aştığı eşik. Eşik gevşetilmez (§9.2 S5); şablon eşiğe uydurulur ve bu
+ * satır entegrasyonda silinir.
+ * - militaryTurbofan: karıştırıcıda P19t/P5t 0,69 (warning). Şablon P2'de
+ *   karışma dengesine uydurulur (fan PR ≈ 4,2; MTF altın satırı gerekçeyle
+ *   güncellenir).
+ * TF T3 payı (962/1000 K, %3,8 < %4) uyarı üretmez, yalnız pay raporunda
+ * görünür; o da P2'de (HPC PR ≤ 16,3) düzelir.
  */
 const OPEN: Partial<Record<TemplateId, string[]>> = {
   militaryTurbofan: ['mixerPR'],
@@ -107,7 +109,7 @@ describe('şablonlar uyarısız (caution/warning 0)', () => {
       expect(ids(serious(evaluateOperability(buildEngine(TEMPLATES[id]!))))).toEqual([]);
     });
   }
-  it.todo('militaryTurbofan: karıştırıcı dengesi (mixerPR 0,69) — şablon kararı bekliyor');
+  it.todo('militaryTurbofan: karıştırıcı dengesi (mixerPR 0,69) — P2 şablonu uydurunca OPEN satırı silinir');
 });
 
 /* ------------------------------------------------------------------ */
@@ -205,6 +207,26 @@ describe('sondalar: her uyarı bir grafikle tetiklenir', () => {
     expect(s.rows.hpt!.an2! / 1e7).toBeCloseTo(7.22, 1);
   });
 
+  it('uç hızı Düzelt’i aynı mildeki öteki sınırları da içeride bırakır (§8 adım 8)', () => {
+    // TJ lpc 560: ön Mrel ve LPT AN² aynı düğmeye (LP devri) bağlı
+    const g = setKnob(TURBOJET_GRAPH, 'lpc.tipSpeed', 560);
+    const r = ev(g);
+    expect(ids(serious(r.findings))).toEqual(expect.arrayContaining(['caution:frontTipMach', 'caution:an2Lpt']));
+    // LPT çıkış Mach'ı düğme aralığının ucunda: AN² Düzelt'i mil devrine düşer
+    const an2 = r.findings.find((f) => f.id === 'an2Lpt')!;
+    expect(an2.remedy?.knob).toBe('lpc.tipSpeed');
+    expect(an2.knobs).toEqual(['lpt.mach.1', 'lpc.tipSpeed']);
+    for (const id of ['frontTipMach', 'an2Lpt']) {
+      const f = r.findings.find((x) => x.id === id)!;
+      expect(ids(serious(ev(setKnob(g, f.remedy!.knob, f.remedy!.value)).findings)), id).toEqual([]);
+    }
+    // Turbofan: fan Düzelt'i sonrası şablonun kendi bulgularına döner
+    // (uydurulmamış şablonun yanma odası/HPT girişi uyarıları P2'de kalkar)
+    const tf = setKnob(TF, 'fan.tipSpeed', 560);
+    const fix = ev(tf).findings.find((f) => f.id === 'fanTipMach')!.remedy!;
+    expect(ids(serious(ev(setKnob(tf, fix.knob, fix.value)).findings))).toEqual(ids(serious(ev(TF).findings)));
+  });
+
   it('frontTipMach Düzelt düğmesi motora göre: TJ lpc, MTF fan', () => {
     const tj = ev(setKnob(TURBOJET_GRAPH, 'lpc.tipSpeed', 560)).findings.find((f) => f.id === 'frontTipMach')!;
     expect(tj.knobs).toEqual(['lpc.tipSpeed']);
@@ -238,6 +260,27 @@ describe('sondalar: her uyarı bir grafikle tetiklenir', () => {
     const f = evaluateOperability(buildEngine(hot));
     expect(ids(f)).toContain('caution:fullTrim');
     expect(f.find((x) => x.id === 'fullTrim')!.title).toContain('EGT');
+  });
+
+  it('tam güç: devir sınırına yavaş oturan hedef de yakalanır (N1 kırmızı çizgi 0,94)', () => {
+    // Pencerede N1 0,97'ye iner, oturma 0,92; FADEC hedefi ilk adımdan 0,92
+    const g = structuredClone(TF);
+    g.ops = { ...g.ops, limits: { ...g.ops!.limits!, n1Redline: 0.94 } };
+    const f = evaluateOperability(buildEngine(g)).find((x) => x.id === 'fullTrim');
+    expect(f?.severity).toBe('caution');
+    expect(f!.value!).toBeCloseTo(0.92, 2);
+  });
+
+  it('turboprop tam güç: ölçü mil gücü (N1 pervane valisinde %100)', () => {
+    // Sağlıklı şablon: pal dengede başlar, güç türbini aşırı devri ölçülmez
+    expect(ids(serious(evaluateOperability(buildEngine(TURBOPROP_GRAPH))))).toEqual([]);
+    // Gaz jeneratörü surge yakıt sınırında: N2 %93,5, mil gücü %68 (oturmuş)
+    const g = structuredClone(TURBOPROP_GRAPH);
+    g.ops = { ...g.ops, hpcMap: { ...g.ops!.hpcMap!, surgePRFactor: 1.0 } };
+    const f = evaluateOperability(buildEngine(g)).find((x) => x.id === 'fullTrim');
+    expect(f?.severity).toBe('caution');
+    expect(f!.title).toContain('mil gücü');
+    expect(f!.value!).toBeLessThan(0.85);
   });
 
   it('her uyarı kimliğinin bir sondası var', () => {
@@ -279,22 +322,26 @@ describe('hız', () => {
     expect(timeWarnings(legacyTurboprop(), true)).toBeLessThan(2);
   });
 
-  it('evaluateOperability ≤ 30 ms; yavaş (yüklü) makinede yalnız en az adımlar', () => {
-    const b = buildEngine(TF);
-    const time = (f: () => void) => {
+  /**
+   * ≤ 30 ms, en iyi çağrı (ilk çağrı JIT ısınması, sonrakiler paralel test
+   * dosyalarının yük sıçramalarıyla kesilebilir). Bütçe EngineSim kurulumunu
+   * da sayar. Yük altında (CPU %100) tek çağrı aşabilir: atölye yalnız boşta
+   * çağırır.
+   */
+  it.each([
+    ['turbojet', TURBOJET_GRAPH],
+    ['turbofan', TF],
+    ['turboprop', TURBOPROP_GRAPH],
+  ] as const)('evaluateOperability ≤ 30 ms: %s', (_n, g) => {
+    const b = buildEngine(g);
+    evaluateOperability(b); // ısınma
+    let best = Infinity;
+    for (let i = 0; i < 8; i++) {
       const t0 = performance.now();
-      f();
-      return performance.now() - t0;
-    };
-    // Ölçümler iç içe: paralel işlerin yük sıçraması ikisini birlikte etkiler
-    const op: number[] = [];
-    const minSteps: number[] = [];
-    for (let i = 0; i < 6; i++) {
-      op.push(time(() => evaluateOperability(b)));
-      // Bu makinede 1 benzetim saniyesi (en az adım: rölanti 0,5 s + tam güç 0,5 s)
-      minSteps.push(time(() => new EngineSim(b.design).trim(1, 1)));
+      evaluateOperability(b);
+      best = Math.min(best, performance.now() - t0);
     }
-    expect(Math.min(...op)).toBeLessThan(Math.max(32, 1.25 * Math.max(...minSteps) + 3));
+    expect(best).toBeLessThanOrEqual(30);
   });
 });
 
@@ -379,6 +426,9 @@ describe('sonuç özeti', () => {
     expect(fmtNum(1.6213, 2)).toBe('1,62');
     expect(fmtNum(1220)).toBe('1.220');
     expect(fmtNum(-0.0001, 1)).toBe('0,0');
+    expect(fmtSci(4.2e7)).toBe('4,20·10⁷');
+    // Mantis yuvarlanınca üs kayar
+    expect(fmtSci(9.996e7)).toBe('1,00·10⁸');
   });
 });
 
@@ -431,49 +481,18 @@ describe('translateError', () => {
     expect(!isEvaluation(g) && g.error.source).toBe('graph');
   });
 
+  it('evaluate: aralık dışı kanal düğmesi öğretici hata döner, donmaz', () => {
+    // Eskiden gaz yolu NaN/∞ kademeyle dönüyor, yerleşim döngüsü bitmiyordu
+    const a = evaluate(setKnob(TURBOJET_GRAPH, 'lpc.mach', [0, mod<CompressorModule>(TURBOJET_GRAPH, 'lpc').mach[1]]));
+    expect(!isEvaluation(a) && a.error).toMatchObject({ source: 'flowpath', group: 'lpc', knobs: ['lpc.mach.0'] });
+    const b = evaluate(setKnob(TURBOPROP_GRAPH, 'hpc.hubTip', 1));
+    expect(!isEvaluation(b) && b.error.knobs).toEqual(['hpc.hubTip']);
+    expect(!isEvaluation(b) && b.error.text).toMatch(/^HPC göbek\/uç oranı 1,000: fiziksel aralığın/);
+    const c = evaluate(setKnob(TF, 'engine.massFlow', Number.NaN));
+    expect(!isEvaluation(c) && c.error.knobs).toEqual(['engine.massFlow']);
+  });
+
   it('evaluate: program hatası gizlenmez', () => {
     expect(() => evaluate(null as unknown as EngineGraph)).toThrow(TypeError);
-  });
-});
-
-/* ------------------------------------------------------------------ */
-/* Sözlük ve ders bağlantıları                                         */
-/* ------------------------------------------------------------------ */
-
-describe('sözlük tutarlılığı', () => {
-  const glossary = new Set(GLOSSARY.map((e) => e.id));
-  const lessons = new Set(LESSONS.map((l) => l.id));
-
-  it('kimlikler tekil', () => {
-    expect(glossary.size).toBe(GLOSSARY.length);
-  });
-
-  it('§6.8 yeni girdiler var', () => {
-    for (const id of ['tipMach', 'an2', 'tit', 'egtMargin', 'stageLoading', 'refVelocity', 'mixer', 'chevron', 'thrustWeight', 'specificThrust', 'shaftPower', 'turboshaft']) {
-      expect(glossary.has(id), id).toBe(true);
-    }
-  });
-
-  it('her kuralın sözlük ve ders kimliği var', () => {
-    for (const r of [...WARNING_RULES, ...OPERABILITY_RULES]) {
-      if (r.glossary) expect(glossary.has(r.glossary), `${r.id} → ${r.glossary}`).toBe(true);
-      if (r.lesson) expect(lessons.has(r.lesson), `${r.id} → ${r.lesson}`).toBe(true);
-    }
-  });
-
-  it('hata çevirisinin sözlük kimlikleri var', () => {
-    const errs = [
-      new DesignError('P5 ≤ P0'),
-      new DesignError('LP türbini fanı çeviremiyor.'),
-      new DesignError('HP türbini gereken işi çıkaramıyor.'),
-      new DesignError('Güç türbinine genişleyecek basınç kalmıyor.'),
-      new DesignError('T4, kompresör çıkış sıcaklığından düşük'),
-      new FlowpathError('x', 'annulus.closed', 'hpc'),
-      new FlowpathError('x', 'combustor.cansFit', 'combustor', [], { cans: 9 }),
-    ];
-    for (const e of errs) {
-      const t = translateError(e);
-      if (t.glossary) expect(glossary.has(t.glossary), t.glossary).toBe(true);
-    }
   });
 });
