@@ -27,6 +27,7 @@ import {
   LHV as LHV_,
   P_STD,
   T_STD,
+  type GasProps,
 } from './gas';
 
 export type StationId = '0' | '2' | '13' | '19' | '21' | '25' | '3' | '4' | '45' | '5' | '7' | '9';
@@ -95,6 +96,9 @@ export interface AfterburnerSpec {
  * Karışmış akışın kuru itkisi, eksik karışma payıyla: tam karışmış jet ile
  * baypas ve çekirdeğin ayrı ayrı genişlediği iki jet arasında. `wet`
  * (0–1) art yakıcının yanma oranı: yanarken karışma tamamlanır.
+ * `jetKind` ayrı jetlerin lülesi: 'ideal' tam genleşme (art yakıcının değişken
+ * lülesi), 'convergent' sabit yakınsak lüle, basınç itkisi dahil (art
+ * yakıcısız karışık akış; tam karışmış jet de aynı lüleden hesaplanmalı).
  */
 export function mixedJetThrust(
   fullyMixed: number,
@@ -105,15 +109,68 @@ export function mixedJetThrust(
   cv: number,
   mixingEff = 1,
   wet = 0,
+  jetKind: 'ideal' | 'convergent' = 'ideal',
 ): number {
   const eta = mixingEff + (1 - mixingEff) * Math.min(1, Math.max(0, wet));
   if (eta >= 1 || cold.W <= 1e-9) return fullyMixed;
   const jet = (s: { W: number; T: number; P: number }, g: typeof GAS) => {
     const p = s.P * pFactor;
-    return p > pAmb ? s.W * idealJet(p, s.T, pAmb, g).velocity * cv : 0;
+    if (!(p > pAmb)) return 0;
+    if (jetKind === 'convergent') {
+      const n = convergentNozzle(p, s.T, pAmb, g);
+      return s.W * (n.velocity * cv + n.pressureThrustPerFlow);
+    }
+    return s.W * idealJet(p, s.T, pAmb, g).velocity * cv;
   };
   const separate = jet(hot, GAS) + jet(cold, AIR);
   return separate + eta * (fullyMixed - separate);
+}
+
+/**
+ * Art yakıcısız karıştırıcı çıkışı: enerji korunumu, kütle ağırlıklı toplam
+ * basınç ve kayıp (mixStreams gibi), ama karışımın gaz özellikleri kütle
+ * ağırlıklı (cp, R → γ). mixStreams karışımı yanma ürünü (GAS) sayar: art
+ * yakıcıda doğru (yakıt eklenir), ama yüksek baypasta akışın ~%85'i olan
+ * havayı GAS saymak soğuk akışın genleşme işini ~%12 düşürür ve karışma
+ * kazancını kayba çevirir.
+ */
+export function mixDry(
+  wHot: number,
+  tHot: number,
+  pHot: number,
+  wCold: number,
+  tCold: number,
+  pCold: number,
+  loss: number,
+): { W: number; T: number; P: number; gas: GasProps } {
+  const W = wHot + wCold;
+  if (W <= 1e-9 || wCold <= 1e-9) return { W, T: tHot, P: pHot * (1 - loss), gas: GAS };
+  const cp = (wHot * GAS.cp + wCold * AIR.cp) / W;
+  const R = (wHot * GAS.R + wCold * AIR.R) / W;
+  const T = (wHot * GAS.cp * tHot + wCold * AIR.cp * tCold) / (W * cp);
+  const P = ((wHot * pHot + wCold * pCold) / W) * (1 - loss);
+  return { W, T, P, gas: { cp, R, gamma: cp / (cp - R) } };
+}
+
+/**
+ * Karıştırıcıda toplam basınç dengesizliğinin kayıp katsayısı (k). Kütle
+ * ağırlıklı toplam basınç, farklı basınçtaki akımları kayıpsız "eşitler":
+ * jet hızı basınçla iç bükey arttığı için dengesizlik büyüdükçe karışma
+ * kazancı yapay olarak artardı. Gerçekte yüksek basınçlı akımın fazla
+ * dinamik basıncı kayma tabakasında harcanır ve kazanç P19t ≈ P5'te en
+ * büyüktür. k, P19t/P5 = 0,6 ve 1,25'te kazancı dengedekinin altına indirir
+ * (sim.test.ts); uyarı sınırlarında (0,85 / 1,20) ek kayıp ~%1.
+ */
+export const MIXER_IMBALANCE_LOSS = 0.4;
+
+/**
+ * Art yakıcısız karıştırıcının toplam basınç kaybı: sabit kayıp (stil,
+ * dinamik basınç) + dengesizlik kaybı k·ln²(P19t/P5). Dengede ek kayıp yok.
+ */
+export function mixerLoss(base: number, pHot: number, pCold: number): number {
+  if (!(pHot > 0 && pCold > 0)) return base;
+  const l = Math.log(pCold / pHot);
+  return Math.min(0.5, base + MIXER_IMBALANCE_LOSS * l * l);
 }
 
 /** Pervane ve redüksiyon dişli kutusu (turboprop) */
@@ -468,7 +525,10 @@ export interface EngineReference {
   /** Art yakıcı: tam yanıkta yakıt [kg/s] ve kuru lüle boğaz alanı [m²] */
   wfAbMax: number;
   A8dry: number;
-  /** Turboprop: tasarım mil gücü [W] */
+  /**
+   * Turboprop/turboşaft: tasarım mil gücü [W], güç türbini milinde (redüktör
+   * ve aktarma kaybı öncesi; turboşaftın çıkış flanşında ×transmissionEff)
+   */
   shaftPower: number;
   /** Art yakıcısız karışık akış: ortak sabit lüle alanı [m²] (M5a P1 doldurur) */
   A9mix?: number;
@@ -534,17 +594,18 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
   if (!Number.isFinite(PRhpt)) throw new DesignError('HP türbini gereken işi çıkaramıyor.');
   const P45 = P4 / PRhpt;
 
-  // LP türbin: fan + booster gücünü karşılar. Turboprop'ta serbest güç
-  // türbini, egzoz lülesinde küçük bir artık basınç bırakacak kadar genişler;
-  // çıkardığı güç pervaneye gider.
+  // LP türbin: fan + booster gücünü karşılar. Turboprop ve turboşaftta
+  // serbest güç türbini, egzoz lülesinde küçük bir artık basınç bırakacak
+  // kadar genişler; çıkardığı güç pervaneye ya da çıkış miline gider.
   const compLpPower =
     W13 * AIR.cp * (T13 - T2) + W25 * AIR.cp * (T21 - T2) + W25 * AIR.cp * (T25 - T21);
   let T5: number;
   let P5: number;
   let lpPower: number;
   let shaftPower = 0;
-  if (d.prop) {
-    P5 = amb.P0 * d.prop.nozzlePR;
+  const out = d.prop ?? d.shaft;
+  if (out) {
+    P5 = amb.P0 * out.nozzlePR;
     if (P45 <= P5) throw new DesignError('Güç türbinine genişleyecek basınç kalmıyor.');
     T5 = expandT(T45, P45 / P5, d.eff.lpt);
     lpPower = W4 * GAS.cp * (T45 - T5) * d.eff.mech;
@@ -574,7 +635,9 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
   let thrustWet = thrust;
   let wfAbMax = 0;
   let A8dry = 0;
+  let A9mix: number | undefined;
   let st7 = { T: T5, P: P5, W: W4 };
+  let st9 = { T: core.staticT, P: core.staticP, W: W4 };
   if (d.afterburner) {
     // Karışık akış: baypas ve çekirdek jet borusunda karışır, art yakıcıdan
     // geçer ve değişken yakınsak-ıraksak lüleden tam genleşmeyle çıkar.
@@ -597,6 +660,25 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
     const T7 = (mix.W * GAS.cp * mix.T + ab.eta * wfAbMax * LHV_) / ((mix.W + wfAbMax) * GAS.cp);
     const wet = idealJet(mix.P * (1 - ab.dpLit), T7, amb.P0);
     thrustWet = (mix.W + wfAbMax) * wet.velocity * d.nozzleCv - W2 * amb.V0;
+  } else if (d.mixer) {
+    // Art yakıcısız karışık akış: baypas ve çekirdek karıştırıcıda buluşur,
+    // ortak sabit yakınsak lüleden çıkar (basınç itkisi dahil). Lüle alanı
+    // tasarımda sabitlenir (A9mix). Tasarım dışı P5 eşleşmesi art yakıcılı
+    // motordaki gibi sanal çekirdek lülesiyle (A9) yapılır; A9mix kısıtı
+    // uygulanmaz (bilinen basitleştirme, docs/M5A-SPEC.md §2.9).
+    // Kayıp: sabit + P19t/P5 dengesizliği (mixerLoss)
+    const mx = d.mixer;
+    const loss = mixerLoss(mx.loss, P5, P19t);
+    const mix = mixDry(W4, T5, P5, W13, T13, P19t, loss);
+    const noz = convergentNozzle(mix.P, mix.T, amb.P0, mix.gas);
+    A9mix = mix.W / noz.massFlux;
+    const mixed = mix.W * (noz.velocity * d.nozzleCv + noz.pressureThrustPerFlow);
+    thrust =
+      mixedJetThrust(mixed, { W: W4, T: T5, P: P5 }, { W: W13, T: T13, P: P19t }, 1 - loss, amb.P0, d.nozzleCv, mx.mixingEff, 0, 'convergent') -
+      W2 * amb.V0;
+    thrustWet = thrust;
+    st7 = { T: mix.T, P: mix.P, W: mix.W };
+    st9 = { T: noz.staticT, P: noz.staticP, W: mix.W };
   }
 
   const theta = (t: number) => t / T_STD;
@@ -629,6 +711,7 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
     wfAbMax,
     A8dry,
     shaftPower,
+    ...(A9mix !== undefined ? { A9mix } : {}),
   };
 
   const stations: Stations = {
@@ -643,7 +726,7 @@ export function sizeEngine(design: EngineDesign, amb: Ambient = ambient(0, 0, 0)
     '45': { T: T45, P: P45, W: W4 },
     '5': { T: T5, P: P5, W: W4 },
     '7': st7,
-    '9': { T: core.staticT, P: core.staticP, W: W4 },
+    '9': st9,
   };
 
   return {

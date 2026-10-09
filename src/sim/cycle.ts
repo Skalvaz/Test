@@ -17,7 +17,7 @@
 
 import type { Ambient } from './atmosphere';
 import type { SizedEngine, Stations } from './design';
-import { hptCapacityFactor, mixedJetThrust } from './design';
+import { hptCapacityFactor, mixDry, mixedJetThrust, mixerLoss } from './design';
 import {
   AIR,
   GAS,
@@ -373,6 +373,46 @@ export function computeCycle(input: CycleInput): CycleResult {
     nozzleArea = P7 > P0 * 1.01 ? Math.min(3, W7 / jet.throatFlux / r.A8dry) : 1;
     st7 = { T: T7, P: P7, W: W7 };
     exit = { T: jet.staticT, P: P0 };
+  } else if (d.mixer) {
+    /* ---------- art yakıcısız karışık akış: ortak sabit yakınsak lüle ---------- */
+    // P5 yukarıda sanal çekirdek lülesiyle (A9) eşleşti; ortak lüle alanı
+    // (A9mix) kısıtı uygulanmaz (docs/M5A-SPEC.md §2.9, bilinen
+    // basitleştirme).
+    //
+    // Karıştırıcı kaybı dinamik basınçla ölçeklenir (yanma odası kaybı
+    // gibi): oranı düzeltilmiş akışın karesiyle. Sabit oran rölantide
+    // lüleye kalan küçük basınç farkını yer, itki sıfıra iner. Tasarım
+    // noktasında (7 istasyonu, kayıp öncesi basınçla) tam mx.loss.
+    // Üstüne P19t/P5 dengesizlik kaybı (mixerLoss, design.ts): basınç
+    // oranından, dinamik basınç ölçeği olmadan.
+    const mx = d.mixer;
+    const raw = mixDry(W4, T5, P5, W13, T13, P19t, 0);
+    const st = eng.point.stations;
+    const lossDesign = mixerLoss(mx.loss, st['5'].P, st['13'].P * (1 - d.bypassDuctDP));
+    const fpRef = (st['7'].W * Math.sqrt(st['7'].T)) / (st['7'].P / (1 - lossDesign));
+    const fp = raw.P > 0 ? (raw.W * Math.sqrt(raw.T)) / raw.P : 0;
+    const loss = mx.loss * Math.min(2, (fp / fpRef) ** 2) + mixerLoss(0, P5, P19t);
+    const mix = { W: raw.W, T: raw.T, P: raw.P * (1 - loss) };
+    const noz = convergentNozzle(mix.P, mix.T, P0, raw.gas);
+    mixedThrust = mixedJetThrust(
+      mix.P > P0 ? mix.W * (noz.velocity * d.nozzleCv + noz.pressureThrustPerFlow) : 0,
+      { W: W4, T: T5, P: P5 },
+      { W: W13, T: T13, P: P19t },
+      1 - loss,
+      P0,
+      d.nozzleCv,
+      mx.mixingEff,
+      0,
+      'convergent',
+    );
+    mixedBypass = 0;
+    netThrust = mixedThrust - ramDrag;
+    V9 = noz.velocity * d.nozzleCv;
+    jetMach = noz.mach;
+    nozzlePR = mix.P / P0;
+    nozzleArea = 1;
+    st7 = { T: mix.T, P: mix.P, W: mix.W };
+    exit = { T: noz.staticT, P: noz.staticP };
   }
 
   /* ---------------- güçler ---------------- */
