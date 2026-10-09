@@ -32,7 +32,15 @@ export interface KnobCtx {
   family?: Family<EngineGraph, Architecture>;
 }
 
-export type EngineKnob = KnobDef<EngineGraph, KnobCtx>;
+/**
+ * Mimarisiz bağlam: aralıklar, kırpma ve tutamaç seçimi yalnız bunu okur
+ * (`traits`). `knobCtx(g)` mimari verilmeden bunu döndürür; böylece `arch`
+ * okumaya çalışan tüketici derlemede yakalanır. KnobCtx buna atanabilir.
+ */
+export type KnobRangeCtx = Omit<KnobCtx, 'arch'>;
+
+/** Düğme tanımı; `range` mimarisiz bağlam alır, KnobDef<EngineGraph, KnobCtx>'e atanabilir */
+export type EngineKnob = KnobDef<EngineGraph, KnobRangeCtx>;
 
 /** Ortak kanal düğmeleri (kompresör ve türbin sıraları) */
 const annulus = <M extends string>(m: M) =>
@@ -903,7 +911,7 @@ function makeKnob(id: KnobId, s: KnobSpec): EngineKnob {
     explain: s.explain,
     unit: s.unit,
     type: s.type ?? 'number',
-    range: (ctx: KnobCtx) => s.range(ctx.traits),
+    range: (ctx: KnobRangeCtx) => s.range(ctx.traits),
     step: s.step,
     scale: s.scale ?? 'lin',
     display: s.display,
@@ -942,36 +950,37 @@ export function knobRange(k: EngineKnob | KnobId, traits: EngineTraits): [number
  * Değeri düğmenin tipine, aralığına ve ek kısıtına kırpar (core clampKnob +
  * chevron gibi aralık içi kısıtlar). `get(set(g, v)) === clampEngineKnob(v)`.
  */
-export function clampEngineKnob(k: EngineKnob, v: KnobValue, ctx: KnobCtx): KnobValue {
+export function clampEngineKnob(k: EngineKnob, v: KnobValue, ctx: KnobRangeCtx): KnobValue {
   const c = clampKnob(k, v, ctx);
   const snap = SNAPS.get(k.id);
   return snap && typeof c === 'number' ? snap(c) : c;
 }
 
 /**
- * Grafiğin düğme bağlamı. Aralıklar yalnız `traits` okur; mimari (`arch`)
- * tembeldir ve yalnız verilmişse okunabilir: değer ya da `architectureOf`
- * gibi bir türetici. knobs.ts architecture.ts'i içe AKTARMAZ: graph.ts →
- * engineDoc.ts (graphRev) → knobs.ts → architecture.ts → graph.ts döngüsünde
- * architecture.ts modül yüklenirken GRAPH_RULES'u okur ve henüz
- * yüklenmemiş graph.ts yüzünden çöker. Mağaza (store.ts) kendi bağlamını
- * `architectureOf` ile kurar.
+ * Grafiğin düğme bağlamı. Aralıklar yalnız `traits` okur. Mimari (`arch`)
+ * yalnız verilmişse vardır (değer ya da `architectureOf` gibi tembel bir
+ * türetici); verilmezse dönüş tipi `KnobRangeCtx`'tir ve `arch` alanı hiç
+ * yoktur, okumaya çalışan kod derlenmez. knobs.ts architecture.ts'i içe
+ * AKTARMAZ: graph.ts → engineDoc.ts (graphRev) → knobs.ts →
+ * architecture.ts → graph.ts döngüsünde architecture.ts modül yüklenirken
+ * GRAPH_RULES'u okur ve henüz yüklenmemiş graph.ts yüzünden çöker. Mağaza
+ * (store.ts) kendi bağlamını `architectureOf` ile kurar.
  */
+type KnobCtxOptions = { family?: KnobCtx['family']; tech?: TechLimits };
+export function knobCtx(g: EngineGraph, o: KnobCtxOptions & { arch: Architecture | ((g: EngineGraph) => Architecture) }): KnobCtx;
+export function knobCtx(g: EngineGraph, o?: KnobCtxOptions): KnobRangeCtx;
 export function knobCtx(
   g: EngineGraph,
-  o: { family?: KnobCtx['family']; tech?: TechLimits; arch?: Architecture | ((g: EngineGraph) => Architecture) } = {},
-): KnobCtx {
-  const traits = deriveTraits(g);
-  let arch = typeof o.arch === 'function' ? undefined : o.arch;
-  const derive = typeof o.arch === 'function' ? o.arch : undefined;
+  o: KnobCtxOptions & { arch?: Architecture | ((g: EngineGraph) => Architecture) } = {},
+): KnobCtx | KnobRangeCtx {
+  const base: KnobRangeCtx = { traits: deriveTraits(g), tech: o.tech ?? TECH_MODERN, family: o.family };
+  const given = o.arch;
+  if (given === undefined) return base;
+  let arch = typeof given === 'function' ? undefined : given;
   return {
-    traits,
-    tech: o.tech ?? TECH_MODERN,
-    family: o.family,
+    ...base,
     get arch(): Architecture {
-      if (arch) return arch;
-      if (!derive) throw new Error('knobCtx: mimari verilmedi (arch ya da architectureOf geçin).');
-      return (arch = derive(g));
+      return (arch ??= (given as (g: EngineGraph) => Architecture)(g));
     },
   };
 }
@@ -1023,7 +1032,7 @@ const BISECT_STEPS = 12;
 export function feasibleRange(
   g: EngineGraph,
   k: EngineKnob,
-  ctx: KnobCtx,
+  ctx: KnobRangeCtx,
   opts: KnobEvalOptions = {},
 ): { lo: number; hi: number; loReason?: TeachingError; hiReason?: TeachingError } {
   const build = opts.build ?? ((x: EngineGraph) => buildChecked(x));
@@ -1067,15 +1076,23 @@ export function feasibleRange(
   return { lo: lo.v, hi: hi.v, loReason: lo.why, hiReason: hi.why };
 }
 
-/** Bir adım sonraki değer (log ölçekte görece adım); aralık sonundaysa geri adım */
-export function stepValue(k: EngineKnob, v: number, ctx: KnobCtx, dir: 1 | -1 = 1): number {
+/**
+ * Bir adım sonraki değer (log ölçekte görece adım). Ek kısıt (chevron: 0 ya
+ * da 8–24) tek adımı yutabilir: değer değişene dek aynı yönde en çok 8 adım
+ * denenir; yalnız gerçekten aralık sonundaysa geri adım.
+ */
+export function stepValue(k: EngineKnob, v: number, ctx: KnobRangeCtx, dir: 1 | -1 = 1): number {
   const next = (d: number) => Number(clampEngineKnob(k, k.scale === 'log' ? v * (1 + d * k.step) : v + d * k.step, ctx));
-  const n = next(dir);
-  return n !== v ? n : next(-dir);
+  for (const s of [dir, -dir])
+    for (let d = 1; d <= 8; d++) {
+      const n = next(s * d);
+      if (n !== v) return n;
+    }
+  return v;
 }
 
 /** +1 adımın etkisi (ipucu): sonlu fark. Kurulamıyorsa boş. */
-export function sensitivity(g: EngineGraph, k: EngineKnob, ctx: KnobCtx, opts: KnobEvalOptions = {}): SummaryDelta[] {
+export function sensitivity(g: EngineGraph, k: EngineKnob, ctx: KnobRangeCtx, opts: KnobEvalOptions = {}): SummaryDelta[] {
   const build = opts.build ?? ((x: EngineGraph) => buildChecked(x));
   const summ = opts.summarize ?? summarize;
   const diff = opts.diff ?? diffSummary;

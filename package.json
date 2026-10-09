@@ -8,6 +8,7 @@
     "preview": "vite preview --port 4173",
     "build:single": "vite build --mode single && node scripts/bundle-single.mjs",
     "test": "vitest run",
+    "test:fuzz": "vitest run --mode fuzz src/design/fuzz",
     "typecheck": "tsc --noEmit -p .",
     "playtest": "node scripts/playtest.mjs playtest-output",
     "capture": "node scripts/capture/batch.mjs",

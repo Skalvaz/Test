@@ -246,8 +246,30 @@ function migrate(o: Record<string, unknown>, errors: string[], notes: string[]):
   return doc as Record<string, unknown>;
 }
 
-/** Motor belgesi nesnesini denetler (proje belgesi de aile başına bunu çağırır) */
+/** Aile kodu kalıbı ("AT-12") */
+export const FAMILY_CODE = /^[A-Z]{1,4}-\d{1,4}$/;
+/** Oyuncu metinlerinin (aile ve varyant adı) uzunluk sınırı */
+export const NAME_MAX = 64;
+
+/** Bildirime giren oyuncu metni: tek satır, kısaltılmış (arayüz yine textContent ile yazar) */
+const quote = (x: string, n = 40) => {
+  const t = x.replace(/[\u0000-\u001f\u007f]/g, ' ');
+  return t.length > n ? `${t.slice(0, n - 1)}…` : t;
+};
+
+/**
+ * Motor belgesi nesnesini denetler (proje belgesi de aile başına bunu
+ * çağırır). Hiçbir girdide atmaz: beklenmedik bozulma da `errors`'a yazılır.
+ */
 export function parseDocObject(input: unknown): Parsed<EngineDocV1> {
+  try {
+    return parseDocObjectUnsafe(input);
+  } catch (e) {
+    return { errors: [`Belge okunamadı: ${quote(e instanceof Error ? e.message : String(e), 120)}`], notes: [] };
+  }
+}
+
+function parseDocObjectUnsafe(input: unknown): Parsed<EngineDocV1> {
   const errors: string[] = [];
   const notes: string[] = [];
   if (!isObj(input) || input.format !== 'tfa-engine') {
@@ -261,10 +283,21 @@ export function parseDocObject(input: unknown): Parsed<EngineDocV1> {
     errors.push('Belgede aile bilgisi eksik (kimlik, kod, ad, taban grafik).');
     return { errors, notes };
   }
+  // Modüller nesne ve tipli olmalı: düğme bağlamı (deriveTraits) grafik kurallarından önce okur
+  if (!fam.base.modules.every((m) => isObj(m) && typeof m.type === 'string')) {
+    errors.push('Taban grafik geçersiz: modül listesi bozuk.');
+    return { errors, notes };
+  }
+  if (!FAMILY_CODE.test(fam.code)) {
+    errors.push(`Aile kodu geçersiz ("${quote(fam.code, 16)}"; beklenen ör. "AT-1").`);
+    return { errors, notes };
+  }
   if (!Array.isArray(o.variants) || o.variants.length === 0) {
     errors.push('Belgede varyant yok.');
     return { errors, notes };
   }
+  const famName = fam.name.length > NAME_MAX ? fam.name.slice(0, NAME_MAX) : fam.name;
+  if (famName !== fam.name) notes.push('Aile adı çok uzundu, kısaltıldı.');
   const base = structuredClone(fam.base) as unknown as EngineGraph;
   if ('kind' in base) delete base.kind;
   const ctx = knobCtx(base);
@@ -274,27 +307,30 @@ export function parseDocObject(input: unknown): Parsed<EngineDocV1> {
       errors.push(`${i + 1}. varyant okunamadı.`);
       continue;
     }
+    const name = raw.name.length > NAME_MAX ? raw.name.slice(0, NAME_MAX) : raw.name;
+    if (name !== raw.name) notes.push(`${i + 1}. varyantın adı çok uzundu, kısaltıldı.`);
+    const vn = quote(name);
     const values: Record<string, KnobValue> = {};
     for (const [id0, val0] of Object.entries(isObj(raw.values) ? raw.values : {})) {
       let id = id0;
       if (!KNOB_MAP.has(id) && KNOB_ALIASES[id]) {
         id = KNOB_ALIASES[id];
-        notes.push(`"${id0}" düğmesinin yeni adı "${id}".`);
+        notes.push(`"${quote(id0)}" düğmesinin yeni adı "${id}".`);
       }
       const k = KNOB_MAP.get(id);
       if (!k) {
-        notes.push(`"${raw.name}" varyantında bilinmeyen düğme "${id0}" atlandı.`);
+        notes.push(`"${vn}" varyantında bilinmeyen düğme "${quote(id0)}" atlandı.`);
         continue;
       }
       if (typeof val0 !== 'number' && typeof val0 !== 'string' && typeof val0 !== 'boolean') {
-        notes.push(`"${raw.name}" varyantında "${id}" değeri okunamadı, atlandı.`);
+        notes.push(`"${vn}" varyantında "${id}" değeri okunamadı, atlandı.`);
         continue;
       }
       const val = k.range(ctx) ? clampEngineKnob(k, val0, ctx) : val0;
-      if (!sameValue(val, val0)) notes.push(`"${raw.name}": ${k.label} aralık dışındaydı (${String(val0)} → ${String(val)}).`);
+      if (!sameValue(val, val0)) notes.push(`"${vn}": ${k.label} aralık dışındaydı (${quote(String(val0), 16)} → ${String(val)}).`);
       values[id] = val;
     }
-    variants.push({ id: raw.id, name: raw.name, ...(raw.nameLocked === true ? { nameLocked: true } : {}), values });
+    variants.push({ id: raw.id, name, ...(raw.nameLocked === true ? { nameLocked: true } : {}), values });
   }
   if (!variants.length) return { errors, notes };
   let active = typeof o.active === 'string' ? o.active : '';
@@ -305,7 +341,7 @@ export function parseDocObject(input: unknown): Parsed<EngineDocV1> {
   const meta = isObj(o.meta) ? (o.meta as EngineDocV1['meta']) : { created: now(), modified: now() };
   const originRaw = isObj(fam.origin) ? fam.origin : undefined;
   const from = originRaw && ['template', 'wizard', 'import'].includes(originRaw.from as string) ? (originRaw.from as 'template' | 'wizard' | 'import') : 'import';
-  const envelope = isObj(fam.envelope) ? (fam.envelope as Record<string, [number, number]>) : undefined;
+  const envelope = readEnvelope(fam.envelope, notes);
   const doc: EngineDocV1 = {
     ...o,
     format: 'tfa-engine',
@@ -314,7 +350,7 @@ export function parseDocObject(input: unknown): Parsed<EngineDocV1> {
       ...fam,
       id: fam.id,
       code: fam.code,
-      name: fam.name,
+      name: famName,
       base,
       ...(envelope ? { envelope } : {}),
       origin: {
@@ -339,6 +375,27 @@ export function parseDocObject(input: unknown): Parsed<EngineDocV1> {
     }
   }
   return { doc, errors, notes };
+}
+
+/**
+ * Varyant zarfı: bilinen varyant düğmesi, iki sonlu uç, lo ≤ hi. Geçmeyen
+ * girdi atılır ve `notes`'a yazılır (bozuk zarf kırpmada NaN üretirdi).
+ */
+function readEnvelope(raw: unknown, notes: string[]): Record<string, [number, number]> | undefined {
+  if (raw === undefined) return undefined;
+  if (!isObj(raw)) {
+    notes.push('Varyant zarfı okunamadı, atlandı.');
+    return undefined;
+  }
+  const env: Record<string, [number, number]> = {};
+  for (const [id0, e] of Object.entries(raw)) {
+    const id = KNOB_MAP.has(id0) ? id0 : (KNOB_ALIASES[id0] ?? id0);
+    const k = KNOB_MAP.get(id);
+    const ok = k && k.scope === 'variant' && Array.isArray(e) && e.length === 2 && e.every((x) => typeof x === 'number' && Number.isFinite(x)) && e[0] <= e[1];
+    if (ok) env[id] = [e[0], e[1]];
+    else notes.push(`Zarfta "${quote(id0)}" girdisi geçersizdi, atlandı.`);
+  }
+  return Object.keys(env).length ? env : undefined;
 }
 
 export function parseDoc(json: string): Parsed<EngineDocV1> {

@@ -113,8 +113,11 @@ describe('kompresör boyu (kademe sayısı)', () => {
     ['militaryTurbofan', 'fan', -1],
     ['turbofan', 'hpc', 2],
     ['turbofan', 'lpc', -1],
-    // Turbopropta HPC basınç oranı aralığı (6–20) en çok bir kademe ekler
+    // Turbopropta HPC basınç oranı aralığı (6–20) eksenel kademeyi 3–5'te
+    // tutar (şablon 4): tutamaç en çok ±1 kademe (§2.10 notu). ±2 kabulü
+    // TJ/MTF/TF'de.
     ['turboprop', 'hpc', 1],
+    ['turboprop', 'hpc', -1],
   ];
   it.each(cases)('%s %s: %i kademe → kademe sayısı aynı kadar değişir, gerçek ψ ≈ 0,95·ψ', (k, m, dn) => {
     for (const { g, b } of [{ g: T[k], b: built[k] }, workshop(k)]) {

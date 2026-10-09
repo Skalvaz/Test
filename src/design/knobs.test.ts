@@ -155,7 +155,8 @@ describe('düğme kataloğu', () => {
 
   it('bağlamın mimarisi tembel: değer ya da türetici verilir, okunmadıkça çağrılmaz', () => {
     expect(() => knobCtx(TURBOJET_GRAPH)).not.toThrow();
-    expect(() => knobCtx(TURBOJET_GRAPH).arch).toThrow(/mimari verilmedi/);
+    // Mimarisiz bağlamda alan hiç yok (tip KnobRangeCtx: okuma derlenmez)
+    expect('arch' in knobCtx(TURBOJET_GRAPH)).toBe(false);
     const ctx = knobCtx(TURBOJET_GRAPH, { arch: { output: 'thrust' } as never });
     expect(ctx.arch.output).toBe('thrust');
     let calls = 0;
@@ -177,6 +178,13 @@ describe('düğme kataloğu', () => {
     expect(stepValue(mf, 1000, ctx)).toBeCloseTo(1010, 9);
     expect(stepValue(mf, 1500, ctx)).toBeCloseTo(1485, 9);
     expect(stepValue(knobById('hpc.pr')!, 16.5, ctx)).toBeCloseTo(16.6, 9);
+    // Ek kısıt adımı yutunca yön değişmez: chevron 0 → 8, 8 → 0, aralık sonunda geri
+    const ch = knobById('nozzle.chevrons.core')!;
+    expect(stepValue(ch, 0, ctx)).toBe(8);
+    expect(stepValue(ch, 8, ctx, -1)).toBe(0);
+    expect(stepValue(ch, 10, ctx)).toBe(12);
+    expect(stepValue(ch, 24, ctx)).toBe(22);
+    expect(stepValue(ch, 0, ctx, -1)).toBe(8);
   });
 });
 

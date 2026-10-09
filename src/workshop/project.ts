@@ -18,7 +18,7 @@ import {
   type WorkshopProjectDocV1,
 } from '../design/engineDoc';
 import { buildEngine, type BuiltEngine } from '../design/graph';
-import { ENGINE_KNOBS, type KnobCtx } from '../design/knobs';
+import { ENGINE_KNOBS, type KnobRangeCtx } from '../design/knobs';
 import type { TemplateId } from '../design/templates';
 import type { EngineTraits } from '../design/traits';
 import type { DesignGoal } from '../design/warnings';
@@ -133,7 +133,7 @@ export function familyBase(g: EngineGraph): EngineGraph {
  * Varyant zarfı: her varyant düğmesi için taban değerinin ±%15'i (basınç
  * oranında ±%10) ile düğme aralığının kesişimi.
  */
-export function defaultEnvelope(base: EngineGraph, ctx: KnobCtx): Record<string, [number, number]> {
+export function defaultEnvelope(base: EngineGraph, ctx: KnobRangeCtx): Record<string, [number, number]> {
   const env: Record<string, [number, number]> = {};
   for (const k of ENGINE_KNOBS) {
     if (k.scope !== 'variant') continue;

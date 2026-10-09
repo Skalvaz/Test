@@ -25,14 +25,14 @@ import {
   stageRow,
   type StageModule,
 } from './inverse';
-import { knobRange, type KnobCtx } from './knobs';
+import { knobRange, type KnobRangeCtx } from './knobs';
 import type { EngineTraits } from './traits';
 import type { EngineGraph } from './types';
 
 /** 3B temel tutamaçlar */
 export type HandleId = 'frontTip' | 'propTip' | 'length:fan' | 'length:lpc' | 'length:hpc' | 'nozzleExit';
 
-export type EngineHandle = HandleDef<EngineGraph, BuiltEngine, KnobCtx> & { id: HandleId };
+export type EngineHandle = HandleDef<EngineGraph, BuiltEngine, KnobRangeCtx> & { id: HandleId };
 
 /** Kompresör boyu tutamacı */
 function lengthHandle(m: StageModule, label: string, available: (t: EngineTraits) => boolean): EngineHandle {
@@ -113,12 +113,12 @@ export const ENGINE_HANDLES: readonly EngineHandle[] = [
 ];
 
 /** Bu motorda geçerli tutamaç tanımı */
-export function handleFor(id: HandleId, ctx: KnobCtx): EngineHandle | undefined {
+export function handleFor(id: HandleId, ctx: KnobRangeCtx): EngineHandle | undefined {
   return ENGINE_HANDLES.find((h) => h.id === id && h.available(ctx));
 }
 
 /** Bu motorda geçerli bütün tutamaçlar (kimlik başına bir tanım) */
-export function handlesFor(ctx: KnobCtx): EngineHandle[] {
+export function handlesFor(ctx: KnobRangeCtx): EngineHandle[] {
   return ENGINE_HANDLES.filter((h) => h.available(ctx));
 }
 

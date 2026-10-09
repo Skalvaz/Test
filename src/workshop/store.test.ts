@@ -551,6 +551,200 @@ describe('belge, otomatik kayıt, yalıtım', () => {
   });
 });
 
+describe('aile başına son geçerli', () => {
+  /** AT-1 turbojet (geçerli), AT-2 turbofan (fan.pr 1,78: P5 ≤ P0, kurulamaz) */
+  function twoFamilies() {
+    const s = makeStore();
+    s.startFromTemplate('turbojet');
+    s.startFromTemplate('turbofan');
+    const [a, b] = s.state.project.families;
+    const goodTF = s.state.last;
+    s.setKnob('fan.pr', 1.78, 'change');
+    expect(s.state.error).not.toBeNull();
+    return { s, a, b, goodTF };
+  }
+
+  it('hatalı aileye dönünce bağlam, tutamaç ve ters çözüm o ailenin; kaydırıcıyla düzeltilir', () => {
+    const { s, a, b, goodTF } = twoFamilies();
+    s.selectFamily(a.id);
+    expect(s.state.error).toBeNull();
+    expect(s.state.last.built.traits.presentation).toBe('turbojet');
+    s.selectFamily(b.id);
+    expect(s.state.error).not.toBeNull();
+    // 3B ve tutamaçlar başka ailenin (TJ) motoru değil: TF'nin son geçerli hali
+    expect(s.state.last).toBe(goodTF);
+    expect(s.state.lastFor).toEqual({ familyId: b.id, variantId: b.active });
+    expect(s.ctx().traits.presentation).toBe('turbofan');
+    // TF ile TJ'nin tutamaç kimlikleri aynı; lüle ağzının bağı aileyi ayırır (TF: FPR)
+    expect(s.handles().find((h) => h.id === 'nozzleExit')!.coupled).toBe('fan.pr');
+    // Ön uç sürüklemesi TF hava akışını ölçekler (TJ'ninkini yazmaz)
+    const ft = s.handles().find((h) => h.id === 'frontTip')!;
+    const W0 = goodTF.graph.massFlow;
+    s.dragHandle('frontTip', ft.world[1] * 1.02, 'start');
+    s.dragHandle('frontTip', ft.world[1] * 1.02, 'end');
+    expect(s.state.graph.massFlow / W0).toBeCloseTo(1.0404, 3);
+    // Hatalı düğme panelden düzeltilir
+    s.setKnob('fan.pr', 1.6, 'change');
+    expect(s.state.error).toBeNull();
+    expect(s.state.last.built.traits.presentation).toBe('turbofan');
+  });
+
+  it('son geçerliye dön aile başına: başka ailenin anlık durumunu geri yüklemez', () => {
+    const { s, a, b } = twoFamilies();
+    s.selectFamily(a.id);
+    s.setKnob('combustor.tit', 1300, 'change');
+    s.selectFamily(b.id);
+    s.revertToLastGood();
+    expect(s.state.error).toBeNull();
+    expect(knob(s, 'fan.pr')).toBe(1.55);
+    // A'nın değişikliği yerinde
+    const fa = s.state.project.families.find((f) => f.id === a.id)!;
+    expect(knobById('combustor.tit')!.get(fa.base)).toBe(1300);
+  });
+
+  it('hiç kurulamamış aile: şablonu gösterilir, tutamaç yok, son geçerliye dön şablona döner', () => {
+    const src = makeStore();
+    src.startFromTemplate('turbofan');
+    src.setKnob('fan.pr', 1.78, 'change');
+    const broken = JSON.parse(src.exportDoc()).families[0];
+    const s = makeStore();
+    s.startFromTemplate('turbojet');
+    expect(s.importDoc(JSON.stringify(broken)).errors).toEqual([]);
+    expect(s.state.error).not.toBeNull();
+    expect(s.state.last.built.traits.presentation).toBe('turbofan');
+    expect(s.state.lastFor).toBeNull();
+    expect(s.handles()).toEqual([]);
+    expect(s.feasible('fan.pr')).toBeNull();
+    const before = s.state.graph.massFlow;
+    s.dragHandle('frontTip', 2, 'end');
+    expect(s.state.graph.massFlow).toBe(before);
+    s.revertToLastGood();
+    expect(s.state.error).toBeNull();
+    expect(knob(s, 'fan.pr')).toBe(1.55);
+  });
+
+  it('hatalı son düzenlemeden sonra devam et → ailenin son geçerli motoru, hata yok', () => {
+    const storage = memoryStorage();
+    const a = makeStore({ storage });
+    a.startFromTemplate('turbojet');
+    a.setKnob('hpc.pr', 3.4, 'change');
+    const tjRev = a.state.last.built.rev;
+    a.startFromTemplate('turbofan');
+    a.setKnob('fan.pr', 1.6, 'change');
+    const tfRev = a.state.last.built.rev;
+    a.setKnob('fan.pr', 1.78, 'change');
+    expect(a.state.error).not.toBeNull();
+    const b = makeStore({ storage });
+    expect(b.resume()).toBe(true);
+    expect(b.state.error).toBeNull();
+    expect(b.state.last.built.traits.presentation).toBe('turbofan');
+    expect(b.state.last.built.rev).toBe(tfRev);
+    expect(knob(b, 'fan.pr')).toBe(1.6);
+    expect(b.state.lastFor?.familyId).toBe(b.state.project.activeFamily);
+    b.selectFamily(b.state.project.families[0].id);
+    expect(b.state.error).toBeNull();
+    expect(b.state.last.built.rev).toBe(tjRev);
+  });
+
+  it('bozuk kayıt ve bozuk belge atölyeyi çökertmez', () => {
+    const storage = memoryStorage();
+    const a = makeStore({ storage });
+    a.startFromTemplate('turbojet');
+    const doc = JSON.parse(storage.getItem(WORKSHOP_STORAGE_KEY)!);
+    doc.families[0].family.base.modules = [null];
+    storage.setItem(WORKSHOP_STORAGE_KEY, JSON.stringify(doc));
+    expect(makeStore({ storage }).resume()).toBe(false);
+    const r = a.importDoc(JSON.stringify(doc));
+    expect(r.errors.join(' ')).toMatch(/modül listesi bozuk/);
+    expect(a.importDoc(JSON.stringify(doc.families[0])).errors.join(' ')).toMatch(/modül listesi bozuk/);
+    expect(a.state.error).toBeNull();
+  });
+});
+
+describe('varyant, kıyas, belge ayrıntıları', () => {
+  it('tek varyanta inince kalan varyantın değeri tabana katlanır; kaydırıcı etkili', () => {
+    const s = makeStore();
+    s.startFromTemplate('turbofan');
+    const v0 = s.state.project.families[0].variants[0].id;
+    s.addVariant();
+    s.setKnob('combustor.tit', 1600, 'change');
+    s.removeVariant(v0);
+    let f = s.state.project.families[0];
+    expect(f.variants.length).toBe(1);
+    expect(f.variants[0].values).toEqual({});
+    expect(f.envelope).toEqual({});
+    expect(knobById('combustor.tit')!.get(f.base)).toBe(1600);
+    expect(knob(s, 'combustor.tit')).toBe(1600);
+    s.setKnob('combustor.tit', 1750, 'change');
+    f = s.state.project.families[0];
+    expect(knob(s, 'combustor.tit')).toBe(1750);
+    expect(knobById('combustor.tit')!.get(f.base)).toBe(1750);
+  });
+
+  it('kaydırıcı bırakılınca kıyas noktası hareketin başında kalır', () => {
+    const s = makeStore();
+    s.startFromTemplate('turbofan');
+    const t0 = s.state.last.summary.thrust;
+    s.setKnob('combustor.tit', 1650, 'input');
+    s.setKnob('combustor.tit', 1700, 'input');
+    s.setKnob('combustor.tit', 1700, 'change');
+    expect(s.state.compare.thrust).toBe(t0);
+    expect(s.state.last.summary.thrust).toBeGreaterThan(t0);
+    // Yeni hareket (tek tık değişim) kıyası o anki değere taşır
+    const t1 = s.state.last.summary.thrust;
+    s.setKnob('combustor.tit', 1720, 'change');
+    expect(s.state.compare.thrust).toBe(t1);
+  });
+
+  it('mimari değişimiyle açılan aile sayfa yenilenince de şablona dönerken mimarisini korur', () => {
+    const storage = memoryStorage();
+    const a = makeStore({ storage });
+    a.startFromTemplate('turbojet');
+    a.setArchitecture('combustor', 'canAnnular');
+    const b = makeStore({ storage });
+    expect(b.resume()).toBe(true);
+    b.setKnob('hpc.pr', 3.4, 'change');
+    b.resetToTemplate();
+    expect(b.state.error).toBeNull();
+    expect(b.state.last.built.traits.combustor).toBe('canAnnular');
+    expect(knob(b, 'hpc.pr')).toBe(2.9);
+  });
+
+  it('boş atölyeye içe aktarma geri al yığınına girmez', () => {
+    const a = makeStore();
+    a.startFromTemplate('turbojet');
+    const s = makeStore();
+    expect(s.importDoc(a.exportDoc()).errors).toEqual([]);
+    expect(s.state.phase).toBe('edit');
+    expect(s.state.canUndo).toBe(false);
+    expect(s.handles().length).toBeGreaterThan(0);
+    const e = makeStore();
+    expect(e.importDoc(JSON.stringify(JSON.parse(a.exportDoc()).families[0])).errors).toEqual([]);
+    expect(e.state.canUndo).toBe(false);
+  });
+
+  it('yalnız ad değişince 3B yeniden üretilmez', () => {
+    vi.useFakeTimers();
+    const s = makeStore();
+    s.startFromTemplate('turbojet');
+    vi.advanceTimersByTime(300);
+    const n = events.length;
+    s.setName('Benim motorum');
+    vi.advanceTimersByTime(300);
+    expect(events.length).toBe(n);
+    s.setKnob('combustor.tit', 1300, 'change');
+    expect(events.length).toBe(n + 1);
+  });
+
+  it('değeri olmayan düğmenin çözülebilir aralığı yok (null)', () => {
+    const s = makeStore();
+    s.startFromTemplate('militaryTurbofan');
+    expect(knobById('mixer.lobes')!.get(s.state.graph)).toBeUndefined();
+    expect(s.feasible('mixer.lobes')).toBeNull();
+    expect(s.feasible('propeller.diameter')).toBeNull();
+  });
+});
+
 /**
  * Gerçek bağımlılıklarla (taklitsiz): değerlendirme P3, mimari P4a.
  * Paketler birleşene dek atlanır; entegrasyonda mağazanın gerçek gövdelerle

@@ -148,6 +148,41 @@ describe('motor belgesi', () => {
     const bad = parseDoc(JSON.stringify(raw));
     expect(bad.errors.join(' ')).toMatch(/Zorunlu modül eksik/);
   });
+
+  it('bozuk girdide atmaz: modül listesi, aile kodu, zarf, uzun ad', () => {
+    const raw = () => JSON.parse(serializeDoc(familyToDoc(family(TURBOJET_GRAPH))));
+    for (const modules of [[null], [1], ['x'], [{ type: 3 }]]) {
+      const r = raw();
+      r.family.base.modules = modules;
+      let p: ReturnType<typeof parseDoc> | undefined;
+      expect(() => (p = parseDoc(JSON.stringify(r))), JSON.stringify(modules)).not.toThrow();
+      expect(p!.doc).toBeUndefined();
+      expect(p!.errors[0]).toMatch(/modül listesi bozuk/);
+    }
+    // Proje belgesi de aile başına aynı denetimden geçer
+    const r0 = raw();
+    r0.family.base.modules = [null];
+    const pp = parseProjectDoc(JSON.stringify({ format: 'tfa-workshop', v: 1, families: [r0], active: r0.family.id, expert: false }));
+    expect(pp.errors.join(' ')).toMatch(/modül listesi bozuk/);
+    // Aile kodu kalıbı
+    const rc = raw();
+    rc.family.code = '<img src=x onerror=alert(1)>';
+    expect(parseDoc(JSON.stringify(rc)).errors[0]).toMatch(/Aile kodu geçersiz/);
+    // Zarf: bilinmeyen düğme, aile kapsamlı düğme, sayı olmayan, ters ve sonsuz uçlar atılır
+    const re = raw();
+    re.family.envelope = { 'hpc.pr': [2.6, 3.2], 'combustor.tit': ['a', 'b'], 'fan.pr': [1, 2], 'lpc.tipSpeed': [300, 400], 'afterburner.t7Max': [2000, 1800], 'yok.boyle': [1, 2] };
+    const pe = parseDoc(JSON.stringify(re));
+    expect(pe.errors).toEqual([]);
+    expect(pe.doc!.family.envelope).toEqual({ 'hpc.pr': [2.6, 3.2], 'fan.pr': [1, 2] });
+    expect(pe.notes.filter((n) => /Zarfta/.test(n)).length).toBe(4);
+    // Oyuncu metni: uzun ad kısaltılır; bildirimlere kısaltılmış girer
+    const rn = raw();
+    rn.variants[1].name = 'x'.repeat(200);
+    rn.variants[1].values = { ['<b>' + 'y'.repeat(100)]: 1 };
+    const pn = parseDoc(JSON.stringify(rn));
+    expect(pn.doc!.variants[1].name.length).toBe(64);
+    expect(Math.max(...pn.notes.map((n) => n.length))).toBeLessThan(140);
+  });
 });
 
 describe('proje belgesi', () => {

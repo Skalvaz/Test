@@ -6,7 +6,8 @@
  * `trim(0, 30)` ile yanıp rölantiye oturmalı.
  *
  * Aile başına ayrı test dosyası (fuzz/*.test.ts): vitest dosyaları
- * paralel koşturur, trim (~0,3 s) çok sayıda olduğu için.
+ * paralel koşturur, trim (~0,3 s) çok sayıda olduğu için. Tam küme yalnız
+ * `npm run test:fuzz` ile (aşağıda `FUZZ_FULL`).
  */
 
 import { describe, expect, it } from 'vitest';
@@ -113,17 +114,31 @@ export function fuzzFamily(id: TemplateId, n = 200, seed = 20261009, o: { trim?:
   return res;
 }
 
+/**
+ * Tam bulanık test (aile başına 200 küme, §7.1 kabulü) yalnız
+ * `npm run test:fuzz` (`vitest run --mode fuzz src/design/fuzz`) ile koşar:
+ * dört-yedi ağır dosya varsayılan takımda CPU'yu doldurup başka dosyaların
+ * 5 s'lik testlerini zaman aşımına düşürüyordu. Varsayılan `npm test`'te
+ * aile başına aynı tohumdan küçük bir duman kümesi koşar (birkaç saniye).
+ */
+export const FUZZ_FULL = import.meta.env.MODE === 'fuzz';
+/** Varsayılan takımdaki duman kümesi büyüklüğü */
+export const FUZZ_SMOKE_N = 20;
+
 /** Aile için bulanık test bloğu (aile başına ayrı dosyadan çağrılır) */
 export function defineFuzz(id: TemplateId, n = 200): void {
+  const full = FUZZ_FULL;
+  const count = full ? n : FUZZ_SMOKE_N;
   describe.skipIf(!familyReady(id))(`bulanık test: ${id}`, () => {
-    it(`${n} rastgele temel düğme kümesi: tipli hata ya da çalışan motor`, () => {
-      const r = fuzzFamily(id, n);
+    it(`${count} rastgele temel düğme kümesi: tipli hata ya da çalışan motor${full ? '' : ' (duman; tamamı npm run test:fuzz)'}`, () => {
+      const r = fuzzFamily(id, count);
       // Tipsiz hata, NaN ya da undefined erişimi yok
       expect(r.bad).toEqual([]);
-      // Geçerli oran ≥ %70 (değilse §2.10 aralıkları daraltılır)
-      expect(r.valid / r.total, JSON.stringify(r.errors)).toBeGreaterThanOrEqual(0.7);
+      // Geçerli oran ≥ %70 (değilse §2.10 aralıkları daraltılır); dumanda en az bir geçerli motor
+      if (full) expect(r.valid / r.total, JSON.stringify(r.errors)).toBeGreaterThanOrEqual(0.7);
+      else expect(r.valid, JSON.stringify(r.errors)).toBeGreaterThan(0);
       // Geçerlilerin ≥ %90'ı trim(0, 30) ile yanar ve rölantiye oturur
       expect(r.idle / r.valid, r.notIdle.slice(0, 5).join(' | ')).toBeGreaterThanOrEqual(0.9);
-    }, 600_000);
+    }, full ? 600_000 : 120_000);
   });
 }

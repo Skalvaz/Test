@@ -8,16 +8,25 @@
  *    yakalanır, `state.error`'a yazılır; ASLA console.error çağrılmaz
  *    (oynanış testi konsol hatasını başarısızlık sayar). `last` son
  *    geçerli değerlendirmedir: 3B ve sonuç paneli onu gösterir.
+ *  - "Son geçerli" aile başınadır: `lastFor` `last`'ı üreten aile/varyanttır.
+ *    Etkin aile kurulamıyorsa `last` o ailenin son geçerli hali, yoksa
+ *    şablonu olur (başka ailenin motoru gösterilmez). Düğme bağlamı her
+ *    zaman etkin varyantın grafiğinden (`state.graph`); tutamaçlar, ters
+ *    çözüm, çözülebilir aralık ve duyarlılık yalnız `last` etkin varyanta
+ *    aitken çalışır.
  *  - Kısma: `input` aşamasında sayılar her olayda tam fizikle hesaplanır;
  *    `onBuilt('draft')` en çok 1/(son üretim süresi + 16 ms) sıklıkta.
  *    `change` ve tutamaç bırakılınca hemen taslak, 250 ms sonra tam ayrıntı.
  *  - Otomatik kayıt: localStorage['turbofan-akademi:workshop:v1'] =
  *    WorkshopProjectDocV1 (try/catch; okunamazsa sessizce boş başlar).
+ *    Kurulamayan aile yerine son geçerli hali yazılır ("Devam et" hatayla
+ *    açılmaz).
  *  - Mimari değişimi yeni aile açar; eski aile listede kalır.
  *  - Aile/varyant: aile kapsamlı düğme tabanı değiştirir. Varyant kapsamlı
  *    düğme tek varyantlı ailede de tabanı değiştirir (zarf kardeş
  *    varyantlar arasındaki farkı sınırlar); birden çok varyantta yalnız
- *    etkin varyanta yazılır ve zarfa kırpılır.
+ *    etkin varyanta yazılır ve zarfa kırpılır. Tek varyanta inilince kalan
+ *    varyantın değerleri tabana katlanır.
  *
  * Henüz gövdesi başka pakette olan işlevler (değerlendirme P3, mimari P4a)
  * `deps` ile enjekte edilir; varsayılanlar gerçek modüllerdir.
@@ -35,6 +44,7 @@ import type { KnobValue } from '../design/core/knob';
 import type { Finding } from '../design/core/rules';
 import { graphFromArchitecture, solveMassFlow } from '../design/defaults';
 import {
+  graphRev,
   newDocId,
   parseDoc,
   parseProjectDoc,
@@ -107,6 +117,12 @@ export interface WorkshopState {
   graph: EngineGraph;
   /** Son geçerli değerlendirme */
   last: Evaluation;
+  /**
+   * `last`'ı üreten aile ve varyant. null: vitrin, sihirbaz önizlemesi ya da
+   * ailenin şablonu (aile hiç kurulamadı). Etkin varyanttan farklıysa sonuç
+   * paneli "son geçerli" rozetini gösterir; tutamaçlar gizlenir.
+   */
+  lastFor: { familyId: string; variantId: string } | null;
   error: TeachingError | null;
   selected: ModuleRef | null;
   /** Delta çiplerinin kıyas noktası */
@@ -230,10 +246,13 @@ function withOperability(e: Evaluation, ops: Finding[]): Evaluation {
   return { ...e, findings };
 }
 
-/** Görsel değişiklik imzası: aynı grafik + aynı kademe sayıları aynı modeldir */
+/**
+ * Görsel değişiklik imzası: aynı grafik + aynı kademe sayıları aynı modeldir.
+ * Ad (varyant adı grafiğe girer) geometriyi değiştirmez: imzaya girmez.
+ */
 const visualSig = (b: BuiltEngine) => {
   const g = b.flowpath.gas;
-  return `${b.rev}:${[g.front, g.booster, g.hpc, g.hpt, g.lpt].map((r) => r?.stages ?? 0).join(',')}`;
+  return `${graphRev({ ...b.graph, name: '' })}:${[g.front, g.booster, g.hpc, g.hpt, g.lpt].map((r) => r?.stages ?? 0).join(',')}`;
 };
 
 export class WorkshopStore {
@@ -247,8 +266,8 @@ export class WorkshopStore {
   private extras = new Map<string, DocExtras>();
   /** Ailenin ilk tabanı ("Şablon değerlerine dön"; sihirbaz aileleri için) */
   private initialBase = new Map<string, EngineGraph>();
-  /** Son geçerli değerlendirmeyi üreten proje */
-  private lastGood: Snap | null = null;
+  /** Aile başına son geçerli hal: ailenin kendisi (etkin varyantıyla) ve değerlendirmesi */
+  private lastGood = new Map<string, { family: EngineFamily; evaluation: Evaluation }>();
   private noticeSeq = 0;
   // Kısma ve yayın
   private draftTimer: ReturnType<typeof setTimeout> | null = null;
@@ -274,6 +293,7 @@ export class WorkshopStore {
       project: { families: [], activeFamily: '', expert: false },
       graph,
       last,
+      lastFor: null,
       error: 'error' in r ? r.error : null,
       selected: null,
       compare: last?.summary as DesignSummary,
@@ -357,8 +377,18 @@ export class WorkshopStore {
     return referenceBuilt(id);
   }
 
-  /** Düğme bağlamı (etkin tasarım) */
-  ctx(g: EngineGraph = this.s.last?.graph ?? this.s.graph): KnobCtx {
+  /** `last` etkin aile ve varyanta ait (tutamaç, ters çözüm, aralık bunu ister) */
+  ownsLast(): boolean {
+    const f = this.activeFamily();
+    const o = this.s.lastFor;
+    return !!f && !!o && !!this.s.last && o.familyId === f.id && o.variantId === f.active;
+  }
+
+  /**
+   * Düğme bağlamı. Varsayılan: etkin varyantın çözülmüş grafiği (geçersiz
+   * olsa da): `last` başka aileden kalmış olabilir, ondan türetilmez.
+   */
+  ctx(g: EngineGraph = this.s.graph): KnobCtx {
     const deps = this.deps;
     let arch: Architecture | undefined;
     return {
@@ -407,7 +437,7 @@ export class WorkshopStore {
     let graph = resolveFamilyVariant(fam, fam.active);
     const opts: WorkshopEvalOptions = {
       reference: this.referenceFor(fam, graph),
-      ...(drag && this.s.last ? { previous: this.s.last.built.flowpath.gas, stageHysteresis: DRAG_STAGE_HYSTERESIS } : {}),
+      ...(drag && this.ownsLast() ? { previous: this.s.last.built.flowpath.gas, stageHysteresis: DRAG_STAGE_HYSTERESIS } : {}),
       ...(p.goal ? { goal: p.goal } : {}),
       // "Düzelt" önerisi yalnız tam değerlendirmede (input aşamasında < 2 ms bütçe)
       remedies: phase === 'change',
@@ -415,6 +445,8 @@ export class WorkshopStore {
     let r = this.safeEvaluate(graph, opts);
     if ('error' in r) {
       this.set({ graph, error: r.error });
+      // Başka ailenin motoru gösterilmez: bu ailenin son geçerli hali ya da şablonu
+      if (this.s.lastFor?.familyId !== fam.id) this.showFamilyFallback(fam, phase);
       return;
     }
     // Otomatik varyant adı ("AT-1/45"): ad grafiğe girer, değişirse bir kez daha üret
@@ -434,9 +466,33 @@ export class WorkshopStore {
         }
       }
     }
-    this.lastGood = this.snap();
     if (this.opFindings?.rev === r.built.rev) r = withOperability(r, this.opFindings.findings);
-    this.set({ graph, last: r, error: null });
+    const good = this.activeFamily()!;
+    this.lastGood.set(good.id, { family: clone(good), evaluation: r });
+    this.set({ graph, last: r, lastFor: { familyId: good.id, variantId: good.active }, error: null });
+    this.publish(phase);
+  }
+
+  /**
+   * Etkin aile kurulamıyor ve `last` başka aileden: ailenin son geçerli
+   * hali (varsa), yoksa ailenin şablonu gösterilir. Şablon da kurulamazsa
+   * `last` olduğu gibi kalır (tutamaçlar yine gizli: ownsLast false).
+   */
+  private showFamilyFallback(fam: EngineFamily, phase: 'input' | 'change'): void {
+    const good = this.lastGood.get(fam.id);
+    if (good) {
+      this.set({ last: good.evaluation, lastFor: { familyId: fam.id, variantId: good.family.active } });
+    } else {
+      let tid: TemplateId;
+      try {
+        tid = existingTemplate((fam.origin.template as TemplateId | undefined) ?? templateFor(deriveTraits(fam.base)));
+      } catch {
+        return;
+      }
+      const r = this.safeEvaluate(familyBase(TEMPLATES[tid]!), { reference: referenceBuilt(tid) });
+      if ('error' in r) return;
+      this.set({ last: r, lastFor: null });
+    }
     this.publish(phase);
   }
 
@@ -505,7 +561,13 @@ export class WorkshopStore {
       this.opFindings = { rev: b.rev, findings };
     }
     const last = this.s.last;
-    if (last?.built.rev === b.rev && this.opFindings.findings.length) this.set({ last: withOperability(last, this.opFindings.findings) });
+    if (last?.built.rev === b.rev && this.opFindings.findings.length) {
+      const next = withOperability(last, this.opFindings.findings);
+      // Ailenin saklı son geçerli hali de bulgularla (aileye dönünce aynısı görünsün)
+      const good = this.s.lastFor && this.lastGood.get(this.s.lastFor.familyId);
+      if (good && good.evaluation === last) good.evaluation = next;
+      this.set({ last: next });
+    }
   }
 
   /* ------------------------------------------------------------------ */
@@ -523,7 +585,10 @@ export class WorkshopStore {
     if (phase === 'change') this.autosave();
   }
 
-  /** Kıyas noktası: sabitlenmemişse her yeni hareketin başındaki özet */
+  /**
+   * Kıyas noktası: sabitlenmemişse her yeni hareketin başındaki özet. Aynı
+   * hareketin devamı (sürüklenen hedef aynı) kıyası değiştirmez.
+   */
   private gestureStart(target: HandleId | KnobId | null): void {
     if (this.s.dragging === target && target !== null) return;
     if (!this.s.project.baseline && this.s.last) this.s = { ...this.s, compare: this.s.last.summary };
@@ -557,8 +622,11 @@ export class WorkshopStore {
           else variant.values[k.id] = v;
         } else {
           f.base = k.set(f.base, v);
-          // Tek varyantta zarf tabanla birlikte kayar
-          if (f.variants.length === 1) f.envelope = {};
+          // Tek varyantta: varyantta kalmış değer tabanı ezmesin; zarf tabanla birlikte kayar
+          if (f.variants.length === 1) {
+            delete variant.values[k.id];
+            f.envelope = {};
+          }
         }
       },
       { drag },
@@ -597,8 +665,10 @@ export class WorkshopStore {
     let dropped: string | null = null;
     if (p.families.length >= MAX_FAMILIES) {
       const i = p.families.findIndex((x) => x.id !== p.activeFamily);
+      const id = p.families[i].id;
       dropped = p.families[i].code;
-      this.extras.delete(p.families[i].id);
+      this.extras.delete(id);
+      this.lastGood.delete(id);
       p.families.splice(i, 1);
     }
     p.families.push(f);
@@ -661,7 +731,7 @@ export class WorkshopStore {
       this.set({ graph: g, error: r.error });
       return;
     }
-    this.set({ graph: g, last: r, error: null, compare: r.summary });
+    this.set({ graph: g, last: r, lastFor: null, error: null, compare: r.summary });
     this.publish('change');
   }
 
@@ -729,16 +799,29 @@ export class WorkshopStore {
       return false;
     }
     if (!json) return false;
-    const r = parseProjectDoc(json);
-    if (!r.doc || r.errors.length) return false;
-    const { project, extras } = projectFromDoc(r.doc);
-    this.extras = extras;
+    let loaded: ReturnType<typeof projectFromDoc>;
+    try {
+      const r = parseProjectDoc(json);
+      if (!r.doc || r.errors.length) return false;
+      loaded = projectFromDoc(r.doc);
+    } catch {
+      // Bozuk kayıt atölyeyi çökertmez: boş başlangıç
+      return false;
+    }
+    this.loadProject(loaded.project, loaded.extras);
     this.history.clear();
-    this.s = { ...this.s, project };
     this.enterEdit();
     this.recompute('change');
     if (this.s.last) this.set({ compare: this.s.last.summary });
     return true;
+  }
+
+  /** Belgeden gelen projeyi bellek durumuna koyar: aile başına eski durum atılır (kimlikler çakışabilir) */
+  private loadProject(project: WorkshopProject, extras: Map<string, DocExtras>): void {
+    this.extras = extras;
+    this.lastGood.clear();
+    this.initialBase.clear();
+    this.s = { ...this.s, project, lastFor: null };
   }
 
   /** Otomatik kayıt var mı (başlangıç ekranının "Devam et" düğmesi) */
@@ -750,10 +833,16 @@ export class WorkshopStore {
     }
   }
 
+  /**
+   * Otomatik kayıt: kurulamayan ailenin yerine son geçerli hali yazılır
+   * (§2.13 "son geçerli"); hiç kurulamamış aile olduğu gibi yazılır.
+   */
   private autosave(): void {
     if (!this.storage || !this.s.project.families.length) return;
     try {
-      this.storage.setItem(WORKSHOP_STORAGE_KEY, this.exportDoc());
+      const p = this.s.project;
+      const saved = { ...p, families: p.families.map((f) => this.lastGood.get(f.id)?.family ?? f) };
+      this.storage.setItem(WORKSHOP_STORAGE_KEY, serializeProjectDoc(projectToDoc(saved, this.extras)));
     } catch {
       // Kota ya da gizli kip: otomatik kayıt yalnız kolaylık
     }
@@ -793,7 +882,8 @@ export class WorkshopStore {
       this.notify(`Bilinmeyen düğme: ${id}`);
       return;
     }
-    this.gestureStart(phase === 'input' ? (k.id as KnobId) : null);
+    // Kaydırıcıyı bırakınca gelen 'change' aynı hareketin sonu: kıyas noktası değişmez
+    this.gestureStart(phase === 'input' || this.s.dragging === k.id ? (k.id as KnobId) : null);
     this.set({ dragging: phase === 'input' ? (k.id as KnobId) : null });
     const fam = this.activeFamily();
     this.writeKnob(k, v, phase, { t: 'knob', id: k.id, value: v, ...(fam ? { variant: fam.active } : {}) }, phase === 'input');
@@ -802,18 +892,20 @@ export class WorkshopStore {
   /** Mimari değişimi yeni aile açar; eski aile listede kalır */
   setArchitecture(axis: keyof Architecture, value: unknown): void {
     const fam = this.activeFamily();
-    if (!fam || !this.s.last) return;
+    if (!fam || this.s.phase === 'start') return;
     let next: EngineGraph;
     let implied: string[] = [];
+    // Tohum etkin varyantın grafiği (geçersiz olsa da); `last` başka aileden olabilir
+    const seed = this.s.graph;
     try {
-      const a = this.deps.architectureOf(this.s.last.graph);
+      const a = this.deps.architectureOf(seed);
       const r = this.deps.resolveChange(a, axis, value);
       if ('blocked' in r) {
         this.notify(r.blocked);
         return;
       }
       implied = r.implied.map((x) => x.reason).filter(Boolean);
-      next = this.deps.applyArchitecture(this.s.last.graph, r.arch);
+      next = this.deps.applyArchitecture(seed, r.arch);
     } catch (e) {
       this.set({ error: this.safeTranslate(e) });
       return;
@@ -832,7 +924,8 @@ export class WorkshopStore {
   }
 
   dragHandle(id: HandleId, target: number, phase: 'start' | 'move' | 'end'): void {
-    if (!this.s.last || this.s.phase !== 'edit') return;
+    // Ters çözüm `last`'tan: başka aileden ya da şablondan kalmışsa yazılmaz
+    if (!this.s.last || this.s.phase !== 'edit' || !this.ownsLast()) return;
     if (phase === 'start' || this.s.dragging !== id) {
       this.gestureStart(id);
       this.history.seal();
@@ -863,8 +956,6 @@ export class WorkshopStore {
     this.history.seal();
     this.dragSpecs = null;
     this.set({ dragging: null });
-    // Histerezisli son taslak yerine kademe sayıları kesin hesaplanır
-    if (this.s.error) this.autosave();
   }
 
   /** Etkin varyantın adı (elle verilince kilitlenir) */
@@ -940,6 +1031,13 @@ export class WorkshopStore {
       const f = this.activeFamily(p)!;
       f.variants = f.variants.filter((v) => v.id !== id);
       if (f.active === id) f.active = f.variants[0].id;
+      // Tek varyanta inildi: kalan varyantın çözülmüş değerleri tabana katlanır, zarf kalkar
+      if (f.variants.length === 1) {
+        const v = f.variants[0];
+        f.base = { ...resolveFamilyVariant(f, v.id), name: f.base.name };
+        v.values = {};
+        f.envelope = {};
+      }
     });
   }
 
@@ -962,7 +1060,7 @@ export class WorkshopStore {
   /** Etkin tasarımı kıyas noktası olarak sabitler (delta çipleri ona göre) */
   pinBaseline(): void {
     const fam = this.activeFamily();
-    if (!fam || !this.s.last) return;
+    if (!fam || !this.ownsLast()) return;
     this.set({
       project: { ...this.s.project, baseline: { familyId: fam.id, variantId: fam.active, graph: clone(this.s.last.graph) } },
       compare: this.s.last.summary,
@@ -983,13 +1081,21 @@ export class WorkshopStore {
     this.setKnob(f.remedy.knob as KnobId, f.remedy.value, 'change');
   }
 
-  /** Son geçerli tasarıma dön (hata durumunda) */
+  /**
+   * Etkin ailenin son geçerli haline dön (hata durumunda). Aile hiç
+   * kurulamadıysa (bozuk içe aktarma, eski kayıt) başlangıç değerlerine.
+   */
   revertToLastGood(): void {
-    const good = this.lastGood;
-    if (!good || !this.s.error) return;
-    this.commit({ t: 'family', op: 'select', id: good.project.activeFamily }, 'change', (p) => {
-      p.families = clone(good.project.families);
-      p.activeFamily = good.project.activeFamily;
+    const fam = this.activeFamily();
+    if (!fam || !this.s.error) return;
+    const good = this.lastGood.get(fam.id);
+    if (!good) {
+      this.resetToTemplate();
+      return;
+    }
+    this.commit({ t: 'family', op: 'select', id: fam.id }, 'change', (p) => {
+      const i = p.families.findIndex((f) => f.id === fam.id);
+      if (i >= 0) p.families[i] = clone(good.family);
     });
   }
 
@@ -998,7 +1104,7 @@ export class WorkshopStore {
     const fam = this.activeFamily();
     if (!fam) return;
     const tid = fam.origin.template as TemplateId | undefined;
-    const init = this.initialBase.get(fam.id) ?? (fam.origin.from === 'template' && tid && TEMPLATES[existingTemplate(tid)] ? familyBase(TEMPLATES[existingTemplate(tid)]!) : undefined);
+    const init = this.initialBase.get(fam.id) ?? (fam.origin.from === 'template' && tid ? this.templateBaseFor(fam, tid) : undefined);
     if (!init) {
       this.notify('Bu ailenin başlangıç değerleri bilinmiyor.');
       return;
@@ -1009,6 +1115,27 @@ export class WorkshopStore {
       f.envelope = {};
       for (const v of f.variants) v.values = {};
     });
+  }
+
+  /**
+   * Şablonun tabanı, ailenin mimarisinde (sayfa yenilenince ilk taban
+   * bellekte yok). Mimari değişimiyle açılan aile şablondan farklı mimaride
+   * olabilir: şablona ailenin mimarisi uygulanır; uygulanamazsa undefined
+   * (mimari sessizce geri alınmaz).
+   */
+  private templateBaseFor(fam: EngineFamily, tid: TemplateId): EngineGraph | undefined {
+    const t = TEMPLATES[existingTemplate(tid)];
+    if (!t) return undefined;
+    const base = familyBase(t);
+    try {
+      const key = (g: EngineGraph) => JSON.stringify(this.deps.architectureOf(g));
+      const want = this.deps.architectureOf(fam.base);
+      if (key(base) === JSON.stringify(want)) return base;
+      const g = familyBase(this.deps.applyArchitecture(base, want));
+      return key(g) === JSON.stringify(want) ? g : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   undo(): void {
@@ -1037,7 +1164,7 @@ export class WorkshopStore {
   /** Etkin motorun tutamaçları, dünya konumlarıyla. Sınırlar sürüklerken sabit kalır. */
   handles(): HandleSpec[] {
     const last = this.s.last;
-    if (!last || this.s.phase === 'start') return [];
+    if (!last || this.s.phase === 'start' || !this.ownsLast()) return [];
     const g = last.graph;
     const b = last.built;
     const out: HandleSpec[] = [];
@@ -1076,7 +1203,9 @@ export class WorkshopStore {
   feasible(id: KnobId): ReturnType<typeof feasibleRange> | null {
     const k = knobById(id);
     const last = this.s.last;
-    if (!k || !last) return null;
+    if (!k || !last || !this.ownsLast()) return null;
+    // Değeri olmayan düğme (ör. düz karıştırıcıda lobe sayısı) ya da bu motorda olmayan düğme: aralık yok
+    if (!k.range(this.ctx(last.graph)) || !Number.isFinite(Number(k.get(last.graph)))) return null;
     const opts = this.buildOptions(last.graph);
     return feasibleRange(last.graph, k, this.ctx(last.graph), { build: (g) => buildChecked(g, opts), translate: (e) => this.safeTranslate(e) });
   }
@@ -1085,7 +1214,7 @@ export class WorkshopStore {
   sensitivity(id: KnobId): SummaryDelta[] {
     const k = knobById(id);
     const last = this.s.last;
-    if (!k || !last) return [];
+    if (!k || !last || !this.ownsLast()) return [];
     const opts = this.buildOptions(last.graph);
     try {
       return sensitivity(last.graph, k, this.ctx(last.graph), {
@@ -1114,30 +1243,61 @@ export class WorkshopStore {
     } catch {
       return { errors: ['Belge okunamadı: geçerli bir JSON değil.'], notes: [] };
     }
-    if (format === 'tfa-engine') {
-      const r = parseDoc(json);
-      if (!r.doc || r.errors.length) return { errors: r.errors.length ? r.errors : ['Belge okunamadı.'], notes: r.notes };
-      const { family, extras } = familyFromDoc(r.doc);
-      const notes = [...r.notes];
+    // Ayrıştırma hiçbir girdide atmaz; yine de beklenmedik bozulma atölyeyi çökertmesin
+    const fail = (e: unknown) => ({ errors: [`Belge okunamadı: ${e instanceof Error ? e.message : String(e)}`], notes: [] });
+    // Boş atölyeye (başlangıç ekranı) içe aktarma geri al yığınına girmez
+    const fresh = this.s.project.families.length === 0;
+    const write = (edit: Edit, mutate: (p: WorkshopProject) => void) => {
       this.enterEdit();
-      this.commit({ t: 'family', op: 'new', id: family.id }, 'change', (p) => {
+      if (fresh) {
+        this.history.clear();
+        const p = clone(this.s.project);
+        mutate(p);
+        this.s = { ...this.s, project: p };
+        this.recompute('change');
+        this.autosave();
+      } else this.commit(edit, 'change', mutate);
+      if (this.s.last) this.set({ compare: this.s.last.summary });
+    };
+    if (format === 'tfa-engine') {
+      let doc: ReturnType<typeof familyFromDoc>;
+      let notes: string[];
+      try {
+        const r = parseDoc(json);
+        if (!r.doc || r.errors.length) return { errors: r.errors.length ? r.errors : ['Belge okunamadı.'], notes: r.notes };
+        doc = familyFromDoc(r.doc);
+        notes = [...r.notes];
+      } catch (e) {
+        return fail(e);
+      }
+      const { family, extras } = doc;
+      write({ t: 'family', op: 'new', id: family.id }, (p) => {
         const f = family as EngineFamily;
         if (p.families.some((x) => x.id === f.id)) {
           f.id = newDocId('f_');
           notes.push('Aynı kimlikli aile zaten açık: kopya yeni kimlikle eklendi.');
         }
         this.extras.set(f.id, extras);
+        // Kimlik başka bir eski aileden kalmış olabilir
+        this.lastGood.delete(f.id);
         const dropped = this.addFamily(p, f);
         if (dropped) notes.push(`En çok ${MAX_FAMILIES} aile: ${dropped} kapatıldı.`);
       });
       return { errors: [], notes };
     }
-    const r = parseProjectDoc(json);
-    if (!r.doc || r.errors.length) return { errors: r.errors.length ? r.errors : ['Belge okunamadı.'], notes: r.notes };
-    const { project, extras } = projectFromDoc(r.doc);
-    this.extras = extras;
-    this.enterEdit();
-    this.commit({ t: 'family', op: 'new', id: project.activeFamily }, 'change', (p) => {
+    let loaded: ReturnType<typeof projectFromDoc>;
+    let notes: string[];
+    try {
+      const r = parseProjectDoc(json);
+      if (!r.doc || r.errors.length) return { errors: r.errors.length ? r.errors : ['Belge okunamadı.'], notes: r.notes };
+      loaded = projectFromDoc(r.doc);
+      notes = r.notes;
+    } catch (e) {
+      return fail(e);
+    }
+    const { project, extras } = loaded;
+    this.loadProject(this.s.project, extras);
+    write({ t: 'family', op: 'new', id: project.activeFamily }, (p) => {
       p.families = project.families;
       p.activeFamily = project.activeFamily;
       p.expert = project.expert;
@@ -1145,7 +1305,7 @@ export class WorkshopStore {
       else delete p.goal;
       delete p.baseline;
     });
-    return { errors: [], notes: r.notes };
+    return { errors: [], notes };
   }
 }
 

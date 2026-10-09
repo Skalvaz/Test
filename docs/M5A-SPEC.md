@@ -613,6 +613,8 @@ tabloya geri yazar.
 
 **P4b bulanık testinden sonra (kalın değerler):** aile başına 200 rastgele temel düğme kümesinde geçerli oran %70'in altında kaldığı için T4, HPC PR, LPC PR ve TF fan PR/BPR aralıkları aile bağlamına göre daraltıldı (yüksek baypaslı fan sıcak çekirdek ister: TF'de T4 < 1500 K'de P5 ≤ P0; kısa iki milli turbojette HPC PR > 6'da HPT çıkış kanalı kapanır; LPC PR < 2,1'de LPC çıkış kanalı kapanır). Kutu sayısı kaydırıcısı 6–10'a indi (grafik kuralı 6–16 kalır): kuru turbojette 11+ kutu kümelerin çoğunda çevreye sığmadı, geçerli oran %34'tü (J57 8, JT8D 9, J79 10 kutu). Uzman aralıklarından hpc `.mach.0`, türbin `.mach.0` ve `.bladeK`, `bypassDuct.mach` şablon değerlerini kapsayacak kadar genişletildi.
 
+**Turboprop kompresör boyu (P4b ölçümü, M5a öncesi TP şablonu):** TP/TS'de `hpc.pr` toplam basınç oranıdır (6–20); şablonun 4 eksenel kademesi (+ çark) bu aralıkta 3–5 arasında kalır (PR 6 → 3, 15 → 4, 20 → 5). Bu yüzden `length:hpc` tutamacı turbopropta en çok **±1 kademe** oynar; §7.1'deki "+2 kademe → kademe +2" kabulü TJ, MTF ve TF'de sınanır, TP'de ±1. P2'nin fiziğe uydurulmuş TP şablonuyla entegrasyonda yeniden ölçülür (`inverse.test.ts` TP satırları).
+
 T4 üst sınırı M5a'da **1900 K**: soğutma havası modeli yok, çevrim yüksek
 T4'ün kazancını abartır (M5c'de dönem + soğutma ile açılır). Bir ailede en
 çok ~8 temel düğme görünür.
@@ -1861,7 +1863,7 @@ bölüm başında `[data-action="coach-skip"]` ile kapatılır.
 | Karışık akışta tasarım dışı A9mix kısıtı yok | O / D | `mixerPR` uyarısı + Düzelt; rölanti/kısmi güç yakınsama testi; M5b'de kısıt |
 | Sıcak dosyalarda birleştirme çakışması | Y / O | P0 bölmesi, hunk sahipliği, sabit sıra |
 | Tam üretim takılması ve yeni ailelerin üretim süresi ölçülmemiş | O / O | ayrıntı başına `prev`, `effects:false`, `buildCombustor` reuse, hayalet önizleme; `bench-rebuild --family` |
-| `buildEngine` 0,05–0,13 ms ölçümü sıcak JIT | D / O | soğuk ölçüm P4b'de; `feasibleRange` yalnız boşta |
+| `buildEngine` 0,05–0,13 ms ölçümü sıcak JIT | D / O | soğuk ölçüm P4b'de; `feasibleRange` yalnız boşta. **P4b soğuk ölçümü** (aile başına yeni süreç, 3 tekrar, M5a öncesi şablonlar): ilk `buildEngine` TJ/MTF/TF/TP 2,7–4,0 ms, ikinci (atölye grafiği) 0,5–0,6 ms; ilk lüle tutamacı adımı TJ/MTF/TF 4,1–5,1 ms (ikinci 2,2–3,1), TP 0,3 ms (kapalı biçim). Makine yüklüyken tek ölçüm 6,7 / 10,8 ms. İlk sürükleme olayı 20 ms bütçesinde kalır |
 | `barejet.js`/`turboprop.js` sabitleri uç boyutta bozuk | Y / O | P5 ve P2 oranlama; `smoke-families` uç boyut görüntüleri |
 | Uç boyutlu motor hücreye/standa sığmaz (CELL_BOUNDS ±12,9 m, `maxDistance` 18) | D / O | hava akışı aralıkları (çap ≤ 4 m, boy ≤ 9 m); `frameDesign` |
 | Şablon uydurma ders 1 parça tıklamalarını kaydırır | O / O | P2 kabulünde `ONLY=1,2` |
