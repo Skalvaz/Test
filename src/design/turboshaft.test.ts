@@ -17,7 +17,7 @@ import { SHAFT_Z } from './flowpath';
 import { buildEngine, toEngineDesign } from './graph';
 import { summarize } from './summary';
 import { TURBOPROP_GRAPH } from './templates';
-import type { EngineGraph, ShaftModule } from './types';
+import type { EngineGraph, InletModule, ShaftModule } from './types';
 import { evaluateOperability } from './warnings';
 
 const TS = TEMPLATES.turboshaft!;
@@ -148,6 +148,24 @@ describe('turboşaft yerleşimi', () => {
       expect(Lr.output.reduction).toBe(true);
       expect(Lr.housing.gearboxR).toBeLessThan(Lr.inlet.rInner);
       expect(Lr.inlet.rOuter).toBeGreaterThan(Lr.inlet.rInner);
+    }
+  });
+
+  it('inlet.length uç değerlerinde z sırası: gövde ağzın önüne taşmaz, çerçeve rotora girmez; kuyruk konisi monoton', () => {
+    for (const len of [0, 0.3, 0.79, 2]) {
+      const g = structuredClone(TS);
+      mod<InletModule>(g, 'inlet').length = len;
+      const r = buildEngine(g);
+      const Lr = r.flowpath.layout;
+      if (Lr.style !== 'turboshaft') throw new Error('yerleşim');
+      expect(Lr.gg.case[0][1]).toBeGreaterThanOrEqual(Lr.inlet.z0 - 1e-12);
+      for (let i = 1; i < Lr.gg.case.length; i++) expect(Lr.gg.case[i][1]).toBeGreaterThan(Lr.gg.case[i - 1][1]);
+      expect(Lr.inlet.z1).toBeLessThanOrEqual(r.flowpath.gas.hpc.z0 + 1e-12);
+      expect(Lr.inlet.z1 - Lr.inlet.z0).toBeGreaterThanOrEqual(0.04 * Lr.k - 1e-12);
+      const ex = Lr.gg.exhaust;
+      const mid = 0.5 * (ex.z0 + ex.coneZ1);
+      expect(ex.z0 - 0.03 * Lr.k).toBeLessThan(mid);
+      expect(mid).toBeLessThan(ex.coneZ1);
     }
   });
 

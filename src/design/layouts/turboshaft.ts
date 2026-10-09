@@ -67,7 +67,7 @@ function turboshaftGeometry(graph: EngineGraph, sized: SizedEngine, gp: GasPath)
   const inletMod = moduleOf<InletModule>(graph, 'inlet')!;
   const { hpc } = gp;
   const k = gasGenScale(gp);
-  const gg = gasGeneratorLayout(graph, sized, gp, SHAFT_Z, { k, exhaustLength: EXHAUST_LENGTH });
+  const gg = gasGeneratorLayout(graph, sized, gp, SHAFT_Z, { k, exhaustLength: EXHAUST_LENGTH, caseZ0Min: SHAFT_Z + shaft.gearboxLength });
 
   // Çıkış mili: yarıçap torkun küp kökü ile (P çıkış gücü, ω çıkış devri)
   const wOut = (shaft.rpm * 2 * Math.PI) / 60;
@@ -80,7 +80,8 @@ function turboshaftGeometry(graph: EngineGraph, sized: SizedEngine, gp: GasPath)
   // Halka giriş: merkez gövde HPC göbeğinden biraz büyük (mil gövdesini
   // sarar); dış yarıçap ağız alanından (giriş akışı, INLET_MACH)
   const z0 = SHAFT_Z + shaft.gearboxLength;
-  const z1 = Math.max(hpc.z0, z0 + 0.04 * k);
+  // HPC en az TURBOSHAFT_MIN_INLET·uç arkada (flowpath.ts): çerçeve rotora girmez
+  const z1 = hpc.z0;
   // Mil gövdesi önce: redüktör varsa planet takımını alacak kadar şişkin;
   // halka giriş merkez gövdesi onu sarar (Makila gibi ağız dışa kayar)
   const housingR = Math.max(radius * 1.9, flangeR * 0.85);

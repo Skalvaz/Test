@@ -122,7 +122,8 @@ export function buildGasGenerator(materials, gg, o = {}) {
   const prof = radiusProfile(casePts.map(([r, z]) => [r, z]));
   // Kit parçaları (Blender'da modellenmiş dış donanım, bkz. kit.js)
   const kit = new KitBatch(materials);
-  for (const fz of [hz - 0.12 * k, g.hpc.z1, cen.z + 0.06 * k, cb.z1 + 0.02 * k, g.lpt.z1 + 0.1 * k]) {
+  // Ön flanş gövdenin ön ucunda (turbopropta hz − 0,12k; turboşaftta ağza kırpılmış)
+  for (const fz of [casePts[0][1], g.hpc.z1, cen.z + 0.06 * k, cb.z1 + 0.02 * k, g.lpt.z1 + 0.1 * k]) {
     const r = prof(fz);
     const fl = new THREE.Mesh(new THREE.TorusGeometry(r + 0.004 * k, 0.01 * k, 8, 96), materials.kitSteel ?? materials.machinery);
     fl.position.z = fz;
@@ -138,7 +139,7 @@ export function buildGasGenerator(materials, gg, o = {}) {
   );
   group.add(tagPart(jetPipe, 'exhaust'));
   const tail = new THREE.Mesh(
-    thickLathe(smoothProfile([[ex.coneR, ex.z0 - 0.03 * k], [ex.coneR * 0.67, ex.z0 + 0.22 * k], [0.01 * k, ex.coneZ1]], 30), 48, 0.008 * k, 'in'),
+    thickLathe(smoothProfile([[ex.coneR, ex.z0 - 0.03 * k], [ex.coneR * 0.67, 0.5 * (ex.z0 + ex.coneZ1)], [0.01 * k, ex.coneZ1]], 30), 48, 0.008 * k, 'in'),
     exMat,
   );
   group.add(tagPart(tail, 'exhaust'));
