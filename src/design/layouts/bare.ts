@@ -169,8 +169,13 @@ function bareJetLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Bar
   const { hpc, hpt, lpt } = gp;
   const { z0: cz0, z1: cz1, rOut } = gp.combustor;
   const bypass = !!fan && (fan.bypassRatio ?? 0) > 0;
-  // Kuyruk konisi ve 3B disk LPT göbeğinden: göbek mile inmişse kurulamaz
-  checkLptDisk(lpt, gp.shafts.lp, bypass ? LP_LOAD.fan : LP_LOAD.lpc);
+  // Kuyruk konisi ve 3B disk LPT göbeğinden: göbek mile inmişse kurulamaz.
+  // Yalnız fanlı motorda: çöküş (RangeError) yalnız askeri TF'de görüldü;
+  // turbojet ve kuru turbojette ölçütün reddettiği kümeler (çok düğmeli
+  // bulanık tarama) 9e57760'ta 3B dahil sorunsuz kuruluyordu, oyuncunun
+  // alanı gereksiz daralmasın. (Ölçüt fanlı motorda da temkinli: gerçek
+  // sınır stages.js'in sabit disk ölçülerine bağlı, bkz. açık işler.)
+  if (bypass) checkLptDisk(lpt, gp.shafts.lp, LP_LOAD.fan);
 
   // --- türbin çıkış çerçevesi ve kuyruk konisi ---
   const coneR = lpt.hub[1] - 0.015;

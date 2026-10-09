@@ -223,6 +223,18 @@ describe('art yakıcısız çıplak yerleşim', () => {
     }
     expect(throats[1] / throats[0]).toBeGreaterThan(4);
   });
+
+  it('LPT disk ölçütü turbojet ailelerinin alanını daraltmaz (bakım: 9e57760’ta 3B dahil kuruluyordu)', () => {
+    const tj = structuredClone(TURBOJET_GRAPH);
+    const mod = <T extends EngineModule>(g: EngineGraph, type: string) => g.modules.find((m) => m.type === type) as T;
+    mod<EngineModule & { pr: number }>(tj, 'lpc').pr = 4.904;
+    mod<EngineModule & { pr: number }>(tj, 'hpc').pr = 4.512;
+    mod<CombustorModule>(tj, 'combustor').tit = 1105.6;
+    expect(() => buildEngine(tj)).not.toThrow();
+    const tjd = structuredClone(TURBOJET_DRY_GRAPH);
+    mod<EngineModule & { hubTip: number }>(tjd, 'lpt').hubTip = 0.5;
+    expect(() => buildEngine(tjd)).not.toThrow();
+  });
 });
 
 describe('yanma odası stili her aileye dik (§3.3)', () => {
