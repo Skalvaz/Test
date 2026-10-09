@@ -272,7 +272,7 @@ export class WorkshopPanel {
       on: { change: () => store.setGoal(goalSel.value || null) },
     }, [h('option', { text: 'Görev yok', attrs: { value: '' } }), ...GOALS.map((g) => h('option', { text: g.title, attrs: { value: g.id } }))]);
     goalSel.value = p.goal?.id ?? '';
-    this.family.replaceChildren(
+    const kids: (Node | null)[] = [
       h('div', { class: 'section-label', text: 'Aileler' }),
       h('div', { class: 'ws-fam-list' }, rows),
       h('div', { class: 'chips' }, [
@@ -289,7 +289,8 @@ export class WorkshopPanel {
       h('div', { class: 'section-label', text: 'Görev' }),
       goalSel,
       p.goal ? h('p', { class: 'step-body', text: p.goal.brief }) : null,
-    );
+    ];
+    this.family.replaceChildren(...kids.filter((x): x is Node => x !== null));
   }
 
   private renderToolbar(s: Readonly<WorkshopState>): void {
@@ -300,7 +301,7 @@ export class WorkshopPanel {
       this.famKey = key;
       this.famSelect.replaceChildren(...p.families.map((f) => h('option', { text: `${f.code} ${f.name.replace(f.code, '').trim()}`, attrs: { value: f.id } })));
       this.famSelect.value = p.activeFamily;
-      this.variantsEl.replaceChildren(
+      this.variantsEl.replaceChildren(...[
         ...(fam?.variants ?? []).map((v) =>
           h('button', {
             class: `ws-variant${v.id === fam!.active ? ' sel' : ''}`,
@@ -312,8 +313,8 @@ export class WorkshopPanel {
         ),
         fam && fam.variants.length < 4
           ? h('button', { class: 'ws-variant add', text: '+', title: 'Yeni varyant', attrs: { type: 'button', 'aria-label': 'Yeni varyant' }, on: { click: () => this.store.addVariant() } })
-          : null as unknown as Node,
-      );
+          : null,
+      ].filter((x): x is HTMLButtonElement => x !== null));
     }
     this.expertBtn.classList.toggle('active', p.expert);
     this.expertBtn.setAttribute('aria-pressed', String(p.expert));

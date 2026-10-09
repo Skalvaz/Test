@@ -73,7 +73,6 @@ export class Wizard {
   private foot: HTMLDivElement;
   private dots: HTMLDivElement;
   private step = 0;
-  private target: NumberField | null = null;
   private live: HTMLDivElement | null = null;
   private key = '';
 
@@ -152,7 +151,6 @@ export class Wizard {
     }
     if (def.n === 6) blocks.push(this.sizeBlock(a));
     else {
-      this.target = null;
       this.live = null;
     }
     this.body.replaceChildren(h('div', { attrs: { [ATTR.wizardStep]: String(def.n) } }, blocks));
@@ -213,7 +211,6 @@ export class Wizard {
       onChange: (v) => this.store.wizardSize(shaft ? { shaftPower: v * 1e3 } : { thrust: v * 1e3 }),
     });
     f.setValue(shaft ? (w.target.shaftPower ?? 1.2e6) / 1e3 : (w.target.thrust ?? 50e3) / 1e3);
-    this.target = f;
     this.live = h('div', { class: 'ws-live mono' });
     return h('div', { class: 'ws-size' }, [f.el, this.live]);
   }
