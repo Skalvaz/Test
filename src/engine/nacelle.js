@@ -42,11 +42,12 @@ const COWL_POINTS = [
 
 /**
  * Uzun kanallı kaportanın arka kısmının boyası: kütüphanenin `cowlPaint`
- * malzemesinden (fan kaportasıyla aynı boya dokusu, ton ve tarama ayarları),
- * ama pişirilmiş derz/yazı dokusu (`cowlDetail`) yok: o doku kısa fan
- * kaportasının boyuna göre çizildi, uzun kanala gerilince yazılar ve kuşak
- * bandı yanlış yere düşer. Derzler geometriyle. Kesitte kesik yüzey kapağı
- * (capify) kütüphanedeki kapalı kabuklar gibi. Kütüphane başına tek kopya.
+ * malzemesinin klonu (fan kaportasıyla aynı vernik, parlaklık ve tarama
+ * ayarları), ama dokusuz: hem pişirilmiş derz/yazı dokusu (`cowlDetail`)
+ * hem boya dokusu kısa fan kaportasının boyuna göre çizildi, uzun kanala
+ * gerilince yazılar ve kuşak bandı yanlış yere düşer. Derzler geometriyle.
+ * Kesitte kesik yüzey kapağı (capify) kütüphanedeki kapalı kabuklar gibi.
+ * Kütüphane başına tek kopya.
  */
 const aftPaints = new WeakMap();
 function aftCowlPaint(materials) {
@@ -54,7 +55,16 @@ function aftCowlPaint(materials) {
   if (!base) return materials.cowlDetail;
   let m = aftPaints.get(base);
   if (!m) {
-    m = capify(base.clone());
+    // Boya dokusu (createNacelleMaps) da kısa kaportaya çizili: panel
+    // derzleri ve kuşak bandı uzun gövdede yanlış yere düşer. Dokular
+    // atılır, renk dokunun taban boyası (#e8eaec); parlaklık, vernik ve
+    // taramadan gelen ayarlar kütüphaneden.
+    m = base.clone();
+    m.map = null;
+    m.roughnessMap = null;
+    m.normalMap = null;
+    m.color.set(0xe8eaec);
+    capify(m);
     m.name = 'aftCowlPaint';
     aftPaints.set(base, m);
   }
