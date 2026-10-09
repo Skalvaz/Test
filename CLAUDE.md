@@ -153,14 +153,27 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
    dalgadan sonra genel kontrol + kod incelemesi (`/code-review high`)
    bekliyor, sonra commit + push.
    - ✅ P0 sözleşmeler ve iskelet (`4e1b376`).
-   - ⏳ Dalga 1 (P1 sim, P2 şablon, P3 değerlendirme, P4a mimari, P4b
-     atölye çekirdeği, P5 kuru + kutu-halka, P8 kind→traits): iş akışı
-     `wf_3d581906-dfb`. Paketler ayrı worktree'lerde `m5a/p*` dallarına
-     commit eder; entegratör ana kopyada P1→P2→P3→P8→P5→P4a→P4b sırasıyla
-     birleştirir (push yok). Yarıda kaldıysa: `git branch --list "m5a/*"`
-     ve `git worktree list` ile durumu gör; aynı oturumdaysa iş akışını
-     `resumeFromRunId` ile sürdür, değilse eksik paketleri yeniden başlat.
-   - Sonra: dalga 2 (P6 karışık TF, P7 turboşaft, P9 tutamaçlar, P10
-     arayüz), dalga 3 (P11 entegrasyon, oynanış testi, belgeler).
+   - ✅ Dalga 1 (P1 sim, P2 şablon, P3 değerlendirme, P4a mimari, P4b
+     atölye çekirdeği, P5 kuru + kutu-halka, P8 kind→traits) birleşti;
+     alanlara bölünmüş inceleme 28 hata doğruladı, hepsi düzeltildi
+     (`48e4687`; 784 test, bulanık test, ders 1–2 + test hücresi oynanış).
+   - Yöntem: paketler ayrı worktree'lerde (`.claude/worktrees/`) `m5a/*`
+     dallarına commit eder, entegratör ana kopyada sırayla birleştirir.
+     Yarıda kalınca: `git branch --list "m5a/*"`, `git worktree list`;
+     aynı oturumda `resumeFromRunId`, değilse eksikleri mevcut
+     worktree'lerde devam ettiren yeni iş akışı.
+   - ⏳ Dalga 2: P6 karışık TF, P7 turboşaft, P9 tutamaçlar, P10 arayüz;
+     dalga 3: P11 entegrasyon, oynanış testi, belgeler. Dalga 2'ye
+     devreden açıklar: askeri TF türevi BPR 1,2'de `buildGasPath`
+     "Invalid typed array length" (1,3–1,5'te FlowpathError; aralık
+     0,1–1,5 açık); turboşaft `solveMassFlow`/`card.ts` hâlâ
+     `ref.shaftPower` (özet `ref.outputPower`); turboşaft light-off
+     20–40 s ve NP aşımı (P7 şablonu); `ensureWorkable` notu yanıltıcı;
+     §2.4 yeni fan BPR'si (kod: bağışçının). Kullanıcıya raporlanacak:
+     kuru TJ yalnız ~131 kg hafif (AB kalemi 237 kg); TP'de "+2 kademe"
+     ters eşleme sapması.
+   - Kullanım: iş akışı başlatmadan önce `get_usage`; 5 saatlik ≥ %80'de
+     yeni iş akışı yok. Ölçüm: dalga 1 düzeltmesi (12 ajan) ≈ 5 sa
+     sınırının %27'si, haftalığın %4'ü.
    - Paket portları: Pn → 518n (P4b 5194), önizleme 418n; 5173/4173 ana.
 2. M5b, M5c (`docs/ATOLYE.md`).
