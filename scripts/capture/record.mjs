@@ -13,7 +13,9 @@
  *
  * Sahne alanları: kind, env, quality, w, h, cam, tgt, fov, cut, setup (js),
  * frames, dt, skip, actions { kare: js }. setup ve actions içinde `a`
- * (App) ve `sim` (EngineSim) kullanılabilir.
+ * (App) ve `sim` (EngineSim) kullanılabilir. cam/tgt/fov/cut ilk karenin
+ * kadrajıdır: setup'tan önce ve sonra kurulur (setup'taki motor değişikliği
+ * kamerayı yeniden kadrajlasa da); kamerayı sonradan actions değiştirir.
  *
  * Toplu kayıt (batch.mjs) aynı sayfayı sahneler arasında yeniden kullanır:
  * openPage bir kez çağrılır, recordScene her sahnede motoru ve görseli
@@ -108,29 +110,46 @@ export async function recordScene(page, spec, outDir, { gif = false } = {}) {
   });
   const tEnv = secs(t0);
 
-  await page.evaluate(
+  const bad = await page.evaluate(
     ([s, pos, tgt, fov, cut]) => {
       const a = window.__app;
-      a.rig.anim.active = false;
-      a.rig.bounds = null;
-      a.rig.controls.maxDistance = 500;
-      a.rig.controls.minDistance = 0.05;
-      a.rig.camera.position.set(...pos);
-      a.rig.controls.target.set(...tgt);
-      a.rig.camera.fov = fov;
-      // Paneller gizli: projeksiyon kaydırması/uzaklaştırması olmasın (eski
-      // sürümler arayüz gizliyken de panellere yer açıyordu)
-      a.rig.setInsets({ left: 0, right: 0, top: 0, bottom: 0 });
-      a.rig.resize(innerWidth, innerHeight);
-      a.rig.camera.updateProjectionMatrix();
-      a.rig.controls.update();
-      a.setCutaway(!!cut);
+      const frame = () => {
+        a.rig.anim.active = false;
+        a.rig.bounds = null;
+        a.rig.controls.maxDistance = 500;
+        a.rig.controls.minDistance = 0.05;
+        a.rig.camera.position.set(...pos);
+        a.rig.controls.target.set(...tgt);
+        a.rig.camera.fov = fov;
+        // Paneller gizli: projeksiyon kaydırması/uzaklaştırması olmasın (eski
+        // sürümler arayüz gizliyken de panellere yer açıyordu)
+        a.rig.setInsets({ left: 0, right: 0, top: 0, bottom: 0 });
+        a.rig.resize(innerWidth, innerHeight);
+        a.rig.camera.updateProjectionMatrix();
+        a.rig.controls.update();
+        a.setCutaway(!!cut);
+      };
+      frame();
       // eslint-disable-next-line no-unused-vars
       const sim = a.sim;
       eval(s || '');
+      // Setup motoru değiştirmiş olabilir (setEngine/rebuildVisual): yeni
+      // motorun açı takımında seçili açı (openSandbox → 'front') varsa
+      // setEngine rig.go ile yeniden kadrajlar, kesiti o açıya göre kapatır
+      // ve setup'taki advance animasyonu bitirir. Sahnenin kamerası ve kesiti
+      // tanım gereği ilk karenin kadrajı: setup'tan sonra yeniden kurulur
+      // (setup kamerayı değiştirmez; kamera değişikliği actions ile).
+      frame();
+      const p = a.rig.camera.position;
+      const t = a.rig.controls.target;
+      const off = Math.max(...pos.map((x, i) => Math.abs(x - p.getComponent(i))), ...tgt.map((x, i) => Math.abs(x - t.getComponent(i))));
+      // Eski commit'lerde a.cutaway olmayabilir
+      const cutOk = !('cutaway' in a) || a.cutaway === !!cut;
+      return off > 1e-6 || !cutOk ? `kamera ${off.toFixed(3)} m kaydı, kesit ${a.cutaway} (istenen ${!!cut})` : null;
     },
     [spec.setup, spec.cam, spec.tgt, spec.fov ?? 36, spec.cut ?? 0],
   );
+  if (bad) throw new Error(`${name}: sahne kadrajı kurulamadı: ${bad}`);
   await page.evaluate((dt) => {
     const a = window.__app;
     a.fixedDt = dt;

@@ -16,6 +16,7 @@ import { ambient, type Ambient } from './atmosphere';
 import { computeCycle, HEALTHY, surgeFuelFlow, type CycleResult, type Health } from './cycle';
 import {
   DEFAULT_DESIGN,
+  outputEff,
   sizeEngine,
   TURBOFAN_LIMITS,
   type EngineDesign,
@@ -127,7 +128,10 @@ export interface SimSnapshot {
   egtTrue: number; // °C
   wf: number; // kg/s
   thrust: number; // N
-  tsfc: number; // kg/(N·s)
+  /** kg/(N·s); turboşaftta 0 (ürün itki değil, bkz. sfc) */
+  tsfc: number;
+  /** Mil çıkışlı motorda (pervane, çıkış mili) çıkış gücüne göre yakıt tüketimi [kg/(W·s)]; jet motorunda 0 */
+  sfc: number;
   lit: boolean;
   surging: boolean;
   phase: StartPhase;
@@ -161,6 +165,7 @@ export interface SimSnapshot {
   propRpm: number;
   /** Tork, tasarımın oranı (1 = %100) */
   torque: number;
+  /** Çıkış gücü [W] (turboşaftta çıkış flanşında, ×transmissionEff) */
   shaftPower: number;
   propThrust: number;
   /** Pervane pal yükü (vali çıkışı), 0 = ince pal … */
@@ -873,6 +878,13 @@ export class EngineSim {
     const cyc = this.last;
     const d = this.eng.design;
     const load = d.prop ?? d.shaft;
+    // Turboşaft: ürün mil gücü; itkiye göre yakıt tüketimi anlamsız (itki
+    // yalnız egzoz artığı), verim SFC ile ölçülür. Çıkış gücü güç türbininin
+    // ürettiği (yükün emdiği) güç × aktarma verimi
+    const shaftOnly = !!d.shaft && !d.prop;
+    const outPower = this.propPower * outputEff(d);
+    const thrust = cyc.netThrust + this.propThrust;
+    const fuel = this.wf + this.wfAb;
     return {
       time: this.time,
       N1: this.N1,
@@ -881,12 +893,10 @@ export class EngineSim {
       n2Rpm: this.N2 * d.n2Rpm,
       egt: this.egtSensor,
       egtTrue: cyc.stations['45'].T - KELVIN,
-      wf: this.wf + this.wfAb,
-      thrust: cyc.netThrust + this.propThrust,
-      tsfc:
-        cyc.netThrust + this.propThrust > 100
-          ? (this.wf + this.wfAb) / (cyc.netThrust + this.propThrust)
-          : 0,
+      wf: fuel,
+      thrust,
+      tsfc: !shaftOnly && thrust > 100 ? fuel / thrust : 0,
+      sfc: load && outPower > 1000 ? fuel / outPower : 0,
       lit: this.lit,
       surging: this.surging,
       phase: this.phase,
@@ -913,7 +923,7 @@ export class EngineSim {
       // Pervane ya da turboşaft çıkış mili (devir ve tork aynı yükten)
       propRpm: load ? this.N1 * load.rpm : 0,
       torque: load ? this.propPower / Math.max(this.eng.ref.shaftPower, 1) / Math.max(this.N1, 0.05) : 0,
-      shaftPower: this.propPower,
+      shaftPower: outPower,
       propThrust: this.propThrust,
       propPitch: this.propPitch,
       airflow: cyc.stations['2'].W / d.massFlow,

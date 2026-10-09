@@ -32,6 +32,7 @@ export interface DesignSummary {
    */
   thrust: number;
   thrustWet?: number;
+  /** Çıkış mil gücü [W] (turboşaftta çıkış flanşında, ×transmissionEff) */
   shaftPower?: number;
   /** g/(kN·s) */
   tsfc?: number;
@@ -169,7 +170,9 @@ export function summarize(b: BuiltEngine): DesignSummary {
   }
   const thrust = sized.point.thrust + propThrust;
   const jet = t.output === 'thrust';
-  const shaftPower = jet ? undefined : sized.ref.shaftPower;
+  // Mil gücü çıkışta: turboşaftta aktarma kaybı sonrası (ref.outputPower),
+  // turbopropta güç türbini gücü (pervane itkisi yukarıda ondan)
+  const shaftPower = jet ? undefined : sized.ref.outputPower;
   const thrustWet = d.afterburner ? sized.point.thrustWet : undefined;
   const mass = m.mass.total;
 
