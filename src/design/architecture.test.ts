@@ -616,13 +616,14 @@ describe('applyArchitecture', () => {
       }
       return graph;
     };
-    // TJ → fan → TJ: gaz jeneratörü (HPC, yanma odası) korunur, dönüşte aynı motor
+    // TJ → fan → TJ: gaz jeneratörü (HPC) korunur; taşınan düğmeler dönüşte
+    // aynı. T4 taşınamayabilir: P2'nin askeri TF fanı (PR 4,3) TJ'nin 1230 K'iyle
+    // döndürülemez (P5 ≤ P0), aile değeri kalır ve not düşülür (check denetler).
     const tj = TEMPLATES.turbojet!;
     const fan = check(tj, ok(resolveChange(TJ, 'lpLoad', 'fan')).arch);
-    expect(mod<CombustorModule>(fan, 'combustor')!.tit).toBe(mod<CombustorModule>(tj, 'combustor')!.tit);
     expect(mod<CompressorModule>(fan, 'hpc')!.pr).toBe(mod<CompressorModule>(tj, 'hpc')!.pr);
     const back = check(fan, TJ);
-    for (const [, get] of KNOBS) expect(get(back)).toBe(get(tj));
+    for (const [, get] of KNOBS) if (get(fan) === get(tj)) expect(get(back)).toBe(get(tj));
     expect(Number.isFinite(buildAny(fan).sized.point.thrust)).toBe(true);
     // Aralık dışı değer (turboprop HPC PR ≥ 6) kırpılır ve bildirilir
     check(tj, normalizeArchitecture(TP));

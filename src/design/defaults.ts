@@ -98,8 +98,14 @@ export const DEFAULT_MODULES = {
    * Yolcu turbofanınınki (1,95) burada fazla: LP mili çalıştırmada marşla
    * dönmediği için ışıklanmada hava az kalır, EGT çalıştırma limitini aşar
    * (askeri TF'de 1,7'de sıcak çalıştırma, 1,3'te tepe 709/800 °C).
+   * M5a entegrasyonu: P2 askeri TF fanını karışma dengesine çekince (PR
+   * 3,1 → 4,3) fan göbeği LP milinden daha çok iş ister; 1,3'te tepe
+   * 872/800 °C (sıcak çalıştırma), 1,15'te 795, 1,1'de 772 °C. HPC PR'ı
+   * OPR'yi korumak için bölmek tepeyi yalnız ~30 K indirir, EGT payını
+   * 94 → 70 K düşürür; bu yüzden HPC aynı kalır, booster hafifler
+   * (OPR 35 → 38,8, T3 926 K).
    */
-  bareBoosterPR: 1.3,
+  bareBoosterPR: 1.1,
   /**
    * Bu fan basınç oranının üstünde (askeri, çıplak sınıf fan; kaportalı fan
    * aralığı 1,3–2,0) eklenen booster da düşük PR'lı (bareBoosterPR) olur:
