@@ -40,7 +40,11 @@ function variant(bpr: number, dry: boolean): EngineGraph {
     n.style = 'fixed';
     delete n.flaps;
   }
-  (g.modules.find((m) => m.type === 'fan') as CompressorModule).bypassRatio = bpr;
+  const fan = g.modules.find((m) => m.type === 'fan') as CompressorModule;
+  fan.bypassRatio = bpr;
+  // Şablonun FPR'ı (4,3) BPR ≳ 0,8'de LPT diskini mile sığdırmaz
+  // (layouts/bare.ts checkLptDisk, tipli hata): yüksek BPR'da fiziksel FPR
+  if (bpr > 0.8) fan.pr = 3;
   return g;
 }
 
@@ -88,7 +92,8 @@ describe('baypas ayırıcısı (inceleme #14)', () => {
     ['kuru BPR 0,1', variant(0.1, true)],
     ['kuru BPR 0,3', variant(0.3, true)],
     ['kuru BPR 0,55', variant(0.55, true)],
-    ['kuru BPR 1,0', variant(1.0, true)],
+    ['kuru BPR 1,0 (FPR 3)', variant(1.0, true)],
+    ['kuru BPR 1,5 (FPR 3)', variant(1.5, true)],
   ];
 
   it.each(cases)('%s: çekirdek gövdesinin dışında, türbinden önce biter, kabuğun içinde', (_n, g) => {

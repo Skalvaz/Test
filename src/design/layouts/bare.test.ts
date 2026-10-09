@@ -159,6 +159,30 @@ describe('art yakıcısız çıplak yerleşim', () => {
     expect(buildEngine(TURBOJET_DRY_GRAPH).flowpath.metrics.mass.total).toBeLessThan(tj.total);
   });
 
+  it('kuru şablonun TJ farkı kalem kalem (bakım): model hatası değil, farklı motor', () => {
+    // TJ → aynı çekirdek kuru → + kutu-halka oda → + TJD çevrimi (PR, T4,
+    // verim, yükleme) → + 72 kg/s. Her adım fiziksel yönde; zincirin sonu
+    // kuru şablonun kendisi (giriş/aksesuar gibi kalan farklar < %1)
+    const tjd = TURBOJET_DRY_GRAPH;
+    const mass = (g: EngineGraph) => buildEngine(g).flowpath.metrics.mass.total;
+    const same = dryOf(TURBOJET_GRAPH);
+    const can = tweak<CombustorModule>(same, 'combustor', (c) => Object.assign(c, structuredClone(tjd.modules.find((m) => m.type === 'combustor'))));
+    const cyc = structuredClone(can);
+    for (const t of ['lpc', 'hpc', 'hpt', 'lpt'] as const) Object.assign(cyc.modules.find((m) => m.type === t)!, structuredClone(tjd.modules.find((m) => m.type === t)));
+    const big = { ...structuredClone(cyc), massFlow: tjd.massFlow };
+    const [m0, m1, m2, m3, m4] = [TURBOJET_GRAPH, same, can, cyc, big].map(mass);
+    const ab = buildEngine(TURBOJET_GRAPH).flowpath.metrics.mass.parts.afterburner;
+    // 1456,9 → 1139,9: −317 kg (AB kalemi 237 + değişken lüle 104 → sabit 35, + jet borusu 38, dış donanım −48)
+    expect(m0 - m1).toBeGreaterThanOrEqual(ab);
+    // + kutu-halka: +116 kg (oda boyu kutu çapıyla: 0,82 → 0,98 m; oda +74, mil +16, gövde +12, dış donanım +18)
+    expect(m2).toBeGreaterThan(m1 + 80);
+    // + TJD çevrimi: −71 kg (yüksek T4/PR'da daha küçük türbinler ve oda)
+    expect(m3).toBeLessThan(m2);
+    // + hava akışı 66 → 72 kg/s (§4.3 itki bandı için): +143 kg (boyut ∝ √W, kütle ~∝ W^1,5)
+    expect(m4).toBeGreaterThan(m3 + 100);
+    expect(Math.abs(m4 / mass(tjd) - 1)).toBeLessThan(0.01);
+  });
+
   it('art yakıcılı şablonların yerleşimi değişmez (değişken lüle, art yakıcı kanalı)', () => {
     for (const g of [TURBOJET_GRAPH, MILITARY_TURBOFAN_GRAPH]) {
       const L = layoutOf(g);

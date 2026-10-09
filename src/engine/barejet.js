@@ -67,8 +67,14 @@ export function splitterProfile(v, s) {
   // Yanma odası gövdesinin dış yüzü (kasa gaz yolu profilinden ya da
   // gömleğin 3 cm dışından, hangisi büyükse; + et)
   const caseZ0 = v.gas.casing[0][1];
-  const caseOut = (z) => Math.max(profileAt(v.gas.casing, z), cb.rOut + 0.03) + 0.008;
   const land = Math.min(0.1 * s, (z1 - z0) * 0.15);
+  // Gövdenin HPT'ye bağlandığı çıkış flanşı (gaspath.js casingShell: HPT
+  // gövde iç yüzü uç + 7,5 mm, + 8 mm et + 19 mm flanş): HPT ucu yanma
+  // odasının dış gömleğine yaklaşınca (yüksek BPR, düşük FPR) flanş inişin
+  // üstüne çıkıyordu; iniş bölgesinde flanşın dışında kalır. Şablonlarda
+  // gömlek payı baskın, profil aynı.
+  const flangeIn = v.gas.hpt.tip[0] + 0.0375 - 0.008;
+  const caseOut = (z) => Math.max(profileAt(v.gas.casing, z), cb.rOut + 0.03, z >= z1 - land - 0.03 ? flangeIn : 0) + 0.008;
   const n = 60;
   const pts = [];
   for (let i = 0; i <= n; i++) {

@@ -344,19 +344,40 @@ bu yüzden üretilen her mimari uyarısız başlar (test §7 P4a).
 
 | Değişim | Eklenen | Çıkarılan | Dönüştürülen | Eşlik eden (implies) |
 |---|---|---|---|---|
-| lpLoad `lpc→fan` | `fan` (BPR: bare 0,6 / nacelle 6) | `lpc` (booster kapalıysa) | `massFlow ×(1+bpr)`; fan `tipSpeed` = eski LPC'nin | exhaust: bare→`mixed`, nacelle→`separate`; `bypassDuct` bağışçıdan |
-| lpLoad `fan→lpc` | `lpc` (TJ bağışçısı) | `fan`, `mixer`, `bypassDuct` | `massFlow /(1+bpr)` | exhaust `single`; installation `bare` |
+| lpLoad `lpc→fan` | `fan` **bağışçının** (sihirbazla aynı modül; BPR ve PR dahil): çıplak → askeri TF fanı (PR 4,3, BPR 0,55); kaportalı ayrık → yolcu TF fanı (BPR 9); kaportalı karışık → TFM fanı | `lpc` (booster kapalıysa) | gaz jeneratörü yeni ailenin bağışçısından; `massFlow = W_çekirdek·(1+bpr_bağışçı)` (ailenin hava akışı aralığına kırpılır, notta); fan `tipSpeed` = eski LPC'nin (300–560'a kırpılır) | exhaust: bare→`mixed`, nacelle→`separate`; `bypassDuct` aile şablonundan |
+| lpLoad `fan→lpc` | `lpc` (ailenin bağışçısı: AB'li TJ, kuru TJD) | `fan`, `mixer`, `bypassDuct` | `massFlow /(1+bpr)`; LPC `tipSpeed` = eski fanın (300–520) | exhaust `single`; installation `bare` |
 | lpLoad `→propeller` | `propeller` | `fan`, `lpc`, `mixer`, `afterburner`, `bypassDuct` | inlet `chin`, nozzle `stub`, `lpt.tipSpeed` bağışçıdan | centrifugal açık |
 | lpLoad `→shaft` | `shaft` | (propeller ile aynı) | inlet `annular`, nozzle `stub` | centrifugal açık, output `shaft` |
-| booster aç/kapa | `lpc` (TF bağışçısı, `gap 1.421`) / — | — / `lpc` | `fan.hubPRFraction` korunur | — |
+| booster aç/kapa | `lpc` (TF bağışçısı; kaportalı karışıkta TFM), `tipSpeed`'siz (LP milinde) / — | — / `lpc` | booster PR: çıplak motorda ya da fan PR > 2,0 iken `bareBoosterPR` 1,1, değilse bağışçınınki; HPC PR ve `fan.hubPRFraction` korunur (HP işi, EGT payı aynı) | — |
 | centrifugal aç/kapa | `hpc.centrifugal` (TP bağışçısı) / — | — | `hpc.tipSpeed` bağışçıdan | — |
 | combustor stili | — | — | `style`; `cans` (can 10, canAnnular 8); `dp` (annular .04 / canAnnular .05 / can .06); `refVelocity` (annular 20–43 korunur, can/canAnnular ≥ 25) | — |
 | exhaust `separate→mixed` | `mixer` (arch.mixer; lobed 18 lobe) | `nozzle.chevrons` | nozzle `separate→fixed` | — |
 | exhaust `mixed→separate` | — | `mixer` | nozzle `→separate` | AB kapalı, installation `nacelle` |
 | AB aç | `afterburner` (bpr>0: MTF, değilse TJ bağışçısı) | — | nozzle `fixed→abNozzle` | bpr>0 ise exhaust `mixed`; installation `bare` |
 | AB kapa | — | `afterburner` | nozzle `→fixed` (`cv .98`) | — |
-| installation `bare→nacelle` | — | — | inlet `nacelle` | booster açık, AB kapalı, BPR ≥ 1 |
-| installation `nacelle→bare` | — | — | inlet `bellmouth` | exhaust `separate→mixed`, BPR ≤ 1,5 |
+| installation `bare→nacelle` | — | — | inlet `nacelle` (TF şablonundan); **fan, `bypassDuct` ve LPT yeni ailenin bağışçısından** (yolcu TF fanı BPR 9 / TFM), çekirdek akışı korunur; var olan booster'ın PR'ı yukarıdaki kuralla | booster açık, AB kapalı (BPR ≥ 1 bağışçı fandan gelir) |
+| installation `nacelle→bare` | — | — | inlet `bellmouth` (askeri TF şablonundan); fan, `bypassDuct` ve LPT askeri TF bağışçısından (PR 4,3, BPR 0,55), çekirdek akışı korunur | exhaust `separate→mixed` (BPR ≤ 1,5 bağışçı fandan) |
+
+Notlar (koda göre, bakım paketi): Kurulum değişince fan bağışçıdan alınır,
+yalnız PR/BPR kırpılmaz: askeri fanı (PR 4,3, BPR 0,55) kaportalı aralığa
+(PR 1,4–1,8, BPR 3–11) kırpmak sınırda fan kanalını kapatır, aradaki
+değerlerde motor sıcak çalışır (EGT payı −54 K); kurulum aynıyken fan PR'ı
+ve BPR yeni ailenin aralığına kırpılır. LP yükü değişince ortak düğmeler
+(T4, HPC PR — serbest türbin geçişinde anlamı değiştiği için hariç —,
+verimler, yanma odası `dp`/`cans` aynı stilde, art yakıcı, `mechEff`)
+seed'den taşınır; taşınan değerle motor kurulamıyorsa bağışçınınki kalır.
+Mimari değişince bütün düğmeler yeni ailenin `knobs.ts` aralığına kırpılır,
+sonra `ensureWorkable`: motor seed'de ve sihirbazın motorunda olmayan bir
+caution/warning veriyorsa düğmeler ailenin (sihirbazın) değerine geri
+alınır — önce tek tek, sonra sırayla birikerek. **Hiçbir küme uyarıyı
+gidermezse** uyarıyı en çok hafifleten en küçük küme (yoksa hiçbiri) geri
+alınır, notu yalnız giderdiği sorunu anar; kalan sorun değeri değişmeyen
+`ArchNote{ residual: true }` notuyla (öneri düğmesi, kuralın düzeltme
+metni) bildirilir. Örnek: turboprop → fan → ayrık akış, korunan küçük
+çekirdekte T4 ve HPC PR aileninkine döner (EGT payı −75 K giderilir), HPC
+son kanadı 9,3 mm caution'ı kalır ("daha büyük motor" önerisiyle).
+Her korunamayan değer `applyArchitectureReport` notlarındadır (kırpma,
+kurulamama, uyarı, kutu sayısı, kalan sorun).
 
 **Geçerli mimari kümesi (M5a).** Her satır × yanma odası (3) × karıştırıcı
 stili (mixed ise 2) `architecture.test.ts`'te kurulur ve çalıştırılır

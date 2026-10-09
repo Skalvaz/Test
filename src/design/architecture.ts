@@ -480,9 +480,10 @@ function changeLpLoad(seed: EngineGraph, from: Architecture, to: Architecture, n
   const g = graphFromArchitecture(to, { massFlow: tpl.massFlow, name: seed.name });
   const reference = referenceFor(to);
 
-  // Yeni fanın baypas oranı bağışçınınki (sihirbazla aynı): §2.4 tablosundaki
-  // çıplak 0,6, P2'nin karışma dengesine kalibre ettiği askeri TF fanıyla
-  // (PR 4,3, BPR 0,55) karıştırıcıda P19t/P5t 1,15 verir (mixerPR uyarısı)
+  // Yeni fanın baypas oranı bağışçınınki (sihirbazla aynı; §2.4 tablosu):
+  // eski taslaktaki sabit "çıplak 0,6", P2'nin karışma dengesine kalibre
+  // ettiği askeri TF fanıyla (PR 4,3, BPR 0,55) karıştırıcıda P19t/P5t
+  // 1,15 verirdi (mixerPR uyarısı)
   const fan = find<CompressorModule>(g, 'fan');
 
   // Çekirdek akışı korunur; ailenin hava akışı aralığına kırpılır (§2.10)

@@ -23,7 +23,11 @@ function variant(bpr: number, o: { dry: boolean; lobed: boolean }): EngineGraph 
     n.style = 'fixed';
     delete n.flaps;
   }
-  (g.modules.find((m) => m.type === 'fan') as CompressorModule).bypassRatio = bpr;
+  const fan = g.modules.find((m) => m.type === 'fan') as CompressorModule;
+  fan.bypassRatio = bpr;
+  // Şablonun FPR'ı (4,3) BPR ≳ 0,8'de LPT'yi mile sığmayacak kadar
+  // genişletir (layouts/bare.ts checkLptDisk); yüksek BPR'da fiziksel FPR
+  if (bpr > 0.8) fan.pr = 3;
   if (o.lobed) {
     const mx = g.modules.find((m) => m.type === 'mixer') as MixerModule;
     mx.style = 'lobed';
@@ -33,8 +37,8 @@ function variant(bpr: number, o: { dry: boolean; lobed: boolean }): EngineGraph 
 }
 
 describe('düşük BPR karışık akışlı çıplak turbofan (inceleme #15)', () => {
-  // Atölye aralığı 0,1–1,5 (1,5'te LPT çıkışında kanal sığmaz, ayrı hata)
-  const cases = [0.1, 0.2, 0.3, 0.55, 1.0].flatMap((bpr) =>
+  // Atölye aralığı 0,1–1,5; BPR > 0,8 FPR 3 ile (şablon FPR'ında LPT diski sığmaz, ayrı tipli hata)
+  const cases = [0.1, 0.2, 0.3, 0.55, 1.0, 1.5].flatMap((bpr) =>
     [true, false].flatMap((dry) => [true, false].map((lobed) => [bpr, dry, lobed] as const)),
   );
 
