@@ -277,29 +277,42 @@ export function buildTurboprop(materials, L) {
 
   /* ---------------- çene tipi hava girişi: S-kanal ---------------- */
   // Dişli kutusunun altındaki eliptik ağızdan başlar, geriye ve yukarı
-  // kıvrılarak kompresör girişinin altındaki toplama odasına bağlanır
-  const duct = new THREE.Mesh(
-    ellipticDuct([
-      [0, -0.6, hz - 0.94, 0.25, 0.13],
-      [0, -0.6, hz - 0.68, 0.24, 0.13],
-      [0, -0.55, hz - 0.38, 0.22, 0.12],
-      [0, -0.42, hz - 0.18, 0.2, 0.1],
-      [0, -0.3, hz - 0.08, 0.2, 0.09],
-    ]),
-    materials.engineCaseOpen ?? materials.engineCase,
-  );
+  // kıvrılarak kompresör girişinin altındaki toplama odasına bağlanır.
+  // Çapalar: ağız alanı giriş akışından (L.intake, eş alanlı daire; elips
+  // en/boy 0,52), uç ve toplama odası kompresör gözüne (HPC ilk kademe
+  // ucu; ölçüler M4 öncesi modelin 0,2 m'lik ucuna göre farktır). Dişli
+  // kutusu pervane redüktörüdür, boyutu değişmez.
+  const MOUTH_ASPECT = 0.52;
+  const mouthA = L.intake.radius / Math.sqrt(MOUTH_ASPECT);
+  const mouthB = mouthA * MOUTH_ASPECT;
+  const kIn = mouthA / 0.25;
+  const eye = g.hpc.tip[0];
+  const dEye = eye - 0.2;
+  const kEye = (eye + 0.13) / 0.33;
+  // [x, y, z, genişlik, yükseklik, ağızdan uca geçiş payı]
+  const ductPts = [
+    [0, -0.6, hz - 0.94, 0.25, 0.13, 0],
+    [0, -0.6, hz - 0.68, 0.24, 0.13, 0],
+    [0, -0.55, hz - 0.38, 0.22, 0.12, 0.5],
+    [0, -0.42, hz - 0.18, 0.2, 0.1, 1],
+    [0, -0.3, hz - 0.08, 0.2, 0.09, 1],
+  ].map(([x, y, z, w, h, f]) => {
+    const k = THREE.MathUtils.lerp(kIn, kEye, f);
+    return [x, y - dEye * f, z, w * k, h * k];
+  });
+  const duct = new THREE.Mesh(ellipticDuct(ductPts), materials.engineCaseOpen ?? materials.engineCase);
   group.add(tagPart(duct, 'inlet'));
   // Ağız dudağı: parlatılmış, eliptik
-  const lipCurve = new THREE.EllipseCurve(0, 0, 0.25, 0.13);
+  const lipCurve = new THREE.EllipseCurve(0, 0, mouthA, mouthB);
   const lipPts = lipCurve.getPoints(64).map((p) => new THREE.Vector3(p.x, p.y - 0.6, hz - 0.94));
   const lip = new THREE.Mesh(
     new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lipPts, true), 96, 0.022, 10, true),
     materials.polishedLip,
   );
   group.add(tagPart(lip, 'inlet'));
-  // Toplama odası (plenum): kompresör girişini saran halka
+  // Toplama odası (plenum): kompresör girişini saran halka (gövde gibi göz yarıçapı + pay)
   const plenum = new THREE.Mesh(
-    latheFromProfile(smoothProfile([[0.24, hz - 0.18], [0.32, hz - 0.14], [0.33, hz - 0.08], [0.3, hz - 0.04]], 20), 96),
+    latheFromProfile(smoothProfile([[eye + 0.04, hz - 0.18], [eye + 0.12, hz - 0.14], [eye + 0.13, hz - 0.08], [eye + 0.1, hz - 0.04]], 20), 96),
     materials.castAlu,
   );
   group.add(tagPart(plenum, 'inlet'));
@@ -332,14 +345,17 @@ export function buildTurboprop(materials, L) {
   pipe(Math.PI / 2 + 0.5, Math.PI / 2 + 0.2, cen.z - 0.06, cb.z1 - 0.06, 0.022, materials.engineCase, 0.016); // bleed
   harness(group, prof, { a0: Math.PI + 0.15, a1: Math.PI + 0.55, z0: cen.z - 0.06, z1: g.lpt.z1 + 0.05, mat: materials.hose, kit });
   // Dişli kutusunun arka yüzündeki aksesuarlar (eksenel, +Z): starter-jeneratör,
-  // yakıt kontrol ünitesi/pompa, hidrolik pompa
+  // yakıt kontrol ünitesi/pompa, hidrolik pompa. Gövdenin üstüne oturur:
+  // gaz jeneratörü gövdesi incelince (M4 öncesi modelde 0,3 m) içeri kayar
+  const accZ = L.gearbox.z1 - 0.05;
+  const accShift = prof(accZ) - 0.3;
   for (const [x, y, r, l, kind] of [
     [0.3, 0.24, 0.085, 0.22, 'generator'],
     [-0.28, 0.26, 0.06, 0.18, 'pump'],
     [0.3, -0.24, 0.05, 0.16, 'hydPump'],
   ]) {
     const s = r / 0.06;
-    kit.at(kind, Math.atan2(y, x), Math.hypot(x, y), L.gearbox.z1 - 0.05, { pitch: Math.PI / 2, scale: [s, l / 0.145, s] }, 'gearbox');
+    kit.at(kind, Math.atan2(y, x), Math.hypot(x, y) + accShift, accZ, { pitch: Math.PI / 2, scale: [s, l / 0.145, s] }, 'gearbox');
   }
   probes(prof, g.lpt.z1 + 0.05, 6, { kit }, 0.3, 'lpt');
   liftLugs(prof, [hz + 0.17, g.hpt.z0 + 0.06], { kit });
@@ -377,7 +393,7 @@ export function buildTurboprop(materials, L) {
     bladeCount: blades * 2,
     setPitch,
     stand: { yoke, mounts: L.standZ, engineR: L.engineR },
-    intake: { z: hz - 0.9, radius: 0.2, y: -0.62 },
+    intake: { ...L.intake },
     exhaust: { z: ex.z1, radius: ex.radius },
     prop: { z: PROP_Z, radius: PROP_RADIUS, blades },
   };

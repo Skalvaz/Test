@@ -26,15 +26,18 @@ import { chevronBand } from './nacelle.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
-/** İki halka arasında yumuşak (smoothstep) geçiş kanalı: kalınlıklı duvar */
-function transitionWall(rA, rB, zA, zB, t) {
+const smoothstep = (u) => u * u * (3 - 2 * u);
+/** Kosinüs geçiş: uçlarda eğim sıfır, en dik yer ortada (π/2 · Δr/boy) */
+const cosineEase = (u) => (1 - Math.cos(Math.PI * u)) / 2;
+
+/** İki halka arasında yumuşak geçiş kanalı: kalınlıklı duvar */
+function transitionWall(rA, rB, zA, zB, t, ease = smoothstep, n = 12) {
   const pts = [];
-  for (let i = 0; i <= 12; i++) {
-    const u = i / 12;
-    const k = u * u * (3 - 2 * u);
-    pts.push([lerp(rA, rB, k), lerp(zA, zB, u)]);
+  for (let i = 0; i <= n; i++) {
+    const u = i / n;
+    pts.push([lerp(rA, rB, ease(u)), lerp(zA, zB, u)]);
   }
-  for (let i = 12; i >= 0; i--) pts.push([pts[i][0] + t, pts[i][1]]);
+  for (let i = n; i >= 0; i--) pts.push([pts[i][0] + t, pts[i][1]]);
   return revolve(pts, { segments: 120, smooth: 40 });
 }
 
@@ -224,14 +227,16 @@ export function buildCore(materials, L) {
   group.add(lpt.stator);
 
   // Türbin geçiş kanalı: HPT çıkışından dışa açılarak LPT'nin büyük
-  // yarıçaplı halkasına; ortasında yağ/hava hatlarını taşıyan kollar
+  // yarıçaplı halkasına; ortasında yağ/hava hatlarını taşıyan kollar.
+  // Kosinüs geçiş (M5a): HPT küçülünce kanal LPT'ye dik tırmanıyordu;
+  // şablonda boy ≥ 1,2 × tırmanış (templates.ts lpt.gap, templates.test.ts)
   const itd0 = hpt.zBack;
   const itd1 = lpt.zFront;
   if (itd1 > itd0 + 0.02) {
     const itd = new THREE.Group();
     itd.add(
-      new THREE.Mesh(transitionWall(hpt.casingAt(t.z1), lpt.casingAt(l.z0), itd0, itd1, 0.01), materials.turbineCase ?? materials.caseInner),
-      new THREE.Mesh(transitionWall(hpt.hubAt(t.z1) - 0.014, lpt.hubAt(l.z0) - 0.014, itd0, itd1, 0.01), materials.turbineCase ?? materials.caseInner),
+      new THREE.Mesh(transitionWall(hpt.casingAt(t.z1), lpt.casingAt(l.z0), itd0, itd1, 0.01, cosineEase, 20), materials.turbineCase ?? materials.caseInner),
+      new THREE.Mesh(transitionWall(hpt.hubAt(t.z1) - 0.014, lpt.hubAt(l.z0) - 0.014, itd0, itd1, 0.01, cosineEase, 20), materials.turbineCase ?? materials.caseInner),
     );
     const zm = (itd0 + itd1) / 2;
     const rIn = (hpt.hubAt(t.z1) + lpt.hubAt(l.z0)) / 2;

@@ -251,6 +251,39 @@ iç parçaların zarfından, lüle ağızları termodinamik alanlardan (A9, A19)
 
 ![Yeni modüller: kutu yanma odası, chevron lüle, lobe'lu karıştırıcı](renders/50-m4c-moduller.jpg)
 
+**Şablonlar fiziğe uyduruldu (M5a)** — Motor Atölyesi'nin uyarıları (uç
+Mach'ı, AN², yanma odası hızı…) şablonlarda hiç yanmasın diye, eski elle
+çizilmiş modellere kalibre edilmiş son iki çekirdek düzeltildi. Turbopropun
+gaz jeneratörü 9,5 kg/s'lik akışına göre çok büyüktü: HPC ilk kademesi
+bağıl Mach 1,86, HPT diski AN² 7,2·10⁷ (sınır ~4,2·10⁷), yanma odası
+8 m/s. Şimdi T700/PT6 sınıfındaki gibi 5 eksenel kademe + işin %60'ını
+yapan santrifüj çark (uç ~583 m/s), HPC ucu Mach 1,48, tek kademeli küçük
+HPT (AN² 3,8·10⁷), güç türbini AN² 4,0·10⁷, 20 m/s'lik ince yanma odası;
+gaz jeneratörü 0,28 m kısaldı, kütle 958 → 861 kg. Pervane ve redüktör
+aynı; çene girişi ağzı giriş akışından, toplama odası kompresör gözünden
+ölçülendirilir. Yüksek baypaslı turbofanda HPT girişi Mach 0,04 → 0,10 ve
+yanma odası 12 → 20 m/s: HPT halkası ve yanma odası incelir (HPT AN²
+4,0 → 2,3·10⁷), LPT'ye tırmanan türbin geçiş kanalı uzar ve kosinüs
+eğrisiyle yumuşar; HPC basınç oranı 16,5 → 16,3 ile T3 962 → 958 K
+(1000 K sınırından %4 pay). İtki ve devirler aynı (turbopropun güç türbini
+devri 20 400 → 19 500 rpm; atalet dönme enerjisini koruyacak biçimde
+ölçeklendi):
+
+![Turboprop, yandan: önce/sonra](renders/m5a-tp-fizik-yan.gif)
+![Turboprop, kesit: önce/sonra](renders/m5a-tp-fizik-kesit.gif)
+![Turbofan HPT ve yanma odası, gece kesit, kapatma sonrası soğuma: önce/sonra](renders/m5a-tf-fizik.gif)
+
+Art yakıcılı askeri turbofanda baypas havası karıştırıcıya çekirdek gazından
+çok düşük basınçla geliyordu (P19t/P5t 0,69; gerçek motorlar ~1'de
+tasarlanır, yoksa çekirdek gazı baypas kanalına geri basar). Fan basınç oranı
+3,1 → 4,3 ve baypas oranı 0,68 → 0,55 ile oran 0,98'e çıktı (F100-PW-229
+sınıfı: FPR 3,8, OPR 32); OPR 25 → 35. Kademe sayıları aynı; çekirdek
+incelir, motor 0,3 m kısalır, kütle 2055 → 1801 kg. Karışma kaybı azaldığı
+için kuru itki %3 arttı (80,9 → 83,4 kN), TSFC %3 düştü:
+
+![Askeri turbofan, yandan: önce/sonra](renders/m5a-mtf-fizik-yan.gif)
+![Askeri turbofan, kesit: önce/sonra](renders/m5a-mtf-fizik-kesit.gif)
+
 
 **Serbest mod** — test hücresinde bütün anahtarlar, FADEC'i manuele alma, irtifa /
 Mach / sıcaklık, simülasyon hızı (¼×–4×), arıza enjeksiyonu (kuş çarpması,

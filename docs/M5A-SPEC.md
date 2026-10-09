@@ -1117,14 +1117,24 @@ ve **son değerleri bu tabloya işler**.
 
 ### 4.1 Turboprop (çekirdek)
 
-| Düğme | Bugün | Hedef aralık (başlangıç) | Gerekçe |
-|---|---|---|---|
-| `hpc.tipSpeed` | 624 | 460–480 (470) | Mrel 1,86 → ≤ 1,49 |
-| `hpc.mach` / `hubTip` | [.252,.144] / .5 | [.45,.25] / .45 | kanal küçülür |
-| `hpc.centrifugal.workFraction` | .45 | .55–.65 (.6) | eksenel kademe ≤ 6 (8 kademe gerçekçi değil); çark ucu ≤ 595 |
-| `hpt.mach` / `hubTip` / `loading` | [.0464,.152] / .682 / 1.478 | [.10–.12, .30] / .85 / 1,6–1,8 | AN² 7,22e7 → ≤ 4,0e7; giriş Mach ≥ 0,1 |
-| `combustor.refVelocity` / `lengthHeight` | 8,29 / 3,33 | 20 / ~6 | H ~1/3, oda boyu ~0,3 m |
-| `lpt.mach[1]`, `lpt.tipSpeed` | .271, 491 | .35–.42, 450–480 | LPT AN² 5,87e7 → ≤ 4,0e7 (ölçülmedi; P2 ayarlar) |
+| Düğme | Bugün | Hedef aralık (başlangıç) | **Son (P2)** | Gerekçe |
+|---|---|---|---|---|
+| `hpc.tipSpeed` | 624 | 460–480 (470) | 470 | Mrel 1,86 → ≤ 1,49 |
+| `hpc.mach` / `hubTip` | [.252,.144] / .5 | [.45,.25] / .45 | [.45,.25] / .45 | kanal küçülür |
+| `hpc.loading` / `pitchSpan` | .253 / 2 | — | .30 / 1,5 | P2 eki: 6 → 5 eksenel kademe (T700 gibi), gaz jeneratörü kısalır |
+| `hpc.centrifugal.workFraction` | .45 | .55–.65 (.6) | .6 | eksenel kademe ≤ 6 (8 kademe gerçekçi değil); çark ucu ≤ 595 |
+| `hpt.mach` / `hubTip` / `loading` | [.0464,.152] / .682 / 1.478 | [.10–.12, .30] / .85 / 1,6–1,8 | [.11,.30] / **.80** / 1,8 | AN² 7,22e7 → ≤ 4,0e7; giriş Mach ≥ 0,1. Göbek/uç .85'te HPT ucu 618 m/s (> 600 eksenel uç hızı caution); .80'de 543 m/s, tek kademe ψ 1,74 |
+| `combustor.refVelocity` / `lengthHeight` | 8,29 / 3,33 | 20 / ~6 | 20 / 6 | H 0,12 → 0,061 m, oda boyu 0,365 m |
+| `lpt.mach[1]`, `lpt.tipSpeed` | .271, 491 | .35–.42, 450–480 | .38, 470 | LPT AN² 5,87e7 → 4,00e7 (çelişki yok, S4 durması gerekmedi) |
+
+Ölçülen sonuç (P2, `golden.test.ts`): HPC Mrel 1,479; HPT AN² 3,78e7, LPT
+3,998e7; çark ucu 583 m/s; HPC 5 eksenel kademe (son kanat 47 mm), HPT 1,
+LPT 2; HPT ucu 543 m/s; kütle 958 → 861 kg; boy 4,24 → 3,96 m; N1 20 376 →
+19 504 rpm, N2 29 770 → 29 669 rpm. Katalog: `TURBOPROP.n1Rpm` 19 500,
+`n2Rpm` 29 700, `inertia` {lp .328, hp .352} (ikisi de `(n_eski/n_yeni)²`),
+`start.starterTorque` 34,1 (§2.8 marş torku bağıntısı: marş süresi aynı).
+Çene girişi ağzı `layouts/turboprop.ts INTAKE_MACH` = 0,25'te giriş
+akışından (şablonda eş daire 0,174 m; eski sabit 0,2).
 
 Sonuç hedefleri: HPC Mrel ≤ 1,49; HPT ve LPT AN² ≤ 4,03e7; yanma odası 20
 m/s; HPT giriş Mach ≥ 0,10; kütle 450–1100 kg; N2 değişirse
@@ -1144,8 +1154,38 @@ yerleşimden yeniden hesaplanır.
 
 | Düğme | Bugün | Hedef | Ölçülen sonuç |
 |---|---|---|---|
-| `hpt.mach` / `hubTip` / `taper` | [.0433,.1643] / .7184 / 1.027 | [.10,.30] / .88 / 1.0 | 2 kademe, uç .473, AN² 2,27e7 |
-| `combustor.refVelocity` / `lengthHeight` | 11,84 / 1,571 | 20 / 2,6 | `rOut` .54 → .497 |
+| `hpt.mach` / `hubTip` / `taper` | [.0433,.1643] / .7184 / 1.027 | [.10,.30] / .88 / 1.0 | 2 kademe, uç .473, AN² 2,27e7 (P2 ölçümü aynı) |
+| `combustor.refVelocity` / `lengthHeight` | 11,84 / 1,571 | 20 / 2,6 | `rOut` .54 → **.507** (P2 ölçümü; .497 tahmindi) |
+| `hpt.bladeK` (P2 eki) | [3.235, 3.645] | — | [2.25, 3]: kanat sayısı 159/121 → 111/99 (gerçekçi katılık) |
+| `lpt.gap` (P2 eki) | 1,8 | — | 2,4: ITD boyu 0,118 → 0,203 m ≥ 1,2 × tırmanış (0,159 m) |
+
+| `hpc.pr` (P3 bulgusu) | 16,5 | T3 ≤ 960 K | 16,3: T3 962 → 958 K (1000 K caution'dan pay %3,8 → %4,3); OPR 46,3 → 45,8; `DEFAULT_DESIGN.hpcPR` aynı |
+
+P2 sonucu: kütle 5899 → 5644 kg, boy 7,38 → 7,31 m; itki +%0,2 (318,7 →
+319,2 kN), yakıt +%0,4, TSFC +%0,2, devirler aynı. T4 1680 K caution
+1750'den %4,2 pay (değişmedi).
+
+### 4.2b Askeri turbofan (karıştırıcı dengesi, P3 bulgusu)
+
+P3 ölçümü: karıştırıcıda P19t/P5t = 0,69 → `mixerPR` warning (bant [0,92,
+1,12]). S5 uyarınca eşik gevşetilmez, şablon uydurulur (§4.4'teki "MTF
+satırları değişmemeli" kuralı bu yüzden kalktı).
+
+| Düğme | Bugün | Son (P2) | Gerekçe |
+|---|---|---|---|
+| `fan.pr` / `bypassRatio` | 3,1 / 0,68 | 4,3 / 0,55 | baypas basıncı ↑, LPT işi ↑ → P5 ↓: P19t/P5t 0,69 → 0,983 (pay %6,8). F100-PW-229: FPR 3,8, BPR 0,36, OPR 32 |
+| `fan.loading` | 0,309 | 0,40 | 3 kademede PR 4,3 (kademe başı ~1,63) |
+| `hpc.loading` | 0,232 | 0,255 | fan çıkışı ısınınca HPC 10 kademe kalsın |
+| `lpt.loading` / `mach[1]` | 0,988 / 0,238 | 1,45 / 0,30 | 2 kademe korunur (gerçek ψ 1,26); P5 düşünce çıkış kanalı göbeğe açılmasın |
+| Katalog `n2Rpm` / `inertia.hp` / `starterTorque` | 14 200 / 5 / 150 | 15 700 / 4,09 / 135,7 | N2 gaz yolundan (15 661); atalet (n_eski/n_yeni)², marş süresi aynı |
+
+Sonuç: kuru itki 80,9 → 83,4 kN (+%3,1), yaş 128,6 → 132,9 kN (+%3,3),
+TSFC 22,19 → 21,45 g/(kN·s) (−%3,3; karışma kaybı azaldı), OPR 25,4 → 35,3,
+T3 899 K, kütle 2055 → 1801 kg, boy 5,40 → 5,10 m; kademeler 3·10·1·2 aynı.
+±%3 hedefi yalnız fan PR / BPR / LPT ile tutmuyor (denge iyileştikçe TSFC
+düşer); T4'ü 1670 → 1640 K indirmek (FPR 4,2, BPR 0,5) ±%3'e sokar ama
+P19t/P5t 0,969'a iner ve T4'ü de değiştirir — seçilmedi. Uç Mach (MTF
+1,641, front caution 1,72) %4,8 pay.
 
 TF devirleri değişmez (N2 HPC uç hızından). **Görsel etki:** HPT halkası
 küçülür, çekirdek kısalır, ITD (`core.js:226-243`) LPT'ye dik tırmanır →
@@ -1170,7 +1210,7 @@ Bant dışı kalan ölçü için kalibrasyon düğmeleri ayarlanır; kütle mode
 
 | Test | Değişiklik |
 |---|---|
-| `golden.test.ts` (yeni, P0) | 4 şablon: itki, kuru/yaş itki, Wf, A8dry, A9, A19, kademe listeleri, N1/N2 rpm, kütle, çap, boy; 5 anlamlı basamak, `toMatchInlineSnapshot`. **Yalnız P2** gerekçeli commit ile günceller; TJ ve MTF satırları değişmemeli |
+| `golden.test.ts` (yeni, P0) | 4 şablon: itki, kuru/yaş itki, Wf, A8dry, A9, A19, kademe listeleri, N1/N2 rpm, kütle, çap, boy; 5 anlamlı basamak, `toMatchInlineSnapshot`. **Yalnız P2** gerekçeli commit ile günceller; TJ satırları değişmemeli (MTF §4.2b ile değişti) |
 | `templates.test.ts` 116 | `TURBOPROP.n2Rpm` ±%1 yeni değerle |
 | 123-140 (`OLD_TP` ±%5, kademe, difüzör .26, çark z −.14) | "eski ölçü" bloğu kalkar → fizik testleri (Mrel hp ≤ 1,5; AN² ≤ 4,03e7; refVelocity 18–25; HPT `mach[0]` ≥ 0,1; eksenel kademe ≤ 6) + yeni referans ±%5 |
 | 151-158 kütle 450–1100 | korunur |

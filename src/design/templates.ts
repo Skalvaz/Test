@@ -89,6 +89,15 @@ export const TURBOJET_GRAPH: EngineGraph = {
   ],
 };
 
+/**
+ * Art yakıcılı askeri turbofan (F100-PW-229 sınıfı: 112 kg/s, 3 fan + 10 HPC
+ * kademesi, 1 HPT + 2 LPT). M5a: karıştırıcı basınç dengesine uyduruldu. M4'te
+ * fan PR 3,1 / BPR 0,68 ile baypas çekirdekten çok düşük basınçla
+ * karışıyordu (P19t/P5t 0,69; gerçek motorlar ~1'de tasarlanır, aksi halde
+ * çekirdek gazı baypas kanalına geri basar). Şimdi fan PR 4,3 / BPR 0,55
+ * (OPR 35) ile P19t/P5t ≈ 0,98; aynı kademe sayıları için fan, HPC ve LPT
+ * yüklemesi artırıldı. Kuru itki +%3, TSFC −%3 (karışma kaybı azaldı).
+ */
 export const MILITARY_TURBOFAN_GRAPH: EngineGraph = {
   kind: 'militaryTurbofan',
   name: MILITARY_TURBOFAN.name,
@@ -108,15 +117,16 @@ export const MILITARY_TURBOFAN_GRAPH: EngineGraph = {
     {
       type: 'fan',
       spool: 'lp',
-      pr: 3.1,
+      pr: 4.3,
       eff: 0.86,
-      bypassRatio: 0.68,
+      bypassRatio: 0.55,
       hubPRFraction: 1,
       tipSpeed: 501,
       mach: [0.606, 0.3],
       hubTip: 0.413,
       taper: 0.935,
-      loading: 0.309,
+      // M5a: 3 kademede PR 4,3 (kademe başı ~1,63, EJ200 / F119 fanları gibi)
+      loading: 0.4,
       pitchSpan: 0.909,
       bladeK: [3.7, 3.61],
       vsv: 2,
@@ -133,7 +143,8 @@ export const MILITARY_TURBOFAN_GRAPH: EngineGraph = {
       mach: [0.289, 0.202],
       hubTip: 0.597,
       taper: 0.896,
-      loading: 0.232,
+      // M5a: fan çıkışı ısınınca 10 kademe kalsın diye 0,232 → 0,255
+      loading: 0.255,
       pitchSpan: 1.293,
       bladeK: [3.21, 1.21],
       gap: 1.957,
@@ -152,7 +163,9 @@ export const MILITARY_TURBOFAN_GRAPH: EngineGraph = {
       injectors: 18,
     },
     { type: 'hpt', spool: 'hp', eff: 0.89, mach: [0.109, 0.286], hubTip: 0.746, taper: 1, loading: 2.53, pitchSpan: 1.882, bladeK: [2.87, 2.87], gap: 0.875 },
-    { type: 'lpt', spool: 'lp', eff: 0.9, mach: [0.164, 0.238], hubTip: 0.622, taper: 1.081, loading: 0.988, pitchSpan: 1.29, bladeK: [5.2, 6.53], gap: 0.9 },
+    // M5a: fan işi arttı; 2 kademe için ψ sınırı 0,988 → 1,45 (gerçek ψ ~1,3).
+    // Çıkış Mach'ı 0,238 → 0,3: P5 düşünce çıkış kanalı göbeğe doğru açılmasın
+    { type: 'lpt', spool: 'lp', eff: 0.9, mach: [0.164, 0.3], hubTip: 0.622, taper: 1.081, loading: 1.45, pitchSpan: 1.29, bladeK: [5.2, 6.53], gap: 0.9 },
     { type: 'mixer', loss: 0.01, style: 'confluent' },
     { type: 'afterburner', t7Max: 2000, eta: 0.9, dpDry: 0.03, dpLit: 0.065, mach: 0.192, lengthDiameter: 1.65 },
     { type: 'nozzle', style: 'cd', cv: 0.98, flaps: 16 },
@@ -161,11 +174,14 @@ export const MILITARY_TURBOFAN_GRAPH: EngineGraph = {
 
 /**
  * Turboprop: eksenel + santrifüj gaz jeneratörü, serbest güç türbini,
- * pervane redüktörü. Not: çekirdek M4 öncesi modele kalibre edildi ve
- * 9,5 kg/s'lik akışına göre büyük çizilmiştir (HPT girişi Mach 0,05,
- * yanma odası referans hızı 8 m/s; gerçekte 0,1–0,15 ve 15–25 m/s).
- * Santrifüj çark ise fizikten: uç hızı ~505 m/s, difüzör eski çark
- * çapında.
+ * pervane redüktörü. M5a: çekirdek fiziğe uyduruldu. M4'te M4 öncesi
+ * modele kalibreydi ve 9,5 kg/s'lik akışına göre büyüktü (HPC ilk kademe
+ * bağıl Mach 1,86, HPT AN² 7,2e7, HPT girişi Mach 0,05, yanma odası
+ * referans hızı 8 m/s). Şimdi T700/PT6 sınıfındaki gibi 5 eksenel kademe +
+ * santrifüj son kademe (işin %60'ı, çark ucu ~583 m/s), HPC ilk kademesi
+ * Mach 1,48, tek kademeli HPT (girişi Mach 0,11, uç ~543 m/s), HPT ve güç
+ * türbini AN² ≤ 4,0e7, yanma odası 20 m/s. Gaz jeneratörü kısalır ve
+ * incelir; pervane ve redüktör aynı kalır.
  */
 export const TURBOPROP_GRAPH: EngineGraph = {
   kind: 'turboprop',
@@ -188,14 +204,14 @@ export const TURBOPROP_GRAPH: EngineGraph = {
       spool: 'hp',
       pr: 15,
       eff: 0.83,
-      tipSpeed: 624,
-      mach: [0.252, 0.144],
-      hubTip: 0.5,
+      tipSpeed: 470,
+      mach: [0.45, 0.25],
+      hubTip: 0.45,
       taper: 0.85,
-      loading: 0.253,
-      pitchSpan: 2,
+      loading: 0.3,
+      pitchSpan: 1.5,
       bladeK: [2.76, 1.53],
-      centrifugal: { workFraction: 0.45, loading: 0.72, diffuserRatio: 1.608, gap: 1.143 },
+      centrifugal: { workFraction: 0.6, loading: 0.72, diffuserRatio: 1.608, gap: 1.143 },
     },
     {
       type: 'combustor',
@@ -203,19 +219,19 @@ export const TURBOPROP_GRAPH: EngineGraph = {
       tit: 1440,
       eff: 0.99,
       dp: 0.05,
-      refVelocity: 8.29,
-      lengthHeight: 3.333,
+      refVelocity: 20,
+      lengthHeight: 6,
       meanShift: 0.0325,
       gap: 1.429,
       injectors: 14,
     },
-    { type: 'hpt', spool: 'hp', eff: 0.88, mach: [0.0464, 0.152], hubTip: 0.682, taper: 1, loading: 1.478, pitchSpan: 2.286, bladeK: [2.65, 2.65], gap: 0.625 },
+    { type: 'hpt', spool: 'hp', eff: 0.88, mach: [0.11, 0.3], hubTip: 0.8, taper: 1, loading: 1.8, pitchSpan: 2.286, bladeK: [2.65, 2.65], gap: 0.625 },
     {
       type: 'lpt',
       spool: 'lp',
       eff: 0.9,
-      tipSpeed: 491,
-      mach: [0.129, 0.271],
+      tipSpeed: 470,
+      mach: [0.129, 0.38],
       hubTip: 0.652,
       taper: 1.13,
       loading: 0.879,
@@ -234,7 +250,8 @@ export const TURBOPROP_GRAPH: EngineGraph = {
  * akışında boğuluyordu (Mach 1), eski LPT fan devrinde ψ ≈ 6,6 yüklemeyle
  * çalışıyordu. Şimdi booster Mach 0,42 / ψ 0,9 ile 3 kademe, LPT ince
  * halka halinde dışarı açılıp (göbek/uç 0,9) ψ ≈ 2,9 ile 6 kademe —
- * doğrudan tahrikli büyük turbofanlardaki gibi.
+ * doğrudan tahrikli büyük turbofanlardaki gibi. M5a'da HPT ve yanma odası
+ * da fiziğe uyduruldu (HPT girişi Mach 0,10, yanma odası 20 m/s).
  */
 export const TURBOFAN_GRAPH: EngineGraph = {
   kind: 'turbofan',
@@ -283,7 +300,8 @@ export const TURBOFAN_GRAPH: EngineGraph = {
     {
       type: 'hpc',
       spool: 'hp',
-      pr: 16.5,
+      // M5a: 16,5 → 16,3: T3 962 → 958 K (1000 K sınırından ≥ %4 pay)
+      pr: 16.3,
       eff: 0.87,
       tipSpeed: 552.1,
       mach: [0.2172, 0.1227],
@@ -301,14 +319,18 @@ export const TURBOFAN_GRAPH: EngineGraph = {
       tit: 1680,
       eff: 0.995,
       dp: 0.04,
-      refVelocity: 11.84,
-      lengthHeight: 1.571,
+      // M5a: 11,8 → 20 m/s (gerçek halka odalar 15–25 m/s): oda incelir ve kısalır
+      refVelocity: 20,
+      lengthHeight: 2.6,
       meanShift: 0.014,
       gap: 0.9143,
       injectors: 20,
     },
-    { type: 'hpt', spool: 'hp', eff: 0.9, mach: [0.0433, 0.1643], hubTip: 0.7184, taper: 1.027, loading: 1.496, pitchSpan: 1.131, bladeK: [3.235, 3.645], gap: 0.75 },
-    { type: 'lpt', spool: 'lp', eff: 0.92, mach: [0.3, 0.45], hubTip: 0.9, taper: 1.25, loading: 3.0, pitchSpan: 1.0, bladeK: [1.84, 6.85], gap: 1.8 },
+    // M5a: HPT girişi Mach 0,04 → 0,10 (eski halka 1150 kg/s'e göre genişti):
+    // uç 0,49 → 0,47 m, AN² 4,0e7 → 2,3e7; kanat sayısı gerçekçi katılıkta (~110)
+    { type: 'hpt', spool: 'hp', eff: 0.9, mach: [0.1, 0.3], hubTip: 0.88, taper: 1, loading: 1.496, pitchSpan: 1.131, bladeK: [2.25, 3], gap: 0.75 },
+    // gap: HPT küçülünce türbin geçiş kanalı boyu ≥ 1,2 × yarıçap tırmanışı kalsın
+    { type: 'lpt', spool: 'lp', eff: 0.92, mach: [0.3, 0.45], hubTip: 0.9, taper: 1.25, loading: 3.0, pitchSpan: 1.0, bladeK: [1.84, 6.85], gap: 2.4 },
     // cv düz kenarlı lüle için; baypas chevron'larıyla etkin değer 0,985
     { type: 'nozzle', style: 'separate', cv: 0.98747, chevrons: { core: 0, bypass: 18 } },
   ],
