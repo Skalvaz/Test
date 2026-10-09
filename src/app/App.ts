@@ -1112,6 +1112,13 @@ export class App {
   fixedDt: number | null = null;
   pendingSteps = 0;
   framesRendered = 0;
+  /**
+   * Kare kancaları (M5a P9): atölyenin 3B yardımcıları (tutamaçlar, hayalet,
+   * ölçek figürü, zarf kutusu; src/app/workshop) kamera bu karenin son
+   * konumundayken, çizimden hemen önce güncellenir. Atölye modu (P10)
+   * girişte ekler, çıkışta siler.
+   */
+  readonly frameHooks = new Set<(dt: number) => void>();
 
   private frame(now: number) {
     requestAnimationFrame(this.frame);
@@ -1177,6 +1184,7 @@ export class App {
     updateWeather(simDt);
     this.rain.update(simDt, this.rig.camera, this.floorY);
     if (this.cutaway) this.aimCutaway();
+    for (const f of this.frameHooks) f(dt);
     this.updateHaze(snap, dt);
     if (!this.envPending) {
       this.fx.composer.render(dt);
