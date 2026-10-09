@@ -147,9 +147,20 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
 
 ## Sıradaki işler
 
-1. M5 Motor Atölyesi (ROADMAP). Hazır kancalar: `App.applyDesign(kind,
-   graph, draft)` (taslak/tam ayrıntı, < 150 ms), `window.__design`,
-   tasarım uyarıları için `flowpath.metrics` (uç Mach, AN², kütle).
-   M4'ten devreden: maliyet, gürültü (chevron etkisi), NOx, soğutma havası;
-   turboprop çekirdeği ve turbofan HPT/yanma odası şablonda büyük (ROADMAP
-   M4b notu) — uyarılar gelince düzeltilecek.
+1. **M5a sürüyor** — şartname `docs/M5A-SPEC.md` (iş paketleri §7, oynanış
+   senaryosu §8). Kullanıcı §9.2 S1–S11 varsayılanlarının hepsini onayladı.
+   Kullanıcı çok ajanlı iş akışıyla (ultracode) ilerlemeyi istedi; her
+   dalgadan sonra genel kontrol + kod incelemesi (`/code-review high`)
+   bekliyor, sonra commit + push.
+   - ✅ P0 sözleşmeler ve iskelet (`4e1b376`).
+   - ⏳ Dalga 1 (P1 sim, P2 şablon, P3 değerlendirme, P4a mimari, P4b
+     atölye çekirdeği, P5 kuru + kutu-halka, P8 kind→traits): iş akışı
+     `wf_3d581906-dfb`. Paketler ayrı worktree'lerde `m5a/p*` dallarına
+     commit eder; entegratör ana kopyada P1→P2→P3→P8→P5→P4a→P4b sırasıyla
+     birleştirir (push yok). Yarıda kaldıysa: `git branch --list "m5a/*"`
+     ve `git worktree list` ile durumu gör; aynı oturumdaysa iş akışını
+     `resumeFromRunId` ile sürdür, değilse eksik paketleri yeniden başlat.
+   - Sonra: dalga 2 (P6 karışık TF, P7 turboşaft, P9 tutamaçlar, P10
+     arayüz), dalga 3 (P11 entegrasyon, oynanış testi, belgeler).
+   - Paket portları: Pn → 518n (P4b 5194), önizleme 418n; 5173/4173 ana.
+2. M5b, M5c (`docs/ATOLYE.md`).
