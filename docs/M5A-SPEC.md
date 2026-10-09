@@ -509,7 +509,11 @@ export function rotorInertia(gas: GasPath, spool: 'lp' | 'hp', mass: MassBreakdo
   0,5'i; LP: fan/lpc/booster + lpt + LP mili (+ pervane `propJ`); HP:
   hpc (+çark) + hpt + HP mili.
 - **Marş torku:** `τ = τ_ref · (I_hp/I_hp,ref) · (n2Rpm/n2Rpm,ref)`,
-  ×[0,25, 4] kırpılır (ivmelenme süresi I·ω/τ korunur).
+  ×[0,25, 10] kırpılır (ivmelenme süresi I·ω/τ yalnız kırpma içinde
+  korunur). Üst sınır P1 ölçümüyle 4'ten 10'a çıktı: mil sürüklemesi
+  ∝ W^1,5 büyüdüğünden ×3 hava akışında gereken oran ~9 (4'te ×3 kuru TJ
+  60 s'de rölantiye çıkmıyor). Küçük motorda (×0,3, oran ~0,09) alt sınır
+  devrede: marş ölçeğe göre güçlü, çalıştırma kısa.
 - **Aksesuar gücü:** `P = P_ref · W25/W25,ref`, ×[0,3, 3] (W25 =
   `massFlow/(1+bpr)`, grafikten). Tasarım noktasına (HPT işi) girdiği için
   `resolveAccessoryPower(g, ref)` ile `toEngineDesign`'da, yani
@@ -541,7 +545,13 @@ export interface EngineReference { /* … */ A9mix?: number }
 ```
 
 - **Karışık akış (art yakıcısız):** `sizeEngine` (design.ts:529) `if
-  (d.afterburner) {…} else if (d.mixer) {…}`: `mixStreams(W4,T5,P5,W13,T13,P19t,loss)`
+  (d.afterburner) {…} else if (d.mixer) {…}`: `mixDry(W4,T5,P5,W13,T13,P19t,loss)`
+  (P1: `mixStreams` değil — karışımı yanma ürünü saymak yüksek baypasta
+  genleşme işini ~%12 düşürüyordu; `mixDry` kütle ağırlıklı cp/R kullanır;
+  art yakıcılı dal `mixStreams`'te kalır). Kayıp `mixerLoss(loss, P5, P19t)
+  = loss + MIXER_IMBALANCE_LOSS·ln²(P19t/P5)` (0,4): dengesizlik karışma
+  kaybı üretir, kazanç P19t ≈ P5 dolayında en büyük. Tasarım dışında kayıp
+  düzeltilmiş akışın karesiyle ölçeklenir.
   → `convergentNozzle(mix.P, mix.T)` (sabit yakınsak ortak lüle, basınç
   itkisi dahil) → `A9mix = mix.W / massFlux`; itki `mixedJetThrust(…,
   mixingEff, …, jet: 'convergent')`; `st7 = mix`. `cycle.ts:342` aynı dal
@@ -1276,7 +1286,7 @@ Bant dışı kalan ölçü için kalibrasyon düğmeleri ayarlanır; kütle mode
 | `engine/visual.ts:475` | turbofan iç parça | `traits.layout === 'nacelle'` | P8 |
 | `engine/visual.ts:619` | duman normu 45e3/60e3 | `sized.point.thrust` (şablonda aynı sonucu veren katsayı) | P8 |
 | `engine/barejet.js:93-95, 270, 292-293` | `kind==='turbojet'` | `src.traits.lpLoad === 'lpc'` | P5 |
-| `effects/EngineEffects.js:157, 377, 528` | turbojet isi | `traits.smoky`; kurum `smoky ? 1 : clamp(1−bpr,0,1)·0,4` | P8 |
+| `effects/EngineEffects.js:157, 377, 528` | turbojet isi | `traits.smoky`; kurum hızı (uygulanan, P8): isli motor `0,6+0,8·N1`; gaz jeneratörü `0,2·itki`; fanlı motor `(0,1+0,3·itki)·(1+2·clamp(1−bpr/0,6, 0, 1))`; art yakıcı katkısı `+1,6·ab` | P8 |
 | `effects/EngineEffects.js:545, 564` | turbopropta girdap/dudak yok | `lpLoad ∈ {propeller, shaft}` | P8 |
 | `audio/EngineAudio.ts:171` | `prop` | `output === 'propeller'` pervane; `'shaft'` fan tonu/buzz-saw kapalı | P8 |
 | `app/App.ts:221, 234, 310` | kurulum kind | slot | P0 |
@@ -1290,7 +1300,7 @@ Bant dışı kalan ölçü için kalibrasyon düğmeleri ayarlanır; kütle mode
 | `game/parts.ts:138-249` | `PART_OVERRIDES` | + `turboshaft`, yeni PartId kartları | P0 (yer tutucu) / P8 |
 | `ui/Cockpit.ts:27-48, 177-189` | `DETENTS[kind]`, AB bölgesi MTF/TJ | `setEngine(design, traits)`; AB bölgesi `traits.afterburner` (kuru TJ'de yanlış olurdu); + turboshaft | P8 |
 | `ui/Eicas.ts:89-90, 113, 287-295` | etiketler | ITT `lpLoad ∈ {prop,shaft}`; FTIT `bypass && afterburner`; "N1 LP" `lpLoad==='lpc'`; NP turboşaft; AB satırı `afterburner`, NOZ `variableNozzle` | P8 |
-| `ui/CycleDiagram.ts:202, 220, 232` | TP ve AB satırları | 202 `output !== 'thrust'`; 220/232 istasyon 7 `afterburner \|\| exhaust==='mixed'`; 19 `bypass && exhaust==='separate'` | P8 |
+| `ui/CycleDiagram.ts:202, 220, 232` | TP ve AB satırları | 202 `output !== 'thrust'`; 220/232 istasyon 7 `afterburner \|\| exhaust==='mixed'`; 19 `bypass && (exhaust==='separate' \|\| afterburner)` (art yakıcılı karışık şablon eski diyagramını korur) | P8 |
 | `ui/SandboxPanel.ts:81-85, 114, 116, 118-119, 124` | etiket, erken dönüş, pilon/kanat | 5 şablon + `data-kind="workshop"` düğmesi; `refreshEngine()` (rev); pilon/kanat `layout==='nacelle'` | P0/P10 |
 | `main.ts:16` | `window.__design` | + `setSlotGraph`, `builtFor`, `TEMPLATES`, `ARCH_OPTIONS` | P0 |
 | `sim/sim.test.ts:226-250` | KINDS | + turboshaft | P1 |
