@@ -64,11 +64,17 @@ function mixedTurbofanGraph(): EngineGraph {
   return g;
 }
 
-/** Kuru düşük baypaslı karışık akışlı turbofan (Spey sınıfı, mimari 4): MTF − art yakıcı */
+/**
+ * Kuru düşük baypaslı karışık akışlı turbofan (Spey sınıfı, mimari 4): MTF − art
+ * yakıcı. Fan PR 3,1 / BPR 0,68 sabit: P2 MTF şablonunu karıştırıcı dengesine
+ * çekti (FPR 4,3, BPR 0,55); buradaki testler dengesizliği (P19t/P5 0,6…1,5)
+ * BPR kaydırarak taradığından şablondan bağımsız bir tasarım ister.
+ */
 function dryLowBypassGraph(): EngineGraph {
   const g = structuredClone(MILITARY_TURBOFAN_GRAPH);
   delete g.kind;
   g.modules = g.modules.filter((m) => m.type !== 'afterburner');
+  Object.assign(modOf<CompressorModule>(g, 'fan'), { pr: 3.1, bypassRatio: 0.68 });
   Object.assign(modOf<NozzleModule>(g, 'nozzle'), { style: 'fixed' });
   delete modOf<NozzleModule>(g, 'nozzle').flaps;
   return g;
@@ -468,7 +474,11 @@ describe('art yakıcısız karışık akış (M5a)', () => {
       if (ratio(m) < target) lo = m;
       else hi = m;
     }
-    return { ...d, bypassRatio: (lo + hi) / 2 };
+    const bpr = (lo + hi) / 2;
+    // Hedefe ulaşılamazsa ikiye bölme aralığın ucuna dayanır: sessizce yanlış
+    // tasarımla sürmek yerine dur
+    if (!(Math.abs(ratio(bpr) / target - 1) < 1e-3)) throw new Error(`balanced: P19t/P5 = ${target}, BPR [0,02; 15] içinde bulunamadı`);
+    return { ...d, bypassRatio: bpr };
   }
   /** Karışma kazancı: aynı tasarımın ayrık akışlı lülelerine göre itki oranı − 1 */
   const gain = (d: EngineDesign, mixingEff: number, loss: number) =>
