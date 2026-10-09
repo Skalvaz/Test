@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import type { VisualSource } from '../engine/models';
 import type { EngineKind } from '../sim';
 
 export interface CameraView {
@@ -53,9 +54,139 @@ export const KIND_VIEWS: Record<EngineKind, Partial<Record<ViewName, CameraView>
     exhaust: { label: 'Egzoz', position: [2.2, 0.5, 4.4], target: [0, 0, 1.4], fov: 30 },
     cutawayCore: { label: 'Kesit — çekirdek', position: [3.0, 0.6, -0.5], target: [0, 0, -0.3], fov: 32, cutaway: true },
   },
-  // Turboşaft: kaportasız küçük gaz jeneratörü (yer tutucu; M5a P8 yerleşimden hesaplar)
+  // Turboşaft: elle ayarlı açı yok; viewsFor yerleşimden çerçeveler
+  // (frameDesign). Bu satır yalnız doğrudan okuyanlar için geri düşüş
   turboshaft: BARE,
 };
+
+/** Açıları elle ayarlanmış sunum tipleri (kayıt sahneleri bunlara dayanır) */
+const TUNED: ReadonlySet<EngineKind> = new Set<EngineKind>(['turbofan', 'militaryTurbofan', 'turbojet', 'turboprop']);
+
+/** Motorun kamera çerçevesi: boy, en büyük çap ve eksenel orta nokta [m] */
+export interface DesignFrame {
+  length: number;
+  diameter: number;
+  zMid: number;
+}
+
+/**
+ * Yerleşimden çerçeve: dış zarfın (`outerProfile`) eksenel uçları ve en
+ * büyük yarıçapı; pervaneli motorda pervane çapı da (metrics.diameter).
+ * Zarf yoksa giriş ve çıkış ağızları.
+ */
+export function frameOf(src: Pick<VisualSource, 'layout' | 'built'>): DesignFrame {
+  const L = src.layout;
+  const prof = L.outerProfile ?? [];
+  let z0 = L.intake.z;
+  let z1 = L.exhaustExit.z;
+  let r = Math.max(L.intake.radius, L.exhaustExit.radius);
+  if (prof.length >= 2) {
+    z0 = Math.min(z0, prof[0][0]);
+    z1 = Math.max(z1, prof[prof.length - 1][0]);
+    for (const [, pr] of prof) r = Math.max(r, pr);
+  }
+  const diameter = Math.max(2 * r, src.built.flowpath.metrics.diameter);
+  return { length: Math.max(z1 - z0, 0.1), diameter, zMid: (z0 + z1) / 2 };
+}
+
+/** Çerçeveye sığdırma uzaklığının ölçüsü (§6.7): boy ya da çap baskın */
+const frameSize = (m: DesignFrame) => Math.max(m.length * 0.62, m.diameter * 1.35);
+
+type ViewSet = Partial<Record<ViewName, CameraView>>;
+
+/**
+ * Açı takımını bir motordan ötekine taşır: hedefler eksenel orta noktaya
+ * göre, kamera hedefe göre çerçeve ölçüsü oranında ölçeklenir (bakış yönü
+ * ve görüş açısı korunur). Verilmeyen açılar VIEWS'ten alınıp taşınır.
+ */
+export function scaleViews(views: ViewSet, from: DesignFrame, to: DesignFrame): ViewSet {
+  const k = frameSize(to) / frameSize(from);
+  const out: ViewSet = {};
+  for (const name of Object.keys(VIEWS) as ViewName[]) {
+    if (name === 'menu') continue;
+    const v: CameraView = views[name] ?? VIEWS[name];
+    const t: [number, number, number] = [v.target[0] * k, v.target[1] * k, to.zMid + (v.target[2] - from.zMid) * k];
+    const p: [number, number, number] = [
+      t[0] + (v.position[0] - v.target[0]) * k,
+      t[1] + (v.position[1] - v.target[1]) * k,
+      t[2] + (v.position[2] - v.target[2]) * k,
+    ];
+    out[name] = { ...v, position: p, target: t };
+  }
+  return out;
+}
+
+/** BARE açılarının ayarlandığı motorun (TJ şablonu) çerçevesi */
+const BARE_FRAME: DesignFrame = { length: 5.549, diameter: 1.56, zMid: 0.1245 };
+
+/**
+ * Elle ayarlı açısı olmayan motor için çerçeve (turboşaft; atölyede yeni
+ * sunum tipi). Kaportasız turbojet açıları (BARE) TJ şablonunun
+ * çerçevesinden (boy 5,55 m, çap 1,56 m, orta z 0,12) bu motora taşınır.
+ */
+export function frameDesign(m: DesignFrame): ViewSet {
+  return scaleViews(BARE, BARE_FRAME, m);
+}
+
+/**
+ * Görsel kaynağın kamera açıları. Şablon yuvalarında (kind yuvası, elle
+ * ayarlı tip) KIND_VIEWS aynen: kayıt sahneleri ve dersler bozulmaz. Atölye
+ * yuvasında aynı sunum tipinin açıları şablon motorundan (`reference`) bu
+ * tasarımın boyutuna ölçeklenir; elle ayarlı açısı olmayan tip (turboşaft)
+ * yerleşimden çerçevelenir.
+ */
+export function viewsFor(
+  src: Pick<VisualSource, 'slot' | 'traits' | 'layout' | 'built'>,
+  reference?: Pick<VisualSource, 'layout' | 'built'>,
+  fit?: ViewFit,
+): ViewSet {
+  const kind = src.traits.presentation;
+  const fitted = (v: ViewSet) => (fit ? fitViews(v, fit) : v);
+  if (!TUNED.has(kind)) return fitted(frameDesign(frameOf(src)));
+  if (src.slot !== 'workshop' || !reference) return KIND_VIEWS[kind];
+  return fitted(scaleViews(KIND_VIEWS[kind], frameOf(reference), frameOf(src)));
+}
+
+/** Kameranın çıkamayacağı kutu (test hücresi) ve yörünge kontrolünün en uzak mesafesi */
+export interface ViewFit {
+  bounds: THREE.Box3;
+  maxDistance: number;
+}
+
+/**
+ * Ölçeklenmiş açıyı kapalı alana sığdırır: kamera kutunun dışına ya da
+ * yörünge sınırının ötesine düşüyorsa bakış doğrultusunda hedefe yaklaşır
+ * ve görüş açısı aynı oranda genişler (motor ekranda aynı boyda kalır;
+ * büyük motor hücrede geniş açıyla çekilir). En çok 70°.
+ */
+export function fitViews(views: ViewSet, fit: ViewFit): ViewSet {
+  const out: ViewSet = {};
+  const margin = 0.3;
+  const box = fit.bounds.clone().expandByScalar(-margin);
+  for (const name of Object.keys(views) as ViewName[]) {
+    const v = views[name]!;
+    const t = new THREE.Vector3(...v.target);
+    const p = new THREE.Vector3(...v.position);
+    const dir = p.clone().sub(t);
+    const d = dir.length();
+    let s = Math.min(1, (fit.maxDistance - margin) / Math.max(d, 1e-6));
+    // Hedeften kameraya ışın kutudan nerede çıkar (hedef kutunun içinde)
+    if (box.containsPoint(t)) {
+      for (const ax of ['x', 'y', 'z'] as const) {
+        const lim = dir[ax] > 0 ? box.max[ax] : box.min[ax];
+        if (Math.abs(dir[ax]) > 1e-9) s = Math.min(s, Math.max(0.05, (lim - t[ax]) / dir[ax]));
+      }
+    }
+    if (s >= 0.999) {
+      out[name] = v;
+      continue;
+    }
+    const half = THREE.MathUtils.degToRad(v.fov / 2);
+    const fov = Math.min(70, 2 * THREE.MathUtils.radToDeg(Math.atan(Math.tan(half) / s)));
+    out[name] = { ...v, position: t.clone().addScaledVector(dir, s).toArray() as [number, number, number], fov };
+  }
+  return out;
+}
 
 export interface ScreenInsets {
   left: number;

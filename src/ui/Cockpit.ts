@@ -5,7 +5,8 @@
  * APU BLEED → MARŞ (GRD) → ATEŞLEME → N2 ≥ %20'de YAKIT KONTROL RUN.
  */
 
-import type { EngineKind, EngineSim, SimSnapshot } from '../sim';
+import type { EngineTraits } from '../design/traits';
+import type { EngineDesign, EngineKind, EngineSim, SimSnapshot } from '../sim';
 import { h } from './dom';
 
 export type SwitchId = 'apuBleed' | 'starter' | 'ignition' | 'fuelRun' | 'fadec';
@@ -16,7 +17,7 @@ interface SwitchView {
   lamp: HTMLSpanElement;
 }
 
-interface Detent {
+export interface Detent {
   v: number;
   label: string;
 }
@@ -24,6 +25,7 @@ interface Detent {
 /** Art yakıcı bölgesinin kol üzerindeki uzunluğu (MIL = 1.0 … MAX AB = 1 + AB_RANGE) */
 const AB_RANGE = 0.3;
 
+/** Sunum tipine göre kol kademeleri; art yakıcı bölgesi (v > 1) traits'e göre süzülür */
 const DETENTS: Record<EngineKind, Detent[]> = {
   turbofan: [
     { v: 0, label: 'IDLE' },
@@ -45,12 +47,25 @@ const DETENTS: Record<EngineKind, Detent[]> = {
     { v: 0.75, label: 'CLB' },
     { v: 1, label: 'MAX' },
   ],
-  // Gaz jeneratörü gücü: rölanti / uçuş (yer tutucu; M5a P8 kesinleştirir)
+  // Turboşaft: kol gaz jeneratörünün gücünü seçer (rölanti / uçuş); güç
+  // türbini devrini (NP) vali tutar. Art yakıcı ve beta (ters hatve) yok
   turboshaft: [
     { v: 0, label: 'IDLE' },
     { v: 1, label: 'FLY' },
   ],
 };
+
+/**
+ * Motorun kol kademeleri. Art yakıcı bölgesi yalnız motorda art yakıcı
+ * varken (traits ve simülasyon tasarımı birlikte): kuru turbojet `turbojet`
+ * sunumunu kullanır ama MAX kademesi olmaz.
+ */
+export function detentsFor(t: Pick<EngineTraits, 'presentation' | 'afterburner'>, design?: Pick<EngineDesign, 'afterburner'>): Detent[] {
+  const base = DETENTS[t.presentation];
+  const ab = t.afterburner && (!design || !!design.afterburner);
+  if (!ab) return base.filter((d) => d.v <= 1);
+  return base.some((d) => d.v > 1) ? base : [...base, { v: 1 + AB_RANGE, label: 'MAX' }];
+}
 
 export interface CockpitCallbacks {
   onSwitch?: (id: SwitchId, value: boolean | string) => void;
@@ -70,6 +85,7 @@ export class Cockpit {
   private throttleLocked = false;
   private hidden = new Set<SwitchId>();
   private detents: Detent[] = DETENTS.turbofan;
+  private detentKey = '';
   /** Kolun üst ucu: art yakıcılı motorlarda MIL'in ötesine uzanır */
   private leverMax = 1;
   private detentEls: HTMLElement[] = [];
@@ -132,7 +148,7 @@ export class Cockpit {
       h('div', { class: 'throttle-slot' }),
       this.handle,
     ]);
-    this.setEngineKind('turbofan');
+    this.applyDetents(DETENTS.turbofan);
     this.readout = h('div', { class: 'throttle-readout' });
     this.throttleEl = h('div', { class: 'throttle panel' }, [
       h('span', { class: 'panel-title', text: 'Gaz' }),
@@ -178,9 +194,20 @@ export class Cockpit {
     }
   }
 
-  /** Motor tipine göre kol kademelerini kurar (art yakıcı bölgesi dahil). */
-  setEngineKind(kind: EngineKind) {
-    this.detents = DETENTS[kind];
+  /**
+   * Motora göre kol kademelerini kurar: sunum tipinin kademeleri, art
+   * yakıcı bölgesi yalnız art yakıcılı motorda. Kademeler değişmediyse
+   * (aynı tipte yeni tasarım) DOM'a dokunmaz.
+   */
+  setEngine(design: EngineDesign, traits: EngineTraits) {
+    this.applyDetents(detentsFor(traits, design));
+  }
+
+  private applyDetents(detents: Detent[]) {
+    const key = detents.map((d) => `${d.v}:${d.label}`).join('|');
+    if (key === this.detentKey) return;
+    this.detentKey = key;
+    this.detents = detents;
     this.leverMax = this.detents[this.detents.length - 1].v;
     for (const el of this.detentEls) el.remove();
     this.detentEls = this.detents.map((d) => {

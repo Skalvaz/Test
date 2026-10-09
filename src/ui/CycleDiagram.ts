@@ -6,12 +6,96 @@
  * basınç eğrisi boyunca ısı ekler; türbin ve lüle (4→9) genişletir.
  */
 
+import type { EngineTraits } from '../design/traits';
 import type { PartId } from '../engine/visual';
 import { AIR, GAS, type SimSnapshot, type StationId } from '../sim';
 import { h } from './dom';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const K = 273.15;
+
+/** Diyagramın okuduğu türetilmiş tip alanları */
+export type DiagramTraits = Pick<EngineTraits, 'output' | 'afterburner' | 'exhaust'>;
+
+/** Bağlanmadan önce yolcu turbofanı */
+const DEFAULT_TRAITS: DiagramTraits = { output: 'thrust', afterburner: false, exhaust: 'separate' };
+
+/**
+ * "Çevrim" bölümünün satırları. Mil çıkışlı motorda (pervane, çıkış mili)
+ * mil gücü satırları; art yakıcıda yanma ve lüle; karışık akışta (art
+ * yakıcılı ya da değil) karışım sıcaklığı T7.
+ */
+export function cycleRows(s: SimSnapshot, t: DiagramTraits, bypass: boolean): [string, string][] {
+  const c = s.cycle;
+  const st = c.stations;
+  const coreShare = c.coreThrust / Math.max(1, c.coreThrust + c.bypassThrust);
+  const rows: [string, string][] = [
+    ['Toplam basınç oranı (OPR)', c.opr.toFixed(1)],
+    ...(bypass ? ([['Baypas oranı (BPR)', c.bypassRatio.toFixed(1)]] as [string, string][]) : []),
+    ['Türbin giriş sıcaklığı T4', `${(st['4'].T - K).toFixed(0)} °C`],
+    ['Yakıt / hava oranı', c.far.toFixed(4)],
+    ['Özgül yakıt tüketimi', s.tsfc > 0 ? `${(s.tsfc * 1e6).toFixed(2)} g/kN·s` : '—'],
+    ['Surge payı (HPC)', `${(c.surgeMargin * 100).toFixed(1)} %`],
+    ['HPC harita konumu β', c.beta.toFixed(2)],
+  ];
+  if (t.output === 'propeller') {
+    const total = Math.max(1, s.propThrust + c.netThrust);
+    rows.push(
+      ['Mil gücü', `${(s.shaftPower / 1000).toFixed(0)} kW`],
+      ['Pervane devri', `${s.propRpm.toFixed(0)} dev/dk`],
+      ['Hatve yük katsayısı', s.propPitch.toFixed(2)],
+      ['İtki: pervane / jet', `${((s.propThrust / total) * 100).toFixed(0)} / ${((Math.max(0, c.netThrust) / total) * 100).toFixed(0)} %`],
+      ['Jet hızı V9', `${c.V9.toFixed(0)} m/s`],
+    );
+  } else if (t.output === 'shaft') {
+    // Turboşaft: güç çıkış milinden; test hücresinde su freni emer
+    rows.push(
+      ['Mil gücü', `${(s.shaftPower / 1000).toFixed(0)} kW`],
+      ['Güç türbini devri NP', `${s.propRpm.toFixed(0)} dev/dk`],
+      ['Çıkış torku', `${(s.torque * 100).toFixed(0)} %`],
+      ['Jet hızı V9', `${c.V9.toFixed(0)} m/s`],
+    );
+  } else if (bypass && hasStation19(t, bypass)) {
+    rows.push(
+      ['İtki: fan / çekirdek', `${((1 - coreShare) * 100).toFixed(0)} / ${(coreShare * 100).toFixed(0)} %`],
+      ['Çekirdek jet hızı V9', `${c.V9.toFixed(0)} m/s`],
+      ['Fan jet hızı V19', `${c.V19.toFixed(0)} m/s`],
+    );
+  } else if (bypass) {
+    // Karışık akışlı (art yakıcısız) turbofan: iki akış tek lüleden çıkar
+    rows.push(['Karışık jet hızı V9', `${c.V9.toFixed(0)} m/s`]);
+  } else {
+    rows.push(['Jet hızı V9', `${c.V9.toFixed(0)} m/s`]);
+  }
+  if (t.afterburner) {
+    rows.push(
+      ['Art yakıcı', s.abLit ? `yanık · ${(s.abLevel * 100).toFixed(0)} %` : 'sönük'],
+      ['Lüle alanı A8', `${(s.nozzleArea * 100).toFixed(0)} %`],
+    );
+  }
+  if (hasStation7(t)) {
+    rows.push([t.afterburner ? 'Karışım / art yakıcı T7' : 'Karışım T7', `${(st['7'].T - K).toFixed(0)} °C`]);
+  }
+  return rows;
+}
+
+/** İstasyon 7 (karışım / art yakıcı) yalnız art yakıcıda ya da karışık akışta vardır */
+const hasStation7 = (t: DiagramTraits) => t.afterburner || t.exhaust === 'mixed';
+
+/**
+ * Baypas lülesi (istasyon 19) ayrık akışta vardır. Art yakıcılı karışık
+ * motorda (askeri turbofan şablonu) eski görünüm korunur: baypas akışının
+ * karıştırıcıdan önceki sanal lüle durumu gösterilir. Art yakıcısız karışık
+ * akışta baypas tek lüleden çıkar, 19 ve V19 yok.
+ */
+export const hasStation19 = (t: DiagramTraits, bypass: boolean) => bypass && (t.exhaust !== 'mixed' || t.afterburner);
+
+/** İstasyon tablosunun satırları */
+export function stationIds(t: DiagramTraits, bypass: boolean): StationId[] {
+  const ids: StationId[] = bypass ? ['0', '2', '13', '25', '3', '4', '45', '5', '9'] : ['0', '2', '25', '3', '4', '45', '5', '9'];
+  if (hasStation7(t)) ids.splice(ids.length - 1, 0, '7');
+  return ids;
+}
 
 /** Sıcaklıktan renge: soğuk mavi → camgöbeği → sarı → turuncu → kırmızı */
 export function tempColor(t: number): string {
@@ -76,11 +160,19 @@ export class CycleDiagram {
   private regionEls = new Map<Region, SVGPathElement>();
   private markerEls = new Map<StationId, SVGGElement>();
   private hasBypass = true;
+  /** Baypas lülesi (19) gösteriliyor mu (hasStation19) */
+  private hasSt19 = true;
   private ts: HTMLCanvasElement;
   private tsCtx: CanvasRenderingContext2D;
   private kv: HTMLDListElement;
   private tbody: HTMLTableSectionElement;
   private acc = 1;
+  private traits: DiagramTraits = DEFAULT_TRAITS;
+
+  /** Satır düzenini motorun türetilmiş tipine göre kurar; sonraki güncellemede çizilir */
+  setEngine(traits: EngineTraits) {
+    this.traits = traits;
+  }
 
   constructor(cb: CycleDiagramCallbacks = {}) {
     const svg = document.createElementNS(SVG_NS, 'svg');
@@ -174,13 +266,15 @@ export class CycleDiagram {
     const st = s.cycle.stations;
     // Baypassız motorlarda (turbojet, turboprop) 13/19 istasyonu yoktur
     const bypass = s.cycle.bypassRatio > 0.05;
-    if (bypass !== this.hasBypass) {
+    const st19 = hasStation19(this.traits, bypass);
+    if (bypass !== this.hasBypass || st19 !== this.hasSt19) {
       this.hasBypass = bypass;
+      this.hasSt19 = st19;
       for (const [r, p] of this.regionEls) if (r.part === 'bypassDuct') p.style.display = bypass ? '' : 'none';
-      for (const id of ['13', '19'] as StationId[]) {
-        const g = this.markerEls.get(id);
-        if (g) g.style.display = bypass ? '' : 'none';
-      }
+      const m13 = this.markerEls.get('13');
+      if (m13) m13.style.display = bypass ? '' : 'none';
+      const m19 = this.markerEls.get('19');
+      if (m19) m19.style.display = st19 ? '' : 'none';
     }
 
     for (const [r, p] of this.regionEls) {
@@ -188,48 +282,10 @@ export class CycleDiagram {
       p.setAttribute('fill', tempColor(t));
     }
 
-    const c = s.cycle;
-    const coreShare = c.coreThrust / Math.max(1, c.coreThrust + c.bypassThrust);
-    const rows: [string, string][] = [
-      ['Toplam basınç oranı (OPR)', c.opr.toFixed(1)],
-      ...(bypass ? ([['Baypas oranı (BPR)', c.bypassRatio.toFixed(1)]] as [string, string][]) : []),
-      ['Türbin giriş sıcaklığı T4', `${(st['4'].T - K).toFixed(0)} °C`],
-      ['Yakıt / hava oranı', c.far.toFixed(4)],
-      ['Özgül yakıt tüketimi', s.tsfc > 0 ? `${(s.tsfc * 1e6).toFixed(2)} g/kN·s` : '—'],
-      ['Surge payı (HPC)', `${(c.surgeMargin * 100).toFixed(1)} %`],
-      ['HPC harita konumu β', c.beta.toFixed(2)],
-    ];
-    if (s.kind === 'turboprop') {
-      const total = Math.max(1, s.propThrust + c.netThrust);
-      rows.push(
-        ['Mil gücü', `${(s.shaftPower / 1000).toFixed(0)} kW`],
-        ['Pervane devri', `${s.propRpm.toFixed(0)} dev/dk`],
-        ['Hatve yük katsayısı', s.propPitch.toFixed(2)],
-        ['İtki: pervane / jet', `${((s.propThrust / total) * 100).toFixed(0)} / ${((Math.max(0, c.netThrust) / total) * 100).toFixed(0)} %`],
-        ['Jet hızı V9', `${c.V9.toFixed(0)} m/s`],
-      );
-    } else if (bypass) {
-      rows.push(
-        ['İtki: fan / çekirdek', `${((1 - coreShare) * 100).toFixed(0)} / ${(coreShare * 100).toFixed(0)} %`],
-        ['Çekirdek jet hızı V9', `${c.V9.toFixed(0)} m/s`],
-        ['Fan jet hızı V19', `${c.V19.toFixed(0)} m/s`],
-      );
-    } else {
-      rows.push(['Jet hızı V9', `${c.V9.toFixed(0)} m/s`]);
-    }
-    if (s.kind === 'militaryTurbofan' || s.kind === 'turbojet') {
-      rows.push(
-        ['Art yakıcı', s.abLit ? `yanık · ${(s.abLevel * 100).toFixed(0)} %` : 'sönük'],
-        ['Lüle alanı A8', `${(s.nozzleArea * 100).toFixed(0)} %`],
-        ['Karışım / art yakıcı T7', `${(st['7'].T - K).toFixed(0)} °C`],
-      );
-    }
+    const rows = cycleRows(s, this.traits, bypass);
     this.kv.replaceChildren(...rows.flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })]));
 
-    const ids: StationId[] = bypass
-      ? ['0', '2', '13', '25', '3', '4', '45', '5', '9']
-      : ['0', '2', '25', '3', '4', '45', '5', '9'];
-    if (s.kind === 'militaryTurbofan' || s.kind === 'turbojet') ids.splice(ids.length - 1, 0, '7');
+    const ids = stationIds(this.traits, bypass);
     this.tbody.replaceChildren(
       ...ids.map((id) =>
         h('tr', {}, [
@@ -265,7 +321,7 @@ export class CycleDiagram {
       return g.cp * Math.log(st[id].T / T0) - g.R * Math.log(st[id].P / P0);
     };
     const core: StationId[] = ['0', '2', '25', '3', '4', '45', '5', '9'];
-    const byp: StationId[] = this.hasBypass ? ['2', '13', '19'] : [];
+    const byp: StationId[] = this.hasBypass ? (this.hasSt19 ? ['2', '13', '19'] : ['2', '13']) : [];
     const pts = core.map((id) => ({ id, s: ent(id), T: st[id].T }));
     const bpts = byp.map((id) => ({ id, s: ent(id), T: st[id].T }));
 

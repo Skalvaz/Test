@@ -143,7 +143,9 @@ function shockRing() {
 
 export class EngineEffects {
   /**
-   * @param {object} geo { kind, intake:{z,radius,y}, exhaust:{z,radius} (canlı), prop?:{z,radius,blades} }
+   * @param {object} geo { traits, intake:{z,radius,y}, exhaust:{z,radius} (canlı), prop?:{z,radius,blades} }
+   *   traits: türetilmiş motor tipi (design/traits.ts EngineTraits): isli
+   *   alev ve kurum `smoky`'den, giriş girdabı ve dudak buharı `lpLoad`'dan
    * @param {THREE.Texture} noise
    */
   constructor(geo, noise) {
@@ -154,7 +156,18 @@ export class EngineEffects {
     this.glow = new ParticleSystem('glow', noise, 1400);
     this.floorY = FLOOR_Y;
     this.smoke.floorY = this.glow.floorY = FLOOR_Y + 0.03;
-    this.flame = new AfterburnerFlame(geo.kind === 'turbojet' ? 'sooty' : 'clean');
+    const t = geo.traits;
+    /** Eski tip isli yanma (baypassız, LPC'li turbojet) */
+    this.smoky = !!t.smoky;
+    /** Gaz jeneratörü (pervane / çıkış mili): girişi küçük, egzozu yavaş */
+    this.gasGen = t.lpLoad === 'propeller' || t.lpLoad === 'shaft';
+    /**
+     * Fanlı motorda kurum çarpanı: baypas havası çekirdek egzozunu seyreltir.
+     * BPR ≥ 0,6'da 1 (askeri turbofan 0,68 ve yolcu turbofanı aynı kalır);
+     * çok düşük baypasta 3'e çıkar ve isli turbojetin hızına yaklaşır.
+     */
+    this.fanSoot = 1 + 2 * clamp(1 - (t.bpr ?? 0) / 0.6, 0, 1);
+    this.flame = new AfterburnerFlame(this.smoky ? 'sooty' : 'clean');
     this.floor = floorGlow();
     this.sootDecal = sootDecal(noise);
     this.shock = shockRing();
@@ -241,7 +254,6 @@ export class EngineEffects {
     this.humidity = effectiveHumidity();
     const hum = this.humidity;
     const R = ex.radius;
-    const kind = g.kind;
     const c = snap.controls;
     const prev = this.prev;
     const jetSpeed = clamp(4 + snap.thrustFrac * 22, 4, 30); // görsel akış hızı [m/s]
@@ -374,7 +386,7 @@ export class EngineEffects {
     const accel = snap.phase === 'lightoff' || snap.phase === 'accelerating';
     let smokeRate = accel ? 30 : 0;
     let smokeCol = [0.42, 0.41, 0.4, 0.2];
-    if (kind === 'turbojet' && snap.lit && !snap.abLit) {
+    if (this.smoky && snap.lit && !snap.abLit) {
       smokeRate = Math.max(smokeRate, 20 + 70 * smooth(snap.N1, 0.4, 1));
       smokeCol = [0.24, 0.22, 0.2, 0.22 + 0.16 * snap.N1];
     }
@@ -523,9 +535,12 @@ export class EngineEffects {
 
     /* ---------------- zeminde kurum ---------------- */
     {
+      // İsli turbojet hızla karartır; gaz jeneratörünün yavaş egzozu az,
+      // fanlı motorun (temiz yanma, soğuk baypas zarfı) itkiyle orantılı,
+      // düşük baypasta daha çok (fanSoot)
       const sootRate = !snap.lit
         ? 0
-        : (kind === 'turbojet' ? 0.6 + 0.8 * snap.N1 : kind === 'turboprop' ? 0.2 * snap.thrustFrac : 0.1 + 0.3 * snap.thrustFrac) + 1.6 * ab;
+        : (this.smoky ? 0.6 + 0.8 * snap.N1 : this.gasGen ? 0.2 * snap.thrustFrac : (0.1 + 0.3 * snap.thrustFrac) * this.fanSoot) + 1.6 * ab;
       this.soot += (sootRate * dt * (1 - this.soot)) / 300;
       // Jet (karışma katmanı ≈11° yarı açıyla genişler) zemine lüle yüksekliğine göre değer
       const h = Math.max(0.2, -this.floorY - R);
@@ -542,7 +557,8 @@ export class EngineEffects {
     // Yerden girişe yoğuşma girdabı: giriş yüksekliği/çap < ~1.6 ve yüksek akışta
     const inl = g.intake;
     const hOverD = ((inl.y ?? 0) - this.floorY) / (2 * inl.radius);
-    const vortexTarget = kind === 'turboprop' ? 0 : smooth(snap.airflow, 0.55, 0.92) * smooth(2.0 - hOverD, 0, 0.6) * smooth(hum, 0.25, 0.75);
+    // Gaz jeneratöründe (pervane, çıkış mili) giriş küçük ve gömülü: girdap yok
+    const vortexTarget = this.gasGen ? 0 : smooth(snap.airflow, 0.55, 0.92) * smooth(2.0 - hOverD, 0, 0.6) * smooth(hum, 0.25, 0.75);
     this.vortexStrength += (vortexTarget - this.vortexStrength) * Math.min(1, dt * 1.5);
     if (this.vortexStrength > 0.02) {
       // Girdap yerde gezinir: gerçek zemin girdabı sabit durmaz
@@ -561,7 +577,7 @@ export class EngineEffects {
     }
     // Giriş dudağında yoğuşma: yüksek akışta statik basınç/sıcaklık düşer
     // Dudakta statik sıcaklık düşer; ancak nemli havada çiy noktasının altına iner
-    const lip = smooth(snap.airflow, 0.75, 1.0) * (kind === 'turboprop' ? 0 : 1) * smooth(hum, 0.45, 0.9) * 1.4;
+    const lip = smooth(snap.airflow, 0.75, 1.0) * (this.gasGen ? 0 : 1) * smooth(hum, 0.45, 0.9) * 1.4;
     if (lip > 0.02) {
       const n = this.count('lip', 220 * lip, dt);
       this.puff(this.smoke, n, () => {

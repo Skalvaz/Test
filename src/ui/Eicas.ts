@@ -7,7 +7,40 @@
  * ikincil göstergeler ve CAS (ekip uyarı) mesaj listesi yer alır.
  */
 
+import type { EngineTraits } from '../design/traits';
 import type { SimSnapshot } from '../sim';
+
+/**
+ * Motorun gösterge düzeni (türetilmiş tipten). Gaz jeneratörlü motorlarda
+ * (turboprop, turboşaft) ilk kadran tork, EGT yerine ITT (T45), N2 yerine
+ * NG; güç türbini devri NP ve mil gücü SHP satırlarda. Turboşaftta itki
+ * satırı yok (jet artığı ihmal edilir).
+ */
+export interface EicasLayout {
+  primary: 'n1' | 'torque';
+  n1Label: string;
+  egtLabel: string;
+  n2Label: string;
+  rows: { np: boolean; shp: boolean; ab: boolean; noz: boolean; thrust: boolean };
+}
+
+type EicasTraits = Pick<EngineTraits, 'lpLoad' | 'output' | 'bypass' | 'afterburner' | 'variableNozzle'>;
+
+export function eicasLayout(t: EicasTraits): EicasLayout {
+  const gasGen = t.lpLoad === 'propeller' || t.lpLoad === 'shaft';
+  return {
+    primary: gasGen ? 'torque' : 'n1',
+    // Turbojette LP mili fan değil alçak basınç kompresörünü çevirir
+    n1Label: t.lpLoad === 'lpc' ? 'N1 LP' : 'N1',
+    // Art yakıcılı turbofanda sıcaklık fan türbini girişinden (FTIT) okunur
+    egtLabel: gasGen ? 'ITT' : t.bypass && t.afterburner ? 'FTIT' : 'EGT',
+    n2Label: gasGen ? 'NG' : 'N2',
+    rows: { np: gasGen, shp: gasGen, ab: t.afterburner, noz: t.variableNozzle, thrust: t.output !== 'shaft' },
+  };
+}
+
+/** Bağlanmadan önce (ve eski kancalar için) yolcu turbofanı düzeni */
+const DEFAULT_LAYOUT = eicasLayout({ lpLoad: 'fan', output: 'thrust', bypass: true, afterburner: false, variableNozzle: false });
 
 const C = {
   white: '#eef2f6',
@@ -45,6 +78,7 @@ export class Eicas {
   private h = 0;
   private dpr = 1;
   private blink = 0;
+  private layout: EicasLayout = DEFAULT_LAYOUT;
 
   constructor() {
     this.el = document.createElement('div');
@@ -53,6 +87,11 @@ export class Eicas {
     this.el.append(this.canvas);
     this.ctx = this.canvas.getContext('2d')!;
     new ResizeObserver(() => this.resize()).observe(this.el);
+  }
+
+  /** Gösterge düzenini motorun türetilmiş tipine göre kurar */
+  setEngine(traits: EngineTraits) {
+    this.layout = eicasLayout(traits);
   }
 
   private resize() {
@@ -86,11 +125,11 @@ export class Eicas {
     const L = s.limits;
     const egtMax = Math.ceil((L.egtRedline + 90) / 200) * 200;
     const egtTicks = Array.from({ length: egtMax / 200 + 1 }, (_, i) => i * 200);
-    const prop = s.kind === 'turboprop';
-    const egtLabel = prop ? 'ITT' : s.kind === 'militaryTurbofan' ? 'FTIT' : 'EGT';
+    const lay = this.layout;
 
-    if (prop) {
-      // Turboprop: tork (pervaneye giden güç), ITT ve gaz jeneratörü devri NG
+    if (lay.primary === 'torque') {
+      // Turboprop/turboşaft: tork (pervaneye/çıkış miline giden güç), ITT ve
+      // gaz jeneratörü devri NG
       this.dial(x0, cy, r, {
         value: s.torque * 100,
         min: 0,
@@ -110,7 +149,7 @@ export class Eicas {
         max: 110,
         red: L.n1Redline * 100,
         target: s.n1Command !== null ? s.n1Command * 100 : null,
-        label: s.kind === 'turbojet' ? 'N1 LP' : 'N1',
+        label: lay.n1Label,
         text: (s.N1 * 100).toFixed(1),
         unit: '%',
         ticks: [0, 20, 40, 60, 80, 100],
@@ -123,7 +162,7 @@ export class Eicas {
       amber: L.egtAmber,
       red: L.egtRedline,
       startLimit: starting ? L.egtStart : null,
-      label: egtLabel,
+      label: lay.egtLabel,
       text: Math.round(s.egt).toString(),
       unit: '°C',
       ticks: egtTicks,
@@ -134,7 +173,7 @@ export class Eicas {
       max: 110,
       red: L.n2Redline * 100,
       target: s.n2Command !== null ? s.n2Command * 100 : null,
-      label: prop ? 'NG' : 'N2',
+      label: lay.n2Label,
       text: (s.N2 * 100).toFixed(1),
       unit: '%',
       ticks: [0, 20, 40, 60, 80, 100],
@@ -284,18 +323,18 @@ export class Eicas {
   private secondary(x: number, y: number, w: number, s: SimSnapshot) {
     const ctx = this.ctx;
     const rows: [string, string, string, string][] = [];
-    if (s.kind === 'turboprop') {
-      rows.push(['NP', s.propRpm.toFixed(0), 'rpm', s.lit && s.N1 < 0.95 && s.controls.throttle > 0.3 ? C.amber : C.white]);
-      rows.push(['SHP', (s.shaftPower / 1000).toFixed(0), 'kW', C.white]);
-    }
-    if (s.kind === 'militaryTurbofan' || s.kind === 'turbojet') {
+    const show = this.layout.rows;
+    // Güç türbini devri (pervane ya da çıkış mili): vali %100'de tutar
+    if (show.np) rows.push(['NP', s.propRpm.toFixed(0), 'rpm', s.lit && s.N1 < 0.95 && s.controls.throttle > 0.3 ? C.amber : C.white]);
+    if (show.shp) rows.push(['SHP', (s.shaftPower / 1000).toFixed(0), 'kW', C.white]);
+    if (show.ab) {
       const zone = s.abLit ? `Z${Math.max(1, Math.ceil(s.controls.reheat * 5))}` : '—';
       rows.push(['AB', zone, s.abLit ? `${Math.round(s.abLevel * 100)}%` : '', s.abLit ? C.amber : C.white]);
-      rows.push(['NOZ', (s.nozzleArea * 100 - 100).toFixed(0), '%aç', C.white]);
     }
+    if (show.noz) rows.push(['NOZ', (s.nozzleArea * 100 - 100).toFixed(0), '%aç', C.white]);
+    rows.push(['FF', (s.wf * 3600).toFixed(0), 'kg/h', C.white]);
+    if (show.thrust) rows.push(['İTKİ', (s.thrust / 1000).toFixed(1), 'kN', C.white]);
     rows.push(
-      ['FF', (s.wf * 3600).toFixed(0), 'kg/h', C.white],
-      ['İTKİ', (s.thrust / 1000).toFixed(1), 'kN', C.white],
       ['YAĞ P', s.N2 > 0.05 ? s.oilPressure.toFixed(0) : '0', 'psi', s.N2 > 0.5 && s.oilPressure < 25 ? C.amber : C.white],
       ['TİTR', s.vibration.toFixed(1), 'N1', s.vibration > 2.5 ? C.amber : C.white],
       ['SM', (s.cycle.surgeMargin * 100).toFixed(0), '%', s.N2 > 0.45 && s.cycle.surgeMargin < 0.08 ? C.amber : C.white],

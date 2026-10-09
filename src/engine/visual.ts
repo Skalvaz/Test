@@ -9,7 +9,7 @@
 
 import * as THREE from 'three';
 import type { EngineKind, SimSnapshot } from '../sim';
-import type { SlotId } from '../design/catalog';
+import { builtFor, type SlotId } from '../design/catalog';
 import { buildExhaustPlume } from './exhaust.js';
 import { createNoiseTexture } from '../materials/textures.js';
 import { EngineEffects } from '../effects/EngineEffects.js';
@@ -149,6 +149,39 @@ class Flame {
   }
 }
 
+/**
+ * Surge alev konilerinin boyu / ağız yarıçapı. Yolcu turbofanının
+ * yerleşiminde (çıkış 0,613 m, giriş 1,10 m) eski sabit boyları (3,6 / 2,4 m)
+ * verir. Koni yalnız ışık kaynağının taşıyıcısı (görünmez); boy görüntüyü
+ * değiştirmez, ölçek tutarlılığı içindir.
+ */
+const FLAME_K = { exhaust: 5.869, intake: 2.182 };
+
+/** Sunum tipine göre egzoz akışı normu: şablon motorunun çekirdek itkisi ölçeği [N] */
+const PLUME_NORM: Record<EngineKind, number> = {
+  turbofan: 45e3,
+  militaryTurbofan: 60e3,
+  turbojet: 60e3,
+  turboprop: 60e3,
+  turboshaft: 60e3,
+};
+
+/**
+ * Egzoz akışının (ısı pusu) itki normu. Tablo değerleri aynı sunum tipinin
+ * şablonu için ayarlıdır; norm motorun tasarım itkisiyle (`sized.point.thrust`)
+ * o şablonun itkisine oranlanır. Kind yuvasında (şablon ya da kayıt
+ * sahnesinin değiştirdiği grafik) oran 1: sonuç eskisiyle aynı; atölye
+ * tasarımında motorun kendi boyutuna göre ölçeklenir.
+ */
+function plumeNormOf(src: VisualSource): number {
+  const base = PLUME_NORM[src.traits.presentation];
+  const refBuilt = builtFor(src.traits.presentation);
+  if (!refBuilt || refBuilt === src.built) return base;
+  const thrust = src.built.sized.point.thrust;
+  const ref = refBuilt.sized.point.thrust;
+  return ref > 0 && thrust > 0 && Number.isFinite(thrust) ? (base * thrust) / ref : base;
+}
+
 /* ------------------------------------------------------------------ */
 
 export class EngineVisual {
@@ -183,6 +216,8 @@ export class EngineVisual {
   /** Metal sıcaklıkları (K): türbin kademeleri ve jet borusu */
   private thermal = { hpt: 288, lpt: 288, pipe: 288 };
   private plumeBaseRadius: number;
+  /** Egzoz akışının tam görünür olduğu çekirdek itkisi [N] (plumeNormOf) */
+  private plumeNorm: number;
   private highlighted: PartId | null = null;
   private time = 0;
   private lastSurgeCount = 0;
@@ -211,8 +246,12 @@ export class EngineVisual {
 
     const noise = createNoiseTexture(256, 1234);
     const inl = this.model.intake;
-    this.exhaustFlame = new Flame(noise, ex.radius, kind === 'turbofan' ? 3.6 : 2.6, ex.z + 0.05, false);
-    this.inletFlame = new Flame(noise, inl.radius, kind === 'turbofan' ? 2.4 : 1.4, inl.z, true);
+    // Surge alev konisinin boyu yerleşimin giriş/çıkış ağzına oranlı (k
+    // yolcu turbofanının eski 3,6 / 2,4 m değerlerini verir)
+    const L = src.layout;
+    this.plumeNorm = plumeNormOf(src);
+    this.exhaustFlame = new Flame(noise, ex.radius, FLAME_K.exhaust * L.exhaustExit.radius, ex.z + 0.05, false);
+    this.inletFlame = new Flame(noise, inl.radius, FLAME_K.intake * L.intake.radius, inl.z, true);
     this.inletFlame.mesh.position.y = inl.y ?? 0;
     this.inletFlame.light.position.y = inl.y ?? 0;
     this.root.add(
@@ -234,7 +273,7 @@ export class EngineVisual {
     // parça indekslemesinden sonra eklenmeleri için burada kurulur
     const prop = this.model.prop;
     this.effects = new EngineEffects(
-      { kind, intake: this.model.intake, exhaust: this.model.exhaust, prop },
+      { traits: src.traits, intake: this.model.intake, exhaust: this.model.exhaust, prop },
       createNoiseTexture(256, 777),
     );
     // Atölye: efektler kapalı (P9 kurulumu da atlar)
@@ -426,7 +465,7 @@ export class EngineVisual {
     // Kaportasız motorlarda dişli kutusu ve tesisat dışarıdadır, hep görünür
     // ve girişten ilk kompresör kademeleri görünür
     const interior: PartId[] = ['hpc', 'combustor', 'hpt', 'shafts', 'casing'];
-    if (this.kind === 'turbofan') interior.push('gearbox', 'booster');
+    if (this.source.traits.layout === 'nacelle') interior.push('gearbox', 'booster');
     for (const part of interior) {
       for (const m of this.parts.get(part)?.meshes ?? []) m.visible = v;
     }
@@ -569,11 +608,7 @@ export class EngineVisual {
 
     // Egzoz akışı
     this.plume.material.uniforms.uTime.value += dt;
-    this.plume.material.uniforms.uThrust.value = THREE.MathUtils.clamp(
-      cyc.coreThrust / (this.kind === 'turbofan' ? 45e3 : 60e3),
-      0,
-      1,
-    );
+    this.plume.material.uniforms.uThrust.value = THREE.MathUtils.clamp(cyc.coreThrust / this.plumeNorm, 0, 1);
 
     // Surge: giriş ve egzozdan alev patlaması
     if (snap.surgeCount > this.lastSurgeCount) {

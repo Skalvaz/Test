@@ -3,6 +3,7 @@
  * gösterilen etiketler buradan gelir.
  */
 
+import type { EngineTraits } from '../design/traits';
 import type { PartId } from '../engine/visual';
 import type { EngineKind } from '../sim';
 
@@ -128,7 +129,7 @@ export const PARTS: Record<PartId, PartInfo> = {
     name: 'Test standı',
     short: 'Motoru itki ölçüm çerçevesine asan çelik kiriş. Motorun ittiği kuvvet buradan yük hücresine aktarılır.',
   },
-  // M5a yeni parçaları (yer tutucu kartlar; P8 genişletir)
+  // M5a yeni parçaları
   mixer: {
     name: 'Karıştırıcı (mixer)',
     short:
@@ -263,9 +264,89 @@ const PART_OVERRIDES: Partial<Record<EngineKind, Partial<Record<PartId, PartInfo
       short: 'Güç türbininden çıkan, enerjisi büyük ölçüde alınmış gazı dışarı atar; az miktarda artık itki üretir.',
     },
   },
+  turboshaft: {
+    spinner: {
+      name: 'Çıkış mili göbeği',
+      short: 'Önden çıkan güç milinin flanşını örter. Mil girişin ortasından geçer; hava çevresindeki halkadan girer.',
+    },
+    inlet: {
+      name: 'Halka giriş ve parçacık ayırıcı',
+      short:
+        'Hava çıkış milinin çevresindeki halkadan girer. Helikopter tozlu alanlara iner: ayırıcı havayı kıvırır, ağır kum ve buz taneleri dış kanala savrulup atılır, temiz hava kompresöre gider.',
+    },
+    fanCase: {
+      name: 'Gaz jeneratörü gövdesi',
+      short: 'Kompresör, yanma odası ve türbinleri saran gövde. Küçük ve hafiftir: helikopterde her kilogram yük demektir.',
+    },
+    engineCase: {
+      name: 'Gaz jeneratörü gövdesi',
+      short: 'Kompresör, yanma odası ve türbinleri saran gövde. Küçük ve hafiftir: helikopterde her kilogram yük demektir.',
+    },
+    hpc: {
+      name: 'Kompresör (eksenel + santrifüj)',
+      short:
+        'Birkaç eksenel kademe ve tek santrifüj çark. Hava debisi küçük olduğundan son eksenel kanatlar çok kısalırdı; çark yüksek basınç oranını kısa ve sağlam bir parçayla verir.',
+    },
+    lpt: {
+      name: 'Serbest güç türbini',
+      short:
+        'Gaz jeneratörüne mekanik bağı yoktur, yalnız gaz akışıyla döner. Gücünün tamamı çıkış miline gider; vali devrini (NP) %100\'de tutar, gaz kolu ise gaz jeneratörünün ne kadar güç vereceğini seçer.',
+    },
+    shafts: {
+      name: 'Miller (gaz jeneratörü / güç türbini)',
+      short:
+        'Gaz jeneratörü mili (NG) kompresörü çevirir. İçinden geçen güç türbini mili öne uzanır ve çıkış miline bağlanır; iki mil farklı devirlerde döner.',
+    },
+    gearbox: {
+      name: 'Aksesuar dişli kutusu',
+      short: 'Gaz jeneratörü milinden güç alır: yakıt ve yağ pompaları, jeneratör, marş motoru buradadır.',
+    },
+    accessories: {
+      name: 'Aksesuar dişli kutusu',
+      short: 'Gaz jeneratörü milinden güç alır: yakıt ve yağ pompaları, jeneratör, marş motoru buradadır.',
+    },
+    exhaust: {
+      name: 'Egzoz çıkışı',
+      short: 'Güç türbininden çıkan, enerjisi neredeyse tamamen alınmış gazı yana ya da arkaya atar. İtki üretmez sayılır.',
+    },
+  },
 };
 
-/** Motor tipine uygun parça kartı */
-export function partInfo(part: PartId, kind: EngineKind): PartInfo {
-  return PART_OVERRIDES[kind]?.[part] ?? PARTS[part];
+/**
+ * Mimariye bağlı kartlar: aynı etiket farklı donanımı gösterebilir (sabit
+ * lüle, kutu yanma odası). Sunum tipinin kartlarından sonra uygulanır.
+ */
+function traitCard(part: PartId, t: EngineTraits): PartInfo | undefined {
+  if (part === 'nozzle' && t.nozzle === 'fixed') {
+    return {
+      name: 'Sabit yakınsak lüle',
+      short:
+        'Art yakıcısız motorun lülesi: kesiti değişmez. Ağız alanı tasarımda türbinin ne kadar genişleyeceğini belirler; daha geniş ağız türbine daha çok iş, jete daha az hız bırakır.',
+    };
+  }
+  if (part === 'combustor' && t.combustor === 'can') {
+    return {
+      name: 'Kutu yanma odası',
+      short:
+        'Çevreye dizilmiş ayrı ayrı yanma kutuları; her birinin kendi alev borusu ve kabı vardır. Erken jet motorlarında yaygındı: bakımı kolay ama ağır ve uzundur.',
+    };
+  }
+  if (part === 'combustor' && t.combustor === 'canAnnular') {
+    return {
+      name: 'Kutu-halka yanma odası',
+      short:
+        'Ortak bir halka kasanın içinde ayrı alev boruları (kutular). Kutular birbirine ateşleme borularıyla bağlıdır: yalnız ikisinde buji vardır, alev ötekilere bu borulardan geçer.',
+    };
+  }
+  return undefined;
+}
+
+/**
+ * Motora uygun parça kartı: mimariye bağlı kart, sonra sunum tipinin kartı,
+ * sonra genel kart. Türetilmiş tip (traits) ya da yalnız sunum tipi alır.
+ */
+export function partInfo(part: PartId, t: EngineTraits | EngineKind): PartInfo {
+  const traits = typeof t === 'string' ? undefined : t;
+  const kind = typeof t === 'string' ? t : t.presentation;
+  return (traits && traitCard(part, traits)) ?? PART_OVERRIDES[kind]?.[part] ?? PARTS[part];
 }
