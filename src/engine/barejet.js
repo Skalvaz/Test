@@ -74,7 +74,13 @@ export function splitterProfile(v, s) {
   // üstüne çıkıyordu; iniş bölgesinde flanşın dışında kalır. Şablonlarda
   // gömlek payı baskın, profil aynı.
   const flangeIn = v.gas.hpt.tip[0] + 0.0375 - 0.008;
-  const caseOut = (z) => Math.max(profileAt(v.gas.casing, z), cb.rOut + 0.03, z >= z1 - land - 0.03 ? flangeIn : 0) + 0.008;
+  // Flanş payı sert eşik yerine 10 cm boyunca yumuşak girer: flanş baskınken
+  // sacta tek segmentlik radyal kırık (BPR 1,5 / FPR 2,2'de 14 mm) olmasın
+  const flangeAt = (z) => {
+    const w = THREE.MathUtils.smoothstep(z, z1 - land - 0.13, z1 - land - 0.03);
+    return w > 0 ? THREE.MathUtils.lerp(cb.rOut + 0.03, flangeIn, w) : 0;
+  };
+  const caseOut = (z) => Math.max(profileAt(v.gas.casing, z), cb.rOut + 0.03, flangeAt(z)) + 0.008;
   const n = 60;
   const pts = [];
   for (let i = 0; i <= n; i++) {
