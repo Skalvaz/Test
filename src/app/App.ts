@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { EngineAudio } from '../audio/EngineAudio';
+import { EngineAudio, type AudioEngine } from '../audio/EngineAudio';
 import { createEnvironment, HDRI_PRESETS, PRESETS } from '../core/environment.js';
 import { createComposer } from '../core/postfx.js';
 import { CELL_BOUNDS, loadTestCell, setCellLights, type TestCell } from '../core/testCell';
@@ -37,7 +37,7 @@ import { Rain } from '../core/rain';
 import { updateWeather, weather, wetUniforms } from '../core/weather';
 import { loadScans } from '../materials/scans.js';
 import { loadPanelDetails } from '../materials/textures.js';
-import { EngineSim, type EngineKind, type SimEvent } from '../sim';
+import { EngineSim, type SimEvent } from '../sim';
 import { Cockpit, type SwitchId } from '../ui/Cockpit';
 import { CycleDiagram } from '../ui/CycleDiagram';
 import { h, icon } from '../ui/dom';
@@ -46,7 +46,7 @@ import { LessonPanel } from '../ui/LessonPanel';
 import { glossaryModal, lessonSelect, mainMenu, resultModal, settingsModal } from '../ui/Menus';
 import { SandboxPanel } from '../ui/SandboxPanel';
 import { Toasts } from '../ui/Toasts';
-import { CameraRig, KIND_VIEWS, VIEWS, type ViewName } from './CameraRig';
+import { CameraRig, VIEWS, viewsFor, type ViewName } from './CameraRig';
 import { Picker } from './Picker';
 
 type Mode = 'menu' | 'lesson' | 'sandbox';
@@ -234,7 +234,6 @@ export class App {
     this.fx = createComposer(renderer, this.scene, this.rig.camera);
 
     this.picker = new Picker(renderer.domElement, this.rig.camera, this.visual);
-    this.cockpit?.setEngineKind(this.sim.kind);
     this.picker.onPick = (p) => this.onPick(p);
     this.picker.onHover = (p) => this.onHover(p);
     this.picker.onFocus = (p, point) => {
@@ -310,7 +309,7 @@ export class App {
     this.lessonPanel = new LessonPanel(this.sim);
     this.lessonPanel.onExit = () => this.showMenu();
 
-    this.cockpit.setEngineKind(this.sim.kind);
+    this.applyEngineUi(this.visual.source);
     this.sandboxPanel = new SandboxPanel(this.sim, () => this.visual, {
       autoStart: () => this.beginAutoStart(),
       onEngine: (slot) => this.setEngine(slot, true),
@@ -611,17 +610,15 @@ export class App {
     this.slot = slot;
     if (idle) this.sim.trim(0, 30);
     this.autoStart = false;
+    // Arayüz (gaz kolu, EICAS, açılar) installVisual → applyEngineUi ile
     this.installVisual(src, { effects });
-    const kind = this.sim.kind;
-    this.cockpit.setEngineKind(kind);
     this.setCutaway(this.cutaway);
     this.stickyHighlight = null;
     this.stepHighlight = null;
-    this.applyKindViews(kind);
     this.sandboxPanel.refreshEngine();
     // Yeni motor farklı boyda: motora bağlı bir yakın açıdaysak yeniden kadrajla
     const cur = this.rig.current;
-    if (this.mode !== 'menu' && cur !== 'menu' && (KIND_VIEWS[kind][cur] || cur === 'fan' || cur === 'inlet')) this.rig.go(cur);
+    if (this.mode !== 'menu' && cur !== 'menu' && (this.rig.overrides[cur] || cur === 'fan' || cur === 'inlet')) this.rig.go(cur);
   }
 
   /**
@@ -720,17 +717,43 @@ export class App {
     this.scene.add(this.visual.root);
     this.picker.visual = this.visual;
     if (this.cutaway) this.setCutaway(true);
+    this.applyEngineUi(src);
   }
 
-  /** Kamera açılarını ve seçicideki adları motor tipine göre günceller */
-  private applyKindViews(kind: EngineKind) {
-    this.rig.overrides = KIND_VIEWS[kind];
+  /**
+   * Arayüzü sahnedeki motorun türetilmiş tipine (traits) göre kurar: gaz
+   * kolu kademeleri, EICAS ve diyagram düzeni, ses girdisi, kamera açıları
+   * ve seçicideki adlar. Her model kurulumunda çağrılır (setEngine,
+   * applyDesign, kayıt betiklerinin rebuildVisual'ı).
+   */
+  private applyEngineUi(src: VisualSource) {
+    const t = src.traits;
+    const d = src.built.design;
+    this.cockpit.setEngine(d, t);
+    this.eicas.setEngine(t);
+    this.diagram.setEngine(t);
+    // Ses: önden duyulan rotor tasarımdan; turboşaftta önde fan yok, HPC
+    const gas = src.built.flowpath.gas;
+    const shaft = t.output === 'shaft';
+    this.audioEngine = {
+      output: t.output,
+      fanBlades: shaft ? gas.hpc.blades[0] : d.fanBlades,
+      fanDiameter: shaft ? 2 * gas.hpc.tip[0] : d.fanDiameter,
+      turbineBlades: gas.lpt.blades[1],
+    };
+    // Atölyede açılar aynı sunum tipinin şablon motorundan ölçeklenir ve
+    // test hücresine sığdırılır (büyük motor: yakın kamera, geniş açı)
+    const ref = src.slot === 'workshop' ? builtFor(t.presentation) : undefined;
+    const views = viewsFor(src, ref && { layout: ref.flowpath.layout, built: ref }, { bounds: CELL_BOUNDS, maxDistance: 18 });
+    this.rig.overrides = views;
     const names = (Object.keys(VIEWS) as ViewName[]).filter((v) => v !== 'menu');
     names.forEach((v, i) => {
       const opt = this.viewSelect.options[i];
-      if (opt) opt.text = `${i + 1} · ${(KIND_VIEWS[kind][v] ?? VIEWS[v]).label}`;
+      if (opt) opt.text = `${i + 1} · ${(views[v] ?? VIEWS[v]).label}`;
     });
   }
+  /** Ses modelinin motor sabitleri (applyEngineUi kurar) */
+  private audioEngine: AudioEngine = { output: 'thrust', fanBlades: 22, fanDiameter: 2.77 };
 
   openGlossary(id?: string) {
     this.openOverlay(glossaryModal(() => this.afterModal(), id));
@@ -1133,8 +1156,7 @@ export class App {
     const dist = cam.length();
     this.audio.update(
       snap,
-      this.sim.eng.design.fanBlades,
-      this.sim.eng.design.fanDiameter,
+      this.audioEngine,
       -cam.z / Math.max(dist, 1e-3),
       THREE.MathUtils.clamp(1 - (dist - 3) / 16, 0, 1),
       this.sim.eng.point.thrust,

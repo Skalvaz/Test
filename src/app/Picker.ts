@@ -85,7 +85,8 @@ export class Picker {
       this.tip.classList.add('hidden');
       return;
     }
-    const info = partInfo(part, this.visual.kind);
+    // Kart motorun türetilmiş tipinden: sunum tipi + mimariye bağlı parçalar
+    const info = partInfo(part, this.visual.source.traits);
     this.tip.replaceChildren(h('b', { text: info.name }), h('p', { text: info.short }));
     this.tip.style.left = `${Math.min(e.clientX, window.innerWidth - 320)}px`;
     this.tip.style.top = `${Math.min(e.clientY, window.innerHeight - 140)}px`;

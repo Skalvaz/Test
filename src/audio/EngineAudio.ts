@@ -8,15 +8,135 @@
  *  - Jet/yanma gürlemesi: filtrelenmiş gürültü, itki ve jet hızıyla
  *  - Marş türbini, ateşleyici tıkırtısı, surge patlaması
  * Kamera öndeyse fan sesleri, arkadaysa jet gürlemesi baskındır.
+ *
+ * Katman seçimi motorun çıkışına göre (`traits.output`): pervaneli motorda
+ * pal geçiş vızıltısı; turboşaftta fan tonu ve buzz-saw yok (önde fan yok),
+ * yerine güç türbininin ıslığı, çekirdek ıslığı HPC'nin ilk kademesinden.
  */
 
+import type { EngineTraits } from '../design/traits';
 import type { SimSnapshot } from '../sim';
+
+/** Ses modelinin motordan okuduğu sabitler (App, görsel kaynaktan kurar) */
+export interface AudioEngine {
+  output: EngineTraits['output'];
+  /** Önden görünen rotorun kanat sayısı (fan/LPC; pervanede pal; turboşaftta HPC 1. kademe) */
+  fanBlades: number;
+  /** O rotorun uç çapı [m] (turboşaftta HPC 1. kademe) */
+  fanDiameter: number;
+  /** Güç türbininin son kademe kanat sayısı (turboşaft ıslığı) */
+  turbineBlades?: number;
+}
+
+/** Bir sesin hedef kazancı ve (varsa) frekansı / süzgeç frekansı */
+export interface VoiceTarget {
+  gain: number;
+  freq?: number;
+  filter?: number;
+}
+
+/** Sürekli katmanlar (patlama/tıkırtı gibi olaylar hariç) */
+export type VoiceId =
+  | 'fan'
+  | 'buzz'
+  | 'whine'
+  | 'whine2'
+  | 'roar'
+  | 'hiss'
+  | 'air'
+  | 'starter'
+  | 'abRoar'
+  | 'abBody'
+  | 'prop'
+  | 'propSub'
+  | 'pt';
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 const smooth = (x: number, a: number, b: number) => {
   const t = clamp((x - a) / (b - a), 0, 1);
   return t * t * (3 - 2 * t);
 };
+
+/**
+ * Sürekli katmanların hedefleri (saf; test edilir). Yalnız çıkış tipine göre
+ * dallanır: pervane (pal vızıltısı, fan tonu yok), mil (turboşaft: fan tonu
+ * ve buzz-saw yok, güç türbini ıslığı var), itki (fan + buzz-saw).
+ *
+ * @param frontness −1 (kamera tam arkada) … +1 (kamera tam önde)
+ * @param proximity 0 (uzak) … 1 (çok yakın)
+ */
+export function voiceTargets(
+  s: SimSnapshot,
+  e: AudioEngine,
+  frontness: number,
+  proximity: number,
+  designThrust = 320e3,
+): Record<VoiceId, VoiceTarget> {
+  const prop = e.output === 'propeller';
+  const shaft = e.output === 'shaft';
+  const n1rps = s.n1Rpm / 60;
+  const n2rps = s.n2Rpm / 60;
+  // Önde fan yoksa (pervane, turboşaft) uçta şok ve buzz-saw da yok
+  const tipMach = prop || shaft ? 0 : (n1rps * Math.PI * e.fanDiameter) / s.amb.a0;
+  // Turboşaftın egzozu yavaş: gürleme gaz jeneratörü gücünün küçük bir payı
+  const thrustFrac = shaft
+    ? clamp(0.35 * s.thrustFrac, 0, 1.2)
+    : clamp((prop ? s.thrust - s.propThrust : s.thrust) / designThrust, 0, 1.2);
+  const front = 0.55 + 0.45 * clamp(frontness, -1, 1);
+  const back = 0.55 - 0.45 * clamp(frontness, -1, 1);
+  const near = 0.6 + 0.6 * proximity;
+
+  // Fan kanat geçiş tonu
+  const bpf = n1rps * e.fanBlades;
+  const fan: VoiceTarget = { gain: prop || shaft ? 0 : 0.05 * Math.pow(s.N1, 1.4) * front * near, freq: bpf, filter: bpf * 2.5 + 200 };
+
+  // Pervane: 6 pal × ~20 dev/s ≈ 120 Hz; pal yükü arttıkça daha sert
+  let propV: VoiceTarget = { gain: 0 };
+  let propSub: VoiceTarget = { gain: 0 };
+  if (prop) {
+    const prps = s.propRpm / 60;
+    const load = clamp(s.torque, 0, 1.1);
+    const pbpf = prps * e.fanBlades;
+    propV = { gain: (0.05 + 0.13 * load) * clamp(s.propRpm / 600, 0, 1) * near, freq: pbpf, filter: pbpf * (3 + 5 * load) };
+    propSub = { gain: 0.08 * load * near, freq: pbpf };
+  }
+
+  // Turboşaft: güç türbini (N1 = NP) kanat geçişi, kHz bölgesinde ıslık
+  const ptf = n1rps * (e.turbineBlades ?? 60);
+  const pt: VoiceTarget = shaft ? { gain: 0.035 * Math.pow(s.N1, 1.6) * near, freq: ptf, filter: ptf } : { gain: 0 };
+
+  // Art yakıcı: jet gürlemesinin üstüne derin gürleme ve rastgele çatırtılar
+  const ab = clamp(s.abLevel, 0, 1);
+
+  // Buzz-saw: süpersonik fan ucu şok dalgaları → mil frekansı harmonikleri
+  const buzz = smooth(tipMach, 0.92, 1.12);
+
+  // Çekirdek ıslığı (HPC ilk kademe; turboşaftta önden duyulan tek kompresör,
+  // kanat sayısı tasarımdan) ve dişli kutusu ıslığı
+  const coreBlades = shaft ? e.fanBlades : 38;
+
+  // Jet/yanma gürlemesi: itki ve jet hızıyla; arkada daha güçlü
+  const roar = (s.lit ? 0.05 : 0) + 0.42 * Math.pow(thrustFrac, 0.85);
+  const vj = clamp(s.cycle.V9 / 420, 0, 1.3);
+
+  return {
+    fan,
+    prop: propV,
+    propSub,
+    pt,
+    abRoar: { gain: 0.55 * Math.pow(ab, 0.7) * (0.5 + 0.8 * back) * near, filter: 260 + 900 * ab },
+    abBody: { gain: 0.5 * Math.pow(ab, 0.8) * near, filter: 70 + 40 * ab },
+    buzz: { gain: 0.09 * buzz * front * near, freq: n1rps * 2, filter: n1rps * 18 },
+    whine: { gain: 0.018 * Math.pow(s.N2, 2) * front * near, freq: n2rps * coreBlades },
+    whine2: { gain: 0.03 * Math.pow(s.N2, 1.8) * near, freq: n2rps * 9, filter: n2rps * 9 },
+    roar: { gain: roar * (0.4 + 0.9 * back) * near, filter: 220 + 2600 * thrustFrac },
+    hiss: { gain: 0.14 * vj * vj * (0.3 + back) * near, filter: 2200 + 2200 * vj },
+    // Motor içinden geçen hava (motorlama/rüzgârlanma)
+    air: { gain: 0.07 * clamp(s.N2 * 1.6, 0, 1) * near, filter: 350 + 1800 * s.N2 },
+    // Hava türbinli marş motoru
+    starter: { gain: s.starterEngaged ? 0.022 * near : 0, freq: 900 + 2600 * clamp(s.N2 / 0.56, 0, 1.1) },
+  };
+}
 
 interface Voice {
   gain: GainNode;
@@ -144,6 +264,8 @@ export class EngineAudio {
     // Pervane: pal geçiş frekansı ve harmonikleri (vızıltı / "wub")
     this.v.prop = osc('sawtooth', 'lowpass', 2.5);
     this.v.propSub = osc('sine');
+    // Turboşaft: serbest güç türbininin kanat geçiş ıslığı
+    this.v.pt = osc('triangle', 'bandpass', 3);
   }
 
   private set(voice: Voice, gain: number, freq?: number, filterFreq?: number) {
@@ -159,68 +281,16 @@ export class EngineAudio {
    * @param frontness −1 (kamera tam arkada) … +1 (kamera tam önde)
    * @param proximity 0 (uzak) … 1 (çok yakın)
    */
-  update(
-    s: SimSnapshot,
-    fanBlades: number,
-    fanDiameter: number,
-    frontness: number,
-    proximity: number,
-    designThrust = 320e3,
-  ) {
+  update(s: SimSnapshot, engine: AudioEngine, frontness: number, proximity: number, designThrust = 320e3) {
     if (!this.ctx || this.ctx.state !== 'running') return;
-    const prop = s.kind === 'turboprop';
-    const n1rps = s.n1Rpm / 60;
-    const n2rps = s.n2Rpm / 60;
-    const tipMach = prop ? 0 : (n1rps * Math.PI * fanDiameter) / s.amb.a0;
-    const thrustFrac = clamp((prop ? s.thrust - s.propThrust : s.thrust) / designThrust, 0, 1.2);
-    const front = 0.55 + 0.45 * clamp(frontness, -1, 1);
+    const targets = voiceTargets(s, engine, frontness, proximity, designThrust);
+    for (const id of Object.keys(targets) as VoiceId[]) {
+      const v = targets[id];
+      this.set(this.v[id], v.gain, v.freq, v.filter);
+    }
+    const ab = clamp(s.abLevel, 0, 1);
     const back = 0.55 - 0.45 * clamp(frontness, -1, 1);
     const near = 0.6 + 0.6 * proximity;
-
-    // Fan kanat geçiş tonu
-    const bpf = n1rps * fanBlades;
-    this.set(this.v.fan, prop ? 0 : 0.05 * Math.pow(s.N1, 1.4) * front * near, bpf, bpf * 2.5 + 200);
-
-    // Pervane: 6 pal × ~20 dev/s ≈ 120 Hz; pal yükü arttıkça daha sert
-    if (prop) {
-      const prps = s.propRpm / 60;
-      const load = clamp(s.torque, 0, 1.1);
-      const pbpf = prps * fanBlades;
-      this.set(this.v.prop, (0.05 + 0.13 * load) * clamp(s.propRpm / 600, 0, 1) * near, pbpf, pbpf * (3 + 5 * load));
-      this.set(this.v.propSub, 0.08 * load * near, pbpf, undefined);
-    } else {
-      this.set(this.v.prop, 0);
-      this.set(this.v.propSub, 0);
-    }
-
-    // Art yakıcı: jet gürlemesinin üstüne derin gürleme ve rastgele çatırtılar
-    const ab = clamp(s.abLevel, 0, 1);
-    this.set(this.v.abRoar, 0.55 * Math.pow(ab, 0.7) * (0.5 + 0.8 * back) * near, undefined, 260 + 900 * ab);
-    this.set(this.v.abBody, 0.5 * Math.pow(ab, 0.8) * near, undefined, 70 + 40 * ab);
-
-    // Buzz-saw: süpersonik fan ucu şok dalgaları → mil frekansı harmonikleri
-    const buzz = smooth(tipMach, 0.92, 1.12);
-    this.set(this.v.buzz, 0.09 * buzz * front * near, n1rps * 2, n1rps * 18);
-
-    // Çekirdek ıslığı (HPC ilk kademe ~38 kanat) ve dişli kutusu ıslığı
-    this.set(this.v.whine, 0.018 * Math.pow(s.N2, 2) * front * near, n2rps * 38);
-    this.set(this.v.whine2, 0.03 * Math.pow(s.N2, 1.8) * near, n2rps * 9, n2rps * 9);
-
-    // Jet/yanma gürlemesi: itki ve jet hızıyla; arkada daha güçlü
-    const roar = (s.lit ? 0.05 : 0) + 0.42 * Math.pow(thrustFrac, 0.85);
-    this.set(this.v.roar, roar * (0.4 + 0.9 * back) * near, undefined, 220 + 2600 * thrustFrac);
-    const vj = clamp(s.cycle.V9 / 420, 0, 1.3);
-    this.set(this.v.hiss, 0.14 * vj * vj * (0.3 + back) * near, undefined, 2200 + 2200 * vj);
-
-    // Motor içinden geçen hava (motorlama/rüzgârlanma)
-    this.set(this.v.air, 0.07 * clamp(s.N2 * 1.6, 0, 1) * near, undefined, 350 + 1800 * s.N2);
-
-    // Hava türbinli marş motoru
-    this.set(
-      this.v.starter,
-      s.starterEngaged ? 0.022 * near : 0,
-      900 + 2600 * clamp(s.N2 / 0.56, 0, 1.1),
-    );
 
     // Ateşleyici tıkırtısı (~1.8 Hz)
     const now = this.ctx.currentTime;
