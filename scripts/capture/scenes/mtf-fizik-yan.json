@@ -1,0 +1,13 @@
+{
+ "kind": "militaryTurbofan",
+ "quality": "high",
+ "w": 960,
+ "h": 540,
+ "cam": [4.4, 0.35, 0.25],
+ "tgt": [0, 0, 0.25],
+ "fov": 40,
+ "cut": 0,
+ "setup": "sim.trim(0, 30);",
+ "frames": 12,
+ "dt": 0.1
+}

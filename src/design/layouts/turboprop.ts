@@ -6,12 +6,15 @@
 import { AIR } from '../../sim/gas';
 import type { SizedEngine } from '../../sim/design';
 import type { MountPoint } from '../card';
-import { PROP_Z, RHO, SHELL_T, envelopeOf, mid, moduleOf, profileAt, shellMass, type GasPath } from '../flowpath';
+import { PROP_Z, RHO, SHELL_T, annulusArea, envelopeOf, mid, moduleOf, profileAt, shellMass, type GasPath } from '../flowpath';
 import type { EngineGraph, PropellerModule } from '../types';
 import { gasGeneratorLayout, type GasGeneratorLayout } from './gasgen';
 import type { LayoutResult } from './index';
 
 export const READY = true;
+
+/** Çene girişi ağzındaki eksenel Mach (ağız alanı bundan; S-kanal kompresöre doğru hızlanır) */
+export const INTAKE_MACH = 0.25;
 
 /** engine/turboprop.js girdisi */
 export interface TurbopropLayout {
@@ -32,7 +35,7 @@ export interface TurbopropLayout {
   mounts: MountPoint[];
   /** Dış zarf [z, r], z artan (spinner + redüktör + gövde + egzoz) */
   outerProfile: [number, number][];
-  /** Çene girişi ağzı (pervane altında, y < 0) */
+  /** Çene girişi ağzı (pervane altında, y < 0); radius: ağız alanına eş daire */
   intake: { z: number; radius: number; y: number };
   exhaustExit: { z: number; radius: number };
 }
@@ -70,8 +73,9 @@ function turbopropLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): T
     engineR: gg.engineR,
     mounts,
     outerProfile,
-    // turboprop.js modeliyle aynı: HPC girişinin 0,9 m önünde, pervane altında
-    intake: { z: hpc.z0 - 0.9, radius: 0.2, y: -0.62 },
+    // turboprop.js modeliyle aynı: HPC girişinin 0,9 m önünde, pervane altında.
+    // Ağız alanı giriş akışından (ağızda Mach 0,25; eş alanlı daire yarıçapı)
+    intake: { z: hpc.z0 - 0.9, radius: Math.sqrt(annulusArea(sized.point.stations['2'], INTAKE_MACH, AIR) / Math.PI), y: -0.62 },
     exhaustExit: { z: gg.exhaust.z1, radius: gg.exhaust.radius },
   };
 }

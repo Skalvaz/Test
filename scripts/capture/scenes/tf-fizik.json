@@ -1,0 +1,17 @@
+{
+ "kind": "turbofan",
+ "env": "Havaalanı — gece",
+ "quality": "high",
+ "w": 960,
+ "h": 540,
+ "cam": [0.73, 0.66, 2.15],
+ "tgt": [0, 0.49, 2.15],
+ "fov": 23,
+ "cut": 1,
+ "setup": "sim.trim(1, 40); if (a.advance) a.advance(20);",
+ "frames": 48,
+ "dt": 0.25,
+ "actions": {
+  "2": "sim.controls.fuelRun = false; sim.controls.throttle = 0;"
+ }
+}

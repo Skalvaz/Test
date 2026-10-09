@@ -313,7 +313,8 @@ export const DEFAULT_DESIGN: EngineDesign = {
   fanPR: 1.55,
   fanHubPRFraction: 0.8,
   boosterPR: 1.95,
-  hpcPR: 16.5,
+  // M5a: 16,5 → 16,3: T3 962 → 958 K (1000 K sınırından ≥ %4 pay), OPR 45,8
+  hpcPR: 16.3,
   tit: 1680,
   eff: {
     fan: 0.915,
@@ -354,8 +355,10 @@ export const MILITARY_TURBOFAN: EngineDesign = {
   name: 'AF-125 (jenerik art yakıcılı turbofan)',
   summary: 'Avcı uçağı motoru. Düşük baypas, karışık akış, art yakıcı ve açılıp kapanan lüle yaprakları.',
   massFlow: 112,
-  bypassRatio: 0.68,
-  fanPR: 3.1,
+  // M5a: karıştırıcı basınç dengesi (P19t/P5t 0,69 → 0,98): fan PR 3,1 → 4,3,
+  // BPR 0,68 → 0,55 (F100-PW-229 sınıfı: FPR 3,8, BPR 0,36, OPR 32)
+  bypassRatio: 0.55,
+  fanPR: 4.3,
   fanHubPRFraction: 1,
   boosterPR: 1,
   hpcPR: 8.2,
@@ -365,8 +368,10 @@ export const MILITARY_TURBOFAN: EngineDesign = {
   bypassDuctDP: 0.03,
   nozzleCv: 0.98,
   n1Rpm: 10400,
-  n2Rpm: 14200,
-  inertia: { lp: 14, hp: 5 },
+  // M5a: çekirdek küçülünce N2 gaz yolundan 14 200 → 15 700 rpm; HP ataleti
+  // (n_eski/n_yeni)² ile ölçeklendi (dönme enerjisi aynı, eski 5)
+  n2Rpm: 15700,
+  inertia: { lp: 14, hp: 4.09 },
   fanDiameter: 0.93,
   fanBlades: 36,
   accessoryPower: 120e3,
@@ -381,7 +386,10 @@ export const MILITARY_TURBOFAN: EngineDesign = {
     egtDamage: 1270,
     idleN2: 0.64,
   },
-  start: { starterTorque: 150, starterFadeN2: 0.7, farHigh: 0.0165, farLow: 0.0095 },
+  // Marş torku ×(I_yeni/I_eski)·(n_yeni/n_eski) (eski 150 N·m). Aksesuar ve
+  // aero tork devirle değiştiği için zamanlama biraz kayar: yakıt ~0,7 s geç
+  // açılır, rölantiye ~1,5 s erken varılır (36,2 → 34,6 s)
+  start: { starterTorque: 135.7, starterFadeN2: 0.7, farHigh: 0.0165, farLow: 0.0095 },
   afterburner: { t7Max: 2000, eta: 0.9, dpDry: 0.03, dpLit: 0.065, mixerLoss: 0.01, mixingEff: 0.85 },
 };
 
@@ -443,9 +451,12 @@ export const TURBOPROP: EngineDesign = {
   combustorDP: 0.05,
   bypassDuctDP: 0,
   nozzleCv: 0.97,
-  n1Rpm: 20400,
-  n2Rpm: 29800,
-  inertia: { lp: 0.3, hp: 0.35 },
+  // M5a: devirler fiziğe uydurulmuş gaz yolundan (güç türbini uç hızı 491 →
+  // 470 m/s). Atalet (n_eski/n_yeni)² ile ölçeklendi: dönme enerjisi ve
+  // ivmelenme süresi aynı (eski: 20 400 / 29 800 rpm, 0,3 / 0,35 kg·m²)
+  n1Rpm: 19500,
+  n2Rpm: 29700,
+  inertia: { lp: 0.328, hp: 0.352 },
   fanDiameter: 3.93,
   fanBlades: 6,
   accessoryPower: 40e3,
@@ -459,7 +470,8 @@ export const TURBOPROP: EngineDesign = {
     egtDamage: 1010,
     idleN2: 0.62,
   },
-  start: { starterTorque: 34, starterFadeN2: 0.6, farHigh: 0.017, farLow: 0.01 },
+  // Marş torku ×(I_yeni/I_eski)·(n_yeni/n_eski): marş süresi aynı (eski 34 N·m)
+  start: { starterTorque: 34.1, starterFadeN2: 0.6, farHigh: 0.017, farLow: 0.01 },
   prop: { diameter: 3.93, blades: 6, rpm: 1200, figureOfMerit: 0.72, efficiency: 0.85, nozzlePR: 1.1 },
 };
 

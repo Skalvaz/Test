@@ -7,7 +7,13 @@ import { buildEngine, GraphError, validateGraph } from './graph';
 import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_GRAPH, TURBOPROP_GRAPH } from './templates';
 import { CHEVRON_CV_LOSS, type CombustorModule, type EngineGraph, type MixerModule, type NozzleModule } from './types';
 
-/** M4 öncesi elle ölçülendirilmiş modeller (engine/barejet.js VARIANTS) */
+/**
+ * Ölçü referansları. Turbojet: M4 öncesi elle ölçülendirilmiş model
+ * (engine/barejet.js VARIANTS). Askeri turbofan: M5a'da karıştırıcı basınç
+ * dengesine uyduruldu (fan PR 3,1 → 4,3, BPR 0,68 → 0,55); çekirdek ~%10
+ * inceldi, kademe sayıları aynı. Eski model: R 0,5; HPC uç 0,335/0,3;
+ * HPT uç 0,335; yanma odası 0,2–0,33; art yakıcı 1,0–2,55.
+ */
 const OLD = {
   turbojet: {
     R: 0.43,
@@ -21,15 +27,15 @@ const OLD = {
     throat0: 0.285,
   },
   militaryTurbofan: {
-    R: 0.5,
+    R: 0.437,
     throat: 0.465,
-    lpc: { stages: 3, z0: -2.02, z1: -1.62, hub: [0.19, 0.26], tip: [0.46, 0.43], blades: [28, 46] },
-    hpc: { stages: 10, z0: -1.32, z1: -0.36, hub: [0.2, 0.27], tip: [0.335, 0.3], blades: [40, 72] },
-    combustor: { z0: -0.2, z1: 0.32, rIn: 0.2, rOut: 0.33 },
-    hpt: { stages: 1, z0: 0.46, hub: [0.25], tip: [0.335], blades: [62] },
-    lpt: { stages: 2, z0: 0.64, z1: 0.84, hub: [0.23, 0.23], tip: [0.37, 0.4], blades: [70, 76] },
-    ab: { z0: 1.0, z1: 2.55, liner: 0.47 },
-    throat0: 0.305,
+    lpc: { stages: 3, z0: -2.02, z1: -1.665, hub: [0.19, 0.31], tip: [0.46, 0.43], blades: [28, 70] },
+    hpc: { stages: 10, z0: -1.397, z1: -0.527, hub: [0.181, 0.245], tip: [0.304, 0.272], blades: [40, 72] },
+    combustor: { z0: -0.382, z1: 0.128, rIn: 0.17, rOut: 0.298 },
+    hpt: { stages: 1, z0: 0.262, hub: [0.22], tip: [0.295], blades: [62] },
+    lpt: { stages: 2, z0: 0.428, z1: 0.613, hub: [0.216, 0.22], tip: [0.347, 0.375], blades: [70, 79] },
+    ab: { z0: 0.783, z1: 2.257, liner: 0.447 },
+    throat0: 0.289,
   },
 };
 
@@ -70,6 +76,20 @@ describe.each([
     near(built.design.fanDiameter, catalog.fanDiameter, 'fan çapı');
   });
 
+  if (kind === 'militaryTurbofan') {
+    it('karıştırıcıda basınçlar dengeli (M5a uydurması)', () => {
+      // P19t/P5t caution bandı [0,92, 1,12]; her uçtan ≥ %4 pay
+      const st = built.sized.point.stations;
+      const ratio = (st['13'].P * (1 - built.design.bypassDuctDP)) / st['5'].P;
+      expect(ratio).toBeGreaterThanOrEqual(0.92 * 1.04);
+      expect(ratio).toBeLessThanOrEqual(1.12 / 1.04);
+      // Kuru itki ve TSFC M4 şablonundan ±%4 (80,9 kN, 22,19 g/(kN·s))
+      const p = built.sized.point;
+      expect(Math.abs(p.thrust / 80930 - 1)).toBeLessThan(0.04);
+      expect(Math.abs((p.wf / p.thrust) * 1e6 / 22.19 - 1)).toBeLessThan(0.04);
+    });
+  }
+
   it('kademe sayıları aynı', () => {
     expect(L.gas.lpc.stages).toBe(old.lpc.stages);
     expect(L.gas.hpc.stages).toBe(old.hpc.stages);
@@ -99,12 +119,17 @@ describe.each([
 describe('turboprop şablonu', () => {
   const built = buildEngine(TURBOPROP_GRAPH);
   const L = built.flowpath.layout as TurbopropLayout;
-  /** M4 öncesi elle ölçülendirilmiş model (engine/turboprop.js) */
-  const OLD_TP = {
-    hpc: { stages: 4, z0: -0.72, z1: -0.3, hub: [0.1, 0.13], tip: [0.2, 0.17], blades: [26, 36] },
-    combustor: { z0: 0.06, z1: 0.46, rIn: 0.14, rOut: 0.26 },
-    hpt: { stages: 1, z0: 0.56, hub: [0.15], tip: [0.22], blades: [44] },
-    lpt: { stages: 2, z0: 0.74, z1: 0.9, hub: [0.15, 0.15], tip: [0.23, 0.26], blades: [52, 58] },
+  const mod = <T>(type: string) => TURBOPROP_GRAPH.modules.find((m) => m.type === type) as T;
+  /**
+   * M5a: fiziğe uydurulmuş gaz jeneratörünün ölçüleri (regresyon bekçisi).
+   * M4'teki "eski model ±%5" bloğu kalktı: o model HPC ucu Mach 1,86, HPT
+   * AN² 7,2e7 ve 8 m/s'lik yanma odasıyla fizikle çelişiyordu.
+   */
+  const REF_TP = {
+    hpc: { stages: 5, z0: -0.72, z1: -0.329, hub: [0.068, 0.081], tip: [0.151, 0.129], blades: [23, 21] },
+    combustor: { z0: -0.078, z1: 0.287, rIn: 0.133, rOut: 0.194 },
+    hpt: { stages: 1, z0: 0.344, hub: [0.14], tip: [0.175], blades: [75] },
+    lpt: { stages: 2, z0: 0.491, z1: 0.622, hub: [0.15, 0.185], tip: [0.23, 0.26], blades: [52, 92] },
   };
 
   it('termodinamik katalogdaki motorla aynı', () => {
@@ -120,10 +145,32 @@ describe('turboprop şablonu', () => {
     expect(L.prop.gearRatio).toBeCloseTo(TURBOPROP.n1Rpm / 1200, 0);
   });
 
-  it('ölçüler ±%5, santrifüj çark fiziksel', () => {
+  it('gaz jeneratörü fiziksel (M5a uydurması)', () => {
+    const m = built.flowpath.metrics;
+    const gas = L.gas;
+    // HPC ilk kademe bağıl uç Mach'ı: caution 1,55'ten ≥ %4 pay
+    expect(m.tipMachRel.hp).toBeLessThanOrEqual(1.49);
+    // Disk/kanat gerilmesi: AN² caution 4,2e7'den ≥ %4 pay
+    expect(m.an2.hpt).toBeLessThanOrEqual(4.03e7);
+    expect(m.an2.lpt).toBeLessThanOrEqual(4.03e7);
+    // Yanma odası referans hızı gerçek halka odalar gibi, HPT girişi boğulmaya yakın değil ama ölü de değil
+    const comb = mod<CombustorModule>('combustor');
+    expect(comb.refVelocity).toBeGreaterThanOrEqual(18);
+    expect(comb.refVelocity).toBeLessThanOrEqual(25);
+    expect(mod<{ mach: number[] }>('hpt').mach[0]).toBeGreaterThanOrEqual(0.1);
+    // Eksenel kademe ≤ 6 (santrifüj işin çoğunu yapar), çark ucu titanyum sınırının altında
+    expect(gas.hpc.stages).toBeLessThanOrEqual(6);
+    expect(gas.centrifugal.uTip).toBeLessThanOrEqual(595);
+    // Eksenel uç hızları (kompresör ve türbin) 600 m/s caution'dan ≥ %4 pay
+    for (const row of [gas.hpc, gas.hpt, gas.lpt]) expect(row.uTip).toBeLessThanOrEqual(600 / 1.04);
+    // Son eksenel HPC kanadı küçük motor sınırının (12 mm) üstünde
+    expect((gas.hpc.tip[1] - gas.hpc.hub[1]) * 1000).toBeGreaterThan(12.5);
+  });
+
+  it('ölçüler yeni referansın ±%5\'i', () => {
     for (const k of ['hpc', 'hpt', 'lpt'] as const) {
       const a = L.gas[k];
-      const o = OLD_TP[k] as { stages: number; z0: number; z1?: number; hub: number[]; tip: number[]; blades: number[] };
+      const o = REF_TP[k] as { stages: number; z0: number; z1?: number; hub: number[]; tip: number[]; blades: number[] };
       expect(a.stages).toBe(o.stages);
       near(a.z0, o.z0, `${k}.z0`);
       if (o.z1 !== undefined) near(a.z1, o.z1, `${k}.z1`);
@@ -131,12 +178,12 @@ describe('turboprop şablonu', () => {
       o.tip.forEach((t, i) => near(a.tip[i], t, `${k}.tip[${i}]`));
       o.blades.forEach((b, i) => nearCount(a.blades[i], b, `${k}.blades[${i}]`));
     }
-    for (const f of ['z0', 'z1', 'rIn', 'rOut'] as const) near(L.gas.combustor[f], OLD_TP.combustor[f], `combustor.${f}`);
-    // Difüzör eski çark çapında; çark ucu titanyum sınırının (~600 m/s) altında
-    near(L.gas.centrifugal.rd, 0.26, 'difüzör');
-    near(L.gas.centrifugal.z, -0.14, 'çark z');
-    expect(L.gas.centrifugal.uTip).toBeLessThan(600);
+    for (const f of ['z0', 'z1', 'rIn', 'rOut'] as const) near(L.gas.combustor[f], REF_TP.combustor[f], `combustor.${f}`);
+    near(L.gas.centrifugal.rd, 0.302, 'difüzör');
+    near(L.gas.centrifugal.z, -0.217, 'çark z');
     near(L.exhaust.radius, 0.27, 'egzoz ağzı');
+    // Çene girişi ağzı giriş akışından (M4 öncesi modelin elipsi ~0,18 m eş daire)
+    near(L.intake.radius, 0.174, 'giriş ağzı');
   });
 
   it('simülasyonda çalıştırılıp tam güce dengelenir', () => {
@@ -181,8 +228,36 @@ describe('yüksek baypaslı turbofan şablonu', () => {
     expect([L.fan.stages, L.booster.stages, L.hpc.stages, L.hpt.stages, L.lpt.stages]).toEqual([1, 3, 9, 2, 6]);
     near(L.hpc.tip[0], 0.522, 'hpc ucu');
     near(L.hpc.hub[1], 0.404, 'hpc çıkış göbeği');
-    near(L.hpt.tip[0], 0.49, 'hpt ucu');
-    near(L.combustor.rOut, 0.54, 'yanma odası');
+    // M5a: fiziğe uyduruldu (HPT girişi Mach 0,10, yanma odası 20 m/s); eski model 0,49 / 0,54
+    near(L.hpt.tip[0], 0.473, 'hpt ucu');
+    near(L.combustor.rOut, 0.507, 'yanma odası');
+  });
+
+  it('HPT ve yanma odası fiziksel (M5a uydurması)', () => {
+    const m = built.flowpath.metrics;
+    const comb = TURBOFAN_GRAPH.modules.find((x) => x.type === 'combustor') as CombustorModule;
+    const hpt = TURBOFAN_GRAPH.modules.find((x) => x.type === 'hpt') as { mach: number[] };
+    expect(hpt.mach[0]).toBeGreaterThanOrEqual(0.1);
+    expect(comb.refVelocity).toBeGreaterThanOrEqual(18);
+    expect(comb.refVelocity).toBeLessThanOrEqual(25);
+    expect(m.an2.hpt).toBeLessThanOrEqual(4.03e7);
+    near(m.an2.hpt / 1e7, 2.27, 'HPT AN² [1e7]');
+    // T3: 1000 K caution'dan ≥ %4 pay (HPC PR 16,5 → 16,3)
+    expect(s['3'].T).toBeLessThanOrEqual(1000 / 1.04);
+    // Devirler değişmez: N2 HPC uç hızından
+    expect(built.design.n2Rpm / DEFAULT_DESIGN.n2Rpm).toBeCloseTo(1, 2);
+  });
+
+  it('türbin geçiş kanalı yumuşak, baypas ağzı çekirdek lülesinden önde', () => {
+    // core.js ölçüleri: kanal HPT son rotorunun 0,3 aralık arkasından LPT ilk
+    // NGV'sinin önüne (0,5 aralık + 0,75 × 0,36 aralık eksenel kord) uzanır
+    const itd0 = L.hpt.z1 + 0.3 * L.hpt.pitch;
+    const itd1 = L.lpt.z0 - (0.5 + 0.75 * 0.36) * L.lpt.pitch;
+    const climb = Math.max(L.lpt.hub[0] - L.hpt.hub[1], L.lpt.tip[0] - L.hpt.tip[1]);
+    expect(itd1 - itd0).toBeGreaterThanOrEqual(1.2 * climb);
+    // Baypas lülesi ağzı çekirdek kaportası profilinin içinde kalır (profileAt dışarıda sabitlenir)
+    expect(L.bypassExit.z).toBeLessThan(L.coreNozzle.z0);
+    expect(L.bypassExit.z).toBeGreaterThan(L.coreCowl[0][1]);
   });
 
   it('booster ve LPT fiziksel (eski model fizikle çelişiyordu)', () => {
