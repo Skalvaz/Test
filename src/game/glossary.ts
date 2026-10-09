@@ -126,4 +126,72 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: 'Bleed hava',
     body: '<p>Kompresörden ya da APU\'dan alınan basınçlı hava. Kabin basınçlandırma, buz önleme ve motor çalıştırma için kullanılır. Çalıştırmada APU bleed havası hava türbinli marş motorunu döndürür.</p>',
   },
+  // --- Motor Atölyesi (M5a): uyarıların ve sonuç panelinin terimleri ---
+  {
+    id: 'tipMach',
+    term: 'Uç bağıl Mach sayısı',
+    abbr: 'Mrel',
+    body: '<p>Dönen kanadın ucunun gördüğü hava hızının ses hızına oranı. Kanat, eksenel akışla kendi dönme hızının bileşkesini görür: M<sub>rel</sub> = √(M<sub>eksenel</sub>² + (U<sub>uç</sub>/a)²). 1\'in üstünde uçta şok dalgaları oluşur; ~1,5\'e kadar iyi tasarlanmış fanlar bunu kaldırır, ötesinde şok kaybı verimi düşürür. Büyük fanlarda kalkışta duyulan "testere" sesi (buzz-saw) bu şoklardır. Pervanede aynı sınır uçta ~0,8–0,9 Mach\'tır.</p>',
+  },
+  {
+    id: 'an2',
+    term: 'AN²',
+    abbr: 'Kanal alanı × devir²',
+    body: '<p>Türbin diskinin merkezkaç yükünün kaba ölçüsü: kanadın taradığı halka alanı (A, m²) çarpı devrin karesi (N², rpm²). Kanat kökündeki gerilme bu çarpımla orantılıdır. Uzun kanat ya da hızlı mil diski zorlar; sınırı aşan disk parçalanabilir. Bugünün nikel alaşımlı türbinlerinde ~4–5·10⁷ m²·rpm² (6,5–7,7·10¹⁰ in²·rpm²) dolayındadır.</p>',
+  },
+  {
+    id: 'tit',
+    term: 'Türbin giriş sıcaklığı',
+    abbr: 'T4 / TIT',
+    body: '<p>Yanma odasından çıkıp ilk türbin kanatlarına giren gazın sıcaklığı (istasyon 4). T4 arttıkça aynı havadan daha çok itki ve daha iyi çevrim verimi alınır, ama kanatlar zorlanır. Modern motorlarda 1700–1900 K\'dir: kanat metalinin eriyeceği sıcaklığın üstündedir; tek kristal alaşım, seramik kaplama ve kompresörden alınan soğutma havası kanadı korur.</p>',
+  },
+  {
+    id: 'egtMargin',
+    term: 'EGT payı',
+    abbr: 'EGT margin',
+    body: '<p>Kalkış gücündeki egzoz gazı sıcaklığı ile sürekli EGT sınırı arasındaki fark. Yeni motorda 40–60 K bırakılır; motor yıprandıkça EGT yükselir ve pay erir. Pay biten motor bakıma girer. Pay negatifse FADEC tam güçte itkiyi kısar (EGT sınırlayıcı).</p>',
+  },
+  {
+    id: 'stageLoading',
+    term: 'Kademe yüklemesi',
+    abbr: 'ψ',
+    body: '<p>Bir kademenin yaptığı işin kanat hızının karesine oranı: ψ = Δh / U². Kompresörde ~0,25–0,5 (akış basınca karşı yavaşlar, kanatlar az yük kaldırır), türbinde ~1–2,5. Yükleme sınırı aşılırsa kanat yüzeyinde akış ayrılır. Bu yüzden basınç oranı ya da iş artınca kademe sayısı artar, hızlı dönen mil aynı işi daha az kademeyle yapar.</p>',
+  },
+  {
+    id: 'refVelocity',
+    term: 'Yanma odası referans hızı',
+    body: '<p>Kompresör çıkış havasının, alev borusu (gömlek) toplam kesit alanına göre hacimsel ortalama hızı. Yanma odasının boyunu belirler: düşük hız geniş ve ağır, yüksek hız kompakt ama alevin tutunması zor bir yanma odası verir. Halka yanma odalarında ~20–45 m/s; kutu tiplerinde biraz daha yüksek.</p>',
+  },
+  {
+    id: 'mixer',
+    term: 'Karıştırıcı',
+    body: '<p>Karışık akışlı turbofanda soğuk baypas havası ile sıcak çekirdek gazını tek lüleden çıkmadan önce birleştiren parça. İki akış birleşince ortak jetin hızı düşer, itki ve verim biraz artar, gürültü azalır. Akışlar karıştırıcıya yaklaşık aynı toplam basınçla gelmelidir. Düz (confluent) karıştırıcı akışları yan yana bırakır; lobe\'lu (çiçek biçimli) karıştırıcı onları iç içe geçirip karışmayı kısa mesafede tamamlar.</p>',
+  },
+  {
+    id: 'chevron',
+    term: 'Chevron',
+    body: '<p>Lüle arka kenarındaki testere dişli çentikler. Jet ile çevre hava arasındaki karışma katmanına küçük girdaplar ekleyip karışmayı hızlandırır; kalkış jet gürültüsü 2–3 dB azalır. Bedeli küçük bir itki kaybıdır (lüle başına ~%0,25).</p>',
+  },
+  {
+    id: 'thrustWeight',
+    term: 'İtki/ağırlık oranı',
+    abbr: 'T/W',
+    body: '<p>Motorun azami itkisinin kendi ağırlığına oranı. Savaş uçağı motorlarında art yakıcıyla 7–10, büyük yolcu uçağı turbofanlarında 5–6, eski turbojetlerde 3–5\'tir.</p>',
+  },
+  {
+    id: 'specificThrust',
+    term: 'Özgül itki',
+    body: '<p>Motora giren her kg/s hava başına itki [N·s/kg], kabaca jet hızının ölçüsü. Yüksek özgül itki küçük çaplı, güçlü ama gürültülü ve yakıt yiyen motor demektir (turbojet ~700–1000); düşük özgül itki büyük fanlı, sessiz ve tasarruflu motor (yüksek baypaslı turbofan ~250–350).</p>',
+  },
+  {
+    id: 'shaftPower',
+    term: 'Mil gücü ve SFC',
+    abbr: 'SHP, SFC',
+    body: '<p>Turboprop ve turboşaftın ürünü itki değil mildeki güçtür. Verimi özgül yakıt tüketimiyle ölçülür: SFC = yakıt akışı / mil gücü, g/(kW·h). Modern küçük turboşaftlarda ~270–320 g/(kW·h).</p>',
+  },
+  {
+    id: 'turboshaft',
+    term: 'Turboşaft',
+    body: '<p>Gaz jeneratörünün arkasındaki serbest güç türbininin gücünü bir çıkış miliyle dışarı veren gaz türbini: helikopter rotorları, tanklar, gemiler, jeneratörler. Egzozda neredeyse itki kalmaz. Test hücresinde güç, mile bağlı su freniyle (dinamometre) emilir.</p>',
+  },
 ];

@@ -22,7 +22,7 @@ import { AIR, GAS, type GasProps } from '../sim/gas';
 import type { SizedEngine, Station, StationId } from '../sim/design';
 import { layoutStyleOf } from './traits';
 import { LAYOUTS, assertLayoutReady, type EngineLayout } from './layouts/index';
-import type { CombustorModule, CompressorModule, EngineGraph, InletModule, PropellerModule, TurbineModule } from './types';
+import type { CombustorModule, CompressorModule, EngineGraph, InletModule, PropellerModule, ShaftModule, TurbineModule } from './types';
 
 // Eski adlar: yerleşim tipleri layouts/ altına taşındı
 export type { EngineLayout, LayoutFn, LayoutResult } from './layouts/index';
@@ -418,29 +418,103 @@ function rowMass(row: RowGeometry, fill: number, rho: (i: number) => number): nu
 
 export type MassBreakdown = FlowMetrics['mass'];
 
-/** Gaz yolu + motor tipine özel parçalar (gövde, art yakıcı, pervane…) */
-function estimateMass(gp: GasPath, shaftLen: { lp: number; hp: number }, extra: Record<string, number>): MassBreakdown {
+/** Sıranın eksenel ortası */
+const rowMid = (row: RowGeometry) => mid(row.z0, row.z1);
+
+/**
+ * Gaz yolu + motor tipine özel parçalar (gövde, art yakıcı, pervane…).
+ * Her kalemin eksenel ağırlık merkezi de döner (M5a): gaz yolu kalemleri
+ * sıraların ortasında, tipe özel kalemler `extraZ`'den (yerleşimden).
+ */
+function estimateMass(
+  gp: GasPath,
+  shaftLen: { lp: number; hp: number },
+  extra: Record<string, number>,
+  extraZ: (key: string) => number,
+): MassBreakdown {
   // Kompresörde ön kademeler titanyum, son üçte bir çelik/nikel
   const comp = (row: RowGeometry) => rowMass(row, FILL.comp, (i) => (i < row.stages * 0.67 ? RHO.ti : RHO.steel));
   const cb = gp.combustor;
+  // Santrifüj çark: dolu titanyum disk (çark + difüzör payı)
+  const impeller = gp.centrifugal ? Math.PI * gp.centrifugal.r1 ** 2 * 0.12 * 0.3 * RHO.ti : 0;
+  const hpcAxial = comp(gp.hpc);
+  // İnce cidarlı mil boruları: LP cidarı yarıçapın %15'i, HP (LP'nin
+  // dışından geçen geniş tüp) %6'sı
+  const shaftLp = shellMass(gp.shafts.lp, shaftLen.lp, 0.15 * gp.shafts.lp, RHO.steel);
+  const shaftHp = shellMass(gp.shafts.hp, shaftLen.hp, 0.06 * gp.shafts.hp, RHO.steel);
   const parts: Record<string, number> = {
     // Geniş fan kendi kalemiyle (extra.fan) sayılır
     ...(gp.front && extra.fan === undefined ? { lpc: comp(gp.front) } : {}),
     ...(gp.booster ? { booster: comp(gp.booster) } : {}),
-    // Santrifüj çark: dolu titanyum disk (çark + difüzör payı)
-    hpc: comp(gp.hpc) + (gp.centrifugal ? Math.PI * gp.centrifugal.r1 ** 2 * 0.12 * 0.3 * RHO.ti : 0),
+    hpc: hpcAxial + impeller,
     combustor: shellMass(cb.rOut, cb.z1 - cb.z0, SHELL_T.combustor, RHO.ni),
     hpt: rowMass(gp.hpt, FILL.turb, () => RHO.ni),
     lpt: rowMass(gp.lpt, FILL.turb, () => RHO.ni),
-    // İnce cidarlı mil boruları: LP cidarı yarıçapın %15'i, HP (LP'nin
-    // dışından geçen geniş tüp) %6'sı
-    shafts: shellMass(gp.shafts.lp, shaftLen.lp, 0.15 * gp.shafts.lp, RHO.steel) + shellMass(gp.shafts.hp, shaftLen.hp, 0.06 * gp.shafts.hp, RHO.steel),
+    shafts: shaftLp + shaftHp,
     ...extra,
   };
   const core = Object.values(parts).reduce((a, b) => a + b, 0);
   // Dış donanım, aksesuar dişli kutusu, yataklar, borular
   parts.externals = 0.18 * core;
-  return { total: core + parts.externals, parts };
+
+  // --- eksenel ağırlık merkezleri ---
+  // Miller: LP milin ilk kompresöründen (yoksa HPC'den) LPT sonuna, HP mil HPC'den HPT sonuna
+  const lpStart = (gp.front ?? gp.hpc).z0;
+  const zLp = mid(lpStart, gp.lpt.z1);
+  const zHp = mid(gp.hpc.z0, gp.hpt.z1);
+  const centroids: Record<string, number> = {
+    ...(parts.lpc !== undefined ? { lpc: rowMid(gp.front!) } : {}),
+    ...(gp.booster ? { booster: rowMid(gp.booster) } : {}),
+    hpc: parts.hpc > 0 ? (hpcAxial * rowMid(gp.hpc) + impeller * (gp.centrifugal?.z ?? 0)) / parts.hpc : rowMid(gp.hpc),
+    combustor: mid(cb.z0, cb.z1),
+    hpt: rowMid(gp.hpt),
+    lpt: rowMid(gp.lpt),
+    shafts: shaftLp + shaftHp > 0 ? (shaftLp * zLp + shaftHp * zHp) / (shaftLp + shaftHp) : zHp,
+  };
+  for (const k of Object.keys(extra)) centroids[k] = extraZ(k);
+  let mz = 0;
+  for (const k of Object.keys(centroids)) mz += parts[k] * centroids[k];
+  // Dış donanım çekirdeğin üstüne dağılmış sayılır: çekirdekle aynı merkez
+  centroids.externals = core > 0 ? mz / core : zHp;
+  const total = core + parts.externals;
+  return { total, parts, centroids, cgZ: core > 0 ? mz / core : zHp };
+}
+
+/**
+ * Yerleşime özgü kütle kaleminin eksenel ağırlık merkezi. Bilinmeyen kalem
+ * (yeni yerleşimlerin kalemleri) giriş ile egzoz ağzının ortasına konur.
+ */
+function extraCentroid(layout: EngineLayout, gp: GasPath, key: string): number {
+  // Yerleşim tiplerinin yalnız kalıcı alanları okunur (exhaustExit hepsinde
+  // var); konumlar çoğunlukla gaz yolundan: yerleşim dosyaları değişse de
+  // bu hesap kırılmaz
+  const exitZ = layout.exhaustExit.z;
+  const front = gp.front;
+  switch (layout.style) {
+    case 'bare': {
+      const ab = layout.ab as { z0: number; z1: number } | null | undefined;
+      if (key === 'casing') return mid(INTAKE_Z, gp.lpt.z1);
+      if (key === 'afterburner' && ab) return mid(ab.z0, ab.z1);
+      if (key === 'nozzle') return mid(ab ? ab.z1 : gp.lpt.z1, exitZ);
+      break;
+    }
+    case 'nacelle':
+      if (key === 'fan' && front) return rowMid(front);
+      // Muhafaza fan diskinin çevresinde, biraz arkaya uzanır
+      if (key === 'fanCase' && front) return front.z0 + 0.28 * layout.s;
+      if (key === 'casing') return mid(gp.hpc.z0, gp.lpt.z1);
+      if (key === 'exhaust') return mid(gp.lpt.z1, exitZ);
+      break;
+    case 'turboprop':
+      if (key === 'casing') return mid(gp.hpc.z0, gp.lpt.z1);
+      if (key === 'gearbox') return mid(PROP_Z + 0.28, gp.hpc.z0 - 0.1);
+      if (key === 'propeller') return PROP_Z;
+      if (key === 'exhaust') return mid(gp.lpt.z1, exitZ);
+      break;
+    case 'turboshaft':
+      break;
+  }
+  return mid(layout.intake.z, exitZ);
 }
 
 /* ------------------------------------------------------------------ */
@@ -466,8 +540,39 @@ export interface FlowMetrics {
   /** Fan/LPC uç çapı ya da pervane çapı [m]; toplam boy (giriş → lüle) [m] */
   diameter: number;
   length: number;
-  /** Kuru kütle tahmini [kg] ve modül dağılımı (pervane dahil) */
-  mass: { total: number; parts: Record<string, number> };
+  /**
+   * Kuru kütle tahmini [kg] ve modül dağılımı (pervane dahil); her kalemin
+   * eksenel ağırlık merkezi [m, motor z'si] ve motorun ağırlık merkezi
+   */
+  mass: { total: number; parts: Record<string, number>; centroids: Record<string, number>; cgZ: number };
+  /** Turbomakine sıraları (uyarılar ve sonuç paneli; M5a) */
+  rows: Partial<Record<RowKey, RowMetrics>>;
+  /** Santrifüj çark ucu hızı [m/s] */
+  impellerUTip?: number;
+  /** HPT girişi eksenel Mach'ı (düğme: hpt.mach[0]) */
+  hptInletMach: number;
+  /** Yanma odası: referans hız [m/s], boy ve halka yüksekliği (kutuda kutu çapı) [m] */
+  combustor: { style: CombustorModule['style']; vref: number; length: number; height: number; cans?: number };
+  /** Serbest güç türbini / pervane ya da çıkış mili devir oranı */
+  gearRatio?: number;
+  /** Son eksenel HPC kademesinin kanat yüksekliği [mm] */
+  hpcExitBladeMm: number;
+}
+
+/** Gaz yolu sıraları: LP milinin ilk kompresörü, booster, HPC (eksenel), HPT, LPT */
+export type RowKey = 'front' | 'booster' | 'hpc' | 'hpt' | 'lpt';
+
+export interface RowMetrics {
+  stages: number;
+  /** İlk kademe uç hızı ve ortalama yarıçapta kanat hızı [m/s] */
+  uTip: number;
+  uMean: number;
+  /** Gerçek kademe yüklemesi ψ (tamsayı kademeyle) */
+  loading: number;
+  /** Son kademe kanat yüksekliği [m] */
+  hExit: number;
+  /** Mil devri [rpm] */
+  rpm: number;
 }
 
 /** Bağıl uç Mach'ı: eksenel hız + uç dönme hızı, giriş statik sıcaklığında */
@@ -491,16 +596,50 @@ export function computeFlowpath(graph: EngineGraph, sized: SizedEngine, opts: Ga
   const hpcMod = moduleOf<CompressorModule>(graph, 'hpc')!;
   const { hpt, lpt } = gp;
   const r = LAYOUTS[layoutStyleOf(graph)](graph, sized, gp);
+  const rpm = { lp: rpmOf(gp.omega.lp), hp: rpmOf(gp.omega.hp) };
+
+  const rowMetrics = (row: RowGeometry, spool: 'lp' | 'hp'): RowMetrics => ({
+    stages: row.stages,
+    uTip: row.uTip,
+    uMean: row.uMean,
+    loading: row.loading,
+    hExit: row.tip[1] - row.hub[1],
+    rpm: rpm[spool],
+  });
+  const rows: FlowMetrics['rows'] = {
+    ...(gp.front ? { front: rowMetrics(gp.front, 'lp') } : {}),
+    ...(gp.booster ? { booster: rowMetrics(gp.booster, 'lp') } : {}),
+    hpc: rowMetrics(gp.hpc, 'hp'),
+    hpt: rowMetrics(gp.hpt, 'hp'),
+    lpt: rowMetrics(gp.lpt, 'lp'),
+  };
+  const comb = moduleOf<CombustorModule>(graph, 'combustor')!;
+  const cb = gp.combustor;
+  // Çıkış devri: pervane ya da çıkış mili (serbest güç türbini → redüktör)
+  const outRpm = moduleOf<PropellerModule>(graph, 'propeller')?.rpm ?? moduleOf<ShaftModule>(graph, 'shaft')?.rpm;
 
   const metrics: FlowMetrics = {
     tipMachRel: { lp: r.lpTipMach, hp: tipMachRel(st('25'), hpcMod.mach[0], gp.hpc.uTip, AIR) },
     an2: {
-      hpt: Math.PI * (hpt.tip[1] ** 2 - hpt.hub[1] ** 2) * rpmOf(gp.omega.hp) ** 2,
-      lpt: Math.PI * (lpt.tip[1] ** 2 - lpt.hub[1] ** 2) * rpmOf(gp.omega.lp) ** 2,
+      hpt: Math.PI * (hpt.tip[1] ** 2 - hpt.hub[1] ** 2) * rpm.hp ** 2,
+      lpt: Math.PI * (lpt.tip[1] ** 2 - lpt.hub[1] ** 2) * rpm.lp ** 2,
     },
     diameter: r.diameter,
     length: r.length,
-    mass: estimateMass(gp, r.shaftLen, r.extra),
+    mass: estimateMass(gp, r.shaftLen, r.extra, (k) => extraCentroid(r.layout, gp, k)),
+    rows,
+    impellerUTip: gp.centrifugal?.uTip,
+    hptInletMach: moduleOf<TurbineModule>(graph, 'hpt')!.mach[0],
+    combustor: {
+      style: comb.style,
+      vref: comb.refVelocity,
+      length: cb.z1 - cb.z0,
+      // Kutuda yükseklik yerine kutu çapı (computeGasPath H = 2·rc)
+      height: cb.rOut - cb.rIn,
+      cans: cb.cans,
+    },
+    gearRatio: outRpm ? rpm.lp / outRpm : undefined,
+    hpcExitBladeMm: (gp.hpc.tip[1] - gp.hpc.hub[1]) * 1000,
   };
-  return { rpm: { lp: rpmOf(gp.omega.lp), hp: rpmOf(gp.omega.hp) }, gas: gp, layout: r.layout, metrics };
+  return { rpm, gas: gp, layout: r.layout, metrics };
 }
