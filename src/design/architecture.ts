@@ -681,8 +681,8 @@ function ensureWorkable(seed: EngineGraph, from: Architecture, g: EngineGraph, t
     const t = trial(best.ids.filter((x) => x !== id));
     if (t.q && !lighter(severityOf(best.q), severityOf(t.q))) best = { ids: t.ids, c: t.c, q: t.q };
   }
+  const fixed = new Map([...bad].filter(([id, v]) => (best.q.get(id)?.rank ?? 0) < v.rank));
   if (best.ids.length) {
-    const fixed = new Map([...bad].filter(([id, v]) => (best.q.get(id)?.rank ?? 0) < v.rank));
     revertNotes(g, best.c, best.ids, `Bu değerle yeni motor sınırı aşıyordu (${titles(fixed)}): ailenin değeri kullanıldı; bu onu giderdi ama motorda başka bir sorun kalıyor.`, notes);
   }
   const out = best.c;
@@ -691,12 +691,20 @@ function ensureWorkable(seed: EngineGraph, from: Architecture, g: EngineGraph, t
     const usable = (k: string) => !best.ids.includes(k as KnobId) && knobById(k as KnobId)?.level === 'basic' && readKnob(out, k as KnobId) !== undefined;
     const knob = (v.knobs.find(usable) ?? 'engine.massFlow') as KnobId;
     const val = readKnob(out, knob) ?? out.massFlow;
+    // Kuralın genel önerisi az önce geri alınan bir düğmeyi (örn. EGT için
+    // ailenin değerine çıkarılan HPC PR'ı) geri çevirmeyi önerebilir: o
+    // düğmenin neden tutulduğu yazılır, öneriyle çelişen tek başına kalmaz
+    const held = v.knobs.filter((k) => best.ids.includes(k as KnobId));
+    const why = fixed.size ? ` (${titles(fixed)})` : '';
+    const heldNote = held.length
+      ? ` ${held.map((k) => knobById(k as KnobId)?.label ?? k).join(', ')} ise önceki sorun${why} için ailenin değerinde tutuldu; onu geri çevirmek o sorunu geri getirir, önce ${knobById(knob)?.label ?? knob} ile dene.`
+      : '';
     notes.push({
       knob,
       from: val,
       to: val,
       residual: true,
-      reason: `Yeni motor bu mimaride uyarı veriyor (${v.title}); ailenin değerlerine dönmek bunu gidermiyor. ${v.fix}`,
+      reason: `Yeni motor bu mimaride uyarı veriyor (${v.title}); ailenin değerlerine dönmek bunu gidermiyor. ${v.fix}${heldNote}`,
     });
   }
   return out;

@@ -793,6 +793,9 @@ describe('kart yolu: sihirbaz gibi uyarısız, EGT payı pozitif, düğmeler ara
     expect(res).toHaveLength(1);
     expect(res[0]).toMatchObject({ knob: 'engine.massFlow', from: graph.massFlow, to: graph.massFlow });
     expect(res[0].reason).toMatch(/HPC son kanadı .* gidermiyor\. Daha büyük motor/);
+    // Genel öneri "daha düşük HPC PR" diyor, ama HPC PR az önce EGT için geri
+    // alındı: not bu çelişkiyi açıklar, önce hava akışını önerir
+    expect(res[0].reason).toMatch(/HPC basınç oranı ise önceki sorun \(.*EGT payı.*\) için ailenin değerinde tutuldu.*önce .* ile dene\./);
     // Geri alınanlar yalnız gerekenler (T4, HPC PR); notları giderdikleri sorunu
     // anar ve motorda sorun kaldığını söyler (eskiden 7 düğme "kullanıldı" diyordu)
     const reverted = notes.filter((n) => /ailenin değeri kullanıldı/.test(n.reason));
