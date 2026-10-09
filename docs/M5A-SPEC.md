@@ -602,7 +602,7 @@ tabloya geri yazar.
 | `hpc.pr` | HPC basınç oranı | – | **TJ/TJD 2–6 · MTF 4–12 · TF/TFM 8–25** (TP/TS toplam 6–20) | 0,1 | varyant | – | "OPR artar → TSFC düşer; kademe, T3 ve kütle artar." |
 | `hpc.centrifugal.workFraction` | Santrifüj iş payı | % | 0,2–0,8 | 0,01 | aile | centrifugal | "İşin ne kadarını çark yapar: eksenel kademe azalır, çap büyür." |
 | `combustor.tit` | T4 | K (°C da) | **TJ/TJD 1050–1650 · MTF 1300–1900 · TF 1500–1900 · TFM 1400–1900 · TP/TS 1150–1750** | 5 | varyant | – | "Sıcak türbin girişi: itki artar; EGT payı ve kanat ömrü azalır." |
-| `combustor.cans` | Kutu sayısı | adet | 6–16 | 1 | aile | can/canAnnular | |
+| `combustor.cans` | Kutu sayısı | adet | **6–10** | 1 | aile | can/canAnnular | |
 | `mixer.lobes` | Lobe sayısı | adet | 6–24 | 1 | aile | lobed | |
 | `afterburner.t7Max` | Art yakıcı T7 | K | 1600–2200 | 10 | varyant | AB | |
 | `nozzle.chevrons.core` / `.bypass` | Chevron | adet | 0, 8–24 | 2 | aile | separate | "Her chevron'lu lüle itkiden %0,25 alır, jet sesini azaltır (dB M5c)." |
@@ -611,7 +611,7 @@ tabloya geri yazar.
 | `propeller.rpm` | Pervane devri | rpm | 900–2000 | 10 | varyant | prop | |
 | `shaft.rpm` | Çıkış devri | rpm | 3000–30000 | 50 | aile | shaft | "Yalnız redüktör oranını değiştirir; güç türbini devri uç hızından gelir." |
 
-**P4b bulanık testinden sonra (kalın değerler):** aile başına 200 rastgele temel düğme kümesinde geçerli oran %70'in altında kaldığı için T4, HPC PR, LPC PR ve TF fan PR/BPR aralıkları aile bağlamına göre daraltıldı (yüksek baypaslı fan sıcak çekirdek ister: TF'de T4 < 1500 K'de P5 ≤ P0; kısa iki milli turbojette HPC PR > 6'da HPT çıkış kanalı kapanır; LPC PR < 2,1'de LPC çıkış kanalı kapanır). Uzman aralıklarından hpc `.mach.0`, türbin `.mach.0` ve `.bladeK`, `bypassDuct.mach` şablon değerlerini kapsayacak kadar genişletildi.
+**P4b bulanık testinden sonra (kalın değerler):** aile başına 200 rastgele temel düğme kümesinde geçerli oran %70'in altında kaldığı için T4, HPC PR, LPC PR ve TF fan PR/BPR aralıkları aile bağlamına göre daraltıldı (yüksek baypaslı fan sıcak çekirdek ister: TF'de T4 < 1500 K'de P5 ≤ P0; kısa iki milli turbojette HPC PR > 6'da HPT çıkış kanalı kapanır; LPC PR < 2,1'de LPC çıkış kanalı kapanır). Kutu sayısı kaydırıcısı 6–10'a indi (grafik kuralı 6–16 kalır): kuru turbojette 11+ kutu kümelerin çoğunda çevreye sığmadı, geçerli oran %34'tü (J57 8, JT8D 9, J79 10 kutu). Uzman aralıklarından hpc `.mach.0`, türbin `.mach.0` ve `.bladeK`, `bypassDuct.mach` şablon değerlerini kapsayacak kadar genişletildi.
 
 T4 üst sınırı M5a'da **1900 K**: soğutma havası modeli yok, çevrim yüksek
 T4'ün kazancını abartır (M5c'de dönem + soğutma ile açılır). Bir ailede en

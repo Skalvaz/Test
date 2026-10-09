@@ -488,7 +488,9 @@ const SPECS: Record<KnobId, KnobSpec> = {
     explain: 'Kutu ve kutu-halka yanma odasında alev borusu sayısı: az kutu daha büyük çap ister.',
     unit: 'adet',
     type: 'int',
-    range: when((t) => t.combustor !== 'annular', [6, 16]),
+    // Grafik kuralı 6–16; bulanık testte (kuru turbojet) 11+ kutu çoğu
+    // kümede çevreye sığmadı (J57 8, JT8D 9, J79 10 kutu): kaydırıcı 6–10
+    range: when((t) => t.combustor !== 'annular', [6, 10]),
     step: 1,
   }),
   'mixer.lobes': basic({
