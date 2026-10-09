@@ -6,8 +6,6 @@
 import { describe, expect, it } from 'vitest';
 import { ENGINE_CATALOG, sizeEngine } from '../sim/design';
 import { EngineSim, type SimEventType } from '../sim/engineSim';
-import { cycleRows } from '../ui/CycleDiagram';
-import { fakeArchitectureOf, fakeSummarize } from '../workshop/testing';
 import { buildEngineCard } from './card';
 import { builtFor, TEMPLATES } from './catalog';
 import { solveMassFlow } from './defaults';
@@ -181,10 +179,9 @@ describe('çıkış gücü tek tanım: ref.outputPower (×transmissionEff)', () 
   const b = buildEngine(TS);
   const P = b.sized.ref.outputPower;
 
-  it('özet, taklit özet, motor kartı ve hava akışı çözücüsü aynı gücü kullanır', () => {
+  it('özet, motor kartı ve hava akışı çözücüsü aynı gücü kullanır (taklit özet: workshop/turboshaft.test.ts)', () => {
     expect(P).toBeCloseTo(b.sized.ref.shaftPower * 0.985, 6);
     expect(summarize(b).shaftPower).toBe(P);
-    expect(fakeSummarize(b).shaftPower).toBe(P);
     const doc = familyToDoc({
       id: 'f_0000000007',
       code: 'AT-7',
@@ -195,7 +192,7 @@ describe('çıkış gücü tek tanım: ref.outputPower (×transmissionEff)', () 
       active: 'v_00000001',
       origin: { from: 'template', template: 'turboshaft' },
     });
-    const card = buildEngineCard(doc, 'v_00000001', b, { archKey: (x) => JSON.stringify(fakeArchitectureOf(x.graph)) });
+    const card = buildEngineCard(doc, 'v_00000001', b, { archKey: (x) => JSON.stringify(x.graph.modules.map((m) => m.type)) });
     expect(card.ratings.takeoff.shaftPower).toBe(P);
     expect(card.ratings.takeoff.sfc).toBeCloseTo(summarize(b).sfc!, 9);
     expect(card.dims.outputShaft).toMatchObject({ z: SHAFT_Z, rpm: 20900, drive: 'front' });
@@ -285,12 +282,8 @@ describe('turboşaft test hücresinde (dinamometre)', () => {
     expect(Math.abs(sim.N1 - 1)).toBeLessThan(0.02);
     const s = sim.snapshot();
     expect(s.shaftPower / sim.eng.ref.outputPower).toBeGreaterThan(0.95);
-    // Snapshot: TSFC yok (0), SFC çıkış gücüne göre; çevrim diyagramı g/(kW·h) yazar
+    // Snapshot: TSFC yok (0), SFC çıkış gücüne göre (çevrim diyagramı satırı: ui/CycleDiagram.turboshaft.test.ts)
     expect(s.tsfc).toBe(0);
     expect(s.sfc).toBeCloseTo(s.wf / s.shaftPower, 12);
-    const rows = Object.fromEntries(cycleRows(s, { output: 'shaft', afterburner: false, exhaust: 'single' }, false));
-    expect(rows['Özgül yakıt tüketimi']).toMatch(/g\/kW·h$/);
-    expect(Number.parseFloat(rows['Özgül yakıt tüketimi'])).toBeGreaterThan(250);
-    expect(Number.parseFloat(rows['Özgül yakıt tüketimi'])).toBeLessThan(340);
   });
 });
