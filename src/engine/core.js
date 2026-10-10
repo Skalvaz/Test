@@ -116,6 +116,12 @@ export function buildCore(materials, L) {
 
   /* ---------------- LP booster ---------------- */
   const b = L.booster;
+  // Gövdenin orta flanşı (+cıvatalar) gövdeden ~2 cm taşar: kısa booster'da
+  // (karışık akışta daralan kaporta payı) ayırıcı burnunun altına düşüp onu
+  // delerdi. Burnun arkasına alınır; oraya da sığmıyorsa flanş yok
+  const flangeMid = (b.z0 + b.z1) / 2;
+  const lipEnd = zs + 0.22 + 0.02;
+  const boosterFlanges = flangeMid > lipEnd ? [flangeMid] : lipEnd < b.z1 - 0.03 ? [lipEnd] : [];
   const booster = compressorModule(materials, {
     part: 'booster',
     stages: b.stages,
@@ -127,7 +133,7 @@ export function buildCore(materials, L) {
     blades: b.blades,
     vanes: b.blades.map((n) => Math.round(n * 1.1)),
     bore: [rLp + 0.055, 0.03],
-    casing: { flanges: [(b.z0 + b.z1) / 2] },
+    casing: { flanges: boosterFlanges },
     cones: { front: [rLp + 0.007, b.z0 - 0.14] },
   });
   lpSpool.add(booster.rotor);

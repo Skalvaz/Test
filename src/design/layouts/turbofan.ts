@@ -73,6 +73,15 @@ export const FAN_DUCT_MACH_MAX = 0.5;
 export const SPLITTER_LIP_DROP = 0.04;
 export const SPLITTER_CASE_CLEAR = 0.014;
 /**
+ * Karışık akış: çekirdek kaportasının HPT arkasındaki noktasının LPT ucundan
+ * en küçük yüksekliği (kaporta payı c ne kadar daralsa da). Kısa LPT'de
+ * (küçük, düşük baypaslı motor) bu nokta LPT gövdesinin ya da egzoz
+ * kanalının üstüne düşer; egzoz kanalının dış yüzü uç + 0,056, kaporta
+ * kalınlığı 0,012: 0,075 ile iç yüz kanalın ~7 mm dışında. Önceden
+ * 0,12c (c = 0,3'te 0,036): egzoz kanalı kaportayı 2 cm delip geçiyordu.
+ */
+export const LPT_COWL_MIN = 0.075;
+/**
  * Ortak sabit yakınsak lülenin ağız yarıçapının karıştırma düzlemindeki
  * kanal duvarına en büyük oranı. Karışmış akışın basıncı düşükse (baypas
  * basıncı çekirdeğinkinin çok altında, P19t/P5t ≈ 0,3–0,4) A9mix
@@ -256,7 +265,9 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
       [rMax * 0.99, hpc.z0 + 0.1],
       [rMax, (hpc.z1 + cb.z0) / 2],
       [rMax * 0.985, cb.z1],
-      [Math.max(rMax * 0.94, lpt.tip[1] + 0.12 * c), hpt.z1 + 0.1],
+      // Kısa LPT'de bu nokta LPT gövdesinin ya da egzoz kanalının üstüne
+      // düşer: pay daralsa da kaportanın iç yüzü onların dışında kalır
+      [Math.max(rMax * 0.94, lpt.tip[1] + (mixMod ? Math.max(0.12 * c, LPT_COWL_MIN) : 0.12 * c)), hpt.z1 + 0.1],
     ];
     // Karışık akışta z'de geri dönen nokta (kısa booster: booster.z1 − 0,1 <
     // zS + 0,13) komşularının ortasına alınır: yumuşatılmış profil (core.js)
