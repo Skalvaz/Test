@@ -4,7 +4,7 @@
  * kullanıcının bırakmadığı ara değer tasarıma işlenmez.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { WorkshopHandles } from './Handles';
+import { DragGesture, WorkshopHandles } from './Handles';
 
 type Call = [string, number, string];
 
@@ -21,6 +21,8 @@ function dragging() {
     pending: 0.64,
     sent: 0.6,
     pointerId: 7,
+    // Eşiği geçmiş (mağazaya 'start' gitmiş) sürükleme
+    gesture: Object.assign(new DragGesture('frontTip', 0.5, 0, 0, 0, 1, { lo: 0, hi: 2 }), { live: true }),
     items: [],
     controlsWere: true,
     host: { controls: { enabled: false } },
