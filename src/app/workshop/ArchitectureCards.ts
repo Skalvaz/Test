@@ -142,6 +142,9 @@ export class ArchitectureCards {
           if (!selected && !why) this.store.setArchitecture(o.axis, o.value);
         },
         keydown: (e) => {
+          // İç bağlantılardan (Ders, Sözlük) kabarcıklanan Enter/Boşluk
+          // onların kendi tıklamasıdır: mimariyi değiştirmez, engellenmez
+          if (e.target !== e.currentTarget) return;
           if ((e.key === 'Enter' || e.key === ' ') && !selected && !why) {
             e.preventDefault();
             this.store.setArchitecture(o.axis, o.value);
