@@ -5,16 +5,21 @@
 
 import { describe, expect, it } from 'vitest';
 import { ENGINE_CATALOG, sizeEngine } from '../sim/design';
-import { EngineSim, type SimEventType } from '../sim/engineSim';
+import { dynoGainScale, EngineSim, type SimEventType } from '../sim/engineSim';
+import { familyBase } from '../workshop/project';
+import { architectureOf } from './architecture';
 import { buildEngineCard } from './card';
 import { builtFor, TEMPLATES } from './catalog';
-import { solveMassFlow } from './defaults';
+import { referenceFor, solveMassFlow } from './defaults';
 import { familyToDoc } from './engineDoc';
 import { evaluate, isEvaluation } from './evaluate';
-import { SHAFT_Z } from './flowpath';
+import { profileAt, SHAFT_Z, TURBOSHAFT_MIN_INLET } from './flowpath';
 import { buildEngine, toEngineDesign } from './graph';
+import { knobRange } from './knobs';
+import { GEARBOX_MIN_LEN } from './layouts/turboshaft';
 import { summarize } from './summary';
 import { TURBOPROP_GRAPH } from './templates';
+import { deriveTraits } from './traits';
 import type { EngineGraph, InletModule, ShaftModule } from './types';
 import { evaluateOperability } from './warnings';
 
@@ -46,10 +51,12 @@ describe('turboşaft şablonu: §4.3 bandı (T700-GE-701C)', () => {
   it('çıkış 20 900 rpm: güç türbini doğrudan tahrik (devir farkı < %5, redüktör yok)', () => {
     const L = b.flowpath.layout;
     if (L.style !== 'turboshaft') throw new Error('yerleşim');
-    expect(L.output.rpm).toBe(20900);
     expect(Math.abs(b.flowpath.rpm.lp / 20900 - 1)).toBeLessThan(0.05);
     expect(L.output.reduction).toBe(false);
-    expect(s.gearRatio!).toBeCloseTo(b.flowpath.rpm.lp / 20900, 9);
+    // Redüktörsüz mil güç türbini devrinde döner: oran tam 1, çıkış devri NP
+    expect(L.output.rpm).toBeCloseTo(b.flowpath.rpm.lp, 9);
+    expect(L.output.gearRatio).toBe(1);
+    expect(s.gearRatio).toBe(1);
     expect(b.flowpath.metrics.mass.parts.gearbox).toBeUndefined();
   });
 
@@ -77,7 +84,8 @@ describe('turboşaft şablonu: §4.3 bandı (T700-GE-701C)', () => {
     expect(b.traits).toMatchObject({ layout: 'turboshaft', output: 'shaft', lpLoad: 'shaft', centrifugal: true, nozzle: 'stub' });
     expect(b.design.fanBlades).toBe(b.flowpath.gas.hpc.blades[0]);
     expect(ENGINE_CATALOG.turboshaft).toBe(builtFor('turboshaft')!.design);
-    expect(b.design.shaft).toEqual({ rpm: 20900, nozzlePR: 1.05, transmissionEff: 0.985 });
+    // Simülasyonun çıkış devri (EICAS NP) gerçek devir: redüktörsüzde güç türbininki
+    expect(b.design.shaft).toEqual({ rpm: b.flowpath.rpm.lp, nozzlePR: 1.05, transmissionEff: 0.985 });
     expect(b.design.prop).toBeUndefined();
   });
 });
@@ -112,8 +120,8 @@ describe('turboşaft yerleşimi', () => {
     const maxR = Math.max(...L.outerProfile.map(([, r]) => r));
     expect(b.flowpath.metrics.diameter).toBeCloseTo(2 * maxR, 12);
     expect(L.engineR).toBeGreaterThanOrEqual(maxR - 1e-9);
-    // Çıkış mili yarıçapı torkun küp kökü ile
-    const torque = b.sized.ref.outputPower / ((20900 * 2 * Math.PI) / 60);
+    // Çıkış mili yarıçapı torkun küp kökü ile (gerçek çıkış devrinde)
+    const torque = b.sized.ref.outputPower / ((b.flowpath.rpm.lp * 2 * Math.PI) / 60);
     expect(L.output.radius).toBeCloseTo(0.00305 * Math.cbrt(torque), 9);
   });
 
@@ -134,19 +142,71 @@ describe('turboşaft yerleşimi', () => {
     expect(r.sized.ref.outputPower).toBe(b.sized.ref.outputPower);
   });
 
-  it('redüktör gövdesi halka girişin merkez gövdesinin içinde kalır (ağız açık)', () => {
-    const cases: [number, boolean][] = [[3000, false], [6000, false], [20900, true]];
-    for (const [rpm, red] of cases) {
+  it('redüktör kutusu ağzın önünde biter; halka kanal gaz jeneratörü gövdesinin içinde (her devir ve boyutta)', () => {
+    // İnceleme bulgusu: merkez gövde redüktörü sardığında (rInner ≥ redüktör)
+    // 6000 ve 3000 rpm'de kanal gövde duvarının dışında kalıyordu
+    const cases: [number, boolean, number][] = [
+      [3000, false, 4.5],
+      [6000, false, 4.5],
+      [20900, true, 4.5],
+      [3000, false, 1.5],
+      [3000, false, 15],
+      [20900, false, 15],
+    ];
+    for (const [rpm, red, W] of cases) {
       const g = structuredClone(TS);
       const sh = mod<ShaftModule>(g, 'shaft');
       sh.rpm = rpm;
       sh.reduction = red;
-      const Lr = buildEngine(g).flowpath.layout;
+      g.massFlow = W;
+      const r = buildEngine(g);
+      const Lr = r.flowpath.layout;
       if (Lr.style !== 'turboshaft') throw new Error('yerleşim');
-      expect(Lr.output.reduction).toBe(true);
-      expect(Lr.housing.gearboxR).toBeLessThan(Lr.inlet.rInner);
-      expect(Lr.inlet.rOuter).toBeGreaterThan(Lr.inlet.rInner);
+      const tag = `${rpm} rpm, ${W} kg/s`;
+      const k = Lr.k;
+      expect(Lr.output.reduction, tag).toBe(true);
+      // Kutu mil gövdesinin içinde, ağzın önünde biter; merkez gövde yalnız mil gövdesini sarar
+      expect(Lr.housing.gearbox[0], tag).toBeCloseTo(Lr.housing.z0, 12);
+      expect(Lr.housing.gearbox[1], tag).toBeLessThanOrEqual(Lr.inlet.z0);
+      expect(Lr.housing.gearbox[1] - Lr.housing.gearbox[0], tag).toBeGreaterThanOrEqual(GEARBOX_MIN_LEN * k - 1e-12);
+      expect(Lr.housing.r, tag).toBeLessThan(Lr.inlet.rInner);
+      expect(Lr.inlet.rOuter, tag).toBeGreaterThan(Lr.inlet.rInner);
+      // Kutu ağızdan genişse boyundan hava yandan girer: yan yüzey ≥ ağız alanı
+      if (Lr.housing.gearboxR > Lr.inlet.rInner) {
+        const neck = Lr.inlet.z0 - Lr.housing.gearbox[1];
+        const mouth = Math.PI * (Lr.inlet.rOuter ** 2 - Lr.inlet.rInner ** 2);
+        expect(2 * Math.PI * Lr.inlet.rOuter * neck, tag).toBeGreaterThanOrEqual(mouth);
+      }
+      // Gövdenin ön ucu çerçevenin dış kabuğuna ulaşır; kanalın tamamı gövdenin içinde
+      expect(Lr.gg.case[0][0], tag).toBeGreaterThanOrEqual(Lr.frameR - 0.015 * k - 1e-12);
+      expect(Lr.gg.case[0][0], tag).toBeGreaterThan(Lr.inlet.rOuter + 0.02 * k);
+      for (let i = 0; i <= 10; i++) {
+        const z = Lr.inlet.z0 + (i / 10) * (Lr.inlet.z1 - Lr.inlet.z0);
+        expect(profileAt(Lr.gg.case, z), `${tag}, z ${z.toFixed(3)}`).toBeGreaterThan(r.flowpath.gas.hpc.tip[0]);
+      }
+      // HPC'ye inen kanal: merkez gövde göbeğe, dış duvar uca iner
+      expect(Lr.inlet.rInner, tag).toBeGreaterThan(r.flowpath.gas.hpc.hub[0]);
     }
+  });
+
+  it('istenen devir güç türbininden %5 içinde: doğrudan tahrik, çıkış gerçek devirde (oran 1, sim NP de)', () => {
+    const g = structuredClone(TS);
+    mod<ShaftModule>(g, 'shaft').rpm = 20000;
+    const r = buildEngine(g);
+    const Lr = r.flowpath.layout;
+    if (Lr.style !== 'turboshaft') throw new Error('yerleşim');
+    expect(Lr.output.reduction).toBe(false);
+    expect(Lr.output.gearRatio).toBe(1);
+    expect(Lr.output.rpm).toBeCloseTo(r.flowpath.rpm.lp, 9);
+    expect(r.flowpath.metrics.gearRatio).toBe(1);
+    // Mil ve tork gerçek devirle: şablonla (20 900 istenmiş) aynı geometri
+    const L0 = b.flowpath.layout;
+    if (L0.style !== 'turboshaft') throw new Error('yerleşim');
+    expect(Lr.output.radius).toBeCloseTo(L0.output.radius, 12);
+    // Simülasyon (EICAS NP) çıkış devri güç türbininki
+    const sim = new EngineSim(r.design);
+    sim.trim(1, 30);
+    expect(sim.snapshot().propRpm).toBeCloseTo(sim.N1 * r.flowpath.rpm.lp, 6);
   });
 
   it('inlet.length uç değerlerinde z sırası: gövde ağzın önüne taşmaz, çerçeve rotora girmez; kuyruk konisi monoton', () => {
@@ -165,6 +225,21 @@ describe('turboşaft yerleşimi', () => {
       expect(ex.z0 - 0.03 * Lr.k).toBeLessThan(mid);
       expect(mid).toBeLessThan(ex.coneZ1);
     }
+  });
+
+  it('inlet.length düğmesi turboşaftta TURBOSHAFT_MIN_INLET ile başlar: aralığın her yerinde etkili', () => {
+    expect(knobRange('inlet.length', deriveTraits(TS))).toEqual([TURBOSHAFT_MIN_INLET, 2]);
+    expect(knobRange('inlet.length', deriveTraits(TURBOPROP_GRAPH))).toEqual([0, 2]);
+    // Alt uçtan bir adım yukarısı geometriyi değiştirir (ölü bölge yok)
+    const at = (len: number) => {
+      const g = structuredClone(TS);
+      mod<InletModule>(g, 'inlet').length = len;
+      return buildEngine(g).flowpath;
+    };
+    const lo = at(TURBOSHAFT_MIN_INLET);
+    const up = at(TURBOSHAFT_MIN_INLET + 0.01);
+    expect(up.gas.hpc.z0).toBeGreaterThan(lo.gas.hpc.z0);
+    expect(up.metrics.mass.total).toBeGreaterThan(lo.metrics.mass.total);
   });
 
   it('turboprop gaz jeneratörü aynı ortak koddan, ölçek 1 (altın sayılar golden.test.ts)', () => {
@@ -195,7 +270,8 @@ describe('çıkış gücü tek tanım: ref.outputPower (×transmissionEff)', () 
     const card = buildEngineCard(doc, 'v_00000001', b, { archKey: (x) => JSON.stringify(x.graph.modules.map((m) => m.type)) });
     expect(card.ratings.takeoff.shaftPower).toBe(P);
     expect(card.ratings.takeoff.sfc).toBeCloseTo(summarize(b).sfc!, 9);
-    expect(card.dims.outputShaft).toMatchObject({ z: SHAFT_Z, rpm: 20900, drive: 'front' });
+    // Kart gerçek çıkış devrini verir (redüktörsüzde güç türbininki)
+    expect(card.dims.outputShaft).toMatchObject({ z: SHAFT_Z, rpm: b.flowpath.rpm.lp, drive: 'front' });
     // Şablonun kendi gücünü hedefleyen çözücü şablonun hava akışını bulur
     expect(solveMassFlow(TS, { shaftPower: P })).toBeCloseTo(TS.massFlow, 3);
     const W = solveMassFlow(TS, { shaftPower: 1.2e6 });
@@ -205,8 +281,8 @@ describe('çıkış gücü tek tanım: ref.outputPower (×transmissionEff)', () 
 
 describe('turboşaft test hücresinde (dinamometre)', () => {
   /** App.beginAutoStart / updateAutoStart sırası */
-  function autoStart() {
-    const sim = new EngineSim(builtFor('turboshaft')!.design);
+  function autoStart(design = builtFor('turboshaft')!.design) {
+    const sim = new EngineSim(design);
     const seen: SimEventType[] = [];
     const at: Partial<Record<SimEventType, number>> = {};
     sim.on((e) => {
@@ -240,6 +316,18 @@ describe('turboşaft test hücresinde (dinamometre)', () => {
     expect(r.peakEgt).toBeLessThan(r.sim.limits.egtStart);
   }, HEAVY);
 
+  /** Tam güç → kesme → tam güç (12'şer s); NP tepesi */
+  function throttleSteps(sim: EngineSim, peak: number) {
+    for (const th of [1, 0, 1]) {
+      sim.controls.throttle = th;
+      for (let t = 0; t < 12; t += 1 / 60) {
+        sim.step(1 / 60);
+        peak = Math.max(peak, sim.N1);
+      }
+    }
+    return peak;
+  }
+
   it('gaz adımı ve kesme: NP aşımı yok, NP %100 ±%2, güç tasarımın ≥ %95i', () => {
     const r = autoStart();
     const sim = r.sim;
@@ -272,6 +360,58 @@ describe('turboşaft test hücresinde (dinamometre)', () => {
     expect(peakN1).toBeLessThan(1.04);
     expect(sim.surgeCount).toBe(0);
   }, HEAVY);
+
+  it('atölyede büyütülen turboşaft (W 13–15 kg/s, ~4–4,6 MW): gaz adımında NP %104 altında', () => {
+    // Atalet ≈ W^2,5 büyür; dinamometre valisi kazancı mil zaman sabitiyle
+    // ölçeklenmezse NP 13 kg/s'de %104'ü aşıyordu (inceleme bulgusu)
+    for (const W of [13, 15]) {
+      const g = familyBase(TS);
+      g.massFlow = W;
+      const design = buildEngine(g, { reference: referenceFor(architectureOf(g)) }).design;
+      const r = autoStart(design);
+      expect(r.sim.phase).toBe('running');
+      const peak = throttleSteps(r.sim, r.peakN1);
+      expect(r.seen).not.toContain('n1Overspeed');
+      expect(peak).toBeLessThan(r.sim.limits.n1Redline);
+      // Vali yine %100'e oturur
+      expect(Math.abs(r.sim.N1 - 1)).toBeLessThan(0.02);
+    }
+  }, HEAVY);
+
+  it('kısmi güçten tam güce adım (yük öngörüsü): şablonda ve uçlarda NP %102 altında', () => {
+    // Yalnız PI ile şablonda %30 → %100 adımında NP 1,048'e çıkıp
+    // 'N1 AŞIRI DEVİR' veriyordu (fren yükü hızlanan gaz jeneratörünün gerisinde)
+    const designs: [string, ReturnType<typeof buildEngine>['design']][] = [['şablon', builtFor('turboshaft')!.design]];
+    for (const W of [1.5, 15]) {
+      const g = familyBase(TS);
+      g.massFlow = W;
+      designs.push([`${W} kg/s`, buildEngine(g, { reference: referenceFor(architectureOf(g)) }).design]);
+    }
+    for (const [name, design] of designs) {
+      for (const part of [0.3, 0.5]) {
+        const r = autoStart(design);
+        let peak = 0;
+        for (const th of [part, 1]) {
+          r.sim.controls.throttle = th;
+          for (let t = 0; t < 12; t += 1 / 60) {
+            r.sim.step(1 / 60);
+            peak = Math.max(peak, r.sim.N1);
+          }
+        }
+        const tag = `${name}, %${part * 100} → %100`;
+        expect(r.seen, tag).not.toContain('n1Overspeed');
+        expect(peak, tag).toBeLessThan(1.02);
+        expect(Math.abs(r.sim.N1 - 1), tag).toBeLessThan(0.005);
+      }
+    }
+  }, HEAVY);
+
+  it('dinamometre kazanç ölçeği: şablonda tam 1, küçükte 1, büyükte τ/τ_ref', () => {
+    const tp = new EngineSim(builtFor('turboshaft')!.design).eng;
+    expect(dynoGainScale(tp.design.inertia.lp, tp.ref.omega1, tp.ref.shaftPower)).toBe(1);
+    expect(dynoGainScale(0.01, tp.ref.omega1, tp.ref.shaftPower)).toBe(1);
+    expect(dynoGainScale(0.2, tp.ref.omega1, tp.ref.shaftPower)).toBeCloseTo((0.2 * tp.ref.omega1 ** 2) / tp.ref.shaftPower / 0.342, 9);
+  });
 
   it('rölanti ve tam güç trim: yanıyor, rölantide N2 sınırda, tam güçte NP %100', () => {
     const sim = new EngineSim(builtFor('turboshaft')!.design);

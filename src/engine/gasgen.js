@@ -29,9 +29,17 @@ import {
   controlUnit,
 } from './externals.js';
 
+/**
+ * Diş yüksekliği: dişler bölüm dairesinden dışa (halka dişlide içe) bu kadar
+ * çıkar; dış dişlinin uç yarıçapı r + bu değer (yerleşim çakışma denetimi için)
+ */
+export function gearToothHeight(r, teeth) {
+  return Math.max(0.006, (Math.PI * 2 * r) / teeth * 0.35);
+}
+
 /** Dişli çark: dış (ya da iç, halka dişli) dişli profil, ekstrüzyon */
 export function gearGeometry(r, teeth, depth, internal = false, outerR = r + 0.03) {
-  const tooth = Math.max(0.006, (Math.PI * 2 * r) / teeth * 0.35);
+  const tooth = gearToothHeight(r, teeth);
   const profile = (radius, inward) => {
     const pts = [];
     for (let i = 0; i < teeth; i++) {

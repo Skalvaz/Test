@@ -18,6 +18,7 @@ import { DesignError } from '../sim/design';
 import type { Architecture } from './architecture';
 import type { Family } from './core/family';
 import { clampKnob, getPath, setPath, type KnobDef, type KnobValue, type Unit } from './core/knob';
+import { TURBOSHAFT_MIN_INLET } from './flowpath';
 import { buildEngine, type BuildOptions, type BuiltEngine } from './graph';
 import { diffSummary, summarize, type DesignSummary, type SummaryDelta } from './summary';
 import { TECH_MODERN, type TechLimits } from './tech';
@@ -573,7 +574,8 @@ const SPECS: Record<KnobId, KnobSpec> = {
   }),
   'shaft.rpm': basic({
     label: 'Çıkış devri',
-    explain: 'Yalnız redüktör oranını değiştirir; güç türbini devri uç hızından gelir.',
+    explain:
+      'Yalnız redüktör oranını değiştirir; güç türbini devri uç hızından gelir. Güç türbini devrinin %5 yakınında redüktör yok: çıkış mili güç türbini devrinde döner.',
     unit: 'rpm',
     range: when((t) => t.lpLoad === 'shaft', [3000, 30000]),
     step: 50,
@@ -625,7 +627,9 @@ const SPECS: Record<KnobId, KnobSpec> = {
     label: 'Giriş boyu',
     explain: 'Giriş düzleminden ilk rotora mesafe (ilk kademe uç yarıçapı cinsinden).',
     unit: '',
-    range: always([0, 2]),
+    // Turboşaftın halka girişi en az TURBOSHAFT_MIN_INLET (çerçeve sığar):
+    // altındaki değerler geometriyi değiştirmez, aralık oradan başlar
+    range: (t) => [t.lpLoad === 'shaft' ? TURBOSHAFT_MIN_INLET : 0, 2],
     step: 0.01,
   },
   'inlet.noseLength': {

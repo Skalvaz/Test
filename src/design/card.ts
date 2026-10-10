@@ -126,7 +126,7 @@ export function buildEngineCard(doc: EngineDocV1, variantId: string, b: BuiltEng
   const envelope = L.outerProfile.map(([z, r]) => [z, r] as [number, number]);
   const outputShaft =
     shaft && L.style === 'turboshaft'
-      ? { z: L.output.z, radius: L.output.radius, rpm: shaft.rpm, drive: shaft.drive }
+      ? { z: L.output.z, radius: L.output.radius, rpm: L.output.rpm, drive: shaft.drive }
       : shaft
         ? { z: L.intake.z, radius: b.flowpath.gas.shafts.lp, rpm: shaft.rpm, drive: shaft.drive }
         : undefined;

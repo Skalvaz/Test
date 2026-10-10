@@ -469,6 +469,8 @@ export function buildEngine(g: EngineGraph, opts: BuildOptions = {}): BuiltEngin
     n2Rpm: flowpath.rpm.hp,
     fanDiameter: flowpath.metrics.diameter,
     fanBlades: prop ? prop.blades : (flowpath.gas.front ?? flowpath.gas.hpc).blades[0],
+    // Turboşaft: çıkış devri yerleşimden (redüktörsüzde güç türbini devri)
+    ...(cycle.shaft && flowpath.layout.style === 'turboshaft' ? { shaft: { ...cycle.shaft, rpm: flowpath.layout.output.rpm } } : {}),
   };
   return { design, sized: sizeEngine(design), flowpath, traits, rev: graphRev(g), graph: g };
 }
