@@ -350,6 +350,44 @@ describe('tutamaçlar', () => {
     expect(s.state.last.summary.t4).toBeLessThan(t0);
   });
 
+  it('iptal (cancelDrag) iz bırakmaz: tasarım, kıyas, geri al ve yinele yığını hareketten önceki gibi', () => {
+    vi.useFakeTimers();
+    const s = makeStore();
+    s.startFromTemplate('turbojet');
+    // Önce bir düzenleme ve geri alma: yinele yığını dolu
+    const nz = s.handles().find((h) => h.id === 'nozzleExit')!;
+    s.dragHandle('nozzleExit', nz.world[1], 'start');
+    s.dragHandle('nozzleExit', nz.world[1] * 1.03, 'end');
+    s.undo();
+    expect(s.state.canRedo).toBe(true);
+    const project0 = s.state.project;
+    const compare0 = s.state.compare;
+    const W0 = s.state.graph.massFlow;
+    const r0 = s.handles().find((h) => h.id === 'frontTip')!.world[1];
+    // Eşik geçildi, hiç hareket yazılmadı: proje nesnesi bile değişmez
+    s.dragHandle('frontTip', r0, 'start');
+    s.cancelDrag('frontTip');
+    expect(s.state.dragging).toBeNull();
+    expect(s.state.project).toBe(project0);
+    expect(s.state.canUndo).toBe(false);
+    expect(s.state.canRedo).toBe(true);
+    // Hareketlerden sonra iptal: tasarım döner, boş geri al adımı kalmaz
+    s.dragHandle('frontTip', r0, 'start');
+    for (let i = 1; i <= 4; i++) s.dragHandle('frontTip', r0 * (1 + 0.04 * i), 'move');
+    expect(s.state.graph.massFlow).toBeGreaterThan(W0 * 1.2);
+    expect(s.state.canRedo).toBe(false);
+    s.cancelDrag('frontTip');
+    expect(s.state.dragging).toBeNull();
+    expect(s.state.graph.massFlow).toBe(W0);
+    expect(s.state.compare).toBe(compare0);
+    expect(s.state.canUndo).toBe(false);
+    expect(s.state.canRedo).toBe(true);
+    // Sürüklenmeyen tutamacın iptali bir şey yapmaz; yinele hâlâ çalışır
+    s.cancelDrag('frontTip');
+    s.redo();
+    expect(s.state.canUndo).toBe(true);
+  });
+
   it('sürüklerken kademe histerezisi, bırakınca kesin kademe', () => {
     const s = makeStore();
     s.startFromTemplate('turbofan');

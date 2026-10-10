@@ -103,7 +103,9 @@ function pressed(live = false) {
     opts: {},
     readout: { classList: cls },
     layer: { classList: cls },
-    store: { state: { last: null }, dragHandle: (id: string, v: number, ph: string) => calls.push([id, v, ph]) },
+    store: { state: { last: null }, dragHandle: (id: string, v: number, ph: string) => calls.push([id, v, ph]),
+      cancelDrag: (id: string) => calls.push([id, NaN, 'cancel']),
+    },
   });
   // İzdüşüm yerine sabit doğru: y pikseli → t (1 px = 0,01 m yukarı)
   o.paramAt = (_line: unknown, _x: number, y: number) => 0.4 + (93 - y) * 0.01 + 0.07;
@@ -140,7 +142,7 @@ describe('WorkshopHandles: tıklama, bırakış kaybı, iptal', () => {
   it('#5: düğmesi bırakılmış fare hareketi (kayıp pointerup) sürüklemeyi geri alır, ara değer işlenmez', () => {
     const { h, calls } = pressed(true);
     h.pointerMove(ev('pointermove', 100, 40, 0));
-    expect(calls).toEqual([['frontTip', 0.4, 'end']]);
+    expect(calls).toEqual([['frontTip', NaN, 'cancel']]);
     expect(h.dragging).toBe(null);
     // Sonraki rastgele tıklamanın bırakışı hiçbir şey işlemez
     h.pointerUp(ev('pointerup', 300, 300, 0));
@@ -153,7 +155,7 @@ describe('WorkshopHandles: tıklama, bırakış kaybı, iptal', () => {
     h.contextMenu({ preventDefault: () => (prevented = true) } as unknown as Event);
     expect(prevented).toBe(true);
     h.cancelDrag();
-    expect(calls).toEqual([['frontTip', 0.4, 'end']]);
+    expect(calls).toEqual([['frontTip', NaN, 'cancel']]);
     prevented = false;
     h.contextMenu({ preventDefault: () => (prevented = true) } as unknown as Event);
     expect(prevented).toBe(false);
@@ -178,6 +180,6 @@ describe('WorkshopHandles: tıklama, bırakış kaybı, iptal', () => {
     const key = { key: 'Escape', preventDefault() {}, stopPropagation: () => stopped++ } as unknown as KeyboardEvent;
     expect(b.h.onKey(key)).toBe(true);
     expect(stopped).toBe(1);
-    expect(b.calls).toEqual([['frontTip', 0.4, 'end']]);
+    expect(b.calls).toEqual([['frontTip', NaN, 'cancel']]);
   });
 });

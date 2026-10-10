@@ -311,6 +311,8 @@ export class WorkshopStore {
   private opFindings: { rev: string; findings: Finding[] } | null = null;
   /** Sürükleme sırasında sabit tutulan tutamaç sınırları */
   private dragSpecs: Map<string, Pick<HandleSpec, 'range' | 'snaps' | 'blocked'>> | null = null;
+  /** Sürükleme başlamadan önceki kıyas noktası (cancelDrag geri koyar) */
+  private dragCompare: DesignSummary | null = null;
 
   constructor(readonly opts: WorkshopStoreOptions) {
     this.deps = { ...DEFAULT_DEPS, ...opts.deps };
@@ -1036,6 +1038,8 @@ export class WorkshopStore {
     // Ters çözüm `last`'tan: başka aileden ya da şablondan kalmışsa yazılmaz
     if (!this.s.last || this.s.phase !== 'edit' || !this.ownsLast()) return;
     if (phase === 'start' || this.s.dragging !== id) {
+      // İptalde (cancelDrag) kıyas noktası da hareketten önceki haline döner
+      if (this.s.dragging !== id) this.dragCompare = this.s.compare;
       this.gestureStart(id);
       this.history.seal();
       this.dragSpecs = new Map(this.handles().map((h) => [h.id, { range: h.range, snaps: h.snaps, blocked: h.blocked }]));
@@ -1064,7 +1068,26 @@ export class WorkshopStore {
   private endDrag(): void {
     this.history.seal();
     this.dragSpecs = null;
+    this.dragCompare = null;
     this.set({ dragging: null });
+  }
+
+  /**
+   * Süren tutamaç sürüklemesini iz bırakmadan iptal eder (Handles: Esc,
+   * pointercancel, odak kaybı, bırakış kaybı, gizleme): hareketin açtığı
+   * geri al kaydı yığından çıkar, tasarım ve kıyas noktası hareketten önceki
+   * haline döner, yinele yığını korunur. Hareket henüz bir şey yazmamışsa
+   * proje nesnesi bile değişmez. Bu tutamaç sürüklenmiyorsa hiçbir şey yapmaz.
+   */
+  cancelDrag(id: HandleId): void {
+    if (this.s.dragging !== id) return;
+    const compare = this.dragCompare;
+    const before = this.history.cancelOpen({ t: 'handle', id, target: 0 });
+    this.dragSpecs = null;
+    this.dragCompare = null;
+    if (before) this.restore(before);
+    else this.s = { ...this.s, dragging: null };
+    this.set(compare ? { compare } : {});
   }
 
   /** Etkin varyantın adı (elle verilince kilitlenir) */

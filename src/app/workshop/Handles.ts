@@ -43,7 +43,7 @@
  * de tutulabilir). Seçili modülün tutamaçları opak, diğerleri %35 (seçim
  * yoksa hepsi opak); kilitli tutamaç gri, üzerine gelince nedeni okunur.
  *
- * ## Mağazayla akış (WorkshopStore'un mevcut API'si, değişiklik yok)
+ * ## Mağazayla akış (WorkshopStore API'si)
  *
  * - Konumlar `store.handles()`'tan (HandleSpec: dünya yarıçapı/z, sınır
  *   `range`, kademe çentikleri `snaps`, kilit nedeni `blocked`, bağlı
@@ -66,7 +66,9 @@
  * - İptal (başlangıç değerine döner, ara değer işlenmez): pointercancel,
  *   yakalamanın bırakışsız düşmesi (lostpointercapture), pencere odağının
  *   gitmesi, düğmesi bırakılmış fare hareketi (bırakış kaybolmuş), Esc
- *   (`cancel()`), gizleme ve atma. Sürüklerken bağlam menüsü açılmaz.
+ *   (`cancel()`), gizleme ve atma. Eşik geçildiyse `store.cancelDrag(id)`:
+ *   hareketin geri al kaydı silinir, yeni proje nesnesi ya da boş geri al
+ *   adımı oluşmaz. Sürüklerken bağlam menüsü açılmaz.
  * - Klavye: odaktaki tutamaç (Tab ile ya da son dokunulan) ←/→ ya da ↑/↓
  *   bir adım (eksenelde bir kademe), Shift ¼ adım; her basış tek
  *   `dragHandle(…, 'end')` (tek geri al adımı).
@@ -131,6 +133,8 @@ export interface HandleStore {
   readonly state: Readonly<WorkshopState>;
   handles(): HandleSpec[];
   dragHandle(id: HandleId, target: number, phase: 'start' | 'move' | 'end'): void;
+  /** Süren sürüklemeyi iz bırakmadan geri alır (tasarım, kıyas, geri al yığını) */
+  cancelDrag(id: HandleId): void;
   subscribe(fn: (s: WorkshopState) => void): () => void;
 }
 
@@ -741,8 +745,7 @@ export class WorkshopHandles {
   private cancelDrag(): void {
     const id = this.dragging;
     if (!id) return;
-    const v = this.dragStart;
-    this.finishDrag(() => this.store.dragHandle(id, v, 'end'));
+    this.finishDrag(() => this.store.cancelDrag(id));
   }
 
   /**

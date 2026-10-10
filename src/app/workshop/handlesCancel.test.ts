@@ -29,7 +29,9 @@ function dragging() {
     opts: {},
     readout: { classList: cls },
     layer: { classList: cls },
-    store: { dragHandle: (id: string, v: number, ph: string) => calls.push([id, v, ph]) },
+    store: { dragHandle: (id: string, v: number, ph: string) => calls.push([id, v, ph]),
+      cancelDrag: (id: string) => calls.push([id, NaN, 'cancel']),
+    },
   });
   return { h: o as unknown as WorkshopHandles & Record<string, unknown>, calls };
 }
@@ -42,7 +44,7 @@ describe('tutamaç: yarım sürükleme iptali', () => {
   it('gizlenince başlangıç değerine döner, ara değer işlenmez', () => {
     const { h, calls } = dragging();
     h.setVisible(false);
-    expect(calls).toEqual([['frontTip', 0.5, 'end']]);
+    expect(calls).toEqual([['frontTip', NaN, 'cancel']]);
     expect((h as unknown as { dragging: unknown }).dragging).toBe(null);
     expect((h as unknown as { host: { controls: { enabled: boolean } } }).host.controls.enabled).toBe(true);
   });
@@ -50,7 +52,7 @@ describe('tutamaç: yarım sürükleme iptali', () => {
   it('atılınca da başlangıca döner (cancelDrag)', () => {
     const { h, calls } = dragging();
     (h as unknown as { cancelDrag(): void }).cancelDrag();
-    expect(calls).toEqual([['frontTip', 0.5, 'end']]);
+    expect(calls).toEqual([['frontTip', NaN, 'cancel']]);
     // İkinci çağrı bir şey yapmaz
     (h as unknown as { cancelDrag(): void }).cancelDrag();
     expect(calls.length).toBe(1);
