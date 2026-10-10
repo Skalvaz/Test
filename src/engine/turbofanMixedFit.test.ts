@@ -7,11 +7,13 @@
 
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import type { TurbofanLayout } from '../design/flowpath';
+import { profileAt, type TurbofanLayout } from '../design/flowpath';
 import { buildEngine } from '../design/graph';
 import { TURBOFAN_MIXED_GRAPH } from '../design/turbofanMixed';
 import type { EngineGraph } from '../design/types';
 import { buildCore } from './core.js';
+import { smoothProfile } from './geom.js';
+import { longDuctOf } from './turbofanModel';
 
 /** Kütüphane yerine: her ada kendi adını taşıyan düz malzeme */
 function namedMaterials(): Record<string, THREE.MeshStandardMaterial> {
@@ -78,5 +80,38 @@ describe('ayırıcı burnu booster gövdesinin dışında (kaporta payı daralsa
   it('küçük motorda kaporta payı gerçekten daralır (sınanan dal c < 1)', () => {
     const L = buildEngine(variant(100)).flowpath.layout as TurbofanLayout;
     expect(L.splitter.lip).toBeLessThan(0.75);
+  });
+});
+
+/** nacelle.js baypas kanalı iç duvarının sabit ön kısmı (kaporta referansında, z < 0,55) */
+const NACELLE_DUCT_FRONT: [number, number][] = [
+  [1.392, -1.35],
+  [1.402, -0.95],
+  [1.414, -0.6],
+  [1.418, -0.3],
+  [1.412, 0.1],
+  [1.396, 0.55],
+];
+const smooth = (pts: [number, number][], n: number) => smoothProfile(pts, n).map((v: THREE.Vector2) => [v.x, v.y] as [number, number]);
+
+describe('çekirdek kaportası baypas kanalı astarının içinde (kaporta payı daralsa da)', () => {
+  it.each(MIXED_FIT_CASES)('%s', (label, g) => {
+    const L = buildEngine(g).flowpath.layout as TurbofanLayout;
+    // Profil z'de artar (geri dönen nokta yumuşatılınca kaportayı kendi üstüne kıvırıyordu)
+    for (let i = 1; i < L.coreCowl.length; i++) expect(L.coreCowl[i][1], `${label} nokta ${i}`).toBeGreaterThan(L.coreCowl[i - 1][1]);
+    // Ağları üreten yumuşatılmış profiller (core.js 170, nacelle.js 220 bölüm)
+    // kaporta referansında; astar karıştırıcı başına kadar
+    const long = longDuctOf(L)!;
+    const ref = smooth(L.coreCowl.map(([r, z]) => [r / L.s, (z - L.fan.z0) / L.s - 0.28] as [number, number]), 170);
+    const liner = smooth([...NACELLE_DUCT_FRONT.filter(([, z]) => z < 0.55 - 1e-6), ...long.duct.filter(([, z]) => z < long.mixZ)], 220);
+    let worst = Infinity;
+    let at = 0;
+    for (const [r, z] of ref) {
+      if (z < -0.5 || z > long.mixZ) continue;
+      const d = (profileAt(liner, z) - r) * L.s;
+      if (d < worst) [worst, at] = [d, z];
+    }
+    // Önceden düşük BPR + küçük hava akışında astar kaportanın 17–35 mm içindeydi
+    expect(worst, `${label} z_ref ${at.toFixed(2)}`).toBeGreaterThan(0.01);
   });
 });

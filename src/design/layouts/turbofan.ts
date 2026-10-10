@@ -193,6 +193,25 @@ const smooth01 = (x: number) => {
 };
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
+/**
+ * Profilin z'de geri dönen ([r, z], z artmalı) iç noktalarını komşularının z
+ * ortasına alır; ortası da sıralı değilse noktayı atar. Uç noktalar kalır.
+ */
+function monotoneZ(pts: [number, number][]): [number, number][] {
+  const out: [number, number][] = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const prev = out[out.length - 1][1];
+    const [r, z] = pts[i];
+    if (z > prev) {
+      out.push(pts[i]);
+      continue;
+    }
+    const next = pts[i + 1]?.[1];
+    if (next !== undefined && next > prev) out.push([r, (prev + next) / 2]);
+  }
+  return out;
+}
+
 /** Toplam basınç ve sıcaklığı verilen akış (Station: T, P toplam) */
 const flowStation = (T: number, P: number, W: number): Station => ({ T, P, W });
 
@@ -229,7 +248,10 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
       [rMax * 0.985, cb.z1],
       [Math.max(rMax * 0.94, lpt.tip[1] + 0.12 * c), hpt.z1 + 0.1],
     ];
-    return { rS, pts };
+    // Karışık akışta z'de geri dönen nokta (kısa booster: booster.z1 − 0,1 <
+    // zS + 0,13) komşularının ortasına alınır: yumuşatılmış profil (core.js)
+    // kendi üstüne kıvrılıp fan kanalına taşmasın. Ayrık akış M4 öncesiyle aynı
+    return { rS, pts: mixMod ? monotoneZ(pts) : pts };
   };
   const zLipSep = lpt.z1 + 0.52;
   // Egzoz kanalının dış duvarı (türbin arka çerçevesinin uç yarıçapı)
@@ -315,11 +337,20 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
   } else {
     // --- karışık akış: uzun kanallı kaporta, karıştırıcı, ortak lüle ---
     const st = sized.point.stations;
-    const cowlTail: [number, number][] = [
-      [Math.max(mixR + 0.06, lpt.tip[1] + 0.08), lpt.z1 - 0.05],
-      [mixR + 0.02, mz0],
-    ];
-    cowl = [...cowlFront, ...cowlTail];
+    // Çekirdek kaportasının arka ucu: LPT üstünden karıştırıcıya. Payları da
+    // c ile daralır (yoksa küçük motorda LPT üstünde ~8 cm'lik tümsek); kısa
+    // LPT'de (lpt.z1 − 0,05 ≤ hpt.z1 + 0,1) nokta z'de geri dönmesin diye en
+    // az önceki noktadan karıştırıcıya yolun %40'ında; önceki noktadan
+    // (ya da karıştırıcı kenarından) yükseğe çıkmaz
+    const cowlTailOf = (c: number, front: [number, number][]): [number, number][] => {
+      const [rPrev, zPrev] = front[front.length - 1];
+      const r = Math.min(Math.max(mixR + 0.06 * c, lpt.tip[1] + 0.08 * c), Math.max(rPrev, mixR + 0.02));
+      return [
+        [r, Math.max(lpt.z1 - 0.05, lerp(zPrev, mz0, 0.4))],
+        [mixR + 0.02, mz0],
+      ];
+    };
+    cowl = [...cowlFront, ...cowlTailOf(1, cowlFront)];
     // Kaporta iç duvarı: OGV arkasındaki halka alanından karıştırma
     // düzleminde baypas kanalı Mach'ına (bypassDuct.mach) göre gereken alana
     // düzgün geçiş. Her z'de iç sınırın (çekirdek kaportası, karıştırıcı)
@@ -328,7 +359,8 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
     const Mb = graph.bypassDuct?.mach ?? 0.45;
     const aMix = annulusArea(flowStation(st['13'].T, P19t, st['13'].W), Mb, AIR);
     const [rA, zA] = toWorld([NACELLE_DUCT_FRONT[NACELLE_DUCT_FRONT.length - 1][0], NACELLE_AFT_Z]);
-    const inner = (z: number) => (z < mz0 ? profileAt(cowl, z) : mixR);
+    // Karıştırıcı başında (mz0) çekirdek kaportasının kenarı: duvar orada örneklenir
+    const inner = (z: number) => (z <= mz0 ? profileAt(cowl, z) : mixR);
     // Fan kanalının ön kısmı (OGV, destek kanatları, itki çevirici başı) fan
     // ucu oranında ölçeklenir, çekirdek kaportası ise çekirdek parçalarının
     // zarfından mutlak payla: düşük BPR ya da küçük hava akışında çekirdek
@@ -341,8 +373,9 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
     const ductFront = NACELLE_DUCT_FRONT.map(toWorld);
     const needGap = MIN_DUCT_GAP * s;
     const needArea = annulusArea(flowStation(st['13'].T, st['13'].P, st['13'].W), FAN_DUCT_MACH_MAX, AIR);
-    const fitOf = (pts: [number, number][]) => {
-      const c = [...pts, ...cowlTail];
+    const fitOf = (cc: number) => {
+      const pts = coreCowlFront(cc).pts;
+      const c = [...pts, ...cowlTailOf(cc, pts)];
       let gap = Infinity;
       let area = Infinity;
       for (let i = 0; i <= 16; i++) {
@@ -354,23 +387,23 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
       }
       return { gap, area, ok: gap >= needGap && area >= needArea };
     };
-    let fit = fitOf(cowlFront);
+    let fit = fitOf(1);
     if (!fit.ok) {
       // Boşluk ölçeği c: hedefi sağlayan en büyük c (açıklık ve alan c'de
       // tekdüze azalır); en dar payla da sağlanmıyorsa en dar pay
       let lo = CORE_CLEARANCE_MIN;
-      if (fitOf(coreCowlFront(lo).pts).ok) {
+      if (fitOf(lo).ok) {
         let hi = 1;
         for (let i = 0; i < 24; i++) {
           const m = (lo + hi) / 2;
-          if (fitOf(coreCowlFront(m).pts).ok) lo = m;
+          if (fitOf(m).ok) lo = m;
           else hi = m;
         }
       }
       ({ rS, pts: cowlFront } = coreCowlFront(lo));
       cUsed = lo;
-      cowl = [...cowlFront, ...cowlTail];
-      fit = fitOf(cowlFront);
+      cowl = [...cowlFront, ...cowlTailOf(lo, cowlFront)];
+      fit = fitOf(lo);
     }
     const gap = fit.gap;
     if (!(gap >= needGap))
@@ -403,13 +436,18 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
     };
     // İç duvar: fan çıkışından karıştırıcıya alan kuralıyla, sonra karıştırma
     // kanalı kısa bir düz bölümden sonra ağza konik yakınsar (yarı açı ~13°,
-    // ağızda ~19°)
+    // ağızda ~19°). Alan kuralı düzgün örneklerin yanında çekirdek
+    // kaportasının köşelerinde ve karıştırıcı başında da örneklenir: yalnız
+    // düzgün örnekte kaportanın tepesi iki örnek arasında kalınca astar
+    // kaportanın içinden geçiyordu
     const duct: [number, number][] = [];
     const n = 10;
-    for (let i = 0; i <= n; i++) {
-      const z = lerp(zA, mz1, i / n);
-      duct.push([i === 0 ? rA : wallAt(z), z]);
-    }
+    const zDuct = [...Array.from({ length: n + 1 }, (_, i) => lerp(zA, mz1, i / n)), ...cowl.map(([, z]) => z)]
+      .filter((z) => z >= zA && z <= mz1)
+      .sort((a, b) => a - b)
+      .filter((z, i, a) => i === 0 || z - a[i - 1] > 0.01 * (mz1 - zA));
+    for (const z of zDuct) duct.push([z === zA ? rA : wallAt(z), z]);
+    if (duct[duct.length - 1][1] < mz1) duct.push([wallAt(mz1), mz1]);
     const Lm = endZ - mz1;
     for (const [u, f] of [
       [0.2, 0.02],
