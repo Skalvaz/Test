@@ -61,20 +61,23 @@ function stat(s: DesignSummary): string {
 
 export function startScreen(cb: StartCallbacks): HTMLElement {
   const cards = TEMPLATE_IDS.map((id) => {
-    const info = templateInfo(id);
+    // Şablonu henüz birleşmemiş aile (P6/P7 öncesi) seçilemez görünür
+    const ready = Object.hasOwn(TEMPLATES, id) && !!TEMPLATES[id];
+    const info = ready ? templateInfo(id) : null;
     const c = CARD[id];
     const sil = h('div', { class: 'ws-sil' });
     // Siluet kendi ürettiğimiz SVG dizgesidir (oyuncu metni değil)
     if (info) sil.innerHTML = info.svg;
     return h('button', {
-      class: 'lesson-card ws-tpl',
-      attrs: { type: 'button', [ATTR.template]: id },
-      on: { click: () => cb.onTemplate(id) },
+      class: `ws-card ws-tpl${ready ? '' : ' soon'}`,
+      attrs: { type: 'button', [ATTR.template]: id, ...(ready ? {} : { 'aria-disabled': 'true' }) },
+      title: ready ? '' : 'Bu ailenin şablonu henüz yok',
+      on: { click: () => ready && cb.onTemplate(id) },
     }, [
       sil,
       h('div', { class: 't', text: c.title }),
       h('div', { class: 'd', text: c.does }),
-      h('div', { class: 'meta' }, [h('span', { text: c.example }), h('span', { style: { flex: '1' } }), h('span', { class: 'mono', text: info ? stat(info.s) : '' })]),
+      h('div', { class: 'meta' }, [h('span', { text: c.example }), h('span', { style: { flex: '1' } }), h('span', { class: 'mono', text: info ? stat(info.s) : ready ? '' : 'yakında' })]),
     ]);
   });
   const body = h('div', { class: 'ws-start', attrs: { [ATTR.start]: '' } }, [

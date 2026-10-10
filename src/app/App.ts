@@ -46,7 +46,7 @@ import { LessonPanel } from '../ui/LessonPanel';
 import { glossaryModal, lessonSelect, mainMenu, resultModal, settingsModal } from '../ui/Menus';
 import { SandboxPanel } from '../ui/SandboxPanel';
 import { Toasts } from '../ui/Toasts';
-import { CameraRig, VIEWS, viewsFor, type ViewName } from './CameraRig';
+import { CameraRig, VIEWS, viewsFor, type CameraView, type ViewName } from './CameraRig';
 import { needsReframe } from './reframe';
 import { Picker } from './Picker';
 import { WorkshopStore } from '../workshop/store';
@@ -719,6 +719,7 @@ export class App {
     this.sim.reset();
     if (this.envName !== TEST_CELL && this.cell) this.applyEnvironment(TEST_CELL);
     const cut = this.cutaway;
+    this.mirrorWorkshopViews();
     if (!wasWorkshop) this.rig.go('front');
     // Atölyede kesit kullanıcı anahtarıdır: açı geçişi onu değiştirmez
     this.setCutaway(cut);
@@ -832,8 +833,31 @@ export class App {
     this.frameHooks.add(this.wsHook);
   }
 
+  /**
+   * Atölye açıları: her açı x'te aynalanır (kamera motorun öbür yanında),
+   * böylece akış (+z) ekranda soldan sağa akar; sağa sürüklemek kompresörü
+   * uzatır. Menü açısı aynalanmaz. Çıkışta özgün açılar geri gelir.
+   */
+  private mirrorWorkshopViews() {
+    if (this.rig.overrides === this.wsMirrored) return;
+    const base = this.rig.overrides;
+    const out: Partial<Record<ViewName, CameraView>> = { menu: base.menu };
+    for (const v of Object.keys(VIEWS) as ViewName[]) {
+      if (v === 'menu') continue;
+      const s: CameraView = base[v] ?? (VIEWS[v] as CameraView);
+      out[v] = { ...s, position: [-s.position[0], s.position[1], s.position[2]], target: [-s.target[0], s.target[1], s.target[2]] };
+    }
+    this.wsViewBase = base;
+    this.wsMirrored = out;
+    this.rig.overrides = out;
+  }
+  private wsViewBase: Partial<Record<ViewName, CameraView>> | null = null;
+  private wsMirrored: Partial<Record<ViewName, CameraView>> | null = null;
+
   /** Atölyeden çıkış: kaplamalar gizlenir, otomatik kayıt mağazada */
   private leaveWorkshop() {
+    if (this.wsViewBase && this.rig.overrides === this.wsMirrored) this.rig.overrides = this.wsViewBase;
+    this.wsMirrored = null;
     this.wsStore.flush();
     this.frameHooks.delete(this.wsHook);
     this.wsHandles?.setVisible(false);
@@ -1108,6 +1132,8 @@ export class App {
     const ref = src.slot === 'workshop' ? builtFor(t.presentation) : undefined;
     const views = viewsFor(src, ref && { layout: ref.flowpath.layout, built: ref }, { bounds: CELL_BOUNDS, maxDistance: 18 });
     this.rig.overrides = views;
+    // Atölyede açılar aynalanır: akış ekranda soldan sağa (tutamaç sürüklemesi sezgisel)
+    if (this.mode === 'workshop') this.mirrorWorkshopViews();
     const names = (Object.keys(VIEWS) as ViewName[]).filter((v) => v !== 'menu');
     names.forEach((v, i) => {
       const opt = this.viewSelect.options[i];

@@ -135,7 +135,7 @@ export class ArchitectureCards {
     if (c.glossary) links.push(h('button', { class: 'ws-link', text: 'Sözlük', attrs: { type: 'button', [ATTR.action]: 'glossary' }, on: { click: (e) => (e.stopPropagation(), this.cb.openGlossary(c.glossary!)) } }));
     const state = selected ? ' sel' : why ? ' locked' : implied.length ? ' implied' : '';
     return h('div', {
-      class: `lesson-card ws-arch-card${state}`,
+      class: `ws-card ws-arch-card${state}`,
       attrs: { role: 'button', tabindex: why || selected ? '-1' : '0', [ATTR.arch]: id, ...(why ? { 'aria-disabled': 'true' } : {}) },
       on: {
         click: () => {

@@ -896,13 +896,10 @@ body.mode-workshop .side-right { bottom: 12px; }
 .ws-reset { border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 2px; }
 .ws-reset:hover { color: var(--accent); }
 .ws-rail { --ok-lo: 0%; --ok-hi: 100%; position: relative; height: 18px; display: flex; align-items: center; border-radius: 4px; }
-.ws-rail.has-bad { background:
-  linear-gradient(to right, transparent var(--ok-lo), transparent var(--ok-lo), transparent var(--ok-hi), transparent var(--ok-hi)),
-  repeating-linear-gradient(135deg, rgba(255, 77, 61, 0.45) 0 3px, transparent 3px 7px);
-  -webkit-mask: linear-gradient(to right, #000 var(--ok-lo), transparent var(--ok-lo), transparent var(--ok-hi), #000 var(--ok-hi)), linear-gradient(#000, #000);
-  -webkit-mask-composite: source-over; }
-.ws-rail.has-bad::before { content: ''; position: absolute; top: 7px; height: 4px; left: 0; right: 0; border-radius: 2px; background:
-  linear-gradient(to right, rgba(255, 77, 61, 0.55) var(--ok-lo), transparent var(--ok-lo), transparent var(--ok-hi), rgba(255, 77, 61, 0.55) var(--ok-hi)); pointer-events: none; }
+.ws-rail.has-bad::before { content: ''; position: absolute; top: 5px; height: 8px; left: 0; right: 0; border-radius: 3px; pointer-events: none;
+  background: repeating-linear-gradient(135deg, rgba(255, 77, 61, 0.7) 0 3px, transparent 3px 6px);
+  -webkit-mask: linear-gradient(to right, #000 var(--ok-lo), transparent var(--ok-lo), transparent var(--ok-hi), #000 var(--ok-hi));
+  mask: linear-gradient(to right, #000 var(--ok-lo), transparent var(--ok-lo), transparent var(--ok-hi), #000 var(--ok-hi)); }
 .ws-rail.is-flash { animation: ws-flash 0.6s ease-out; }
 @keyframes ws-flash { 0%, 40% { box-shadow: 0 0 0 1px var(--red), 0 0 12px rgba(255, 77, 61, 0.6); } 100% { box-shadow: none; } }
 .ws-slider { width: 100%; accent-color: var(--accent); margin: 0; position: relative; z-index: 1; }
@@ -933,6 +930,15 @@ body.mode-workshop .side-right { bottom: 12px; }
 .ws-wizard-foot .spacer { flex: 1; }
 .ws-live { font-size: 12px; color: var(--accent); padding: 8px 10px; border-radius: 6px; background: rgba(46, 230, 214, 0.06); border: 1px solid rgba(46, 230, 214, 0.25); }
 .ws-live.is-error { color: var(--red); border-color: rgba(255, 77, 61, 0.4); background: rgba(255, 77, 61, 0.08); }
+
+/* Kartlar (.lesson-card görünümü; ders listesi seçicileriyle karışmasın diye ayrı sınıf) */
+.ws-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 12px; border: 1px solid var(--line-strong); background: rgba(255, 255, 255, 0.025); cursor: pointer; color: var(--ink); font: inherit; text-align: left; transition: border-color 0.15s, background 0.15s; }
+.ws-card:hover { border-color: var(--accent); background: rgba(46, 230, 214, 0.05); }
+.ws-card .t { font-weight: 620; font-size: 16px; }
+.ws-card .d { color: var(--ink-2); font-size: 13px; flex: 1; }
+.ws-card .meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.ws-card.soon { opacity: 0.5; cursor: not-allowed; }
+.ws-card.soon:hover { border-color: var(--line-strong); background: rgba(255, 255, 255, 0.025); }
 
 /* Mimari kartları */
 .ws-arch-intro { font-size: 12px; margin: 0 0 6px; }
