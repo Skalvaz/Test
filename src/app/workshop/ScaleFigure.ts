@@ -130,14 +130,20 @@ const LABEL_X = 0.42;
 const BOX = { x0: -0.3, x1: LABEL_X + 0.23, y1: FIGURE_HEIGHT + 0.05 };
 
 /** Etiket kadrajın ortasına bakan yanda: figür ekranın sağ yarısındaysa başın solunda */
-export function labelOnLeft(camera: THREE.Camera, spot: { x: number; z: number }, base: number, safe: NdcRect): boolean {
-  const p = new THREE.Vector3(spot.x, base + FIGURE_HEIGHT * 0.9, spot.z).project(camera);
+export function labelOnLeft(camera: THREE.Camera, spot: { x: number; z: number; y?: number }, base: number, safe: NdcRect): boolean {
+  const p = new THREE.Vector3(spot.x, (spot.y ?? base) + FIGURE_HEIGHT * 0.9, spot.z).project(camera);
   return p.x > (safe.x0 + safe.x1) / 2;
 }
 /** Motorun önüne çıkan figürün kadrajdaki en büyük boyu (güvenli alan yüksekliğine oranı) */
 const FRONT_MAX_HEIGHT = 0.4;
 /** Motorun önüne çıkan figürün opaklığı (arkasındaki motor, kesitte iç parçalar seçilsin) */
 const FRONT_OPACITY = 0.55;
+/** Figürün motoru bu orandan az örttüğü yer "açık" sayılır (engineCover) */
+const CLEAR_COVER = 0.1;
+/** Örten yerde kalma payı: daha az örten aday bu kadar iyi değilse yer değişmez */
+const COVER_HYSTERESIS = 0.15;
+/** Motorun altındaki figürün başı ile taban çizgisi arası [m] */
+const UNDER_CLEARANCE = 0.15;
 /** Zemin motorun altından en çok bu kadar aşağıdaysa figür zeminde durur [m] */
 const FLOOR_SNAP = 0.5;
 
@@ -147,6 +153,8 @@ export interface FigureEngine {
   z1: number;
   /** En büyük yarıçap [m] */
   r: number;
+  /** Zemin yüksekliği [m]; motorun altından uzaksa figür zemine de inebilir */
+  floor?: number;
 }
 
 /** Figürün taban çizgisi (ayak yüksekliği): motorun en altı ya da yakınsa zemin */
@@ -194,6 +202,8 @@ export interface FigureSpot {
   x: number;
   z: number;
   scale: number;
+  /** Ayak yüksekliği [m]: yalnız zemindeki adayda; yoksa taban çizgisi */
+  y?: number;
 }
 
 /** Kameradan bakış derinliği (görüş uzayında −z) */
@@ -211,10 +221,11 @@ export function figureNdcBox(camera: THREE.Camera, spot: FigureSpot, base: numbe
   let x1 = -Infinity;
   let y0 = Infinity;
   let y1 = -Infinity;
+  const feet = spot.y ?? base;
   for (const lx of left ? [-BOX.x1, -BOX.x0] : [BOX.x0, BOX.x1]) {
     for (const ly of [0, BOX.y1]) {
       // Yerel x ekseni dikey eksen etrafında yaw kadar dönük
-      const p = new THREE.Vector3(spot.x + lx * c, base + ly * spot.scale, spot.z - lx * s);
+      const p = new THREE.Vector3(spot.x + lx * c, feet + ly * spot.scale, spot.z - lx * s);
       view.copy(p).applyMatrix4(camera.matrixWorldInverse);
       if (view.z >= -1e-3) return null;
       p.project(camera);
@@ -233,24 +244,81 @@ function overflow(b: NdcRect | null, s: NdcRect): number {
   return Math.max(0, s.x0 - b.x0) + Math.max(0, b.x1 - s.x1) + Math.max(0, s.y0 - b.y0) + Math.max(0, b.y1 - s.y1);
 }
 
-/** Yanal kaymalı yerin ölçeği: eksen düzlemindeki figürle aynı ekran boyu */
-function frontSpot(camera: THREE.Camera, x: number, z: number, base: number): FigureSpot {
-  const mid = base + FIGURE_HEIGHT / 2;
+/** Yanal kaymalı (ya da zemindeki) yerin ölçeği: eksen düzlemindeki figürle aynı ekran boyu */
+function frontSpot(camera: THREE.Camera, x: number, z: number, base: number, y?: number): FigureSpot {
+  const mid = (y ?? base) + FIGURE_HEIGHT / 2;
   const d0 = depthOf(camera, 0, mid, z);
   const d1 = depthOf(camera, x, mid, z);
-  return { x, z, scale: d0 > 1e-3 && d1 > 1e-3 ? d1 / d0 : 1 };
+  const scale = d0 > 1e-3 && d1 > 1e-3 ? d1 / d0 : 1;
+  return y === undefined ? { x, z, scale } : { x, z, scale, y };
+}
+
+/** Kameradan geçen ışın (o + t·d, t > 0) motorun sınır silindirine değiyor mu (eksen z, yarıçap r) */
+function rayHitsEngine(o: THREE.Vector3, dx: number, dy: number, dz: number, e: FigureEngine): boolean {
+  let lo = 1e-6;
+  let hi = Infinity;
+  if (Math.abs(dz) < 1e-9) {
+    if (o.z < e.z0 || o.z > e.z1) return false;
+  } else {
+    const a = (e.z0 - o.z) / dz;
+    const b = (e.z1 - o.z) / dz;
+    lo = Math.max(lo, Math.min(a, b));
+    hi = Math.min(hi, Math.max(a, b));
+    if (lo > hi) return false;
+  }
+  const A = dx * dx + dy * dy;
+  const B = 2 * (o.x * dx + o.y * dy);
+  const C = o.x * o.x + o.y * o.y - e.r * e.r;
+  if (A < 1e-12) return C <= 0;
+  const disc = B * B - 4 * A * C;
+  if (disc < 0) return false;
+  const q = Math.sqrt(disc);
+  return Math.max(lo, (-B - q) / (2 * A)) <= Math.min(hi, (-B + q) / (2 * A));
+}
+
+/** Örtme sınaması için silüet noktaları (yerel x, y) [m]: bacaklar, gövde, omuzlar, baş */
+const COVER_SAMPLES: [number, number][] = [];
+for (const ly of [0.15, 0.55, 0.95, 1.35]) for (const lx of [-0.17, 0, 0.17]) COVER_SAMPLES.push([lx, ly]);
+COVER_SAMPLES.push([0, 1.69]);
+
+/**
+ * Figürün ekranda motorla çakışan oranı (0..1): silüet noktalarından
+ * kameraya giden ışınlardan motorun sınır silindirine değenlerin payı.
+ * Motor figürün önünde de arkasında da olsa çakışma sayılır: figür motoru
+ * (ve üstündeki tutamaçları) örter ya da motorun arkasında kaybolur.
+ */
+export function engineCover(camera: THREE.Camera, e: FigureEngine, spot: FigureSpot, base: number): number {
+  const yaw = Math.atan2(camera.position.x - spot.x, camera.position.z - spot.z);
+  const c = Math.cos(yaw) * spot.scale;
+  const s = Math.sin(yaw) * spot.scale;
+  const o = camera.position;
+  const feet = spot.y ?? base;
+  let hits = 0;
+  for (const [lx, ly] of COVER_SAMPLES) {
+    const px = spot.x + lx * c;
+    const py = feet + ly * spot.scale;
+    const pz = spot.z - lx * s;
+    if (rayHitsEngine(o, px - o.x, py - o.y, pz - o.z, e)) hits++;
+  }
+  return hits / COVER_SAMPLES.length;
 }
 
 /**
- * Figürün yeri. Önce eksen düzleminde girişin önü ya da lülenin arkası
- * (aralık, ¾ açıda giriş elipsinin üstüne binmesin diye yarıçapla büyür):
- * güvenli alana tam sığan en yakın aday. Motor kadrajı enine doldurduğu
- * için (yan görünüş, kesit) hiçbiri sığmıyorsa figür motorun önüne
- * (kameraya doğru) çıkar ve derinlik oranıyla küçültülür; girişe en yakın
- * sığan z seçilir. Bu yalnız figür kadrajda küçükken (`FRONT_MAX_HEIGHT`):
- * yakın çekimde motorun içini örtmesin. Hiçbiri tam sığmazsa en az taşan
- * (yakın çekimde figür kısmen kadraj dışında kalabilir). `current` hâlâ tam
- * sığıyorsa o kalır (ölçeği kameraya göre yenilenir): yörüngede zıplamaz.
+ * Figürün yeri, öncelik sırasıyla:
+ * 1. Eksen düzleminde girişin önü ya da lülenin arkası (aralık, ¾ açıda
+ *    giriş elipsinin üstüne binmesin diye yarıçapla büyür), taban çizgisinde:
+ *    güvenli alana tam sığan en yakın aday.
+ * 2. Motoru örtmeyen (`engineCover` ≤ %10) bir yer: önce taban çizgisinde
+ *    motorun önü (kameraya doğru) boyunca, sonra zemin (motorun altından
+ *    uzaksa: eksen düzleminde motorun altı ya da önü). Öne kayan figür
+ *    derinlik oranıyla küçülür (ekran boyu eksen düzlemindeki 1,8 m);
+ *    taban çizgisindekiler yalnız kadrajda küçükken (`FRONT_MAX_HEIGHT`).
+ * 3. Hiçbiri yoksa motorun önünde, kadrajda küçük ve motoru EN AZ örten yer
+ *    (yarı saydam çizilir; DOM tutamaçları önde kalır).
+ * Hiçbiri tam sığmazsa en az taşan. `current` hâlâ sığıyor ve sınıfı
+ * geçerliyse o kalır (ölçeği kameraya göre yenilenir): yörüngede zıplamaz.
+ * Yakın çekimde (kesit — çekirdek) figür kısmen kadraj dışında kalabilir:
+ * motorun içini örtmesin.
  */
 export function chooseFigureSpot(
   camera: THREE.PerspectiveCamera,
@@ -261,47 +329,91 @@ export function chooseFigureSpot(
 ): FigureSpot {
   const box = (s: FigureSpot) => figureNdcBox(camera, s, base, labelOnLeft(camera, s, base, safe));
   const fits = (s: FigureSpot) => overflow(box(s), safe) === 0;
-  const frontOk = (s: FigureSpot) => {
+  const maxH = FRONT_MAX_HEIGHT * (safe.y1 - safe.y0);
+  const small = (s: FigureSpot) => {
     const b = box(s);
-    return !!b && b.y1 - b.y0 <= FRONT_MAX_HEIGHT * (safe.y1 - safe.y0);
+    return !!b && b.y1 - b.y0 <= maxH;
   };
+  const cover = (s: FigureSpot) => engineCover(camera, e, s, base);
   const side = camera.position.x < 0 ? -1 : 1;
   const xFront = side * (Math.max(e.r, 0) + 0.45);
-  if (current) {
-    const cur = current.x === 0 ? current : current.x === xFront ? frontSpot(camera, xFront, current.z, base) : null;
-    if (cur && fits(cur) && (cur.x === 0 || frontOk(cur))) return cur;
-  }
+  const floor = e.floor !== undefined && Number.isFinite(e.floor) && e.floor < base - 0.3 ? e.floor : undefined;
+  // Motorun hemen altı: baş taban çizgisinin biraz altında (zemin görünmüyorsa)
+  const under = base - FIGURE_HEIGHT - UNDER_CLEARANCE;
   // Önde aralık yarıçapla büyür (¾ açıda giriş elipsi); arkada lüle dar, az pay yeter
   const gap = 0.6 + 0.6 * Math.max(e.r, 0);
   const gapRear = 0.5 + 0.25 * Math.max(e.r, 0);
-  let best: FigureSpot = { x: 0, z: e.z0 - gap, scale: 1 };
-  let bestOver = Infinity;
-  for (let i = 0; i < 16; i++) {
-    for (const z of [e.z0 - gap - 0.4 * i, e.z1 + gapRear + 0.4 * i]) {
-      const s = { x: 0, z, scale: 1 };
-      const o = overflow(box(s), safe);
-      if (o === 0) return s;
-      if (o < bestOver) {
-        bestOver = o;
-        best = s;
-      }
+
+  // Önceki yer, ölçeği bu kameraya göre (kamera öbür yana geçtiyse ön yer de geçer)
+  let cur: FigureSpot | null = null;
+  if (current) {
+    const lifted = current.y !== undefined;
+    if (current.x === 0 && !lifted) cur = current;
+    else if (!lifted || current.y === floor || current.y === under)
+      cur = frontSpot(camera, current.x === 0 ? 0 : xFront, current.z, base, current.y);
+    if (cur && !fits(cur)) cur = null;
+    if (cur) {
+      // Eksen düzlemi ya da motoru örtmeyen yer: kalır
+      if (cur.x === 0 && !lifted) return cur;
+      if (cover(cur) <= CLEAR_COVER && (lifted || small(cur))) return cur;
     }
   }
-  // Motorun önü: yalnız figür kadrajda küçükken (yakın çekimde motorun içini
-  // örtmesin). Hiçbir aday tam sığmazsa en az taşan (biraz taşan bir ön
-  // aday, panelin altında kalan eksen adayından iyidir)
-  const maxH = FRONT_MAX_HEIGHT * (safe.y1 - safe.y0);
-  for (let z = e.z0 + 0.4; z <= e.z1 - 0.4; z += 0.5) {
-    const s = frontSpot(camera, xFront, z, base);
-    const b = box(s);
-    if (!b || b.y1 - b.y0 > maxH) continue;
+
+  let best: FigureSpot = { x: 0, z: e.z0 - gap, scale: 1 };
+  let bestOver = Infinity;
+  /** En az taşan adayı izler; true: tam sığıyor */
+  const consider = (s: FigureSpot, b = box(s)) => {
     const o = overflow(b, safe);
-    if (o === 0) return s;
     if (o < bestOver) {
       bestOver = o;
       best = s;
     }
-  }  return best;
+    return o === 0;
+  };
+  // 1. Eksen düzlemi, taban çizgisi
+  for (let i = 0; i < 16; i++) {
+    for (const z of [e.z0 - gap - 0.4 * i, e.z1 + gapRear + 0.4 * i]) {
+      const s = { x: 0, z, scale: 1 };
+      if (consider(s)) return s;
+    }
+  }
+  // 2. Motoru örtmeyen yer: taban çizgisinde önde, sonra zeminde, sonra
+  // motorun hemen altında (eksen düzleminde: derinlik aynı, kıyas birebir)
+  const zs: number[] = [];
+  for (let z = e.z0 - gap; z <= e.z1 + gapRear + 1e-9; z += 0.5) zs.push(z);
+  for (const z of zs) {
+    const s = frontSpot(camera, xFront, z, base);
+    if (small(s) && fits(s) && cover(s) <= CLEAR_COVER) return s;
+  }
+  for (const y of floor !== undefined && floor < under ? [floor, under] : [under]) {
+    for (const x of [0, xFront]) {
+      for (const z of zs) {
+        const s = frontSpot(camera, x, z, base, y);
+        if (fits(s) && cover(s) <= CLEAR_COVER) return s;
+      }
+    }
+  }
+  // 3. Motorun önünde, kadrajda küçük ve en az örten. Tam sığan yoksa en az
+  // taşan (biraz taşan bir ön aday, panelin altında kalan eksen adayından iyidir)
+  let pick: FigureSpot | null = null;
+  let pickCover = Infinity;
+  for (let z = e.z0 + 0.4; z <= e.z1 - 0.4; z += 0.5) {
+    const s = frontSpot(camera, xFront, z, base);
+    const b = box(s);
+    if (!b || b.y1 - b.y0 > maxH) continue;
+    if (!consider(s, b)) continue;
+    const c = cover(s);
+    if (c < pickCover - 1e-9) {
+      pickCover = c;
+      pick = s;
+    }
+  }
+  if (pick) {
+    // Örten yerde de zıplamasın: belirgin biçimde daha az örten aday yoksa kalır
+    if (cur && cur.x !== 0 && cur.y === undefined && small(cur) && cover(cur) <= pickCover + COVER_HYSTERESIS) return cur;
+    return pick;
+  }
+  return best;
 }
 
 export class ScaleFigure {
@@ -397,6 +509,7 @@ export class ScaleFigure {
       z0: Number.isFinite(bb.z0) ? bb.z0 : -1,
       z1: Number.isFinite(bb.z1) ? bb.z1 : 1,
       r: Number.isFinite(bb.r) && bb.r > 0 ? bb.r : 0.5,
+      floor: floorY,
     };
     this.base = figureBaseline(this.eng, floorY);
     this.spot = null;
@@ -406,19 +519,16 @@ export class ScaleFigure {
   }
 
   private moveTo(s: FigureSpot): void {
-    this.group.position.set(s.x, this.base, s.z);
+    const y = s.y ?? this.base;
+    this.group.position.set(s.x, y, s.z);
     this.group.scale.setScalar(s.scale);
-    // Motorun önündeki figür motoru örter: daha saydam ve koyu (kesitte iç,
-    // beyaz kaportada silüet seçilsin; çevre çizgisi açık renkte)
-    this.mat.opacity = s.x === 0 ? 0.82 : FRONT_OPACITY;
-    this.mat.color.copy(s.x === 0 ? this.muted : this.dark);
     // Taban çizgisi: figürden motorun öbür ucuna (motorun altı boyunca)
     const { z0, z1 } = this.eng;
     const a = s.z < z0 ? s.z : z0;
     const b = s.z > z1 ? s.z : z1;
     const pos = this.baseLine.geometry.getAttribute('position') as THREE.BufferAttribute;
-    pos.setXYZ(0, s.x, this.base, a);
-    pos.setXYZ(1, s.x, this.base, b);
+    pos.setXYZ(0, s.x, y, a);
+    pos.setXYZ(1, s.x, y, b);
     pos.needsUpdate = true;
     this.baseLine.geometry.computeBoundingSphere();
     this.baseLine.computeLineDistances();
@@ -447,6 +557,11 @@ export class ScaleFigure {
       }
       // Etiket kadrajın ortasına bakan yanda (panelin altında kalmasın)
       if (this.label) this.label.position.x = labelOnLeft(cam, s, this.base, sr) ? -LABEL_X : LABEL_X;
+      // Motoru örten figür daha saydam ve koyu (kesitte iç, beyaz kaportada
+      // silüet seçilsin; çevre çizgisi açık renkte)
+      const over = engineCover(cam, this.eng, s, this.base) > CLEAR_COVER;
+      this.mat.opacity = over ? FRONT_OPACITY : 0.82;
+      this.mat.color.copy(over ? this.dark : this.muted);
     }
     const p = this.group.position;
     this.group.rotation.set(0, Math.atan2(camera.position.x - p.x, camera.position.z - p.z), 0);
