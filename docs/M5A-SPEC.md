@@ -1035,45 +1035,88 @@ export interface BareJetLayout { style: 'bare'; /* mevcut */
 
 ### 3.4 Kaportalı karışık akışlı turbofan (`turbofanMixed`, mimari 6)
 
-**Grafik** (TF bağışçısı; CFM56-5C4 sınıfı; P6 kalibre eder, §4.3):
+**Grafik** (TF bağışçısı; CFM56-5C4 sınıfı; P6 kalibre etti, §4.3;
+`src/design/turbofanMixed.ts`):
 
 ```ts
-massFlow 465, inlet{nacelle}, fan{pr 1.6, bypassRatio 6.5, tipSpeed 430, …},
-lpc{pr 1.9}, hpc{pr 12.5}, combustor{annular, tit 1600, refVelocity 20, lengthHeight 2.6},
-hpt{TF uydurulmuş}, lpt, mixer{style:'lobed', lobes 18, loss .01},
+massFlow 465, inlet{nacelle}, fan{pr 1.64, bypassRatio 6.5, tipSpeed 430, mach [.59, .389], …},
+lpc{pr 1.9, loading .42}, hpc{pr 12.5, loading .28}, combustor{annular, tit 1600, refVelocity 20, lengthHeight 2.6},
+hpt{TF uydurulmuş, loading 1.8}, lpt{loading 1.7}, mixer{style:'lobed', lobes 18, loss .012},
 nozzle{style:'fixed', cv .985}, bypassDuct{dp .02, mach .45}
 ```
 
-**Akış yolu** (`layouts/turbofan.ts`):
+**Akış yolu** (`layouts/turbofan.ts`). P6 sözleşme sapması: ayrık akışın
+alanları (`coreNozzle`, `bypassExit`, `exhaustDuct`…) altın yerleşim
+anlık görüntüsü (golden, yalnız P2 günceller) değişmesin diye yerinde kaldı;
+karışık akış isteğe bağlı `mixed` alanıyla eklendi (ayrık akışta yok, anlık
+görüntüye girmez). `exhaust`/`nacelle` birleşimi yerine:
 
 ```ts
-export interface TurbofanLayout { style: 'nacelle'; /* fan, booster, hpc, …, s */
-  exhaust:
-    | { kind: 'separate'; coreNozzle: …; bypassExit: …; plug: [number, number][] }   // bugünkü alanlar
-    | { kind: 'mixed'; mixer: { z0: number; z1: number; r: number; amp: number; lobes: number; style: 'confluent' | 'lobed' };
-        ductEnd: { z: number; r: number }; nozzle: { z0: number; z1: number; r0: number; rExit: number };
-        plug: [number, number][] };
-  nacelle: { endZ: number; exitR: number; outerProfile: [number, number][] };
-  mounts: MountPoint[]; }
+export interface TurbofanLayout { style: 'nacelle'; /* fan, booster, hpc, …, s; ayrık alanlar aynen */
+  mixed?: {
+    mixer: { z0: number; z1: number; r: number; amp: number; lobes: number; style: 'confluent' | 'lobed' };
+    ductEnd: { z: number; r: number };                       // kaporta iç duvarı karıştırma düzleminde
+    nozzle: { z0: number; z1: number; r0: number; rExit: number };  // ortak sabit yakınsak lüle
+    plugExitR: number;                                       // ağızdaki koni yarıçapı (halka ağız)
+    duct: [number, number][]; outer: [number, number][];     // kaportanın arka kısmı [r, z] (z ≥ ref 0,55)
+  } }
 ```
 
-- Karıştırıcı LPT çıkışında (formül `bareJetLayout:425` ile aynı);
-  `rExit = √(A9mix/π)`; `nacelle.endZ = mixer.z1 + 1,6·rExit`.
-- Çekirdek kaportası karıştırıcıda biter; ayrık baypas lülesi yok.
-- Test: kaporta iç duvarı her z'de çekirdek kaportasının dışında.
+- Varken `coreNozzle` çekirdek akışının karıştırıcıdan çıkışını,
+  `bypassExit` baypas akışının karıştırma düzlemine girişini, `exhaustExit`
+  ortak lüle ağzını anlatır (efektler, lüle ağzı tutamacı).
+- Karıştırıcı LPT çıkışında, çekirdek kaportasının arka kenarında (türbin
+  arka çerçevesinin arkası, `lpt.z1 + 0,22`); yarıçapı egzoz kanalının dış
+  duvarı, boyu `max(0,3; 0,75·r)`. Lobe genliği kaporta iç duvarına ve
+  koniye değmeyecek kadar: `min(0,4·(r_duvar − r), 0,45·(r − r_koni), 0,35·r)`.
+- Kaporta iç duvarı fan çıkışından karıştırma düzlemine alan kuralıyla:
+  halka alanı OGV arkasındakinden `bypassDuct.mach`'taki baypas alanına
+  düzgün geçer, iç sınır (çekirdek kaportası, karıştırıcı) her z'de içeride.
+- Ortak lüle: halka ağız alanı `A9mix` (`rExit = √(r_koni² + A9mix/π)`,
+  koni ağızdan çıkıyorsa halka), karıştırma kanalı boyu `1,6·rExit`
+  (karışma için L/D ≈ 0,8), son bölüm konik yakınsar (ağızda ~19°).
+- Egzoz konisi uzar: ucu ağızdan 0,7 ağız yarıçapı çıkar (CFM56-5C'deki
+  gibi). Şartnamenin "konik kısalır" maddesi yerine (koni kısalınca uzun
+  kanalın ağzı içi boş bir boru gibi görünüyordu).
+- Dış yüzey = iç duvar + kaporta kalınlığı; kalınlık fan kaportasının
+  0,55'teki değerinden (itki çevirici yuvası) ağızdaki ince arka kenara
+  incelir.
+- Kütle: `exhaust` kalemi koni + karıştırıcı sacı (lobe dalgasının yay boyu
+  oranında) + ortak lüle (3 mm inconel). Uzun kaportanın kendisi, ayrık
+  akıştaki fan kaportası gibi motor kuru kütlesine sayılmaz.
+- Test (`turbofanMixed.test.ts`): ağız alanı A9mix ±%3; kaporta iç duvarı
+  her z'de çekirdek kaportasının, lobe tepelerinin ve koninin dışında; dış
+  yüzey iç duvarın dışında; koni çıkıntısı 0,70·rExit (koni boyu ve ağız
+  birlikte yakınsar).
+- Geometri sınırı: fan kanalının ön kısmı fan ucu oranında, çekirdek
+  kaportası mutlak payla ölçeklenir; düşük BPR (≤ 2) ya da küçük hava akışı
+  (≤ ~150 kg/s) çekirdek kaportasını kanal duvarına dayar. Bu durumda
+  FlowpathError `bypassDuct.closed` (düğmeler BPR, hava akışı); A9mix
+  hesaplanamazsa `mixer.area`. **Açık (P9/P11):** karışık ailenin
+  aralığı `knobs.ts`'te [1, 7] / [50, 600]; ya alt sınırlar (BPR ≳ 3,5,
+  W ≳ 200) çekilmeli ya da çekirdek kaportası payları çekirdekle ölçeklenmeli.
+- Lüle ağzı tutamacı TFM'de **kilitli** (§6.7 istisnası, aşağıda).
 
 **3B:**
-- `nacelle.js:67`: `dims.endZ` (referans koordinat, bugün 1,52) ve
-  `dims.exitR` parametreleri; z > 0,55 kısmı yeni uca doğrusal uzar;
-  chevron (159-174) ve `nozzleRing` (177) yeni uçta. Reuse anahtarı
-  (`visual.ts:187`) `endZ`, `exitR` içerir.
-- `core.js:300-352`: `mixed` dalında `primaryNozzle` yerine karıştırıcı;
-  konik kısalır, çekirdek chevron'u yok.
-- `lobedMixer` `barejet.js:45-91`'den `src/engine/mixer.js`'e taşınır;
-  **yamasız iki yüzlü yeni malzeme** (CLAUDE.md: capify yaması kesitte arka
-  yüzleri kırmızı boyar). `mixer` PartId.
-- `visual.ts:buildTurbofanModel` (181-213) `exhaust` değerini
-  `L.exhaust.nozzle`'dan alır.
+- `nacelle.js`: `dims.long = { duct, outer, mixZ }` (kaporta referansında;
+  `turbofanModel.ts longDuctOf` çevirir). Fan kaportası (z ≤ 0,55)
+  ayrık akıştakinin aynısı ve pişirilmiş dokusu aynı ölçekte (v = s / L,
+  yazılar yerinde). Arka kısım ayrı ağ: kütüphanenin `cowlPaint` klonu
+  (aynı boya dokusu ve ton; pişirilmiş `cowlDetail` dokusu kısa kaportaya
+  çizildi, uzun kanala gerilince yazılar ve kuşak bandı yanlış yere
+  düşüyordu), `capify` ile kesit kapağı; derzler (fan kaportası /
+  çevirici / arka kaporta; kalınlıklı bant) ve dört itki çevirici
+  kapağının kenarları (tüp) geometriyle, ağı üreten yumuşatılmış profilden
+  ölçülür. **Açık (P11):** pilon ayrık TF'ninki, uzun kaportanın yalnız ön
+  ~1/3'ünü örtüyor; CFM56-5C/A340'taki gibi kaporta boyunca uzatılmalı. İç duvar iki ağ: karıştırıcıya dek akustik astar
+  (`bypassDuct`), sonrası is tutmuş metal ortak lüle (`nozzle`). Chevron ve
+  `nozzleRing` lüle ağzında. Reuse anahtarı profilleri içerir.
+- `core.js`: `mixed` dalında `primaryNozzle` ve çekirdek chevron'u yok;
+  karıştırıcı (`mixer` PartId): lobe'lu `lobedMixer` (**yamasız iki yüzlü
+  malzeme**, kesitte kırmızı kapak yok), düz karıştırıcı ince kenarlı kısa
+  halka. Uzun konide üç takviye halkası.
+- `turbofanModel.ts` (eski `visual.ts:buildTurbofanModel`): `exhaust`
+  yerleşimin `exhaustExit`'i (karışıkta ortak lüle ağzı), `mixer` modelde.
 
 ### 3.5 Turboşaft (`turboshaft`, mimari 8)
 
@@ -1243,7 +1286,7 @@ yeniden hesabı (`CameraRig.ts`, P2'nin dosyası değil) P8/P11'e açık iş.
 | Şablon | Kaynak sınıfı | Hedef bant (ISA SLS kalkış) |
 |---|---|---|
 | `turbojetDry` | J57-P-43 / J79 kuru | itki 45–55 kN; TSFC 21–26 g/(kN·s); OPR 9–13; kütle 1000–1500 kg; T/W 3,5–5 |
-| `turbofanMixed` | CFM56-5C4 | itki 130–170 kN; BPR 6–7; OPR 28–38; TSFC 8,5–11 g/(kN·s); fan çapı 1,75–1,95 m; kütle 2300–3600 kg; `mixerPR` 0,98–1,06 |
+| `turbofanMixed` | CFM56-5C4 | itki 130–170 kN; BPR 6–7; OPR 28–38; TSFC 8,5–11 g/(kN·s); fan çapı 1,75–1,95 m; kütle 2300–3600 kg; `mixerPR` 0,98–1,06. **Ölçülen (P6):** 145,0 kN; BPR 6,5; OPR 35,9; TSFC 9,80; fan 1,822 m; kütle 2394 kg; P19t/P5t 1,025; kademeler 1+4 · 9 · 1+5 (gerçek motorla aynı); fan Mrel 1,43 (caution 1,50'den %4,4 pay); EGT payı 74 K. Aynı akışta ayrık akışlı eşinden TSFC %1,2 iyi, 225 kg ağır |
 | `turboshaft` | T700-GE-701C | mil gücü 1,2–1,6 MW; SFC 260–330 g/(kW·h); kütle 150–320 kg; güç/ağırlık 5–8 kW/kg; çıkış 20 900 rpm; HPC son eksenel kanat ≥ 12,5 mm |
 
 Bant dışı kalan ölçü için kalibrasyon düğmeleri ayarlanır; kütle modeli
@@ -1391,7 +1434,16 @@ Sihirbaz (yarı saydam sol panel, model arkada canlı güncellenir; her adım
 İleri `data-action="wizard-next"`, bitir `data-action="wizard-finish"`.
 Varsayılan düğmeler `graphFromArchitecture` (bağışçılar + `DEFAULT_MODULES`:
 sabit lüle cv 0,98; kutu-halka 8 kutu, refVelocity 35, lengthHeight 4,5;
-düz karıştırıcı loss 0,01; lobe'lu 0,015, 18 lobe; çıkış mili 20 900 rpm).
+düz karıştırıcı loss 0,01; lobe'lu 0,012, 18 lobe; çıkış mili 20 900 rpm).
+P6: lobe'lu kayıp 0,015 → 0,012. Yüksek baypasta (BPR ~6,5) tam karışma
+kazancı ~%2,4, karışma verimi farkı (0,97 − 0,85) kazancın yalnız ~%0,3'ünü
+getirir; 0,015'te lobe'lu düzden kötüydü (başa baş ~0,0126). Fiziksel
+gerekçe: lobe'lu sacın ıslak alanı ve eksenel girdapları düz halkadan biraz
+fazla kayıp verir, ama düz karıştırıcı aynı karışmayı ancak daha uzun bir
+boruda (sürtünme) yakalar; fark küçüktür. `MIXING_EFF` değişmedi (askeri
+TF'nin art yakıcısı da onu okur; altın test). Kabul: lobe'lu > düz
+sihirbaz varsayılanlarıyla, çıplak kuru ve kaportalı karışıkta
+(`turbofanMixed.test.ts`).
 
 ### 6.4 Mimari kartları (Mimari sekmesi)
 
@@ -1515,7 +1567,18 @@ zinciri.
 | `nozzleExit` (radyal) | TP / TS | `L.exhaust.radius` @ `z1` | `nozzle.exitMach = machFromFlow(W5√T5/(P5·πr'²))`, [0,08, 0,5] | `nozzle.exitMach` |
 | | ayrık TF (baypas ağzı) | `L.bypassExit.rDuct` @ `z` | A19 hedefi: `fan.pr ∈ [1,25, 2,0]` 14 adımlı ikiye bölme (monoton) | `fan.pr` |
 | | çıplak (AB'li/AB'siz) | `nozzle.exitR` @ `exitZ` | **varsayılan (§9.2 S2):** "lüle trimi" — A9/A8dry hedefi için `combustor.tit` ikiye bölmesi (monoton: TJ'de T4 1100→1550 iken A9 0,2075→0,1682) | `combustor.tit` |
-| | karışık (MTF, TFM) | ortak lüle ağzı | A8dry/A9mix hedefi için `fan.bypassRatio` ikiye bölmesi (MTF: BPR 0,3→1,5 iken A8dry 0,202→0,249) | `fan.bypassRatio` |
+| | karışık (MTF, TFM) | ortak lüle ağzı | A8dry/A9mix hedefi için `fan.bypassRatio` ikiye bölmesi (MTF: BPR 0,3→1,5 iken A8dry 0,202→0,249). **TFM istisnası: kilitli** (aşağıda) | `fan.bypassRatio` |
+
+**TFM istisnası (P6 ölçümü, kullanıcı kararı bekliyor).** Kaportalı karışık
+turbofanda A9mix tasarım noktasında en küçüktür: akışlar eşit basınçta
+buluşunca karışma kaybı en az, alan en küçük. Eşleme hiçbir aday düğmede
+tekdüze değil: BPR 1 → 6,5 iken ağız 0,93 → 0,72 m daralır, 7'de yeniden
+açılır; `fan.pr` 1,4 → 1,7 iken 0,883 → 0,723 m daralır, 1,8'de 0,744 m'ye
+açılır, ≥ 2,0'da çevrim çözülmez. Bu yüzden ikiye bölme yapılamaz, tutamaç
+§6.7 tekdüzelik kuralıyla **kilitli** görünür (S2 alternatif (a) davranışı:
+kilitli + açıklama). S2 varsayılanından bu sapma kullanıcıya sorulmalı;
+seçenekler: kilitli kalır, ya da M5b'nin `nozzleAreaFactor`'ı (S2 (b))
+yalnız TFM için öne çekilir.
 
 Lüle okumasının ilk satırı bağı açıkça yazar: "Lüle trimi: daha geniş ağız
 → türbin daha az genişletir → aynı hava ve basınç oranında T4 1230 → 1180 K
@@ -1974,7 +2037,10 @@ Her biri için **varsayılan** (onay gelmezse uygulanan) yazılı.
   (çıplakta T4, karışıkta BPR; TP/TS'de tam, ayrık TF'de FPR) ve okumada
   bağın açık anlatımı. Alternatifler: (a) bu mimarilerde kilitli +
   açıklama; (b) M5b'deki "tasarım noktası kayar" (`nozzleAreaFactor`,
-  sim değişikliği) M5a'ya çekilir.
+  sim değişikliği) M5a'ya çekilir. **Not (P6):** kaportalı karışık TF'de
+  (TFM) A9mix ne BPR'de ne FPR'de tekdüze (tasarım noktası en küçük alan);
+  tutamaç orada kilitli, yani fiilen (a). Ayrıntı ve karar §6.7 TFM
+  istisnasında.
 - **S3 — `EngineKind`'a `'turboshaft'` eklenmesi** ve test hücresi motor
   listesinde 5. hazır motor olarak turboşaft (dinamometreli). Varsayılan:
   evet.

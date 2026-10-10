@@ -1,0 +1,18 @@
+{
+  "kind": "turbofan",
+  "env": "Test hücresi",
+  "quality": "high",
+  "w": 960,
+  "h": 540,
+  "cam": [12.5, 1.2, 0.8],
+  "tgt": [0, -0.05, 0.8],
+  "fov": 32,
+  "cut": 0,
+  "setup": "const D = window.__design; D.setSlotGraph('workshop', D.TEMPLATES.turbofanMixed); a.setEngine('workshop', true); a.sim.trim(0.85, 30); if (a.advance) a.advance(10);",
+  "frames": 6,
+  "dt": 0.05,
+  "actions": {
+    "2": "a.rig.camera.position.set(5.2, 1.6, 8.6); a.rig.controls.target.set(0, -0.1, 2.6); a.rig.controls.update();",
+    "4": "a.rig.camera.position.set(10.5, 0.9, 1.1); a.rig.controls.target.set(0, -0.05, 1.1); a.rig.controls.update(); a.setCutaway(true);"
+  }
+}

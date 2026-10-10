@@ -13,6 +13,11 @@
  * Bütün ölçüler gaz yolu yerleşiminden gelir (design/flowpath.ts
  * `TurbofanLayout`): kademeler fizikten, çekirdek kaportası iç parçaların
  * zarfından, lüle ağızları termodinamik alanlardan.
+ *
+ * Karışık akışlı kaportalı turbofanda (M5a P6, `L.mixed`) çekirdek lülesi
+ * yoktur: çekirdek kaportası LPT arkasındaki karıştırıcıda biter
+ * (lobe'lu ya da düz), egzoz konisi uzar ve ortak lülenin ağzından çıkar.
+ * Ortak lüle kaportanın parçasıdır (nacelle.js).
  */
 
 import * as THREE from 'three';
@@ -23,6 +28,7 @@ import { revolve, roundPoly } from './revolve.js';
 import { buildCombustor } from './combustor.js';
 import { profileAt } from '../design/flowpath';
 import { chevronBand } from './nacelle.js';
+import { lobedMixer } from './mixer.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -307,7 +313,28 @@ export function buildCore(materials, L) {
   exhaust.name = 'exhaust';
 
   const n = L.coreNozzle;
-  const primaryNozzle = new THREE.Mesh(
+  const mixed = L.mixed;
+  /** Karıştırıcı (karışık akış): kesitte ayrı parça, `mixer` modülü */
+  let mixer = null;
+  if (mixed) {
+    const mx = mixed.mixer;
+    if (mx.style === 'lobed') {
+      // Lobe'lu karıştırıcı: ince sac, yamasız iki yüzlü malzeme (kesitte
+      // arka yüzler kırmızı kesik yüzey boyanmaz; engine/mixer.js)
+      mixer = lobedMixer(mx);
+    } else {
+      // Düz (confluent) karıştırıcı: çekirdek kaportasının iç duvarı ince bir
+      // kenarla biter; iki akış yan yana karıştırma kanalına girer
+      mixer = new THREE.Mesh(
+        thickLathe(smoothProfile([[mx.r + 0.012, mx.z0], [mx.r + 0.004, (mx.z0 + mx.z1) / 2], [mx.r - 0.004, mx.z1]], 30), 180, 0.006, 'in'),
+        materials.inconel,
+      );
+      mixer.name = 'confluent-mixer';
+    }
+    mixer.castShadow = true;
+    group.add(tagPart(mixer, 'mixer'));
+  }
+  const primaryNozzle = mixed ? null : new THREE.Mesh(
     thickLathe(
       smoothProfile(
         [
@@ -324,12 +351,14 @@ export function buildCore(materials, L) {
     ),
     materials.inconel,
   );
-  primaryNozzle.castShadow = true;
-  exhaust.add(primaryNozzle);
+  if (primaryNozzle) {
+    primaryNozzle.castShadow = true;
+    exhaust.add(primaryNozzle);
+  }
 
   // Çekirdek lülesi chevron'ları: ağızdan geriye testere dişli kenar, uçları
   // jete hafif eğik (karışma katmanını hızlandırıp gürültüyü azaltır)
-  if (L.chevrons.core > 0) {
+  if (!mixed && L.chevrons.core > 0) {
     const len = 0.17 * s;
     const outer = new THREE.Mesh(
       chevronBand({ startR: n.r1 + 0.008, startZ: n.z1, endR: n.r1 - 0.028 * s, endZ: n.z1 + len, count: L.chevrons.core }),
@@ -348,8 +377,8 @@ export function buildCore(materials, L) {
   plug.castShadow = true;
   exhaust.add(plug);
 
-  // Konik üzerindeki çevresel takviye halkaları
-  for (const z of [n.z0 + 0.12, n.z0 + 0.32]) {
+  // Konik üzerindeki çevresel takviye halkaları (uzun konide üç)
+  for (const z of mixed ? [n.z0 + 0.12, n.z0 + 0.32, (n.z0 + mixed.nozzle.z1) / 2] : [n.z0 + 0.12, n.z0 + 0.32]) {
     const rib = new THREE.Mesh(new THREE.TorusGeometry(profileAt(L.plug, z) - 0.02, 0.008, 8, 90), materials.inconel);
     rib.position.z = z;
     exhaust.add(rib);
@@ -403,6 +432,7 @@ export function buildCore(materials, L) {
     hpSpool,
     combustorMaterial: materials.combustorGlow,
     exhaust,
+    mixer,
   };
 }
 

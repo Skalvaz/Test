@@ -712,11 +712,20 @@ describe('applyArchitecture', () => {
         const next = ok(resolveChange(a, o.axis, o.value)).arch;
         const core0 = coreFlow(g);
         const sameLp = next.lpLoad === a.lpLoad;
-        g = applyArchitecture(g, next);
+        const rep = applyArchitectureReport(g, next);
+        g = rep.graph;
         a = architectureOf(g);
         expect(a, `${id} adım ${step}: ${o.axis}=${String(o.value)}`).toEqual(next);
         expect(checkGraph(g)).toBeNull();
-        if (sameLp) expect(coreFlow(g)).toBeCloseTo(core0, 6);
+        // Çekirdek akışı korunur; yeni ailenin hava akışı aralığı izin
+        // vermiyorsa (ör. 1150 kg/s'lik yolcu turbofanı → karışık akışlı
+        // kaportalı, 50–600 kg/s) akış aralığın ucuna kırpılır (notlu)
+        const [wLo, wHi] = massFlowRangeFor(next);
+        const clipped = Math.abs(g.massFlow / wLo - 1) < 1e-9 || Math.abs(g.massFlow / wHi - 1) < 1e-9;
+        if (sameLp && !clipped) expect(coreFlow(g)).toBeCloseTo(core0, 6);
+        // Kırpma sessiz değil: çekirdek akışı değiştiyse hava akışı notu var
+        if (sameLp && clipped && Math.abs(coreFlow(g) / core0 - 1) > 1e-6)
+          expect(rep.notes.some((n) => n.knob === 'engine.massFlow'), `${id} adım ${step}: kırpma notu`).toBe(true);
         if (!layoutNotReady(g)) {
           let b: BuiltEngine;
           try {

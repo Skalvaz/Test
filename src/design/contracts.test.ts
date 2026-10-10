@@ -161,7 +161,8 @@ describe('hazır olmayan yerleşimler tipli hata verir', () => {
     n.style = 'fixed';
     delete n.chevrons;
     validateGraph(g);
-    expect(() => buildEngine(g)).toThrow(/Karışık akışlı kaportalı turbofan yerleşimi henüz yok/);
+    // P6: uzun kanallı kaporta, karıştırıcı ve ortak lüle
+    expect(buildEngine(g).flowpath.layout).toMatchObject({ style: 'nacelle', mixed: { mixer: { style: 'lobed', lobes: 18 } } });
   });
 
   it('turboşaft (P7)', () => {
@@ -202,7 +203,7 @@ describe('yuvalar ve inşa', () => {
   });
 
   it('şablonlar katalogda; turboşaft henüz yok ve tipli hata verir', () => {
-    expect(Object.keys(TEMPLATES).sort()).toEqual(['militaryTurbofan', 'turbofan', 'turbojet', 'turbojetDry', 'turboprop']);
+    expect(Object.keys(TEMPLATES).sort()).toEqual(['militaryTurbofan', 'turbofan', 'turbofanMixed', 'turbojet', 'turbojetDry', 'turboprop']);
     expect(Object.keys(ENGINE_GRAPHS).sort()).toEqual(['militaryTurbofan', 'turbofan', 'turbojet', 'turboprop']);
     expect(builtFor('turboshaft')).toBeUndefined();
     expect(() => designFor('turboshaft')).toThrow(GraphError);
