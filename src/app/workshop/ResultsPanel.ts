@@ -16,14 +16,17 @@ import type { Finding } from '../../design/core/rules';
 import { diffSummary, explainDelta, fmtNum, type DesignSummary, type LimitGauge } from '../../design/summary';
 import type { WorkshopStore, WorkshopState } from '../../workshop/store';
 import { h, icon } from '../../ui/dom';
-import { chipDeltas } from './KnobField';
+import { PART_TAGS, partsOfModule, type ModuleRef, type PartTag } from '../../design/partsMap';
+import type { EngineTraits } from '../../design/traits';
+import type { StationId } from '../../sim/design';
+import { chipDeltas, ROW_LABEL } from './KnobField';
 import { GoalCard } from './GoalCard';
 import { ATTR } from './selectors';
 
 export interface ResultsCallbacks {
   onRunInCell(): void;
-  /** Parçaları 3B'de vurgula (null: kaldır) */
-  onHighlight(tags: string[] | null): void;
+  /** Parçaları 3B'de vurgula (null: kaldır); `transient`: kısa süre sonra kendiliğinden kalkar */
+  onHighlight(tags: string[] | null, transient?: boolean): void;
   openGlossary(id: string): void;
   openLesson(id: string): void;
 }
@@ -38,6 +41,35 @@ const MASS_NAMES: Record<string, string> = {
 const MASS_COLORS = ['#2ee6d6', '#3d9bff', '#8b7bff', '#ff5cf0', '#ff7a45', '#ffb020', '#d9e36b', '#3ddc84', '#7b8a99', '#c47bff', '#4fd1ff', '#ff4d3d'];
 
 const SEV_LABEL: Record<Finding['severity'], string> = { warning: 'Kırmızı', caution: 'Amber', info: 'Bilgi' };
+
+/** Kütle kalemi → 3B parça etiketleri: kalem adları PartTag değil (lpc, jetPipe, externals…) */
+const MASS_ALIAS: Record<string, PartTag[]> = {
+  casing: ['casing', 'engineCase'],
+  jetPipe: ['exhaust'],
+  externals: ['accessories'],
+  accessories: ['accessories'],
+  shaft: ['outputShaft'],
+  frames: ['engineCase'],
+  ducts: ['bypassDuct'],
+};
+const MODULE_KEYS = new Set<string>(['inlet', 'fan', 'lpc', 'hpc', 'combustor', 'hpt', 'lpt', 'mixer', 'afterburner', 'nozzle', 'propeller']);
+
+export function massPartTags(key: string, traits: EngineTraits): PartTag[] {
+  if (MASS_ALIAS[key]) return MASS_ALIAS[key];
+  if (MODULE_KEYS.has(key)) return partsOfModule(key as ModuleRef, traits);
+  return (PART_TAGS as string[]).includes(key) ? [key as PartTag] : [];
+}
+
+/** Ayrıntılar tablosunun istasyonları (§6.6 madde 6) */
+export const DETAIL_STATIONS: readonly StationId[] = ['2', '13', '21', '25', '3', '4', '45', '5', '9'];
+
+/** İstasyon satırları: akışı olmayan (ör. baypassız motorda 13) atlanır */
+export function stationRows(st: Partial<Record<StationId, { T: number; P: number; W: number }>>): { id: StationId; T: number; P: number; W: number }[] {
+  return DETAIL_STATIONS.flatMap((id) => {
+    const s = st[id];
+    return s && Number.isFinite(s.T) && Number.isFinite(s.P) && s.W > 1e-6 ? [{ id, T: s.T, P: s.P, W: s.W }] : [];
+  });
+}
 
 export class ResultsPanel {
   readonly el: HTMLDivElement;
@@ -119,8 +151,8 @@ export class ResultsPanel {
     if (key !== this.key) {
       this.key = key;
       this.renderCard(sm, s.compare);
-      this.renderMass(sm);
-      this.renderDetails(sm);
+      this.renderMass(sm, L.built.traits);
+      this.renderDetails(sm, L.built.sized.point.stations);
       const pin = this.el.querySelector(`[${ATTR.action}="pin-baseline"]`);
       if (pin) pin.textContent = s.project.baseline ? 'Kıyası kaldır' : 'Kıyas olarak sabitle';
     }
@@ -242,7 +274,7 @@ export class ResultsPanel {
     );
   }
 
-  private renderMass(sm: DesignSummary): void {
+  private renderMass(sm: DesignSummary, traits: EngineTraits): void {
     const parts = Object.entries(sm.massParts).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
     const total = parts.reduce((a, [, v]) => a + v, 0) || 1;
     const bar = h('div', { class: 'ws-mass-bar' }, parts.map(([k, v], i) =>
@@ -250,7 +282,10 @@ export class ResultsPanel {
         title: `${MASS_NAMES[k] ?? k}: ${fmtNum(v, 0)} kg (%${fmtNum((v / total) * 100, 0)})`,
         style: { width: `${((v / total) * 100).toFixed(2)}%`, background: MASS_COLORS[i % MASS_COLORS.length] },
         on: {
-          mouseenter: () => this.cb.onHighlight([k]),
+          mouseenter: () => {
+            const tags = massPartTags(k, traits);
+            this.cb.onHighlight(tags.length ? tags : null);
+          },
           mouseleave: () => this.cb.onHighlight(null),
         },
       }),
@@ -274,7 +309,13 @@ export class ResultsPanel {
       ...visible.map((f) => {
         const acts: (HTMLElement | null)[] = [
           f.tags.length
-            ? h('button', { class: 'ws-link', text: 'Parçayı göster', attrs: { type: 'button', [ATTR.action]: 'show-part' }, on: { click: () => this.cb.onHighlight(f.tags) } })
+            ? h('button', {
+                class: 'ws-link',
+                text: 'Parçayı göster',
+                attrs: { type: 'button', [ATTR.action]: 'show-part' },
+                // Kısa süreli vurgu (App süreyle ve seçim değişince kaldırır)
+                on: { click: () => this.cb.onHighlight(f.tags, true) },
+              })
             : null,
           f.glossary
             ? h('button', { class: 'ws-link', text: 'Sözlük', attrs: { type: 'button', [ATTR.action]: 'glossary' }, on: { click: () => this.cb.openGlossary(f.glossary!) } })
@@ -305,10 +346,19 @@ export class ResultsPanel {
     );
   }
 
-  private renderDetails(sm: DesignSummary): void {
+  private renderDetails(sm: DesignSummary, stations: Partial<Record<StationId, { T: number; P: number; W: number }>>): void {
+    // İstasyon tablosu: T [K], P [kPa], W [kg/s] (tasarım noktası, ISA deniz seviyesi)
+    const st = stationRows(stations).map((s) =>
+      h('tr', {}, [
+        h('td', { text: s.id }),
+        h('td', { text: fmtNum(s.T, 0) }),
+        h('td', { text: fmtNum(s.P / 1e3, 0) }),
+        h('td', { text: fmtNum(s.W, 1) }),
+      ]),
+    );
     const rows = Object.entries(sm.rows).map(([k, r]) =>
       h('tr', {}, [
-        h('td', { text: k.toUpperCase() }),
+        h('td', { text: ROW_LABEL[k] ?? k }),
         h('td', { text: String(r!.stages) }),
         h('td', { text: fmtNum(r!.uTip, 0) }),
         h('td', { text: fmtNum(r!.loading, 2) }),
@@ -317,6 +367,10 @@ export class ResultsPanel {
     );
     this.detailsBody.replaceChildren(
       h('table', { class: 'st-table' }, [
+        h('thead', {}, [h('tr', {}, ['İst.', 'T K', 'P kPa', 'W kg/s'].map((t) => h('th', { text: t })))]),
+        h('tbody', {}, st),
+      ]),
+      h('table', { class: 'st-table ws-rows-table' }, [
         h('thead', {}, [h('tr', {}, ['Sıra', 'Kd', 'Uç m/s', 'ψ', 'rpm'].map((t) => h('th', { text: t })))]),
         h('tbody', {}, rows),
       ]),

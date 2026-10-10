@@ -6,6 +6,7 @@ import type { SlotId } from '../design/catalog';
 import { fmtNum, type DesignSummary } from '../design/summary';
 import { h, icon } from './dom';
 import { FlightControls } from './FlightControls';
+import { cellCompare } from '../app/workshop/cellCompare';
 
 export interface SandboxCallbacks {
   autoStart(): void;
@@ -305,19 +306,21 @@ export class SandboxPanel {
       this.wsCompare.textContent = '';
       return;
     }
-    const shaft = exp.output !== 'thrust' && exp.shaftPower !== undefined;
-    const p = this.sim.eng.point as { thrust: number; shaftPower?: number };
-    const want = shaft ? exp.shaftPower! : exp.thrust;
-    const got = shaft ? (p.shaftPower ?? 0) : p.thrust;
-    const pct = want > 0 ? ((got - want) / want) * 100 : 0;
-    const unit = shaft ? 'kW' : 'kN';
-    const k = shaft ? 1e-3 : 1e-3;
-    const lit = this.sim.lit && this.sim.controls.throttle >= 0.99;
-    const why = !lit ? 'tam güçte ölçülür' : Math.abs(pct) <= 3 ? 'tasarımla uyumlu (±%3)' : this.sim.egtLimited ? 'EGT sınırlayıcı devrede' : 'devir sınırı ya da koşul farkı';
+    // Ölçülen: canlı anlık değer (sim.eng.point boyutlandırmanın sabit noktasıdır)
+    const sim = this.sim;
+    const snap = sim.snapshot();
+    const c = cellCompare({
+      expected: exp,
+      live: { thrust: snap.thrust, shaftPower: snap.shaftPower, lit: snap.lit, egtLimited: snap.egtLimited, N1: snap.N1, n1Command: snap.n1Command ?? snap.N1 },
+      flight: sim.flight,
+      controls: sim.controls,
+      healthy: Object.values(sim.health).every((v) => v === 1) && sim.fanDamage === 0 && !sim.turbineDamaged,
+    });
+    const digits = c.shaft ? 0 : 1;
     this.wsCompare.replaceChildren(
-      h('span', { text: `Beklenen ${fmtNum(want * k, shaft ? 0 : 1)} ${unit}` }),
-      h('span', { text: `Ölçülen ${fmtNum(got * k, shaft ? 0 : 1)} ${unit}${lit ? ` (${pct >= 0 ? '+' : '−'}%${fmtNum(Math.abs(pct), 1)})` : ''}` }),
-      h('span', { class: lit && Math.abs(pct) > 3 ? 'warn' : 'muted', text: why }),
+      h('span', { text: `Beklenen ${fmtNum(c.want, digits)} ${c.unit}` }),
+      h('span', { text: `Ölçülen ${fmtNum(c.got, digits)} ${c.unit}${c.pct !== null ? ` (${c.pct >= 0 ? '+' : '−'}%${fmtNum(Math.abs(c.pct), 1)})` : ''}` }),
+      h('span', { class: c.off ? 'warn' : 'muted', text: c.why }),
     );
   }
 

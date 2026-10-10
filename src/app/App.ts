@@ -22,6 +22,7 @@ import { loadKit, setKitQuality } from '../engine/kit.js';
 import { setBladeQuality } from '../engine/blades.js';
 import { setDetailTag } from '../engine/buildCache.js';
 import { builtFor, designFor, setSlotBuilt, setSlotGraph, type SlotId } from '../design/catalog';
+import { focusOnCanvas, keyOwnedByTarget, plainKey } from './workshop/keys';
 import { isBuiltEngine, type BuildOptions, type BuiltEngine } from '../design/graph';
 import type { EngineGraph } from '../design/types';
 import { visualSourceFor, type VisualSource } from '../engine/models';
@@ -85,6 +86,8 @@ const QUALITY = {
 
 /** Blender'da pişirilmiş kapalı test hücresi ortamının adı */
 const TEST_CELL = 'Test hücresi';
+/** Uyarıdaki "Parçayı göster" vurgusunun süresi [ms] */
+const WS_SHOW_PART_MS = 2500;
 const AIRFIELD_DEFAULT = 'Havaalanı — öğle';
 const AIRFIELD_NIGHT = 'Havaalanı — gece';
 
@@ -119,6 +122,13 @@ export class App {
   private wsBox: EnvelopeBox | null = null;
   private wsAcc = 0;
   private wsHover: PartId[] | null = null;
+  /** wsHover'ın kurulduğu andaki seçim ve bitiş zamanı (kısa süreli vurgu) */
+  private wsHoverSel: string | null = null;
+  private wsHoverUntil = Infinity;
+  /** Atölyeden ya da test edilen tasarımdan çıkınca dönülecek katalog yuvası */
+  private catalogSlot: Exclude<SlotId, 'workshop'> = 'turbofan';
+  /** Açık atölye başlangıç ekranı (Esc ile kapanınca tasarım sahneye konur) */
+  private wsStartEl: HTMLElement | null = null;
   /** Ders bitince/çıkınca dönülecek mod */
   private returnTo: 'workshop' | null = null;
   private wsHook = (dt: number) => this.workshopFrame(dt);
@@ -353,7 +363,12 @@ export class App {
     this.applyEngineUi(this.visual.source);
     this.sandboxPanel = new SandboxPanel(this.sim, () => this.visual, {
       autoStart: () => this.beginAutoStart(),
-      onEngine: (slot) => this.setEngine(slot, true),
+      // Katalog motoru seçmek atölye tasarımından çıkar (§6.9)
+      onEngine: (slot) => {
+        this.source = 'catalog';
+        if (slot !== 'workshop') this.catalogSlot = slot;
+        this.setEngine(slot, true);
+      },
       onLights: (level) => this.setLights(level),
       onTimeScale: (v) => {
         this.timeScale = v;
@@ -386,8 +401,12 @@ export class App {
     });
     this.wsResults = new ResultsPanel(this.wsStore, {
       onRunInCell: () => this.runWorkshopDesign(),
-      onHighlight: (tags) => {
+      onHighlight: (tags, transient) => {
         this.wsHover = tags ? (tags as PartId[]) : null;
+        // Uyarıdaki "Parçayı göster" kalıcı olmasın: süre dolunca ya da
+        // seçim değişince seçili modülün vurgusu geri gelir
+        this.wsHoverSel = this.wsStore.state.selected;
+        this.wsHoverUntil = tags && transient ? performance.now() + WS_SHOW_PART_MS : Infinity;
       },
       openGlossary: (id) => this.openGlossary(id),
       openLesson,
@@ -581,6 +600,7 @@ export class App {
   showMenu(first = false) {
     if (this.mode === 'workshop') this.leaveWorkshop();
     this.returnTo = null;
+    this.leaveWorkshopSlot();
     this.mode = 'menu';
     this.runner = null;
     this.timeScale = 1;
@@ -689,6 +709,7 @@ export class App {
     this.closeOverlay();
     if (this.mode === 'workshop') this.leaveWorkshop();
     this.returnTo = null;
+    if (opts.from !== 'workshop') this.leaveWorkshopSlot();
     this.sandboxPanel.setWorkshop(opts.from === 'workshop');
     this.mode = 'sandbox';
     this.runner = null;
@@ -719,6 +740,7 @@ export class App {
   openWorkshop(opts: { resume?: boolean } = {}) {
     this.audio.resume();
     this.closeOverlay();
+    if (this.slot !== 'workshop') this.catalogSlot = this.slot;
     const wasWorkshop = this.mode === 'workshop';
     this.mode = 'workshop';
     this.runner = null;
@@ -758,13 +780,8 @@ export class App {
   /** Başlangıç ekranı (yeni aile/şablon) */
   private openWorkshopStart() {
     const store = this.wsStore;
-    const close = () => {
-      this.closeOverlay();
-      // Proje yoksa atölye boş kalmaz: menüye dön
-      if (store.state.phase === 'start') this.showMenu();
-    };
-    this.openOverlay(
-      startScreen({
+    const close = () => this.closeWorkshopStart();
+    const el = startScreen({
         hasSaved: store.state.project.families.length > 0 || store.hasSaved(),
         onResume: () => {
           this.closeOverlay();
@@ -793,14 +810,39 @@ export class App {
           this.refreshWorkshop();
         },
         onClose: close,
-      }),
-    );
+      });
+    this.openOverlay(el);
+    this.wsStartEl = el;
   }
 
-  /** Mağazanın son geçerli tasarımını sahneye koyar (dönüşte) */
+  /**
+   * Başlangıç ekranı kapandı (X ya da Esc): proje yoksa menüye; varsa
+   * (edit/sihirbaz) atölye tasarımı sahneye konur — menüden yeniden
+   * girilince sahnede katalog motoru duruyordu.
+   */
+  private closeWorkshopStart() {
+    this.closeOverlay();
+    const store = this.wsStore;
+    const ph = store.state.phase;
+    if (ph === 'start') {
+      this.showMenu();
+      return;
+    }
+    if (ph === 'testing') store.setTesting(false);
+    this.source = 'workshop';
+    this.publishWorkshop();
+    this.refreshChrome();
+    this.refreshWorkshop();
+  }
+
+  /** Mağazanın son geçerli tasarımını sahneye koyar (dönüşte); zaten sahnedeyse yeniden kurmaz */
   private publishWorkshop() {
     const last = this.wsStore.state.last;
     if (!last) return;
+    if (this.slot === 'workshop' && this.visual.slot === 'workshop' && this.visual.source.built === last.built && !this.visualEffects && !this.visualDraft) {
+      this.placeWorkshopHelpers();
+      return;
+    }
     try {
       this.applyDesign('workshop', last.built, 'full', { effects: false });
     } catch (err) {
@@ -888,6 +930,23 @@ export class App {
   }
   private wsViewBase: Partial<Record<ViewName, CameraView>> | null = null;
   private wsMirrored: Partial<Record<ViewName, CameraView>> | null = null;
+
+  /**
+   * Sahnede/simülasyonda atölye yuvası kaldıysa (atölyenin efektsiz modeli
+   * ya da test edilen tasarım) katalog motoruna dönülür: menü arka planı
+   * ve menüden açılan test hücresi efektli katalog motoruyla çalışır,
+   * seçici gerçek yuvayı gösterir (§6.9 yalıtım). Atölye tasarımı test
+   * hücresinde "Atölye tasarımı" düğmesiyle yeniden kurulur.
+   */
+  private leaveWorkshopSlot() {
+    if (this.slot !== 'workshop' && this.visual.slot !== 'workshop') return;
+    this.source = 'catalog';
+    try {
+      this.setEngine(this.catalogSlot, false);
+    } catch (err) {
+      console.warn('Katalog motoruna dönülemedi', err);
+    }
+  }
 
   /** Atölyeden çıkış: kaplamalar gizlenir, otomatik kayıt mağazada */
   private leaveWorkshop() {
@@ -1389,8 +1448,9 @@ export class App {
 
   /** Atölye vurgusu: sonuç panelinden (çubuk/uyarı) gelen parçalar, yoksa seçili modül */
   private workshopHighlight(): PartId[] | PartId | null {
-    if (this.wsHover?.length) return this.wsHover;
     const s = this.wsStore.state;
+    if (this.wsHover && (performance.now() > this.wsHoverUntil || s.selected !== this.wsHoverSel)) this.wsHover = null;
+    if (this.wsHover?.length) return this.wsHover;
     if (s.selected && s.last) return partsOfModule(s.selected, s.last.built.traits ?? deriveTraits(s.last.graph)) as PartId[];
     return this.hoverPart;
   }
@@ -1453,21 +1513,31 @@ export class App {
   /* ================================================================ */
 
   private onKey(e: KeyboardEvent) {
-    const target = e.target as HTMLElement;
-    if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT')) return;
+    const target = e.target as HTMLElement | null;
+    // Metin kutusu/açılır liste tuşları kendisinin (Esc odağı bırakır);
+    // kaydırıcıda yalnız gezinme tuşları (keys.ts)
+    if (target && keyOwnedByTarget(target as HTMLInputElement, e.key)) {
+      if (e.key === 'Escape') target.blur();
+      return;
+    }
     if (e.key === 'Escape') {
-      if (this.overlay && this.mode === 'workshop' && this.wsStore.state.phase === 'start') this.showMenu();
+      if (this.overlay && this.mode === 'workshop' && this.overlay === this.wsStartEl) this.closeWorkshopStart();
       else if (this.overlay && this.mode !== 'menu') this.closeOverlay();
       // Atölyede önce seçim kalkar, sonra menü (otomatik kayıt: onay yok)
       else if (this.mode === 'workshop' && this.wsStore.state.selected) this.wsStore.select(null);
+      // Atölyeden açılan dersten çıkış atölyeye döner (§6.8)
+      else if (this.mode === 'lesson' && this.returnTo === 'workshop') this.openWorkshop({ resume: true });
       else if (this.mode !== 'menu') this.showMenu();
       return;
     }
     if (this.mode === 'menu' || this.overlay) return;
     const k = e.key.toLowerCase();
+    const plain = plainKey(e);
     if (this.mode === 'workshop') {
-      // Gaz kolu tuşları (W/S, PgUp/PgDn, B, oklar) simülasyona gitmez
-      if (this.wsHandles?.onKey(e)) {
+      const onCanvas = focusOnCanvas(target, document.body, this.renderer.domElement);
+      // Gaz kolu tuşları (W/S, PgUp/PgDn, B, oklar) simülasyona gitmez.
+      // Tutamaç okları yalnız odak tuvaldeyken (panel düğmesindeyken değil)
+      if (onCanvas && this.wsHandles?.onKey(e)) {
         e.preventDefault();
         return;
       }
@@ -1476,9 +1546,14 @@ export class App {
         if (e.shiftKey) store.redo();
         else store.undo();
       } else if ((e.ctrlKey || e.metaKey) && k === 'y') store.redo();
+      // Değiştiricili tuşlar (Ctrl+C kopyalama…) tarayıcının
+      else if (!plain) return;
       else if (k === 'u') store.setExpert(!store.state.project.expert);
-      else if (e.key === 'Tab') this.wsPanel.nextModule(e.shiftKey ? -1 : 1);
-      else if (k === 'c') this.setCutaway(!this.cutaway);
+      // Tab yalnız odak tuvaldeyken modül gezintisi; panelde klavye gezintisi kalır
+      else if (e.key === 'Tab') {
+        if (!onCanvas) return;
+        this.wsPanel.nextModule(e.shiftKey ? -1 : 1);
+      } else if (k === 'c') this.setCutaway(!this.cutaway);
       else if (k === 'm') this.toggleMute();
       else if (k === 'h') {
         document.body.classList.toggle('ui-hidden');
@@ -1496,6 +1571,8 @@ export class App {
       e.preventDefault();
       return;
     }
+    // Değiştiricili tuşlar (Ctrl+C, Ctrl+W…) tarayıcının
+    if (!plain) return;
     const fine = e.shiftKey ? 0.005 : 0.02;
     if (k === 'w' || e.key === 'ArrowUp') this.cockpit.nudge(fine);
     else if (k === 's' || e.key === 'ArrowDown') this.cockpit.nudge(-fine);

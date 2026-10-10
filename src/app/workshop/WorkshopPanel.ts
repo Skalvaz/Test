@@ -83,8 +83,8 @@ export class WorkshopPanel {
   private badge: HTMLSpanElement;
   private fieldsKey = '';
   private famKey = '';
+  private famViewKey = '';
   private lastSelected: ModuleRef | null = null;
-  private feasRev = '';
 
   constructor(
     private store: WorkshopStore,
@@ -110,8 +110,17 @@ export class WorkshopPanel {
     });
     this.undoBtn = h('button', { class: 'btn small ghost icon', title: 'Geri al (Ctrl+Z)', attrs: { type: 'button', 'aria-label': 'Geri al' }, on: { click: () => store.undo() } }, ['↶']);
     this.redoBtn = h('button', { class: 'btn small ghost icon', title: 'Yinele (Ctrl+Shift+Z)', attrs: { type: 'button', 'aria-label': 'Yinele' }, on: { click: () => store.redo() } }, ['↷']);
+    // Yeni aile (başlangıç ekranı): her sekmede görünür (§8 adım 14 bu düğmeyi tıklar)
+    const newFam = h('button', {
+      class: 'btn small ghost',
+      text: '+ Yeni aile',
+      title: 'Şablondan ya da sıfırdan yeni motor ailesi (eskisi listede kalır)',
+      attrs: { type: 'button', [ATTR.action]: 'new-from-template' },
+      on: { click: () => cb.onNewFromTemplate() },
+    });
     this.toolbar = h('div', { class: 'ws-toolbar' }, [
       this.famSelect,
+      newFam,
       this.variantsEl,
       this.expertBtn,
       this.undoBtn,
@@ -259,6 +268,11 @@ export class WorkshopPanel {
     const store = this.store;
     const p = s.project;
     const fam = store.activeFamily();
+    // Yalnız içerik değişince yeniden kurulur: 0,2 s'lik yenileme açık
+    // <select>'i ve basılı düğmeyi yok etmesin
+    const key = familyViewKey(s);
+    if (key === this.famViewKey) return;
+    this.famViewKey = key;
     const rows = p.families.map((f) =>
       h('button', {
         class: `ws-fam-row${f.id === p.activeFamily ? ' sel' : ''}`,
@@ -276,9 +290,10 @@ export class WorkshopPanel {
       h('div', { class: 'section-label', text: 'Aileler' }),
       h('div', { class: 'ws-fam-list' }, rows),
       h('div', { class: 'chips' }, [
+        // Seçici sözleşmesindeki 'new-from-template' üst çubuktaki düğmededir
         h('button', {
-          class: 'btn small',
-          attrs: { type: 'button', [ATTR.action]: 'new-from-template' },
+          class: 'btn small ws-new-family',
+          attrs: { type: 'button' },
           on: { click: () => this.cb.onNewFromTemplate() },
         }, ['+ Yeni aile']),
         fam && fam.variants.length < 4
@@ -390,17 +405,28 @@ export class WorkshopPanel {
     if (v && document.activeElement !== this.nameInput) this.nameInput.value = v.name;
   }
 
-  /** Yasak bölgeler: boşta, rev başına bir kez (App çağırır) */
+  /**
+   * Yasak bölgeler: boşta (App 0,2 s'de bir çağırır). Önbellek alan
+   * başınadır (KnobField, rev anahtarı): sonradan açılan bölümün ya da Uzman
+   * açılınca görünen alanların aralığı tasarım değişmeden de hesaplanır.
+   */
   updateFeasible(): void {
     const s = this.store.state;
     if (s.phase !== 'edit' || s.dragging || !s.last || this.tab !== 'tune') return;
     const rev = graphRev(s.last.graph);
-    if (rev === this.feasRev) return;
-    this.feasRev = rev;
-    // Yalnız açık bölümlerin alanları (pahalı: ~12 üretim/düğme)
+    const todo: KnobField[] = [];
     for (const f of this.fields) {
-      const sec = sectionOf(f.knob);
-      if (this.open.has(sec) && (f.knob.level === 'basic' || s.project.expert)) f.updateFeasible(rev);
+      const shown = this.open.has(sectionOf(f.knob)) && (f.knob.level === 'basic' || s.project.expert);
+      // Görünmeyen alanın eski rev'deki aralığı geçersiz: yeniden açılınca
+      // değer yanlış sınıra yapışmasın
+      if (!shown) f.invalidateFeasible(rev);
+      else if (f.feasibleFor !== rev) todo.push(f);
+    }
+    // Pahalı (~12 üretim/düğme): bir çağrıda en çok ~12 ms, kalanı sonraki boşta
+    const t0 = performance.now();
+    for (const f of todo) {
+      f.updateFeasible(rev);
+      if (performance.now() - t0 > 12) break;
     }
   }
 
@@ -416,6 +442,16 @@ export class WorkshopPanel {
   field(id: KnobId): KnobField | undefined {
     return this.fields.find((f) => f.knob.id === id);
   }
+}
+
+/** Aile sekmesinin içeriğini belirleyen durum (değişmedikçe DOM yeniden kurulmaz) */
+export function familyViewKey(s: Pick<WorkshopState, 'project'>): string {
+  const p = s.project;
+  return JSON.stringify([
+    p.families.map((f) => [f.id, f.code, f.name, f.variants.length]),
+    p.activeFamily,
+    p.goal?.id ?? null,
+  ]);
 }
 
 function shortLabel(k: EngineKnob): string {

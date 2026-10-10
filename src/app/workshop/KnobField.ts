@@ -17,6 +17,7 @@ import type { EngineKnob, KnobId } from '../../design/knobs';
 import { diffSummary, fmtNum, fmtSigned, type DesignSummary, type SummaryDelta } from '../../design/summary';
 import type { KnobValue } from '../../design/core/knob';
 import type { WorkshopStore, WorkshopState } from '../../workshop/store';
+import { graphRev } from '../../design/engineDoc';
 import { h } from '../../ui/dom';
 import { ATTR } from './selectors';
 
@@ -38,6 +39,18 @@ export interface NumberFieldOptions {
   explain?: string;
   onInput(v: number): void;
   onChange(v: number): void;
+  /** Sayı kutusu boş ya da geçersiz bırakıldı ('change' anında) */
+  onInvalid?(): void;
+  /** Sayı kutusu odağı kaybetti ('change'den sonra gelir) */
+  onBlur?(): void;
+}
+
+/** Sayı kutusundaki metin (virgül ondalık olabilir); boş ya da geçersizse null */
+export function parseNumInput(raw: string): number | null {
+  const t = raw.trim();
+  if (t === '') return null;
+  const v = Number(t.replace(',', '.'));
+  return Number.isFinite(v) ? v : null;
 }
 
 const SLIDER_STEPS = 1000;
@@ -84,15 +97,24 @@ export class NumberField {
 
     // Sayı kutusu: yazarken (input) taslak, Enter/odak kaybı (change) tam
     this.num.addEventListener('input', () => {
-      const v = Number(this.num.value.replace(',', '.'));
-      if (Number.isFinite(v) && this.num.value !== '') o.onInput(this.clampShow(v));
+      const v = parseNumInput(this.num.value);
+      if (v !== null) o.onInput(this.clampShow(v));
     });
+    // Boş/geçersiz bırakılan kutu da hareketi kapatır (mağazada 'dragging'
+    // takılı kalmasın): sahibine bildirilir
     this.num.addEventListener('change', () => {
-      const v = Number(this.num.value.replace(',', '.'));
-      if (Number.isFinite(v) && this.num.value !== '') o.onChange(this.clampShow(v));
+      const v = parseNumInput(this.num.value);
+      if (v !== null) o.onChange(this.clampShow(v));
+      else o.onInvalid?.();
     });
+    this.num.addEventListener('blur', () => o.onBlur?.());
     this.slider.addEventListener('input', () => o.onInput(this.fromPos(Number(this.slider.value))));
-    this.slider.addEventListener('change', () => o.onChange(this.fromPos(Number(this.slider.value))));
+    this.slider.addEventListener('change', () => {
+      o.onChange(this.fromPos(Number(this.slider.value)));
+      // Odak kaydırıcıda kalırsa atölye kısayolları (Ctrl+Z, Esc) çalışmaz;
+      // kaydırıcı sekme sırasında değil (tabindex -1), yalnız fareyle tutulur
+      this.slider.blur();
+    });
   }
 
   /** Aralık dışını sınıra yapıştırır, rayı kısa süre kırmızı yakar */
@@ -128,10 +150,10 @@ export class NumberField {
     return Math.min(max, Math.max(min, Number(v.toPrecision(10))));
   }
 
-  /** Değeri gösterir (odakta yazılan sayıya dokunmaz) */
-  setValue(v: number): void {
+  /** Değeri gösterir (odakta yazılan sayıya dokunmaz; `force` ile dokunur) */
+  setValue(v: number, force = false): void {
     if (!Number.isFinite(v)) return;
-    if (document.activeElement !== this.num) this.num.value = v.toFixed(this.o.digits);
+    if (force || document.activeElement !== this.num) this.num.value = v.toFixed(this.o.digits);
     if (document.activeElement !== this.slider) this.slider.value = String(this.toPos(v));
   }
 
@@ -180,7 +202,7 @@ export function renderChip(el: HTMLElement, deltas: SummaryDelta[]): void {
 }
 
 /** Kademe sayısı değişimleri ("HPC 9 → 10 kademe") */
-const ROW_LABEL: Record<string, string> = { front: 'Ön kompresör', booster: 'Booster', hpc: 'HPC', hpt: 'HPT', lpt: 'LPT' };
+export const ROW_LABEL: Record<string, string> = { front: 'Ön kompresör', booster: 'Booster', hpc: 'HPC', hpt: 'HPT', lpt: 'LPT' };
 export function stageEvents(a: DesignSummary, b: DesignSummary): string[] {
   const out: string[] = [];
   for (const key of Object.keys(ROW_LABEL) as (keyof DesignSummary['rows'])[]) {
@@ -217,7 +239,10 @@ export class KnobField {
   private reset: HTMLButtonElement;
   private feasibleKey = '';
   private dragging = false;
-  private tipShown = false;
+  /** Duyarlılık ipucunun hesaplandığı tasarım (rev); değişince yeniden */
+  private tipRev = '';
+  /** Sayı/kaydırıcı hareketinin başındaki model değeri */
+  private gestureFrom: number | null = null;
 
   constructor(
     readonly knob: EngineKnob,
@@ -262,14 +287,28 @@ export class KnobField {
         const model = fromShow(v);
         if (phase === 'input' && !this.dragging) {
           this.dragging = true;
+          // Hareketin başındaki değer: kutu boş bırakılırsa ona dönülür
+          const cur = this.currentValue();
+          this.gestureFrom = typeof cur === 'number' ? cur : null;
           host.onDrag?.(true);
         }
         store.setKnob(k.id as KnobId, k.type === 'int' ? Math.round(model) : model, phase);
-        if (phase === 'change') {
-          this.dragging = false;
-          host.onDrag?.(false);
-          this.feasibleKey = '';
+        if (phase === 'change') this.endGesture();
+      };
+      // Boş/geçersiz kutu: hareket başındaki değerle kapatılır (mağazada
+      // 'dragging' ve hayalet takılı kalmaz); kutu o değeri yeniden gösterir
+      const cancel = () => {
+        if (!this.dragging) {
+          const cur = this.currentValue();
+          if (typeof cur === 'number') this.field?.setValue(toShow(cur), true);
+          return;
         }
+        const cur0 = this.currentValue();
+        const from = this.gestureFrom ?? (typeof cur0 === 'number' ? cur0 : null);
+        if (from !== null) store.setKnob(k.id as KnobId, from, 'change');
+        this.endGesture();
+        const cur = this.currentValue();
+        if (typeof cur === 'number') this.field?.setValue(toShow(cur), true);
       };
       this.field = new NumberField({
         id: k.id,
@@ -283,13 +322,25 @@ export class KnobField {
         explain: k.explain,
         onInput: (v) => send(this.clampFeasible(v, toShow), 'input'),
         onChange: (v) => send(this.clampFeasible(v, toShow), 'change'),
+        onInvalid: cancel,
+        // Odak 'change' olmadan gitti (ör. yazılan değer eskisiyle aynı):
+        // açık hareket kutudaki değerle (geçersizse başlangıçla) kapanır
+        onBlur: () => {
+          if (!this.dragging || !this.field) return;
+          const v = parseNumInput(this.field.num.value);
+          if (v === null) cancel();
+          else send(this.clampFeasible(v, toShow), 'change');
+        },
       });
       this.field.tools.append(this.dot, this.reset);
       this.el = this.field.el;
       // Duyarlılık ipucu: etiket üzerine gelince (+1 adımın etkisi)
+      // (tasarım değişince yeniden hesaplanır; rev başına bir kez)
       this.field.labelEl.addEventListener('mouseenter', () => {
-        if (this.tipShown) return;
-        this.tipShown = true;
+        const last = store.state.last;
+        const rev = last ? graphRev(last.graph) : '';
+        if (rev === this.tipRev) return;
+        this.tipRev = rev;
         const s = store.sensitivity(k.id as KnobId);
         const top = chipDeltas(s, 4).map((x) => x.text).join(' · ');
         this.field!.labelEl.title = `${k.explain}${top ? `\n+1 adım: ${top}` : ''}`;
@@ -315,6 +366,44 @@ export class KnobField {
       return Math.min(b, Math.max(a, v));
     }
     return v;
+  }
+
+  /** Mağazadaki (etkin varyant) değer */
+  private currentValue(): KnobValue | undefined {
+    try {
+      return this.knob.get(this.host.store.state.graph);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Sayı/kaydırıcı hareketi bitti: hayalet kapanır, yasak bölge yeniden */
+  private endGesture(): void {
+    this.dragging = false;
+    this.gestureFrom = null;
+    this.host.onDrag?.(false);
+    this.feasibleKey = '';
+  }
+
+  /** Sayı/kaydırıcı hareketi sürüyor mu (test, panel) */
+  get gestureOpen(): boolean {
+    return this.dragging;
+  }
+
+  /** Yasak bölgenin hesaplandığı rev ('' : yok) */
+  get feasibleFor(): string {
+    return this.feasibleKey;
+  }
+
+  /**
+   * Alan görünmüyorken tasarım değişti: eski aralık geçersiz (yeniden
+   * açılınca değer eski sınıra yapışmasın; boşta yeniden hesaplanır).
+   */
+  invalidateFeasible(rev: string): void {
+    if (this.feasibleKey === rev || (this.feasibleKey === '' && !this.feasible)) return;
+    this.feasibleKey = '';
+    this.feasible = null;
+    this.field?.setFeasible(null, null);
   }
 
   private baseValue(): KnobValue | undefined {
