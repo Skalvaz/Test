@@ -13,7 +13,7 @@ import type { TemplateId } from '../../design/templates';
 import { cellCompare, type CellCompareInput } from './cellCompare';
 import { focusOnCanvas, keyOwnedByTarget, plainKey } from './keys';
 import { parseNumInput } from './KnobField';
-import { massPartTags, stationRows } from './ResultsPanel';
+import { MASS_NAMES, massPartTags, stationRows } from './ResultsPanel';
 import { familyViewKey } from './WorkshopPanel';
 
 const ISA = { altitude: 0, mach: 0, isaDev: 0 };
@@ -139,6 +139,11 @@ describe('şablonlar: kütle şeridi vurgusu ve istasyon tablosu', () => {
       expect(tags.length, `${id}: ${k}`).toBeGreaterThan(0);
       for (const t of tags) expect(PART_TAGS).toContain(t);
     }
+  });
+
+  it.each(ids)('%s: her kütle kaleminin Türkçe adı var (şeritte anahtar görünmez)', (id) => {
+    const sm = summarize(buildEngine(TEMPLATES[id]!));
+    for (const k of Object.keys(sm.massParts)) expect(MASS_NAMES[k], `: ${k}`).toBeTruthy();
   });
 
   it.each(ids)('%s: istasyon tablosu 2, 3, 4, 5, 9 içerir; T, P, W sonlu', (id) => {

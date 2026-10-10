@@ -32,11 +32,13 @@ export interface ResultsCallbacks {
 }
 
 /** Kütle şeridinin dilim adları ve renkleri */
-const MASS_NAMES: Record<string, string> = {
+export const MASS_NAMES: Record<string, string> = {
   fan: 'Fan', lpc: 'LPC', booster: 'Booster', hpc: 'HPC', combustor: 'Yanma odası', hpt: 'HPT', lpt: 'LPT',
   nozzle: 'Lüle', afterburner: 'Art yakıcı', mixer: 'Karıştırıcı', inlet: 'Giriş', nacelle: 'Kaporta', casing: 'Gövde',
   propeller: 'Pervane', gearbox: 'Redüktör', shafts: 'Miller', accessories: 'Aksesuarlar', shaft: 'Çıkış mili', bypassDuct: 'Baypas kanalı',
   externals: 'Dış donanım', ducts: 'Kanallar', frames: 'Taşıyıcı çerçeveler', other: 'Diğer',
+  // Entegrasyon (dalga 2): şablon kütle kalemlerinin eksik adları (şeritte İngilizce anahtar görünüyordu)
+  exhaust: 'Egzoz', fanCase: 'Fan muhafazası', jetPipe: 'Jet borusu', outputShaft: 'Çıkış mili',
 };
 const MASS_COLORS = ['#2ee6d6', '#3d9bff', '#8b7bff', '#ff5cf0', '#ff7a45', '#ffb020', '#d9e36b', '#3ddc84', '#7b8a99', '#c47bff', '#4fd1ff', '#ff4d3d'];
 
