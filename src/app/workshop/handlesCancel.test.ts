@@ -4,7 +4,7 @@
  * kullanıcının bırakmadığı ara değer tasarıma işlenmez.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { WorkshopHandles } from './Handles';
+import { DragGesture, WorkshopHandles } from './Handles';
 
 type Call = [string, number, string];
 
@@ -21,13 +21,17 @@ function dragging() {
     pending: 0.64,
     sent: 0.6,
     pointerId: 7,
+    // Eşiği geçmiş (mağazaya 'start' gitmiş) sürükleme
+    gesture: Object.assign(new DragGesture('frontTip', 0.5, 0, 0, 0, 1, { lo: 0, hi: 2 }), { live: true }),
     items: [],
     controlsWere: true,
     host: { controls: { enabled: false } },
     opts: {},
     readout: { classList: cls },
     layer: { classList: cls },
-    store: { dragHandle: (id: string, v: number, ph: string) => calls.push([id, v, ph]) },
+    store: { dragHandle: (id: string, v: number, ph: string) => calls.push([id, v, ph]),
+      cancelDrag: (id: string) => calls.push([id, NaN, 'cancel']),
+    },
   });
   return { h: o as unknown as WorkshopHandles & Record<string, unknown>, calls };
 }
@@ -40,7 +44,7 @@ describe('tutamaç: yarım sürükleme iptali', () => {
   it('gizlenince başlangıç değerine döner, ara değer işlenmez', () => {
     const { h, calls } = dragging();
     h.setVisible(false);
-    expect(calls).toEqual([['frontTip', 0.5, 'end']]);
+    expect(calls).toEqual([['frontTip', NaN, 'cancel']]);
     expect((h as unknown as { dragging: unknown }).dragging).toBe(null);
     expect((h as unknown as { host: { controls: { enabled: boolean } } }).host.controls.enabled).toBe(true);
   });
@@ -48,7 +52,7 @@ describe('tutamaç: yarım sürükleme iptali', () => {
   it('atılınca da başlangıca döner (cancelDrag)', () => {
     const { h, calls } = dragging();
     (h as unknown as { cancelDrag(): void }).cancelDrag();
-    expect(calls).toEqual([['frontTip', 0.5, 'end']]);
+    expect(calls).toEqual([['frontTip', NaN, 'cancel']]);
     // İkinci çağrı bir şey yapmaz
     (h as unknown as { cancelDrag(): void }).cancelDrag();
     expect(calls.length).toBe(1);

@@ -43,25 +43,39 @@
  * de tutulabilir). Seçili modülün tutamaçları opak, diğerleri %35 (seçim
  * yoksa hepsi opak); kilitli tutamaç gri, üzerine gelince nedeni okunur.
  *
- * ## Mağazayla akış (WorkshopStore'un mevcut API'si, değişiklik yok)
+ * ## Mağazayla akış (WorkshopStore API'si)
  *
  * - Konumlar `store.handles()`'tan (HandleSpec: dünya yarıçapı/z, sınır
  *   `range`, kademe çentikleri `snaps`, kilit nedeni `blocked`, bağlı
  *   düğme). Mağaza değişince (`subscribe`) yeniden okunur; sürüklerken
  *   mağaza sınırları sabit tutar.
- * - Basış: `store.dragHandle(id, başlangıç, 'start')` — kıyas noktası
- *   (`state.compare`) ve geri al mührü burada kurulur.
- * - Hareket: işaretçi olayları birleştirilir, karede en çok bir kez
- *   `store.dragHandle(id, hedef, 'move')` (input aşaması: sayılar her olayda,
- *   taslak 3B mağazanın kısmasıyla `onBuilt('draft')`).
+ * - Basış: mağazaya bir şey gitmez. İmleç `DRAG_THRESHOLD_PX` kıpırdayınca
+ *   `store.dragHandle(id, başlangıç, 'start')` — kıyas noktası
+ *   (`state.compare`) ve geri al mührü burada kurulur. Kıpırdamadan bırakılan
+ *   basış tıklamadır (yalnız odak): tasarım ve geri al yığını değişmez.
+ * - Hareket: göreli (DragGesture). Basılan noktanın tutamaç merkezine
+ *   uzaklığı değere geçmez; değer imlecin tutamaç doğrusundaki ilerleyişinin
+ *   `dragGain` katı kadar değişir (radyalde piksel başına en çok %0,4, Shift
+ *   ile ¼'ü). Tutamaç hep fiziksel ucun (sürüklenen değerin) üstünde
+ *   çizilir; kazanç < 1 iken imleç ondan önde gider. İşaretçi olayları
+ *   birleştirilir, karede en çok bir kez `store.dragHandle(id, hedef,
+ *   'move')` (input aşaması: sayılar her olayda, taslak 3B mağazanın
+ *   kısmasıyla `onBuilt('draft')`).
  * - Bırakış: `store.dragHandle(id, son hedef, 'end')` (change aşaması:
  *   taslak hemen, 250 ms sonra tam ayrıntı; tek geri al adımı).
+ * - İptal (başlangıç değerine döner, ara değer işlenmez): pointercancel,
+ *   yakalamanın bırakışsız düşmesi (lostpointercapture), pencere odağının
+ *   gitmesi, düğmesi bırakılmış fare hareketi (bırakış kaybolmuş), Esc
+ *   (`cancel()`), gizleme ve atma. Eşik geçildiyse `store.cancelDrag(id)`:
+ *   hareketin geri al kaydı silinir, yeni proje nesnesi ya da boş geri al
+ *   adımı oluşmaz. Sürüklerken bağlam menüsü açılmaz.
  * - Klavye: odaktaki tutamaç (Tab ile ya da son dokunulan) ←/→ ya da ↑/↓
  *   bir adım (eksenelde bir kademe), Shift ¼ adım; her basış tek
  *   `dragHandle(…, 'end')` (tek geri al adımı).
  * Hedef birimi tutamaç eksenine göre: radyal → yarıçap [m], eksenel → z [m].
  * Sürükleme düzlemi, tutamacın doğrusunu içeren ve kameraya en çok bakan
  * düzlemdir (overlay3d.dragAlong): yandan bakışta eksenden geçen düzlem.
+ * Doğru basışta dondurulur (taslaklar tutamacı kaydırsa da adımlar temiz).
  *
  * ## Kamu API'si
  *
@@ -73,6 +87,8 @@
  * - `hitTest(x, y)`: istemci pikselinde tutamaç kimliği ya da null
  *   (Picker.priority bununla bağlanır: tutamacın üzerinde parça seçilmez).
  * - `dragging`: sürüklenen tutamaç; `focused`: klavye odağı.
+ * - `cancel()`: süren sürüklemeyi iptal eder (App Esc'te çağırır); true:
+ *   iptal edilecek sürükleme vardı.
  * - `setVisible(v)`: test hücresinde/sihirbazda gizle.
  * - `onKey(e)`: App.onKey'den de çağrılabilir (odak tuvaldeyken); true
  *   dönerse olay tüketildi.
@@ -117,6 +133,8 @@ export interface HandleStore {
   readonly state: Readonly<WorkshopState>;
   handles(): HandleSpec[];
   dragHandle(id: HandleId, target: number, phase: 'start' | 'move' | 'end'): void;
+  /** Süren sürüklemeyi iz bırakmadan geri alır (tasarım, kıyas, geri al yığını) */
+  cancelDrag(id: HandleId): void;
   subscribe(fn: (s: WorkshopState) => void): () => void;
 }
 
@@ -172,6 +190,86 @@ export function clampTarget(spec: Pick<HandleSpec, 'range' | 'snaps'>, v: number
 /** Tutamacın meridyendeki değeri (radyal: yarıçap, eksenel: z); mağaza dünyası [0, r, z] */
 const valueOf = (s: HandleSpec) => (s.axis === 'radial' ? s.world[1] : s.world[2]);
 
+/** Sürükleme eşiği [px]: daha az kıpırdayan basış tıklamadır, tasarıma dokunmaz */
+export const DRAG_THRESHOLD_PX = 3;
+/**
+ * Radyal tutamaçta ekran pikseli başına en çok göreli değişim. 1:1 izleme
+ * küçük motorda aşırı duyarlıydı (¾ açıda turbojet 1 px ≈ 9 mm, uç yarıçapı
+ * 0,4 m: 40 px → çap ×1,7, hava ×2,8); 0,4 %/px ile 40 px → çap ×1,16,
+ * hava ×1,35. Kazanç hiçbir zaman 1'i aşmaz: tutamaç imleçten öne geçmez.
+ */
+export const RADIAL_REL_PER_PX = 0.004;
+/** Shift basılıyken ince ayar kazancı */
+export const FINE_GAIN = 0.25;
+
+/**
+ * Sürükleme kazancı: imlecin tutamaç doğrusundaki hareketinin kaçı değere
+ * geçer. Eksenelde 1 (kademe çentikleri zaten ayrık); radyalde piksel başına
+ * göreli değişim `RADIAL_REL_PER_PX`'i aşmayacak kadar (en çok 1).
+ * `unitsPerPx`: tutamaç doğrusu boyunca bir ekran pikselinin dünya boyu.
+ */
+export function dragGain(axis: 'radial' | 'axial', value0: number, unitsPerPx: number): number {
+  if (axis !== 'radial' || !(unitsPerPx > 0) || !Number.isFinite(unitsPerPx) || !(value0 > 0)) return 1;
+  return Math.min(1, (RADIAL_REL_PER_PX * value0) / unitsPerPx);
+}
+
+/**
+ * Bir basışın sürükleme hesabı (DOM'suz, test edilebilir). Değer göreli
+ * ilerler: basılan noktanın tutamaç merkezine uzaklığı (tutma kayması)
+ * değere geçmez, ilk harekette sıçrama olmaz. İmleç `DRAG_THRESHOLD_PX`'ten
+ * az kıpırdarsa basış tıklamadır (`live` false kalır). Her harekette
+ * Shift'e göre kazanç seçilir (sürükleme ortasında Shift'e basmak sıçratmaz);
+ * değer sınıra kırpılır, sınırdan geri dönüş hemen tepki verir.
+ */
+export class DragGesture {
+  /** Eşik geçildi: mağazaya 'start' gitti */
+  live = false;
+  /** Sürekli hedef (sınıra kırpılmış; eksenel çentiğe yapıştırılmamış) */
+  value: number;
+  private lastT: number;
+  private lo: number;
+  private hi: number;
+
+  constructor(
+    readonly id: HandleId,
+    /** Başlangıç değeri (tutamaç merkezi) */
+    readonly start: number,
+    /** Basış noktası [istemci px] */
+    readonly x0: number,
+    readonly y0: number,
+    /** Basış noktasının tutamaç doğrusundaki karşılığı (null: doğru bakışa paralel) */
+    t0: number | null,
+    readonly gain: number,
+    range: { lo: number; hi: number },
+  ) {
+    this.value = start;
+    this.lastT = t0 ?? NaN;
+    this.lo = Math.min(range.lo, range.hi);
+    this.hi = Math.max(range.lo, range.hi);
+  }
+
+  /**
+   * İşaretçi hareketi. `t`: imlecin tutamaç doğrusundaki karşılığı
+   * (kırpılmamış; null: hesaplanamadı). Döner: 'start' (eşik bu harekette
+   * geçildi), 'move' ya da null (henüz tıklama).
+   */
+  move(x: number, y: number, t: number | null, fine: boolean): 'start' | 'move' | null {
+    let started = false;
+    if (!this.live) {
+      if (Math.hypot(x - this.x0, y - this.y0) < DRAG_THRESHOLD_PX) return null;
+      this.live = started = true;
+    }
+    if (t !== null && Number.isFinite(t)) {
+      if (Number.isFinite(this.lastT)) {
+        const k = this.gain * (fine ? FINE_GAIN : 1);
+        this.value = Math.min(this.hi, Math.max(this.lo, this.value + k * (t - this.lastT)));
+      }
+      this.lastT = t;
+    }
+    return started ? 'start' : 'move';
+  }
+}
+
 /** Klavye adımı: eksenelde bir kademe, radyalde sınır aralığının 1/40'ı */
 export function keyStep(spec: Pick<HandleSpec, 'axis' | 'range' | 'snaps'>): number {
   if (spec.axis === 'axial' && spec.snaps && spec.snaps.length > 1) return Math.abs(spec.snaps[1] - spec.snaps[0]);
@@ -202,6 +300,7 @@ export class WorkshopHandles {
   private unsub: () => void;
   private lastState: Readonly<WorkshopState> | null = null;
   // Sürükleme
+  private gesture: DragGesture | null = null;
   private pending: number | null = null;
   private sent: number | null = null;
   private dragValue = 0;
@@ -246,6 +345,10 @@ export class WorkshopHandles {
     window.addEventListener('pointermove', this.onMove);
     window.addEventListener('pointerup', this.onUp);
     window.addEventListener('pointercancel', this.onCancel);
+    // Bırakış kaybolabilir (bağlam menüsü, Alt+Tab): pencere odağı gidince
+    // sürükleme geri alınır; sürüklerken bağlam menüsü açılmaz
+    window.addEventListener('blur', this.onBlur);
+    window.addEventListener('contextmenu', this.onContextMenu, true);
     this.unsub = store.subscribe((s) => this.onState(s));
     this.sync();
   }
@@ -270,12 +373,17 @@ export class WorkshopHandles {
       specs = [];
     }
     this.specs = specs;
-    // Kimlikler aynıysa öğeler yeniden kullanılır (odak ve üzerine gelme korunur)
-    const same = specs.length === this.items.length && specs.every((s, i) => this.items[i].spec.id === s.id);
-    if (!same) {
-      for (const it of this.items) it.el.remove();
-      this.items = specs.map((spec) => this.makeItem(spec));
-    } else specs.forEach((s, i) => (this.items[i].spec = s));
+    // Öğeler kimlikle yeniden kullanılır: odak, üzerine gelme ve sürüklenen
+    // noktanın işaretçi yakalaması korunur (öğe kalkarsa yakalama düşerdi)
+    const old = new Map(this.items.map((it) => [it.spec.id, it]));
+    this.items = specs.map((spec) => {
+      const it = old.get(spec.id);
+      old.delete(spec.id);
+      if (!it) return this.makeItem(spec);
+      it.spec = spec;
+      return it;
+    });
+    for (const it of old.values()) it.el.remove();
     for (const it of this.items) {
       const s = it.spec;
       it.el.title = s.blocked ?? s.label;
@@ -294,6 +402,10 @@ export class WorkshopHandles {
       attrs: { 'data-handle': spec.id, 'data-axis': spec.axis, role: 'slider', tabindex: '0' },
     });
     el.addEventListener('pointerdown', (e) => this.onDown(e, spec.id));
+    // Yakalama bırakış olmadan düştü (pencere değişti, menü açıldı): geri al
+    el.addEventListener('lostpointercapture', (e) => {
+      if (this.dragging === spec.id && e.pointerId === this.pointerId) this.cancelDrag();
+    });
     el.addEventListener('pointerenter', () => this.setHovered(spec.id));
     el.addEventListener('pointerleave', () => {
       if (this.hovered === spec.id && !this.dragging) this.setHovered(null);
@@ -326,7 +438,7 @@ export class WorkshopHandles {
     this.opts.ghost?.setBasis(this.u, this.rect);
 
     // Birleştirilmiş sürükleme hedefi: karede en çok bir kez mağazaya
-    if (this.dragging && this.pending !== null && this.pending !== this.sent) {
+    if (this.dragging && this.gesture?.live && this.pending !== null && this.pending !== this.sent) {
       this.sent = this.pending;
       this.store.dragHandle(this.dragging, this.pending, 'move');
     }
@@ -421,9 +533,13 @@ export class WorkshopHandles {
   /** Okuma kartının üç satırı (boş satır gizlenir): geometri · sonuç deltası · neden zinciri */
   readoutText(spec: HandleSpec): [string, string, string] {
     const s = this.store.state;
-    if (!this.dragging) {
+    if (!this.dragging || !this.gesture?.live) {
       if (spec.blocked) return [spec.label, spec.blocked, ''];
-      return [spec.label, spec.axis === 'radial' ? 'Sürükle: yarıçap · ok tuşları: adım' : 'Sürükle: kademe kademe · ok tuşları: bir kademe', ''];
+      return [
+        spec.label,
+        spec.axis === 'radial' ? 'Sürükle: yarıçap · Shift: ince ayar · ok tuşları: adım' : 'Sürükle: kademe kademe · ok tuşları: bir kademe',
+        '',
+      ];
     }
     const sum: DesignSummary | undefined = s.last?.summary;
     const cmp = s.compare;
@@ -471,17 +587,30 @@ export class WorkshopHandles {
     return best?.spec.id ?? null;
   }
 
-  /** İşaretçinin tutamaç doğrusundaki karşılığı (sınıra kırpılmış, sürekli) */
-  private targetAt(spec: HandleSpec, x: number, y: number): number | null {
-    const ray = rayFromScreen(this.host.camera, x, y, this.rect);
-    const t =
-      spec.axis === 'radial'
-        ? dragAlong(ray, new THREE.Vector3(0, 0, spec.world[2]), this.u)
-        : dragAlong(ray, this.u.clone().multiplyScalar(spec.world[1]), new THREE.Vector3(0, 0, 1));
-    if (t === null || !Number.isFinite(t)) return null;
-    // Eksenelde çentik değil sürekli hedef: mağaza kademeye yuvarlar (n' = 1 + round)
-    return clampTarget(spec, t, false);
+  /** Tutamaç doğrusu (dünya): radyalde (0, 0, z) + t·u, eksenelde u·r + t·Z */
+  private lineOf(spec: HandleSpec): { origin: THREE.Vector3; dir: THREE.Vector3 } {
+    return spec.axis === 'radial'
+      ? { origin: new THREE.Vector3(0, 0, spec.world[2]), dir: this.u.clone() }
+      : { origin: this.u.clone().multiplyScalar(spec.world[1]), dir: new THREE.Vector3(0, 0, 1) };
   }
+
+  /** İşaretçinin doğrudaki karşılığı t (kırpılmamış; çözümsüzse null) */
+  private paramAt(line: { origin: THREE.Vector3; dir: THREE.Vector3 }, x: number, y: number): number | null {
+    const t = dragAlong(rayFromScreen(this.host.camera, x, y, this.rect), line.origin, line.dir);
+    return t === null || !Number.isFinite(t) ? null : t;
+  }
+
+  /** Doğru boyunca, `v` noktasında bir ekran pikselinin dünya boyu */
+  private unitsPerPx(line: { origin: THREE.Vector3; dir: THREE.Vector3 }, v: number): number {
+    const e = 0.01;
+    const a = toScreen(this.host.camera, line.origin.clone().addScaledVector(line.dir, v), this.rect);
+    const b = toScreen(this.host.camera, line.origin.clone().addScaledVector(line.dir, v + e), this.rect);
+    const px = Math.hypot(b.x - a.x, b.y - a.y);
+    return px > 1e-6 ? e / px : Infinity;
+  }
+
+  /** Sürüklenen tutamacın doğrusu (basışta dondurulur: taslaklar konumu kaydırsa da Δt temiz kalır) */
+  private line: { origin: THREE.Vector3; dir: THREE.Vector3 } | null = null;
 
   private onDown(e: PointerEvent, id: HandleId): void {
     if (e.button !== 0 || this.dragging || !this.visible) return;
@@ -508,6 +637,14 @@ export class WorkshopHandles {
     this.dragging = id;
     this.dragStart = this.dragValue = valueOf(spec);
     this.pending = this.sent = null;
+    // Mağazaya henüz bir şey gitmez: eşik geçilince (beginLive) 'start'
+    const line = (this.line = this.lineOf(spec));
+    const gain = dragGain(spec.axis, this.dragStart, this.unitsPerPx(line, this.dragStart));
+    this.gesture = new DragGesture(id, this.dragStart, e.clientX, e.clientY, this.paramAt(line, e.clientX, e.clientY), gain, spec.range);
+  }
+
+  /** Eşik geçildi: kıyas noktası ve geri al mührü, hayalet, App'e haber */
+  private beginLive(id: HandleId, spec: HandleSpec): void {
     const last = this.store.state.last;
     const v = last ? Number(knobById(spec.coupled)?.get(last.graph)) : NaN;
     this.dragStartCoupled = Number.isFinite(v) ? v : null;
@@ -518,25 +655,48 @@ export class WorkshopHandles {
     this.opts.onDrag?.(id);
   }
 
-  private onMove = (e: PointerEvent): void => {
-    if (!this.dragging || e.pointerId !== this.pointerId) return;
-    const spec = this.specs.find((s) => s.id === this.dragging);
-    if (!spec) return;
-    const t = this.targetAt(spec, e.clientX, e.clientY);
-    if (t === null) return;
-    this.dragValue = spec.axis === 'axial' ? clampTarget(spec, t, true) : t;
-    this.pending = t;
-  };
+  /** Hareketi işler; false: sürükleme bu olayda geri alındı */
+  private track(e: PointerEvent): boolean {
+    const id = this.dragging;
+    const g = this.gesture;
+    if (!id || !g || !this.line) return false;
+    // Bırakış kaybolmuş (düğme basılı değil): ara değer işlenmez
+    if ((e.buttons & 1) === 0 && e.type === 'pointermove') {
+      this.cancelDrag();
+      return false;
+    }
+    const spec = this.specs.find((s) => s.id === id);
+    if (!spec) return true;
+    const step = g.move(e.clientX, e.clientY, this.paramAt(this.line, e.clientX, e.clientY), e.shiftKey);
+    if (!step) return true;
+    if (step === 'start') this.beginLive(id, spec);
+    this.dragValue = spec.axis === 'axial' ? clampTarget(spec, g.value, true) : g.value;
+    this.pending = g.value;
+    return true;
+  }
 
-  private onUp = (e: PointerEvent): void => {
+  private onMove = (e: PointerEvent): void => this.pointerMove(e);
+  private onUp = (e: PointerEvent): void => this.pointerUp(e);
+
+  private pointerMove(e: PointerEvent): void {
+    if (!this.dragging || e.pointerId !== this.pointerId) return;
+    this.track(e);
+  }
+
+  private pointerUp(e: PointerEvent): void {
     if (this.pointerId === null || e.pointerId !== this.pointerId) return;
     const id = this.dragging;
     if (!id) return;
-    const spec = this.specs.find((s) => s.id === id);
-    const t = spec ? this.targetAt(spec, e.clientX, e.clientY) : null;
-    const target = t ?? this.pending ?? this.dragValue;
+    this.track(e);
+    const g = this.gesture;
+    // Tıklama (eşik geçilmedi): tasarıma dokunulmaz, geri al adımı açılmaz
+    if (!g?.live) {
+      this.finishDrag(null);
+      return;
+    }
+    const target = g.value;
     this.finishDrag(() => this.store.dragHandle(id, target, 'end'));
-  };
+  }
 
   /** İşletim sistemi/tarayıcı hareketi kesti: kullanıcı bırakmadı, sürükleme geri alınır */
   private onCancel = (e: PointerEvent): void => {
@@ -544,42 +704,75 @@ export class WorkshopHandles {
     this.cancelDrag();
   };
 
+  /** Pencere odağı gitti (Alt+Tab, sistem menüsü): bırakış gelmeyebilir */
+  private onBlur = (): void => this.cancelDrag();
+
+  /** Sürüklerken sağ tık: tarayıcı menüsü bırakışı yutardı */
+  private onContextMenu = (e: Event): void => this.contextMenu(e);
+  private contextMenu(e: Event): void {
+    if (this.dragging) e.preventDefault();
+  }
+
   private finishDrag(commit: (() => void) | null): void {
     const was = this.dragging;
+    const live = !!this.gesture?.live;
     const item = this.items.find((x) => x.spec.id === was);
+    const pid = this.pointerId;
+    // Önce durum: yakalamanın bırakılması lostpointercapture'ı yeniden tetiklemesin
+    this.pointerId = null;
+    this.dragging = null;
+    this.gesture = null;
+    this.line = null;
+    this.pending = this.sent = null;
     try {
-      if (this.pointerId !== null) item?.el.releasePointerCapture(this.pointerId);
+      if (pid !== null) item?.el.releasePointerCapture(pid);
     } catch {
       /* yakalanmamıştı */
     }
-    this.pointerId = null;
-    this.dragging = null;
-    this.pending = this.sent = null;
     this.host.controls.enabled = this.controlsWere;
     document.body.classList.remove('ws-grabbing');
-    this.opts.ghost?.end();
+    if (live) this.opts.ghost?.end();
     // Mağaza 'end'de değerlendirir; tutamaçlar yeni konumdan okunur (sync)
-    commit?.();
-    if (was) this.opts.onDrag?.(null);
+    if (live) commit?.();
+    if (was && live) this.opts.onDrag?.(null);
   }
 
   /**
    * Yarım kalan sürüklemeyi geri alır (iptal, gizleme, atma): tasarım
    * başlangıç değerine döner; kullanıcının bırakmadığı ara değer işlenmez.
+   * Eşik geçilmemişse mağazaya hiçbir şey gitmez.
    */
   private cancelDrag(): void {
     const id = this.dragging;
     if (!id) return;
-    const v = this.dragStart;
-    this.finishDrag(() => this.store.dragHandle(id, v, 'end'));
+    this.finishDrag(() => this.store.cancelDrag(id));
+  }
+
+  /**
+   * Süren sürüklemeyi iptal eder: tasarım basıştaki değerine döner, ara
+   * değerler işlenmez, yörünge kontrolü geri açılır. App, Esc tuşunda
+   * (odak tuvaldeyken; odak tutamaçtaysa `onKey` zaten yakalar) çağırır.
+   * Sürükleme yoksa hiçbir şey yapmaz.
+   *
+   * @returns true: bir sürükleme iptal edildi (Esc tüketilmeli); false: sürükleme yoktu
+   */
+  cancel(): boolean {
+    if (!this.dragging) return false;
+    this.cancelDrag();
+    return true;
   }
 
   /* ---------------------------------------------------------------- */
   /* Klavye, görünürlük, test kancası                                   */
   /* ---------------------------------------------------------------- */
 
-  /** Odaktaki tutamacı oklarla oynatır (Shift ¼ adım). true: olay tüketildi */
+  /** Odaktaki tutamacı oklarla oynatır (Shift ¼ adım); Esc süren sürüklemeyi iptal eder. true: olay tüketildi */
   onKey(e: KeyboardEvent): boolean {
+    if (e.key === 'Escape' && this.cancel()) {
+      e.preventDefault();
+      e.stopPropagation();
+      return true;
+    }
     if (!this.visible || this.dragging || !this.focused || this.store.state.phase !== 'edit') return false;
     const dir = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 0;
     if (!dir) return false;
@@ -622,6 +815,8 @@ export class WorkshopHandles {
     window.removeEventListener('pointermove', this.onMove);
     window.removeEventListener('pointerup', this.onUp);
     window.removeEventListener('pointercancel', this.onCancel);
+    window.removeEventListener('blur', this.onBlur);
+    window.removeEventListener('contextmenu', this.onContextMenu, true);
     this.layer.remove();
     this.readout.remove();
   }

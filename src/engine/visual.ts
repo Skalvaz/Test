@@ -67,6 +67,145 @@ interface PartEntry {
 const HIGHLIGHT = new THREE.Color(0x2ee6d6);
 
 /**
+ * Vurgu nabzının saati: modelden bağımsız (modül düzeyi). Atölyede
+ * sürüklerken model saniyede 10–20 kez yeniden kurulur; her yeni modelin
+ * kendi `time`'ı sıfırdan başlasaydı nabız her kurulumda başa sarar,
+ * seçili modül titrerdi. Sahnedeki model `update`'te ilerletir.
+ */
+let pulseClock = 0;
+/**
+ * Son istenen vurgu kümesi (herhangi bir modelde). Yeni kurulan model bunu
+ * kurucuda devralır: App vurguyu karede bir kez, modeli yeniden kuran kare
+ * kancalarından ÖNCE yazar; devralma olmasa taslak model ilk karesinde
+ * vurgusuz çizilirdi. Yanlış devralma bir kare sürer (App her karede yazar).
+ */
+let lastHighlight: readonly PartId[] = [];
+/** Yeni modelin devralacağı vurgu kümesi (test için) */
+export function inheritedHighlight(): readonly PartId[] {
+  return lastHighlight;
+}
+/** Vurgulu parçanın ışıma şiddeti (nabız) */
+export function highlightPulse(t = pulseClock): number {
+  return 0.35 + 0.25 * Math.sin(t * 5);
+}
+
+/**
+ * Kesit kapalıyken seçilince "x-ışını" ile kabuğun içinden görünen parçalar
+ * (gövde, kaporta ya da nasel içinde kalanlar). Dış kabuklar (nasel, giriş,
+ * fan kasası, gövde) listede yok: zaten görünürler.
+ */
+export const XRAY_PARTS: ReadonlySet<PartId> = new Set<PartId>([
+  'fan',
+  'ogv',
+  'booster',
+  'hpc',
+  'combustor',
+  'hpt',
+  'lpt',
+  'afterburner',
+  'mixer',
+  'shafts',
+  'outputShaft',
+]);
+
+/**
+ * X-ışını malzemesi (Sprocket/CAD "gizli seçimi göster"): seçili iç modül,
+ * önündeki kabuğun içinden kenar ışımalı (fresnel) yarı saydam vurgu
+ * rengiyle görünür. Yalnız örtülen kısımda çizilir (GreaterDepth): parçanın
+ * doğrudan görünen yüzü normal nabızla parlar, üstüne ikinci kat binmez.
+ * Hafif negatif polygonOffset kendi yüzünde derinlik eşitliğinden doğan
+ * beneklenmeyi önler. Örneklemeli kanat dizileri (InstancedMesh) için
+ * `instanceMatrix` uygulanır. Bütün modellerde paylaşılır, atılmaz.
+ */
+let xrayMat: THREE.ShaderMaterial | null = null;
+function xrayMaterial(): THREE.ShaderMaterial {
+  if (xrayMat) return xrayMat;
+  xrayMat = new THREE.ShaderMaterial({
+    name: 'xray',
+    uniforms: { uColor: { value: HIGHLIGHT.clone() }, uPulse: { value: 1 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vN;
+      varying vec3 vV;
+      void main() {
+        vec4 p = vec4(position, 1.0);
+        vec3 n = normal;
+        #ifdef USE_INSTANCING
+          p = instanceMatrix * p;
+          n = mat3(instanceMatrix) * n;
+        #endif
+        vec4 mv = modelViewMatrix * p;
+        vN = normalize(normalMatrix * n);
+        vV = normalize(-mv.xyz);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor;
+      uniform float uPulse;
+      varying vec3 vN;
+      varying vec3 vV;
+      void main() {
+        float facing = abs(dot(normalize(vN), normalize(vV)));
+        float rim = pow(1.0 - facing, 2.2);
+        float a = (0.035 + 0.5 * rim) * uPulse;
+        gl_FragColor = vec4(uColor * (0.6 + 1.6 * rim), a);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    depthFunc: THREE.GreaterDepth,
+    blending: THREE.AdditiveBlending,
+    side: THREE.FrontSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -4,
+  });
+  return xrayMat;
+}
+
+/** Parça ağının x-ışını ikizi: aynı geometri (ve örnek matrisleri), çocuk olarak (dönen mille birlikte döner) */
+function xrayTwin(src: THREE.Mesh): THREE.Mesh {
+  const inst = src as THREE.InstancedMesh;
+  let twin: THREE.Mesh;
+  if (inst.isInstancedMesh) {
+    const t = new THREE.InstancedMesh(src.geometry, xrayMaterial(), inst.count);
+    // Örnek matrisleri paylaşılır; ikiz hiçbir zaman dispose edilmez (paylaşılan özniteliği silerdi)
+    t.instanceMatrix = inst.instanceMatrix;
+    t.count = inst.count;
+    twin = t;
+  } else twin = new THREE.Mesh(src.geometry, xrayMaterial());
+  twin.name = 'xray';
+  twin.userData.noClip = true;
+  twin.userData.noAO = true;
+  twin.userData.xray = true;
+  twin.renderOrder = 900;
+  twin.castShadow = false;
+  twin.receiveShadow = false;
+  twin.frustumCulled = src.frustumCulled;
+  twin.raycast = () => {};
+  src.add(twin);
+  return twin;
+}
+
+/**
+ * Ağaçtaki bütün x-ışını ikizlerini söker. Artımlı üretim (buildCache
+ * reuse) parça ağlarını eski modelden yeni modele taşır; eski modelin
+ * ikizleri o ağların çocuğu olarak gelir. Sökülmezse her yeniden kurulumda
+ * ağ başına bir ikiz daha birikir (eklemeli harmanlama: x-ışını her seferinde
+ * parlaklaşır) ve sahipsiz, kırpılmayan ikizler kesitte hayalet çizer.
+ * Kurucu, yeni modelin ilk karesinde eski ikizler görünmesin diye çağırır.
+ */
+export function stripXrayTwins(root: THREE.Object3D): number {
+  const stale: THREE.Object3D[] = [];
+  root.traverse((o) => {
+    if (o.userData.xray) stale.push(o);
+  });
+  for (const t of stale) t.parent?.remove(t);
+  return stale.length;
+}
+
+/**
  * Egzoz metalinin ısıl kızıllık çarpanı (jet borusu gaz sıcaklığıyla; 0:
  * kızarmaz). Kurumlu iç yüz güçlü, inconel kabuk daha zayıf parlar. Kuru
  * motorun sabit lülesi (engine/nozzle.js buildFixedNozzle) `nozzle`
@@ -233,6 +372,12 @@ export class EngineVisual {
   private plumeNorm: number;
   /** Vurgulu parçalar (highlight): termal döngüler bunların ışımasına dokunmaz */
   private highlighted = new Set<PartId>();
+  /** Kesit açık mı (setClipping): kapalıyken seçili iç parçalar x-ışınıyla görünür */
+  private cut = false;
+  /** setInteriorVisible(false) ile gizlenen iç parçalar */
+  private hiddenInterior = new Set<PartId>();
+  /** X-ışını ikizleri (parça → ikiz ağlar) */
+  private xray = new Map<PartId, THREE.Mesh[]>();
   private time = 0;
   private lastSurgeCount = 0;
 
@@ -255,6 +400,8 @@ export class EngineVisual {
     this.model = MODEL_BUILDERS[src.traits.layout](materials, src);
     // Bu ayrıntı seviyesinin önceki neslinden taşınmayan parçalar atılır
     endBuild();
+    // Taşınan parça ağlarında eski modelin x-ışını ikizleri kalmış olabilir
+    stripXrayTwins(this.model.group);
     const ex = this.model.exhaust;
     this.plume = buildExhaustPlume(ex.radius, ex.z);
     this.plumeBaseRadius = ex.radius;
@@ -330,6 +477,8 @@ export class EngineVisual {
         flameZone: comb.userData.flameZone,
       });
     }
+    // Önceki modelin vurgusu (sürüklerken taslak yeniden kurulumu): ilk kare de vurgulu
+    if (lastHighlight.length) this.highlight(lastHighlight.filter((p) => this.parts.has(p)));
   }
 
   private cradle: THREE.Object3D | null = null;
@@ -381,8 +530,33 @@ export class EngineVisual {
     return { z: i.z, radius: i.radius, y: i.y ?? 0 };
   }
 
+  /**
+   * Aynı yuvanın yeniden kurulumunda (atölyede sürüklerken taslak, 250 ms
+   * sonra tam ayrıntı) önceki modelin sürekli görsel durumunu devralır: mil
+   * ve pervane açıları, lüle alanı, metal sıcaklıkları, surge sayacı. Yoksa
+   * her kurulumda kanatlar sıfır açıya sıçrar, değişken lüle 1,4'ten yeniden
+   * açılır, kızıllık soğuktan başlar (saniyede 10–20 kurulumda hiç ısınmaz)
+   * ve çalışan motorun eski surge'ü yeniden patlardı. Ardından `update(snap,
+   * 0)` ile pal açısı ve lüle ilk karede de doğru çizilir (#19).
+   */
+  carryFrom(prev: EngineVisual) {
+    this.lpAngle = prev.lpAngle;
+    this.hpAngle = prev.hpAngle;
+    this.propAngle = prev.propAngle;
+    this.nozzleArea = prev.nozzleArea;
+    this.dryNozzleArea = prev.dryNozzleArea;
+    this.thermal = { ...prev.thermal };
+    this.time = prev.time;
+    this.lastSurgeCount = prev.lastSurgeCount;
+    this.shake = prev.shake;
+  }
+
   /** Sahneden çıkarılırken GPU kaynaklarını bırakır (malzeme klonları, geometri). */
   dispose() {
+    // Kendi x-ışını ikizleri: taşınan ağlarda yeni modelin altında kalmasın
+    // (ikiz geometri ve malzemeyi paylaşır, yalnız sökülür)
+    for (const twins of this.xray.values()) for (const t of twins) t.parent?.remove(t);
+    this.xray.clear();
     const geos = new Set<THREE.BufferGeometry>();
     const mats = new Set<THREE.Material>();
     this.root.traverse((o) => {
@@ -459,6 +633,8 @@ export class EngineVisual {
         m.needsUpdate = true;
       }
     });
+    this.cut = planes.length > 0;
+    this.syncXray();
   }
 
   /**
@@ -467,13 +643,60 @@ export class EngineVisual {
    * test hücresinde tek parça. Her karede çağrılabilir: aynı küme gelince
    * hiçbir şey yapmaz, kümeden çıkan parçaların malzemeleri hemen eski
    * ışımalarına döner (termal kızıllık bir sonraki update'te yeniden yazılır).
+   * Kümeye giren parçalar nabzın o anki değeriyle HEMEN boyanır: yeni kurulan
+   * model (sürüklerken taslak) update'i beklemeden ilk karesinde vurgulu
+   * çizilir. Kesit kapalıyken seçili iç parçalar x-ışınıyla görünür.
    */
   highlight(parts: PartId | readonly PartId[] | null) {
     const next = parts === null ? [] : typeof parts === 'string' ? [parts] : parts;
+    lastHighlight = [...next];
     if (next.length === this.highlighted.size && next.every((p) => this.highlighted.has(p))) return;
     const keep = new Set(next);
     for (const p of this.highlighted) if (!keep.has(p)) this.restore(p);
+    const added = next.filter((p) => !this.highlighted.has(p));
     this.highlighted = keep;
+    const pulse = highlightPulse();
+    for (const p of added) this.paint(p, pulse);
+    this.syncXray();
+  }
+
+  /** Parçanın malzemelerini vurgu rengi ve verilen nabız şiddetiyle boyar */
+  private paint(part: PartId, pulse: number) {
+    for (const m of this.parts.get(part)?.materials ?? []) {
+      m.emissive.copy(HIGHLIGHT);
+      m.emissiveIntensity = pulse;
+    }
+  }
+
+  /** X-ışını ikizleri olan parçalar (salt okunur; test ve kayıt için) */
+  get xrayParts(): PartId[] {
+    return [...this.xray.keys()];
+  }
+
+  /**
+   * X-ışınını vurgu kümesine ve kesite uydurur: kesit kapalıyken vurgulu iç
+   * parçaların (XRAY_PARTS) ağları görünür yapılır (setInteriorVisible
+   * gizlemiş olsa da) ve her birine x-ışını ikizi eklenir; kümeden çıkan ya
+   * da kesit açılınca ikizler kalkar, gizlenmiş iç parça yeniden gizlenir.
+   */
+  private syncXray() {
+    const want = new Set<PartId>();
+    if (!this.cut) for (const p of this.highlighted) if (XRAY_PARTS.has(p) && this.parts.has(p)) want.add(p);
+    for (const [p, twins] of this.xray) {
+      if (want.has(p)) continue;
+      for (const t of twins) t.parent?.remove(t);
+      this.xray.delete(p);
+      if (this.hiddenInterior.has(p)) for (const m of this.parts.get(p)?.meshes ?? []) m.visible = false;
+    }
+    for (const p of want) {
+      if (this.xray.has(p)) continue;
+      const twins: THREE.Mesh[] = [];
+      for (const m of this.parts.get(p)?.meshes ?? []) {
+        m.visible = true;
+        twins.push(xrayTwin(m as THREE.Mesh));
+      }
+      this.xray.set(p, twins);
+    }
   }
 
   /** Vurgulu parçalar (salt okunur) */
@@ -500,7 +723,11 @@ export class EngineVisual {
     if (this.source.traits.layout === 'nacelle') interior.push('gearbox', 'booster');
     for (const part of interior) {
       for (const m of this.parts.get(part)?.meshes ?? []) m.visible = v;
+      if (v) this.hiddenInterior.delete(part);
+      else this.hiddenInterior.add(part);
     }
+    // X-ışınlı (seçili) iç parça gizlenmez
+    for (const p of this.xray.keys()) for (const m of this.parts.get(p)?.meshes ?? []) m.visible = true;
   }
 
   /** Art yakıcı zon tutuşma sayacı (ses tetikleyicisi) */
@@ -665,15 +892,13 @@ export class EngineVisual {
     const vib = THREE.MathUtils.clamp((snap.vibration - 1.2) / 3, 0, 1);
     this.shake = Math.max(vib * 0.35, this.shake - dt * 1.8);
 
-    // Vurgulama (nabız): kümedeki bütün parçalar aynı fazda
+    // Vurgulama (nabız): kümedeki bütün parçalar aynı fazda; saat modelden
+    // bağımsız (yeniden kurulan model nabzı baştan başlatmaz)
+    pulseClock += dt;
     if (this.highlighted.size) {
-      const pulse = 0.35 + 0.25 * Math.sin(this.time * 5);
-      for (const part of this.highlighted) {
-        for (const m of this.parts.get(part)?.materials ?? []) {
-          m.emissive.copy(HIGHLIGHT);
-          m.emissiveIntensity = pulse;
-        }
-      }
+      const pulse = highlightPulse();
+      for (const part of this.highlighted) this.paint(part, pulse);
+      if (this.xray.size && xrayMat) xrayMat.uniforms.uPulse.value = 0.45 + 0.9 * (pulse - 0.1);
     }
     if (camera) this.effects.update(snap, dt, camera, this.propAngle);
   }
