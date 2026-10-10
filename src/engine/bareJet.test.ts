@@ -32,7 +32,7 @@ function namedMaterials(): Record<string, THREE.MeshStandardMaterial> {
   });
 }
 
-function variant(bpr: number, dry: boolean): EngineGraph {
+function variant(bpr: number, dry: boolean, fpr?: number): EngineGraph {
   const g = structuredClone(MILITARY_TURBOFAN_GRAPH);
   if (dry) {
     g.modules = g.modules.filter((m) => m.type !== 'afterburner');
@@ -40,7 +40,12 @@ function variant(bpr: number, dry: boolean): EngineGraph {
     n.style = 'fixed';
     delete n.flaps;
   }
-  (g.modules.find((m) => m.type === 'fan') as CompressorModule).bypassRatio = bpr;
+  const fan = g.modules.find((m) => m.type === 'fan') as CompressorModule;
+  fan.bypassRatio = bpr;
+  // Şablonun FPR'ı (4,3) BPR ≳ 0,8'de LPT diskini mile sığdırmaz
+  // (layouts/bare.ts checkLptDisk, tipli hata): yüksek BPR'da fiziksel FPR
+  if (bpr > 0.8) fan.pr = 3;
+  if (fpr !== undefined) fan.pr = fpr;
   return g;
 }
 
@@ -88,7 +93,10 @@ describe('baypas ayırıcısı (inceleme #14)', () => {
     ['kuru BPR 0,1', variant(0.1, true)],
     ['kuru BPR 0,3', variant(0.3, true)],
     ['kuru BPR 0,55', variant(0.55, true)],
-    ['kuru BPR 1,0', variant(1.0, true)],
+    ['kuru BPR 1,0 (FPR 3)', variant(1.0, true)],
+    ['kuru BPR 1,5 (FPR 3)', variant(1.5, true)],
+    ['kuru BPR 1,5 (FPR 2,2)', variant(1.5, true, 2.2)],
+    ['art yakıcılı BPR 1,5 (FPR 2,6)', variant(1.5, false, 2.6)],
   ];
 
   it.each(cases)('%s: çekirdek gövdesinin dışında, türbinden önce biter, kabuğun içinde', (_n, g) => {
@@ -106,6 +114,11 @@ describe('baypas ayırıcısı (inceleme #14)', () => {
     }
     // Sonda gövdeye yakın (asılı bir sac kenarı değil)
     expect(p[p.length - 1].x - env(zEnd)).toBeLessThan(0.012);
+    // Flanş payı yumuşak girer: sacta tek segmentlik radyal kırık yok
+    // (eskiden sert eşikle BPR 1,5 / FPR 2,2'de 14 mm, kesitte ~30° basamak)
+    let jump = 0;
+    for (let i = 1; i < p.length; i++) jump = Math.max(jump, Math.abs(p[i].x - p[i - 1].x));
+    expect(jump).toBeLessThan(0.0075);
   });
 });
 

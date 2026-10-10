@@ -786,6 +786,32 @@ describe('kart yolu: sihirbaz gibi uyarısız, EGT payı pozitif, düğmeler ara
     expect(r.seen).not.toContain('hotStart');
   }, SLOW);
 
+  it('bakım: geri alma kümesi uyarıyı gidermezse yanıltıcı not yok; kalan sorun residual notta (TP → fan → ayrık akış)', () => {
+    const tp = TEMPLATES.turboprop!;
+    const fan = applyArchitecture(tp, ok(resolveChange(architectureOf(tp), 'lpLoad', 'fan')).arch);
+    const next = ok(resolveChange(architectureOf(fan), 'exhaust', 'separate')).arch;
+    const { graph, notes } = applyArchitectureReport(fan, next);
+    const ev = evaluate(graph, { reference: referenceFor(next) });
+    if ('error' in ev) throw new Error(ev.error.title);
+    // Korunan çekirdek akışı (TP'nin küçük çekirdeği) kaportalı TF için küçük:
+    // aile değerleri EGT payını (−75 K) düzeltir ama HPC son kanadı kısa kalır
+    expect(ev.findings.filter((f) => f.severity !== 'info').map((f) => f.id)).toEqual(['hpcExitBlade']);
+    expect(ev.summary.egtMargin).toBeGreaterThan(0);
+    // Kalan sorun: değeri değişmeyen, nedenini ve önerisini söyleyen not (temel düğme)
+    const res = notes.filter((n) => n.residual);
+    expect(res).toHaveLength(1);
+    expect(res[0]).toMatchObject({ knob: 'engine.massFlow', from: graph.massFlow, to: graph.massFlow });
+    expect(res[0].reason).toMatch(/HPC son kanadı .* gidermiyor\. Daha büyük motor/);
+    // Genel öneri "daha düşük HPC PR" diyor, ama HPC PR az önce EGT için geri
+    // alındı: not bu çelişkiyi açıklar, önce hava akışını önerir
+    expect(res[0].reason).toMatch(/HPC basınç oranı ise önceki sorun \(.*EGT payı.*\) için ailenin değerinde tutuldu.*önce .* ile dene\./);
+    // Geri alınanlar yalnız gerekenler (T4, HPC PR); notları giderdikleri sorunu
+    // anar ve motorda sorun kaldığını söyler (eskiden 7 düğme "kullanıldı" diyordu)
+    const reverted = notes.filter((n) => /ailenin değeri kullanıldı/.test(n.reason));
+    expect(reverted.map((n) => n.knob).sort()).toEqual(['combustor.tit', 'hpc.pr']);
+    for (const n of reverted) expect(n.reason).toMatch(/EGT payı.*başka bir sorun kalıyor/);
+  }, SLOW);
+
   it('#1: HPC PR serbest türbinli motorla taşınmaz (anlamı toplam basınç oranı), notta', () => {
     for (const [seed, next] of [
       [TEMPLATES.turbofan!, TP],

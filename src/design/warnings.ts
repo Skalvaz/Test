@@ -15,7 +15,7 @@
 import { evaluateRules, type Finding, type Rule, type Severity } from './core/rules';
 import type { KnobValue } from './core/knob';
 import { GraphError } from './errors';
-import { FlowpathError, flowFunction, machFromFlow, type RowKey } from './flowpath';
+import { FlowpathError, flowFunction, LP_LOAD, machFromFlow, type RowKey } from './flowpath';
 import { buildEngine, type BuiltEngine } from './graph';
 import { clampEngineKnob, knobById, knobCtx, knobRange, type KnobCtx } from './knobs';
 import { fmtNum, fmtSci, summarize, type DesignSummary, type LimitGauge } from './summary';
@@ -1301,6 +1301,33 @@ export function isDesignFailure(e: unknown): boolean {
   return e instanceof GraphError || e instanceof FlowpathError || e instanceof DesignError || e instanceof NonFiniteDesignError;
 }
 
+/** Türbin çıkış Mach'ı bunun altındaysa kapanmanın nedeni oyuncunun Mach'ı sayılır (aralık 0,15–0,55) */
+const TURBINE_LOW_EXIT_MACH = 0.2;
+
+/**
+ * Türbin kanalının genişlemeden kapanma nedeni ve temel düğmeleri: HPT
+ * kompresörü çevirir (T4, HPC PR); LPT milin yüküne göre fanı (BPR, FPR) ya
+ * da LPC'yi (LPC PR, T4) çevirir. Serbest güç türbininde, yükü bilinmeyen
+ * LPT'de ya da çıkış Mach'ı çok düşükken (asıl neden uzman düğmesi) null:
+ * genel metin kullanılır.
+ */
+function turbineExpansion(e: FlowpathError, name: string): { cause: string; advice: string; knobs: string[]; glossary: TeachingError['glossary'] } | null {
+  const mach1 = e.data?.mach1;
+  if (mach1 !== undefined && mach1 <= TURBINE_LOW_EXIT_MACH) return null;
+  if (e.group === 'hpt') {
+    return { cause: 'türbin kompresörü çevirmek için gazı çok genişletiyor', advice: "T4'ü artır ya da HPC basınç oranını düşür", knobs: ['combustor.tit', 'hpc.pr'], glossary: 'stageLoading' };
+  }
+  if (e.group !== 'lpt') return null;
+  switch (e.data?.lpLoad) {
+    case LP_LOAD.fan:
+      return { cause: 'türbin fanı çevirmek için gazı çok genişletiyor', advice: "BPR ya da FPR'yi düşür", knobs: ['fan.bypassRatio', 'fan.pr'], glossary: 'bpr' };
+    case LP_LOAD.lpc:
+      return { cause: `türbin LPC'yi çevirmek için gazı çok genişletiyor`, advice: `LPC basınç oranını düşür ya da T4'ü artır (${name} daha az genişletir)`, knobs: ['lpc.pr', 'combustor.tit'], glossary: 'stageLoading' };
+    default:
+      return null;
+  }
+}
+
 export function translateError(e: unknown): TeachingError {
   const raw = e instanceof Error ? e.message : String(e);
   if (e instanceof GraphError) {
@@ -1318,6 +1345,23 @@ export function translateError(e: unknown): TeachingError {
     const name = MODULE_NAMES[e.group] ?? e.group.toUpperCase();
     switch (e.code) {
       case 'annulus.closed':
+        // Türbin çıkışı: kanal gazın genişlemesiyle büyür (LPT'de milin
+        // yükünün, HPT'de kompresörün işi); oyuncunun temel düğmeleri de
+        // önerilir. Neden oyuncunun düşürdüğü çıkış Mach'ıysa genel metin.
+        if (e.group === 'lpt' || e.group === 'hpt') {
+          const why = turbineExpansion(e, name);
+          if (why) {
+            return {
+              title: `${name} kanalı kapanıyor`,
+              text: `${name} çıkışında kanal kapanıyor: ${why.cause}, çıkışta büyüyen akış uç daralmasıyla kanala sığmıyor. ${why.advice}; uzman ayarda ${name} uç genişlemesini (taper) ya da çıkış Mach'ını artır.`,
+              knobs: [...why.knobs, ...(e.knobs.length ? e.knobs : [`${e.group}.taper`, `${e.group}.mach.1`])],
+              glossary: why.glossary,
+              source: 'flowpath',
+              group: e.group,
+              raw,
+            };
+          }
+        }
         return {
           title: `${name} kanalı kapanıyor`,
           text: `${name} çıkışında kanal kapanıyor: uç çok daralıyor ya da çıkış Mach'ı çok düşük.`,
@@ -1336,6 +1380,41 @@ export function translateError(e: unknown): TeachingError {
           glossary: 'refVelocity',
           source: 'flowpath',
           group: 'combustor',
+          raw,
+        };
+      }
+      case 'turbine.diskRoom': {
+        // layouts/bare.ts checkLptDisk: göbek kanat kökü + disk payıyla mile iniyor
+        const d = e.data ?? {};
+        const cm = (v: number | undefined) => (v !== undefined && Number.isFinite(v) ? `${fmtNum(v * 100, 1)} cm` : '?');
+        const why = turbineExpansion(e, name);
+        const expert = `uzman ayarda ${name} uç genişlemesini (taper) ya da çıkış Mach'ını artır.`;
+        return {
+          title: `${name} diski mile sığmıyor`,
+          // Gereken pay da yazılır: göbek milin iki katıyken bile neden
+          // sığmadığı görünsün (kök + jant göbeğin içine iner, disk göbeği mili sarar)
+          text:
+            `${name} son kademesinin göbeği ${cm(d.hub)}; kanat kökü ve jant bunun ${cm(d.hub !== undefined && d.rim !== undefined ? d.hub - d.rim : undefined)} içine iniyor (jant tabanı ${cm(d.rim)}). ` +
+            `Disk göbeğinin ${cm(d.shaft)}'lik mili sarması için jant tabanı en az ${cm(d.need)} olmalı. ` +
+            (why ? `${why.cause[0].toUpperCase()}${why.cause.slice(1)}; büyüyen çıkış kanalı içe, mile doğru açılıyor. ${why.advice}; ${expert}` : `Çıkış kanalı içe, mile doğru açılıyor: ${expert}`),
+          knobs: [...(why?.knobs ?? []), ...e.knobs.filter((k) => !why?.knobs.includes(k))],
+          glossary: why?.glossary ?? 'stageLoading',
+          source: 'flowpath',
+          group: e.group,
+          raw,
+        };
+      }
+      case 'stages.invalid': {
+        // sizeRow: x = Δh/(ψ·U²) sonlu değil ya da > 1000 (evaluate bunu
+        // önceden 'knob.range'e çevirir; doğrudan buildEngine çağrısında buradan)
+        const tip = e.group === 'hpc' || e.group === 'hpt' ? ['hpc.tipSpeed'] : e.group === 'lpt' ? ['fan.tipSpeed', 'lpc.tipSpeed', 'lpt.tipSpeed'] : e.group === 'lpc' ? ['lpc.tipSpeed', 'fan.tipSpeed'] : [`${e.group}.tipSpeed`];
+        return {
+          title: `${name} kademe sayısı hesaplanamıyor`,
+          text: `${name} kademe sayısı hesaplanamıyor: kademe başına iş uç hızının karesi ve yüklemeyle orantılı, ikisi sıfıra yaklaşınca kademe sayısı sonsuza gider. Milin uç hızını ya da ${name} kademe yüklemesini artır.`,
+          knobs: e.knobs.length ? [...e.knobs] : [...tip, `${e.group}.loading`],
+          glossary: 'stageLoading',
+          source: 'flowpath',
+          group: e.group,
           raw,
         };
       }
