@@ -9,7 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import type { BuiltEngine } from '../design/graph';
 import { knobById } from '../design/knobs';
-import { archNotesText, WORKSHOP_STORAGE_KEY, WorkshopStore, type WorkshopStoreOptions } from './store';
+import { archNotesHeadline, archNotesText, WORKSHOP_STORAGE_KEY, WorkshopStore, type WorkshopStoreOptions } from './store';
 import { FAKE_DEPS, memoryStorage } from './testing';
 
 let errSpy: MockInstance;
@@ -165,12 +165,13 @@ describe('#23 mimari notları oyuncuya', () => {
     });
     s.startFromTemplate('turbojet');
     s.setArchitecture('combustor', 'canAnnular');
-    const text = s.state.notice!.text;
-    expect(text).toContain('Yeni aile AT-2 açıldı; AT-1 duruyor.');
-    expect(text).toContain('Şunlar da değişti: T4 (türbin giriş sıcaklığı) 1.700 → 1.550 K, HPC basınç oranı 22,0 → 18,0: ');
-    expect(text).toContain('HPC son kanadı kısa');
+    // Ana metin kısa (3B modeli kapatmaz); notlar "Ayrıntılar"da
+    const { text, detail } = s.state.notice!;
+    expect(text).toBe('Yeni aile AT-2 açıldı; AT-1 duruyor. 2 değer de değişti; bir uyarı kalıyor (ayrıntılarda).');
+    expect(detail).toContain('Şunlar da değişti: T4 (türbin giriş sıcaklığı) 1.700 → 1.550 K, HPC basınç oranı 22,0 → 18,0: ');
+    expect(detail).toContain('HPC son kanadı kısa');
     // Aynı nedenli notlar bir kez yazılır
-    expect(text.split('ailenin değeri kullanıldı').length - 1).toBe(1);
+    expect(detail!.split('ailenin değeri kullanıldı').length - 1).toBe(1);
   });
 
   it('gerçek mimari: TP → fan → ayrık akışta geri alınan değerler ve kalan uyarı bildirilir', () => {
@@ -178,10 +179,11 @@ describe('#23 mimari notları oyuncuya', () => {
     s.startFromTemplate('turboprop');
     s.setArchitecture('lpLoad', 'fan');
     s.setArchitecture('exhaust', 'separate');
-    const text = s.state.notice!.text;
-    expect(text).toMatch(/^Yeni aile AT-3 açıldı; AT-2 duruyor\./);
-    expect(text).toContain('Şunlar da değişti: ');
-    expect(text).toMatch(/HPC son kanadı .* gidermiyor\. Daha büyük motor/);
+    const { text, detail } = s.state.notice!;
+    expect(text).toMatch(/^Yeni aile AT-3 açıldı; AT-2 duruyor\..* değer de değişti; bir uyarı kalıyor \(ayrıntılarda\)\.$/);
+    expect(text.length).toBeLessThan(400);
+    expect(detail).toContain('Şunlar da değişti: ');
+    expect(detail).toMatch(/HPC son kanadı .* gidermiyor\. Daha büyük motor/);
   }, 120_000);
 
   it('yalnız applyArchitecture veren testler (taklit) notsuz çalışır', () => {
@@ -189,6 +191,14 @@ describe('#23 mimari notları oyuncuya', () => {
     s.startFromTemplate('turbojet');
     s.setArchitecture('combustor', 'canAnnular');
     expect(s.state.notice!.text).toBe('Yeni aile AT-2 açıldı; AT-1 duruyor.');
+    expect(s.state.notice!.detail).toBeUndefined();
+  });
+
+  it('archNotesHeadline: değişen düğme sayısı (aynı düğme bir kez) ve kalan uyarı', () => {
+    expect(archNotesHeadline([])).toBe('');
+    const r = 'Neden.';
+    expect(archNotesHeadline([{ knob: 'a', from: 1, to: 2, reason: r }, { knob: 'a', from: 2, to: 3, reason: r }])).toBe('1 değer de değişti (ayrıntılarda).');
+    expect(archNotesHeadline([{ knob: 'm', from: 4, to: 4, residual: true, reason: r }])).toBe('Bir uyarı kalıyor (ayrıntılarda).');
   });
 
   it('archNotesText: değer değişmeyen not yalnız nedeniyle, bilinmeyen düğme kimliğiyle', () => {

@@ -536,6 +536,19 @@ input[type='range'] { width: 100%; accent-color: var(--accent); }
   animation: toastin 0.25s ease-out;
   max-width: 100%;
 }
+/* Ayrıntılı bildirim (atölye mimari notları): tıklanabilir, açıklama kapalı başlar */
+.toast.has-detail { pointer-events: auto; align-items: flex-start; }
+.toast.has-detail .tag { margin-top: 2px; }
+.toast-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.toast-detail summary { cursor: pointer; color: var(--accent); font-size: 12px; width: fit-content; }
+.toast-detail p {
+  margin: 6px 0 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
 .toast.caution { border-color: rgba(255, 176, 32, 0.6); }
 .toast.warning { border-color: rgba(255, 77, 61, 0.7); background: #1a0b0a; }
 .toast .tag {

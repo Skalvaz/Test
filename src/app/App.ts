@@ -418,8 +418,9 @@ export class App {
       if (this.wsGhost?.active && s.last && !this.wsHandles?.dragging) this.wsGhost.update(s.last.built);
       if (s.notice && s.notice.seq !== this.wsNoticeSeq) {
         this.wsNoticeSeq = s.notice.seq;
-        // Uzun bildirim (mimari değişiminin "Şunlar da değişti" notları) okunacak kadar kalır
-        this.toasts.show(s.notice.text, 'info', Math.min(20000, Math.max(4500, 55 * s.notice.text.length)));
+        // Ayrıntılı bildirim (mimari değişiminin notları) okunacak kadar kalır; açıkken kapanmaz
+        const ms = Math.min(12000, Math.max(4500, 55 * s.notice.text.length + (s.notice.detail ? 3000 : 0)));
+        this.toasts.show(s.notice.text, 'info', ms, s.notice.detail);
       }
       this.refreshWorkshop();
     });

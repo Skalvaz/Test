@@ -136,8 +136,12 @@ export interface WorkshopState {
   dragging: HandleId | KnobId | null;
   canUndo: boolean;
   canRedo: boolean;
-  /** Kısa bildirim ("Yeni aile AT-2 açıldı; AT-1 duruyor."); seq her bildirimde artar */
-  notice: { text: string; seq: number } | null;
+  /**
+   * Kısa bildirim ("Yeni aile AT-2 açıldı; AT-1 duruyor."); seq her
+   * bildirimde artar. `detail`: uzun açıklama (mimari değişiminin notları),
+   * bildirimin kapalı "Ayrıntılar" bölümünde gösterilir.
+   */
+  notice: { text: string; detail?: string; seq: number } | null;
   /** Sihirbaz (yalnız phase 'wizard') */
   wizard: WizardState | null;
 }
@@ -234,6 +238,18 @@ export function archNotesText(notes: readonly ArchNote[]): string {
   }
   const parts = [...groups].map(([reason, items]) => `${items.join(', ')}: ${reason}`);
   return [...(parts.length ? [`Şunlar da değişti: ${parts.join(' ')}`] : []), ...residual].join(' ');
+}
+
+/**
+ * Mimari notlarının bildirimdeki kısa özeti (ayrıntısı `archNotesText`):
+ * "8 değer de değişti; bir uyarı kalıyor." Not yoksa boş.
+ */
+export function archNotesHeadline(notes: readonly ArchNote[]): string {
+  const changed = new Set(notes.filter((n) => !n.residual && n.from !== n.to).map((n) => n.knob)).size;
+  const residual = notes.some((n) => n.residual || n.from === n.to);
+  if (!changed && !residual) return '';
+  if (!changed) return 'Bir uyarı kalıyor (ayrıntılarda).';
+  return `${changed} değer de değişti${residual ? '; bir uyarı kalıyor' : ''} (ayrıntılarda).`;
 }
 
 export interface WorkshopStoreOptions {
@@ -437,8 +453,8 @@ export class WorkshopStore {
     for (const l of this.listeners) l(this.s);
   }
 
-  private notify(text: string): void {
-    this.set({ notice: { text, seq: ++this.noticeSeq } });
+  private notify(text: string, detail?: string): void {
+    this.set({ notice: detail ? { text, detail, seq: ++this.noticeSeq } : { text, seq: ++this.noticeSeq } });
   }
 
   private snap(): Snap {
@@ -1106,8 +1122,9 @@ export class WorkshopStore {
     });
     this.set({ selected: null });
     const extra = implied.length ? ` (${implied.join('; ')})` : '';
-    const changed = archNotesText(notes);
-    this.notify(`Yeni aile ${code} açıldı; ${oldCode} duruyor.${extra}${dropped ? ` ${dropped} kapatıldı.` : ''}${changed ? ` ${changed}` : ''}`);
+    // Notlar bildirimin "Ayrıntılar" bölümünde; ana metinde yalnız özeti (3B modeli kapatmasın)
+    const head = archNotesHeadline(notes);
+    this.notify(`Yeni aile ${code} açıldı; ${oldCode} duruyor.${extra}${dropped ? ` ${dropped} kapatıldı.` : ''}${head ? ` ${head}` : ''}`, archNotesText(notes) || undefined);
   }
 
   dragHandle(id: HandleId, target: number, phase: 'start' | 'move' | 'end'): void {
