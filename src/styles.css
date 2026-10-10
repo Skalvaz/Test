@@ -900,6 +900,8 @@ body.mode-workshop .side-right { bottom: 12px; }
   background: repeating-linear-gradient(135deg, rgba(255, 77, 61, 0.7) 0 3px, transparent 3px 6px);
   -webkit-mask: linear-gradient(to right, #000 var(--ok-lo), transparent var(--ok-lo), transparent var(--ok-hi), #000 var(--ok-hi));
   mask: linear-gradient(to right, #000 var(--ok-lo), transparent var(--ok-lo), transparent var(--ok-hi), #000 var(--ok-hi)); }
+/* Eski tasarımın yasak bölgesi: yeniden hesap sırada, kısmaz (soluk) */
+.ws-rail.has-bad.is-stale::before { opacity: 0.35; }
 .ws-rail.is-flash { animation: ws-flash 0.6s ease-out; }
 @keyframes ws-flash { 0%, 40% { box-shadow: 0 0 0 1px var(--red), 0 0 12px rgba(255, 77, 61, 0.6); } 100% { box-shadow: none; } }
 .ws-slider { width: 100%; accent-color: var(--accent); margin: 0; position: relative; z-index: 1; }

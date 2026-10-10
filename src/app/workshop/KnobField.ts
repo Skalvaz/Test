@@ -170,6 +170,11 @@ export class NumberField {
     this.rail.style.setProperty('--ok-hi', `${(b * 100).toFixed(2)}%`);
     this.rail.classList.toggle('has-bad', a > 0.001 || b < 0.999);
   }
+
+  /** Yasak bölge eski tasarımdan: soluk çizilir (yeniden hesap sırada, kısmaz) */
+  setFeasibleStale(stale: boolean): void {
+    this.rail.classList.toggle('is-stale', stale);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -221,6 +226,19 @@ export interface KnobFieldHost {
   store: WorkshopStore;
   /** Kaydırıcı sürüklemesinin başı/sonu (hayalet meridyen) */
   onDrag?(active: boolean): void;
+}
+
+/** graphRev tasarım nesnesi başına bir kez (her alan her yenilemede sorar) */
+const revCache = new WeakMap<object, string>();
+export function lastRev(s: Pick<WorkshopState, 'last'>): string {
+  const g = s.last?.graph;
+  if (!g) return '';
+  let r = revCache.get(g);
+  if (r === undefined) {
+    r = graphRev(g);
+    revCache.set(g, r);
+  }
+  return r;
 }
 
 const disp = (k: EngineKnob) => k.display ?? { unit: k.unit === 'adet' ? '' : k.unit, factor: 1, digits: digitsFor(k), offset: 0 };
@@ -350,11 +368,20 @@ export class KnobField {
   }
 
   private feasible: { lo: number; hi: number; loWhy?: string; hiWhy?: string } | null = null;
+  /** Bu hareket yasak bölgeyle kısılır mı (hareketin başında karar verilir) */
+  private clampOk = false;
 
-  /** Değer yasak bölgeye geçmez: sınıra yapışır, ray kırmızı yanıp söner */
+  /**
+   * Değer yasak bölgeye geçmez: sınıra yapışır, ray kırmızı yanıp söner.
+   * Yalnız aralık o anki tasarım (rev) için hesaplanmışsa: başka bir düğme
+   * değişip bu alanın sırası boşta henüz gelmediyse eski sınır artık geçerli
+   * olan değeri kesmesin. Karar hareketin başında verilir; hareket boyunca
+   * öteki düğmeler değişmediğinden aralık geçerli kalır.
+   */
   private clampFeasible(v: number, toShow: (x: number) => number): number {
+    if (!this.dragging) this.clampOk = this.feasibleKey !== '' && this.feasibleKey === lastRev(this.host.store.state);
     const f = this.feasible;
-    if (!f || !this.field) return v;
+    if (!f || !this.field || !this.clampOk) return v;
     const lo = toShow(Math.min(f.lo, f.hi));
     const hi = toShow(Math.max(f.lo, f.hi));
     const a = Math.min(lo, hi);
@@ -404,6 +431,7 @@ export class KnobField {
     this.feasibleKey = '';
     this.feasible = null;
     this.field?.setFeasible(null, null);
+    this.field?.setFeasibleStale(false);
   }
 
   private baseValue(): KnobValue | undefined {
@@ -455,6 +483,8 @@ export class KnobField {
       f.setRange(Math.min(a, b), Math.max(a, b));
     }
     if (typeof v === 'number') f.setValue(toShow(v));
+    // Eski tasarımın yasak bölgesi soluk (kısmaz; boşta yeniden hesaplanır)
+    f.setFeasibleStale(!!this.feasible && !this.dragging && this.feasibleKey !== lastRev(s));
     // Değişim çipi: sürükleme/son hareket başına göre (kıyas noktası)
     const active = s.dragging === k.id || this.dragging;
     if (active && s.last && s.compare) {
@@ -482,6 +512,7 @@ export class KnobField {
       return;
     }
     this.feasible = { lo: r.lo, hi: r.hi, loWhy: r.loReason?.text, hiWhy: r.hiReason?.text };
+    this.field.setFeasibleStale(false);
     const a = toShow(r.lo);
     const b = toShow(r.hi);
     this.field.setFeasible(Math.min(a, b), Math.max(a, b));

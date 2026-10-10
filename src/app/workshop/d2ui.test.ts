@@ -8,7 +8,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { WorkshopStore } from '../../workshop/store';
 import { memoryStorage } from '../../workshop/testing';
+import { knobById, type KnobId } from '../../design/knobs';
 import { ArchitectureCards } from './ArchitectureCards';
+import { KnobField, lastRev } from './KnobField';
 import { asEl, FakeEvent, installFakeDom, type FakeEl } from './testDom';
 import { ErrorBox, familyViewKey, WorkshopPanel } from './WorkshopPanel';
 
@@ -121,5 +123,49 @@ describe('varyant seçimi Aile sekmesinde (#9)', () => {
     expect(familyViewKey(st('v0', ['A', 'B']))).toBe(familyViewKey(st('v0', ['A', 'B'])));
     expect(familyViewKey(st('v0', ['A', 'B']))).not.toBe(familyViewKey(st('v1', ['A', 'B'])));
     expect(familyViewKey(st('v0', ['A', 'B']))).not.toBe(familyViewKey(st('v0', ['A', 'C'])));
+  });
+});
+describe('yasak bölge eski tasarımla kısmaz (#10)', () => {
+  it('başka düğme değişince aralık yeniden hesaplanana kadar değer eski sınıra yapışmaz; ray soluk', () => {
+    const store = makeStore();
+    store.startFromTemplate('turbofan');
+    const sent: [string, unknown, string][] = [];
+    const setKnob = store.setKnob.bind(store);
+    store.setKnob = ((id: KnobId, v: never, ph: 'input' | 'change') => {
+      sent.push([id, v, ph]);
+      setKnob(id, v, ph);
+    }) as typeof store.setKnob;
+    // Aralık sahte: 10–20 (gerçek hesap ~12 üretim)
+    store.feasible = (() => ({ lo: 10, hi: 20 })) as unknown as typeof store.feasible;
+    const field = new KnobField(knobById('hpc.pr')!, { store });
+    const el = asEl(field.el);
+    const num = el.querySelector('input.ws-num')!;
+    const rail = el.querySelector('.ws-rail')!;
+    const type = (v: string) => {
+      num.value = v;
+      num.dispatchEvent(new FakeEvent('input'));
+      num.dispatchEvent(new FakeEvent('change'));
+    };
+    field.update(store.state);
+    field.updateFeasible(lastRev(store.state));
+    expect(rail.classList.contains('has-bad')).toBe(true);
+    // Güncel aralık kısar
+    type('25');
+    expect(sent.filter((x) => x[0] === 'hpc.pr').pop()).toEqual(['hpc.pr', 20, 'change']);
+    field.updateFeasible(lastRev(store.state));
+    // Başka bir düğme değişti: tasarım (rev) değişir, bu alanın sırası henüz gelmedi
+    const rev0 = lastRev(store.state);
+    store.setKnob('engine.massFlow', (knobById('engine.massFlow')!.get(store.state.graph) as number) * 1.1, 'change');
+    expect(lastRev(store.state)).not.toBe(rev0);
+    field.update(store.state);
+    expect(rail.classList.contains('is-stale')).toBe(true);
+    type('22');
+    expect(sent.filter((x) => x[0] === 'hpc.pr').pop()).toEqual(['hpc.pr', 22, 'change']);
+    // Yeniden hesaplanınca yine kısar, soluk kalkar
+    field.updateFeasible(lastRev(store.state));
+    field.update(store.state);
+    expect(rail.classList.contains('is-stale')).toBe(false);
+    type('30');
+    expect(sent.filter((x) => x[0] === 'hpc.pr').pop()).toEqual(['hpc.pr', 20, 'change']);
   });
 });
