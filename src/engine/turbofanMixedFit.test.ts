@@ -1,18 +1,19 @@
 /**
  * Karışık akışlı turbofanın daralan kaporta payıyla (c < 1) parça
- * çakışmaları (M5a dalga 2 incelemesi): ağlar gerçek üreticilerle
- * (core.js) node'da kurulur, düğme aralığının içindeki küçük ve düşük
- * baypaslı tasarımlarda ölçülür.
+ * çakışmaları, ortak lülenin yakınsaklığı ve fan kanalının Mach'ı (M5a
+ * dalga 2 incelemesi): ağlar gerçek üreticilerle (core.js) node'da kurulur,
+ * düğme aralığının içindeki küçük ve düşük baypaslı tasarımlarda ölçülür.
  */
 
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { FlowpathError, profileAt, type TurbofanLayout } from '../design/flowpath';
+import { FlowpathError, machFromFlow, profileAt, type TurbofanLayout } from '../design/flowpath';
 import { buildEngine } from '../design/graph';
-import { MIXED_NOZZLE_CONTRACTION_MAX } from '../design/layouts/turbofan';
+import { FAN_DUCT_MACH_MAX, MIXED_NOZZLE_CONTRACTION_MAX } from '../design/layouts/turbofan';
 import { TURBOFAN_MIXED_GRAPH } from '../design/turbofanMixed';
 import type { EngineGraph } from '../design/types';
 import { DesignError } from '../sim/design';
+import { AIR } from '../sim/gas';
 import { buildCore } from './core.js';
 import { smoothProfile } from './geom.js';
 import { longDuctOf } from './turbofanModel';
@@ -169,5 +170,48 @@ describe('ortak lüle yakınsak: ağız karıştırma kanalından dar ya da öğ
             if (m.duct[i - 1][1] >= m.mixer.z1 - 1e-9) expect(m.duct[i][0], label).toBeLessThanOrEqual(m.duct[i - 1][0] + 1e-9);
         }
     expect(built).toBeGreaterThan(20);
+  });
+});
+
+describe('fan kanalında gerçekçi baypas Mach’ı (CFM56-5C ~0,5)', () => {
+  /** OGV'den karıştırıcıya gerçek kanal duvarıyla (sabit ön kısım + alan kuralı) baypas Mach'ı */
+  function ductMach(g: EngineGraph) {
+    const b = buildEngine(g);
+    const L = b.flowpath.layout as TurbofanLayout;
+    const m = L.mixed!;
+    const z0 = L.fan.z0 + 0.28 * L.s;
+    const wall = [...NACELLE_DUCT_FRONT.filter(([, z]) => z < 0.55 - 1e-6).map(([r, z]) => [r * L.s, z0 + z * L.s] as [number, number]), ...m.duct];
+    const st = b.sized.point.stations['13'];
+    const machAt = (z: number) => {
+      const ro = profileAt(wall, z);
+      const ri = profileAt(L.coreCowl, z);
+      return machFromFlow((st.W * Math.sqrt(st.T)) / (st.P * Math.PI * (ro * ro - ri * ri)), AIR);
+    };
+    const zs = [...Array.from({ length: 401 }, (_, i) => L.ogv.z + ((m.mixer.z0 - L.ogv.z) * i) / 400), ...L.coreCowl.map(([, z]) => z), ...m.duct.map(([, z]) => z)].filter(
+      (z) => z >= L.ogv.z && z <= m.mixer.z0,
+    );
+    return { L, max: Math.max(...zs.map(machAt)), zA: machAt(m.duct[0][1]) };
+  }
+
+  it('şablon: fan kaportası sonunda ~0,5, karıştırıcıya dek hiçbir yerde 0,52’yi aşmaz; çekirdek kaportası daralır', () => {
+    const r = ductMach(TURBOFAN_MIXED_GRAPH);
+    // Önceden kaportanın sonunda 0,61, astarın örneklenmediği tümsekte 0,64
+    expect(r.zA).toBeGreaterThan(0.47);
+    expect(r.zA).toBeLessThanOrEqual(FAN_DUCT_MACH_MAX + 0.005);
+    expect(r.max).toBeLessThan(0.52);
+    // Çekirdek kaportası fan ucunun 0,79'uydu; şimdi LPT kasasının hemen üstünde
+    const L = r.L;
+    expect(Math.max(...L.coreCowl.map(([rr]) => rr)) / L.fan.tip[0]).toBeLessThan(0.75);
+    expect(L.splitter.lip).toBeLessThan(1);
+    expect(L.splitter.lip).toBeGreaterThan(0.5);
+  });
+
+  it.each([
+    ['W 250', variant(250)],
+    ['W 600', variant(600)],
+    ['BPR 7', variant(465, { bypassRatio: 7 })],
+    ['FPR 2, BPR 4', variant(465, { bypassRatio: 4, pr: 2 })],
+  ])('%s: kaporta payı hedefi sağlarken kanal ≤ 0,52', (_l, g) => {
+    expect(ductMach(g).max).toBeLessThan(0.52);
   });
 });

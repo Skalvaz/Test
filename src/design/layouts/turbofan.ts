@@ -53,14 +53,16 @@ const MIN_DUCT_GAP = 0.04;
  */
 export const CORE_CLEARANCE_MIN = 0.3;
 /**
- * Karışık akış: fan kanalının ön kısmında (OGV → itki çevirici başı) en dar
- * halka alanında baypas akışının hedef ortalama Mach'ı. Geometrik açıklık
- * yetmez: küçük motorda kanal açık ama tıkalı kalıyordu (W 300'de Mach 1).
- * Şablon (CFM56-5C) bu kesitte 0,76'da; şablonu değiştirmemek için hedef
- * 0,8 (gerçek fan çıkış kanalları ~0,5: şablonun çekirdek kaportası büyük,
- * açık sorun).
+ * Karışık akış: fan kanalının ön kısmında (OGV → itki çevirici başı, dış
+ * duvarın sabit olduğu kesim) en dar halka alanında baypas akışının hedef
+ * ortalama Mach'ı. Geometrik açıklık yetmez: küçük motorda kanal açık ama
+ * tıkalı kalıyordu (W 300'de Mach 1). Gerçek fan çıkış kanalları ~0,5
+ * (CFM56-5C; çekirdek kaportası fan ucunun ~0,65'i). Önceden 0,8 ve ölçüm
+ * zA'nın arkasında sabit dış duvarla yapılıyordu: şablon 0,76 görünüyordu
+ * (gerçek duvarla 0,61), çekirdek kaportası fan ucunun 0,79'u. Arkada
+ * karıştırma düzlemine dek alan kuralı (bypassDuct.mach 0,45).
  */
-export const FAN_DUCT_MACH_MAX = 0.8;
+export const FAN_DUCT_MACH_MAX = 0.5;
 /**
  * Ayırıcı burnu (core.js): profil ağızdan (rS) geriye 0,022 / 0,034 /
  * 0,04 m × `lip` iner; iç yüzeyi booster gövdesinin üstünden geçer. Gövde
@@ -375,9 +377,9 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
     // ucu oranında ölçeklenir, çekirdek kaportası ise çekirdek parçalarının
     // zarfından mutlak payla: düşük BPR ya da küçük hava akışında çekirdek
     // kaportası kanal duvarını geçer ya da kanalı tıkar. Önce kaporta payları
-    // orantılı daraltılır (küçük motorda aksesuar ve borular da küçük; şablon
-    // ve sığan tasarım değişmez). Hedef: geometrik açıklık (fan ucu oranında)
-    // ve baypas akışını FAN_DUCT_MACH_MAX altında geçiren halka alanı. Alan
+    // orantılı daraltılır (küçük motorda aksesuar ve borular da küçük; sığan
+    // tasarım değişmez, şablon c ≈ 0,69). Hedef: geometrik açıklık (fan ucu
+    // oranında) ve baypas akışını FAN_DUCT_MACH_MAX altında geçiren halka alanı. Alan
     // en dar payla da yetmiyorsa en dar pay kullanılır (c sürekli kalır);
     // yalnız geometrik açıklık yetmezse sessizce kırpmak yerine öğretici hata.
     const ductFront = NACELLE_DUCT_FRONT.map(toWorld);
@@ -388,12 +390,17 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
       const c = [...pts, ...cowlTailOf(cc, pts)];
       let gap = Infinity;
       let area = Infinity;
-      for (let i = 0; i <= 16; i++) {
-        const z = lerp(Math.min(ogvZ, strutZ), Math.max(zA, strutZ), i / 16);
+      // Düzgün örnekler + kaporta köşeleri. Alan yalnız zA'ya dek: arkasında
+      // dış duvar sabit değil, alan kuralıyla (wallAt) kaportanın üstünden
+      // geçer, alan a0 ile aMix arasında kalır
+      const z0 = Math.min(ogvZ, strutZ);
+      const z1 = Math.max(zA, strutZ);
+      const zs = [...Array.from({ length: 17 }, (_, i) => lerp(z0, z1, i / 16)), ...c.map(([, z]) => z).filter((z) => z > z0 && z < z1)];
+      for (const z of zs) {
         const ro = profileAt(ductFront, z);
         const ri = z < mz0 ? profileAt(c, z) : mixR;
         gap = Math.min(gap, ro - ri);
-        area = Math.min(area, Math.PI * (ro * ro - ri * ri));
+        if (z <= zA) area = Math.min(area, Math.PI * (ro * ro - ri * ri));
       }
       return { gap, area, ok: gap >= needGap && area >= needArea };
     };
