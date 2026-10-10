@@ -574,7 +574,8 @@ const SPECS: Record<KnobId, KnobSpec> = {
   }),
   'shaft.rpm': basic({
     label: 'Çıkış devri',
-    explain: 'Yalnız redüktör oranını değiştirir; güç türbini devri uç hızından gelir.',
+    explain:
+      'Yalnız redüktör oranını değiştirir; güç türbini devri uç hızından gelir. Güç türbini devrinin %5 yakınında redüktör yok: çıkış mili güç türbini devrinde döner.',
     unit: 'rpm',
     range: when((t) => t.lpLoad === 'shaft', [3000, 30000]),
     step: 50,
