@@ -6,7 +6,14 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { EngineVisual, XRAY_PARTS, highlightPulse, inheritedHighlight, type PartId } from './visual';
+import {
+  EngineVisual,
+  XRAY_PARTS,
+  highlightPulse,
+  inheritedHighlight,
+  stripXrayTwins,
+  type PartId,
+} from './visual';
 
 const HL = 0x2ee6d6;
 
@@ -106,5 +113,55 @@ describe('x-ışını: kesit kapalıyken seçili iç modül görünür', () => {
     expect(v.xrayParts).toEqual([]);
     v.setClipping([]);
     expect(v.xrayParts).toEqual(['hpc']);
+  });
+});
+
+describe('x-ışını: taşınan ağlarda ikiz birikmez (dalga 2 doğrulaması, ek c)', () => {
+  const twinsOf = (o: THREE.Object3D) => o.children.filter((c) => c.userData.xray).length;
+
+  /** Artımlı üretim: aynı parça ağı yeni modelin köküne taşınır (buildCache reuse) */
+  function carried(mesh: THREE.Object3D) {
+    const { v } = fakeVisual();
+    (v.root as THREE.Group).add(mesh);
+    (v as unknown as { parts: Map<PartId, unknown> }).parts.set('hpc', { meshes: [mesh], materials: new Set() });
+    Object.assign(v, { plume: { material: { dispose() {} } }, effects: { dispose() {} } });
+    // Kurucunun yaptığı: taşınan ağlardaki eski ikizleri sök, son vurguyu devral
+    stripXrayTwins(v.root as THREE.Group);
+    if (inheritedHighlight().length) v.highlight(inheritedHighlight());
+    return v;
+  }
+
+  it('aynı tasarımla art arda kurulumda ağ başına en çok 1 ikiz; eski modeller atılınca da', () => {
+    const { v: first, add } = fakeVisual();
+    Object.assign(first, { plume: { material: { dispose() {} } }, effects: { dispose() {} } });
+    const { mesh } = add('hpc', true);
+    first.highlight(['hpc']);
+    expect(twinsOf(mesh)).toBe(1);
+    const models = [first];
+    for (let i = 0; i < 4; i++) {
+      const next = carried(mesh);
+      expect(next.xrayParts).toEqual(['hpc']);
+      expect(twinsOf(mesh)).toBe(1);
+      // Eski model yeni model çizildikten sonra atılır: yenisinin ikizine dokunmaz
+      models.at(-1)!.dispose();
+      expect(twinsOf(mesh)).toBe(1);
+      models.push(next);
+    }
+    // Seçim kalkınca sahipsiz ikiz kalmaz (kesitte hayalet çizmezler)
+    models.at(-1)!.highlight(null);
+    expect(twinsOf(mesh)).toBe(0);
+  });
+
+  it('kurucu taşınan ağlardaki ikizleri söker; dispose kendi ikizlerini kaldırır', () => {
+    expect(EngineVisual.toString()).toMatch(/endBuild\)?\(\);[\s\S]*?stripXrayTwins\(this\.model\.group\)/);
+    const { v, add } = fakeVisual();
+    Object.assign(v, { plume: { material: { dispose() {} } }, effects: { dispose() {} } });
+    const { mesh } = add('hpc');
+    v.highlight(['hpc']);
+    expect(twinsOf(mesh)).toBe(1);
+    v.dispose();
+    expect(twinsOf(mesh)).toBe(0);
+    expect(v.xrayParts).toEqual([]);
+    v.highlight(null);
   });
 });

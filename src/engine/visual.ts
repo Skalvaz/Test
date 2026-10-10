@@ -189,6 +189,23 @@ function xrayTwin(src: THREE.Mesh): THREE.Mesh {
 }
 
 /**
+ * Ağaçtaki bütün x-ışını ikizlerini söker. Artımlı üretim (buildCache
+ * reuse) parça ağlarını eski modelden yeni modele taşır; eski modelin
+ * ikizleri o ağların çocuğu olarak gelir. Sökülmezse her yeniden kurulumda
+ * ağ başına bir ikiz daha birikir (eklemeli harmanlama: x-ışını her seferinde
+ * parlaklaşır) ve sahipsiz, kırpılmayan ikizler kesitte hayalet çizer.
+ * Kurucu, yeni modelin ilk karesinde eski ikizler görünmesin diye çağırır.
+ */
+export function stripXrayTwins(root: THREE.Object3D): number {
+  const stale: THREE.Object3D[] = [];
+  root.traverse((o) => {
+    if (o.userData.xray) stale.push(o);
+  });
+  for (const t of stale) t.parent?.remove(t);
+  return stale.length;
+}
+
+/**
  * Egzoz metalinin ısıl kızıllık çarpanı (jet borusu gaz sıcaklığıyla; 0:
  * kızarmaz). Kurumlu iç yüz güçlü, inconel kabuk daha zayıf parlar. Kuru
  * motorun sabit lülesi (engine/nozzle.js buildFixedNozzle) `nozzle`
@@ -383,6 +400,8 @@ export class EngineVisual {
     this.model = MODEL_BUILDERS[src.traits.layout](materials, src);
     // Bu ayrıntı seviyesinin önceki neslinden taşınmayan parçalar atılır
     endBuild();
+    // Taşınan parça ağlarında eski modelin x-ışını ikizleri kalmış olabilir
+    stripXrayTwins(this.model.group);
     const ex = this.model.exhaust;
     this.plume = buildExhaustPlume(ex.radius, ex.z);
     this.plumeBaseRadius = ex.radius;
@@ -513,6 +532,10 @@ export class EngineVisual {
 
   /** Sahneden çıkarılırken GPU kaynaklarını bırakır (malzeme klonları, geometri). */
   dispose() {
+    // Kendi x-ışını ikizleri: taşınan ağlarda yeni modelin altında kalmasın
+    // (ikiz geometri ve malzemeyi paylaşır, yalnız sökülür)
+    for (const twins of this.xray.values()) for (const t of twins) t.parent?.remove(t);
+    this.xray.clear();
     const geos = new Set<THREE.BufferGeometry>();
     const mats = new Set<THREE.Material>();
     this.root.traverse((o) => {
