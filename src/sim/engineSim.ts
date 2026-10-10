@@ -125,6 +125,13 @@ const PITCH_MAX = 1.8;
 const DYNO_TAU_REF = 0.342;
 /** Dinamometre kazanç ölçeğinin üst sınırı (düğme aralığında τ/τ_ref ≤ ~2) */
 const DYNO_GAIN_MAX = 6;
+/**
+ * Dinamometre yük öngörüsünün payı: güç türbini gücündeki değişimin bu
+ * kadarı fren yüküne doğrudan geçer, kalanını PI düzeltir. 1 modelde NP'yi
+ * kusursuz düz tutar (gerçek valide ölçüm ve servo gecikmesi var); 0,8 ile
+ * gaz adımında NP %1–2 oynar, sınırdan uzak kalır.
+ */
+const DYNO_ANTICIPATION = 0.8;
 /** Test hücresinde uçuş koşullarının değişim hızı (oyun zamanı) */
 const FLIGHT_SLEW = { altitude: 450, mach: 0.12, isaDev: 6 };
 
@@ -262,6 +269,8 @@ export class EngineSim {
   private flags = new Set<SimEventType>();
   private abTimer = 0;
   private prevNpErr = 0;
+  /** Dinamometre yük öngörüsü: önceki adımın dengeleyen fren yükü (bkz. updateLoad) */
+  private prevDynoFf = 0;
 
   constructor(design: EngineDesign = DEFAULT_DESIGN) {
     this.eng = sizeEngine(design);
@@ -500,9 +509,9 @@ export class EngineSim {
     const lpDesignTorque = r.lpPower / r.omega1;
     const lpTorqueLoss = lpDesignTorque * (LP_FRICTION + 0.003 * this.N1);
     const hpTorqueAero = (cyc.hptPower * eta - cyc.hpcPower) / w2f;
-    this.updateLoad(dt);
-    const lpTorqueAero =
-      (cyc.lptPower * eta - cyc.fanPower - cyc.boosterPower - this.propPower) / w1f;
+    const lpAvail = cyc.lptPower * eta - cyc.fanPower - cyc.boosterPower;
+    this.updateLoad(dt, lpAvail);
+    const lpTorqueAero = (lpAvail - this.propPower) / w1f;
 
     // Marş motoru: tork hızla doğrusal azalır
     const starterTorque = this.starterEngaged
@@ -767,7 +776,8 @@ export class EngineSim {
    * küçükte kalır ve NP düşer. Emilen güç P = k·σ·n³ (k valinin çıkışı).
    * Gaz kolu gaz jeneratörü devrini, yani gücü belirler (updateFuel).
    */
-  private updateLoad(dt: number) {
+  /** @param lpAvail güç türbininin yüke verebileceği güç [W] (yük öngörüsü için) */
+  private updateLoad(dt: number, lpAvail: number) {
     const d = this.eng.design;
     const prop = d.prop;
     if (!prop && !d.shaft) {
@@ -779,16 +789,24 @@ export class EngineSim {
     const sigma = this.amb.rho0 / 1.225;
     const governing = this.lit && this.N1 > 0.5;
     const e = this.N1 - 1.0;
+    // Turboşaft su freni yük öngörüsü (load anticipation): güç türbininin
+    // verebileceği güçteki değişim fren yüküne doğrudan geçer (NP = 1'de
+    // dengeleyen yük). Yalnız PI ile kısmi güçten tam güce adımda gaz
+    // jeneratörü hızlanırken fren geride kalıyor, NP %104 sınırını aşıyordu
+    // (şablonda %30 → %100: 1,048). PI kalan hatayı düzeltir. Devir (n³)
+    // kasıtlı olarak yok: NP arttıkça yükü azaltan pozitif geri besleme olurdu.
+    const dynoFf = prop ? 0 : lpAvail / Math.max(r.shaftPower * sigma, 1);
     if (governing) {
       // Turboşaft su freni: kazançlar mil zaman sabitiyle (DYNO_TAU_REF);
       // pervane valisi (turboprop) değişmez
       const kg = prop ? 1 : dynoGainScale(d.inertia.lp, r.omega1, r.shaftPower);
-      this.propPitch += kg * (3.0 * (e - this.prevNpErr) + 4.0 * e * dt);
+      this.propPitch += kg * (3.0 * (e - this.prevNpErr) + 4.0 * e * dt) + DYNO_ANTICIPATION * (dynoFf - this.prevDynoFf);
     } else {
       // Çalıştırma ve duruşta ince pal (yük az)
       this.propPitch += (PITCH_MIN - this.propPitch) * Math.min(1, dt * 2);
     }
     this.prevNpErr = e;
+    this.prevDynoFf = dynoFf;
     this.propPitch = clamp(this.propPitch, PITCH_MIN, PITCH_MAX);
     const n = Math.max(this.N1, 0);
     this.propPower = r.shaftPower * this.propPitch * n * n * n * sigma;
@@ -832,6 +850,7 @@ export class EngineSim {
     this.propPower = 0;
     this.propThrust = 0;
     this.prevNpErr = 0;
+    this.prevDynoFf = 0;
     this.n1Command = null;
     this.n2Command = null;
     this.torchTimer = 0;

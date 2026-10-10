@@ -378,6 +378,34 @@ describe('turboşaft test hücresinde (dinamometre)', () => {
     }
   }, HEAVY);
 
+  it('kısmi güçten tam güce adım (yük öngörüsü): şablonda ve uçlarda NP %102 altında', () => {
+    // Yalnız PI ile şablonda %30 → %100 adımında NP 1,048'e çıkıp
+    // 'N1 AŞIRI DEVİR' veriyordu (fren yükü hızlanan gaz jeneratörünün gerisinde)
+    const designs: [string, ReturnType<typeof buildEngine>['design']][] = [['şablon', builtFor('turboshaft')!.design]];
+    for (const W of [1.5, 15]) {
+      const g = familyBase(TS);
+      g.massFlow = W;
+      designs.push([`${W} kg/s`, buildEngine(g, { reference: referenceFor(architectureOf(g)) }).design]);
+    }
+    for (const [name, design] of designs) {
+      for (const part of [0.3, 0.5]) {
+        const r = autoStart(design);
+        let peak = 0;
+        for (const th of [part, 1]) {
+          r.sim.controls.throttle = th;
+          for (let t = 0; t < 12; t += 1 / 60) {
+            r.sim.step(1 / 60);
+            peak = Math.max(peak, r.sim.N1);
+          }
+        }
+        const tag = `${name}, %${part * 100} → %100`;
+        expect(r.seen, tag).not.toContain('n1Overspeed');
+        expect(peak, tag).toBeLessThan(1.02);
+        expect(Math.abs(r.sim.N1 - 1), tag).toBeLessThan(0.005);
+      }
+    }
+  }, HEAVY);
+
   it('dinamometre kazanç ölçeği: şablonda tam 1, küçükte 1, büyükte τ/τ_ref', () => {
     const tp = new EngineSim(builtFor('turboshaft')!.design).eng;
     expect(dynoGainScale(tp.design.inertia.lp, tp.ref.omega1, tp.ref.shaftPower)).toBe(1);
