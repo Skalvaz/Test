@@ -7,10 +7,12 @@
 
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { profileAt, type TurbofanLayout } from '../design/flowpath';
+import { FlowpathError, profileAt, type TurbofanLayout } from '../design/flowpath';
 import { buildEngine } from '../design/graph';
+import { MIXED_NOZZLE_CONTRACTION_MAX } from '../design/layouts/turbofan';
 import { TURBOFAN_MIXED_GRAPH } from '../design/turbofanMixed';
 import type { EngineGraph } from '../design/types';
+import { DesignError } from '../sim/design';
 import { buildCore } from './core.js';
 import { smoothProfile } from './geom.js';
 import { longDuctOf } from './turbofanModel';
@@ -113,5 +115,59 @@ describe('çekirdek kaportası baypas kanalı astarının içinde (kaporta payı
     }
     // Önceden düşük BPR + küçük hava akışında astar kaportanın 17–35 mm içindeydi
     expect(worst, `${label} z_ref ${at.toFixed(2)}`).toBeGreaterThan(0.01);
+  });
+});
+
+describe('ortak lüle yakınsak: ağız karıştırma kanalından dar ya da öğretici hata', () => {
+  const tryBuild = (g: EngineGraph): { L?: TurbofanLayout; e?: Error } => {
+    try {
+      return { L: buildEngine(g).flowpath.layout as TurbofanLayout };
+    } catch (e) {
+      return { e: e as Error };
+    }
+  };
+
+  it.each([
+    ['FPR 1,4, BPR 4', variant(465, { pr: 1.4, bypassRatio: 4 })],
+    ['FPR 1,4, BPR 3', variant(465, { pr: 1.4, bypassRatio: 3 })],
+    ['FPR 1,4, BPR 3, W 600', variant(600, { pr: 1.4, bypassRatio: 3 })],
+  ])('%s: düşük karışma basıncı → mixer.nozzle (önceden ağız kanaldan %%4–29 genişti)', (_l, g) => {
+    const e = tryBuild(g).e as FlowpathError;
+    expect(e).toBeInstanceOf(FlowpathError);
+    expect(e.code).toBe('mixer.nozzle');
+    expect(e.knobs).toEqual(['fan.pr', 'fan.bypassRatio']);
+    expect(e.message).not.toMatch(/NaN|undefined/);
+    expect(e.data!.rExit).toBeGreaterThan(MIXED_NOZZLE_CONTRACTION_MAX * e.data!.rDuct);
+  });
+
+  it('öneri doğru yönde: baypas oranı artınca karışma basıncı yükselir, tasarım kurulur', () => {
+    expect(tryBuild(variant(465, { pr: 1.4, bypassRatio: 7 })).L).toBeDefined();
+    // A9mix hesaplanamazsa (mixer.area) da aynı öneri: BPR artınca alan
+    // hesaplanır (ağız hâlâ geniş), fan PR de artınca tasarım kurulur
+    const code = (g: EngineGraph) => (tryBuild(g).e as FlowpathError | undefined)?.code;
+    expect(code(variant(465, { pr: 1.3, bypassRatio: 4 }))).toBe('mixer.area');
+    expect(code(variant(465, { pr: 1.3, bypassRatio: 7 }))).toBe('mixer.nozzle');
+    expect(tryBuild(variant(465, { pr: 1.45, bypassRatio: 7 })).L).toBeDefined();
+  });
+
+  it('düğme aralığının köşelerinde kurulan her tasarımda lüle yakınsak (ağız ≤ 0,95 kanal, duvar ağza daralır)', () => {
+    let built = 0;
+    for (const w of [50, 465, 600])
+      for (const pr of [1.4, 1.5, 1.64, 2])
+        for (const bypassRatio of [2.5, 4, 5.5, 7]) {
+          const r = tryBuild(variant(w, { pr, bypassRatio }));
+          const label = `W ${w} FPR ${pr} BPR ${bypassRatio}`;
+          if (!r.L) {
+            // Tipli Türkçe hata (çevrim çözülmezse DesignError)
+            expect(r.e instanceof FlowpathError || r.e instanceof DesignError, `${label}: ${String(r.e)}`).toBe(true);
+            continue;
+          }
+          built++;
+          const m = r.L.mixed!;
+          expect(m.nozzle.rExit, label).toBeLessThanOrEqual(MIXED_NOZZLE_CONTRACTION_MAX * m.ductEnd.r);
+          for (let i = 1; i < m.duct.length; i++)
+            if (m.duct[i - 1][1] >= m.mixer.z1 - 1e-9) expect(m.duct[i][0], label).toBeLessThanOrEqual(m.duct[i - 1][0] + 1e-9);
+        }
+    expect(built).toBeGreaterThan(20);
   });
 });

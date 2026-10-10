@@ -70,6 +70,14 @@ export const FAN_DUCT_MACH_MAX = 0.8;
  */
 export const SPLITTER_LIP_DROP = 0.04;
 export const SPLITTER_CASE_CLEAR = 0.014;
+/**
+ * Ortak sabit yakınsak lülenin ağız yarıçapının karıştırma düzlemindeki
+ * kanal duvarına en büyük oranı. Karışmış akışın basıncı düşükse (baypas
+ * basıncı çekirdeğinkinin çok altında, P19t/P5t ≈ 0,3–0,4) A9mix
+ * A9 + A19'un 3–4 katına çıkar: ağız kanaldan geniş olur, "yakınsak" lüle
+ * ıraksar ve kaporta arkası trompet gibi açılırdı. Şablon 0,75.
+ */
+export const MIXED_NOZZLE_CONTRACTION_MAX = 0.95;
 /** Egzoz konisinin M4 öncesi ojiv profili: [taban yarıçapı oranı, boy (taban 0,4 m'de)] */
 const PLUG_SHAPE: readonly [number, number][] = [
   [1, 0],
@@ -266,7 +274,9 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
   // statik basınç eşitlenemez) bütün uzun kanal profilleri NaN olurdu
   if (mixMod && !(Number.isFinite(A9mix) && A9mix > 0))
     throw new FlowpathError(
-      'Ortak lüle alanı hesaplanamadı: karışma düzleminde baypas basıncı yetersiz. Fan basınç oranını artır ya da baypas oranını azalt.',
+      // Baypas oranı artınca LPT fana daha çok iş verir, çekirdek çıkış
+      // basıncı düşer: P19t/P5t yükselir (FPR 1,4'te BPR 2,5 → 7: 0,31 → 0,56)
+      'Ortak lüle alanı hesaplanamadı: karışma düzleminde baypas basıncı yetersiz. Fan basınç oranını ya da baypas oranını artır.',
       'mixer.area',
       'nozzle',
       ['fan.pr', 'fan.bypassRatio'],
@@ -421,6 +431,16 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
       return Math.sqrt(inner(z) ** 2 + Math.max(a, 0.02 * aMix) / Math.PI);
     };
     const rW = wallAt(mz1);
+    // Sabit yakınsak lüle: ağız karıştırma düzlemindeki kanaldan dar olmalı
+    const m2 = (v: number) => v.toFixed(2).replace('.', ',');
+    if (!(rExit <= MIXED_NOZZLE_CONTRACTION_MAX * rW))
+      throw new FlowpathError(
+        `Ortak lüle ağzı (çap ${m2(2 * rExit)} m) karıştırma kanalından (çap ${m2(2 * rW)} m) geniş çıkıyor: karışma düzleminde baypas basıncı çekirdeğinkinin çok altında, karışmış akışın basıncı düşük ve sabit yakınsak lüle bu kadar büyük ağız veremez. Fan basınç oranını ya da baypas oranını artır.`,
+        'mixer.nozzle',
+        'nozzle',
+        ['fan.pr', 'fan.bypassRatio'],
+        { rExit, rDuct: rW },
+      );
     // Ortak lüle ağzı (rExit, endZ) koniyle birlikte yukarıda yakınsadı
     const plugExitR = plugAt(endZ);
     // Lobe genliği: tepeler kaporta iç duvarına, çukurlar koniye değmez
