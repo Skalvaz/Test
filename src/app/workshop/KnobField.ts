@@ -404,12 +404,31 @@ export class KnobField {
     }
   }
 
-  /** Sayı/kaydırıcı hareketi bitti: hayalet kapanır, yasak bölge yeniden */
+  /**
+   * Sayı/kaydırıcı hareketi bitti: hayalet kapanır. Yasak bölge öteki
+   * düğmeler sabitken hesaplanır (feasibleRange); bu alanın kendi hareketi
+   * onu bozmaz, yeni tasarıma (rev) taşınır: yoksa her bırakışta alan
+   * boşta sırası gelene dek kısmayı bırakır, ray soluklaşır. Yalnız hareket
+   * güncel aralıkla başladıysa ve yeni değer aralığın içindeyse (ikiye bölme
+   * geçerli değerden başlar; aralık dışı ya da çökmüş aralık değere bağlı).
+   */
   private endGesture(): void {
+    const carry = this.dragging && this.clampOk && this.insideFeasible();
     this.dragging = false;
     this.gestureFrom = null;
     this.host.onDrag?.(false);
-    this.feasibleKey = '';
+    this.feasibleKey = carry ? lastRev(this.host.store.state) : '';
+  }
+
+  /** Mağazadaki değer (model birimi) güncel yasak bölgenin içinde mi */
+  private insideFeasible(): boolean {
+    const f = this.feasible;
+    const v = this.currentValue();
+    if (!f || typeof v !== 'number' || f.lo === f.hi) return false;
+    const a = Math.min(f.lo, f.hi);
+    const b = Math.max(f.lo, f.hi);
+    const tol = 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+    return v >= a - tol && v <= b + tol;
   }
 
   /** Sayı/kaydırıcı hareketi sürüyor mu (test, panel) */

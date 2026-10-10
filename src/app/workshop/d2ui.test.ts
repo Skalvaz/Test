@@ -170,6 +170,82 @@ describe('yasak bölge eski tasarımla kısmaz (#10)', () => {
     type('30');
     expect(sent.filter((x) => x[0] === 'hpc.pr').pop()).toEqual(['hpc.pr', 20, 'change']);
   });
+
+  it('alanın kendi hareketi aralığı bozmaz: ardışık yazmalar boşta yeniden hesap beklemeden kısılır, ray soluklaşmaz', () => {
+    const store = makeStore();
+    store.startFromTemplate('turbofan');
+    const sent: [string, unknown, string][] = [];
+    const setKnob = store.setKnob.bind(store);
+    store.setKnob = ((id: KnobId, v: never, ph: 'input' | 'change') => {
+      sent.push([id, v, ph]);
+      setKnob(id, v, ph);
+    }) as typeof store.setKnob;
+    let calls = 0;
+    store.feasible = (() => (calls++, { lo: 10, hi: 20 })) as unknown as typeof store.feasible;
+    const field = new KnobField(knobById('hpc.pr')!, { store });
+    const el = asEl(field.el);
+    const num = el.querySelector('input.ws-num')!;
+    const rail = el.querySelector('.ws-rail')!;
+    const type = (v: string) => {
+      num.value = v;
+      num.dispatchEvent(new FakeEvent('input'));
+      num.dispatchEvent(new FakeEvent('change'));
+    };
+    const lastSent = () => sent.filter((x) => x[0] === 'hpc.pr').pop();
+    field.update(store.state);
+    field.updateFeasible(lastRev(store.state));
+    // Aralarda updateFeasible çağrılmaz (WorkshopPanel kuyruğu henüz gelmedi)
+    type('5');
+    expect(lastSent()).toEqual(['hpc.pr', 10, 'change']);
+    type('15');
+    expect(lastSent()).toEqual(['hpc.pr', 15, 'change']);
+    field.update(store.state);
+    expect(rail.classList.contains('is-stale')).toBe(false);
+    type('5');
+    expect(lastSent()).toEqual(['hpc.pr', 10, 'change']);
+    type('25');
+    expect(lastSent()).toEqual(['hpc.pr', 20, 'change']);
+    // Aralık yeni rev'e taşındı: kuyruk bu alanı yeniden hesaplamaz
+    expect(field.feasibleFor).toBe(lastRev(store.state));
+    field.updateFeasible(lastRev(store.state));
+    expect(calls).toBe(1);
+  });
+
+  it('bayat aralıkla başlayan hareket aralığı taşımaz; çökmüş aralık da taşınmaz', () => {
+    const store = makeStore();
+    store.startFromTemplate('turbofan');
+    const sent: [string, unknown, string][] = [];
+    const setKnob = store.setKnob.bind(store);
+    store.setKnob = ((id: KnobId, v: never, ph: 'input' | 'change') => {
+      sent.push([id, v, ph]);
+      setKnob(id, v, ph);
+    }) as typeof store.setKnob;
+    let range = { lo: 10, hi: 20 };
+    store.feasible = (() => range) as unknown as typeof store.feasible;
+    const field = new KnobField(knobById('hpc.pr')!, { store });
+    const el = asEl(field.el);
+    const num = el.querySelector('input.ws-num')!;
+    const type = (v: string) => {
+      num.value = v;
+      num.dispatchEvent(new FakeEvent('input'));
+      num.dispatchEvent(new FakeEvent('change'));
+    };
+    const lastSent = () => sent.filter((x) => x[0] === 'hpc.pr').pop();
+    field.update(store.state);
+    field.updateFeasible(lastRev(store.state));
+    // Başka düğme değişti: bu alanın hareketi bayat aralıkla başlar, kısmaz
+    store.setKnob('engine.massFlow', (knobById('engine.massFlow')!.get(store.state.graph) as number) * 1.1, 'change');
+    type('22');
+    expect(lastSent()).toEqual(['hpc.pr', 22, 'change']);
+    expect(field.feasibleFor).toBe('');
+    type('24');
+    expect(lastSent()).toEqual(['hpc.pr', 24, 'change']);
+    // Geçerli değer kurulmuyordu: aralık değere çöktü (lo = hi), taşınmaz
+    range = { lo: 24, hi: 24 };
+    field.updateFeasible(lastRev(store.state));
+    type('24');
+    expect(field.feasibleFor).toBe('');
+  });
 });
 const resultsCb = { onRunInCell() {}, onHighlight() {}, openGlossary() {}, openLesson() {} };
 
