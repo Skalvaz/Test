@@ -800,8 +800,26 @@ export class App {
     this.applyDesign('workshop', b, detail, { effects: false });
     this.wsBuildMs = performance.now() - t0;
     this.placeWorkshopHelpers();
+    if (detail === 'full') this.reframeWorkshop();
   }
   private wsBuildMs = 0;
+  /** Son çerçevelenen motor ölçüleri (§6.7: boy/çap %15'ten çok değişince yeniden çerçeve) */
+  private wsFramed: { length: number; diameter: number } | null = null;
+
+  private reframeWorkshop(force = false) {
+    const s = this.wsStore.state;
+    const sm = s.last?.summary;
+    if (!sm || s.dragging || this.wsHandles?.dragging) return;
+    const f = this.wsFramed;
+    const moved = !f || Math.abs(sm.length / f.length - 1) > 0.15 || Math.abs(sm.diameter / f.diameter - 1) > 0.15;
+    if (!moved && !force) return;
+    this.wsFramed = { length: sm.length, diameter: sm.diameter };
+    // Açılar applyEngineUi'de yeni motora göre (aynalı) kuruldu; geçerli açıya uç
+    const cut = this.cutaway;
+    const cur = this.rig.current === 'menu' ? 'front' : this.rig.current;
+    this.rig.go(cur);
+    this.setCutaway(cut);
+  }
 
   private placeWorkshopHelpers() {
     const last = this.wsStore.state.last;
@@ -954,6 +972,8 @@ export class App {
         const n = app.framesRendered;
         const t0 = performance.now();
         while (app.framesRendered <= n + 1 && performance.now() - t0 < 5000) await new Promise((r) => requestAnimationFrame(() => r(null)));
+        // Yeniden çerçeveleme uçuşu bitsin: tutamaçların ekran konumu sabit olsun
+        while (app.rig.animating && performance.now() - t0 < 5000) await new Promise((r) => requestAnimationFrame(() => r(null)));
         app.refreshWorkshop();
       },
     };
