@@ -13,6 +13,7 @@
 import { ENGINE_KNOBS, type EngineKnob, type KnobId } from '../../design/knobs';
 import { graphRev } from '../../design/engineDoc';
 import { GOALS } from '../../workshop/goals';
+import type { TeachingError } from '../../design/warnings';
 import type { ModuleRef } from '../../workshop/project';
 import type { WorkshopStore, WorkshopState } from '../../workshop/store';
 import { h, icon } from '../../ui/dom';
@@ -71,7 +72,7 @@ export class WorkshopPanel {
   private tabBtns = new Map<WorkshopTab, HTMLButtonElement>();
   private tune: HTMLDivElement;
   private family: HTMLDivElement;
-  private errorBox: HTMLDivElement;
+  private errorBox: ErrorBox;
   private nameInput: HTMLInputElement;
   private nameRow: HTMLDivElement;
   private editor: HTMLDivElement;
@@ -136,7 +137,7 @@ export class WorkshopPanel {
     this.tabsEl = h('div', { class: 'ws-tabs', attrs: { role: 'tablist' } }, [tabBtn('arch', 'Mimari'), tabBtn('tune', 'Ayar'), tabBtn('family', 'Aile')]);
     this.tune = h('div', { class: 'ws-tune' });
     this.family = h('div', { class: 'ws-family' });
-    this.errorBox = h('div', { class: 'callout ws-error hidden', attrs: { [ATTR.error]: '', role: 'alert' } });
+    this.errorBox = new ErrorBox({ revert: () => store.revertToLastGood(), openGlossary: (id) => cb.openGlossary(id) });
     this.nameInput = h('input', {
       class: 'ws-name',
       attrs: { type: 'text', maxlength: '40', [ATTR.field]: 'name', 'aria-label': 'Tasarım adı', spellcheck: 'false' },
@@ -151,7 +152,7 @@ export class WorkshopPanel {
     this.badge = h('span', { class: 'ws-lastgood hidden', text: 'son geçerli' });
     this.editor = h('div', { class: 'ws-editor' }, [
       this.tabsEl,
-      this.errorBox,
+      this.errorBox.el,
       h('div', { class: 'scroll panel-body ws-body' }, [this.arch.el, this.tune, this.family]),
       h('div', { class: 'ws-foot' }, [
         h('button', {
@@ -386,19 +387,7 @@ export class WorkshopPanel {
         sum.textContent = v ? `${shortLabel(first.knob)} ${v.value.replace('.', ',')}${u ? ` ${u}` : ''}` : '';
       }
     }
-    // Hata kutusu
-    const e = s.error;
-    this.errorBox.classList.toggle('hidden', !e);
-    if (e) {
-      this.errorBox.replaceChildren(
-        h('b', { text: e.title }),
-        h('p', { text: e.text }),
-        h('div', { class: 'chips' }, [
-          h('button', { class: 'btn small', text: 'Son geçerli tasarıma dön', attrs: { type: 'button', [ATTR.action]: 'revert' }, on: { click: () => this.store.revertToLastGood() } }),
-          e.glossary ? h('button', { class: 'btn small ghost', text: 'Sözlük', attrs: { type: 'button', [ATTR.action]: 'glossary' }, on: { click: () => this.cb.openGlossary(e.glossary!) } }) : null,
-        ]),
-      );
-    }
+    this.errorBox.update(s.error);
     this.badge.classList.toggle('hidden', this.store.ownsLast() || !s.last);
     // Ad
     const v = fam?.variants.find((x) => x.id === fam.active);
@@ -441,6 +430,52 @@ export class WorkshopPanel {
   /** Düğmenin alanı (tutamaç okuması, test) */
   field(id: KnobId): KnobField | undefined {
     return this.fields.find((f) => f.knob.id === id);
+  }
+}
+
+/**
+ * Hata kutusu (`data-error`, `role=alert`): düğmeler bir kez kurulur,
+ * yalnız hata içeriği değişince metinler yazılır. 0,2 s'lik yenileme
+ * "Son geçerli tasarıma dön"ü fare basılıyken DOM'dan sökmesin (tık
+ * kaybolurdu), klavye odağı düşmesin, ekran okuyucu hatayı yinelemesin.
+ */
+export class ErrorBox {
+  readonly el: HTMLDivElement;
+  private title: HTMLElement;
+  private text: HTMLParagraphElement;
+  private glossaryBtn: HTMLButtonElement;
+  private glossary: string | null = null;
+  private key = '';
+
+  constructor(cb: { revert(): void; openGlossary(id: string): void }) {
+    this.title = h('b');
+    this.text = h('p');
+    this.glossaryBtn = h('button', {
+      class: 'btn small ghost hidden',
+      text: 'Sözlük',
+      attrs: { type: 'button', [ATTR.action]: 'glossary' },
+      on: { click: () => this.glossary && cb.openGlossary(this.glossary) },
+    });
+    this.el = h('div', { class: 'callout ws-error hidden', attrs: { [ATTR.error]: '', role: 'alert' } }, [
+      this.title,
+      this.text,
+      h('div', { class: 'chips' }, [
+        h('button', { class: 'btn small', text: 'Son geçerli tasarıma dön', attrs: { type: 'button', [ATTR.action]: 'revert' }, on: { click: () => cb.revert() } }),
+        this.glossaryBtn,
+      ]),
+    ]);
+  }
+
+  update(e: Readonly<Pick<TeachingError, 'title' | 'text' | 'glossary'>> | null): void {
+    const key = e ? JSON.stringify([e.title, e.text, e.glossary ?? null]) : '';
+    if (key === this.key) return;
+    this.key = key;
+    this.el.classList.toggle('hidden', !e);
+    if (!e) return;
+    this.title.textContent = e.title;
+    this.text.textContent = e.text;
+    this.glossary = e.glossary ?? null;
+    this.glossaryBtn.classList.toggle('hidden', !e.glossary);
   }
 }
 
