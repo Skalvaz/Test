@@ -530,6 +530,27 @@ export class EngineVisual {
     return { z: i.z, radius: i.radius, y: i.y ?? 0 };
   }
 
+  /**
+   * Aynı yuvanın yeniden kurulumunda (atölyede sürüklerken taslak, 250 ms
+   * sonra tam ayrıntı) önceki modelin sürekli görsel durumunu devralır: mil
+   * ve pervane açıları, lüle alanı, metal sıcaklıkları, surge sayacı. Yoksa
+   * her kurulumda kanatlar sıfır açıya sıçrar, değişken lüle 1,4'ten yeniden
+   * açılır, kızıllık soğuktan başlar (saniyede 10–20 kurulumda hiç ısınmaz)
+   * ve çalışan motorun eski surge'ü yeniden patlardı. Ardından `update(snap,
+   * 0)` ile pal açısı ve lüle ilk karede de doğru çizilir (#19).
+   */
+  carryFrom(prev: EngineVisual) {
+    this.lpAngle = prev.lpAngle;
+    this.hpAngle = prev.hpAngle;
+    this.propAngle = prev.propAngle;
+    this.nozzleArea = prev.nozzleArea;
+    this.dryNozzleArea = prev.dryNozzleArea;
+    this.thermal = { ...prev.thermal };
+    this.time = prev.time;
+    this.lastSurgeCount = prev.lastSurgeCount;
+    this.shake = prev.shake;
+  }
+
   /** Sahneden çıkarılırken GPU kaynaklarını bırakır (malzeme klonları, geometri). */
   dispose() {
     // Kendi x-ışını ikizleri: taşınan ağlarda yeni modelin altında kalmasın

@@ -6,6 +6,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
+import appSource from '../app/App.ts?raw';
 import {
   EngineVisual,
   XRAY_PARTS,
@@ -67,6 +68,20 @@ describe('vurgu: yeni parçalar hemen boyanır (#19)', () => {
     expect(inheritedHighlight().length).toBe(0);
     // Kurucu devralmayı uyguluyor
     expect(EngineVisual.toString()).toMatch(/lastHighlight\.length\) this\.highlight\(/);
+  });
+
+  it('aynı yuvanın yeniden kurulumu sürekli görsel durumu devralır (pal açısı, lüle, kızıllık bir kare bile sıfırlanmaz)', () => {
+    const { v: prev } = fakeVisual();
+    const { v: next } = fakeVisual();
+    const st = { lpAngle: 1.2, hpAngle: 3.4, propAngle: 0.7, nozzleArea: 0.83, dryNozzleArea: 0.8, thermal: { hpt: 1050, lpt: 900, pipe: 820 }, time: 12, lastSurgeCount: 2, shake: 0.1 };
+    Object.assign(prev, st);
+    Object.assign(next, { lpAngle: 0, hpAngle: 0, propAngle: 0, nozzleArea: 1.4, dryNozzleArea: 1, thermal: { hpt: 288, lpt: 288, pipe: 288 }, time: 0, lastSurgeCount: 0, shake: 0 });
+    next.carryFrom(prev);
+    for (const [k, val] of Object.entries(st)) expect((next as Record<string, unknown>)[k]).toEqual(val);
+    // Sıcaklık nesnesi paylaşılmaz (eski model ilerlemeye devam etmez ama yine de kopya)
+    expect((next as Record<string, unknown>).thermal).not.toBe((prev as Record<string, unknown>).thermal);
+    // App.installVisual taslağı çizmeden önce devralır ve dt 0 ile bir kez günceller
+    expect(appSource).toMatch(/next\.carryFrom\(this\.visual\);\s*next\.update\(this\.sim\.snapshot\(\), 0\);/);
   });
 
   it('nabız saati modelden bağımsız: update modül saatini ilerletir', () => {

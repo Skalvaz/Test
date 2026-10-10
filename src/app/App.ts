@@ -1186,6 +1186,13 @@ export class App {
     } finally {
       if (draft) setDetail(this.settings.quality);
     }
+    // Aynı yuvanın yeniden kurulumu (taslak/tam ayrıntı): görsel durum sürer;
+    // kare kancasında kurulan taslak update görmeden çizilir, pal açısı ve
+    // lüle ilk karede de doğru olsun (dt 0: hiçbir şey ilerlemez)
+    if (this.visual.slot === next.slot) {
+      next.carryFrom(this.visual);
+      next.update(this.sim.snapshot(), 0);
+    }
     this.scene.remove(this.visual.root);
     // Eski model, yeni model en az bir kez çizildikten sonra atılır: parça
     // malzemesi klonları aynı shader programlarını paylaşır; önce atılırsa
