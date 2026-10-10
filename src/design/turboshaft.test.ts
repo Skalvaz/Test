@@ -5,10 +5,12 @@
 
 import { describe, expect, it } from 'vitest';
 import { ENGINE_CATALOG, sizeEngine } from '../sim/design';
-import { EngineSim, type SimEventType } from '../sim/engineSim';
+import { dynoGainScale, EngineSim, type SimEventType } from '../sim/engineSim';
+import { familyBase } from '../workshop/project';
+import { architectureOf } from './architecture';
 import { buildEngineCard } from './card';
 import { builtFor, TEMPLATES } from './catalog';
-import { solveMassFlow } from './defaults';
+import { referenceFor, solveMassFlow } from './defaults';
 import { familyToDoc } from './engineDoc';
 import { evaluate, isEvaluation } from './evaluate';
 import { SHAFT_Z } from './flowpath';
@@ -205,8 +207,8 @@ describe('çıkış gücü tek tanım: ref.outputPower (×transmissionEff)', () 
 
 describe('turboşaft test hücresinde (dinamometre)', () => {
   /** App.beginAutoStart / updateAutoStart sırası */
-  function autoStart() {
-    const sim = new EngineSim(builtFor('turboshaft')!.design);
+  function autoStart(design = builtFor('turboshaft')!.design) {
+    const sim = new EngineSim(design);
     const seen: SimEventType[] = [];
     const at: Partial<Record<SimEventType, number>> = {};
     sim.on((e) => {
@@ -240,6 +242,18 @@ describe('turboşaft test hücresinde (dinamometre)', () => {
     expect(r.peakEgt).toBeLessThan(r.sim.limits.egtStart);
   }, HEAVY);
 
+  /** Tam güç → kesme → tam güç (12'şer s); NP tepesi */
+  function throttleSteps(sim: EngineSim, peak: number) {
+    for (const th of [1, 0, 1]) {
+      sim.controls.throttle = th;
+      for (let t = 0; t < 12; t += 1 / 60) {
+        sim.step(1 / 60);
+        peak = Math.max(peak, sim.N1);
+      }
+    }
+    return peak;
+  }
+
   it('gaz adımı ve kesme: NP aşımı yok, NP %100 ±%2, güç tasarımın ≥ %95i', () => {
     const r = autoStart();
     const sim = r.sim;
@@ -272,6 +286,30 @@ describe('turboşaft test hücresinde (dinamometre)', () => {
     expect(peakN1).toBeLessThan(1.04);
     expect(sim.surgeCount).toBe(0);
   }, HEAVY);
+
+  it('atölyede büyütülen turboşaft (W 13–15 kg/s, ~4–4,6 MW): gaz adımında NP %104 altında', () => {
+    // Atalet ≈ W^2,5 büyür; dinamometre valisi kazancı mil zaman sabitiyle
+    // ölçeklenmezse NP 13 kg/s'de %104'ü aşıyordu (inceleme bulgusu)
+    for (const W of [13, 15]) {
+      const g = familyBase(TS);
+      g.massFlow = W;
+      const design = buildEngine(g, { reference: referenceFor(architectureOf(g)) }).design;
+      const r = autoStart(design);
+      expect(r.sim.phase).toBe('running');
+      const peak = throttleSteps(r.sim, r.peakN1);
+      expect(r.seen).not.toContain('n1Overspeed');
+      expect(peak).toBeLessThan(r.sim.limits.n1Redline);
+      // Vali yine %100'e oturur
+      expect(Math.abs(r.sim.N1 - 1)).toBeLessThan(0.02);
+    }
+  }, HEAVY);
+
+  it('dinamometre kazanç ölçeği: şablonda tam 1, küçükte 1, büyükte τ/τ_ref', () => {
+    const tp = new EngineSim(builtFor('turboshaft')!.design).eng;
+    expect(dynoGainScale(tp.design.inertia.lp, tp.ref.omega1, tp.ref.shaftPower)).toBe(1);
+    expect(dynoGainScale(0.01, tp.ref.omega1, tp.ref.shaftPower)).toBe(1);
+    expect(dynoGainScale(0.2, tp.ref.omega1, tp.ref.shaftPower)).toBeCloseTo((0.2 * tp.ref.omega1 ** 2) / tp.ref.shaftPower / 0.342, 9);
+  });
 
   it('rölanti ve tam güç trim: yanıyor, rölantide N2 sınırda, tam güçte NP %100', () => {
     const sim = new EngineSim(builtFor('turboshaft')!.design);

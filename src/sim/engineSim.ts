@@ -112,10 +112,29 @@ const LP_FRICTION = 2.84e-4; // LP mil sürtünmesi / tasarım torku
 /** Pervane valisi (turboprop) */
 const PITCH_MIN = 0.03;
 const PITCH_MAX = 1.8;
+/**
+ * Dinamometre valisinin ayar noktası: güç türbini milinin zaman sabiti
+ * τ = I_lp·ω1²/P_mil [s] (TS-14 şablonu 0,3418). Vali kazançları bu
+ * şablonda ayarlandı; atölyede büyütülen turboşaftta atalet ≈ W^2,5,
+ * güç ≈ W büyür ve τ uzar (15 kg/s'de 0,62). Kazançlar τ ile ölçeklenmezse
+ * sabit kazançlı döngü yavaş kalır ve gaz adımında NP %104 sınırını aşar.
+ * Kapalı döngü (τ·ë + (Kp + 3k)·ė + Ki·e = 0) kazançlar τ ile orantılıyken
+ * aynı sönüm ve özgül frekansı verir. Daha küçük τ'da şablon kazancı
+ * kalır: döngü zaten çeviktir ve şablon bayt düzeyinde aynı davranır.
+ */
+const DYNO_TAU_REF = 0.342;
+/** Dinamometre kazanç ölçeğinin üst sınırı (düğme aralığında τ/τ_ref ≤ ~2) */
+const DYNO_GAIN_MAX = 6;
 /** Test hücresinde uçuş koşullarının değişim hızı (oyun zamanı) */
 const FLIGHT_SLEW = { altitude: 450, mach: 0.12, isaDev: 6 };
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+
+/** Dinamometre valisinin kazanç ölçeği: τ/τ_ref, [1, DYNO_GAIN_MAX] (bkz. DYNO_TAU_REF) */
+export function dynoGainScale(inertiaLp: number, omega1: number, shaftPower: number): number {
+  const tau = (inertiaLp * omega1 * omega1) / Math.max(shaftPower, 1);
+  return clamp(tau / DYNO_TAU_REF, 1, DYNO_GAIN_MAX);
+}
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 export interface SimSnapshot {
@@ -761,7 +780,10 @@ export class EngineSim {
     const governing = this.lit && this.N1 > 0.5;
     const e = this.N1 - 1.0;
     if (governing) {
-      this.propPitch += 3.0 * (e - this.prevNpErr) + 4.0 * e * dt;
+      // Turboşaft su freni: kazançlar mil zaman sabitiyle (DYNO_TAU_REF);
+      // pervane valisi (turboprop) değişmez
+      const kg = prop ? 1 : dynoGainScale(d.inertia.lp, r.omega1, r.shaftPower);
+      this.propPitch += kg * (3.0 * (e - this.prevNpErr) + 4.0 * e * dt);
     } else {
       // Çalıştırma ve duruşta ince pal (yük az)
       this.propPitch += (PITCH_MIN - this.propPitch) * Math.min(1, dt * 2);
