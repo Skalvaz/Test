@@ -251,5 +251,8 @@ describe('sonuç paneli (#20, #21, ek)', () => {
     const an2 = asEl(panel.el).querySelectorAll('.ws-gauge').filter((g) => g.textContent.includes('AN²'));
     expect(an2.length).toBeGreaterThan(0);
     for (const g of an2) expect(g.textContent).toMatch(/\d,\d\d·10[⁰¹²³⁴⁵⁶⁷⁸⁹]+ m²·rpm²/);
+    // Sayım tam sayı: '6 adet' ('6,00 adet' değil)
+    const adet = asEl(panel.el).querySelectorAll('.ws-gauge').filter((g) => g.textContent.includes('adet'));
+    for (const g of adet) expect(g.textContent).not.toMatch(/,\d+ adet/);
   });
 });

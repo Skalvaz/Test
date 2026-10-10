@@ -310,7 +310,8 @@ export class ResultsPanel {
             : g.value <= g.caution
               ? 'amber'
               : 'green';
-        const digits = Math.abs(g.value) >= 100 ? 0 : Math.abs(g.value) >= 10 ? 1 : 2;
+        // Sayım (kademe "adet") tam sayı yazılır: "6,00 adet" değil
+        const digits = (g.unit === 'adet' && Number.isInteger(g.value)) || Math.abs(g.value) >= 100 ? 0 : Math.abs(g.value) >= 10 ? 1 : 2;
         const bar = h('div', { class: 'ws-gauge-bar' }, [
           h('i', { class: `fill ${state}`, style: { width: `${(frac(g.value) * 100).toFixed(1)}%` } }),
           h('i', { class: 'mark amber', style: { left: `${(frac(g.caution) * 100).toFixed(1)}%` } }),
