@@ -403,6 +403,22 @@ export class App {
       }
       this.refreshWorkshop();
     });
+    // Görünüm: ölçek figürü anahtarı (§6.7)
+    const figBtn = h('button', {
+      class: 'btn small ghost active',
+      text: '1,8 m',
+      title: 'Ölçek figürü (1,8 m insan silueti)',
+      attrs: { type: 'button', 'aria-pressed': 'true' },
+      on: {
+        click: () => {
+          this.wsShowFigure = !this.wsShowFigure;
+          figBtn.classList.toggle('active', this.wsShowFigure);
+          figBtn.setAttribute('aria-pressed', String(this.wsShowFigure));
+          this.wsFigure?.setVisible(this.wsShowFigure);
+        },
+      },
+    });
+    this.wsPanel.toolbar.append(figBtn);
     this.topbar.insertBefore(this.wsPanel.toolbar, this.topbar.querySelector('.spacer'));
 
     document.body.append(
@@ -419,6 +435,7 @@ export class App {
     );
   }
   private wsNoticeSeq = 0;
+  private wsShowFigure = true;
 
   private setVisible(el: HTMLElement, v: boolean) {
     el.classList.toggle('hidden', !v);
@@ -846,7 +863,7 @@ export class App {
     if (!this.wsFigure) this.wsFigure = new ScaleFigure(this.scene);
     if (!this.wsBox) this.wsBox = new EnvelopeBox(this.scene);
     this.wsHandles.setVisible(true);
-    this.wsFigure.setVisible(true);
+    this.wsFigure.setVisible(this.wsShowFigure);
     this.picker.priority = (x, y) => this.mode === 'workshop' && this.wsHandles?.hitTest(x, y) != null;
     this.frameHooks.add(this.wsHook);
   }
