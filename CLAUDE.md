@@ -165,12 +165,19 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
    - ✅ Dalga 2 birleşti (`45a645c`): P6 karışık TF, P7 turboşaft, P9
      tutamaçlar, P10 atölye arayüzü (menüden açılır), PX bakım; 965 test.
      İnceleme 24 hata doğruladı (`wf_4562c4cd-527`).
-   - ⏳ Dalga 2 düzeltmesi `wf_8b543088-cb4`: 5 grup, worktree dalları
-     `m5a/d2-{turbosaft,karisik,tutamac,arayuz,uygulama}`; entegratör ana
-     kopyada birleştirir (push yok). Yarıda kaldıysa: dallarda ara commit'ler
-     var; aynı oturumda `resumeFromRunId`, değilse eksik grupları mevcut
-     worktree'lerde (`git worktree list`) sürdüren iş akışı, sonra
-     birleştir. Ardından: kontrol, push, `build:single`, dalga 3 (P11:
+   - ⏸ Dalga 2 düzeltmesi `wf_8b543088-cb4` kullanıcı isteğiyle durduruldu
+     (5 sa sınırı %95). Bulgular: oturum scratchpad'indeki `inceleme2.json`
+     (kaybolduysa günlük: `subagents/workflows/wf_4562c4cd-527/journal.jsonl`).
+     Worktree dalları `m5a/d2-*` (`.claude/worktrees/wf_8b543088-cb4-*`),
+     hepsi commit'li; son commit'ler "ara kayıt (YARIM)" olabilir.
+     Bitenler (commit mesajlarından): arayüz #7–#10 #20 #21 + ekler;
+     karışık #2 #3 #18 + Mach + görseller; turboşaft #1 #16 #17 + askı
+     (#0 gaz adımı NP aşımı ve #15 inlet.length eksik); tutamaç #19 +
+     x-ışını + ölçek figürü (#4 tıklayınca değişme, #5 takılı sürükleme,
+     duyarlılık, cancel() belirsiz); uygulama #6 #11–#14 #22 + bildirim
+     (#23 ensureWorkable notları, içe aktarmada seçim belirsiz). Devam:
+     her grup worktree'sinde eksikleri tamamlat → bağımsız doğrula →
+     ana kopyada birleştir (testler, fuzz, oynanış ONLY=1,2,sandbox). Ardından: kontrol, push, `build:single`, dalga 3 (P11:
      oynanış testi §8 atölye bölümü — adım 8'deki lpc.tipSpeed 560 artık
      aralık dışı, başka sonda seç; README/ROADMAP/belgeler; önce/sonra).
    - Kullanıcı kararı bekleyen: karışık TF'de lüle ağzı tutamacı kilitli
