@@ -626,8 +626,8 @@ tabloya geri yazar.
 | KnobId | Etiket | Birim (gösterim) | Aralık | Adım | Kapsam | Koşul | Bir cümle |
 |---|---|---|---|---|---|---|---|
 | `engine.massFlow` (log) | Hava akışı | kg/s | TJ/TJD 10–200 · MTF 30–250 · TF 150–1500 · TFM 50–600 · TP 3–30 · TS 1,5–15 | %1 | aile | – | "Motorun yuttuğu hava: itki onunla, çap karekökü ile büyür." |
-| `fan.pr` | Fan basınç oranı | – | 1,8–4,5 / **1,4–1,8** (TFM 1,4–2,4) | 0,01 | varyant | fan | "Baypas jetini hızlandırır; LPT'den daha çok iş ister." |
-| `fan.bypassRatio` | Baypas oranı | – | 0,1–1,5 / **3–11** (TFM 1–7) | 0,05 | varyant | fan | "Çekirdeğin yanından geçen hava: TSFC düşer, çap ve LPT büyür." |
+| `fan.pr` | Fan basınç oranı | – | 1,8–4,5 / **1,4–1,8** (TFM **1,4–2,0**, dalga 2 bulanık testi) | 0,01 | varyant | fan | "Baypas jetini hızlandırır; LPT'den daha çok iş ister." |
+| `fan.bypassRatio` | Baypas oranı | – | 0,1–1,5 / **3–11** (TFM **2,5–7**, dalga 2 bulanık testi) | 0,05 | varyant | fan | "Çekirdeğin yanından geçen hava: TSFC düşer, çap ve LPT büyür." |
 | `fan.tipSpeed` | Fan uç hızı | m/s | 300–560 | 1 | aile | fan | "Hızlı fan daha az LPT kademesi ister ama uçta şok yapar." |
 | `lpc.pr` | LPC / booster PR | – | LPC **2,2–5** · booster 1,1–2,5 | 0,01 | varyant | lpc | |
 | `lpc.tipSpeed` | LPC uç hızı | m/s | 300–520 | 1 | aile | lpc ön (TJ) | |
@@ -1113,9 +1113,21 @@ export interface TurbofanLayout { style: 'nacelle'; /* fan, booster, hpc, …, s
   kaportası mutlak payla ölçeklenir; düşük BPR (≤ 2) ya da küçük hava akışı
   (≤ ~150 kg/s) çekirdek kaportasını kanal duvarına dayar. Bu durumda
   FlowpathError `bypassDuct.closed` (düğmeler BPR, hava akışı); A9mix
-  hesaplanamazsa `mixer.area`. **Açık (P9/P11):** karışık ailenin
-  aralığı `knobs.ts`'te [1, 7] / [50, 600]; ya alt sınırlar (BPR ≳ 3,5,
-  W ≳ 200) çekilmeli ya da çekirdek kaportası payları çekirdekle ölçeklenmeli.
+  hesaplanamazsa `mixer.area`. **Dalga 2 entegrasyonu (çözüldü):**
+  `npm run test:fuzz` TFM'de geçerli oran %20'ydi (109 `bypassDuct.closed`,
+  51 "çekirdek lülesinde basınç kalmıyor"). İki değişiklik: (1) karışık
+  akışta çekirdek kaportası payları (bleed 0,058, booster 0,2, HPC 0,31,
+  yanma odası 0,32, LPT 0,1/0,12 m) bir `c` ölçeğiyle daraltılabilir
+  (`CORE_CLEARANCE_MIN` 0,3'e kadar). Hedef: geometrik açıklık ve fan
+  kanalının ön kısmındaki en dar halkada baypas Mach'ı ≤ `FAN_DUCT_MACH_MAX`
+  (0,8). Sağlanıyorsa `c = 1`: iki şablon ve ayrık akış bayt düzeyinde aynı.
+  Öğretici hata yalnız en dar payla da geometrik açıklık yetmezse.
+  (2) TFM düğme aralıkları BPR **2,5–7**, fan PR **1,4–2,0** (BPR < 2,5'te
+  çekirdek kanala sığmıyor; FPR > 2 yüksek BPR'de çevrim çözülmüyor). Sonuç
+  158/200 geçerli (%79), W 50 ve 100 kg/s artık kurulur.
+  **Açık (P6 sahibine):** şablonun fan kanalı arka ucunda Mach 0,76 (gerçek
+  ~0,5); çekirdek kaportası fan ucuna göre 0,78 (CFM56-5C ~0,65). Hedef
+  0,6'ya çekilirse şablon kaportası ~2 cm daralır, görseller yenilenmeli.
 - Lüle ağzı tutamacı TFM'de **kilitli** (§6.7 istisnası, aşağıda).
 
 **3B:**

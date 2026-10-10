@@ -45,6 +45,22 @@ export const PLUG_PROTRUSION = 0.7;
 const MIX_SHEET_T = 0.003;
 /** Karışık akış: çekirdek kaportasının fan kanalı iç duvarına en az açıklığı (fan ucu oranında) */
 const MIN_DUCT_GAP = 0.04;
+/**
+ * Karışık akış: çekirdek kaportası boşluk payının en çok daraltılabileceği
+ * oran. Paylar (aksesuar, boru, bleed) M4 öncesi TF referansında mutlak
+ * metre; küçük ya da düşük baypaslı karışık TF'de kanal kapanırsa bu orana
+ * kadar orantılı daraltılır (en dar boşluk: bleed payı 0,058 → 17 mm).
+ */
+export const CORE_CLEARANCE_MIN = 0.3;
+/**
+ * Karışık akış: fan kanalının ön kısmında (OGV → itki çevirici başı) en dar
+ * halka alanında baypas akışının hedef ortalama Mach'ı. Geometrik açıklık
+ * yetmez: küçük motorda kanal açık ama tıkalı kalıyordu (W 300'de Mach 1).
+ * Şablon (CFM56-5C) bu kesitte 0,76'da; şablonu değiştirmemek için hedef
+ * 0,8 (gerçek fan çıkış kanalları ~0,5: şablonun çekirdek kaportası büyük,
+ * açık sorun).
+ */
+export const FAN_DUCT_MACH_MAX = 0.8;
 /** Egzoz konisinin M4 öncesi ojiv profili: [taban yarıçapı oranı, boy (taban 0,4 m'de)] */
 const PLUG_SHAPE: readonly [number, number][] = [
   [1, 0],
@@ -181,10 +197,25 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
   const nacZ0 = fanZ + 0.28 * s;
   const toWorld = ([r, z]: [number, number]): [number, number] => [r * s, nacZ0 + z * s];
 
-  // Çekirdek kaportası: iç parçaların zarfı + boşluk (aksesuar, boru, bleed payı)
+  // Çekirdek kaportası: iç parçaların zarfı + boşluk (aksesuar, boru, bleed
+  // payı). `c` boşluk ölçeği: ayrık akışta ve sığan karışık akışta 1 (M4
+  // öncesi referans, bayt düzeyinde aynı); karışık akışta kanal kapanırsa
+  // CORE_CLEARANCE_MIN'e kadar daralır (aşağıda)
   const zS = fanZ + 0.3 * s;
-  const rS = booster.tip[0] + 0.058;
-  const rMax = Math.max(booster.tip[1] + 0.2, hpc.tip[0] + 0.31, cb.rOut + 0.32, lpt.tip[1] + 0.1);
+  const coreCowlFront = (c: number) => {
+    const rS = booster.tip[0] + 0.058 * c;
+    const rMax = Math.max(booster.tip[1] + 0.2 * c, hpc.tip[0] + 0.31 * c, cb.rOut + 0.32 * c, lpt.tip[1] + 0.1 * c);
+    const pts: [number, number][] = [
+      [rS, zS],
+      [rS + 0.35 * (rMax - rS), zS + 0.13],
+      [rS + 0.75 * (rMax - rS), booster.z1 - 0.1],
+      [rMax * 0.99, hpc.z0 + 0.1],
+      [rMax, (hpc.z1 + cb.z0) / 2],
+      [rMax * 0.985, cb.z1],
+      [Math.max(rMax * 0.94, lpt.tip[1] + 0.12 * c), hpt.z1 + 0.1],
+    ];
+    return { rS, pts };
+  };
   const zLipSep = lpt.z1 + 0.52;
   // Egzoz kanalının dış duvarı (türbin arka çerçevesinin uç yarıçapı)
   const ductR = lpt.tip[1] + 0.046;
@@ -230,15 +261,7 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
   const ogvZ = fanZ + 0.48 * s;
   const strutZ = booster.z1;
   const rearZ = lpt.z1 + 0.16;
-  const cowlFront: [number, number][] = [
-    [rS, zS],
-    [rS + 0.35 * (rMax - rS), zS + 0.13],
-    [rS + 0.75 * (rMax - rS), booster.z1 - 0.1],
-    [rMax * 0.99, hpc.z0 + 0.1],
-    [rMax, (hpc.z1 + cb.z0) / 2],
-    [rMax * 0.985, cb.z1],
-    [Math.max(rMax * 0.94, lpt.tip[1] + 0.12), hpt.z1 + 0.1],
-  ];
+  let { rS, pts: cowlFront } = coreCowlFront(1);
 
   let cowl: [number, number][];
   let coreNozzle: TurbofanLayout['coreNozzle'];
@@ -275,7 +298,11 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
   } else {
     // --- karışık akış: uzun kanallı kaporta, karıştırıcı, ortak lüle ---
     const st = sized.point.stations;
-    cowl = [...cowlFront, [Math.max(mixR + 0.06, lpt.tip[1] + 0.08), lpt.z1 - 0.05], [mixR + 0.02, mz0]];
+    const cowlTail: [number, number][] = [
+      [Math.max(mixR + 0.06, lpt.tip[1] + 0.08), lpt.z1 - 0.05],
+      [mixR + 0.02, mz0],
+    ];
+    cowl = [...cowlFront, ...cowlTail];
     // Kaporta iç duvarı: OGV arkasındaki halka alanından karıştırma
     // düzleminde baypas kanalı Mach'ına (bypassDuct.mach) göre gereken alana
     // düzgün geçiş. Her z'de iç sınırın (çekirdek kaportası, karıştırıcı)
@@ -288,14 +315,47 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
     // Fan kanalının ön kısmı (OGV, destek kanatları, itki çevirici başı) fan
     // ucu oranında ölçeklenir, çekirdek kaportası ise çekirdek parçalarının
     // zarfından mutlak payla: düşük BPR ya da küçük hava akışında çekirdek
-    // kaportası kanal duvarını geçer. Sessizce kırpmak yerine öğretici hata.
+    // kaportası kanal duvarını geçer ya da kanalı tıkar. Önce kaporta payları
+    // orantılı daraltılır (küçük motorda aksesuar ve borular da küçük; şablon
+    // ve sığan tasarım değişmez). Hedef: geometrik açıklık (fan ucu oranında)
+    // ve baypas akışını FAN_DUCT_MACH_MAX altında geçiren halka alanı. Alan
+    // en dar payla da yetmiyorsa en dar pay kullanılır (c sürekli kalır);
+    // yalnız geometrik açıklık yetmezse sessizce kırpmak yerine öğretici hata.
     const ductFront = NACELLE_DUCT_FRONT.map(toWorld);
-    let gap = Infinity;
-    for (let i = 0; i <= 16; i++) {
-      const z = lerp(Math.min(ogvZ, strutZ), Math.max(zA, strutZ), i / 16);
-      gap = Math.min(gap, profileAt(ductFront, z) - inner(z));
+    const needGap = MIN_DUCT_GAP * s;
+    const needArea = annulusArea(flowStation(st['13'].T, st['13'].P, st['13'].W), FAN_DUCT_MACH_MAX, AIR);
+    const fitOf = (pts: [number, number][]) => {
+      const c = [...pts, ...cowlTail];
+      let gap = Infinity;
+      let area = Infinity;
+      for (let i = 0; i <= 16; i++) {
+        const z = lerp(Math.min(ogvZ, strutZ), Math.max(zA, strutZ), i / 16);
+        const ro = profileAt(ductFront, z);
+        const ri = z < mz0 ? profileAt(c, z) : mixR;
+        gap = Math.min(gap, ro - ri);
+        area = Math.min(area, Math.PI * (ro * ro - ri * ri));
+      }
+      return { gap, area, ok: gap >= needGap && area >= needArea };
+    };
+    let fit = fitOf(cowlFront);
+    if (!fit.ok) {
+      // Boşluk ölçeği c: hedefi sağlayan en büyük c (açıklık ve alan c'de
+      // tekdüze azalır); en dar payla da sağlanmıyorsa en dar pay
+      let lo = CORE_CLEARANCE_MIN;
+      if (fitOf(coreCowlFront(lo).pts).ok) {
+        let hi = 1;
+        for (let i = 0; i < 24; i++) {
+          const m = (lo + hi) / 2;
+          if (fitOf(coreCowlFront(m).pts).ok) lo = m;
+          else hi = m;
+        }
+      }
+      ({ rS, pts: cowlFront } = coreCowlFront(lo));
+      cowl = [...cowlFront, ...cowlTail];
+      fit = fitOf(cowlFront);
     }
-    if (!(gap >= MIN_DUCT_GAP * s))
+    const gap = fit.gap;
+    if (!(gap >= needGap))
       throw new FlowpathError(
         'Fan kanalı kapanıyor: çekirdek kaportası baypas kanalının dış duvarına dayanıyor (çekirdek fana göre çok büyük). Baypas oranını ya da hava akışını artır.',
         'bypassDuct.closed',

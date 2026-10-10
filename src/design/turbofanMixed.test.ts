@@ -107,10 +107,11 @@ describe('lüle alanı ve uzun kanal geometrisi', () => {
         expect(profileAt(m.duct, z) - profileAt(l.coreCowl, z), `${label} z ${z.toFixed(2)}`).toBeGreaterThan(0.02);
       }
     }
-    // Ölçüm (P6 denetimi): çekirdek mutlak paylı, kanal fan oranında → BPR ≤ 2 ve W ≤ 100 kapanır
-    expect(closed).toEqual(expect.arrayContaining(['BPR 1', 'BPR 2', 'W 50', 'W 100']));
-    expect(closed).not.toContain('BPR 7');
-    expect(closed).not.toContain('W 600');
+    // Ölçüm (P6 denetimi): çekirdek mutlak paylı, kanal fan oranında → BPR ≤ 2
+    // kapanır. Entegrasyon (dalga 2): küçük hava akışında kaporta payları
+    // daraltıldığı için W 50/100 artık kurulur (düğme aralığı BPR 2,5–7)
+    expect(closed).toEqual(expect.arrayContaining(['BPR 1', 'BPR 2']));
+    for (const ok of ['BPR 7', 'W 50', 'W 100', 'W 600']) expect(closed).not.toContain(ok);
   });
 
   it('karışma basıncı yetersizken (A9mix NaN) TypeError yerine öğretici FlowpathError', () => {

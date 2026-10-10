@@ -421,7 +421,10 @@ const SPECS: Record<KnobId, KnobSpec> = {
     label: 'Fan basınç oranı',
     explain: "Baypas jetini hızlandırır; LPT'den daha çok iş ister.",
     unit: '',
-    range: when(hasFan, (t) => (t.layout !== 'nacelle' ? [1.8, 4.5] : mixedNacelle(t) ? [1.4, 2.4] : [1.4, 1.8])),
+    // TFM 1,4–2,0 (dalga 2 bulanık testi): FPR > 2'de yüksek BPR'de LPT çekirdek
+    // lülesine basınç bırakmıyor ve ortak lüle ağzı çözülmüyor (P6 ölçümü);
+    // gerçek kaportalı karışık TF'ler 1,5–1,9 (JT8D-200, TFE731, CFM56-5C)
+    range: when(hasFan, (t) => (t.layout !== 'nacelle' ? [1.8, 4.5] : mixedNacelle(t) ? [1.4, 2] : [1.4, 1.8])),
     step: 0.01,
     scope: 'variant',
   }),
@@ -429,7 +432,10 @@ const SPECS: Record<KnobId, KnobSpec> = {
     label: 'Baypas oranı',
     explain: 'Çekirdeğin yanından geçen hava: TSFC düşer, çap ve LPT büyür.',
     unit: '',
-    range: when(hasFan, (t) => (t.layout !== 'nacelle' ? [0.1, 1.5] : mixedNacelle(t) ? [1, 7] : [3, 11])),
+    // TFM 2,5–7: BPR < 2,5'te LPT ucu uzun kanallı kaportanın fan kanalı
+    // duvarına dayanıyor (`bypassDuct.closed`, kaporta payları daraltılsa da);
+    // Tay 3,0, BR710 4,2, CFM56-5C 6,6 içeride, JT8D-200 (1,74) dışarıda
+    range: when(hasFan, (t) => (t.layout !== 'nacelle' ? [0.1, 1.5] : mixedNacelle(t) ? [2.5, 7] : [3, 11])),
     step: 0.05,
     scope: 'variant',
     glossary: 'bpr',
