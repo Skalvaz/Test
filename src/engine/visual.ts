@@ -15,7 +15,7 @@ import { createNoiseTexture } from '../materials/textures.js';
 import { EngineEffects } from '../effects/EngineEffects.js';
 import { buildGroundCradle, buildPylonGantry } from './stand.js';
 import { tagPart, ensureUV1 } from './geom.js';
-import { beginBuild, isLive } from './buildCache.js';
+import { beginBuild, endBuild, isLive } from './buildCache.js';
 import { clonePatched } from '../materials/weathering';
 import { MODEL_BUILDERS, type EngineModel, type Materials, type VisualSource } from './models';
 
@@ -231,7 +231,8 @@ export class EngineVisual {
   private plumeBaseRadius: number;
   /** Egzoz akışının tam görünür olduğu çekirdek itkisi [N] (plumeNormOf) */
   private plumeNorm: number;
-  private highlighted: PartId | null = null;
+  /** Vurgulu parçalar (highlight): termal döngüler bunların ışımasına dokunmaz */
+  private highlighted = new Set<PartId>();
   private time = 0;
   private lastSurgeCount = 0;
 
@@ -252,6 +253,8 @@ export class EngineVisual {
     beginBuild();
     // Model üreticisi yerleşim stilinden (kind'dan değil)
     this.model = MODEL_BUILDERS[src.traits.layout](materials, src);
+    // Bu ayrıntı seviyesinin önceki neslinden taşınmayan parçalar atılır
+    endBuild();
     const ex = this.model.exhaust;
     this.plume = buildExhaustPlume(ex.radius, ex.z);
     this.plumeBaseRadius = ex.radius;
@@ -289,7 +292,8 @@ export class EngineVisual {
       { traits: src.traits, intake: this.model.intake, exhaust: this.model.exhaust, prop },
       createNoiseTexture(256, 777),
     );
-    // Atölye: efektler kapalı (P9 kurulumu da atlar)
+    // Atölye: efektler kapalı. Kurulum yine yapılır (P9 ölçümü: ~1 ms,
+    // taslak üretiminin < %2'si); kapalı efekt güncellenmez ve çizilmez
     this.effectsAllowed = opts.effects !== false;
     if (!this.effectsAllowed) this.effects.enabled = false;
     const noShadow = [this.plume.mesh, this.exhaustFlame.mesh, this.inletFlame.mesh];
@@ -457,9 +461,24 @@ export class EngineVisual {
     });
   }
 
-  highlight(part: PartId | null) {
-    if (this.highlighted && this.highlighted !== part) this.restore(this.highlighted);
-    this.highlighted = part;
+  /**
+   * Parça ya da parça kümesini nabızla vurgular (null: vurgu yok). Atölyede
+   * seçili modülün bütün parçaları birlikte (partsMap.partsOfModule); ders ve
+   * test hücresinde tek parça. Her karede çağrılabilir: aynı küme gelince
+   * hiçbir şey yapmaz, kümeden çıkan parçaların malzemeleri hemen eski
+   * ışımalarına döner (termal kızıllık bir sonraki update'te yeniden yazılır).
+   */
+  highlight(parts: PartId | readonly PartId[] | null) {
+    const next = parts === null ? [] : typeof parts === 'string' ? [parts] : parts;
+    if (next.length === this.highlighted.size && next.every((p) => this.highlighted.has(p))) return;
+    const keep = new Set(next);
+    for (const p of this.highlighted) if (!keep.has(p)) this.restore(p);
+    this.highlighted = keep;
+  }
+
+  /** Vurgulu parçalar (salt okunur) */
+  get highlightedParts(): ReadonlySet<PartId> {
+    return this.highlighted;
   }
 
   private restore(part: PartId) {
@@ -581,7 +600,7 @@ export class EngineVisual {
     // Egzoz metali: jet borusu/egzoz kanalı ve kuru motorun sabit lülesi
     // (`nozzle` parçası) aynı gaz sıcaklığıyla kızarır
     for (const part of ['exhaust', 'nozzle'] as PartId[]) {
-      if (part === this.highlighted) continue;
+      if (this.highlighted.has(part)) continue;
       for (const mat of this.parts.get(part)?.materials ?? []) {
         const w = pipeGlowWeight(part, mat.name);
         if (!w) continue;
@@ -593,7 +612,7 @@ export class EngineVisual {
     // Art yakıcı gömleği, alev tutucular ve seramik lüle iç yüzü kor olur
     const ab = snap.abLevel;
     for (const part of ['afterburner', 'nozzle'] as PartId[]) {
-      if (part === this.highlighted) continue;
+      if (this.highlighted.has(part)) continue;
       for (const mat of this.parts.get(part)?.materials ?? []) {
         if (mat.name === 'abLiner') mat.emissiveIntensity = ab * 0.9 + hot * 0.25;
         else if (mat.name === 'flameHolder') mat.emissiveIntensity = ab * 2.2 + hot * 0.5;
@@ -613,7 +632,7 @@ export class EngineVisual {
     // Türbin kanatları: metal sıcaklığıyla kızıllık (+ aşırı ısınmada parlak)
     const overheat = THREE.MathUtils.clamp((snap.egtTrue - 1000) / 700, 0, 1);
     for (const part of ['hpt', 'lpt'] as PartId[]) {
-      if (part === this.highlighted) continue;
+      if (this.highlighted.has(part)) continue;
       const T = part === 'hpt' ? th.hpt : th.lpt;
       const k = glow(T, gc);
       for (const m of this.parts.get(part)?.materials ?? []) {
@@ -646,12 +665,14 @@ export class EngineVisual {
     const vib = THREE.MathUtils.clamp((snap.vibration - 1.2) / 3, 0, 1);
     this.shake = Math.max(vib * 0.35, this.shake - dt * 1.8);
 
-    // Vurgulama (nabız)
-    if (this.highlighted) {
+    // Vurgulama (nabız): kümedeki bütün parçalar aynı fazda
+    if (this.highlighted.size) {
       const pulse = 0.35 + 0.25 * Math.sin(this.time * 5);
-      for (const m of this.parts.get(this.highlighted)?.materials ?? []) {
-        m.emissive.copy(HIGHLIGHT);
-        m.emissiveIntensity = pulse;
+      for (const part of this.highlighted) {
+        for (const m of this.parts.get(part)?.materials ?? []) {
+          m.emissive.copy(HIGHLIGHT);
+          m.emissiveIntensity = pulse;
+        }
       }
     }
     if (camera) this.effects.update(snap, dt, camera, this.propAngle);

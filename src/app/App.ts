@@ -20,7 +20,7 @@ import { loadProgress, loadSettings, saveLessonResult, saveSettings, type Settin
 import { createMaterials } from '../materials/library.js';
 import { loadKit, setKitQuality } from '../engine/kit.js';
 import { setBladeQuality } from '../engine/blades.js';
-import { setDetailTag } from '../engine/buildCache.js';
+import { retainDetails, setDetailTag } from '../engine/buildCache.js';
 import { builtFor, designFor, setSlotBuilt, setSlotGraph, type SlotId } from '../design/catalog';
 import { isBuiltEngine, type BuildOptions, type BuiltEngine } from '../design/graph';
 import type { EngineGraph } from '../design/types';
@@ -774,7 +774,10 @@ export class App {
             this.settings.quality = q;
             this.applyQuality(q);
             saveSettings(this.settings);
-            // Kit parçalarının detay seviyesi değişti: model yeniden üretilir
+            // Kit parçalarının detay seviyesi değişti: model yeniden üretilir.
+            // Önbellek yalnız yeni kaliteyi ve taslağı tutar (bırakılan
+            // kalitenin son nesli bellekte kalmasın)
+            retainDetails([q, 'low']);
             setDetail(q);
             this.rebuildVisual();
           },
@@ -1112,6 +1115,13 @@ export class App {
   fixedDt: number | null = null;
   pendingSteps = 0;
   framesRendered = 0;
+  /**
+   * Kare kancaları (M5a P9): atölyenin 3B yardımcıları (tutamaçlar, hayalet,
+   * ölçek figürü, zarf kutusu; src/app/workshop) kamera bu karenin son
+   * konumundayken, çizimden hemen önce güncellenir. Atölye modu (P10)
+   * girişte ekler, çıkışta siler.
+   */
+  readonly frameHooks = new Set<(dt: number) => void>();
 
   private frame(now: number) {
     requestAnimationFrame(this.frame);
@@ -1177,6 +1187,7 @@ export class App {
     updateWeather(simDt);
     this.rain.update(simDt, this.rig.camera, this.floorY);
     if (this.cutaway) this.aimCutaway();
+    for (const f of this.frameHooks) f(dt);
     this.updateHaze(snap, dt);
     if (!this.envPending) {
       this.fx.composer.render(dt);
