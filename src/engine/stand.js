@@ -13,6 +13,19 @@ export const BEAM_Y = 3.08;
 export const CELL_FLOOR_Y = -3.35;
 
 /**
+ * Askı levhalarının ve bağlantı donanımının ölçek çapası: şablonların en
+ * küçük yarıçaplı askılı motoru (turbojet, R ≈ 0,43 m). Ondan büyükte ölçek
+ * 1 (şablonlar değişmez); küçük motorda (turboşaft ~0,33 m) levha, pim ve
+ * yastık taşıdığı yükle (≈ R³) incelir, kesit ≈ R^1,5 ile.
+ */
+export const YOKE_REF_R = 0.42;
+
+/** Askı donanımı ölçeği motor yarıçapına göre: (R/YOKE_REF_R)^1,5, [0,3, 1] */
+export function yokeScale(engineR) {
+  return Math.min(1, Math.max(0.3, (engineR / YOKE_REF_R) ** 1.5));
+}
+
+/**
  * @param {{ mounts: number[], engineR: number }} opts mounts: askı bağlantı
  *   noktalarının z konumları; engineR: motor dış yarıçapı
  */
@@ -38,21 +51,22 @@ export function buildStandYoke(materials, { mounts, engineR }) {
   adapter.position.set(0, BEAM_Y + 0.19, cz);
   group.add(adapter);
 
-  // Askı levhaları ve motor bağlantı yastıkları
+  // Askı levhaları ve motor bağlantı yastıkları: ölçüleri motorla (yokeScale)
+  const s = yokeScale(engineR);
   const top = BEAM_Y - 0.12;
-  const bottom = engineR + 0.04;
+  const bottom = engineR + 0.04 * s;
   for (const mz of mounts) {
-    for (const x of [-0.13, 0.13]) {
-      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.03, top - bottom, 0.22), materials.standPaint);
+    for (const x of [-0.13 * s, 0.13 * s]) {
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.03 * s, top - bottom, 0.22 * s), materials.standPaint);
       plate.position.set(x, (top + bottom) / 2, mz);
       group.add(plate);
     }
-    const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.34, 16), materials.machinery);
+    const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.03 * s, 0.03 * s, 0.34 * s, 16), materials.machinery);
     pin.rotation.z = Math.PI / 2;
-    pin.position.set(0, bottom + 0.05, mz);
+    pin.position.set(0, bottom + 0.05 * s, mz);
     group.add(pin);
-    const pad = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.07, 0.18), materials.machinery);
-    pad.position.set(0, engineR + 0.02, mz);
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(0.22 * s, 0.07 * s, 0.18 * s), materials.machinery);
+    pad.position.set(0, engineR + 0.02 * s, mz);
     group.add(pad);
   }
   group.traverse((o) => {

@@ -52,6 +52,11 @@ export interface GasGenOptions {
   exhaustLength?: number;
   /** Gövde ön ucunun en küçük z'si (turboşaftta halka giriş ağzı: gövde ağzın önüne taşmaz) */
   caseZ0Min?: number;
+  /**
+   * Gövde ön ucunun en küçük yarıçapı (turboşaftta giriş çerçevesinin dış
+   * kabuğu: büyük merkez gövdeli girişte kanal gövdenin içinde kalsın)
+   */
+  caseR0Min?: number;
 }
 
 /**
@@ -91,6 +96,7 @@ export function gasGeneratorLayout(graph: EngineGraph, sized: SizedEngine, gp: G
     casePts[0][1] = Math.max(casePts[0][1], o.caseZ0Min);
     casePts[1][1] = Math.max(casePts[1][1], casePts[0][1] + 0.02 * k);
   }
+  if (o.caseR0Min !== undefined) casePts[0][0] = Math.max(casePts[0][0], o.caseR0Min);
   const shafts = {
     lp: [lpShaftZ0, lpt.z1 + 0.05 * k, gp.shafts.lp] as [number, number, number],
     hp: [hpc.z0 - 0.06 * k, hpt.z1 + 0.04 * k, gp.shafts.hp] as [number, number, number],

@@ -23,8 +23,26 @@ export const READY = true;
 /** Halka giriş ağzındaki eksenel Mach: ağız alanı giriş akışından */
 export const INLET_MACH = 0.32;
 
-/** Redüktörsüz sayılan devir farkı: |ω_güç türbini / ω_çıkış − 1| bunun altındaysa doğrudan tahrik */
+/**
+ * Redüktörsüz sayılan devir farkı: |ω_güç türbini / ω_istenen − 1| bunun
+ * altındaysa (ve redüktör istenmemişse) doğrudan tahrik. Doğrudan tahrikte
+ * çıkış mili güç türbini milinin uzantısıdır: gerçek çıkış devri güç
+ * türbininki, oran tam 1 (istenen devir yalnız redüktör kararına girer).
+ */
 export const DIRECT_DRIVE_TOL = 0.05;
+
+/**
+ * Redüktörlü motorda redüktör kutusu ile giriş ağzı arasındaki boyun:
+ * kutu ağızdan genişse hava ağza yandan (radyal) girer; boyunun yan
+ * yüzeyi (2π·r_dış·boy) ağız alanının bu katı kadar olmalı.
+ */
+const NECK_AREA_RATIO = 1.2;
+
+/** Redüktör kutusunun en kısa boyu (·k): boyun bunu yemez */
+export const GEARBOX_MIN_LEN = 0.06;
+
+/** Gaz jeneratörü gövdesinin ön ucu giriş çerçevesinin dış kabuğundan en çok bu kadar (·k) içeride: ön flanş basamağı */
+const FRAME_STEP = 0.015;
 
 /** Çıkış mili yarıçapı katsayısı [m / (N·m)^(1/3)]: LP mili ile aynı (flowpath.ts computeGasPath) */
 const OUTPUT_SHAFT_K = 0.00305;
@@ -46,8 +64,15 @@ export interface TurboshaftLayout {
    * (grafikte istenmiş ya da devirler %5'ten çok farklı).
    */
   output: { z: number; radius: number; flangeR: number; rpm: number; gearRatio: number; reduction: boolean };
-  /** Mil gövdesi (flanşın arkası → giriş merkez gövdesi) ve redüktör kutusu (varsa) */
-  housing: { z0: number; z1: number; r: number; gearboxR: number };
+  /**
+   * Mil gövdesi (flanşın arkası → giriş merkez gövdesi) ve redüktör kutusu
+   * (varsa): `gearbox` kutunun eksenel aralığı. Redüktörde kutu ağzın önünde
+   * biter (boyun: merkez gövde yalnız mil gövdesini sarar); doğrudan
+   * tahrikte kutu yok, aralık mil gövdesininki.
+   */
+  housing: { z0: number; z1: number; r: number; gearboxR: number; gearbox: [number, number] };
+  /** Giriş çerçevesinin dış kabuğu (ayırıcı salyangozu dahil) */
+  frameR: number;
   /** Sabit ölçülerin ölçeği (HPC göz yarıçapı / turboprop şablonununki) */
   k: number;
   /** Test standı askı noktaları (eksenel konum): ön çerçeve ve yanma odası arkası */
@@ -67,44 +92,65 @@ function turboshaftGeometry(graph: EngineGraph, sized: SizedEngine, gp: GasPath)
   const inletMod = moduleOf<InletModule>(graph, 'inlet')!;
   const { hpc } = gp;
   const k = gasGenScale(gp);
-  const gg = gasGeneratorLayout(graph, sized, gp, SHAFT_Z, { k, exhaustLength: EXHAUST_LENGTH, caseZ0Min: SHAFT_Z + shaft.gearboxLength });
 
-  // Çıkış mili: yarıçap torkun küp kökü ile (P çıkış gücü, ω çıkış devri)
-  const wOut = (shaft.rpm * 2 * Math.PI) / 60;
+  // Çıkış mili: yarıçap torkun küp kökü ile (P çıkış gücü, ω gerçek çıkış
+  // devri). Doğrudan tahrikte çıkış güç türbini devrinde döner (oran 1)
+  const wWant = (shaft.rpm * 2 * Math.PI) / 60;
+  const reduction = shaft.reduction || Math.abs(gp.omega.lp / wWant - 1) > DIRECT_DRIVE_TOL;
+  const wOut = reduction ? wWant : gp.omega.lp;
+  const gearRatio = gp.omega.lp / wOut;
   const torque = Math.max(sized.ref.outputPower, 1) / wOut;
   const radius = OUTPUT_SHAFT_K * Math.cbrt(torque);
-  const gearRatio = gp.omega.lp / wOut;
-  const reduction = shaft.reduction || Math.abs(gearRatio - 1) > DIRECT_DRIVE_TOL;
   const flangeR = 2.6 * radius + 0.012 * k;
 
-  // Halka giriş: merkez gövde HPC göbeğinden biraz büyük (mil gövdesini
-  // sarar); dış yarıçap ağız alanından (giriş akışı, INLET_MACH)
+  // Halka giriş: merkez gövde mil gövdesini sarar (HPC göbeğinden ve
+  // flanştan biraz büyük); dış yarıçap ağız alanından (giriş akışı,
+  // INLET_MACH). Redüktör kutusu merkez gövdeye girmez: ağzın önündedir
   const z0 = SHAFT_Z + shaft.gearboxLength;
   // HPC en az TURBOSHAFT_MIN_INLET·uç arkada (flowpath.ts): çerçeve rotora girmez
   const z1 = hpc.z0;
-  // Mil gövdesi önce: redüktör varsa planet takımını alacak kadar şişkin;
-  // halka giriş merkez gövdesi onu sarar (Makila gibi ağız dışa kayar)
   const housingR = Math.max(radius * 1.9, flangeR * 0.85);
   const gearboxR = reduction ? housingR * 1.9 : housingR;
-  const rInner = Math.max(hpc.hub[0] * 1.05, flangeR * 1.15, gearboxR * 1.05);
+  const rInner = Math.max(hpc.hub[0] * 1.05, flangeR * 1.15, housingR * 1.05);
   const area = annulusArea(sized.point.stations['2'], INLET_MACH, AIR);
   const rOuter = Math.sqrt(area / Math.PI + rInner * rInner);
   const inlet = { z0, z1, rOuter, rInner, separator: inletMod.separator ?? false };
+  // Giriş çerçevesinin dış kasası (ayırıcı salyangozu dahil)
+  const frameR = rOuter + 0.035 * k + (inlet.separator ? 0.03 * k : 0);
 
-  // Mil gövdesi: flanşın hemen arkasından merkez gövdeye
-  const housing = { z0: SHAFT_Z + 0.03 * k, z1: z0, r: housingR, gearboxR };
+  // Mil gövdesi: flanşın hemen arkasından merkez gövdeye. Redüktör kutusu
+  // ağzın önünde biter: kutu ile ağız arasındaki boyundan hava ağza yandan
+  // girer (Makila, Arriel gibi önde redüktörlü motorlar). Mil gövdesi kısa
+  // olsa da kutu en az GEARBOX_MIN_LEN·k boyda kalır (yassı planet takımı)
+  const hz0 = SHAFT_Z + 0.03 * k;
+  const neck = reduction ? Math.max(0, Math.min(Math.max(0.03 * k, (NECK_AREA_RATIO * area) / (2 * Math.PI * rOuter)), z0 - hz0 - GEARBOX_MIN_LEN * k)) : 0;
+  const housing = { z0: hz0, z1: z0, r: housingR, gearboxR, gearbox: [hz0, z0 - neck] as [number, number] };
+
+  // Gaz jeneratörü gövdesi ağza kırpılır ve ön ucu çerçevenin dış kabuğuna
+  // ulaşır: büyük merkez gövdeli (düşük çıkış devri) girişte kanal gövdenin
+  // içinde kalır
+  // Güç türbini mili redüktörde dişli takımında (güneş) biter, doğrudan
+  // tahrikte çıkış flanşına uzanır
+  const lpShaftZ0 = reduction ? (housing.gearbox[0] + housing.gearbox[1]) / 2 : SHAFT_Z;
+  const gg = gasGeneratorLayout(graph, sized, gp, lpShaftZ0, {
+    k,
+    exhaustLength: EXHAUST_LENGTH,
+    caseZ0Min: z0,
+    caseR0Min: frameR - FRAME_STEP * k,
+  });
 
   // Askı noktaları: santrifüj difüzör gövdesi (en geniş yer) ve egzoz
   // çerçevesi; üstte aksesuar dişli kutusu olduğundan giriş çerçevesine değil
   const standZ: [number, number] = [gp.centrifugal!.z + 0.04 * k, gp.lpt.z1 + 0.05 * k];
-  // Giriş çerçevesinin dış kasası (ayırıcı salyangozu dahil) gövdeden geniş olabilir
-  const frameR = rOuter + 0.035 * k + (inlet.separator ? 0.03 * k : 0);
+  // Giriş çerçevesi gövdeden geniş olabilir
   const engineR = Math.max(gg.engineR, frameR + 0.05 * k);
   const outerProfile = envelopeOf(
     [
       [flangeR, SHAFT_Z],
       [housing.gearboxR, housing.z0 + 0.02 * k],
-      [housing.gearboxR, z0 - 0.01 * k],
+      [housing.gearboxR, housing.gearbox[1] - 0.01 * k],
+      // Boyun (redüktörde): mil gövdesi ağza iner
+      ...(neck > 0 ? [[housing.r * 1.04, z0 - 0.01 * k] as [number, number]] : []),
       [frameR, z0],
       [frameR, z1],
     ],
@@ -120,8 +166,9 @@ function turboshaftGeometry(graph: EngineGraph, sized: SizedEngine, gp: GasPath)
     style: 'turboshaft',
     gg,
     inlet,
-    output: { z: SHAFT_Z, radius, flangeR, rpm: shaft.rpm, gearRatio, reduction },
+    output: { z: SHAFT_Z, radius, flangeR, rpm: (wOut * 60) / (2 * Math.PI), gearRatio, reduction },
     housing,
+    frameR,
     k,
     standZ,
     engineR,

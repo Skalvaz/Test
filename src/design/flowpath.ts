@@ -568,7 +568,8 @@ function extraCentroid(layout: EngineLayout, gp: GasPath, key: string): number {
       // M5a P7: gövde gaz jeneratörü boyunca, ön çerçeve ve mil gövdesi önde
       if (key === 'casing') return mid(gp.hpc.z0, gp.lpt.z1);
       if (key === 'inlet') return mid(layout.inlet.z0, layout.inlet.z1);
-      if (key === 'outputShaft' || key === 'gearbox') return mid(layout.output.z, layout.inlet.z0);
+      if (key === 'gearbox') return mid(layout.housing.gearbox[0], layout.housing.gearbox[1]);
+      if (key === 'outputShaft') return mid(layout.output.z, layout.inlet.z0);
       if (key === 'exhaust') return mid(gp.lpt.z1, exitZ);
       break;
   }
@@ -696,7 +697,8 @@ export function computeFlowpath(graph: EngineGraph, sized: SizedEngine, opts: Ga
       height: cb.rOut - cb.rIn,
       cans: cb.cans,
     },
-    gearRatio: outRpm ? rpm.lp / outRpm : undefined,
+    // Turboşaftta yerleşimden: doğrudan tahrikte (redüktörsüz) tam 1
+    gearRatio: r.layout.style === 'turboshaft' ? r.layout.output.gearRatio : outRpm ? rpm.lp / outRpm : undefined,
     hpcExitBladeMm: (gp.hpc.tip[1] - gp.hpc.hub[1]) * 1000,
   };
   return { rpm, gas: gp, layout: r.layout, metrics };

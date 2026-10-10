@@ -16,8 +16,8 @@
 
 import * as THREE from 'three';
 import { smoothProfile, latheFromProfile, thickLathe, radialInstances, tagPart } from './geom.js';
-import { buildGasGenerator, planetSet } from './gasgen.js';
-import { buildStandYoke, BEAM_Y, CELL_FLOOR_Y } from './stand.js';
+import { buildGasGenerator, gearGeometry } from './gasgen.js';
+import { buildStandYoke, yokeScale, BEAM_Y, CELL_FLOOR_Y } from './stand.js';
 import { radiusProfile, accessoryGearbox, hugPipe, flangeBolts } from './externals.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -64,7 +64,11 @@ export function buildTurboshaft(materials, src) {
   const z1 = inl.z1;
   const len = z1 - z0;
   const caseFront = L.gg.case[0]; // [r, z]: gaz jeneratörü gövdesinin ön ucu
-  const frameR = inl.rOuter + 0.035 * k + (inl.separator ? 0.03 * k : 0);
+  const frameR = L.frameR;
+  // Çerçevenin içindeki parçalar (ayırıcı salyangozu, dış duvarın ağzı)
+  // çerçeve kabuğunun ve onun arkasındaki gaz jeneratörü gövdesinin içinde
+  // kalır (büyük merkez gövdeli girişte gövde çerçeveden dar olabilir)
+  const shellIn = (z, gap) => Math.min(frameR, z <= caseFront[1] ? frameR : gg.prof(z)) - gap;
   const zFrameEnd = Math.max(caseFront[1], z0 + 0.4 * len);
   // Çerçevenin dış kabuğu: ağız flanşından gaz jeneratörü gövdesine
   const frameShell = thickLathe(
@@ -106,7 +110,7 @@ export function buildTurboshaft(materials, src) {
         [inl.rOuter + 0.011 * k, z0],
         [inl.rOuter + 0.004 * k, z0 + 0.3 * len],
         [inl.rOuter + 0.016 * k, z0 + 0.58 * len],
-        [frameR - 0.022 * k, z0 + 0.78 * len],
+        [shellIn(z0 + 0.78 * len, 0.022 * k), z0 + 0.78 * len],
       ]
     : [
         [inl.rOuter + 0.011 * k, z0],
@@ -116,15 +120,17 @@ export function buildTurboshaft(materials, src) {
       ];
   group.add(tagPart(new THREE.Mesh(thickLathe(smoothProfile(outerWall, 40), 128, 0.004 * k, 'out'), materials.engineCase), 'inlet'));
 
-  // Merkez gövde: mil gövdesini sarar, HPC göbeğine iner
+  // Merkez gövde: mil gövdesini sarar, HPC göbeğine iner. İniş dikse
+  // (düşük çıkış devrinde kalın mil gövdesi) daha önce başlar
   const hubIn = g.hpc.hub[0];
+  const steep = THREE.MathUtils.clamp(((inl.rInner - hubIn) / len - 0.25) / 0.5, 0, 1);
   const centerbody = thickLathe(
     smoothProfile(
       [
-        [hs.gearboxR * 1.02, z0 - 0.02 * k],
+        [hs.r * 1.02, z0 - 0.02 * k],
         [inl.rInner, z0 + 0.03 * k],
-        [inl.rInner * 0.99, z0 + 0.55 * len],
-        [lerp(inl.rInner, hubIn, 0.7), z0 + 0.85 * len],
+        [inl.rInner * 0.99, z0 + lerp(0.55, 0.3, steep) * len],
+        [lerp(inl.rInner, hubIn, 0.7), z0 + lerp(0.85, 0.78, steep) * len],
         [hubIn, z1 + 0.004 * k],
       ],
       40,
@@ -168,7 +174,7 @@ export function buildTurboshaft(materials, src) {
     splitLip.position.z = z0 + 0.55 * len;
     group.add(tagPart(splitLip, 'inlet'));
     // Toplama salyangozu (scroll): çerçevenin içinde, tozlu havayı üfleyiciye götürür
-    const scroll = new THREE.Mesh(new THREE.TorusGeometry(frameR - 0.028 * k, 0.02 * k, 12, 128), materials.castAlu);
+    const scroll = new THREE.Mesh(new THREE.TorusGeometry(shellIn(z0 + 0.8 * len, 0.028 * k), 0.02 * k, 12, 128), materials.castAlu);
     scroll.position.z = z0 + 0.8 * len;
     group.add(tagPart(scroll, 'inlet'));
   }
@@ -224,8 +230,23 @@ export function buildTurboshaft(materials, src) {
   // Dönen grup: doğrudan tahrikte güç türbini milinde, redüktörde kendi devrinde
   const outGroup = new THREE.Group();
   outGroup.name = 'output-shaft';
+  // Redüktör kutusu: ön kapak (konik) kutunun ilk %20'si, dişliler kalanında
+  const hz0 = hs.z0 + 0.004 * k;
+  const gz1 = hs.gearbox[1];
+  const gl = gz1 - hz0;
+  const gears = out.reduction
+    ? reductionGears(materials, {
+        z0: hz0 + 0.2 * gl,
+        z1: gz1 - 0.04 * gl,
+        R: hs.gearboxR * 0.86,
+        ratio: out.gearRatio,
+        part: 'outputShaft',
+      })
+    : null;
   const shaftZ0 = out.z - 0.025 * k;
-  const shaftZ1 = z0 + 0.05 * k;
+  // Doğrudan tahrikte mil merkez gövdeye girer (güç türbini milinin
+  // uzantısı); redüktörde çıkış kademesinde (taşıyıcı ya da çıkış dişlisi) biter
+  const shaftZ1 = gears ? gears.outZ : z0 + 0.05 * k;
   const shaft = new THREE.Mesh(zCylinder(out.radius, out.radius, shaftZ1 - shaftZ0, 40), materials.hubMetal);
   shaft.position.z = (shaftZ0 + shaftZ1) / 2;
   outGroup.add(tagPart(shaft, 'outputShaft'));
@@ -245,23 +266,37 @@ export function buildTurboshaft(materials, src) {
   splineGeo.translate(0, out.radius + 0.003 * k, 0);
   outGroup.add(tagPart(radialInstances(splineGeo, materials.hubMetal, splineN, 0, out.z + flT / 2 + 0.03 * k), 'outputShaft'));
 
-  // Mil gövdesi: flanşın arkasından merkez gövdeye (redüktörde şişkin dişli kutusu)
-  const hz0 = hs.z0 + 0.004 * k;
-  const housingPts = out.reduction
-    ? [
-        [out.flangeR * 0.9, hz0],
-        [hs.r, hz0 + 0.03 * k],
-        [hs.gearboxR, lerp(hz0, hs.z1, 0.3)],
-        [hs.gearboxR, lerp(hz0, hs.z1, 0.75)],
-        [hs.gearboxR * 1.02, hs.z1 - 0.02 * k],
-      ]
-    : [
-        [out.flangeR * 0.9, hz0],
-        [hs.r, hz0 + 0.04 * k],
-        [hs.r * 1.04, lerp(hz0, hs.z1, 0.6)],
-        [hs.gearboxR * 1.02, hs.z1 - 0.02 * k],
-      ];
-  group.add(tagPart(new THREE.Mesh(thickLathe(smoothProfile(housingPts, 40), 96, 0.006 * k, 'in'), materials.engineCase), 'outputShaft'));
+  // Mil gövdesi: flanşın arkasından merkez gövdeye. Redüktörde dişli
+  // kutusu (pahlı tambur) ağzın önünde biter; boyundan hava ağza yandan girer.
+  // Kutunun köşeleri keskin: eğri (spline) kısa kutuda taşar
+  let housingPts;
+  let housingCurve;
+  if (out.reduction) {
+    const gR = hs.gearboxR;
+    const c = Math.min(0.012 * k, 0.1 * gl);
+    const neckEnd = hs.z1 - 0.004 * k;
+    housingPts = [
+      [out.flangeR * 0.9, hz0],
+      [hs.r, hz0 + c],
+      [gR - c, hz0 + 0.18 * gl],
+      [gR, hz0 + 0.18 * gl + c],
+      [gR, gz1 - c],
+      [gR - c, gz1],
+      [hs.r * 1.08, gz1],
+      ...(neckEnd - gz1 > 2 * c ? [[hs.r * 1.04, gz1 + c]] : []),
+      [hs.r * 1.02, Math.max(neckEnd, gz1 + 1e-4)],
+    ];
+    housingCurve = housingPts.map(([r, z]) => new THREE.Vector2(r, z));
+  } else {
+    housingPts = [
+      [out.flangeR * 0.9, hz0],
+      [hs.r, hz0 + 0.04 * k],
+      [hs.r * 1.04, lerp(hz0, hs.z1, 0.6)],
+      [hs.gearboxR * 1.02, hs.z1 - 0.02 * k],
+    ];
+    housingCurve = smoothProfile(housingPts, 40);
+  }
+  group.add(tagPart(new THREE.Mesh(thickLathe(housingCurve, 96, 0.006 * k, 'in'), materials.engineCase), 'outputShaft'));
   flangeBolts(hs.r + 0.008 * k, hz0 + 0.03 * k, 12, { kit }, 0.005 * k, 'outputShaft');
   // Yağ besleme ve tahliye: mil gövdesinin yataklarına
   const housingProf = radiusProfile(housingPts.map(([r, z]) => [r, z]));
@@ -277,16 +312,13 @@ export function buildTurboshaft(materials, src) {
     part: 'outputShaft',
   });
 
-  let planets = null;
-  if (out.reduction) {
-    // Planet redüktör (turboprop redüktörünün ölçeklisi): güneş güç türbini
-    // milinde, taşıyıcı çıkış milinde
-    const zg = lerp(hz0, hs.z1, 0.5);
-    const ps = planetSet(materials, zg, (hs.gearboxR * 0.8) / 0.27, 'outputShaft');
-    lpSpool.add(ps.sun);
-    group.add(ps.ring);
-    outGroup.add(ps.carrier);
-    planets = ps;
+  if (gears) {
+    // Redüktör dişli takımı orana göre boyutlanır (kinematik tutarlı):
+    // giriş güç türbini milinde, çıkış flanşın milinde. Testler ve kesit etiketleri için: takımın türü ve yarıçapları
+    outGroup.userData.gears = { kind: gears.kind, radii: gears.radii };
+    lpSpool.add(gears.input);
+    group.add(gears.fixed);
+    outGroup.add(gears.output);
     group.add(outGroup);
   } else {
     // Doğrudan tahrik: çıkış mili güç türbini milinin uzantısı
@@ -296,16 +328,18 @@ export function buildTurboshaft(materials, src) {
   /* ---------------- askı pabuçları ---------------- */
   // Stand askısının yastıkları gövdenin en geniş yerinin üstündedir;
   // daha ince bölümde (egzoz çerçevesi) gövdeden yastığa çıkan dökme pabuç
+  // Pabuç ölçüleri askının yastığıyla (yokeScale)
+  const ys = yokeScale(L.engineR);
   for (const mz of L.standZ) {
     const r = gg.prof(mz);
     const h = L.engineR + 0.005 - r;
     if (h < 0.01) continue;
-    const lug = new THREE.Mesh(new THREE.BoxGeometry(0.075, h, 0.09), materials.kitCast ?? materials.castAlu);
+    const lug = new THREE.Mesh(new THREE.BoxGeometry(0.075 * ys, h, 0.09 * ys), materials.kitCast ?? materials.castAlu);
     lug.position.set(0, r + h / 2 - 0.004, mz);
     group.add(tagPart(lug, 'engineCase'));
     for (const x of [-1, 1]) {
-      const web = new THREE.Mesh(new THREE.BoxGeometry(0.012, h * 0.8, 0.16), materials.kitCast ?? materials.castAlu);
-      web.position.set(x * 0.03, r + h * 0.4 - 0.004, mz);
+      const web = new THREE.Mesh(new THREE.BoxGeometry(0.012 * ys, h * 0.8, 0.16 * ys), materials.kitCast ?? materials.castAlu);
+      web.position.set(x * 0.03 * ys, r + h * 0.4 - 0.004, mz);
       group.add(tagPart(web, 'engineCase'));
     }
   }
@@ -319,13 +353,15 @@ export function buildTurboshaft(materials, src) {
   yoke.add(dyno.group);
   group.add(tagPart(yoke, 'stand'));
 
-  const ratio = Math.max(out.gearRatio, 1e-3);
+  // Doğrudan tahrikte çıkış (flanş) güç türbini milinin parçası: oran 1,
+  // ara mil ve kaplin flanşla birlikte döner
+  const ratio = out.reduction ? Math.max(out.gearRatio, 1e-3) : 1;
   const tick = (lpAngle) => {
     const a = lpAngle / ratio;
     dyno.drive.rotation.z = a;
-    if (planets) {
+    if (gears) {
       outGroup.rotation.z = a;
-      for (const p of planets.planets) p.rotation.z = -(lpAngle - a) * (planets.RS / planets.RP);
+      gears.tick(lpAngle, a);
     }
   };
 
@@ -339,6 +375,138 @@ export function buildTurboshaft(materials, src) {
     exhaust: { z: L.exhaustExit.z, radius: L.exhaustExit.radius },
     outputShaft: outGroup,
     tick,
+  };
+}
+
+/** Bu orandan büyükte planet takımı; altında (1'e yakın ya da devir artırıcı) bileşik dişli dizisi */
+export const PLANET_MIN_RATIO = 2.6;
+
+/**
+ * Redüktör dişli takımı, istenen orana göre boyutlanır; dişler kaymaz:
+ *  - i ≥ PLANET_MIN_RATIO: planet takımı. Çember gövdeye sabit, güneş güç
+ *    türbini milinde, taşıyıcı çıkışta: i = 1 + Rç/Rg, Rç = Rg + 2·Rp →
+ *    Rp = Rg·(i − 2)/2.
+ *  - Aksi halde: eş eksenli bileşik (geri dönüşlü) dizi. Gövdeye yataklı üç
+ *    ara mil; giriş dişlisi (R1) ara milin R2'sini, ara milin R3'ü çıkış
+ *    dişlisini (R4) çevirir: i = (R2/R1)·(R4/R3), eksenler çakışık
+ *    (R1 + R2 = R3 + R4). İki kademe eşit oranda (√i): devir artırıcıda
+ *    (i < 1) giriş dişlisi büyüktür. İki dış kavrama: çıkış girişle aynı yönde.
+ * Giriş kademesi arkada (güç türbini tarafı), çıkış kademesi önde (flanş).
+ * @param {{ z0: number, z1: number, R: number, ratio: number, part: string }} o
+ *   z0–z1 kutunun içindeki eksenel aralık, R dişlilerin sığacağı yarıçap
+ * @returns {{ input: THREE.Group, fixed: THREE.Group, output: THREE.Group, kind: 'planet' | 'compound', radii: number[], outZ: number, tick: (lpAngle: number, outAngle: number) => void }}
+ *   outZ: çıkış kademesinin ekseni (çıkış mili orada biter)
+ */
+export function reductionGears(materials, o) {
+  const { z0, z1, R, ratio: i, part } = o;
+  const span = Math.max(z1 - z0, 1e-3);
+  const input = new THREE.Group();
+  input.name = 'gear-input';
+  const fixed = new THREE.Group();
+  fixed.name = 'gear-fixed';
+  const output = new THREE.Group();
+  output.name = 'gear-output';
+  const add = (parent, mesh) => parent.add(tagPart(mesh, part));
+  const teeth = (r, m) => Math.max(8, Math.round(r / m));
+
+  if (i >= PLANET_MIN_RATIO) {
+    const RR = R * 0.84;
+    const RS = RR / (i - 1);
+    const RP = (RR - RS) / 2;
+    const m = RR / 60;
+    const w = Math.min(0.12 * RR, 0.42 * span);
+    const zg = z0 + span * 0.55;
+    const sun = new THREE.Mesh(gearGeometry(RS, teeth(RS, m), w), materials.hubMetal);
+    sun.position.z = zg;
+    add(input, sun);
+    // Güneş göbeği: güç türbini milinden dişliye
+    const hub = new THREE.Mesh(zCylinder(RS * 0.45, RS * 0.45, span * 0.5, 24), materials.hubMetal);
+    hub.position.z = zg + span * 0.2;
+    add(input, hub);
+    const ring = new THREE.Mesh(gearGeometry(RR, teeth(RR, m), w, true, Math.min(R, RR * 1.12)), materials.machinery);
+    ring.position.z = zg;
+    add(fixed, ring);
+    const planets = [];
+    // Komşu planetler çakışmasın: 2·Rp < 2·(Rg + Rp)·sin(π/n)
+    const nP = RP < (RS + RP) * Math.sin(Math.PI / 4) * 0.92 ? 4 : 3;
+    for (let j = 0; j < nP; j++) {
+      const a = (j / nP) * Math.PI * 2;
+      const pl = new THREE.Mesh(gearGeometry(RP, teeth(RP, m), w * 0.92), materials.hubMetal);
+      pl.position.set(Math.cos(a) * (RS + RP), Math.sin(a) * (RS + RP), zg);
+      add(output, pl);
+      planets.push(pl);
+      const pin = new THREE.Mesh(zCylinder(RP * 0.28, RP * 0.28, w * 1.6, 16), materials.machinery);
+      pin.position.set(pl.position.x, pl.position.y, zg - w * 0.3);
+      add(output, pin);
+    }
+    // Taşıyıcı plakası: planetlerin önünde, çıkış miline bağlı
+    const plateR = RS + 1.9 * RP;
+    const plate = new THREE.Mesh(zCylinder(plateR, plateR, 0.15 * w, 48), materials.machinery);
+    plate.position.z = zg - w * 0.62;
+    add(output, plate);
+    return {
+      input,
+      fixed,
+      output,
+      kind: 'planet',
+      radii: [RS, RP, RR],
+      outZ: plate.position.z,
+      tick(lpAngle, outAngle) {
+        // Planet taşıyıcıya göre döner: güneşle kavrama Rg·(θg − θt) = −Rp·φ
+        const phi = (-(lpAngle - outAngle) * RS) / RP;
+        for (const p of planets) p.rotation.z = phi;
+      },
+    };
+  }
+
+  // Bileşik dizi: q = √i her kademede; en dış uç (C + büyük dişli) R'ye sığar
+  const q = Math.sqrt(i);
+  const C = (R * 0.9) / (1 + Math.max(q, 1) / (1 + q));
+  const R1 = C / (1 + q);
+  const R2 = C - R1;
+  const R3 = R1;
+  const R4 = R2;
+  const m = C / 26;
+  const w = Math.min(0.22 * C, 0.3 * span);
+  const zIn = z1 - w * 0.75; // giriş kademesi arkada
+  const zOut = z0 + w * 0.75; // çıkış kademesi önde
+  const g1 = new THREE.Mesh(gearGeometry(R1, teeth(R1, m), w), materials.hubMetal);
+  g1.position.z = zIn;
+  add(input, g1);
+  const g4 = new THREE.Mesh(gearGeometry(R4, teeth(R4, m), w), materials.hubMetal);
+  g4.position.z = zOut;
+  add(output, g4);
+  const lays = [];
+  for (let j = 0; j < 3; j++) {
+    const a = (j / 3) * Math.PI * 2 + Math.PI / 6;
+    const lay = new THREE.Group();
+    lay.name = 'layshaft';
+    lay.position.set(Math.cos(a) * C, Math.sin(a) * C, 0);
+    const g2 = new THREE.Mesh(gearGeometry(R2, teeth(R2, m), w * 0.95), materials.hubMetal);
+    g2.position.z = zIn;
+    add(lay, g2);
+    const g3 = new THREE.Mesh(gearGeometry(R3, teeth(R3, m), w * 0.95), materials.hubMetal);
+    g3.position.z = zOut;
+    add(lay, g3);
+    const axR = Math.min(R2, R3) * 0.32;
+    const axle = new THREE.Mesh(zCylinder(axR, axR, zIn - zOut + w * 1.4, 16), materials.machinery);
+    axle.position.z = (zIn + zOut) / 2;
+    add(lay, axle);
+    fixed.add(lay);
+    lays.push(lay);
+  }
+  return {
+    input,
+    fixed,
+    output,
+    kind: 'compound',
+    radii: [R1, R2, R3, R4],
+    outZ: zOut,
+    tick(lpAngle) {
+      // Ara mil girişle ters yönde, R1/R2 oranında
+      const th = (-lpAngle * R1) / R2;
+      for (const l of lays) l.rotation.z = th;
+    },
   };
 }
 
@@ -405,16 +573,18 @@ function buildDynamometer(materials, L, beamZ1) {
   }
 
   // --- Beşik (trunnion) askısı: kirişten inen levhalar, yatak halkaları ---
+  // Askı levhaları motorun askısıyla aynı ölçekte (yokeScale): küçük motorda ince
+  const ys = yokeScale(L.engineR);
   const top = BEAM_Y - 0.12;
   for (const z of [zf - 0.04, zb + 0.04]) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(brgR * 1.18, 0.022, 10, 48), paint);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(brgR * 1.18, 0.022 * ys, 10, 48), paint);
     ring.position.z = z;
     group.add(ring);
     for (const x of [-1, 1]) {
       const bottom = 0;
       const h = top - bottom;
-      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.03, h, 0.16), paint);
-      plate.position.set(x * (brgR * 1.18 + 0.03), bottom + h / 2, z);
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.03 * ys, h, 0.16 * ys), paint);
+      plate.position.set(x * (brgR * 1.18 + 0.03 * ys), bottom + h / 2, z);
       group.add(plate);
     }
   }
