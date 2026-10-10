@@ -13,10 +13,12 @@ import { builtFor, TEMPLATES } from './catalog';
 import { referenceFor, solveMassFlow } from './defaults';
 import { familyToDoc } from './engineDoc';
 import { evaluate, isEvaluation } from './evaluate';
-import { SHAFT_Z } from './flowpath';
+import { SHAFT_Z, TURBOSHAFT_MIN_INLET } from './flowpath';
 import { buildEngine, toEngineDesign } from './graph';
+import { knobRange } from './knobs';
 import { summarize } from './summary';
 import { TURBOPROP_GRAPH } from './templates';
+import { deriveTraits } from './traits';
 import type { EngineGraph, InletModule, ShaftModule } from './types';
 import { evaluateOperability } from './warnings';
 
@@ -167,6 +169,21 @@ describe('turboşaft yerleşimi', () => {
       expect(ex.z0 - 0.03 * Lr.k).toBeLessThan(mid);
       expect(mid).toBeLessThan(ex.coneZ1);
     }
+  });
+
+  it('inlet.length düğmesi turboşaftta TURBOSHAFT_MIN_INLET ile başlar: aralığın her yerinde etkili', () => {
+    expect(knobRange('inlet.length', deriveTraits(TS))).toEqual([TURBOSHAFT_MIN_INLET, 2]);
+    expect(knobRange('inlet.length', deriveTraits(TURBOPROP_GRAPH))).toEqual([0, 2]);
+    // Alt uçtan bir adım yukarısı geometriyi değiştirir (ölü bölge yok)
+    const at = (len: number) => {
+      const g = structuredClone(TS);
+      mod<InletModule>(g, 'inlet').length = len;
+      return buildEngine(g).flowpath;
+    };
+    const lo = at(TURBOSHAFT_MIN_INLET);
+    const up = at(TURBOSHAFT_MIN_INLET + 0.01);
+    expect(up.gas.hpc.z0).toBeGreaterThan(lo.gas.hpc.z0);
+    expect(up.metrics.mass.total).toBeGreaterThan(lo.metrics.mass.total);
   });
 
   it('turboprop gaz jeneratörü aynı ortak koddan, ölçek 1 (altın sayılar golden.test.ts)', () => {
