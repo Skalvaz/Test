@@ -72,10 +72,12 @@ export function buildCore(materials, L) {
   coreCowl.receiveShadow = true;
   group.add(tagPart(coreCowl, 'coreCowl'));
 
-  // Ayırıcı burnu: baypas ile çekirdek akışını bölen keskin halka
-  const { z: zs, r: rs } = L.splitter;
+  // Ayırıcı burnu: baypas ile çekirdek akışını bölen keskin halka. İnişi
+  // kaporta payıyla ölçeklenir (karışık akışta daralan pay: `lip`); iç
+  // yüzeyi booster gövdesinin dışında kalır (layouts/turbofan.ts)
+  const { z: zs, r: rs, lip = 1 } = L.splitter;
   const splitter = new THREE.Mesh(
-    thickLathe(smoothProfile([[rs, zs], [rs - 0.022, zs + 0.04], [rs - 0.034, zs + 0.11], [rs - 0.04, zs + 0.22]], 40), 200, 0.01, 'out'),
+    thickLathe(smoothProfile([[rs, zs], [rs - 0.022 * lip, zs + 0.04], [rs - 0.034 * lip, zs + 0.11], [rs - 0.04 * lip, zs + 0.22]], 40), 200, 0.01, 'out'),
     materials.polishedLip,
   );
   splitter.name = 'flow-splitter';

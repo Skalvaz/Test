@@ -61,6 +61,15 @@ export const CORE_CLEARANCE_MIN = 0.3;
  * açık sorun).
  */
 export const FAN_DUCT_MACH_MAX = 0.8;
+/**
+ * Ayırıcı burnu (core.js): profil ağızdan (rS) geriye 0,022 / 0,034 /
+ * 0,04 m × `lip` iner; iç yüzeyi booster gövdesinin üstünden geçer. Gövde
+ * dış yüzeyi uç + 0,004 (boşluk + aşınabilir şerit) + 0,008 (et); burnun
+ * iç yüzeyi bunun en az 2 mm dışında kalmalı. Ayrık akışta (c = 1) bleed
+ * payı 0,058 ≥ 0,014 + 0,04: değişmez.
+ */
+export const SPLITTER_LIP_DROP = 0.04;
+export const SPLITTER_CASE_CLEAR = 0.014;
 /** Egzoz konisinin M4 öncesi ojiv profili: [taban yarıçapı oranı, boy (taban 0,4 m'de)] */
 const PLUG_SHAPE: readonly [number, number][] = [
   [1, 0],
@@ -93,8 +102,12 @@ export interface TurbofanLayout {
   lpt: RowGeometry;
   combustor: CombustorGeometry;
   shafts: { lp: [number, number, number]; hp: [number, number, number] };
-  /** Ayırıcı burnu ve çekirdek kaportası profili [r, z] (lüle başına kadar) */
-  splitter: { z: number; r: number };
+  /**
+   * Ayırıcı burnu (ağız yarıçapı; `lip`: burun inişinin ölçeği, karışık
+   * akışta kaporta payı ölçeği c, yoksa 1) ve çekirdek kaportası profili
+   * [r, z] (lüle başına kadar)
+   */
+  splitter: { z: number; r: number; lip?: number };
   coreCowl: [number, number][];
   /** Baypas lülesi ağzı: z, çekirdek kaportası ve kaporta iç duvarı yarıçapları */
   bypassExit: { z: number; rCore: number; rDuct: number };
@@ -203,7 +216,9 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
   // CORE_CLEARANCE_MIN'e kadar daralır (aşağıda)
   const zS = fanZ + 0.3 * s;
   const coreCowlFront = (c: number) => {
-    const rS = booster.tip[0] + 0.058 * c;
+    // Bleed payı c ile daralır ama ayırıcı burnunun iç yüzeyi booster
+    // gövdesinin dışında kalır (burnun inişi de c ile ölçeklenir: `lip`)
+    const rS = booster.tip[0] + Math.max(0.058 * c, SPLITTER_CASE_CLEAR + SPLITTER_LIP_DROP * c);
     const rMax = Math.max(booster.tip[1] + 0.2 * c, hpc.tip[0] + 0.31 * c, cb.rOut + 0.32 * c, lpt.tip[1] + 0.1 * c);
     const pts: [number, number][] = [
       [rS, zS],
@@ -262,6 +277,8 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
   const strutZ = booster.z1;
   const rearZ = lpt.z1 + 0.16;
   let { rS, pts: cowlFront } = coreCowlFront(1);
+  /** Kaporta payı ölçeği (karışık akışta daralabilir) */
+  let cUsed = 1;
 
   let cowl: [number, number][];
   let coreNozzle: TurbofanLayout['coreNozzle'];
@@ -351,6 +368,7 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
         }
       }
       ({ rS, pts: cowlFront } = coreCowlFront(lo));
+      cUsed = lo;
       cowl = [...cowlFront, ...cowlTail];
       fit = fitOf(cowlFront);
     }
@@ -457,7 +475,8 @@ function turbofanLayout(graph: EngineGraph, sized: SizedEngine, gp: GasPath): Tu
       lp: [fanZ - 1.27 * s, lpt.z1 + 0.21, gp.shafts.lp],
       hp: [hpc.z0 - 0.13, hpt.z0 - 0.05, gp.shafts.hp],
     },
-    splitter: { z: zS, r: rS },
+    // Ayrık akışta `lip` yok (yerleşim M4 öncesiyle bayt düzeyinde aynı)
+    splitter: mixed ? { z: zS, r: rS, lip: cUsed } : { z: zS, r: rS },
     coreCowl: cowl,
     bypassExit,
     coreNozzle,
