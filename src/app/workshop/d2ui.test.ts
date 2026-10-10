@@ -11,6 +11,8 @@ import { memoryStorage } from '../../workshop/testing';
 import { knobById, type KnobId } from '../../design/knobs';
 import { ArchitectureCards } from './ArchitectureCards';
 import { KnobField, lastRev } from './KnobField';
+import { fmtGaugeValue, hasBypass, ResultsPanel } from './ResultsPanel';
+import { explainDelta } from '../../design/summary';
 import { asEl, FakeEvent, installFakeDom, type FakeEl } from './testDom';
 import { ErrorBox, familyViewKey, WorkshopPanel } from './WorkshopPanel';
 
@@ -167,5 +169,87 @@ describe('yasak bölge eski tasarımla kısmaz (#10)', () => {
     expect(rail.classList.contains('is-stale')).toBe(false);
     type('30');
     expect(sent.filter((x) => x[0] === 'hpc.pr').pop()).toEqual(['hpc.pr', 20, 'change']);
+  });
+});
+const resultsCb = { onRunInCell() {}, onHighlight() {}, openGlossary() {}, openLesson() {} };
+
+describe('sonuç paneli (#20, #21, ek)', () => {
+  it('Uzman açıkken Ayrıntılar kapatılabilir: yalnız kipe geçişte açılır (#20)', () => {
+    const store = makeStore();
+    store.startFromTemplate('turbojet');
+    const panel = new ResultsPanel(store, resultsCb);
+    const det = asEl(panel.el).querySelector('details')!;
+    panel.update(store.state);
+    expect(det.open).toBe(false);
+    store.setExpert(true);
+    panel.update(store.state);
+    expect(det.open).toBe(true);
+    det.open = false; // oyuncu kapattı
+    for (let i = 0; i < 5; i++) panel.update(store.state);
+    expect(det.open).toBe(false);
+    store.setExpert(false);
+    panel.update(store.state);
+    store.setExpert(true);
+    panel.update(store.state);
+    expect(det.open).toBe(true);
+  });
+
+  it('"Neden?" açıklaması tasarım değişince yeni çifti anlatır; kıyas kalkınca gizlenir (#21)', () => {
+    const store = makeStore();
+    store.startFromTemplate('turbojet');
+    const panel = new ResultsPanel(store, resultsCb);
+    const el = asEl(panel.el);
+    const explain = el.querySelector('.ws-explain')!;
+    const pr = knobById('hpc.pr')!;
+    const bump = (f: number) => store.setKnob('hpc.pr', (pr.get(store.state.graph) as number) * f, 'change');
+    store.pinBaseline();
+    bump(1.25);
+    panel.update(store.state);
+    const chip = el.querySelectorAll('button.ws-delta')[0];
+    expect(chip).toBeTruthy();
+    chip.click();
+    expect(explain.classList.contains('hidden')).toBe(false);
+    const first = explain.textContent;
+    // Kıyas sabit, tasarım yeniden değişti: açıklama yeni çifti anlatır
+    bump(1.2);
+    panel.update(store.state);
+    const want = explainDelta(store.state.compare, store.state.last!.summary).join('');
+    expect(want).not.toBe(first);
+    expect(explain.textContent).toBe(want);
+    // Kıyas tasarımın kendisi oldu (yeni aile: çip yok): açıklama gizlenir
+    store.unpinBaseline();
+    store.startFromTemplate('turbojet');
+    panel.update(store.state);
+    expect(el.querySelector('button.ws-delta')).toBeNull();
+    expect(explain.classList.contains('hidden')).toBe(true);
+  });
+
+  it('BPR yalnız baypaslı motorda; turboşaft ve turbopropta "OPR · BPR … 0,00" yok (ek a)', () => {
+    for (const [id, bypass] of [['turboshaft', false], ['turboprop', false], ['turbojet', false], ['turbofan', true], ['turbofanMixed', true]] as const) {
+      const store = makeStore();
+      store.startFromTemplate(id);
+      const panel = new ResultsPanel(store, resultsCb);
+      panel.update(store.state);
+      const text = asEl(panel.el).querySelector('.ws-result-card')!.textContent + asEl(panel.el).querySelector('.ws-kv')!.textContent;
+      expect(hasBypass(store.state.last!.summary), id).toBe(bypass);
+      expect(text.includes('BPR'), id).toBe(bypass);
+      expect(text, id).toContain('OPR');
+    }
+  });
+
+  it('büyük sınır değerleri bilimsel gösterimde (AN² 2,27·10⁷), küçükler olduğu gibi (ek b)', () => {
+    expect(fmtGaugeValue(22664252, 0)).toBe('2,27·10⁷');
+    expect(fmtGaugeValue(5773276, 0)).toBe('5,77·10⁶');
+    expect(fmtGaugeValue(552, 0)).toBe('552');
+    expect(fmtGaugeValue(99999, 0)).toBe('99.999');
+    expect(fmtGaugeValue(1.31, 2)).toBe('1,31');
+    const store = makeStore();
+    store.startFromTemplate('turbofan');
+    store.setExpert(true);
+    const panel = new ResultsPanel(store, resultsCb);
+    panel.update(store.state);
+    const an2 = asEl(panel.el).querySelectorAll('.ws-gauge').filter((g) => g.textContent.includes('AN²'));
+    expect(an2.length).toBeGreaterThan(0);
+    for (const g of an2) expect(g.textContent).toMatch(/\d,\d\d·10[⁰¹²³⁴⁵⁶⁷⁸⁹]+ m²·rpm²/);
   });
 });

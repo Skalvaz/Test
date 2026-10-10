@@ -13,7 +13,7 @@
  */
 
 import type { Finding } from '../../design/core/rules';
-import { diffSummary, explainDelta, fmtNum, type DesignSummary, type LimitGauge } from '../../design/summary';
+import { diffSummary, explainDelta, fmtNum, fmtSci, type DesignSummary, type LimitGauge } from '../../design/summary';
 import type { WorkshopStore, WorkshopState } from '../../workshop/store';
 import { h, icon } from '../../ui/dom';
 import { PART_TAGS, partsOfModule, type ModuleRef, type PartTag } from '../../design/partsMap';
@@ -62,6 +62,17 @@ export function massPartTags(key: string, traits: EngineTraits): PartTag[] {
   return (PART_TAGS as string[]).includes(key) ? [key as PartTag] : [];
 }
 
+/**
+ * Sınır çubuğu değeri: büyük sayılar (AN² ~2·10⁷ m²·rpm²) bilimsel
+ * gösterimde; "22.664.252" okunmuyor ve satıra sığmıyordu.
+ */
+export function fmtGaugeValue(v: number, digits: number): string {
+  return Number.isFinite(v) && Math.abs(v) >= 1e5 ? fmtSci(v, 2) : fmtNum(v, digits);
+}
+
+/** Baypas oranı yalnız baypaslı motorda anlamlı (turbojet, turboşaft, turboprop: 0) */
+export const hasBypass = (sm: Pick<DesignSummary, 'bpr'>): boolean => Number.isFinite(sm.bpr) && sm.bpr > 0;
+
 /** Ayrıntılar tablosunun istasyonları (§6.6 madde 6) */
 export const DETAIL_STATIONS: readonly StationId[] = ['2', '13', '21', '25', '3', '4', '45', '5', '9'];
 
@@ -83,7 +94,12 @@ export class ResultsPanel {
   private warnings: HTMLDivElement;
   private details: HTMLDetailsElement;
   private detailsBody: HTMLDivElement;
+  private body: HTMLDivElement;
   private foot: HTMLDivElement;
+  /** Önceki güncellemedeki Uzman kipi: Ayrıntılar yalnız kipe geçişte açılır */
+  private expertWas = false;
+  /** "Neden?" açıklamasının kıyas çifti (tasarım değişince yeniden yazılır) */
+  private explainFor: { a: DesignSummary; b: DesignSummary } | null = null;
   private redNote: HTMLDivElement;
   private explain: HTMLDivElement;
   private badge: HTMLSpanElement;
@@ -103,7 +119,24 @@ export class ResultsPanel {
     this.warnings = h('div', { class: 'ws-warnings' });
     this.goal = new GoalCard(cb.openLesson);
     this.detailsBody = h('div', { class: 'ws-details-body' });
-    this.details = h('details', { class: 'ws-details' }, [h('summary', { text: 'Ayrıntılar' }), this.detailsBody]);
+    // Oyuncu açınca içerik görünür alana kayar: panelin dibinde açılan
+    // bölüm "Test hücresinde çalıştır" şeridinin altında kalmasın
+    const summary = h('summary', {
+      text: 'Ayrıntılar',
+      on: {
+        click: () => {
+          if (this.details.open) return;
+          requestAnimationFrame(() => {
+            // Bölüm panelin son öğesi: sığıyorsa panelin dibine (tamamı
+            // görünür), sığmıyorsa başlığı üste
+            const b = this.body;
+            if (this.details.offsetHeight <= b.clientHeight) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' });
+            else this.details.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          });
+        },
+      },
+    });
+    this.details = h('details', { class: 'ws-details' }, [summary, this.detailsBody]);
     this.redNote = h('div', { class: 'ws-red-note hidden' });
     this.badge = h('span', { class: 'ws-lastgood hidden', text: 'son geçerli tasarım' });
     this.foot = h('div', { class: 'ws-run' }, [
@@ -129,7 +162,7 @@ export class ResultsPanel {
           },
         }),
       ]),
-      h('div', { class: 'scroll panel-body' }, [
+      (this.body = h('div', { class: 'scroll panel-body ws-results-body', on: { scroll: () => this.refreshMore() } }, [
         this.card,
         this.explain,
         h('div', { class: 'section-label', text: 'Sınırlar' }),
@@ -139,7 +172,7 @@ export class ResultsPanel {
         this.warnings,
         this.goal.el,
         this.details,
-      ]),
+      ])),
       this.foot,
     ]);
     this.summaryStrip = h('div', { class: 'ws-summary hidden', attrs: { 'aria-live': 'polite' } });
@@ -153,6 +186,12 @@ export class ResultsPanel {
     if (key !== this.key) {
       this.key = key;
       this.renderCard(sm, s.compare);
+      // Açık "Neden?" açıklaması eski çifti anlatmasın: yeni çiftle yeniden
+      // yazılır; kıyas kalktıysa (çip yok) gizlenir
+      if (this.explainFor) {
+        if (s.compare && s.compare !== sm) this.showExplain(s.compare, sm);
+        else this.hideExplain();
+      }
       this.renderMass(sm, L.built.traits);
       this.renderDetails(sm, L.built.sized.point.stations);
       const pin = this.el.querySelector(`[${ATTR.action}="pin-baseline"]`);
@@ -170,7 +209,9 @@ export class ResultsPanel {
     }
     this.goal.update(s);
     this.badge.classList.toggle('hidden', !s.error);
-    if (s.project.expert) this.details.open = true;
+    // Uzman kipine geçişte bir kez açılır; oyuncu sonra kapatabilir
+    if (s.project.expert && !this.expertWas) this.details.open = true;
+    this.expertWas = s.project.expert;
     const red = L.findings.filter((f) => f.severity === 'warning').length;
     this.redNote.textContent = red ? `${red} kırmızı uyarı: test hücresinde göreceksin.` : '';
     this.redNote.classList.toggle('hidden', red === 0);
@@ -185,6 +226,13 @@ export class ResultsPanel {
       h('span', { text: `Kütle ${fmtNum(sm.mass, 0)} kg` }),
       h('span', { class: nWarn ? 'warn' : 'ok', text: nWarn ? `${nWarn} uyarı` : 'Uyarı yok' }),
     );
+    this.refreshMore();
+  }
+
+  /** Altta görünmeyen içerik var: alt şeridin üstünde gölge (kaydırma ipucu) */
+  private refreshMore(): void {
+    const b = this.body;
+    this.foot.classList.toggle('has-more', b.scrollTop + b.clientHeight < b.scrollHeight - 4);
   }
 
   private renderCard(sm: DesignSummary, cmp: DesignSummary | undefined): void {
@@ -221,7 +269,8 @@ export class ResultsPanel {
     if (sm.thrustToWeight !== undefined) rows.push(row('İtki/ağırlık', fmtNum(sm.thrustToWeight, 2), '', 'thrustToWeight'));
     if (sm.powerToWeight !== undefined) rows.push(row('Güç/ağırlık', fmtNum(sm.powerToWeight, 2), 'kW/kg', 'powerToWeight'));
     rows.push(row('Çap × boy', `${fmtNum(sm.diameter, 2)} × ${fmtNum(sm.length, 2)}`, 'm', 'diameter'));
-    rows.push(row('OPR · BPR', `${fmtNum(sm.opr, 1)} · ${fmtNum(sm.bpr, 2)}`, ''));
+    if (hasBypass(sm)) rows.push(row('OPR · BPR', `${fmtNum(sm.opr, 1)} · ${fmtNum(sm.bpr, 2)}`, ''));
+    else rows.push(row('OPR', fmtNum(sm.opr, 1), '', 'opr'));
     this.card.replaceChildren(...rows);
     const top = chipDeltas(deltas, 3);
     this.card.title = top.length ? `Kıyasa göre: ${top.map((d) => d.text).join(' · ')}` : '';
@@ -229,8 +278,16 @@ export class ResultsPanel {
 
   private showExplain(a: DesignSummary, b: DesignSummary): void {
     const lines = explainDelta(a, b);
+    if (!lines.length) return this.hideExplain();
+    this.explainFor = { a, b };
     this.explain.replaceChildren(...lines.map((l) => h('p', { text: l })));
-    this.explain.classList.toggle('hidden', lines.length === 0);
+    this.explain.classList.remove('hidden');
+  }
+
+  private hideExplain(): void {
+    this.explainFor = null;
+    this.explain.replaceChildren();
+    this.explain.classList.add('hidden');
   }
 
   private renderGauges(gs: LimitGauge[], expert: boolean): void {
@@ -262,14 +319,14 @@ export class ResultsPanel {
         return h('button', {
           class: `ws-gauge ${state}`,
           attrs: { type: 'button', [ATTR.gauge]: g.id },
-          title: `${g.label}: ${above ? 'üst' : 'alt'} sınır ${fmtNum(g.caution, digits)}${g.warning !== undefined ? ` / ${fmtNum(g.warning, digits)}` : ''} ${g.unit}`,
+          title: `${g.label}: ${above ? 'üst' : 'alt'} sınır ${fmtGaugeValue(g.caution, digits)}${g.warning !== undefined ? ` / ${fmtGaugeValue(g.warning, digits)}` : ''} ${g.unit}`,
           on: {
             click: () => this.cb.onHighlight(g.parts),
             mouseleave: () => this.cb.onHighlight(null),
           },
         }, [
           h('span', { class: 'l', text: g.label }),
-          h('span', { class: 'v mono', text: `${fmtNum(g.value, digits)} ${g.unit}` }),
+          h('span', { class: 'v mono', text: `${fmtGaugeValue(g.value, digits)} ${g.unit}` }),
           bar,
         ]);
       }),
@@ -378,7 +435,7 @@ export class ResultsPanel {
       ]),
       h('div', { class: 'ws-kv mono' }, [
         h('span', { text: `OPR ${fmtNum(sm.opr, 1)}` }),
-        h('span', { text: `BPR ${fmtNum(sm.bpr, 2)}` }),
+        hasBypass(sm) ? h('span', { text: `BPR ${fmtNum(sm.bpr, 2)}` }) : null,
         sm.fpr !== undefined ? h('span', { text: `FPR ${fmtNum(sm.fpr, 2)}` }) : null,
         h('span', { text: `T3 ${fmtNum(sm.t3, 0)} K` }),
         h('span', { text: `T4 ${fmtNum(sm.t4, 0)} K` }),
