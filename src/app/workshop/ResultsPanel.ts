@@ -107,6 +107,10 @@ export class ResultsPanel {
   private key = '';
   private warnKey = '';
   private gaugeKey = '';
+  /** Dar ekran özetinin son içeriği (aynıysa yeniden kurulmaz) */
+  private stripKey = '';
+  /** Kaydırma ipucu için boyut izleyici (yoksa update'te ölçülür) */
+  private sizeWatch: ResizeObserver | null = null;
 
   constructor(
     private store: WorkshopStore,
@@ -176,6 +180,12 @@ export class ResultsPanel {
       this.foot,
     ]);
     this.summaryStrip = h('div', { class: 'ws-summary hidden', attrs: { 'aria-live': 'polite' } });
+    // Kaydırma ipucu boyut değişince (yerleşimden sonra, zorunlu yerleşim
+    // hesabı olmadan): gövde ve içeriği izlenir. Yoksa (test) update'te.
+    if (typeof ResizeObserver !== 'undefined') {
+      this.sizeWatch = new ResizeObserver(() => this.refreshMore());
+      for (const el of [this.body, ...Array.from(this.body.children)]) this.sizeWatch.observe(el);
+    }
   }
 
   update(s: Readonly<WorkshopState> = this.store.state): void {
@@ -220,13 +230,20 @@ export class ResultsPanel {
     const nWarn = L.findings.filter((f) => f.severity !== 'info').length;
     const out = sm.output === 'thrust' ? `İtki ${fmtNum(sm.thrust / 1e3, 1)} kN` : `Güç ${fmtNum((sm.shaftPower ?? 0) / 1e3, 0)} kW`;
     const fuel = sm.tsfc !== undefined ? `TSFC ${fmtNum(sm.tsfc, 2)}` : sm.sfc !== undefined ? `SFC ${fmtNum(sm.sfc, 0)}` : '';
-    this.summaryStrip.replaceChildren(
-      h('span', { text: out }),
-      h('span', { text: fuel }),
-      h('span', { text: `Kütle ${fmtNum(sm.mass, 0)} kg` }),
-      h('span', { class: nWarn ? 'warn' : 'ok', text: nWarn ? `${nWarn} uyarı` : 'Uyarı yok' }),
-    );
-    this.refreshMore();
+    const mass = `Kütle ${fmtNum(sm.mass, 0)} kg`;
+    const stripKey = `${out}|${fuel}|${mass}|${nWarn}`;
+    if (stripKey !== this.stripKey) {
+      this.stripKey = stripKey;
+      this.summaryStrip.replaceChildren(
+        h('span', { text: out }),
+        h('span', { text: fuel }),
+        h('span', { text: mass }),
+        h('span', { class: nWarn ? 'warn' : 'ok', text: nWarn ? `${nWarn} uyarı` : 'Uyarı yok' }),
+      );
+    }
+    // 0,2 s'lik yenilemede DOM yazdıktan sonra ölçmek zorunlu yerleşim
+    // hesabı demek: izleyici varsa ipucunu o günceller
+    if (!this.sizeWatch) this.refreshMore();
   }
 
   /** Altta görünmeyen içerik var: alt şeridin üstünde gölge (kaydırma ipucu) */

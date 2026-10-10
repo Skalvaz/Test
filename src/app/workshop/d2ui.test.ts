@@ -332,3 +332,61 @@ describe('sonuç paneli (#20, #21, ek)', () => {
     for (const g of adet) expect(g.textContent).not.toMatch(/,\d+ adet/);
   });
 });
+describe('sonuç paneli kaydırma ipucu (inceleme notu)', () => {
+  it('0,2 s yenilemesi yerleşim ölçmez; ipucunu boyut izleyici günceller, özet şeridi aynıysa yeniden kurulmaz', () => {
+    const g = globalThis as unknown as Record<string, unknown>;
+    const prev = g.ResizeObserver;
+    const watchers: { cb: () => void; els: unknown[] }[] = [];
+    g.ResizeObserver = class {
+      els: unknown[] = [];
+      constructor(cb: () => void) {
+        watchers.push({ cb, els: this.els });
+      }
+      observe(el: unknown) {
+        this.els.push(el);
+      }
+      disconnect() {}
+    };
+    try {
+      const store = makeStore();
+      store.startFromTemplate('turbofan');
+      const panel = new ResultsPanel(store, resultsCb);
+      const el = asEl(panel.el);
+      const body = el.querySelector('.ws-results-body')!;
+      const foot = el.querySelector('.ws-run')!;
+      let reads = 0;
+      let sh = 900;
+      Object.defineProperty(body, 'scrollHeight', { get: () => (reads++, sh) });
+      body.clientHeight = 400;
+      expect(watchers.length).toBe(1);
+      // Gövde ve içerik (kart, sınırlar, Ayrıntılar…) izlenir
+      expect(watchers[0].els).toContain(body);
+      expect(watchers[0].els.length).toBeGreaterThan(5);
+      reads = 0;
+      panel.update(store.state);
+      const strip = asEl(panel.summaryStrip).children[0];
+      for (let i = 0; i < 5; i++) panel.update(store.state);
+      expect(reads).toBe(0);
+      expect(asEl(panel.summaryStrip).children[0]).toBe(strip);
+      watchers[0].cb();
+      expect(foot.classList.contains('has-more')).toBe(true);
+      sh = 400;
+      watchers[0].cb();
+      expect(foot.classList.contains('has-more')).toBe(false);
+    } finally {
+      g.ResizeObserver = prev;
+    }
+  });
+
+  it('izleyici yoksa ipucu yenilemede ölçülür', () => {
+    const store = makeStore();
+    store.startFromTemplate('turbofan');
+    const panel = new ResultsPanel(store, resultsCb);
+    const el = asEl(panel.el);
+    const body = el.querySelector('.ws-results-body')!;
+    body.scrollHeight = 900;
+    body.clientHeight = 400;
+    panel.update(store.state);
+    expect(el.querySelector('.ws-run')!.classList.contains('has-more')).toBe(true);
+  });
+});
