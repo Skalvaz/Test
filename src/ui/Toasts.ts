@@ -26,4 +26,14 @@ export class Toasts {
       setTimeout(() => t.remove(), 320);
     }, ms);
   }
+
+  /**
+   * Bütün bildirimleri kaldırır (mod değişimi). Tekrar eleme belleği de
+   * sıfırlanır: temizlenen bir mesaj hemen yeniden gelirse (menüden aynı
+   * moda dönüş) gösterilir, görünmeyen bir kopyası yüzünden yutulmaz.
+   */
+  clear() {
+    this.el.replaceChildren();
+    this.recent.clear();
+  }
 }

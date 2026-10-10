@@ -603,7 +603,7 @@ export class App {
    * "motor rölantide" ipucu) yeni modda ekranda kalmasın.
    */
   private clearToasts() {
-    this.toasts.el.replaceChildren();
+    this.toasts.clear();
   }
 
   showMenu(first = false) {
@@ -1235,6 +1235,19 @@ export class App {
     if (lit) this.sim.trim(throttle, 10);
     this.sandboxPanel.refreshEngine();
     clearTimeout(this.fullDetailTimer);
+    // Sahnede taslak varsa 250 ms sonra tam ayrıntı (yalnız o yuvanın taslağı
+    // hâlâ sahnedeyse). Zamanlayıcıdan hata taşmaz: tam ayrıntı kurulamazsa taslak kalır
+    const armFullDetail = () => {
+      if (!this.visualDraft) return;
+      this.fullDetailTimer = setTimeout(() => {
+        if (this.visual.slot !== slot || !this.visualDraft) return;
+        try {
+          this.rebuildVisual(slot);
+        } catch (err) {
+          console.warn('Tam ayrıntılı model kurulamadı; taslak sahnede kalıyor', err);
+        }
+      }, 250);
+    };
     try {
       this.rebuildVisual(slot, { effects, draft });
     } catch (err) {
@@ -1244,14 +1257,12 @@ export class App {
         if (lit) this.sim.trim(throttle, 10);
         this.sandboxPanel.refreshEngine();
       }
+      // Sahnedeki (önceki) taslak yine tam ayrıntıya geçer; yoksa bir sonraki
+      // geçerli değişikliğe kadar düşük ayrıntıda kalırdı
+      armFullDetail();
       throw err;
     }
-    if (this.visualDraft) {
-      // Tam ayrıntı yalnız o yuvanın taslak modeli hâlâ sahnedeyse
-      this.fullDetailTimer = setTimeout(() => {
-        if (this.visual.slot === slot && this.visualDraft) this.rebuildVisual(slot);
-      }, 250);
-    }
+    armFullDetail();
   }
   private fullDetailTimer: ReturnType<typeof setTimeout> | undefined;
   /** Sahnedeki modelin seçenekleri (setEngine erken dönüşü ve yeniden üretim için) */

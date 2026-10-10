@@ -16,6 +16,7 @@ import { builtFor, setSlotBuilt, setSlotGraph, TEMPLATES } from '../design/catal
 import { buildEngine, type BuiltEngine } from '../design/graph';
 import { WorkshopStore } from '../workshop/store';
 import { FAKE_DEPS, memoryStorage } from '../workshop/testing';
+import { Toasts } from '../ui/Toasts';
 import { App } from './App';
 
 // Özel alanlara erişim: yarım kurulum taklitleri
@@ -77,7 +78,7 @@ function rig(o: { cancel?: boolean } = {}): Rig {
     visual: { slot: 'turbofan', source: { built: undefined } },
     visualEffects: true,
     visualDraft: false,
-    toasts: { show: (t: string) => toasts.push(t), el: { replaceChildren: () => toasts.splice(0) } },
+    toasts: { show: (t: string) => toasts.push(t), clear: () => toasts.splice(0) },
     applyDesign: vi.fn((slot: string, b: BuiltEngine, detail: unknown) => {
       applied.push({ b, detail });
       // Sahne: atölye modeli (efektsiz); taslak kalite 'low' değilse taslak
@@ -252,6 +253,68 @@ describe('#13 3B üretimi atarsa', () => {
     expect(() => App.prototype.applyDesign.call(app, 'workshop', next, 'draft', { effects: false })).toThrow(RangeError);
     expect(builtFor('workshop')).toBe(shown);
     expect(designs.at(-1)).toBe(shown.design);
+  });
+
+  /** applyDesign için yarım App: rebuildVisual taklidi installVisual gibi taslak bayrağını yazar */
+  function designRig(shown: BuiltEngine, rebuild: (slot: string, opts: { draft?: boolean }) => void) {
+    const app = Object.create(App.prototype) as AnyApp;
+    setSlotBuilt('workshop', shown);
+    Object.assign(app, {
+      slot: 'workshop',
+      visual: { slot: 'workshop', source: { built: shown } },
+      visualDraft: true,
+      sim: { lit: false, controls: { throttle: 0 }, eng: { design: shown.design }, setDesign() {}, trim() {} },
+      sandboxPanel: { refreshEngine: () => {} },
+      fullDetailTimer: undefined,
+      rebuildVisual: (slot: string, opts: { draft?: boolean } = {}) => {
+        rebuild(slot, opts);
+        app.visual = { slot, source: { built: builtFor(slot as never) } };
+        app.visualDraft = !!opts.draft;
+      },
+    });
+    return app;
+  }
+
+  it('model kurulamazsa sahnedeki önceki taslak yine tam ayrıntıya geçer', () => {
+    vi.useFakeTimers();
+    const shown = buildEngine(TEMPLATES.turbojet!);
+    const next = buildEngine(TEMPLATES.turbofan!);
+    const full: unknown[] = [];
+    const app = designRig(shown, (slot, opts) => {
+      if (opts.draft) throw new RangeError('disk ters döndü');
+      full.push(builtFor(slot as never));
+    });
+    expect(() => App.prototype.applyDesign.call(app, 'workshop', next, 'draft', { effects: false })).toThrow(RangeError);
+    vi.advanceTimersByTime(300);
+    expect(full).toEqual([shown]);
+    expect(app.visualDraft).toBe(false);
+  });
+
+  it('tam ayrıntı zamanlayıcısında üretim atarsa hata taşmaz, taslak kalır', () => {
+    vi.useFakeTimers();
+    const shown = buildEngine(TEMPLATES.turbojet!);
+    const next = buildEngine(TEMPLATES.turbofan!);
+    const app = designRig(shown, (_slot, opts) => {
+      if (!opts.draft) throw new RangeError('tam ayrıntıda disk ters döndü');
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    App.prototype.applyDesign.call(app, 'workshop', next, 'draft', { effects: false });
+    expect(() => vi.advanceTimersByTime(300)).not.toThrow();
+    expect(warn).toHaveBeenCalled();
+    expect(app.visualDraft).toBe(true);
+    expect(app.visual.source.built).toBe(next);
+    warn.mockRestore();
+  });
+});
+
+describe('bildirim temizliği', () => {
+  it('Toasts.clear tekrar eleme belleğini de sıfırlar (aynı mesaj hemen yeniden gösterilir)', () => {
+    const t = Object.create(Toasts.prototype) as AnyApp;
+    const removed = vi.fn();
+    Object.assign(t, { el: { replaceChildren: removed }, recent: new Map([['Test hücresi: motor rölantide.', performance.now()]]) });
+    t.clear();
+    expect(removed).toHaveBeenCalledTimes(1);
+    expect(t.recent.size).toBe(0);
   });
 });
 
