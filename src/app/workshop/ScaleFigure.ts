@@ -337,9 +337,14 @@ export function chooseFigureSpot(
   const cover = (s: FigureSpot) => engineCover(camera, e, s, base);
   const side = camera.position.x < 0 ? -1 : 1;
   const xFront = side * (Math.max(e.r, 0) + 0.45);
-  const floor = e.floor !== undefined && Number.isFinite(e.floor) && e.floor < base - 0.3 ? e.floor : undefined;
-  // Motorun hemen altı: baş taban çizgisinin biraz altında (zemin görünmüyorsa)
+  const hasFloor = e.floor !== undefined && Number.isFinite(e.floor);
+  const floor = hasFloor && e.floor! < base - 0.3 ? e.floor : undefined;
+  // Motorun hemen altı: baş taban çizgisinin biraz altında. Yalnız zemin
+  // oraya kadar inmiyorsa (yoksa ya da daha aşağıdaysa): figür zemine gömülmez
   const under = base - FIGURE_HEIGHT - UNDER_CLEARANCE;
+  const lifts: number[] = [];
+  if (floor !== undefined) lifts.push(floor);
+  if (!hasFloor || e.floor! <= under + 1e-9) lifts.push(under);
   // Önde aralık yarıçapla büyür (¾ açıda giriş elipsi); arkada lüle dar, az pay yeter
   const gap = 0.6 + 0.6 * Math.max(e.r, 0);
   const gapRear = 0.5 + 0.25 * Math.max(e.r, 0);
@@ -349,7 +354,7 @@ export function chooseFigureSpot(
   if (current) {
     const lifted = current.y !== undefined;
     if (current.x === 0 && !lifted) cur = current;
-    else if (!lifted || current.y === floor || current.y === under)
+    else if (!lifted || lifts.includes(current.y!))
       cur = frontSpot(camera, current.x === 0 ? 0 : xFront, current.z, base, current.y);
     if (cur && !fits(cur)) cur = null;
     if (cur) {
@@ -385,7 +390,7 @@ export function chooseFigureSpot(
     const s = frontSpot(camera, xFront, z, base);
     if (small(s) && fits(s) && cover(s) <= CLEAR_COVER) return s;
   }
-  for (const y of floor !== undefined && floor < under ? [floor, under] : [under]) {
+  for (const y of lifts) {
     for (const x of [0, xFront]) {
       for (const z of zs) {
         const s = frontSpot(camera, x, z, base, y);
@@ -551,7 +556,8 @@ export class ScaleFigure {
       const sr = safe ?? safeRect(cam);
       const s = chooseFigureSpot(cam, this.eng, this.base, this.spot, sr);
       const p = this.spot;
-      if (!p || p.x !== s.x || p.z !== s.z || Math.abs(p.scale - s.scale) > 1e-4) {
+      // Ayak yüksekliği de (taban çizgisi ↔ zemin aynı x, z'de olabilir)
+      if (!p || p.x !== s.x || p.z !== s.z || p.y !== s.y || Math.abs(p.scale - s.scale) > 1e-4) {
         this.spot = s;
         this.moveTo(s);
       }

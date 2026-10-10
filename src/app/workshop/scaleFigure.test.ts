@@ -7,7 +7,16 @@
  */
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { chooseFigureSpot, figureBaseline, figureNdcBox, FIGURE_HEIGHT, labelOnLeft, safeRect, type FigureEngine } from './ScaleFigure';
+import {
+  chooseFigureSpot,
+  figureBaseline,
+  figureNdcBox,
+  FIGURE_HEIGHT,
+  labelOnLeft,
+  safeRect,
+  ScaleFigure,
+  type FigureEngine,
+} from './ScaleFigure';
 
 const W = 1280;
 const H = 720;
@@ -93,5 +102,79 @@ describe('ölçek figürü: kadraj', () => {
   it('zemin motorun hemen altındaysa (taşıma standı) figür zeminde durur', () => {
     expect(figureBaseline(TF, -2.0)).toBe(-2.0);
     expect(figureBaseline(TF, FLOOR)).toBeCloseTo(-TF.r, 9);
+  });
+});
+
+/** Motorun çevresinde dolaşan kameralar (yörünge, yakın çekim dahil) */
+function* orbit(e: FigureEngine) {
+  for (let az = 0; az < 360; az += 15)
+    for (const el of [-10, 5, 15, 35])
+      for (const [dist, fov] of [[2.5, 32], [6, 22], [9, 32], [14, 22]]) {
+        const a = (az * Math.PI) / 180;
+        const b = (el * Math.PI) / 180;
+        const zc = (e.z0 + e.z1) / 2;
+        yield rigCamera([dist * Math.cos(b) * Math.sin(a), dist * Math.sin(b), zc + dist * Math.cos(b) * Math.cos(a)], [0, 0, zc], fov);
+      }
+}
+
+describe('ölçek figürü: zemin ve yer değişimi', () => {
+  it('figür hiçbir açıda zeminin altına inmez (motorun altı yalnız zemin oraya inmiyorsa)', () => {
+    // Hücre zemini yolcu turbofanının altından 1,57 m aşağıda: "motorun altı"
+    // yeri (taban çizgisinin 1,95 m altı) zemine gömülürdü
+    for (const [e, floor] of [
+      [TF, FLOOR],
+      [{ z0: -1, z1: 2.5, r: 0.45 }, FLOOR],
+      [TF, -2.0],
+    ] as [FigureEngine, number][]) {
+      const eng = { ...e, floor };
+      const base = figureBaseline(eng, floor);
+      let lifted = 0;
+      for (const cam of orbit(eng)) {
+        const s = chooseFigureSpot(cam, eng, base, null, safeRect(cam));
+        if (s.y !== undefined) lifted++;
+        expect(s.y ?? base).toBeGreaterThanOrEqual(floor - 1e-9);
+      }
+      // Zemine ya da motorun altına inen yer gerçekten kullanılıyor (sınama boş değil)
+      if (e === TF && floor === FLOOR) expect(lifted).toBeGreaterThan(0);
+    }
+  });
+
+  it('kare kare dolaşırken figür seçilen yerde durur (yalnız ayak yüksekliği değişse de)', () => {
+    const fig = new ScaleFigure(new THREE.Scene());
+    const eng = { ...TF, floor: FLOOR };
+    const base = figureBaseline(eng, FLOOR);
+    Object.assign(fig as unknown as Record<string, unknown>, { eng, base, placed: true });
+    fig.setVisible(true);
+    let moved = 0;
+    for (const cam of orbit(eng)) {
+      fig.frame(cam);
+      const s = fig.spotNow!;
+      const p = fig.position;
+      expect([p.x, p.y, p.z]).toEqual([s.x, s.y ?? base, s.z]);
+      if (s.y !== undefined) moved++;
+    }
+    expect(moved).toBeGreaterThan(0);
+    // Önceki yer taban çizgisinde, yeni yer aynı x, z'de zeminde: figür zemine iner
+    const f = fig as unknown as { spot: unknown; moveTo(s: unknown): void };
+    let sameXZ = 0;
+    for (const e of [eng, { z0: -1, z1: 2.5, r: 0.45, floor: FLOOR }]) {
+      const b = figureBaseline(e, FLOOR);
+      Object.assign(fig as unknown as Record<string, unknown>, { eng: e, base: b });
+      for (const cam of orbit(e)) {
+        const s = chooseFigureSpot(cam, e, b, null, safeRect(cam));
+        if (s.y === undefined || s.x !== 0) continue;
+        const prev = { x: 0, z: s.z, scale: 1 };
+        const want = chooseFigureSpot(cam, e, b, prev, safeRect(cam));
+        if (want.y === undefined || want.z !== prev.z || want.x !== 0) continue;
+        f.spot = prev;
+        f.moveTo(prev);
+        fig.frame(cam);
+        sameXZ++;
+        expect(fig.position.y).toBe(want.y);
+        expect(fig.spotNow?.y).toBe(want.y);
+      }
+    }
+    expect(sameXZ).toBeGreaterThan(0);
+    fig.dispose();
   });
 });
