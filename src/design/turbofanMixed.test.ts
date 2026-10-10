@@ -92,6 +92,8 @@ describe('lüle alanı ve uzun kanal geometrisi', () => {
       try {
         b = buildEngine(g);
       } catch (e) {
+        // Düşük fan PR'sinde karışma basıncı da düşük: ortak lüle ağzı kanaldan geniş (engine/turbofanMixedFit.test.ts)
+        if ((e as FlowpathError).code === 'mixer.nozzle' && label.startsWith('fan.pr')) continue;
         expect((e as FlowpathError).code, label).toBe('bypassDuct.closed');
         expect((e as FlowpathError).knobs).toEqual(['fan.bypassRatio', 'engine.massFlow']);
         closed.push(label);
