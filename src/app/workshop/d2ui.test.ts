@@ -10,7 +10,7 @@ import { WorkshopStore } from '../../workshop/store';
 import { memoryStorage } from '../../workshop/testing';
 import { ArchitectureCards } from './ArchitectureCards';
 import { asEl, FakeEvent, installFakeDom, type FakeEl } from './testDom';
-import { ErrorBox } from './WorkshopPanel';
+import { ErrorBox, familyViewKey, WorkshopPanel } from './WorkshopPanel';
 
 let restore: () => void;
 beforeEach(() => {
@@ -88,5 +88,38 @@ describe('mimari kartı klavyesi (#8)', () => {
     card.dispatchEvent(e);
     expect(e.defaultPrevented).toBe(true);
     expect(calls.length).toBe(1);
+  });
+});
+const panelCb = { onExit() {}, onNewFromTemplate() {}, onWizardCancel() {}, openLesson() {}, openGlossary() {}, onKnobDrag() {} };
+
+describe('varyant seçimi Aile sekmesinde (#9)', () => {
+  it('ikinci varyant eklenince ilkine Aile sekmesinden dönülür (üst çubuk dar ekranda gizli)', () => {
+    const store = makeStore();
+    store.startFromTemplate('turbofan');
+    const panel = new WorkshopPanel(store, panelCb);
+    panel.update(store.state);
+    store.addVariant();
+    const fam = () => store.activeFamily()!;
+    const [v1, v2] = fam().variants;
+    expect(fam().active).toBe(v2.id);
+    panel.setTab('family');
+    const rows = () => asEl(panel.el).querySelectorAll('.ws-var-row');
+    expect(rows().length).toBe(2);
+    expect(rows()[1].classList.contains('sel')).toBe(true);
+    expect(rows()[0].textContent).toContain(v1.name);
+    rows()[0].click();
+    expect(fam().active).toBe(v1.id);
+    panel.update(store.state);
+    expect(rows()[0].classList.contains('sel')).toBe(true);
+    expect(rows()[0].getAttribute('aria-pressed')).toBe('true');
+    expect(rows()[1].classList.contains('sel')).toBe(false);
+  });
+
+  it('aile görünüm anahtarı etkin varyant ve varyant adı değişince değişir', () => {
+    const st = (active: string, names: string[]) =>
+      ({ project: { families: [{ id: 'f', code: 'AT-1', name: 'AT-1', active, variants: names.map((n, i) => ({ id: `v${i}`, name: n })) }], activeFamily: 'f' } }) as unknown as Parameters<typeof familyViewKey>[0];
+    expect(familyViewKey(st('v0', ['A', 'B']))).toBe(familyViewKey(st('v0', ['A', 'B'])));
+    expect(familyViewKey(st('v0', ['A', 'B']))).not.toBe(familyViewKey(st('v1', ['A', 'B'])));
+    expect(familyViewKey(st('v0', ['A', 'B']))).not.toBe(familyViewKey(st('v0', ['A', 'C'])));
   });
 });

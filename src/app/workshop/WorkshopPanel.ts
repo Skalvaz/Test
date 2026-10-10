@@ -281,6 +281,16 @@ export class WorkshopPanel {
         on: { click: () => store.selectFamily(f.id) },
       }, [h('b', { text: f.code }), h('span', { text: f.name }), h('small', { text: `${f.variants.length} varyant` })]),
     );
+    // Etkin ailenin varyantları: üst çubuktaki varyant düğmeleri dar ekranda
+    // (≤ 1000 px) gizli; seçmenin her genişlikte çalışan yolu burası
+    const variantRows = (fam?.variants ?? []).map((v, i) =>
+      h('button', {
+        class: `ws-fam-row ws-var-row${v.id === fam!.active ? ' sel' : ''}`,
+        attrs: { type: 'button', 'aria-pressed': String(v.id === fam!.active) },
+        title: v.id === fam!.active ? 'Düzenlenen varyant' : 'Bu varyantı düzenle',
+        on: { click: () => store.selectVariant(v.id) },
+      }, [h('b', { text: String(i + 1) }), h('span', { text: v.name })]),
+    );
     const goalSel = h('select', {
       class: 'btn small',
       attrs: { 'aria-label': 'Görev' },
@@ -297,10 +307,12 @@ export class WorkshopPanel {
           attrs: { type: 'button' },
           on: { click: () => this.cb.onNewFromTemplate() },
         }, ['+ Yeni aile']),
-        fam && fam.variants.length < 4
-          ? h('button', { class: 'btn small', text: '+ Varyant', attrs: { type: 'button' }, on: { click: () => store.addVariant() } })
-          : null,
       ]),
+      fam ? h('div', { class: 'section-label', text: `${fam.code} varyantları` }) : null,
+      fam ? h('div', { class: 'ws-fam-list ws-var-list' }, variantRows) : null,
+      fam && fam.variants.length < 4
+        ? h('div', { class: 'chips' }, [h('button', { class: 'btn small', text: '+ Varyant', attrs: { type: 'button' }, on: { click: () => store.addVariant() } })])
+        : null,
       h('p', { class: 'step-body', text: 'Aile aynı mimariyi paylaşır; varyantlar (ör. AT-1/45, AT-1/52) ortak tabandan küçük farklarla türer. Aile düğmeleri bütün varyantları değiştirir.' }),
       h('div', { class: 'section-label', text: 'Görev' }),
       goalSel,
@@ -482,9 +494,12 @@ export class ErrorBox {
 /** Aile sekmesinin içeriğini belirleyen durum (değişmedikçe DOM yeniden kurulmaz) */
 export function familyViewKey(s: Pick<WorkshopState, 'project'>): string {
   const p = s.project;
+  const fam = p.families.find((f) => f.id === p.activeFamily);
   return JSON.stringify([
     p.families.map((f) => [f.id, f.code, f.name, f.variants.length]),
     p.activeFamily,
+    // Etkin ailenin varyant listesi (ad ve seçili varyant)
+    fam ? [fam.active, fam.variants.map((v) => [v.id, v.name])] : null,
     p.goal?.id ?? null,
   ]);
 }
