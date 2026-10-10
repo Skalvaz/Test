@@ -10,50 +10,9 @@
 import * as THREE from 'three';
 import { smoothProfile, latheFromProfile, thickLathe, radialInstances, tagPart } from './geom.js';
 import { createBladeGeometry } from './airfoil.js';
-import { buildGasPath } from './gaspath.js';
 import { buildStandYoke } from './stand.js';
 import { createPropDiscTexture } from '../materials/textures.js';
-import { KitBatch } from './kit.js';
-import {
-  radiusProfile,
-  flangeBolts,
-  probes,
-  liftLugs,
-  hugPipe,
-  harness,
-  fuelManifold,
-  igniters,
-  borescopePorts,
-  oilTank,
-  controlUnit,
-} from './externals.js';
-
-/** Dişli çark: dış (ya da iç, halka dişli) dişli profil, ekstrüzyon */
-function gearGeometry(r, teeth, depth, internal = false, outerR = r + 0.03) {
-  const tooth = Math.max(0.006, (Math.PI * 2 * r) / teeth * 0.35);
-  const profile = (radius, inward) => {
-    const pts = [];
-    for (let i = 0; i < teeth; i++) {
-      const a0 = (i / teeth) * Math.PI * 2;
-      const da = (Math.PI * 2) / teeth;
-      const tip = radius + (inward ? -tooth : tooth);
-      pts.push([a0, radius], [a0 + da * 0.2, tip], [a0 + da * 0.5, tip], [a0 + da * 0.7, radius]);
-    }
-    return pts.map(([a, rr]) => new THREE.Vector2(Math.cos(a) * rr, Math.sin(a) * rr));
-  };
-  let shape;
-  if (internal) {
-    shape = new THREE.Shape();
-    shape.absarc(0, 0, outerR, 0, Math.PI * 2, false);
-    shape.holes.push(new THREE.Path(profile(r, true).reverse()));
-  } else {
-    shape = new THREE.Shape(profile(r, false));
-    shape.holes.push(new THREE.Path().absarc(0, 0, r * 0.3, 0, Math.PI * 2, true));
-  }
-  const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 24 });
-  geo.translate(0, 0, -depth / 2);
-  return geo;
-}
+import { buildGasGenerator, gearGeometry } from './gasgen.js';
 
 /**
  * Eliptik kesitli kanal: yol boyunca genişlik/yükseklik değişen bir boru
@@ -114,8 +73,6 @@ export function buildTurboprop(materials, L) {
   const blades = L.prop.blades;
   const g = L.gas;
   const hz = g.hpc.z0; // HPC girişi: giriş kanalı ve gövde donanımının çapası
-  const cb = g.combustor;
-  const cen = g.centrifugal;
   // Dişli kutusu gövdesi: M4 öncesi modelde z −1,8 … −0,82 arası
   const gbz = (z) => L.gearbox.z0 + ((z + 1.8) / 0.98) * (L.gearbox.z1 - L.gearbox.z0);
 
@@ -244,36 +201,15 @@ export function buildTurboprop(materials, L) {
   carrier.add(tagPart(propShaft, 'shafts'));
   propeller.add(carrier);
 
-  /* ---------------- gaz jeneratörü + güç türbini ---------------- */
-  const gas = buildGasPath(materials, g);
-  group.add(gas.group);
+  /* ---------------- gaz jeneratörü + güç türbini (gasgen.js) ----------------
+   * Gaz yolu, gövde ve flanşlar, jet borusu, gövde tesisatı. Turbopropta
+   * ölçek 1: M5a öncesi modelle aynı. */
+  const gg = buildGasGenerator(materials, { gas: g, case: L.case, exhaust: L.exhaust, engineR: L.engineR, shafts: g.shafts }, { k: 1, casePart: 'fanCase', extPart: 'gearbox' });
+  const gas = gg.gas;
+  group.add(gg.group);
   gas.lpSpool.add(tagPart(sun, 'gearbox'));
-
-  const casePts = L.case;
-  group.add(tagPart(new THREE.Mesh(thickLathe(smoothProfile(casePts, 80), 128, 0.01, 'in'), materials.engineCase), 'fanCase'));
-  const prof = radiusProfile(casePts.map(([r, z]) => [r, z]));
-  // Kit parçaları (Blender'da modellenmiş dış donanım, bkz. kit.js)
-  const kit = new KitBatch(materials);
-  for (const fz of [hz - 0.12, g.hpc.z1, cen.z + 0.06, cb.z1 + 0.02, g.lpt.z1 + 0.1]) {
-    const r = prof(fz);
-    const fl = new THREE.Mesh(new THREE.TorusGeometry(r + 0.004, 0.01, 8, 96), materials.kitSteel ?? materials.machinery);
-    fl.position.z = fz;
-    group.add(tagPart(fl, 'fanCase'));
-    flangeBolts(r + 0.013, fz, 36, { kit }, 0.009);
-  }
-
-  // Egzoz: jet borusu
+  const { prof, kit } = gg;
   const ex = L.exhaust;
-  const jetPipe = new THREE.Mesh(
-    thickLathe(smoothProfile([[ex.r0, ex.z0], [(ex.r0 + ex.radius) / 2 + 0.005, (ex.z0 + ex.z1) / 2], [ex.radius, ex.z1]], 20), 96, 0.008, 'out'),
-    materials.sooted,
-  );
-  group.add(tagPart(jetPipe, 'exhaust'));
-  const tail = new THREE.Mesh(
-    thickLathe(smoothProfile([[ex.coneR, ex.z0 - 0.03], [ex.coneR * 0.67, ex.z0 + 0.22], [0.01, ex.coneZ1]], 30), 48, 0.008, 'in'),
-    materials.sooted,
-  );
-  group.add(tagPart(tail, 'exhaust'));
 
   /* ---------------- çene tipi hava girişi: S-kanal ---------------- */
   // Dişli kutusunun altındaki eliptik ağızdan başlar, geriye ve yukarı
@@ -318,32 +254,7 @@ export function buildTurboprop(materials, L) {
   group.add(tagPart(plenum, 'inlet'));
 
   /* ---------------- dış tesisat ---------------- */
-  const mats = {
-    metal: materials.machinery,
-    lever: materials.engineCase,
-    ring: materials.hubMetal,
-    pipe: materials.engineCase,
-    anodized: materials.anodized,
-    box: materials.boxPaint,
-    braid: materials.braid,
-    cast: materials.castAlu,
-    tank: materials.engineCase,
-    glass: materials.sightGlass,
-    rubber: materials.hose,
-    castKit: materials.kitCast,
-    kit,
-  };
-  fuelManifold(group, prof, cb.z0 + 0.08, cb.injectors, mats, 'gearbox');
-  igniters(group, prof, cb.z0 + 0.19, [-Math.PI / 2 - 0.8, -Math.PI / 2 + 0.8], cb.z1 + 0.14, mats, 'gearbox');
-  borescopePorts(group, prof, [hz + 0.22, cb.z1 - 0.16, g.hpt.z0, g.lpt.z0 + 0.06], 0.4, mats);
-  oilTank(group, prof, { a: -0.15, z: hz + 0.27, len: 0.28, r: 0.065 }, mats);
-  controlUnit(group, prof, { a: Math.PI + 0.25, z: hz + 0.37, w: 0.18, d: 0.26 }, mats);
-  const pipe = (a0, a1, z0, z1, rad, mat, gap = 0.012) => hugPipe(group, prof, { a0, a1, z0, z1, rad, gap, mat, kit });
-  pipe(0.35, 0.15, hz - 0.08, cb.z0 + 0.06, 0.013, materials.engineCase); // yakıt besleme
-  pipe(-0.3, -0.6, hz + 0.32, g.lpt.z0 + 0.01, 0.009, materials.brassFitting, 0.01); // yağ dönüş
-  pipe(Math.PI - 0.4, Math.PI - 0.1, hz - 0.03, g.lpt.z1, 0.009, materials.brassFitting, 0.01); // yağ basınç
-  pipe(Math.PI / 2 + 0.5, Math.PI / 2 + 0.2, cen.z - 0.06, cb.z1 - 0.06, 0.022, materials.engineCase, 0.016); // bleed
-  harness(group, prof, { a0: Math.PI + 0.15, a1: Math.PI + 0.55, z0: cen.z - 0.06, z1: g.lpt.z1 + 0.05, mat: materials.hose, kit });
+  // Gövde tesisatı gasgen.js'te; burada redüktöre bağlı aksesuarlar.
   // Dişli kutusunun arka yüzündeki aksesuarlar (eksenel, +Z): starter-jeneratör,
   // yakıt kontrol ünitesi/pompa, hidrolik pompa. Gövdenin üstüne oturur:
   // gaz jeneratörü gövdesi incelince (M4 öncesi modelde 0,3 m) içeri kayar
@@ -357,8 +268,6 @@ export function buildTurboprop(materials, L) {
     const s = r / 0.06;
     kit.at(kind, Math.atan2(y, x), Math.hypot(x, y) + accShift, accZ, { pitch: Math.PI / 2, scale: [s, l / 0.145, s] }, 'gearbox');
   }
-  probes(prof, g.lpt.z1 + 0.05, 6, { kit }, 0.3, 'lpt');
-  liftLugs(prof, [hz + 0.17, g.hpt.z0 + 0.06], { kit });
   group.add(kit.build());
 
   /* ---------------- test standı askısı ---------------- */

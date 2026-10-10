@@ -100,7 +100,7 @@ export interface ShaftModule {
   reduction: boolean;
   /** Aktarma verimi (0,97–0,995) */
   transmissionEff: number;
-  /** Çıkış flanşından HPC girişine [m] */
+  /** Çıkış flanşından halka giriş ağzına (mil gövdesi boyu) [m]; HPC ayrıca inlet.length·uç arkada */
   gearboxLength: number;
 }
 

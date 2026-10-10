@@ -6,7 +6,11 @@
 
 import * as THREE from 'three';
 
-const BEAM_Y = 3.08;
+/** Askı kirişinin ekseni (y): hücrenin canlı çerçeve adaptörünün altı */
+export const BEAM_Y = 3.08;
+
+/** Test hücresi zemininin yüksekliği (y): core/environment.js zemini ve App.floorY ile aynı */
+export const CELL_FLOOR_Y = -3.35;
 
 /**
  * @param {{ mounts: number[], engineR: number }} opts mounts: askı bağlantı

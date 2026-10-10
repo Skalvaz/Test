@@ -860,7 +860,7 @@ const SPECS: Record<KnobId, KnobSpec> = {
   },
   'shaft.gearboxLength': {
     label: 'Çıkış mili boyu',
-    explain: 'Çıkış flanşından HPC girişine eksenel mesafe.',
+    explain: 'Çıkış flanşından halka giriş ağzına eksenel mesafe (mil gövdesi boyu); HPC girişin arkasında.',
     unit: 'm',
     range: when((t) => t.lpLoad === 'shaft', [0.2, 1.5]),
     step: 0.01,

@@ -35,7 +35,8 @@ export function fakeSummarize(b: BuiltEngine): DesignSummary {
   const g = b.flowpath.gas;
   const row = (r: typeof g.hpc | undefined, omega: number): RowSummary | undefined =>
     r && { stages: r.stages, uTip: r.uTip, uMean: r.uMean, loading: r.loading, hExitMm: (r.tip[1] - r.hub[1]) * 1e3, rpm: rpmOf(omega) };
-  const shaftPower = b.sized.ref.shaftPower > 0 ? b.sized.ref.shaftPower : undefined;
+  // Çıkış gücü: gerçek özet (summary.ts) gibi ref.outputPower
+  const shaftPower = b.sized.ref.outputPower > 0 ? b.sized.ref.outputPower : undefined;
   const output = b.traits.output;
   const comb = b.graph.modules.find((x) => x.type === 'combustor') as CombustorModule;
   return {
@@ -148,7 +149,7 @@ export function fakeSolveMassFlow(g: EngineGraph, target: { thrust?: number; sha
   let W = g.massFlow;
   for (let i = 0; i < 4; i++) {
     const b = buildChecked({ ...g, massFlow: W }, { reference: ref });
-    const have = target.shaftPower !== undefined ? b.sized.ref.shaftPower : b.sized.point.thrust;
+    const have = target.shaftPower !== undefined ? b.sized.ref.outputPower : b.sized.point.thrust;
     const want = target.shaftPower ?? target.thrust ?? have;
     W *= want / have;
   }

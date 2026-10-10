@@ -9,7 +9,7 @@ import { builtFor, designFor, ENGINE_GRAPHS, overrideGraph, setSlotBuilt, setSlo
 import { evaluate, isEvaluation } from './evaluate';
 import { FlowpathError } from './flowpath';
 import { buildEngine, checkGraph, GRAPH_RULES, GraphError, isBuiltEngine, toEngineDesign, validateGraph } from './graph';
-import { LAYOUT_READY, LAYOUTS } from './layouts/index';
+import { LAYOUT_READY, LAYOUTS, layoutNotReady } from './layouts/index';
 import { MILITARY_TURBOFAN_GRAPH, TURBOFAN_GRAPH, TURBOJET_GRAPH, TURBOPROP_GRAPH } from './templates';
 import { deriveTraits, layoutStyleOf, presentationKind, traitsFromDesign } from './traits';
 import type { CombustorModule, CompressorModule, EngineGraph, EngineModule, InletModule, NozzleModule, ShaftModule } from './types';
@@ -165,13 +165,15 @@ describe('hazır olmayan yerleşimler tipli hata verir', () => {
     expect(buildEngine(g).flowpath.layout).toMatchObject({ style: 'nacelle', mixed: { mixer: { style: 'lobed', lobes: 18 } } });
   });
 
-  it('turboşaft (P7)', () => {
+  it('turboşaft (P7: hazır, kurulur)', () => {
     const g = turboshaftGraph();
     validateGraph(g);
-    expect(() => buildEngine(g)).toThrow(FlowpathError);
-    expect(() => buildEngine(g)).toThrow(/Turboşaft yerleşimi henüz yok/);
-    expect(LAYOUT_READY).toEqual({ bare: true, nacelle: true, turboprop: true, turboshaft: false });
-    expect(Object.keys(LAYOUTS).sort()).toEqual(['bare', 'nacelle', 'turboprop', 'turboshaft']);
+    // TP çekirdekli deneme turboşaftı: güç türbini devri 20 900 rpm'den
+    // %5'ten çok farklı, redüktör kendiliğinden takılır
+    expect(buildEngine(g).flowpath.layout).toMatchObject({ style: 'turboshaft', output: { reduction: true } });
+    // P6 (karışık TF) ile sıra bağımsız: yalnız turboşaft bayrağı ve yerleşimi
+    expect(LAYOUT_READY).toMatchObject({ turboprop: true, turboshaft: true });
+    expect(Object.keys(LAYOUTS)).toEqual(expect.arrayContaining(['bare', 'nacelle', 'turboprop', 'turboshaft']));
   });
 });
 
@@ -202,11 +204,14 @@ describe('yuvalar ve inşa', () => {
     expect(buildEngine({ ...TURBOJET_GRAPH, massFlow: 70 }).rev).not.toBe(a.rev);
   });
 
-  it('şablonlar katalogda; turboşaft henüz yok ve tipli hata verir', () => {
-    expect(Object.keys(TEMPLATES).sort()).toEqual(['militaryTurbofan', 'turbofan', 'turbofanMixed', 'turbojet', 'turbojetDry', 'turboprop']);
-    expect(Object.keys(ENGINE_GRAPHS).sort()).toEqual(['militaryTurbofan', 'turbofan', 'turbojet', 'turboprop']);
-    expect(builtFor('turboshaft')).toBeUndefined();
-    expect(() => designFor('turboshaft')).toThrow(GraphError);
+  it('şablonlar katalogda; turboşaft grafikten (P7), boş atölye yuvası tipli hata verir', () => {
+    // P6 + P7 birleşti: yedi şablonun hepsi katalogda (tam liste)
+    expect(Object.keys(TEMPLATES).sort()).toEqual(['militaryTurbofan', 'turbofan', 'turbofanMixed', 'turbojet', 'turbojetDry', 'turboprop', 'turboshaft']);
+    expect(Object.keys(ENGINE_GRAPHS).sort()).toEqual(['militaryTurbofan', 'turbofan', 'turbojet', 'turboprop', 'turboshaft']);
+    expect(builtFor('turboshaft')!.traits.presentation).toBe('turboshaft');
+    // El yazımı karşılığı yok: katalog kaydı grafikten üretilen tasarım
+    expect(designFor('turboshaft')).toBe(ENGINE_CATALOG.turboshaft);
+    expect(() => designFor('workshop')).toThrow(GraphError);
     expect(() => designFor('workshop')).toThrow(/Atölye yuvası boş/);
   });
 
@@ -288,23 +293,41 @@ describe('FlowpathError yapısal alanlar', () => {
     expect(f.data?.cans).toBe(16);
   });
 
+  // Hazır olmama yolu atlanmadan sınanır: turboşaft bayrağı geçici olarak
+  // kapatılır (P6/P7 birleşme sırasından bağımsız)
   it('hazır olmayan yerleşim: layout.notReady', () => {
-    expect(() => buildEngine(turboshaftGraph())).toThrow(expect.objectContaining({ code: 'layout.notReady', name: 'FlowpathError' }));
+    const was = LAYOUT_READY.turboshaft;
+    LAYOUT_READY.turboshaft = false;
+    try {
+      expect(layoutNotReady(turboshaftGraph())).toMatch(/henüz yok/);
+      expect(() => buildEngine(turboshaftGraph())).toThrow(expect.objectContaining({ code: 'layout.notReady', name: 'FlowpathError' }));
+    } finally {
+      LAYOUT_READY.turboshaft = was;
+    }
+    expect(layoutNotReady(turboshaftGraph())).toBeNull();
   });
 
   // Gerileme: evaluate'in kademe tavanı denetimi gaz yolunu buildEngine'den
   // önce kuruyordu; hazır olmayan yerleşimde "HPC konumlanamıyor" dönüyordu
-  it.skipIf(LAYOUT_READY.turboshaft)('hazır olmayan yerleşim: evaluate de layout.notReady çevirisini döndürür', () => {
+  it('hazır olmayan yerleşim: evaluate de layout.notReady çevirisini döndürür', () => {
     const ts = turboshaftGraph();
     // Atölye yolu: aile tabanı (kind ve ops atılır) + turboprop referansı
     const base = structuredClone(ts);
     delete base.kind;
     delete base.ops;
-    for (const r of [evaluate(ts), evaluate(base, { reference: buildEngine(TURBOPROP_GRAPH) })]) {
-      expect(isEvaluation(r)).toBe(false);
-      if (isEvaluation(r)) continue;
-      expect(r.error).toMatchObject({ title: 'Bu mimari yakında', source: 'flowpath' });
-      expect(r.error.raw).toMatch(/yerleşimi henüz yok/);
+    const ref = buildEngine(TURBOPROP_GRAPH);
+    // Turboşaft bayrağı geçici olarak kapatılır (atlanmadan sınanır)
+    const was = LAYOUT_READY.turboshaft;
+    LAYOUT_READY.turboshaft = false;
+    try {
+      for (const r of [evaluate(ts), evaluate(base, { reference: ref })]) {
+        expect(isEvaluation(r)).toBe(false);
+        if (isEvaluation(r)) continue;
+        expect(r.error).toMatchObject({ title: 'Bu mimari yakında', source: 'flowpath' });
+        expect(r.error.raw).toMatch(/yerleşimi henüz yok/);
+      }
+    } finally {
+      LAYOUT_READY.turboshaft = was;
     }
   });
 });

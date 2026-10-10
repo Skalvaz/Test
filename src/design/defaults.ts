@@ -475,7 +475,9 @@ export function solveMassFlow(g: EngineGraph, target: { thrust?: number; shaftPo
     let v: number;
     try {
       const s = sizeEngine(toEngineDesign({ ...g, massFlow: W }, { reference }));
-      v = power ? s.ref.shaftPower : s.point.thrust;
+      // Mil gücü çıkışta (ref.outputPower: turboşaftta ×transmissionEff),
+      // özet, motor kartı ve göstergelerle aynı tanım
+      v = power ? s.ref.outputPower : s.point.thrust;
     } catch (e) {
       // Yalnız çevrim hatası (ör. çok küçük motorda aksesuar payı HPT'yi
       // aşar): bu akışta "yetersiz" say. Grafik hataları çağırana gider.

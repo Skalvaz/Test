@@ -184,6 +184,15 @@ export class FlowpathError extends Error {
 /** Turboprobun pervane düzlemi (z) */
 export const PROP_Z = -2.08;
 
+/**
+ * Turboşaftın çıkış flanşı düzlemi (z). Motor küçük (T700 sınıfı ~1,2 m):
+ * flanş, gaz jeneratörü test hücresinin ortasına (z ≈ 0) gelecek kadar önde.
+ */
+/** Turboşaft halka girişinin en kısa boyu (HPC uç yarıçapı katı): çerçeve (0,04·k ≈ 0,26·uç) sığar */
+export const TURBOSHAFT_MIN_INLET = 0.3;
+
+export const SHAFT_Z = -0.95;
+
 export interface CentrifugalGeometry {
   /** Çark ekseni (çıkış düzlemi) */
   z: number;
@@ -249,6 +258,7 @@ export function computeGasPath(graph: EngineGraph, sized: SizedEngine, opts: Gas
   const st = (id: StationId) => s[id];
   const inlet = moduleOf<InletModule>(graph, 'inlet')!;
   const prop = moduleOf<PropellerModule>(graph, 'propeller');
+  const shaftMod = moduleOf<ShaftModule>(graph, 'shaft');
   const fan = moduleOf<CompressorModule>(graph, 'fan');
   const lpcMod = moduleOf<CompressorModule>(graph, 'lpc');
   const hpcMod = moduleOf<CompressorModule>(graph, 'hpc')!;
@@ -315,6 +325,10 @@ export function computeGasPath(graph: EngineGraph, sized: SizedEngine, opts: Gas
   const lastLp = booster ?? front;
   if (lastLp) after(lastLp, hpc, hpcMod.gap);
   else if (prop) place(hpc, PROP_Z + prop.gearboxLength);
+  // Turboşaft (M5a P7): çıkış flanşı → mil gövdesi (gearboxLength) → halka
+  // giriş (boyu HPC uç yarıçapı cinsinden; en az TURBOSHAFT_MIN_INLET: giriş
+  // çerçevesi ilk rotora girmesin) → HPC
+  else if (shaftMod) place(hpc, SHAFT_Z + shaftMod.gearboxLength + Math.max(inlet.length, TURBOSHAFT_MIN_INLET) * hpc.tip[0]);
   else throw new FlowpathError('HPC konumlanamıyor.');
 
   let centrifugal: CentrifugalGeometry | undefined;
@@ -530,6 +544,11 @@ function extraCentroid(layout: EngineLayout, gp: GasPath, key: string): number {
       if (key === 'exhaust') return mid(gp.lpt.z1, exitZ);
       break;
     case 'turboshaft':
+      // M5a P7: gövde gaz jeneratörü boyunca, ön çerçeve ve mil gövdesi önde
+      if (key === 'casing') return mid(gp.hpc.z0, gp.lpt.z1);
+      if (key === 'inlet') return mid(layout.inlet.z0, layout.inlet.z1);
+      if (key === 'outputShaft' || key === 'gearbox') return mid(layout.output.z, layout.inlet.z0);
+      if (key === 'exhaust') return mid(gp.lpt.z1, exitZ);
       break;
   }
   return mid(layout.intake.z, exitZ);

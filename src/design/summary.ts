@@ -300,6 +300,9 @@ const PART_NAMES: Record<string, string> = {
   exhaust: 'Egzoz',
   gearbox: 'Redüktör',
   propeller: 'Pervane',
+  // Turboşaft (M5a P7)
+  inlet: 'Giriş çerçevesi',
+  outputShaft: 'Çıkış mili',
 };
 
 /** Neden zinciri: kademe ve devir değişimleri, en büyük 3 kütle katkısı */

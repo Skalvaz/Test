@@ -8,7 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { architectureOf } from '../design/architecture';
-import { builtFor, designFor, setSlotBuilt, setSlotGraph } from '../design/catalog';
+import { builtFor, designFor, setSlotBuilt, setSlotGraph, TEMPLATES } from '../design/catalog';
 import { evaluate } from '../design/evaluate';
 import { familyReady } from '../design/fuzz/fuzz';
 import { buildEngine, type BuiltEngine } from '../design/graph';
@@ -75,11 +75,19 @@ describe('başlangıç', () => {
     expect(st.canUndo).toBe(false);
   });
 
+  // Eksik şablon yolu atlanmadan sınanır: turboşaft kaydı geçici olarak
+  // silinir (P6/P7 birleşme sırasından bağımsız)
   it('henüz olmayan şablon bildirim verir, atmaz', () => {
-    const s = makeStore();
-    s.startFromTemplate('turboshaft');
-    expect(s.state.phase).toBe('start');
-    expect(s.state.notice?.text).toMatch(/henüz yok/);
+    const was = TEMPLATES.turboshaft;
+    delete TEMPLATES.turboshaft;
+    try {
+      const s = makeStore();
+      s.startFromTemplate('turboshaft');
+      expect(s.state.phase).toBe('start');
+      expect(s.state.notice?.text).toMatch(/henüz yok/);
+    } finally {
+      TEMPLATES.turboshaft = was;
+    }
   });
 
   it('sihirbaz: canlı önizleme, hedef itki, bitirince yeni aile', () => {
