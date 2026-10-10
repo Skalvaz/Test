@@ -62,6 +62,33 @@ const byName = (root: THREE.Object3D, name: string) => {
   return found;
 };
 
+/**
+ * Aynı taşıyıcıdaki planetler: en az üç, komşu merkezler arası en az iki uç
+ * yarıçapı (uç = geometrinin eksenden en uzak noktası; diş bölüm dairesinden
+ * dışa çıkar, eskiden yalnız bölüm dairesine bakılıyordu)
+ */
+function planetsClear(root: THREE.Object3D, label = '') {
+  const byCarrier = new Map<THREE.Object3D, THREE.Mesh[]>();
+  root.traverse((o) => {
+    if (o.name !== 'planet' || !o.parent) return;
+    const list = byCarrier.get(o.parent) ?? [];
+    list.push(o as THREE.Mesh);
+    byCarrier.set(o.parent, list);
+  });
+  expect(byCarrier.size, label).toBeGreaterThan(0);
+  for (const planets of byCarrier.values()) {
+    expect(planets.length, label).toBeGreaterThanOrEqual(3);
+    const pos = planets[0]!.geometry.getAttribute('position');
+    let tip = 0;
+    for (let k = 0; k < pos.count; k++) tip = Math.max(tip, Math.hypot(pos.getX(k), pos.getY(k)));
+    for (let a = 0; a < planets.length; a++) {
+      const b = (a + 1) % planets.length;
+      const d = Math.hypot(planets[a]!.position.x - planets[b]!.position.x, planets[a]!.position.y - planets[b]!.position.y);
+      expect(d, label).toBeGreaterThan(2 * tip);
+    }
+  }
+}
+
 describe('çıkış mili dönüşü', () => {
   it('doğrudan tahrik (istenen 20 000 rpm, güç türbini ~20 900): flanş, ara mil ve kaplin aynı açıda', () => {
     const { m, L } = model(variant(20000));
@@ -90,8 +117,10 @@ describe('çıkış mili dönüşü', () => {
 });
 
 describe('redüktör dişlileri orana göre (kinematik tutarlı)', () => {
-  const cases: [string, EngineGraph, 'planet' | 'compound'][] = [
+  const cases: [string, EngineGraph, 'planet' | 'planet2' | 'compound'][] = [
+    ['1,5 kg/s, 3000 rpm (i ≈ 12: iki kademe)', variant(3000, { massFlow: 1.5 }), 'planet2'],
     ['3000 rpm (i ≈ 7)', variant(3000), 'planet'],
+    ['3 kg/s, 4500 rpm (i ≈ 5,7)', variant(4500, { massFlow: 3 }), 'planet'],
     ['6000 rpm (i ≈ 3,5)', variant(6000), 'planet'],
     ['17 000 rpm (i ≈ 1,23)', variant(17000), 'compound'],
     ['zorla redüktör, 20 900 rpm (i ≈ 1)', variant(20900, { reduction: true }), 'compound'],
@@ -103,11 +132,16 @@ describe('redüktör dişlileri orana göre (kinematik tutarlı)', () => {
     const i = L.output.gearRatio;
     const info = (m.outputShaft as THREE.Object3D).userData.gears as { kind: string; radii: number[] };
     expect(info.kind).toBe(kind);
-    expect(i >= PLANET_MIN_RATIO).toBe(kind === 'planet');
+    expect(i >= PLANET_MIN_RATIO).toBe(kind !== 'compound');
     if (kind === 'planet') {
       const [RS, RP, RR] = info.radii;
       expect(RR).toBeCloseTo(RS + 2 * RP, 12);
       expect(1 + RR / RS).toBeCloseTo(i, 9);
+    } else if (kind === 'planet2') {
+      const [RS1, RP1, RR1, RS2, RP2, RR2] = info.radii;
+      expect(RR1).toBeCloseTo(RS1 + 2 * RP1, 12);
+      expect(RR2).toBeCloseTo(RS2 + 2 * RP2, 12);
+      expect((1 + RR1 / RS1) * (1 + RR2 / RS2)).toBeCloseTo(i, 9);
     } else {
       const [R1, R2, R3, R4] = info.radii;
       expect(R1 + R2).toBeCloseTo(R3 + R4, 12);
@@ -120,16 +154,49 @@ describe('redüktör dişlileri orana göre (kinematik tutarlı)', () => {
     expect(Math.max(box.max.x, box.max.y, -box.min.x, -box.min.y)).toBeLessThan(L.housing.gearboxR);
     expect(box.min.z).toBeGreaterThan(L.housing.gearbox[0]);
     expect(box.max.z).toBeLessThan(L.housing.gearbox[1]);
+    if (kind !== 'compound') planetsClear(m.group);
+  });
+
+  it('planetlerin diş uçları komşusuna girmez (her oran ve boyutta, en az üç planet)', () => {
+    for (const R of [0.05, 0.08, 0.15, 0.3]) {
+      for (let i = 2.6; i <= 20; i += 0.35) {
+        const gs = reductionGears(MATS, { z0: 0, z1: 0.1, R, ratio: i, part: 'outputShaft' });
+        const root = new THREE.Group().add(gs.input, gs.fixed, gs.output);
+        planetsClear(root, `R ${R}, i ${i.toFixed(2)}`);
+      }
+    }
+  });
+
+  it('iki kademeli planet: her kavramada kayma yok, ara taşıyıcı √i ile döner', () => {
+    for (const i of [12, 16]) {
+      const gs = reductionGears(MATS, { z0: 0, z1: 0.1, R: 0.15, ratio: i, part: 'outputShaft' });
+      expect(gs.kind).toBe('planet2');
+      const [RS1, RP1, RR1, RS2, RP2, RR2] = gs.radii;
+      const lp = 3.7;
+      const out = lp / i;
+      gs.tick(lp, out);
+      const mid = gs.fixed.children.find((c) => c.name === 'gear-carrier1')!;
+      const c1 = mid.rotation.z;
+      expect(c1).toBeCloseTo(lp / Math.sqrt(i), 9);
+      const phi = (o: THREE.Object3D) => o.children.find((c) => c.name === 'planet')!.rotation.z;
+      // 1. kademe: güneş giriş milinde, taşıyıcı ara grupta
+      expect(RS1 * (lp - c1)).toBeCloseTo(-RP1 * phi(mid), 9);
+      expect(RR1 * (0 - c1)).toBeCloseTo(RP1 * phi(mid), 9);
+      // 2. kademe: güneş ara grupta, taşıyıcı çıkışta
+      expect(RS2 * (c1 - out)).toBeCloseTo(-RP2 * phi(gs.output), 9);
+      expect(RR2 * (0 - out)).toBeCloseTo(RP2 * phi(gs.output), 9);
+    }
   });
 
   it('planet takımı: güneş ve çember kavramalarında kayma yok (dönen çerçevede)', () => {
-    for (const i of [2.6, 3.48, 6.96, 12]) {
+    for (const i of [2.6, 3.48, 6.96, 8]) {
       const gs = reductionGears(MATS, { z0: 0, z1: 0.1, R: 0.15, ratio: i, part: 'outputShaft' });
+      expect(gs.kind).toBe('planet');
       const [RS, RP, RR] = gs.radii;
       const lp = 3.7;
       const carrier = lp / i;
       gs.tick(lp, carrier);
-      const planet = gs.output.children.find((c) => (c as THREE.Mesh).isMesh && Math.hypot(c.position.x, c.position.y) > 0.9 * (RS + RP))!;
+      const planet = gs.output.children.find((c) => c.name === 'planet')!;
       const phi = planet.rotation.z;
       // Güneş: Rg·(θg − θt) = −Rp·φ; çember (sabit): Rç·(0 − θt) = Rp·φ
       expect(RS * (lp - carrier)).toBeCloseTo(-RP * phi, 9);

@@ -15,7 +15,8 @@ export declare function reductionGears(
   input: THREE.Group;
   fixed: THREE.Group;
   output: THREE.Group;
-  kind: 'planet' | 'compound';
+  /** planet2: iki planet kademesi seri (yüksek oran) */
+  kind: 'planet' | 'planet2' | 'compound';
   radii: number[];
   /** Çıkış kademesinin ekseni (çıkış mili orada biter) */
   outZ: number;

@@ -16,7 +16,7 @@
 
 import * as THREE from 'three';
 import { smoothProfile, latheFromProfile, thickLathe, radialInstances, tagPart } from './geom.js';
-import { buildGasGenerator, gearGeometry } from './gasgen.js';
+import { buildGasGenerator, gearGeometry, gearToothHeight } from './gasgen.js';
 import { buildStandYoke, yokeScale, BEAM_Y, CELL_FLOOR_Y } from './stand.js';
 import { radiusProfile, accessoryGearbox, hugPipe, flangeBolts } from './externals.js';
 
@@ -385,7 +385,8 @@ export const PLANET_MIN_RATIO = 2.6;
  * Redüktör dişli takımı, istenen orana göre boyutlanır; dişler kaymaz:
  *  - i ≥ PLANET_MIN_RATIO: planet takımı. Çember gövdeye sabit, güneş güç
  *    türbini milinde, taşıyıcı çıkışta: i = 1 + Rç/Rg, Rç = Rg + 2·Rp →
- *    Rp = Rg·(i − 2)/2.
+ *    Rp = Rg·(i − 2)/2. Planet sayısı (4 ya da 3) diş uçlarının sığmasına
+ *    göre; üçü de sığmıyorsa (i ≳ 10) iki planet kademesi seri, her biri √i.
  *  - Aksi halde: eş eksenli bileşik (geri dönüşlü) dizi. Gövdeye yataklı üç
  *    ara mil; giriş dişlisi (R1) ara milin R2'sini, ara milin R3'ü çıkış
  *    dişlisini (R4) çevirir: i = (R2/R1)·(R4/R3), eksenler çakışık
@@ -394,8 +395,9 @@ export const PLANET_MIN_RATIO = 2.6;
  * Giriş kademesi arkada (güç türbini tarafı), çıkış kademesi önde (flanş).
  * @param {{ z0: number, z1: number, R: number, ratio: number, part: string }} o
  *   z0–z1 kutunun içindeki eksenel aralık, R dişlilerin sığacağı yarıçap
- * @returns {{ input: THREE.Group, fixed: THREE.Group, output: THREE.Group, kind: 'planet' | 'compound', radii: number[], outZ: number, tick: (lpAngle: number, outAngle: number) => void }}
- *   outZ: çıkış kademesinin ekseni (çıkış mili orada biter)
+ * @returns {{ input: THREE.Group, fixed: THREE.Group, output: THREE.Group, kind: 'planet' | 'planet2' | 'compound', radii: number[], outZ: number, tick: (lpAngle: number, outAngle: number) => void }}
+ *   outZ: çıkış kademesinin ekseni (çıkış mili orada biter); radii planet:
+ *   [Rg, Rp, Rç], planet2: [Rg₁, Rp₁, Rç, Rg₂, Rp₂, Rç], compound: [R1..R4]
  */
 export function reductionGears(materials, o) {
   const { z0, z1, R, ratio: i, part } = o;
@@ -411,50 +413,114 @@ export function reductionGears(materials, o) {
 
   if (i >= PLANET_MIN_RATIO) {
     const RR = R * 0.84;
-    const RS = RR / (i - 1);
-    const RP = (RR - RS) / 2;
     const m = RR / 60;
-    const w = Math.min(0.12 * RR, 0.42 * span);
-    const zg = z0 + span * 0.55;
-    const sun = new THREE.Mesh(gearGeometry(RS, teeth(RS, m), w), materials.hubMetal);
-    sun.position.z = zg;
-    add(input, sun);
-    // Güneş göbeği: güç türbini milinden dişliye
-    const hub = new THREE.Mesh(zCylinder(RS * 0.45, RS * 0.45, span * 0.5, 24), materials.hubMetal);
-    hub.position.z = zg + span * 0.2;
-    add(input, hub);
-    const ring = new THREE.Mesh(gearGeometry(RR, teeth(RR, m), w, true, Math.min(R, RR * 1.12)), materials.machinery);
-    ring.position.z = zg;
-    add(fixed, ring);
-    const planets = [];
-    // Komşu planetler çakışmasın: 2·Rp < 2·(Rg + Rp)·sin(π/n)
-    const nP = RP < (RS + RP) * Math.sin(Math.PI / 4) * 0.92 ? 4 : 3;
-    for (let j = 0; j < nP; j++) {
-      const a = (j / nP) * Math.PI * 2;
-      const pl = new THREE.Mesh(gearGeometry(RP, teeth(RP, m), w * 0.92), materials.hubMetal);
-      pl.position.set(Math.cos(a) * (RS + RP), Math.sin(a) * (RS + RP), zg);
-      add(output, pl);
-      planets.push(pl);
-      const pin = new THREE.Mesh(zCylinder(RP * 0.28, RP * 0.28, w * 1.6, 16), materials.machinery);
-      pin.position.set(pl.position.x, pl.position.y, zg - w * 0.3);
-      add(output, pin);
+    // Kademe oranından güneş ve planet: i = 1 + Rç/Rg, Rç = Rg + 2·Rp
+    const stageRadii = (ri) => {
+      const RS = RR / (ri - 1);
+      return { RS, RP: (RR - RS) / 2 };
+    };
+    // Planet sayısı: komşu planetlerin diş UÇLARI arasında boşluk kalmalı
+    // (bölüm dairesi yetmez, diş bölüm dairesinden dışa çıkar):
+    // 2·(Rg + Rp)·sin(π/n) − 2·(Rp + h) ≥ h/4. Hiçbiri sığmazsa 0.
+    const planetCount = (RS, RP) => {
+      const h = gearToothHeight(RP, teeth(RP, m));
+      for (const n of [4, 3]) if (2 * (RS + RP) * Math.sin(Math.PI / n) - 2 * (RP + h) >= 0.25 * h) return n;
+      return 0;
+    };
+    /**
+     * Bir planet kademesi: güneş sunParent'ta, çember gövdede, planetler ve
+     * taşıyıcı plakası (önde) carrier'da
+     */
+    const planetStage = (ri, zg, w, sunParent, carrier) => {
+      const { RS, RP } = stageRadii(ri);
+      const nP = planetCount(RS, RP) || 3;
+      const sun = new THREE.Mesh(gearGeometry(RS, teeth(RS, m), w), materials.hubMetal);
+      sun.position.z = zg;
+      add(sunParent, sun);
+      const ring = new THREE.Mesh(gearGeometry(RR, teeth(RR, m), w, true, Math.min(R, RR * 1.12)), materials.machinery);
+      ring.position.z = zg;
+      add(fixed, ring);
+      const planets = [];
+      for (let j = 0; j < nP; j++) {
+        const a = (j / nP) * Math.PI * 2;
+        const pl = new THREE.Mesh(gearGeometry(RP, teeth(RP, m), w * 0.92), materials.hubMetal);
+        pl.name = 'planet';
+        pl.position.set(Math.cos(a) * (RS + RP), Math.sin(a) * (RS + RP), zg);
+        add(carrier, pl);
+        planets.push(pl);
+        const pin = new THREE.Mesh(zCylinder(RP * 0.28, RP * 0.28, w * 1.6, 16), materials.machinery);
+        pin.position.set(pl.position.x, pl.position.y, zg - w * 0.3);
+        add(carrier, pin);
+      }
+      // Taşıyıcı plakası: planetlerin önünde
+      const plateR = RS + 1.9 * RP;
+      const plate = new THREE.Mesh(zCylinder(plateR, plateR, 0.15 * w, 48), materials.machinery);
+      plate.position.z = zg - w * 0.62;
+      add(carrier, plate);
+      // Planet taşıyıcıya göre döner: güneşle kavrama Rg·(θg − θt) = −Rp·φ
+      const spin = (sunAngle, carrierAngle) => {
+        const phi = (-(sunAngle - carrierAngle) * RS) / RP;
+        for (const p of planets) p.rotation.z = phi;
+      };
+      return { RS, RP, plateZ: plate.position.z, spin };
+    };
+
+    if (planetCount(stageRadii(i).RS, stageRadii(i).RP) > 0) {
+      // Tek kademe: taşıyıcı çıkışta
+      const w = Math.min(0.12 * RR, 0.42 * span);
+      const zg = z0 + span * 0.55;
+      const st = planetStage(i, zg, w, input, output);
+      // Güneş göbeği: güç türbini milinden dişliye
+      const hub = new THREE.Mesh(zCylinder(st.RS * 0.45, st.RS * 0.45, span * 0.5, 24), materials.hubMetal);
+      hub.position.z = zg + span * 0.2;
+      add(input, hub);
+      return {
+        input,
+        fixed,
+        output,
+        kind: 'planet',
+        radii: [st.RS, st.RP, RR],
+        outZ: st.plateZ,
+        tick(lpAngle, outAngle) {
+          st.spin(lpAngle, outAngle);
+        },
+      };
     }
-    // Taşıyıcı plakası: planetlerin önünde, çıkış miline bağlı
-    const plateR = RS + 1.9 * RP;
-    const plate = new THREE.Mesh(zCylinder(plateR, plateR, 0.15 * w, 48), materials.machinery);
-    plate.position.z = zg - w * 0.62;
-    add(output, plate);
+
+    // Yüksek oran (i ≳ 10): tek kademede üç planet bile sığmaz (güneş çok
+    // küçülür, planetler iç içe girer). Gerçek turboşaft/turboprop redüktörleri
+    // gibi (PT6) iki planet kademesi seri: arka kademenin taşıyıcısı ön
+    // kademenin güneşini çevirir; i = i₁·i₂, eşit bölüşüm i₁ = i₂ = √i.
+    const iStage = Math.sqrt(i);
+    const w = Math.min(0.12 * RR, 0.2 * span);
+    const zg1 = z0 + span * 0.7;
+    const zg2 = z0 + span * 0.33;
+    // Ara taşıyıcı (1. kademe taşıyıcısı + 2. kademe güneşi): gövdede yataklı,
+    // kendi devrinde döner (tick ayarlar)
+    const mid = new THREE.Group();
+    mid.name = 'gear-carrier1';
+    fixed.add(mid);
+    const st1 = planetStage(iStage, zg1, w, input, mid);
+    const st2 = planetStage(iStage, zg2, w, mid, output);
+    const hub = new THREE.Mesh(zCylinder(st1.RS * 0.45, st1.RS * 0.45, span * 0.3, 24), materials.hubMetal);
+    hub.position.z = zg1 + span * 0.15;
+    add(input, hub);
+    // Ara mil: 1. kademe taşıyıcı plakasından 2. kademe güneşine
+    const quill = new THREE.Mesh(zCylinder(st2.RS * 0.45, st2.RS * 0.45, st1.plateZ - zg2, 24), materials.hubMetal);
+    quill.position.z = (st1.plateZ + zg2) / 2;
+    add(mid, quill);
     return {
       input,
       fixed,
       output,
-      kind: 'planet',
-      radii: [RS, RP, RR],
-      outZ: plate.position.z,
+      kind: 'planet2',
+      radii: [st1.RS, st1.RP, RR, st2.RS, st2.RP, RR],
+      outZ: st2.plateZ,
       tick(lpAngle, outAngle) {
-        // Planet taşıyıcıya göre döner: güneşle kavrama Rg·(θg − θt) = −Rp·φ
-        const phi = (-(lpAngle - outAngle) * RS) / RP;
-        for (const p of planets) p.rotation.z = phi;
+        const c1 = lpAngle / iStage;
+        mid.rotation.z = c1;
+        st1.spin(lpAngle, c1);
+        st2.spin(c1, outAngle);
       },
     };
   }
