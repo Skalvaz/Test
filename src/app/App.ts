@@ -418,7 +418,8 @@ export class App {
       if (this.wsGhost?.active && s.last && !this.wsHandles?.dragging) this.wsGhost.update(s.last.built);
       if (s.notice && s.notice.seq !== this.wsNoticeSeq) {
         this.wsNoticeSeq = s.notice.seq;
-        this.toasts.show(s.notice.text, 'info', 4500);
+        // Uzun bildirim (mimari değişiminin "Şunlar da değişti" notları) okunacak kadar kalır
+        this.toasts.show(s.notice.text, 'info', Math.min(20000, Math.max(4500, 55 * s.notice.text.length)));
       }
       this.refreshWorkshop();
     });
@@ -597,8 +598,17 @@ export class App {
   /* Modlar                                                           */
   /* ================================================================ */
 
+  /**
+   * Mod değişti: önceki modun bildirimleri (test hücresinin sim olayları,
+   * "motor rölantide" ipucu) yeni modda ekranda kalmasın.
+   */
+  private clearToasts() {
+    this.toasts.el.replaceChildren();
+  }
+
   showMenu(first = false) {
     if (this.mode === 'workshop') this.leaveWorkshop();
+    if (this.mode !== 'menu') this.clearToasts();
     this.returnTo = null;
     this.leaveWorkshopSlot();
     this.mode = 'menu';
@@ -650,6 +660,7 @@ export class App {
   startLesson(lesson: Lesson, opts: { returnTo?: 'workshop' } = {}) {
     this.closeOverlay();
     if (this.mode === 'workshop') this.leaveWorkshop();
+    this.clearToasts();
     this.returnTo = opts.returnTo ?? null;
     this.source = 'catalog';
     // Dersler yüksek baypaslı turbofan üzerine yazıldı (kind yuvası: atölye tasarımı dersi etkilemez)
@@ -686,8 +697,9 @@ export class App {
     const hasNext = idx + 1 < LESSONS.length;
     // Atölyeden açılan ders bitince atölyeye dönülür
     if (this.returnTo === 'workshop') {
-      this.toasts.show(`${r.lesson.title} tamamlandı. Atölyeye dönüldü.`, 'info', 4000);
+      // Önce mod (dersin bildirimleri temizlenir), sonra dönüş bildirimi
       this.openWorkshop({ resume: true });
+      this.toasts.show(`${r.lesson.title} tamamlandı. Atölyeye dönüldü.`, 'info', 4000);
       return;
     }
     this.openOverlay(
@@ -708,6 +720,7 @@ export class App {
     this.audio.resume();
     this.closeOverlay();
     if (this.mode === 'workshop') this.leaveWorkshop();
+    this.clearToasts();
     this.returnTo = null;
     if (opts.from !== 'workshop') this.leaveWorkshopSlot();
     this.sandboxPanel.setWorkshop(opts.from === 'workshop');
@@ -742,6 +755,7 @@ export class App {
     this.closeOverlay();
     if (this.slot !== 'workshop') this.catalogSlot = this.slot;
     const wasWorkshop = this.mode === 'workshop';
+    if (!wasWorkshop) this.clearToasts();
     this.mode = 'workshop';
     this.runner = null;
     this.returnTo = null;
@@ -839,7 +853,7 @@ export class App {
   private publishWorkshop() {
     const last = this.wsStore.state.last;
     if (!last) return;
-    if (this.slot === 'workshop' && this.visual.slot === 'workshop' && this.visual.source.built === last.built && !this.visualEffects && !this.visualDraft) {
+    if (this.workshopOnScene(last.built)) {
       this.placeWorkshopHelpers();
       return;
     }
@@ -851,17 +865,51 @@ export class App {
     this.placeWorkshopHelpers();
   }
 
-  /** Mağaza yeni tasarım üretti: 3B model (taslak/tam), ölçek figürü, zarf */
-  private onWorkshopBuilt(b: BuiltEngine, detail: 'draft' | 'full') {
-    if (this.mode !== 'workshop') return;
+  /** Bu tasarımın atölye modeli (efektsiz, tam ayrıntı) zaten sahnede mi */
+  private workshopOnScene(b: BuiltEngine): boolean {
+    return this.slot === 'workshop' && this.visual.slot === 'workshop' && this.visual.source.built === b && !this.visualEffects && !this.visualDraft;
+  }
+
+  /**
+   * Mağaza yeni tasarım üretti: 3B model (taslak/tam), ölçek figürü, zarf.
+   * false: model sahneye konmadı (atölye dışında ya da üretim başarısız);
+   * mağaza tasarımı gösterilmiş saymaz, sonraki yayında yeniden dener.
+   */
+  private onWorkshopBuilt(b: BuiltEngine, detail: 'draft' | 'full'): boolean {
+    // Çıkış sırasında (leaveWorkshop) yayınlanan model kurulmaz: hemen katalog motoru gelir
+    if (this.mode !== 'workshop' || this.wsLeaving) return false;
     this.source = 'workshop';
+    // Taslaktan sonra App'in tam ayrıntı zamanlayıcısı (applyDesign) aynı
+    // modeli mağazanınkinden önce kurar: tam ayrıntı yayını ikinci kez üretmez
+    if (detail === 'full' && this.workshopOnScene(b)) {
+      this.placeWorkshopHelpers();
+      this.reframeWorkshop();
+      return true;
+    }
     const t0 = performance.now();
-    this.applyDesign('workshop', b, detail, { effects: false });
+    try {
+      this.applyDesign('workshop', b, detail, { effects: false });
+    } catch (err) {
+      // Değerlendirmeden geçen ama prosedürel modeli kurulamayan tasarım:
+      // sayılar geçerli, sahnede önceki model kalır (applyDesign simülasyonu ona döndürür)
+      console.warn('Atölye tasarımının 3B modeli kurulamadı', err);
+      if (this.wsFailedRev !== b.rev) {
+        this.wsFailedRev = b.rev;
+        this.toasts.show('Bu tasarımın 3B modeli kurulamadı: sayılar geçerli, sahnede önceki model duruyor.', 'caution', 6000);
+      }
+      return false;
+    }
+    this.wsFailedRev = null;
     this.wsBuildMs = performance.now() - t0;
     this.placeWorkshopHelpers();
     if (detail === 'full') this.reframeWorkshop();
+    return true;
   }
   private wsBuildMs = 0;
+  /** 3B modeli kurulamayan son tasarım (bildirim bir kez) */
+  private wsFailedRev: string | null = null;
+  /** leaveWorkshop sürüyor: mağaza yayınları sahneye konmaz, paneller yenilenmez */
+  private wsLeaving = false;
   /** Son çerçevelenen motor ölçüleri (§6.7: boy/çap %15'ten çok değişince yeniden çerçeve) */
   private wsFramed: { length: number; diameter: number } | null = null;
 
@@ -948,13 +996,19 @@ export class App {
     }
   }
 
-  /** Atölyeden çıkış: kaplamalar gizlenir, otomatik kayıt mağazada */
+  /**
+   * Atölyeden çıkış: kaplamalar gizlenir, otomatik kayıt mağazada. Önce
+   * yarım tutamaç sürüklemesi iptal edilir, sonra bekleyen yayınlar
+   * boşaltılır; ikisi de mağazaya yazar ama model kurulmaz (çıkışta
+   * katalog motoru gelir) ve iç içe abone tutamaçları yeniden açmaz.
+   * Sahnedeki model bundan sonra mağazanın bildiği model değildir.
+   */
   private leaveWorkshop() {
     if (this.wsViewBase && this.rig.overrides === this.wsMirrored) this.rig.overrides = this.wsViewBase;
     this.wsMirrored = null;
-    this.wsStore.flush();
+    this.flushWorkshopQuiet(() => this.wsHandles?.setVisible(false));
+    this.wsStore.invalidateShown();
     this.frameHooks.delete(this.wsHook);
-    this.wsHandles?.setVisible(false);
     this.wsFigure?.setVisible(false);
     this.wsBox?.set(null, null);
     this.wsGhost?.end();
@@ -962,6 +1016,36 @@ export class App {
     this.picker.showLabels = true;
     this.wsHover = null;
     document.body.classList.remove('mode-workshop');
+  }
+
+  /**
+   * Süren tutamaç sürüklemesini iptal eder: tasarım başlangıç değerine
+   * döner, atölyede kalınır. Tutamaç grubunun `cancel()`'ı varsa o; yoksa
+   * gizle-göster (setVisible(false) yarım sürüklemeyi geri alır).
+   */
+  private cancelHandleDrag() {
+    const hd = this.wsHandles as (WorkshopHandles & { cancel?: () => void }) | null;
+    if (!hd?.dragging) return;
+    if (typeof hd.cancel === 'function') hd.cancel();
+    else hd.setVisible(false);
+    this.refreshWorkshop();
+  }
+
+  /**
+   * Mağazanın bekleyen taslak/tam yayınını (ve çalışabilirlik bulgularını)
+   * hemen işler, ama modeli sahneye kurmadan: atölyeden çıkarken ya da test
+   * hücresine geçerken o model hemen başkasıyla değişir. `before` aynı
+   * sessiz pencerede çalışır (sürükleme iptali).
+   */
+  private flushWorkshopQuiet(before?: () => void) {
+    const was = this.wsLeaving;
+    this.wsLeaving = true;
+    try {
+      before?.();
+      this.wsStore.flush();
+    } finally {
+      this.wsLeaving = was;
+    }
   }
 
   private workshopFrame(_dt: number) {
@@ -973,7 +1057,7 @@ export class App {
 
   /** Paneller ve vurgu (mağaza değişince ve 0,2 s'de bir) */
   private refreshWorkshop() {
-    if (this.mode !== 'workshop') return;
+    if (this.mode !== 'workshop' || this.wsLeaving) return;
     const s = this.wsStore.state;
     this.wsPanel.update(s);
     this.wsResults.update(s);
@@ -1000,12 +1084,13 @@ export class App {
    */
   runWorkshopDesign() {
     const store = this.wsStore;
-    store.flush();
-    const last = store.state.last;
-    if (!last || store.state.phase === 'start' || store.state.phase === 'wizard') {
+    if (!store.state.last || store.state.phase === 'start' || store.state.phase === 'wizard') {
       this.toasts.show('Önce atölyede bir tasarım oluştur.', 'info');
       return;
     }
+    // Bekleyen yayın (çalışabilirlik bulguları dahil) işlenir; model aşağıda efektlerle kurulur
+    this.flushWorkshopQuiet();
+    const last = store.state.last;
     clearTimeout(this.fullDetailTimer);
     // Yuvaya adıyla yazılır: test hücresinde ve simülasyonda varyant adı görünür
     const g = { ...last.graph, name: this.workshopDesignName() };
@@ -1143,11 +1228,24 @@ export class App {
     // Çalışan motor sönmesin: aynı gaz kolunda yeni tasarımla dengelenir
     const lit = this.sim.lit;
     const throttle = this.sim.controls.throttle;
+    // Model kurulamazsa yuva ve simülasyon sahnedeki modelin tasarımına döner
+    // (sayılar başka, görsel başka motoru göstermesin); hata yine atılır
+    const shown = this.visual.slot === slot ? this.visual.source.built : prev;
     this.sim.setDesign(built.design);
     if (lit) this.sim.trim(throttle, 10);
     this.sandboxPanel.refreshEngine();
     clearTimeout(this.fullDetailTimer);
-    this.rebuildVisual(slot, { effects, draft });
+    try {
+      this.rebuildVisual(slot, { effects, draft });
+    } catch (err) {
+      if (shown) {
+        setSlotBuilt(slot, shown);
+        this.sim.setDesign(shown.design);
+        if (lit) this.sim.trim(throttle, 10);
+        this.sandboxPanel.refreshEngine();
+      }
+      throw err;
+    }
     if (this.visualDraft) {
       // Tam ayrıntı yalnız o yuvanın taslak modeli hâlâ sahnedeyse
       this.fullDetailTimer = setTimeout(() => {
@@ -1517,6 +1615,15 @@ export class App {
 
   private onKey(e: KeyboardEvent) {
     const target = e.target as HTMLElement | null;
+    // Tutamaç sürüklenirken: Esc yalnız sürüklemeyi iptal eder (menüye
+    // çıkılmaz, tasarım başlangıç değerine döner); öbür kısayollar (geri al,
+    // açı, kesit) hareketin ortasında çalışmaz
+    if (this.mode === 'workshop' && !this.overlay && this.wsHandles?.dragging) {
+      if (e.key === 'Escape') this.cancelHandleDrag();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     // Metin kutusu/açılır liste tuşları kendisinin (Esc odağı bırakır);
     // kaydırıcıda yalnız gezinme tuşları (keys.ts)
     if (target && keyOwnedByTarget(target as HTMLInputElement, e.key)) {
@@ -1545,10 +1652,17 @@ export class App {
         return;
       }
       const store = this.wsStore;
+      // Geri al yalnız düzenleme evresinde (sihirbazda geçmiş eski ailenin;
+      // araç çubuğunun düğmeleri de yalnız orada görünür)
+      const editing = store.state.phase === 'edit';
       if ((e.ctrlKey || e.metaKey) && k === 'z') {
+        if (!editing) return;
         if (e.shiftKey) store.redo();
         else store.undo();
-      } else if ((e.ctrlKey || e.metaKey) && k === 'y') store.redo();
+      } else if ((e.ctrlKey || e.metaKey) && k === 'y') {
+        if (!editing) return;
+        store.redo();
+      }
       // Değiştiricili tuşlar (Ctrl+C kopyalama…) tarayıcının
       else if (!plain) return;
       else if (k === 'u') store.setExpert(!store.state.project.expert);
