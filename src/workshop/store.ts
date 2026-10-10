@@ -37,9 +37,11 @@
 
 import {
   applyArchitecture,
+  applyArchitectureReport,
   architectureOf,
   resolveChange,
   type ArchChange,
+  type ArchNote,
   type Architecture,
 } from '../design/architecture';
 import type { Edit } from '../design/core/edit';
@@ -70,7 +72,7 @@ import {
   type KnobCtx,
   type KnobId,
 } from '../design/knobs';
-import { diffSummary, summarize, type DesignSummary, type SummaryDelta } from '../design/summary';
+import { diffSummary, fmtNum, summarize, type DesignSummary, type SummaryDelta } from '../design/summary';
 import { TECH_MODERN } from '../design/tech';
 import { deriveTraits } from '../design/traits';
 import type { EngineGraph } from '../design/types';
@@ -175,6 +177,12 @@ export interface WorkshopDeps {
   architectureOf(g: EngineGraph): Architecture;
   resolveChange(a: Architecture, axis: keyof Architecture, value: unknown): ArchChange;
   applyArchitecture(seed: EngineGraph, next: Architecture): EngineGraph;
+  /**
+   * Grafik + korunamayan değerlerin notları (kırpma, ailenin değerine geri
+   * alma, kalan uyarı). Verilmezse (yalnız `applyArchitecture` enjekte eden
+   * testler) notsuz `applyArchitecture` kullanılır.
+   */
+  applyArchitectureReport?(seed: EngineGraph, next: Architecture): { graph: EngineGraph; notes: ArchNote[] };
   graphFromArchitecture(a: Architecture, size: { massFlow: number; name: string }): EngineGraph;
   solveMassFlow(g: EngineGraph, target: { thrust?: number; shaftPower?: number }): number;
   /** Rölanti ve tam güç trim'i (~30 ms): yalnız tam ayrıntıda, boşta (§2.11) */
@@ -190,12 +198,51 @@ export const DEFAULT_DEPS: WorkshopDeps = {
   architectureOf,
   resolveChange,
   applyArchitecture,
+  applyArchitectureReport,
   graphFromArchitecture,
   solveMassFlow,
 };
 
+/** Düğmenin eski → yeni değeri gösterim biçiminde (alan birimi ve çarpanı; KnobField fmtKnob ile aynı) */
+function fmtKnobChange(id: string, from: number, to: number): string {
+  const k = knobById(id as KnobId);
+  if (!k) return `${fmtNum(from, Number.isInteger(from) ? 0 : 2)} → ${fmtNum(to, Number.isInteger(to) ? 0 : 2)}`;
+  const digits = k.type === 'int' ? 0 : Math.min(3, Math.max(0, -Math.floor(Math.log10(k.step) + 1e-9)));
+  const d = k.display ?? { unit: k.unit === 'adet' ? '' : k.unit, factor: 1, digits, offset: 0 };
+  const show = (v: number) => fmtNum(v * d.factor + (d.offset ?? 0), d.digits);
+  return `${show(from)} → ${show(to)}${d.unit ? ` ${d.unit}` : ''}`;
+}
+
+/**
+ * Mimari değişiminin notları oyuncu metni olarak (§2.4 "bildirilir"):
+ * aynı nedenli değişen düğmeler tek cümlede ("T4 1700 → 1550 K, HPC
+ * basınç oranı 22 → 18: neden"), değeri değişmeyen `residual` not yalnız
+ * nedeni ve önerisiyle. Not yoksa boş.
+ */
+export function archNotesText(notes: readonly ArchNote[]): string {
+  const groups = new Map<string, string[]>();
+  const residual: string[] = [];
+  for (const n of notes) {
+    if (n.residual || n.from === n.to) {
+      if (!residual.includes(n.reason)) residual.push(n.reason);
+      continue;
+    }
+    const label = knobById(n.knob as KnobId)?.label ?? n.knob;
+    const list = groups.get(n.reason) ?? [];
+    list.push(`${label} ${fmtKnobChange(n.knob, n.from, n.to)}`);
+    groups.set(n.reason, list);
+  }
+  const parts = [...groups].map(([reason, items]) => `${items.join(', ')}: ${reason}`);
+  return [...(parts.length ? [`Şunlar da değişti: ${parts.join(' ')}`] : []), ...residual].join(' ');
+}
+
 export interface WorkshopStoreOptions {
-  onBuilt(b: BuiltEngine, detail: 'draft' | 'full'): void;
+  /**
+   * Modeli sahneye koyar. false: konmadı (atölye kipi dışında, üretim
+   * başarısız); mağaza tasarımı gösterilmiş saymaz, sonraki yayında yeniden
+   * dener. Atması da aynı anlamdadır (mağaza hatayı yutar).
+   */
+  onBuilt(b: BuiltEngine, detail: 'draft' | 'full'): unknown;
   now?: () => number;
   /** null: otomatik kayıt yok. Verilmezse tarayıcının localStorage'ı (varsa) */
   storage?: Storage | null;
@@ -314,6 +361,12 @@ export class WorkshopStore {
 
   constructor(readonly opts: WorkshopStoreOptions) {
     this.deps = { ...DEFAULT_DEPS, ...opts.deps };
+    // Yalnız applyArchitecture enjekte edilmişse rapor ondan (gerçek raporla karışmasın)
+    const inject = opts.deps;
+    if (inject?.applyArchitecture && !inject.applyArchitectureReport) {
+      const apply = inject.applyArchitecture;
+      this.deps.applyArchitectureReport = (seed, next) => ({ graph: apply(seed, next), notes: [] });
+    }
     this.now = opts.now ?? (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
     this.storage = opts.storage !== undefined ? opts.storage : defaultStorage();
     // Başlangıç ekranının vitrini: şablon turbofan (yayınlanmaz)
@@ -584,14 +637,34 @@ export class WorkshopStore {
     }, FULL_DETAIL_DELAY_MS);
   }
 
+  /**
+   * Tasarımı 3B'ye yayınlar. Yalnız sahneye konan model "gösterildi"
+   * sayılır: `onBuilt` atarsa ya da false dönerse (atölye kipinde değil,
+   * model kurulamadı) imza yazılmaz, aynı tasarım sonraki yayında yeniden
+   * denenir. Hata yutulur (mağaza asla atmaz): yoksa kullanıcı olayına ya
+   * da zamanlayıcıya taşar, commit'in otomatik kaydı ve tam ayrıntı
+   * zamanlayıcısı atlanırdı.
+   */
   private emit(b: BuiltEngine, detail: 'draft' | 'full'): void {
     const t = this.now();
+    let ok = false;
     try {
-      this.opts.onBuilt(b, detail);
-    } finally {
-      this.lastBuildMs = this.now() - t;
-      this.shown = { sig: visualSig(b), detail };
+      ok = this.opts.onBuilt(b, detail) !== false;
+    } catch {
+      ok = false;
     }
+    this.lastBuildMs = this.now() - t;
+    if (ok) this.shown = { sig: visualSig(b), detail };
+  }
+
+  /**
+   * Sahnedeki model artık mağazanın yayınladığı değil (App atölyeden çıkıp
+   * katalog motorunu kurdu): sonraki yayın aynı tasarım olsa da sahneye
+   * konur. Yoksa atölyeye dönüp aynı şablonu/sihirbazı açınca sahnede
+   * katalog motoru kalırdı.
+   */
+  invalidateShown(): void {
+    this.shown = null;
   }
 
   private fireDraft(): void {
@@ -1004,6 +1077,7 @@ export class WorkshopStore {
     if (!fam || this.s.phase === 'start') return;
     let next: EngineGraph;
     let implied: string[] = [];
+    let notes: ArchNote[] = [];
     // Tohum etkin varyantın grafiği (geçersiz olsa da); `last` başka aileden olabilir
     const seed = this.s.graph;
     try {
@@ -1013,8 +1087,11 @@ export class WorkshopStore {
         this.notify(r.blocked);
         return;
       }
-      implied = r.implied.map((x) => x.reason).filter(Boolean);
-      next = this.deps.applyArchitecture(seed, r.arch);
+      // Aynı nedeni birden çok eksen getirebilir: bir kez yazılır
+      implied = [...new Set(r.implied.map((x) => x.reason).filter(Boolean))];
+      // Notlar (kırpılan, ailenin değerine geri alınan düğmeler, kalan uyarı) oyuncuya bildirilir
+      if (this.deps.applyArchitectureReport) ({ graph: next, notes } = this.deps.applyArchitectureReport(seed, r.arch));
+      else next = this.deps.applyArchitecture(seed, r.arch);
     } catch (e) {
       this.set({ error: this.safeTranslate(e) });
       return;
@@ -1029,7 +1106,8 @@ export class WorkshopStore {
     });
     this.set({ selected: null });
     const extra = implied.length ? ` (${implied.join('; ')})` : '';
-    this.notify(`Yeni aile ${code} açıldı; ${oldCode} duruyor.${extra}${dropped ? ` ${dropped} kapatıldı.` : ''}`);
+    const changed = archNotesText(notes);
+    this.notify(`Yeni aile ${code} açıldı; ${oldCode} duruyor.${extra}${dropped ? ` ${dropped} kapatıldı.` : ''}${changed ? ` ${changed}` : ''}`);
   }
 
   dragHandle(id: HandleId, target: number, phase: 'start' | 'move' | 'end'): void {
@@ -1090,6 +1168,11 @@ export class WorkshopStore {
 
   select(m: ModuleRef | null): void {
     if (this.s.selected !== m) this.set({ selected: m });
+  }
+
+  /** Etkin varyantın grafiğinde bu modül var mı ('engine': motorun bütünü, her zaman) */
+  private hasModule(m: ModuleRef): boolean {
+    return m === 'engine' || !!this.s.graph?.modules?.some((x) => x.type === m);
   }
 
   setExpert(on: boolean): void {
@@ -1251,13 +1334,20 @@ export class WorkshopStore {
     }
   }
 
+  /**
+   * Geri al / yinele yalnız düzenleme evresinde: sihirbazda geçmiş eski
+   * ailenindir; geri almak sihirbaz önizlemesinin yerine onu koyar ve
+   * "Bitir" o ailenin kopyasını açardı (klavye kısayolu da buraya gelir).
+   */
   undo(): void {
+    if (this.s.phase !== 'edit') return;
     const prev = this.history.undo(this.snap());
     if (!prev) return;
     this.restore(prev);
   }
 
   redo(): void {
+    if (this.s.phase !== 'edit') return;
     const next = this.history.redo(this.snap());
     if (!next) return;
     this.restore(next);
@@ -1375,6 +1465,8 @@ export class WorkshopStore {
     const fresh = this.s.project.families.length === 0;
     // Geri al içe aktarmadan ÖNCEKİ durumu (aile yan bilgileri dahil) getirir
     const before = this.snap();
+    // Seçili modül yeni etkin ailede de varsa seçili kalır (içe aktarma seçimi silmesin)
+    const selected = this.s.selected;
     const write = (edit: Edit, mutate: (p: WorkshopProject) => void) => {
       this.enterEdit();
       if (fresh) {
@@ -1386,6 +1478,7 @@ export class WorkshopStore {
         this.autosave();
       } else this.commit(edit, 'change', mutate, { before });
       if (this.s.last) this.set({ compare: this.s.last.summary });
+      if (selected && this.hasModule(selected)) this.set({ selected });
     };
     if (format === 'tfa-engine') {
       let doc: ReturnType<typeof familyFromDoc>;
