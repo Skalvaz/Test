@@ -38,7 +38,7 @@ const hudGoster = q.get('hud') !== '0';
 
 const host = document.getElementById('app')!;
 const hudEl = document.getElementById('hud')!;
-const stage = new Stage(host, 2);
+const stage = new Stage(host, Number(q.get('dpr') ?? 2));
 const cizici: OyunCiziciTam = oyunCiziciOlustur(stage, {
   kalite: 'yuksek',
   palet: (q.get('palet') as Palet) ?? 'standart',
@@ -238,9 +238,8 @@ const SENARYOLAR: Record<string, () => Promise<void>> = {
     const esleme = yerler.map((den, k) => ({ den, e: karisik[k] }));
     const icerikler = yerler.map((p) => d0.hucreler[p.y * d.w + p.x].icerik);
     esleme.forEach((m, k) => (d.hucreler[m.e.y * d.w + m.e.x].icerik = structuredClone(icerikler[k])));
-    await oyna([{ t: 0, tur: 'karistirma', esleme, yenidenRenk: [] }], d0).then(() => undefined);
+    await cizici.oynat(d0, [{ t: 0, tur: 'karistirma', esleme, yenidenRenk: [] }], d);
     durum = d;
-    cizici.durumGoster(d);
   },
   async hava() {
     await oyna([{ t: 0, tur: 'havaOlayi', olay: 'meltem', eksen: 'satir', hat: 3, uyari: true }, { t: 0, tur: 'havaOlayi', olay: 'cisenti', eksen: 'sutun', hat: 6, uyari: true }]);

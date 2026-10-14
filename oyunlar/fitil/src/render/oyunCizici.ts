@@ -343,7 +343,8 @@ class OyunCiziciSinifi implements OyunCizici {
     const st = this.stage;
     s.ekranW = st.width;
     s.ekranH = st.height;
-    s.dpr = Math.min(2, st.dpr || 1);
+    // Dönüşümler sahnenin gerçek DPR'ı ile; offscreen ve sprite çözünürlüğü en fazla 2 (§16.6).
+    s.dpr = st.dpr || 1;
     const W = s.ekranW;
     const H = s.ekranH;
     const t = s.tahta;
@@ -375,7 +376,7 @@ class OyunCiziciSinifi implements OyunCizici {
       s.karartma = new Float32Array(n);
     }
     const F = s.cerceve;
-    this.gok.kur(W, H, s.dpr, this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F });
+    this.gok.kur(W, H, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F });
     this.sandik.kur();
     this.tc.kur();
     this.yol.yenidenOrnekle();
@@ -581,13 +582,14 @@ class OyunCiziciSinifi implements OyunCizici {
     const o = this.oynatma;
     if (!o) return;
     const s = this.s;
+    // Önce yoldaki (daha eski) hedef bildirimleri, sonra kalan olaylar: sayaçlar geri gitmesin.
+    this.ef.bildirimleriBitir();
+    this.ef.bekleyen = 0;
     while (o.i < o.olaylar.length) {
       const e = o.olaylar[o.i++];
       s.tahta.uygula(e);
       if (DURUM_OLAYLARI.has(e.tur)) this.bildir(e);
     }
-    this.ef.bildirimleriBitir();
-    this.ef.bekleyen = 0;
     s.kamera.sifirla();
     this.zamanlilar = [];
     for (const h of s.tahta.hucreler) {
@@ -1009,15 +1011,15 @@ class OyunCiziciSinifi implements OyunCizici {
 
   /** Roket başları: eksenin iki yönünde, 25 tik/hücre, tahta kenarına kadar. */
   private roketler(p: Konum, eksen: Eksen, renk: number, kalin: number, adim = 25): void {
-    const s = this.s;
     const yon: [number, number] = eksen === 0 ? [1, 0] : eksen === 1 ? [0, 1] : eksen === 2 ? [1, -1] : [1, 1];
-    for (const sg of [1, -1]) this.roketBasi(p, yon[0] * sg, yon[1] * sg, renk, kalin, adim);
-    void s;
+    this.roketBasi(p, yon[0], yon[1], renk, kalin, adim);
+    this.roketBasi(p, -yon[0], -yon[1], renk, kalin, adim);
   }
 
   private roketBasi(p: Konum, dx: number, dy: number, renk: number, kalin: number, adim: number): Efekt | null {
     const s = this.s;
     const t = s.tahta;
+    if (dx === 0 && dy === 0) return null;
     let d = 0;
     while (p.x + dx * (d + 1) >= 0 && p.x + dx * (d + 1) < t.w && p.y + dy * (d + 1) >= 0 && p.y + dy * (d + 1) < t.h) d++;
     const uz = d + 0.5;
@@ -1648,6 +1650,19 @@ class OyunCiziciSinifi implements OyunCizici {
     this.ef.cizEkran(ctx);
     s.havuz.ciz(ctx, s.parilti, s.tEkran, B.UST, s.zaman);
     this.bilgi.ciz(ctx, s.tEkran, s.secenek.hareketiAzalt);
+    if (this.yazi.aktif) {
+      // Reaksiyon yazısının arkasında sıcak ışık patlaması (lighter, sprite'tan).
+      const y = this.yazi;
+      const k = Math.min(1, y.t / (y.stil.kalma + y.stil.solma));
+      const g = s.parilti.nokta[R.ALTIN];
+      const gw = (y.genislik * 0.9 + 80) * (0.85 + 0.3 * Math.min(1, y.t / 160));
+      const gh = y.stil.boyut * 2.4;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.32 * (1 - k) * (1 - k);
+      ctx.drawImage(g.t, y.x - gw / 2, y.y - gh / 2, gw, gh);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+    }
     this.yazi.ciz(ctx, s.tEkran, s.secenek.hareketiAzalt);
     this.yol.cizVinyet(ctx);
     if (this.karanlik > 0.004) {
