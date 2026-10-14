@@ -8,7 +8,7 @@ import type { BolumVerisi, OyunDurumu } from '../core/index';
 import { bolum as testBolumu, kur } from '../core/testAraclari';
 import { bolumGetir } from '../levels/index';
 import { SINIR, adaylariUret, sonEksen, tahtaBilgi } from './adaylar';
-import { acemiSec } from './acemi';
+import { acemiEnIyiAday, acemiSec } from './acemi';
 import { kazandiranBul } from './kazandiranBul';
 import { olcumHesapla, olcutHatalari, yuzdelik } from './olcut';
 import { botTohumlari, botTohumuTuret, degerV, korukMerkezi } from './ortak';
@@ -184,6 +184,18 @@ describe('Bu çizgi kazandırırdı (kazandiranBul)', () => {
     expect(kazandiranBul(imkansiz, { butce: 50 })).toBeNull();
     // Bitmiş oyunda arama yok.
     expect(kazandiranBul({ ...d, bitti: 'kayip' })).toBeNull();
+  });
+});
+
+describe('boşta ipucu (§15)', () => {
+  it('Acemi’nin en iyi adayı: en uzun geçerli yol, belirlenimli', () => {
+    const d = bolumuYukle(b(6), 0);
+    const yol = acemiEnIyiAday(d, 3);
+    expect(yol).not.toBeNull();
+    expect(yolDogrula(d, yol!, false)).toBeNull();
+    expect(acemiEnIyiAday(d, 3)).toEqual(yol);
+    const enUzun = Math.max(...adaylariUret(tahtaBilgi(d), botTohumlari(d, 3).siralama).filter((a) => !a.halka).map((a) => a.yol.length));
+    expect(yol!.length).toBe(enUzun);
   });
 });
 

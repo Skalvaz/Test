@@ -20,8 +20,29 @@ npm run typecheck
 npm run build:single        # → fitil.html + dist-single/artifact.html
 npm run bot -- --bolum 12 --tohum 200 --bot usta
 npm run dogrula             # bölüm doğrulama (bot bantları)
+npm run dogrula -- --bolum 11-15 --tohum 30          # --tohum: tohum SAYISI
+npm run dogrula -- --dosya deneme/ --tohum 30        # varyant JSON'ları (klasör ya da dosya)
+npm run kalibre -- --bolum 12                        # 500 tohum, yildizEsikleri yazar, hamle önerir
 node scripts/shot.mjs <url> <png> [w] [h] [bekleme-ms] [js]   # telefon görünümü (390×844)
 ```
+
+## Bölüm tasarımı (bot ve doğrulayıcı)
+
+- Bölüm listesi `src/levels/index.ts` (elle içe aktarım; DOKUNMA). Taslak
+  bölümler `"taslak": true` taşır: statik doğrulamadan geçer, bot ölçütleri
+  `dogrula`'da atlanır (`--taslaklar` ile koşar). Bölümü tasarlayan yalnız
+  kendi `veri/bNNN.json`'unu değiştirir ve `taslak`'ı siler.
+- Ayar sırası: önce 30 tohumla dene, sonra 100 tohumla onayla, en sonda
+  `kalibre` (yıldız eşikleri). 30 tohumda kazanma oranı ±%10 oynar.
+- Ölçütler `src/bot/olcut.ts` (§16.5): bant, yakın kaçış, R medyan/p90/p99,
+  zincir medyanı, özel sıklığı, ısı, süre 60–180 sn. Öğretimde dağılım
+  ölçütleri muaf (gerekçe dosyada).
+- Büyük reaksiyonlar neredeyse hep özel taş ateşlemesinden gelir; p90/p99
+  aşılırsa K21 yedek düğmesi `kurallar.soguma` (6, 9, 10: 3; 8: 4),
+  uzun zincir/roket fazlaysa `caprazSiniri`. Tohum değişince kazanma oranı
+  %15'e kadar oynar; yükleyici ilk tahtayı karıştırırsa doğrulayıcı hata verir.
+- Usta ağırlıkları `src/bot/agirliklar.json` (GDD değerlerinden sapma ve
+  gerekçesi dosyada). Ağırlık değişirse bütün bölümler yeniden doğrulanmalı.
 
 Komutlar Windows PowerShell'de de çalışmalı: npm betiklerinde `VAR=1 komut`
 gibi POSIX sözdizimi kullanma.

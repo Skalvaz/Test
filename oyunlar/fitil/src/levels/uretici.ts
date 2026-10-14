@@ -114,7 +114,7 @@ export function adayBolum(tohum: number, id: number, tur: 'gunluk' | 'sonsuz', z
   const hamle = z.hamleAlt + rngInt(r, z.hamleUst - z.hamleAlt + 1);
   const g: string[][] = Array.from({ length: h }, () => Array.from({ length: w }, () => '.'));
   const bos = (x: number, y: number): boolean => g[y][x] === '.';
-  const turler = karistir(r, ['topla', 'kafes', 'aydinlat', 'kaya'] as const as unknown as string[]);
+  const turler = karistir(r, ['topla', 'kafes', 'aydinlat', 'kaya']);
   const hedefSayisi = 1 + rngInt(r, 2);
   const hedefler: Hedef[] = [];
   const onIsi: [number, number, number][] = [];

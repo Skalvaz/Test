@@ -7,7 +7,7 @@
   "h": 8,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 19,
+  "hamle": 20,
   "tohum": 8008,
   "yardim": 2,
   "ozelEsikleri": [6, 9, 0],
@@ -29,7 +29,8 @@
   "ipuclari": [
     { "tetik": "baslangic", "metin": "Başladığın yere dön: HALKA! Isısı iki kat.", "el": [[1, 5], [2, 5], [2, 6], [1, 6], [1, 5]] }
   ],
+  "kurallar": { "soguma": 4 },
   "botBandi": [85, 95],
-  "yildizEsikleri": [4000, 5500],
+  "yildizEsikleri": [7500, 8900],
   "sonrakiTanitim": "Sıradaki: Işıklı Sokak!"
 }

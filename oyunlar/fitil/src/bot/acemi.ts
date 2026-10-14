@@ -8,9 +8,22 @@
  * (§16.5'te Acemi için belirtilmemiş; P4a yorumu).
  */
 import { rngInt } from '../core/index';
-import type { Hamle, OyunDurumu } from '../core/index';
+import type { Hamle, Konum, OyunDurumu } from '../core/index';
 import { adaylariUret, tahtaBilgi } from './adaylar';
 import { botTohumlari, fitilHamlesi, korukDolu, ozelTaslar, type BotSecenek } from './ortak';
+
+/**
+ * Boşta ipucu (§15): "Acemi botun en iyi adayı" — Acemi'nin ağırlığı
+ * uzunluk² olduğundan en uzun aday (eşitlikte üretim sırası), halka değil.
+ * Aday yoksa null (yalnız özel taş varsa uygulama çift dokunuş gösterebilir).
+ */
+export function acemiEnIyiAday(d: OyunDurumu, botTohumu = 0, izin: BotSecenek['izin'] = null): Konum[] | null {
+  const b = tahtaBilgi(d, izin ?? null);
+  const adaylar = adaylariUret(b, botTohumlari(d, botTohumu).siralama);
+  let en: number[] | null = null;
+  for (const a of adaylar) if (!a.halka && (!en || a.yol.length > en.length)) en = a.yol;
+  return en ? en.map((i) => ({ x: i % d.w, y: Math.floor(i / d.w) })) : null;
+}
 
 export function acemiSec(d: OyunDurumu, botTohumu: number, s: BotSecenek = {}): Hamle {
   const t = botTohumlari(d, botTohumu);
