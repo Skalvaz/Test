@@ -3,35 +3,41 @@
   "ad": "Yıldız Topu",
   "mahalle": 2,
   "tur": "tanitim",
-  "taslak": true,
   "w": 8,
   "h": 9,
   "renkSayisi": 4,
   "esik": 4,
-  "hamle": 20,
+  "hamle": 24,
   "tohum": 900625316,
   "yardim": 1,
   "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "topla", "renk": 0, "adet": 40 }, { "tur": "topla", "renk": 3, "adet": 40 }],
+  "hedefler": [{ "tur": "topla", "renk": 0, "adet": 48 }, { "tur": "topla", "renk": 3, "adet": 48 }],
   "duzen": [
     ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
+    ". . . C C . . .",
+    ". C . . . . C .",
+    ". . C . . C . .",
+    ". . . C C . . .",
     ". . . . . . . .",
     ". . . . . . . .",
     ". . . . . . . .",
     ". . . . . . . ."
   ],
   "sabitKapsuller": [
-    { "x": 0, "y": 8, "renk": 3 }, { "x": 1, "y": 8, "renk": 3 }, { "x": 2, "y": 8, "renk": 3 },
-    { "x": 3, "y": 8, "renk": 3 }, { "x": 4, "y": 8, "renk": 3 }, { "x": 5, "y": 8, "renk": 3 },
-    { "x": 6, "y": 8, "renk": 3 }, { "x": 7, "y": 8, "renk": 3 }, { "x": 7, "y": 7, "renk": 3 },
-    { "x": 6, "y": 7, "renk": 3 }, { "x": 5, "y": 7, "renk": 3 }, { "x": 4, "y": 7, "renk": 3 }
+    { "x": 0, "y": 6, "renk": 3 }, { "x": 0, "y": 7, "renk": 3 }, { "x": 0, "y": 8, "renk": 3 },
+    { "x": 1, "y": 8, "renk": 3 }, { "x": 2, "y": 8, "renk": 3 }, { "x": 3, "y": 8, "renk": 3 },
+    { "x": 4, "y": 8, "renk": 3 }, { "x": 5, "y": 8, "renk": 3 }, { "x": 6, "y": 8, "renk": 3 },
+    { "x": 7, "y": 8, "renk": 3 }, { "x": 7, "y": 7, "renk": 3 }, { "x": 7, "y": 6, "renk": 3 }
   ],
+  "ipuclari": [
+    {
+      "tetik": "baslangic",
+      "metin": "12 ve üstü = YILDIZ TOPU. Her renge uyar.",
+      "el": [[0, 6], [0, 7], [0, 8], [1, 8], [2, 8], [3, 8], [4, 8], [5, 8], [6, 8], [7, 8], [7, 7], [7, 6]]
+    }
+  ],
+  "kurallar": { "caprazSiniri": 1, "soguma": 2 },
   "botBandi": [90, 95],
-  "yildizEsikleri": [3000, 4500],
-  "ipuclari": [{ "tetik": "baslangic", "metin": "12 ve üstü = YILDIZ TOPU. Her renge uyar." }],
+  "yildizEsikleri": [8500, 10500],
   "sonrakiTanitim": "Sıradaki: Kayalık!"
 }

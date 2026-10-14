@@ -3,16 +3,15 @@
   "ad": "Dev Fişek",
   "mahalle": 3,
   "tur": "tanitim",
-  "taslak": true,
   "w": 7,
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 22,
+  "hamle": 23,
   "tohum": 3158562268,
   "yardim": 1,
   "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "devFisek", "adet": 3 }],
+  "hedefler": [{ "tur": "devFisek", "adet": 3 }, { "tur": "topla", "renk": 1, "adet": 40 }],
   "duzen": [
     ". . . . . . .",
     ". . . . . . .",
@@ -24,8 +23,20 @@
     ". . . . . . .",
     ". D . D . D ."
   ],
+  "sabitKapsuller": [
+    { "x": 0, "y": 8, "renk": 1 }, { "x": 1, "y": 7, "renk": 1 }, { "x": 2, "y": 8, "renk": 1 },
+    { "x": 3, "y": 7, "renk": 1 }, { "x": 4, "y": 8, "renk": 1 }, { "x": 5, "y": 7, "renk": 1 },
+    { "x": 6, "y": 8, "renk": 1 }
+  ],
+  "ipuclari": [
+    {
+      "tetik": "baslangic",
+      "metin": "Dev fişeği yanında patlatarak doldur.",
+      "el": [[0, 8], [1, 7], [2, 8], [3, 7], [4, 8], [5, 7], [6, 8]]
+    }
+  ],
+  "kurallar": { "soguma": 2 },
   "botBandi": [85, 95],
-  "yildizEsikleri": [3000, 4500],
-  "ipuclari": [{ "tetik": "baslangic", "metin": "Dev fişeği yanında patlatarak doldur." }],
+  "yildizEsikleri": [8500, 10500],
   "sonrakiTanitim": "Sıradaki: Körük!"
 }
