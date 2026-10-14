@@ -39,6 +39,10 @@ export interface CiziciSecenek {
   palet: Palet;
   /** Otomatik kalite (parçacık sayısı, parıltı). */
   kalite: 'oto' | 'yuksek' | 'dusuk';
+  /** (P2a ek) Takılı havai fişek desenleri (katalog DesenId); gökte bunlardan seçilir. */
+  desenler?: readonly string[];
+  /** (P2a ek) Fitil görünümü (katalog FitilId); yalnız fitil katmanını değiştirir. */
+  fitil?: string;
 }
 
 /**
@@ -91,6 +95,15 @@ export interface OyunCizici {
   /** Her karede uygulama çağırır. */
   kare(dtMs: number): void;
   yokEt(): void;
+  /**
+   * (P2a ek) Sonraki `oynat` çağrısında yönetmen kamerasını koşulsuz
+   * çalıştır (öğretim: bölüm 1 ısı tadı ve bölüm 3 ilk reaksiyon, §15).
+   */
+  yonetmenZorla?(): void;
+  /** (P2a ek) Tahtayı karart (0 = açık, ~0,6 = panel arkası); 400 ms'de geçer. */
+  karart?(alfa: number): void;
+  /** (P2a ek) Gökte bir havai fişek patladığında (uzak patlama sesi için). */
+  fisekDinle?(fn: (x: number, y: number, desen: string) => void): void;
 }
 
 export interface YolGeriCagirim {

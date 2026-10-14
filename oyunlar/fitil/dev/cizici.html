@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FİTİL — çizici geliştirme</title>
+<meta name="theme-color" content="#0B1030">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap">
+<style>
+  html, body { height: 100%; margin: 0; background: #0B1030; overscroll-behavior: none; font-family: "Baloo 2", ui-rounded, system-ui, sans-serif; }
+  #app { position: fixed; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .sahne { display: block; }
+  /* Sahte HUD (yalnız geliştirme): §13.7 ölçüleri */
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #FFF3D6; }
+  .kart { position: absolute; width: 64px; height: 48px; border-radius: 12px; background: rgba(20,10,6,0.78); border: 1.5px solid #D9A441; display: flex; align-items: center; justify-content: center; gap: 4px; font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; box-shadow: 0 2px 0 rgba(0,0,0,0.4); transition: transform 0.15s; }
+  .kart i { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
+  .kart.zipla { transform: scale(1.25); }
+  .kart.tamam { border-color: #7CFFB2; color: #7CFFB2; }
+  #hamle { position: absolute; width: 56px; height: 56px; border-radius: 50%; background: rgba(20,10,6,0.82); border: 2px solid #F2C66D; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 28px; }
+  #puan { position: absolute; width: 120px; height: 40px; border-radius: 10px; background: rgba(20,10,6,0.78); border: 1.5px solid #D9A441; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; font-variant-numeric: tabular-nums; }
+  #alt { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 14px calc(env(safe-area-inset-bottom) + 10px); box-sizing: border-box; }
+  #alt .d { width: 56px; height: 56px; border-radius: 14px; background: rgba(20,10,6,0.82); border: 1.5px solid #7A3E1C; }
+  #alt .k { width: 72px; height: 72px; border-radius: 50%; background: radial-gradient(#3A2416, #160E08); border: 2px solid #D9A441; }
+  #alt .orta { display: flex; gap: 10px; }
+  .etiket { position: absolute; transform: translate(-50%, 0); font-size: 11px; font-weight: 700; color: #FFF3D6; opacity: 0.85; text-shadow: 0 1px 2px #000; pointer-events: none; }
+  #tablolar { position: fixed; inset: 0; display: none; background: #0B1030; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 12px; box-sizing: border-box; }
+  #tablolar canvas { width: 30%; max-width: 256px; height: auto; border-radius: 6px; }
+  body.yan #panel { position: absolute; top: 80px; right: 24px; width: 296px; bottom: 80px; border-radius: 18px; background: rgba(20,10,6,0.55); border: 1px solid rgba(217,164,65,0.5); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="hud"></div>
+<div id="tablolar"></div>
+<script type="module" src="/src/render/dev/cizici.ts"></script>
+</body>
+</html>
