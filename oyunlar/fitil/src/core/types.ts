@@ -154,6 +154,8 @@ export interface OyunDurumu {
   kurallar: Kurallar;
   istatistik: BolumIstatistigi;
   bitti: null | 'kazanc' | 'kayip';
+  /** P1 eki: Final Gösterisi (§7.3) çalıştı mı (ikinci kez çalışmaz). */
+  finalYapildi?: boolean;
 }
 
 export type Hamle =
@@ -194,7 +196,11 @@ export type Olay = { t: number } & (
   | { tur: 'isindi'; hucre: Konum; isi: number; kizgin: boolean }
   /** Hava olayı ya da soğuma gibi doğrudan ısı ataması. */
   | { tur: 'isiDegisti'; hucre: Konum; isi: number }
-  | { tur: 'ozelOlustu'; hucre: Konum; ozel: OzelTur; eksen: Eksen; renk: number }
+  /**
+   * Hücredeki kapsül özel taşa döndü (dönüşüm, kalıp, kombinasyon, final).
+   * P1 eki `isi`: dönüşümden sonraki ısı (dönüşümde 0, diğerlerinde korunur).
+   */
+  | { tur: 'ozelOlustu'; hucre: Konum; ozel: OzelTur; eksen: Eksen; renk: number; isi?: number }
   | { tur: 'ozelTetiklendi'; hucre: Konum; ozel: OzelTur; eksen: Eksen; hedefRenk?: number }
   | { tur: 'yuklendi'; hucre: Konum; ozel: OzelTur }
   | { tur: 'kombinasyon'; hucre: Konum; kombo: KomboTuru }
@@ -218,8 +224,15 @@ export type Olay = { t: number } & (
   | { tur: 'fenerToplandi'; hucre: Konum }
   | { tur: 'havaOlayi'; olay: 'meltem' | 'cisenti'; eksen: 'satir' | 'sutun'; hat: number; uyari: boolean }
   | { tur: 'karistirma'; esleme: { den: Konum; e: Konum }[]; yenidenRenk: { hucre: Konum; renk: number }[] }
-  | { tur: 'hedefIlerledi'; indeks: number; deger: number; tamam: boolean }
-  | { tur: 'puanEklendi'; miktar: number; neden: 'reaksiyon' | 'halka' | 'kalanHamle' | 'diger'; kademe?: ReaksiyonKademesi }
+  /** P1 eki `gerekli`: hedefin güncel gerekli miktarı (is yayılınca artar). */
+  | { tur: 'hedefIlerledi'; indeks: number; deger: number; tamam: boolean; gerekli?: number }
+  /**
+   * Patlama dışı puan (patlamanın kendi puanı `patlama.puan`'dadır). Toplam:
+   * Δpuan = Σ patlama.puan + Σ puanEklendi.miktar. P1 eki `hucre`: puanın
+   * kaynağı (engel, kafes, döşeme, desen, oluşum, kombinasyon, fener…).
+   */
+  | { tur: 'puanEklendi'; miktar: number; neden: 'reaksiyon' | 'halka' | 'kalanHamle' | 'diger'; kademe?: ReaksiyonKademesi; hucre?: Konum }
+  /** Körük dolumu arttı (ISI patlamaları, §6.10); dolum === kapasite iken gösterge dolu. */
   | { tur: 'korukDoldu'; dolum: number; kapasite: number }
   | { tur: 'korukKullanildi'; merkez: Konum }
   | { tur: 'guclendirici'; guc: 'kibrit' | 'kalip'; hucre: Konum }

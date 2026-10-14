@@ -3,11 +3,13 @@
  * İlk tahta yalnız `tohum` akışından üretilir (her denemede aynı); oyun
  * akışı `oyunTohumu(tohum, denemeNo)` ile tazelenir.
  */
-import { agirlikliSec, oyunTohumu, rngInt } from './rng';
-import { ILK_TAHTA_BILESEN_SINIRI, ILK_TAHTA_YENIDEN_CEKIM, KARISTIRMA_SINIRI, VARSAYILAN_DEV_FISEK } from './sabitler';
+import { agirlikliSec, oyunTohumu } from './rng';
+import { ILK_TAHTA_BILESEN_SINIRI, ILK_TAHTA_YENIDEN_CEKIM, VARSAYILAN_DEV_FISEK } from './sabitler';
 import { SEKIZ, bosHucre, icinde, idx, kapsul } from './tahta';
+import { hedefDurumu } from './hedef';
+import { karistir } from './karistir';
 import { kilitliMi } from './kilit';
-import type { BolumVerisi, BolumYukleSecenek, Hedef, HedefDurumu, Hucre, OyunDurumu, Renk } from './types';
+import type { BolumVerisi, BolumYukleSecenek, Hucre, OyunDurumu, Renk } from './types';
 
 export class BolumHatasi extends Error {}
 
@@ -116,6 +118,7 @@ export function bolumuYukle(v: BolumVerisi, denemeNo: number, secenek: BolumYukl
       ustaEli: false,
     },
     bitti: null,
+    finalYapildi: false,
   };
 
   // 1–2. Renkleri doldur; 8-komşu aynı renk bileşeni sınırı aşarsa yeniden çek.
@@ -154,11 +157,11 @@ export function bolumuYukle(v: BolumVerisi, denemeNo: number, secenek: BolumYukl
     for (const i of iz.hucreler) hucreler[i].izIndeksi = k;
   });
 
-  // 4. Kilitliyse ilk tahta akışından yeniden renklendir (P1 §3.8 karıştırmayla değiştirebilir).
-  for (let tur = 0; tur < KARISTIRMA_SINIRI && kilitliMi(d); tur++) {
-    for (const h of hucreler) {
-      if (!h.delik && h.icerik?.tur === 'kapsul' && h.icerik.ozel === 'yok') h.icerik.renk = rngInt(ilk, v.renkSayisi) as Renk;
-    }
+  // 4. Kilitliyse §3.8 karıştırması, ilk tahta akışından (her denemede aynı).
+  if (kilitliMi(d)) {
+    d.rng = ilk.rng;
+    karistir(d);
+    ilk.rng = d.rng;
   }
 
   // Coşku Serisi: merkeze en yakın düz kapsül yatay roket.
@@ -189,38 +192,6 @@ export function bolumuYukle(v: BolumVerisi, denemeNo: number, secenek: BolumYukl
   d.hedefler = v.hedefler.map((h) => hedefDurumu(d, h));
   d.rng = oyunTohumu(v.tohum, denemeNo);
   return d;
-}
-
-function hedefDurumu(d: OyunDurumu, h: Hedef): HedefDurumu {
-  let gerekli = 0;
-  switch (h.tur) {
-    case 'topla':
-    case 'fener':
-    case 'devFisek':
-    case 'zincirleme':
-    case 'halka':
-      gerekli = h.adet;
-      break;
-    case 'puan':
-      gerekli = h.puan;
-      break;
-    case 'kafes':
-      gerekli = d.hucreler.filter((c) => !c.delik && c.kafes).length;
-      break;
-    case 'kaya':
-      gerekli = d.hucreler.filter((c) => !c.delik && c.icerik?.tur === 'kaya').length;
-      break;
-    case 'aydinlat':
-      gerekli = d.hucreler.reduce((s, c) => s + (c.delik ? 0 : c.doseme), 0);
-      break;
-    case 'desen':
-      gerekli = d.hucreler.filter((c) => !c.delik && c.desenRengi >= 0).length;
-      break;
-    case 'is':
-      gerekli = d.hucreler.filter((c) => !c.delik && c.icerik?.tur === 'is').length;
-      break;
-  }
-  return { hedef: h, ilerleme: 0, gerekli, tamam: gerekli === 0 };
 }
 
 /** (x,y)'ye `renk` konursa, şimdiye dek doldurulmuş aynı renk düz kapsüllerle 8-komşu bileşen boyutu. */

@@ -40,6 +40,8 @@ export const VARSAYILAN_ESIK = 4;
 export const VARSAYILAN_OZEL_ESIKLERI: [number, number, number] = [6, 9, 12];
 export const VARSAYILAN_DEV_FISEK = 5;
 export const VARSAYILAN_KORUK = 20;
+/** Kıvılcım Usta'nın Eli (K16): kayıptan sonra eklenen hamle. */
+export const USTA_ELI_HAMLE = 5;
 /** Fener toplama + yerçekimi tekrar sınırı; karıştırma deneme sınırı. */
 export const FENER_TUR_SINIRI = 10;
 export const KARISTIRMA_SINIRI = 20;
