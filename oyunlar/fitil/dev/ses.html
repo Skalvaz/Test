@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FİTİL · Ses denemesi</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap">
+<style>
+  :root {
+    --krem: #FFF3D6; --ikincil: #CDB89A; --pirinc: #D9A441; --pirinc-acik: #F2C66D; --bakir: #B8642E;
+    --ahsap: #24160D; --ahsap-orta: #3A2416; --damar: #4E321F; --basari: #7CFFB2; --uyari: #FF5A3C; --koz: #FF9A3C;
+    --font: "Baloo 2", ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { background: #0B1030; }
+  body { margin: 0; min-height: 100dvh; color: var(--krem); font-family: var(--font); background: linear-gradient(#0B1030, #2A1450 70%) fixed;
+         padding: calc(env(safe-area-inset-top) + 10px) calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 24px) calc(env(safe-area-inset-left) + 16px);
+         -webkit-tap-highlight-color: transparent; }
+  html, body { overflow-x: hidden; }
+  .kap { max-width: 1180px; margin: 0 auto; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+  .kap > *, .ust > *, .kolonlar > * { min-width: 0; }
+  header { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "baslik dugme" "durum dugme"; align-items: center; column-gap: 12px; }
+  header h1 { grid-area: baslik; } #baglam { grid-area: durum; } .ac-dugme { grid-area: dugme; }
+  header h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: .5px; }
+  header h1 b { color: var(--pirinc-acik); }
+  #baglam { font-size: 13px; font-weight: 700; color: var(--ikincil); }
+  #baglam i { font-style: normal; color: var(--basari); }
+  #baglam i.kapali { color: var(--uyari); }
+  @media (max-width: 600px) { .ac-dugme.buyuk { font-size: 16px; min-height: 46px; padding: 10px 14px 8px; } }
+  section { background: linear-gradient(#24160Dee, #1a0f08ee); border: 2px solid var(--damar); border-radius: 16px; padding: 10px 12px 12px; box-shadow: inset 0 1px 0 #ffffff10; }
+  section h2 { margin: 0 0 8px; font-size: 13px; font-weight: 800; color: var(--pirinc-acik); text-transform: uppercase; letter-spacing: .8px; display: flex; flex-wrap: wrap; column-gap: 8px; row-gap: 0; align-items: baseline; white-space: nowrap; }
+  section h2 small { white-space: normal; }
+  section h2 small { color: var(--ikincil); text-transform: none; letter-spacing: 0; font-weight: 700; font-size: 12px; }
+  .izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+  .izgara.genis { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .notalar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  button { font: 800 14px/1.05 var(--font); color: #2a1a08; background: linear-gradient(#F2C66D, #D9A441); border: 0; border-radius: 11px; padding: 9px 8px 8px; min-height: 40px;
+           box-shadow: 0 2px 0 #7A3E1C, inset 0 1px 0 #fff7; cursor: pointer; touch-action: manipulation; text-align: center; }
+  button:active, button.calar { transform: translateY(1px); box-shadow: 0 1px 0 #7A3E1C, 0 0 18px #FF9A3C99; }
+  button.koyu { background: linear-gradient(#3A2416, #24160D); color: var(--krem); box-shadow: inset 0 0 0 1.5px var(--damar), 0 2px 0 #0b0604; }
+  button.koyu[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--pirinc), 0 0 14px #D9A44155; color: var(--pirinc-acik); }
+  button.buyuk { font-size: 18px; min-height: 52px; padding: 12px 18px 10px; }
+  button:focus-visible { outline: 3px solid var(--krem); outline-offset: 2px; }
+  button .alt { display: block; font-size: 11px; font-weight: 700; opacity: .7; margin-top: 2px; }
+  .nota { padding: 8px 2px 7px; }
+  .nota b { font-size: 16px; display: block; }
+  .nota span { font-size: 10px; font-weight: 700; opacity: .7; }
+  .fitil { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+  .fitil label { display: grid; gap: 4px; font-weight: 800; font-size: 14px; color: var(--ikincil); }
+  .fitil output { color: var(--krem); }
+  input[type=range] { width: 100%; accent-color: var(--pirinc); height: 28px; }
+  #dalga { width: 100%; height: 86px; display: block; border-radius: 10px; background: #0b0716; }
+  .ust { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  .ayarlar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; align-items: center; }
+  .ayarlar label { font-weight: 800; font-size: 13px; color: var(--ikincil); display: grid; gap: 2px; }
+  table { width: 100%; border-collapse: collapse; font: 700 12px/1.3 ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+  th, td { padding: 3px 4px; text-align: right; border-bottom: 1px solid #ffffff12; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; white-space: normal; }
+  th { color: var(--pirinc-acik); font-weight: 800; position: sticky; top: 0; background: #1a0f08; }
+  td.iyi { color: var(--basari); } td.kotu { color: var(--uyari); }
+  #olcumKap { max-height: 360px; overflow: auto; border-radius: 8px; background: #0b071680; -webkit-overflow-scrolling: touch; }
+  #olcumKap table { min-width: 440px; }
+  #ozet { font-weight: 800; font-size: 14px; margin: 0 0 8px; }
+  #ozet .iyi { color: var(--basari); } #ozet .kotu { color: var(--uyari); }
+  @media (min-width: 900px) {
+    .ust { grid-template-columns: 1.3fr 1fr; }
+    .kolonlar { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+  }
+  @media (max-width: 600px) {
+    th:nth-child(3), td:nth-child(3), th:nth-child(5), td:nth-child(5), th:nth-child(6), td:nth-child(6) { display: none; }
+    table { font-size: 11px; }
+    #olcumKap table { min-width: 0; }
+    td:first-child { max-width: 46vw; }
+  }
+  @media (max-width: 380px) {
+    .izgara { grid-template-columns: repeat(3, 1fr); }
+    .izgara.genis { grid-template-columns: repeat(2, 1fr); }
+    button { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="kap">
+  <header>
+    <h1><b>FİTİL</b> · Ses</h1>
+    <span id="baglam">bağlam: <i class="kapali">kapalı</i></span>
+    <button class="buyuk ac-dugme" id="ac">🔊 Sesi aç</button>
+  </header>
+
+  <div class="ust">
+    <section>
+      <h2>Fitil çiz <small>arpej → tutuşma → patlamalar → ısı dalgaları</small></h2>
+      <div class="fitil">
+        <label><span>Düğüm sayısı: <output id="nCikti">12</output></span>
+          <input type="range" id="n" min="1" max="12" value="12"></label>
+        <button class="buyuk" id="fitil">▶ Çiz ve bırak</button>
+      </div>
+      <canvas id="dalga" style="margin-top:8px"></canvas>
+    </section>
+    <section>
+      <h2>Ayarlar ve ortam</h2>
+      <div class="ayarlar">
+        <label>Efekt sesi <input type="range" id="sfx" min="0" max="1" step="0.05" value="1"></label>
+        <label>Müzik <input type="range" id="muzikSes" min="0" max="1" step="0.05" value="1"></label>
+        <button class="koyu" id="ortam" aria-pressed="false">🌊 Ortam</button>
+        <button class="koyu" id="muzik" aria-pressed="false">🎵 Müzik pedi</button>
+        <button class="koyu" id="yavas" aria-pressed="false">🐢 Yavaş çekim</button>
+        <button class="koyu" id="sessiz" aria-pressed="false">🔇 Sessiz</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="kolonlar">
+    <section>
+      <h2>Çizim <small>düğüm notaları: C5 … C7, 11+ parıltı</small></h2>
+      <div class="notalar" id="notalar"></div>
+      <div class="izgara" style="margin-top:6px" id="cizim"></div>
+    </section>
+    <section>
+      <h2>Arayüz</h2>
+      <div class="izgara" id="arayuz"></div>
+    </section>
+  </div>
+
+  <section>
+    <h2>Olaylar <small>types.ts'teki her olay türü + çeşitlemeler</small></h2>
+    <div class="izgara genis" id="olaylar"></div>
+  </section>
+
+  <section>
+    <h2>Ölçüm <small>OfflineAudioContext: tepe, RMS, kırpılma</small></h2>
+    <p id="ozet">Henüz ölçülmedi.</p>
+    <button id="olc">📏 Bütün sesleri ölç</button>
+    <div id="olcumKap" style="margin-top:8px"></div>
+  </section>
+</div>
+<script type="module">
+import { sesMotoruOlustur } from '../src/audio/sesMotoru.ts';
+import { ORNEK_OLAYLAR, OLAY_CESITLERI, fitilGosterisi } from '../src/audio/gosteri.ts';
+import { olc, fitilCizBenzetimi } from '../src/audio/olcum.ts';
+import { PENTATONIK } from '../src/audio/nota.ts';
+
+const ses = sesMotoruOlustur();
+ses.tahtaBoyutu(7, 9);
+window.__ses = ses;
+const $ = (id) => document.getElementById(id);
+const NOTA_ADLARI = ['C5', 'D5', 'E5', 'G5', 'A5', 'C6', 'D6', 'E6', 'G6', 'A6', 'C7', 'C7+'];
+
+// İlk dokunuş bağlamı açar (§14.1 "Dokun ve başla"); her düğme de açar.
+const ac = () => { ses.ac(); durumYaz(); };
+window.addEventListener('pointerdown', ac, { capture: true });
+window.addEventListener('keydown', ac, { capture: true });
+document.addEventListener('visibilitychange', () => ses.askiya(document.hidden));
+function durumYaz() {
+  const d = ses.baglam?.state ?? 'kapalı';
+  $('baglam').innerHTML = `bağlam: <i class="${d === 'running' ? '' : 'kapali'}">${d}</i> · etkin ses <i>${ses.etkinSes()}</i>`;
+}
+setInterval(durumYaz, 400);
+
+function dugme(kap, etiket, fn, alt) {
+  const b = document.createElement('button');
+  b.innerHTML = alt ? `${etiket}<span class="alt">${alt}</span>` : etiket;
+  b.addEventListener('click', () => { ac(); fn(); b.classList.add('calar'); setTimeout(() => b.classList.remove('calar'), 160); });
+  kap.appendChild(b);
+  return b;
+}
+
+// Çizim notaları 1..12
+for (let k = 1; k <= 12; k++) {
+  const b = dugme($('notalar'), '', () => ses.dugumEklendi(k));
+  b.className = 'nota';
+  b.innerHTML = `<b>${k}</b><span>${NOTA_ADLARI[k - 1]}</span>`;
+}
+dugme($('cizim'), 'Geri al', () => ses.geriAlindi(4), 'fıs + alt nota');
+dugme($('cizim'), 'Halka', () => ses.halkaKapandi(4), 'k, k+2 çan');
+dugme($('cizim'), 'Roket eşiği', () => ses.ozelEsigi('roket'), '6');
+dugme($('cizim'), 'Kasımpatı eşiği', () => ses.ozelEsigi('kasimpati'), '9');
+dugme($('cizim'), 'Yıldız eşiği', () => ses.ozelEsigi('yildiz'), '12');
+dugme($('cizim'), 'İptal', () => ses.iptal(), '|P| < 3');
+dugme($('cizim'), 'Tutuşma', () => ses.tutusma(), 'bırakma');
+
+const ARAYUZ = [['dugme', 'Düğme'], ['ac', 'Panel aç'], ['kapa', 'Panel kapa'], ['yildiz1', '★ 1'], ['yildiz2', '★ 2'], ['yildiz3', '★ 3'], ['kazandin', 'Kazandın'], ['kaybettin', 'Kaybettin'],
+  ['sandik', 'Sandık'], ['parca', 'Parça'], ['sonHamle', 'Son hamle'], ['hedefTamam', 'Hedef tamam'], ['korukDoldu', 'Körük doldu']];
+for (const [t, ad] of ARAYUZ) dugme($('arayuz'), ad, () => ses.arayuz(t));
+
+const OLAY_ADLARI = { fitilBasladi: 'Fitil başladı', dugumYandi: 'Düğüm yandı', patlama: 'Patlama', isindi: 'Isındı', isiDegisti: 'Isı değişti', ozelOlustu: 'Özel oluştu', ozelTetiklendi: 'Roket',
+  yuklendi: 'Yüklendi (kombo)', kombinasyon: 'Kombinasyon', isiDalgasi: 'Isı dalgası', engelHasar: 'Kaya hasarı', kafesKirildi: 'Kafes kırıldı', kurudu: 'Islak kurudu',
+  dosemeAydinlandi: 'Döşeme aydınlandı', desenBoyandi: 'Desen boyandı', izYandi: 'Barut izi', devFisekDoldu: 'Dev fişek +1', devFisekFirladi: 'Dev fişek fırladı', isTemizlendi: 'İs temizlendi',
+  isYayildi: 'İs yayıldı', yercekimi: 'Yerçekimi', fenerToplandi: 'Fener toplandı', havaOlayi: 'Meltem', karistirma: 'Karıştırma', hedefIlerledi: 'Hedef sayacı', puanEklendi: 'Puan (halka)',
+  korukDoldu: 'Körük doldu', korukKullanildi: 'Körük kullanıldı', guclendirici: 'Kibrit', finalBasladi: 'Final başladı', reaksiyon: 'Reaksiyon (harika)', bolumBitti: 'Bölüm bitti (kazanç)' };
+for (const [tur, o] of Object.entries(ORNEK_OLAYLAR)) dugme($('olaylar'), OLAY_ADLARI[tur] ?? tur, () => ses.olay(o), tur === 'isiDegisti' ? 'bilinçli sessiz' : tur);
+for (const c of OLAY_CESITLERI) dugme($('olaylar'), c.ad[0].toLocaleUpperCase('tr') + c.ad.slice(1), () => ses.olay(c.olay), c.olay.tur);
+
+// Fitil çiz benzetimi (gerçek zaman: setTimeout ile olay anları)
+$('n').addEventListener('input', () => { $('nCikti').textContent = $('n').value; });
+$('fitil').addEventListener('click', () => {
+  ac();
+  const n = +$('n').value;
+  const t0 = performance.now();
+  fitilCizBenzetimi(ses, (t, fn) => setTimeout(fn, Math.max(0, t * 1000 - (performance.now() - t0))), n);
+});
+
+// Ayarlar
+const anahtar = (id, fn) => $(id).addEventListener('click', () => { ac(); const v = $(id).getAttribute('aria-pressed') !== 'true'; $(id).setAttribute('aria-pressed', String(v)); fn(v); });
+anahtar('ortam', (v) => ses.ortam(v));
+anahtar('muzik', (v) => ses.muzik(v));
+anahtar('yavas', (v) => ses.yavasCekim(v));
+anahtar('sessiz', (v) => ses.ayarla({ sessiz: v }));
+$('sfx').addEventListener('input', () => ses.ayarla({ sfx: +$('sfx').value }));
+$('muzikSes').addEventListener('input', () => ses.ayarla({ muzik: +$('muzikSes').value }));
+$('ac').addEventListener('click', ac);
+
+// Dalga görüntüsü (çıkış çözümleyicisi)
+const tuval = $('dalga');
+const c = tuval.getContext('2d');
+let veri = null;
+function ciz() {
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  const w = tuval.clientWidth, h = tuval.clientHeight;
+  if (tuval.width !== Math.round(w * dpr)) { tuval.width = Math.round(w * dpr); tuval.height = Math.round(h * dpr); }
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, w, h);
+  // Pentatonik merdiven (arka plan)
+  c.fillStyle = '#ffffff08';
+  PENTATONIK.forEach((f, i) => { const x = (i / 10) * (w - 20) + 10; c.fillRect(x, 6, 1, h - 12); });
+  const an = ses.cozumleyici();
+  c.strokeStyle = '#4E321F'; c.lineWidth = 1; c.beginPath(); c.moveTo(0, h / 2); c.lineTo(w, h / 2); c.stroke();
+  if (an) {
+    if (!veri || veri.length !== an.fftSize) veri = new Float32Array(an.fftSize);
+    an.getFloatTimeDomainData(veri);
+    let tepe = 0;
+    for (const v of veri) tepe = Math.max(tepe, Math.abs(v));
+    const g = c.createLinearGradient(0, 0, w, 0);
+    g.addColorStop(0, '#FF7A1A'); g.addColorStop(0.5, '#FFF4C2'); g.addColorStop(1, '#FF9A3C');
+    c.strokeStyle = g; c.lineWidth = 2; c.beginPath();
+    for (let i = 0; i < veri.length; i += 2) { const x = (i / veri.length) * w, y = h / 2 - veri[i] * h * 0.45; i ? c.lineTo(x, y) : c.moveTo(x, y); }
+    c.stroke();
+    c.fillStyle = tepe > 0.9 ? '#FF5A3C' : '#CDB89A'; c.font = '700 11px ui-monospace, monospace'; c.textAlign = 'right';
+    c.fillText(`tepe ${tepe.toFixed(2)}`, w - 8, 14);
+  } else {
+    c.fillStyle = '#CDB89A'; c.font = '700 13px system-ui'; c.textAlign = 'center'; c.fillText('Sesi açmak için dokun', w / 2, h / 2 + 4);
+  }
+  requestAnimationFrame(ciz);
+}
+requestAnimationFrame(ciz);
+
+// Ölçüm
+function tablo(sonuclar) {
+  const iyi = sonuclar.filter((r) => r.tamam).length;
+  const tepe = Math.max(...sonuclar.map((r) => r.tepe));
+  const kirpilan = sonuclar.reduce((a, r) => a + r.kirpilan, 0);
+  $('ozet').innerHTML = `${sonuclar.length} senaryo · <span class="${iyi === sonuclar.length ? 'iyi' : 'kotu'}">${iyi} tamam</span> · en yüksek tepe ${tepe.toFixed(3)} (${(20 * Math.log10(tepe)).toFixed(1)} dBFS) · kırpılan örnek <span class="${kirpilan ? 'kotu' : 'iyi'}">${kirpilan}</span>`;
+  const f = (v) => (Number.isFinite(v) ? v.toFixed(1) : '−∞');
+  $('olcumKap').innerHTML = `<table><thead><tr><th>Senaryo</th><th>tepe</th><th>tepe dB</th><th>50ms dB</th><th>RMS dB</th><th>&gt;0,8</th><th>&gt;1</th><th></th></tr></thead><tbody>${sonuclar
+    .map((r) => `<tr><td>${r.ad}</td><td>${r.tepe.toFixed(3)}</td><td>${f(r.tepeDb)}</td><td>${f(r.pencereDb)}</td><td>${f(r.rmsDb)}</td><td>${r.bozulma}</td><td class="${r.kirpilan ? 'kotu' : ''}">${r.kirpilan}</td><td class="${r.tamam ? 'iyi' : 'kotu'}">${r.tamam ? (r.sessiz ? '✓ sessiz' : '✓') : '✗'}</td></tr>`)
+    .join('')}</tbody></table>`;
+}
+async function olcVeYaz() {
+  $('ozet').textContent = 'Ölçülüyor…';
+  const t0 = performance.now();
+  const r = await olc(undefined, 44100, (_, i) => { $('ozet').textContent = `Ölçülüyor… ${i + 1}`; });
+  tablo(r);
+  console.log(`ÖLÇÜM ${r.length} senaryo, ${((performance.now() - t0) / 1000).toFixed(1)} sn`);
+  for (const x of r) console.log(`${x.tamam ? 'TAMAM' : 'HATA '} | ${x.ad.padEnd(52)} | tepe ${x.tepe.toFixed(3)} | 50ms ${Number.isFinite(x.pencereDb) ? x.pencereDb.toFixed(1) : '-inf'} dB | rms ${Number.isFinite(x.rmsDb) ? x.rmsDb.toFixed(1) : '-inf'} dB | >0.8 ${x.bozulma} | >1 ${x.kirpilan}${x.sessiz ? ' | sessiz' : ''}`);
+  return r;
+}
+$('olc').addEventListener('click', olcVeYaz);
+window.__olc = olcVeYaz;
+window.__fitil = fitilGosterisi;
+</script>
+</body>
+</html>

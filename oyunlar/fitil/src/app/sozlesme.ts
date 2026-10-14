@@ -93,9 +93,20 @@ export interface OyunCizici {
   yokEt(): void;
 }
 
+/**
+ * P2b ekledi: yolun neden değiştiği (ses ve görsel tepki için). Her değişim
+ * ayrı bir `yolDegisti` çağrısıdır; hızlı kaydırmada atlanan hücreler de
+ * tek tek bildirilir, böylece her düğüm kendi notasını çalar.
+ *  - basladi: ilk düğüm (|yol| = 1)
+ *  - eklendi / geriAlindi: |yol| bir arttı / azaldı (ses: dugumEklendi(|yol|) / geriAlindi(|yol|))
+ *  - halkaKapandi / halkaAcildi: `halka` değişti, düğümler aynı
+ *  - temizlendi: yol sessizce boşaldı (özel taşa dokunuş, kip değişimi); `birakildi`/`iptal` gelmez
+ */
+export type YolDegisimi = 'basladi' | 'eklendi' | 'geriAlindi' | 'halkaKapandi' | 'halkaAcildi' | 'temizlendi';
+
 export interface YolGeriCagirim {
-  /** Yol her değiştiğinde (ekleme, geri alma, halka aç/kapa). */
-  yolDegisti(yol: readonly Konum[], halka: boolean): void;
+  /** Yol her değiştiğinde (ekleme, geri alma, halka aç/kapa). `degisim` P2b eki. */
+  yolDegisti(yol: readonly Konum[], halka: boolean, degisim?: YolDegisimi): void;
   /** Parmak kalktı; uygulama geçerliliği doğrular (|yol| < 3 → iptal sesi). */
   birakildi(yol: readonly Konum[], halka: boolean): void;
   /** pointercancel / Esc. */
@@ -110,6 +121,11 @@ export interface YolGeriCagirim {
   parmak(p: { x: number; y: number } | null): void;
   /** Herhangi bir dokunuş (boşta zamanlayıcısı, oynatmayı hızlandırma). */
   dokunuldu?(): void;
+  /**
+   * P2b eki — klavye imleci (§13.7) değişti; null = gizli (fare/dokunuş
+   * kullanılınca gizlenir). Çizici imleç hücresine 3 px krem odak halkası çizer.
+   */
+  imlecDegisti?(h: Konum | null): void;
 }
 
 /**
@@ -129,8 +145,14 @@ export interface YolCiziciSecenek {
 export interface YolCizici {
   /** 'cizim' normal; 'secim' hedef hücre seçimi; 'kapali' oynatma sırasında. */
   kipAyarla(kip: 'cizim' | 'secim' | 'kapali'): void;
-  /** İlk hamle kısıtı (§15): yalnız bu hücrelerden yol başlatılabilir. */
+  /**
+   * İlk hamle kısıtı (§15): yalnız bu hücrelerden yol başlatılabilir. P2b
+   * yorumu: "vurgulu küme içindeki her geçerli yol" — kısıt açıkken yol
+   * kümenin dışına da uzatılamaz.
+   */
   zorunluAyarla(hucreler: readonly Konum[] | null): void;
+  /** P2b eki — klavye imlecinin hücresi; null = imleç gizli. */
+  imlec?(): Konum | null;
   yokEt(): void;
 }
 
@@ -160,4 +182,10 @@ export interface SesMotoru {
   ayarla(s: { sfx?: number; muzik?: number; ortam?: boolean; sessiz?: boolean }): void;
   /** Sekme gizlenince askıya al / geri gelince sürdür. */
   askiya(gizli: boolean): void;
+  /**
+   * P2b eki — tahta boyutu (bolumKur'da çağrılır): sesler hücre x'ine göre
+   * stereoda konumlanır, roketin kenara çarpma ("çat") anı hesaplanır.
+   * Çağrılmazsa varsayılan 7×9 (§2.1) kabul edilir.
+   */
+  tahtaBoyutu?(w: number, h: number): void;
 }
