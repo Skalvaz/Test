@@ -446,6 +446,27 @@ function rastgeleYol(d: OyunDurumu, r: R): { yol: Konum[]; halka: boolean } | nu
     if (yolDogrula(d, p, halkaOl) === null) return { yol: p, halka: halkaOl };
   }
   if (d.kurallar.yalnizHalka) return dortluHalka(d);
+  return ucluYol(d);
+}
+
+/**
+ * Rastgele denemeler bulamazsa belirlenimli geçerli 3'lü yol (orta düğüm ve
+ * iki komşusu). Bulanık oyunlar "hamle bulunamadı" diye erken bitmesin;
+ * kilitsiz tahtada her zaman bulunur (kilitliMi ile aynı tanım).
+ */
+function ucluYol(d: OyunDurumu): { yol: Konum[]; halka: boolean } | null {
+  const komsu = komsuListe(d);
+  for (let b = 0; b < d.hucreler.length; b++) {
+    const pb = { x: b % d.w, y: (b - (b % d.w)) / d.w };
+    if (!zincirlenebilir(d, pb.x, pb.y, -1)) continue;
+    for (const ka of komsu) {
+      for (const kc of komsu) {
+        if (ka === kc) continue;
+        const p = [{ x: pb.x + ka.x, y: pb.y + ka.y }, pb, { x: pb.x + kc.x, y: pb.y + kc.y }];
+        if (yolDogrula(d, p, false) === null) return { yol: p, halka: false };
+      }
+    }
+  }
   return null;
 }
 

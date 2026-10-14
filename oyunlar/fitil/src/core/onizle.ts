@@ -36,7 +36,7 @@ export function onizle(d: OyunDurumu, yol: readonly Konum[], halka: boolean): On
   const P: number[] = [];
   const yolda = new Set<number>();
   for (const p of yol) {
-    if (p.x < 0 || p.y < 0 || p.x >= d.w || p.y >= d.h) continue;
+    if (!Number.isInteger(p.x) || !Number.isInteger(p.y) || p.x < 0 || p.y < 0 || p.x >= d.w || p.y >= d.h) continue;
     const i = p.y * d.w + p.x;
     if (d.hucreler[i].delik || yolda.has(i)) continue;
     P.push(i);

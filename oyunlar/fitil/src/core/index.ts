@@ -5,7 +5,8 @@
  * Dosyalar (§16.1): yol.ts (doğrulama, zincir rengi), resolve.ts (olay
  * simülasyonu), ozel.ts, engel.ts, yercekimi.ts, kilit.ts, karistir.ts,
  * hedef.ts, puan.ts, onizle.ts, final.ts, hava.ts, hamle.ts (hamleUygula,
- * körük, hamle sonu sırası).
+ * körük, hamle sonu sırası), oynatici.ts (olaylardan görsel tahta; çizicinin
+ * başvuru indirgeyicisi, §16.1). Ayrıntılar: src/core/README.md.
  */
 import { fnv1a } from './rng';
 import type { OyunDurumu } from './types';
@@ -17,6 +18,8 @@ export { karistir } from './karistir';
 export { zincirRengi, zincirKomsusu, yolDogrula, eksenBul, ozelTuruBul, enCokRenk } from './yol';
 export { hamleUygula, hamleHatasi, HamleHatasi, GUCLENDIRICI_SINIRI, ustaEliUygula } from './hamle';
 export { onizle } from './onizle';
+export { gorselTahtaKur, olayUygula, olaylariUygula, gorselFark, OynaticiHatasi } from './oynatici';
+export type { GorselTahta } from './oynatici';
 export { finalGosterisi } from './final';
 export { komboTuru } from './ozel';
 export { patlamaPuani, reaksiyonKademesi, yildizHesapla } from './puan';

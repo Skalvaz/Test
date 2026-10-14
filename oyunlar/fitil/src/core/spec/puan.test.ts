@@ -1,9 +1,11 @@
 /**
  * §7.1 taban puanlar, §7.2 reaksiyon bonusu (yalnız en yüksek kademe).
- * §7.4 yıldızlar: yildizHesapla API'si P1'e bağlı — bkz. en alttaki todo.
+ * §7.4 yıldızlar: `yildizHesapla` (P1 çekirdeğiyle geldi; uzlaştırmada
+ * todo'lar gerçek testlere çevrildi).
  */
 import { describe, expect, it } from 'vitest';
-import { fitil, kur, reaksiyonBonusu, sec, uygula } from './kur';
+import { ustaEliUygula, yildizHesapla } from '../index';
+import { fitil, kibrit, kur, reaksiyonBonusu, sec, uygula } from './kur';
 
 const UC = '0,5 1,5 2,5';
 const BOS = ['. . . . .', '. . . . .', '. . . . .', '. . . . .'];
@@ -120,9 +122,43 @@ describe('§7.2 reaksiyon bonusu', () => {
 });
 
 describe('§7.4 yıldızlar', () => {
-  // §7.4 yıldız sınırları (güçlendirici → en fazla 2★, Kıvılcım Usta'nın Eli → en fazla 1★)
-  // yildizHesapla API'si P1'e bağlı; çekirdek index.ts'te henüz yok.
-  it.todo('§7.4 güçlendirici kullanılırsa en fazla 2★ (yildizHesapla P1)');
-  it.todo("§7.4 Kıvılcım Usta'nın Eli kullanılırsa en fazla 1★ (yildizHesapla P1)");
-  it.todo('§7.4 hedefler tamam değilse 0★, tamamsa en az 1★ (yildizHesapla P1)');
+  // Kızıl üçlü (60 puan) ile kazanılan bölüm; eşikler testte puana göre verilir.
+  const KAZAN = { tahta: [...BOS, '. . . . .', 'R R R . .'], hedefler: [{ tur: 'topla' as const, renk: 0 as const, adet: 3 }] };
+
+  it('§7.4 1★ hedefler; 2★ puan ≥ p50; 3★ puan ≥ p85', () => {
+    const { durum } = uygula(kur(KAZAN), fitil(UC));
+    expect(durum.bitti).toBe('kazanc');
+    expect(durum.puan).toBe(60);
+    expect(yildizHesapla(durum, { yildizEsikleri: [1000, 2000] })).toBe(1);
+    expect(yildizHesapla(durum, { yildizEsikleri: [60, 2000] })).toBe(2);
+    expect(yildizHesapla(durum, { yildizEsikleri: [50, 60] })).toBe(3);
+  });
+
+  it('§7.4 hedefler tamam değilse (bölüm kazanılmadı) 0★, puan ne olursa olsun', () => {
+    const d = kur({ ...KAZAN, hedefler: [{ tur: 'topla', renk: 0, adet: 30 }] });
+    const { durum } = uygula(d, fitil(UC));
+    expect(durum.bitti).toBeNull();
+    expect(yildizHesapla(durum, { yildizEsikleri: [0, 0] })).toBe(0);
+  });
+
+  it('§7.4 / §9 güçlendirici kullanılırsa en fazla 2★', () => {
+    const k = uygula(kur(KAZAN), kibrit(4, 0));
+    expect(k.durum.istatistik.guclendirici).toBe(1);
+    const { durum } = uygula(k.durum, fitil(UC));
+    expect(durum.bitti).toBe('kazanc');
+    expect(yildizHesapla(durum, { yildizEsikleri: [0, 0] })).toBe(2);
+    expect(yildizHesapla(durum, { yildizEsikleri: [1000000, 2000000] })).toBe(1);
+  });
+
+  it("§7.4 / K16 Kıvılcım Usta'nın Eli kullanılırsa en fazla 1★", () => {
+    // 1 hamlede 3/6 → kayıp; Usta'nın Eli +5 hamle; üstteki kızıl üçlü düşmüştür → kazanç.
+    const d = kur({ tahta: [...BOS, 'R R R . .', 'R R R . .'], hamle: 1, hedefler: [{ tur: 'topla', renk: 0, adet: 6 }] });
+    const kayip = uygula(d, fitil(UC)).durum;
+    expect(kayip.bitti).toBe('kayip');
+    const devam = ustaEliUygula(kayip).durum;
+    expect(devam.kalanHamle).toBe(5);
+    const { durum } = uygula(devam, fitil(UC));
+    expect(durum.bitti).toBe('kazanc');
+    expect(yildizHesapla(durum, { yildizEsikleri: [0, 0] })).toBe(1);
+  });
 });

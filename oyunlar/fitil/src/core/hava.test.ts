@@ -1,4 +1,4 @@
-/** Hava olayları (§5): Meltem tavanı, Çisenti, uyarı, döngüsel hatlar; soğuma (K21); Körük (§6.10). */
+/** Hava olayları (§5): Meltem tavanı, Çisenti, uyarı, döngüsel hatlar; soğuma (K21); Körük (§6 Körük Göstergesi). */
 import { describe, expect, it } from 'vitest';
 import { hamleUygula } from './hamle';
 import { fitil, icerik, kur, patlamaZamani, sec } from './testAraclari';
@@ -57,7 +57,7 @@ describe('Meltem ve Çisenti', () => {
   });
 });
 
-describe('Körük (§6.10)', () => {
+describe('Körük (§6 Körük Göstergesi)', () => {
   const korukTahta = ['A3 Z G', 'Z A2 Z', 'G Z A3', 'R R R'];
 
   it('dolu körük: Chebyshev ≤ 1 ısınabilir kapsüllere t = 0 +1; eşiktekiler t = 90\'da 1. nesil; hamle harcanmaz', () => {

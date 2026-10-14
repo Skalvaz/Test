@@ -63,6 +63,10 @@ export function bilesenVar(d: OyunDurumu, enAz: number): boolean {
 export function halkaVar(d: OyunDurumu): boolean {
   const komsu = komsular(d);
   const w = d.w;
+  // caprazSiniri (§3.3.7) yolun adımlarını sayar (kapanış segmenti hariç):
+  // v0–v1, v1–v2, v2–v3 adımlarındaki çaprazlar sınırı aşmamalı.
+  const sinir = d.kurallar.caprazSiniri ?? 3;
+  const capraz = (a: number, b: number): number => (a % w !== b % w && (a - (a % w)) / w !== (b - (b % w)) / w ? 1 : 0);
   const komsuListesi = (i: number, c: number, cikti: number[]): void => {
     cikti.length = 0;
     const x = i % w;
@@ -90,6 +94,7 @@ export function halkaVar(d: OyunDurumu): boolean {
           komsuListesi(v2, c, k3);
           for (const v3 of k3) {
             if (v3 === v0 || v3 === v1) continue;
+            if (capraz(v0, v1) + capraz(v1, v2) + capraz(v2, v3) > sinir) continue;
             const x3 = v3 % w;
             const y3 = (v3 - x3) / w;
             const dx = Math.abs(x3 - x0);
@@ -105,12 +110,49 @@ export function halkaVar(d: OyunDurumu): boolean {
 }
 
 /**
+ * `caprazSiniri` < 2 iken geçerli 3'lü yol var mı (uzlaştırma eki, §3.3.7 +
+ * §3.4). Her 3 düğümlü basit yolun bir orta düğümü b ve onun iki komşusu
+ * vardır; yol, b'nin dik komşu sayısı o ve çapraz komşu sayısı g ile:
+ *   o ≥ 2 (0 çapraz) ya da o ≥ 1, g ≥ 1 (1 çapraz) ya da g ≥ 2 (2 çapraz).
+ * Bileşen testi (§3.4) çapraz sınırını görmez: yalnız çaprazla bağlı
+ * (0,0)–(1,1)–(2,0) bileşeni "kilitsiz" sayılır ama sınır 1'de oynanamaz.
+ */
+export function ucluYolVar(d: OyunDurumu): boolean {
+  const sinir = d.kurallar.caprazSiniri ?? 2;
+  const caprazAcik = !d.kurallar.dortKomsu;
+  for (let c = 0; c < d.renkSayisi; c++) {
+    for (let y = 0; y < d.h; y++) {
+      for (let x = 0; x < d.w; x++) {
+        if (!zincirlenebilir(d, x, y, c)) continue;
+        let o = 0;
+        let g = 0;
+        for (const k of SEKIZ) {
+          const dik = k.x === 0 || k.y === 0;
+          if (!dik && !caprazAcik) continue;
+          if (zincirlenebilir(d, x + k.x, y + k.y, c)) {
+            if (dik) o++;
+            else g++;
+          }
+        }
+        if (o >= 2 || (sinir >= 1 && o >= 1 && g >= 1) || (sinir >= 2 && g >= 2)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/**
  * kilitliMi (§3.4): tahtada (kafessiz) özel taş varsa false (çift dokunuş her
  * zaman geçerli hamledir); yoksa her renk için ≥ 3 düğümlü bileşen aranır.
  * `yalnizHalka` kuralında yalnız halkalar geçerli olduğundan 4'lü döngü aranır.
+ * Uzlaştırma eki: `caprazSiniri` 0 ya da 1 iken bileşen yerine sınırı
+ * sağlayan bir 3'lü yol aranır (`ucluYolVar`); yoksa tahta oynanamaz ama
+ * karıştırılmazdı (bulanık testte yakalandı).
  */
 export function kilitliMi(d: OyunDurumu): boolean {
   if (ozelVar(d)) return false;
   if (d.kurallar.yalnizHalka) return !halkaVar(d);
+  const sinir = d.kurallar.caprazSiniri;
+  if (sinir != null && sinir < 2 && !d.kurallar.dortKomsu) return !ucluYolVar(d);
   return !bilesenVar(d, 3);
 }

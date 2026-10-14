@@ -83,7 +83,7 @@ export function hamleUygula(d0: OyunDurumu, h: Hamle): HamleSonucu {
       break;
     }
     case 'koruk': {
-      // §6.10: Chebyshev ≤ 1 ısınabilir kapsüllere t = 0'da +1 (kalkan geçerli); dolum 0.
+      // §6 Körük Göstergesi (GDD §3.1 "§6.10" diye atıflar; §6.10 halka hedefidir): Chebyshev ≤ 1 ısınabilir kapsüllere t = 0'da +1 (kalkan geçerli); dolum 0.
       d.korukDolum = 0;
       d.istatistik.korukKullanim++;
       c.olaylar.push({ t: 0, tur: 'korukKullanildi', merkez: { x: h.merkez.x, y: h.merkez.y } });

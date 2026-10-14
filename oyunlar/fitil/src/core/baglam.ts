@@ -61,7 +61,7 @@ export interface Cozum {
   zincirRengi: number;
   /** Son işlenen olayın zamanı. */
   saat: number;
-  /** Bu eylemdeki ISI patlamaları (Körük dolumu §6.10). */
+  /** Bu eylemdeki ISI patlamaları (Körük dolumu, §6 Körük Göstergesi). */
   isiPatlamasi: number;
   /** Reaksiyon boyutu R: fitil düğümü olmayan kapsül patlamaları (§6.9). */
   R: number;

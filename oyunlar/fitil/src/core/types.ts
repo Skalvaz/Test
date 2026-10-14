@@ -232,7 +232,7 @@ export type Olay = { t: number } & (
    * kaynağı (engel, kafes, döşeme, desen, oluşum, kombinasyon, fener…).
    */
   | { tur: 'puanEklendi'; miktar: number; neden: 'reaksiyon' | 'halka' | 'kalanHamle' | 'diger'; kademe?: ReaksiyonKademesi; hucre?: Konum }
-  /** Körük dolumu arttı (ISI patlamaları, §6.10); dolum === kapasite iken gösterge dolu. */
+  /** Körük dolumu arttı (ISI patlamaları, §6 Körük Göstergesi; GDD §3.1 tablosundaki "§6.10" atfı hatalı); dolum === kapasite iken gösterge dolu. */
   | { tur: 'korukDoldu'; dolum: number; kapasite: number }
   | { tur: 'korukKullanildi'; merkez: Konum }
   | { tur: 'guclendirici'; guc: 'kibrit' | 'kalip'; hucre: Konum }

@@ -30,6 +30,8 @@ gibi POSIX sözdizimi kullanma.
 
 - `src/core/` — saf kurallar. DOM, `Date`, `performance`, `Math.random`,
   kayan nokta sabiti yok; zaman birimi tik. `hamleUygula` girdiyi değiştirmez.
+  API, olay sözlüğü, zamanlama ve görsel tahta: `src/core/README.md`
+  (çizici olayları `olayUygula` ile uygular, `gorselFark` ile eşitler).
 - `src/levels/` — bölüm JSON'ları (`veri/bNNN.json`), doğrulayıcı, günlük üretici.
 - `src/bot/` — Acemi/Usta bot, `sim-cli.ts` (tsx ile Node'da).
 - `src/render/` — tek tuval sahnesi (`OyunCizici`), sprite önbelleği, parçacık

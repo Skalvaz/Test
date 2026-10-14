@@ -32,8 +32,9 @@ export function konum(d: { w: number }, i: number): Konum {
 
 export function hucre(d: OyunDurumu, x: number, y: number): Hucre | null {
   if (!icinde(d, x, y)) return null;
-  const h = d.hucreler[idx(d, x, y)];
-  return h.delik ? null : h;
+  // Tamsayı olmayan konum (bozuk girdi) hücre değildir; fırlatmak yerine null.
+  const h = d.hucreler[idx(d, x, y)] as Hucre | undefined;
+  return !h || h.delik ? null : h;
 }
 
 export function bosHucre(): Hucre {
