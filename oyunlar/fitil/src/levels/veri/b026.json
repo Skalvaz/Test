@@ -1,0 +1,41 @@
+{
+  "id": 26,
+  "ad": "Lale Deseni",
+  "mahalle": 5,
+  "tur": "tanitim",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 24,
+  "tohum": 1318864668,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "desen", "motif": "lale" }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "zemin": {
+    "desen": {
+      "motif": "lale",
+      "hucreler": [
+        [2, 1, 4], [3, 1, 4], [4, 1, 4], [1, 2, 4], [2, 2, 4], [3, 2, 4], [4, 2, 4], [5, 2, 4], [2, 3, 4],
+        [4, 3, 4], [3, 3, 2], [3, 4, 2], [3, 5, 2], [3, 6, 2], [2, 5, 2], [4, 5, 2], [3, 7, 2], [2, 6, 2]
+      ]
+    }
+  },
+  "korukKapasitesi": 20,
+  "botBandi": [85, 90],
+  "yildizEsikleri": [3000, 4500],
+  "ipuclari": [{ "tetik": "baslangic", "metin": "Desendeki her karo kendi renginin patlamasını ister." }],
+  "sonrakiTanitim": "Sıradaki: Nemli Gece!"
+}

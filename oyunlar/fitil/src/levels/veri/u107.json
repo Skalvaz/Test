@@ -1,0 +1,33 @@
+{
+  "id": 107,
+  "ad": "Çisenti Fırtınası",
+  "mahalle": 6,
+  "tur": "usta",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 24,
+  "tohum": 2114894488,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "kafes" }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". C . . . C .",
+    ". . . . . . .",
+    ". . . C . . .",
+    ". . . . . . .",
+    ". C . . . C .",
+    ". . . . . . ."
+  ],
+  "havaOlaylari": [
+    { "tur": "cisenti", "eksen": "satir", "hatlar": [3, 7], "periyot": 2, "baslangic": 2 },
+    { "tur": "cisenti", "eksen": "sutun", "hatlar": [1, 5, 3], "periyot": 2, "baslangic": 3 }
+  ],
+  "botBandi": [50, 90],
+  "yildizEsikleri": [3000, 4500]
+}

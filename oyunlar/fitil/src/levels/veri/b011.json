@@ -1,0 +1,32 @@
+{
+  "id": 11,
+  "ad": "Fener Alayı",
+  "mahalle": 2,
+  "tur": "tanitim",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 20,
+  "tohum": 2471846724,
+  "yardim": 1,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "fener", "adet": 3 }],
+  "duzen": [
+    ". . F . F . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "fenerDogum": { "kalan": 1, "sahadaEnFazla": 2 },
+  "botBandi": [85, 95],
+  "yildizEsikleri": [3000, 4500],
+  "ipuclari": [{ "tetik": "baslangic", "metin": "Feneri en alt sıraya indir." }],
+  "sonrakiTanitim": "Sıradaki: Yıldız Topu!"
+}

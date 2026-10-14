@@ -1,0 +1,29 @@
+{
+  "id": 101,
+  "ad": "Kuru Barut",
+  "mahalle": 0,
+  "tur": "usta",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 2,
+  "hamle": 12,
+  "tohum": 885444984,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "puan", "puan": 20000 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "botBandi": [50, 90],
+  "yildizEsikleri": [3000, 4500]
+}

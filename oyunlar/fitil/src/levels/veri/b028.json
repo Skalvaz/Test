@@ -1,0 +1,31 @@
+{
+  "id": 28,
+  "ad": "Kova Bulmacası",
+  "mahalle": 5,
+  "tur": "normal",
+  "taslak": true,
+  "w": 8,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 25,
+  "tohum": 288134948,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "kafes" }],
+  "duzen": [
+    ". . . . . . . .",
+    "S C . . . . C S",
+    ". . . . . . . .",
+    ". . C S S C . .",
+    ". . . . . . . .",
+    "S C . . . . C S",
+    ". . . . . . . .",
+    ". . . C C . . .",
+    ". . . . . . . ."
+  ],
+  "korukKapasitesi": 20,
+  "botBandi": [65, 80],
+  "yildizEsikleri": [3000, 4500],
+  "sonrakiTanitim": "Sıradaki: Meltem!"
+}

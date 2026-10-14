@@ -1,0 +1,35 @@
+{
+  "id": 8,
+  "ad": "Halka",
+  "mahalle": 1,
+  "tur": "tanitim",
+  "w": 7,
+  "h": 8,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 19,
+  "tohum": 8008,
+  "yardim": 2,
+  "ozelEsikleri": [6, 9, 0],
+  "hedefler": [{ "tur": "halka", "adet": 5 }, { "tur": "topla", "renk": 1, "adet": 40 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "sabitKapsuller": [
+    { "x": 1, "y": 5, "renk": 1 }, { "x": 2, "y": 5, "renk": 1 }, { "x": 1, "y": 6, "renk": 1 }, { "x": 2, "y": 6, "renk": 1 },
+    { "x": 4, "y": 5, "renk": 1 }, { "x": 5, "y": 5, "renk": 1 }, { "x": 4, "y": 6, "renk": 1 }, { "x": 5, "y": 6, "renk": 1 }
+  ],
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Başladığın yere dön: HALKA! Isısı iki kat.", "el": [[1, 5], [2, 5], [2, 6], [1, 6], [1, 5]] }
+  ],
+  "botBandi": [85, 95],
+  "yildizEsikleri": [4000, 5500],
+  "sonrakiTanitim": "Sıradaki: Işıklı Sokak!"
+}

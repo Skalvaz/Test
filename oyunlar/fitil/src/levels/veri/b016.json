@@ -1,0 +1,31 @@
+{
+  "id": 16,
+  "ad": "Dev Fişek",
+  "mahalle": 3,
+  "tur": "tanitim",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 22,
+  "tohum": 3158562268,
+  "yardim": 1,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "devFisek", "adet": 3 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". D . D . D ."
+  ],
+  "botBandi": [85, 95],
+  "yildizEsikleri": [3000, 4500],
+  "ipuclari": [{ "tetik": "baslangic", "metin": "Dev fişeği yanında patlatarak doldur." }],
+  "sonrakiTanitim": "Sıradaki: Körük!"
+}

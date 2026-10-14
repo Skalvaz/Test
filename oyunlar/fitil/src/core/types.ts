@@ -312,6 +312,18 @@ export interface BolumVerisi {
   /** Bölüm 1–2: ilk hamlede yalnız bu hücrelerden yol başlatılabilir (§15). */
   zorunluIlkHamle?: [number, number][];
   sonrakiTanitim?: string;
+  /**
+   * P4a eki: öğretim senaryosu bayrakları (§15). `ilkReaksiyonVurgusu`:
+   * ilk hamlenin reaksiyonunda kural dışı (yalnız görsel) yavaş çekim ve
+   * "Harika!" yazısı zorlanır (Bölüm 3, `senaryo.ilkReaksiyonVurgusu`).
+   */
+  senaryo?: { ilkReaksiyonVurgusu?: boolean };
+  /**
+   * P4a eki: geçici bölüm (henüz tasarlanmadı). Statik doğrulamadan geçer,
+   * bot bantları `npm run dogrula` içinde varsayılan olarak denetlenmez.
+   * Bölümü tasarlayan ajan bu alanı siler.
+   */
+  taslak?: boolean;
 }
 
 export interface BolumYukleSecenek {

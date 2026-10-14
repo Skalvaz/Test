@@ -1,0 +1,34 @@
+{
+  "id": 22,
+  "ad": "Altı Renk",
+  "mahalle": 4,
+  "tur": "normal",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 6,
+  "esik": 4,
+  "hamle": 25,
+  "tohum": 3354779828,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [
+    { "tur": "topla", "renk": 2, "adet": 35 }, { "tur": "topla", "renk": 5, "adet": 35 },
+    { "tur": "topla", "renk": 4, "adet": 20 }
+  ],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "korukKapasitesi": 20,
+  "botBandi": [70, 80],
+  "yildizEsikleri": [3000, 4500],
+  "sonrakiTanitim": "Sıradaki: Lale Tarhı!"
+}

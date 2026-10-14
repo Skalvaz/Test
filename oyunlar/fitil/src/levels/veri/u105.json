@@ -1,0 +1,30 @@
+{
+  "id": 105,
+  "ad": "Domino",
+  "mahalle": 4,
+  "tur": "usta",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 8,
+  "tohum": 3152196360,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "devFisek", "adet": 3 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    "D4 . . D4 . . D4"
+  ],
+  "zemin": { "barutIzleri": [[[1, 8], [2, 8]], [[4, 8], [5, 8]], [[3, 7], [3, 6], [3, 5], [3, 4]]] },
+  "botBandi": [50, 90],
+  "yildizEsikleri": [3000, 4500]
+}

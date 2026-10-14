@@ -1,0 +1,41 @@
+{
+  "id": 6,
+  "ad": "Kasımpatı",
+  "mahalle": 1,
+  "tur": "tanitim",
+  "w": 7,
+  "h": 8,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 22,
+  "tohum": 6006,
+  "yardim": 2,
+  "ozelEsikleri": [6, 9, 0],
+  "hedefler": [{ "tur": "topla", "renk": 2, "adet": 36 }, { "tur": "topla", "renk": 4, "adet": 36 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "sabitKapsuller": [
+    { "x": 0, "y": 6, "renk": 2 }, { "x": 1, "y": 7, "renk": 2 }, { "x": 2, "y": 6, "renk": 2 },
+    { "x": 3, "y": 7, "renk": 2 }, { "x": 4, "y": 6, "renk": 2 }, { "x": 5, "y": 7, "renk": 2 },
+    { "x": 6, "y": 6, "renk": 2 }, { "x": 6, "y": 5, "renk": 2 }, { "x": 5, "y": 4, "renk": 2 }
+  ],
+  "ipuclari": [
+    {
+      "tetik": "baslangic",
+      "metin": "9 ve üstü = KASIMPATI. Etrafını da ısıtır.",
+      "el": [[0, 6], [1, 7], [2, 6], [3, 7], [4, 6], [5, 7], [6, 6], [6, 5], [5, 4]]
+    }
+  ],
+  "kurallar": { "soguma": 3 },
+  "botBandi": [90, 95],
+  "yildizEsikleri": [4000, 5500],
+  "sonrakiTanitim": "Sıradaki: Islak Barut!"
+}

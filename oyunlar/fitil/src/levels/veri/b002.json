@@ -1,0 +1,39 @@
+{
+  "id": 2,
+  "ad": "Çapraz Yol",
+  "mahalle": 0,
+  "tur": "ogretim",
+  "w": 6,
+  "h": 7,
+  "renkSayisi": 4,
+  "esik": 4,
+  "hamle": 15,
+  "tohum": 2002,
+  "yardim": 3,
+  "ozelEsikleri": [6, 0, 0],
+  "hedefler": [{ "tur": "topla", "renk": 3, "adet": 15 }, { "tur": "topla", "renk": 0, "adet": 15 }],
+  "duzen": [
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . ."
+  ],
+  "sabitKapsuller": [
+    { "x": 0, "y": 5, "renk": 0 }, { "x": 1, "y": 5, "renk": 3 }, { "x": 2, "y": 5, "renk": 1 },
+    { "x": 3, "y": 5, "renk": 3 }, { "x": 4, "y": 5, "renk": 3 }, { "x": 5, "y": 5, "renk": 3 },
+    { "x": 0, "y": 6, "renk": 3 }, { "x": 1, "y": 6, "renk": 2 }, { "x": 2, "y": 6, "renk": 3 },
+    { "x": 3, "y": 6, "renk": 0 }, { "x": 4, "y": 6, "renk": 3 }, { "x": 5, "y": 6, "renk": 3 }
+  ],
+  "zorunluIlkHamle": [[1, 5], [3, 5], [4, 5], [5, 5], [0, 6], [2, 6], [4, 6], [5, 6]],
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Çapraz da olur. 6 ve üstü = ROKET!", "el": [[0, 6], [1, 5], [2, 6], [3, 5], [4, 6], [5, 6]] },
+    { "tetik": "ilkHamleSonrasi", "metin": "Roketi bir zincire kat, ateşlensin.", "el": [[4, 6], [5, 5], [5, 6]] },
+    { "tetik": "kisaYol", "metin": "En az 3." }
+  ],
+  "botBandi": [97, 100],
+  "yildizEsikleri": [2500, 3500],
+  "sonrakiTanitim": "Sıradaki: Isınma!"
+}

@@ -1,0 +1,31 @@
+{
+  "id": 32,
+  "ad": "Bacalar",
+  "mahalle": 6,
+  "tur": "normal",
+  "taslak": true,
+  "w": 8,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 25,
+  "tohum": 2580845948,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "is" }, { "tur": "devFisek", "adet": 3 }],
+  "duzen": [
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". I . I I . I .",
+    ". I . I I . I .",
+    ". I . I I . I .",
+    ". I . I I . I .",
+    ". . . . . . . .",
+    ". . . . . . . .",
+    "D . D . . D . ."
+  ],
+  "korukKapasitesi": 20,
+  "botBandi": [65, 80],
+  "yildizEsikleri": [3000, 4500],
+  "sonrakiTanitim": "Sıradaki: Çisenti!"
+}

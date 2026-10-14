@@ -1,0 +1,31 @@
+{
+  "id": 23,
+  "ad": "Lale Tarhı",
+  "mahalle": 4,
+  "tur": "normal",
+  "taslak": true,
+  "w": 8,
+  "h": 9,
+  "renkSayisi": 6,
+  "esik": 4,
+  "hamle": 22,
+  "tohum": 1774968236,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "topla", "renk": 5, "adet": 40 }, { "tur": "kaya" }],
+  "duzen": [
+    "# . . # # . . #",
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". . K1 . . K1 . .",
+    ". K1 . . . . K1 .",
+    ". . . K1 K1 . . .",
+    "# # . . . . # #",
+    "# . . K1 K1 . . #",
+    "# . . . . . . #"
+  ],
+  "korukKapasitesi": 20,
+  "botBandi": [70, 80],
+  "yildizEsikleri": [3000, 4500],
+  "sonrakiTanitim": "Sıradaki: Çift Kat!"
+}

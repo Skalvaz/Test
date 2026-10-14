@@ -1,0 +1,40 @@
+{
+  "id": 33,
+  "ad": "Çisenti",
+  "mahalle": 6,
+  "tur": "tanitim",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 22,
+  "tohum": 974941876,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "kafes" }, { "tur": "aydinlat" }],
+  "duzen": [
+    ". . . . . . .",
+    ". C . . . C .",
+    ". . . . . . .",
+    ". . . C . . .",
+    ". . . . . . .",
+    ". C . C . C .",
+    ". . . . . . .",
+    ". . C . C . .",
+    ". . . . . . ."
+  ],
+  "zemin": {
+    "dosemeler": [
+      [0, 6, 1], [0, 8, 1], [1, 6, 1], [1, 8, 1], [2, 6, 1], [2, 8, 1], [3, 6, 1], [3, 8, 1], [4, 6, 1],
+      [4, 8, 1], [5, 6, 1], [5, 8, 1], [6, 6, 1], [6, 8, 1], [3, 0, 1], [3, 1, 1], [3, 2, 1], [2, 2, 1],
+      [4, 2, 1], [3, 4, 1]
+    ]
+  },
+  "havaOlaylari": [{ "tur": "cisenti", "eksen": "satir", "hatlar": [4, 2, 6], "periyot": 4, "baslangic": 4 }],
+  "korukKapasitesi": 20,
+  "botBandi": [80, 90],
+  "yildizEsikleri": [3000, 4500],
+  "ipuclari": [{ "tetik": "baslangic", "metin": "Çisenti satırı söndürür. Önce orayı ateşle." }],
+  "sonrakiTanitim": "Sıradaki: Kuru Gece II!"
+}

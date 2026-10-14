@@ -1,0 +1,45 @@
+{
+  "id": 3,
+  "ad": "Isınma",
+  "mahalle": 0,
+  "tur": "ogretim",
+  "w": 6,
+  "h": 8,
+  "renkSayisi": 4,
+  "esik": 4,
+  "hamle": 15,
+  "tohum": 3003,
+  "yardim": 3,
+  "ozelEsikleri": [6, 0, 0],
+  "hedefler": [{ "tur": "topla", "renk": "hepsi", "adet": 35 }],
+  "duzen": [
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . ."
+  ],
+  "sabitKapsuller": [
+    { "x": 1, "y": 3, "renk": 2, "isi": 2 }, { "x": 2, "y": 3, "renk": 0, "isi": 2 },
+    { "x": 3, "y": 3, "renk": 2, "isi": 2 }, { "x": 4, "y": 3, "renk": 3, "isi": 2 },
+    { "x": 1, "y": 4, "renk": 0, "isi": 3 }, { "x": 2, "y": 4, "renk": 2, "isi": 3 },
+    { "x": 3, "y": 4, "renk": 3, "isi": 3 }, { "x": 4, "y": 4, "renk": 2, "isi": 3 },
+    { "x": 1, "y": 5, "renk": 1 }, { "x": 2, "y": 5, "renk": 1 }, { "x": 3, "y": 5, "renk": 1 }, { "x": 4, "y": 5, "renk": 1 }
+  ],
+  "ipuclari": [
+    {
+      "tetik": "baslangic",
+      "metin": "Patlayan kapsül komşusunu ısıtır. Kızgın olan bir ısı daha alınca PATLAR.",
+      "el": [[1, 5], [2, 5], [3, 5], [4, 5]]
+    },
+    { "tetik": "ilkHamleSonrasi", "metin": "Isı kalıcıdır. Kızgınlara bir dokunuş yeter." },
+    { "tetik": "kisaYol", "metin": "En az 3." }
+  ],
+  "senaryo": { "ilkReaksiyonVurgusu": true },
+  "botBandi": [97, 100],
+  "yildizEsikleri": [2500, 3500],
+  "sonrakiTanitim": "Sıradaki: Kafes!"
+}

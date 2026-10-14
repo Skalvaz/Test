@@ -1,0 +1,30 @@
+{
+  "id": 103,
+  "ad": "Dört Yön",
+  "mahalle": 2,
+  "tur": "usta",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 4,
+  "esik": 4,
+  "hamle": 22,
+  "tohum": 4151666952,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "topla", "renk": "hepsi", "adet": 120 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "kurallar": { "dortKomsu": true },
+  "botBandi": [50, 90],
+  "yildizEsikleri": [3000, 4500]
+}

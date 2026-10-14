@@ -1,0 +1,37 @@
+{
+  "id": 12,
+  "ad": "Yıldız Topu",
+  "mahalle": 2,
+  "tur": "tanitim",
+  "taslak": true,
+  "w": 8,
+  "h": 9,
+  "renkSayisi": 4,
+  "esik": 4,
+  "hamle": 20,
+  "tohum": 900625316,
+  "yardim": 1,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "topla", "renk": 0, "adet": 40 }, { "tur": "topla", "renk": 3, "adet": 40 }],
+  "duzen": [
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". . . . . . . ."
+  ],
+  "sabitKapsuller": [
+    { "x": 0, "y": 8, "renk": 3 }, { "x": 1, "y": 8, "renk": 3 }, { "x": 2, "y": 8, "renk": 3 },
+    { "x": 3, "y": 8, "renk": 3 }, { "x": 4, "y": 8, "renk": 3 }, { "x": 5, "y": 8, "renk": 3 },
+    { "x": 6, "y": 8, "renk": 3 }, { "x": 7, "y": 8, "renk": 3 }, { "x": 7, "y": 7, "renk": 3 },
+    { "x": 6, "y": 7, "renk": 3 }, { "x": 5, "y": 7, "renk": 3 }, { "x": 4, "y": 7, "renk": 3 }
+  ],
+  "botBandi": [90, 95],
+  "yildizEsikleri": [3000, 4500],
+  "ipuclari": [{ "tetik": "baslangic", "metin": "12 ve üstü = YILDIZ TOPU. Her renge uyar." }],
+  "sonrakiTanitim": "Sıradaki: Kayalık!"
+}

@@ -1,0 +1,18 @@
+{
+  "aciklama": "Usta botu ağırlıkları (GDD §16.5). V = hedef·Δilerleme + puan·Δpuan + kizgin·kızgın + isiOrtalama·(ısı/kapsül) + ozel·özel − sonHamle·[kazanç yok, hamle bitti] + kazanc·[kazanç]. GDD varsayılanları: kizgin 40, isiOrtalama 15, ozel 80 — bunlarla bot özel taş ve kızgın kapsül biriktiriyor, reaksiyon p99 ölçütü (≤ 35) neredeyse her bölümde aşılıyordu; özel taş ağırlığı roket sıklığını belirliyor (ozel 15 → %41, 6 → ~%30; ölçüt ≤ %35). P4a kalibrasyonu aşağıdaki değerler. 'kazanc' P4a ekidir. 'ucuz': aday ön elemesi (adım 5).",
+  "hedef": 1000,
+  "puan": 0.02,
+  "kizgin": 8,
+  "isiOrtalama": 6,
+  "ozel": 6,
+  "sonHamle": 300,
+  "kazanc": 5000,
+  "ucuz": {
+    "hedef": 1000,
+    "puan": 0.02,
+    "kizgin": 6,
+    "ozel": 6,
+    "ozelAtes": 1,
+    "uzunluk": 2
+  }
+}

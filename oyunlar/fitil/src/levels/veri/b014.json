@@ -1,0 +1,42 @@
+{
+  "id": 14,
+  "ad": "Çifte Roket",
+  "mahalle": 2,
+  "tur": "tanitim",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 20,
+  "tohum": 4164822228,
+  "yardim": 1,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "kaya" }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    "K1 K2 K1 . K1 K2 K1",
+    ". . . . . . .",
+    ". K1 . . . K1 .",
+    ". . K2 . K2 . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "sabitKapsuller": [
+    { "x": 2, "y": 7, "renk": 0, "ozel": "roket", "eksen": 0 },
+    { "x": 3, "y": 7, "renk": 0, "ozel": "roket", "eksen": 1 }, { "x": 1, "y": 7, "renk": 0 },
+    { "x": 4, "y": 7, "renk": 0 }
+  ],
+  "botBandi": [85, 95],
+  "yildizEsikleri": [3000, 4500],
+  "ipuclari": [
+    {
+      "tetik": "baslangic",
+      "metin": "İki özel taşı aynı fitile kat: birleşirler!",
+      "el": [[1, 7], [2, 7], [3, 7], [4, 7]]
+    }
+  ],
+  "sonrakiTanitim": "Sıradaki: Liman Fırtınası!"
+}

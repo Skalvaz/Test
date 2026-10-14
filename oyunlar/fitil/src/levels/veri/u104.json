@@ -1,0 +1,30 @@
+{
+  "id": 104,
+  "ad": "Gizli Isı",
+  "mahalle": 3,
+  "tur": "usta",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 22,
+  "tohum": 430592800,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "kafes" }, { "tur": "topla", "renk": "hepsi", "adet": 80 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". C . . . C .",
+    ". . . . . . .",
+    ". . . C . . .",
+    ". . . . . . .",
+    ". C . . . C .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "kurallar": { "gizliIsi": true },
+  "botBandi": [50, 90],
+  "yildizEsikleri": [3000, 4500]
+}

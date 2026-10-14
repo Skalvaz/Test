@@ -1,0 +1,42 @@
+{
+  "id": 4,
+  "ad": "Sar ve Pişir",
+  "mahalle": 0,
+  "tur": "ogretim",
+  "w": 7,
+  "h": 8,
+  "renkSayisi": 4,
+  "esik": 4,
+  "hamle": 18,
+  "tohum": 4004,
+  "yardim": 3,
+  "ozelEsikleri": [6, 0, 0],
+  "hedefler": [{ "tur": "kafes" }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". C . . . C .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . C . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "sabitKapsuller": [
+    { "x": 1, "y": 2, "renk": 1 }, { "x": 5, "y": 2, "renk": 1 }, { "x": 3, "y": 5, "renk": 1 },
+    { "x": 0, "y": 2, "renk": 2 }, { "x": 0, "y": 3, "renk": 2 }, { "x": 1, "y": 3, "renk": 2 },
+    { "x": 2, "y": 3, "renk": 2 }, { "x": 2, "y": 2, "renk": 2 },
+    { "x": 4, "y": 2, "renk": 3 }, { "x": 4, "y": 3, "renk": 3 }, { "x": 5, "y": 3, "renk": 3 },
+    { "x": 6, "y": 3, "renk": 3 }, { "x": 6, "y": 2, "renk": 3 },
+    { "x": 2, "y": 5, "renk": 0 }, { "x": 2, "y": 6, "renk": 0 }, { "x": 3, "y": 6, "renk": 0 },
+    { "x": 4, "y": 6, "renk": 0 }, { "x": 4, "y": 5, "renk": 0 }
+  ],
+  "onIsi": [[1, 2, 1], [5, 2, 1], [3, 5, 1]],
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Kafesler yalnız ısıyla açılır. Etrafını sar!", "el": [[0, 2], [0, 3], [1, 3], [2, 3], [2, 2]] },
+    { "tetik": "kisaYol", "metin": "En az 3." }
+  ],
+  "botBandi": [95, 100],
+  "yildizEsikleri": [2500, 3500],
+  "sonrakiTanitim": "Sıradaki: Nişan!"
+}

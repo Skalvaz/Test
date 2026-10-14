@@ -1,0 +1,30 @@
+{
+  "id": 7,
+  "ad": "Islak Barut",
+  "mahalle": 1,
+  "tur": "tanitim",
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 23,
+  "tohum": 7007,
+  "yardim": 2,
+  "ozelEsikleri": [6, 9, 0],
+  "hedefler": [{ "tur": "topla", "renk": 0, "adet": 38 }, { "tur": "topla", "renk": 3, "adet": 34 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". W W W W W .",
+    ". W W W W W .",
+    ". . W W W . .",
+    ". . . W . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "ipuclari": [{ "tetik": "baslangic", "metin": "Islak barut zincire girmez. Yanında patlat, kurusun." }],
+  "botBandi": [85, 95],
+  "yildizEsikleri": [4000, 5500],
+  "sonrakiTanitim": "Sıradaki: Halka!"
+}

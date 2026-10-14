@@ -1,0 +1,30 @@
+{
+  "id": 102,
+  "ad": "Yalnız Halka",
+  "mahalle": 1,
+  "tur": "usta",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 4,
+  "esik": 4,
+  "hamle": 20,
+  "tohum": 1430130160,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "halka", "adet": 8 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "kurallar": { "yalnizHalka": true },
+  "botBandi": [50, 90],
+  "yildizEsikleri": [3000, 4500]
+}

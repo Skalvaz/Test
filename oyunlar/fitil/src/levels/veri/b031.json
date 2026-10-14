@@ -1,0 +1,32 @@
+{
+  "id": 31,
+  "ad": "İs",
+  "mahalle": 6,
+  "tur": "tanitim",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 22,
+  "tohum": 2005711356,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "is" }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . I I I . .",
+    ". I I I I I .",
+    ". . I I I . .",
+    ". . . I . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "korukKapasitesi": 20,
+  "botBandi": [85, 90],
+  "yildizEsikleri": [3000, 4500],
+  "ipuclari": [{ "tetik": "baslangic", "metin": "İs yayılır! Her hamle birini temizle." }],
+  "sonrakiTanitim": "Sıradaki: Bacalar!"
+}

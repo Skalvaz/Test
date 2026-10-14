@@ -1,0 +1,30 @@
+{
+  "id": 15,
+  "ad": "Liman Fırtınası",
+  "mahalle": 2,
+  "tur": "zor",
+  "taslak": true,
+  "w": 8,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 4,
+  "hamle": 25,
+  "tohum": 443875420,
+  "yardim": 1,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "kaya" }, { "tur": "fener", "adet": 3 }],
+  "duzen": [
+    ". F . . F . F .",
+    ". . . . . . . .",
+    ". . . K2 . . . .",
+    ". K2 . . K3 . K2 .",
+    ". . . . . . . .",
+    "K2 . K3 K2 . K2 . K3",
+    ". . . . . . . .",
+    ". K2 . . K2 . K3 .",
+    ". . . . . . . ."
+  ],
+  "botBandi": [45, 55],
+  "yildizEsikleri": [3000, 4500],
+  "sonrakiTanitim": "Sıradaki: Dev Fişek!"
+}

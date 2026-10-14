@@ -1,0 +1,31 @@
+{
+  "id": 27,
+  "ad": "Nemli Gece",
+  "mahalle": 5,
+  "tur": "normal",
+  "taslak": true,
+  "w": 7,
+  "h": 9,
+  "renkSayisi": 5,
+  "esik": 5,
+  "hamle": 22,
+  "tohum": 4041699076,
+  "yardim": 0,
+  "ozelEsikleri": [6, 9, 12],
+  "hedefler": [{ "tur": "topla", "renk": 3, "adet": 50 }, { "tur": "kafes" }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". C . . . C .",
+    ". . . . . . .",
+    ". . . C . . .",
+    ". . . . . . .",
+    ". C . . . C .",
+    ". . . C . . .",
+    ". . . . . . ."
+  ],
+  "korukKapasitesi": 20,
+  "botBandi": [65, 80],
+  "yildizEsikleri": [3000, 4500],
+  "sonrakiTanitim": "Sıradaki: Kova Bulmacası!"
+}

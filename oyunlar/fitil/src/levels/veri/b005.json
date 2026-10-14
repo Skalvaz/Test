@@ -1,0 +1,38 @@
+{
+  "id": 5,
+  "ad": "Nişan",
+  "mahalle": 0,
+  "tur": "ogretim",
+  "w": 7,
+  "h": 8,
+  "renkSayisi": 4,
+  "esik": 4,
+  "hamle": 20,
+  "tohum": 5005,
+  "yardim": 3,
+  "ozelEsikleri": [6, 0, 0],
+  "hedefler": [{ "tur": "kafes" }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . C . .",
+    ". . . C . . .",
+    ". . C . . . .",
+    ". C . . . . .",
+    ". . . . . . ."
+  ],
+  "sabitKapsuller": [
+    { "x": 3, "y": 0, "renk": 2 }, { "x": 4, "y": 0, "renk": 2 }, { "x": 5, "y": 0, "renk": 2 },
+    { "x": 6, "y": 0, "renk": 2 }, { "x": 6, "y": 1, "renk": 2 }, { "x": 5, "y": 2, "renk": 2 },
+    { "x": 1, "y": 6, "renk": 0 }, { "x": 2, "y": 5, "renk": 3 }, { "x": 3, "y": 4, "renk": 0 }, { "x": 4, "y": 3, "renk": 3 }
+  ],
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Fitili çaprazda bitir, roket çapraz uçar." },
+    { "tetik": "kazanc", "metin": "Yıldızlar puanından gelir." },
+    { "tetik": "kazanc", "metin": "Kalan hamlelerin rokete döner!" }
+  ],
+  "botBandi": [92, 100],
+  "yildizEsikleri": [2500, 3500],
+  "sonrakiTanitim": "Sıradaki: Kasımpatı!"
+}
