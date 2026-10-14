@@ -59,6 +59,7 @@ export class YolKatmani {
   private hayaletAci = 0;
   private hayaletHedefAci = 0;
   private komboAd = '';
+  private komboFont = '';
   private komboAlfa = 0;
   // Vurgular
   zorunlu: Konum[] | null = null;
@@ -204,6 +205,7 @@ export class YolKatmani {
     }
     const ad = on.kombo ? KOMBO_ADLARI[on.kombo] : '';
     if (ad !== this.komboAd) this.komboAlfa = 0;
+    this.komboFont = `800 ${Math.round(Math.max(13, s.c * 0.3))}px ${YAZI_FONT}`;
     this.komboAd = ad;
   }
 
@@ -393,7 +395,7 @@ export class YolKatmani {
       const x = s.mx(son.x);
       const y = s.my(son.y) - hc * 0.95;
       c.globalAlpha = this.komboAlfa;
-      c.font = `800 ${Math.round(Math.max(13, hc * 0.3))}px ${YAZI_FONT}`;
+      c.font = this.komboFont;
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       const w = c.measureText(this.komboAd).width + 18;
@@ -412,6 +414,19 @@ export class YolKatmani {
     }
   }
 
+  private maske = new Uint8Array(0);
+  private maskeKaynak: Konum[] | null = null;
+
+  /** Zorunlu hücre maskesi (vurgu değişince bir kez kurulur). */
+  private zorunluMaske(w: number, h: number): Uint8Array {
+    if (this.maskeKaynak !== this.zorunlu || this.maske.length !== w * h) {
+      this.maske = new Uint8Array(w * h);
+      for (const p of this.zorunlu ?? []) if (p.x >= 0 && p.y >= 0 && p.x < w && p.y < h) this.maske[p.y * w + p.x] = 1;
+      this.maskeKaynak = this.zorunlu;
+    }
+    return this.maske;
+  }
+
   /** Vurgular (içeriklerin üstünde, fitilin altında). */
   cizVurgu(c: Ctx): void {
     const s = this.s;
@@ -419,12 +434,10 @@ export class YolKatmani {
     const hc = s.c;
     if (this.zorunlu) {
       // Diğer hücreler kararır; zorunlu hücreler sıcak nabızla parlar.
-      const izin = ZORUNLU_SET;
-      izin.clear();
-      for (const p of this.zorunlu) izin.add(p.y * t.w + p.x);
+      const izin = this.zorunluMaske(t.w, t.h);
       c.fillStyle = 'rgba(6,4,14,0.6)';
       for (let i = 0; i < t.hucreler.length; i++) {
-        if (t.hucreler[i].delik || izin.has(i)) continue;
+        if (t.hucreler[i].delik || izin[i]) continue;
         const x = s.mx(i % t.w);
         const y = s.my((i / t.w) | 0);
         c.beginPath();
@@ -461,20 +474,25 @@ export class YolKatmani {
       c.globalCompositeOperation = 'source-over';
     }
     if (this.secim) {
-      const a = 0.55 + 0.35 * Math.sin(this.faz * 0.8);
-      c.strokeStyle = rgba(P.krem, a);
-      c.lineWidth = 3;
-      for (const p of this.secim) {
-        const x = s.mx(p.x);
-        const y = s.my(p.y);
-        c.beginPath();
-        c.roundRect(x - hc * 0.46, y - hc * 0.46, hc * 0.92, hc * 0.92, hc * 0.18);
-        c.stroke();
-      }
+      // Seçim (körük/kibrit/kalıp hedefi): sıcak dolgu + koyu/krem çift kontur, nabızlı.
+      const a = 0.6 + 0.35 * Math.sin(this.faz * 0.8);
+      const r = hc * 0.46;
       c.globalCompositeOperation = 'lighter';
-      c.fillStyle = rgba(P.pirinc, 0.12 * a);
-      for (const p of this.secim) c.fillRect(s.mx(p.x) - hc * 0.46, s.my(p.y) - hc * 0.46, hc * 0.92, hc * 0.92);
+      c.fillStyle = P.pirinc;
+      c.globalAlpha = 0.16 * a;
+      for (const p of this.secim) c.fillRect(s.mx(p.x) - r, s.my(p.y) - r, 2 * r, 2 * r);
       c.globalCompositeOperation = 'source-over';
+      c.beginPath();
+      for (const p of this.secim) c.roundRect(s.mx(p.x) - r, s.my(p.y) - r, 2 * r, 2 * r, hc * 0.18);
+      c.globalAlpha = 0.7;
+      c.lineWidth = 5;
+      c.strokeStyle = '#1A0C04';
+      c.stroke();
+      c.globalAlpha = a;
+      c.lineWidth = 2.6;
+      c.strokeStyle = P.krem;
+      c.stroke();
+      c.globalAlpha = 1;
     }
   }
 
@@ -627,8 +645,6 @@ const TMP_X = new Float32Array(260);
 const TMP_Y = new Float32Array(260);
 const KESIK_ETKI = [5, 4];
 const BOS: number[] = [];
-const ZORUNLU_SET = new Set<number>();
 const HAYALET_RENK: IpRenkleri = { ana: 'rgba(255,244,214,0.75)', acik: 'rgba(255,255,255,0.9)', koyu: 'rgba(200,180,140,0.6)', parilti: '#FFF4C2' };
 const EL_RENK: IpRenkleri = { ana: 'rgba(255,240,210,0.7)', acik: 'rgba(255,255,255,0.85)', koyu: 'rgba(190,150,100,0.6)', parilti: '#FFE9A8' };
 
-export { T, B };

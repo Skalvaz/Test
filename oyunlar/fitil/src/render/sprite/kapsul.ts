@@ -16,7 +16,7 @@
  */
 import type { Palet } from '../../app/sozlesme';
 import { INCI, P, kapsulRenkleri, type KapsulRengi } from '../palet';
-import { doygunluk, hexRgb, hslHex, karistir, rgba } from '../matematik';
+import { doygunluk, hslHex, rgba } from '../matematik';
 import { spriteUret, type Ctx, type Sprite } from '../tuval';
 import { IC_SIMGE_OLCEK, sekilYolu, yansimaKonumu } from './sekil';
 
@@ -513,11 +513,3 @@ function kafes(x: Ctx, c: number): void {
   percin(-ic, 0.02 * c);
   percin(ic, 0.02 * c);
 }
-
-/** Renk tablosundan açık/koyu ayrı tutulmayan yerler için yardımcı (testte kullanılır). */
-export function renkParlakligi(hex: string): number {
-  const c = hexRgb(hex);
-  return (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / 255;
-}
-
-export { karistir };

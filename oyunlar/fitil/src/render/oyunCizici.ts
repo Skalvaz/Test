@@ -21,13 +21,13 @@
 import type { CiziciSecenek, Dikdortgen, OyunCizici, TahtaGeometrisi } from '../app/sozlesme';
 import type { BolumVerisi, Eksen, Hedef, Icerik, Konum, Olay, Onizleme, OyunDurumu } from '../core/types';
 import type { Stage } from './stage';
-import { E, Efektler, efektRengi, type Efekt } from './efektler';
+import { E, Efektler, type Efekt } from './efektler';
 import { FisekSistemi } from './fisek';
 import { Gokyuzu } from './gokyuzu';
 import { IpCizici, type IpRenkleri } from './ip';
 
 import { B, T } from './parcacik';
-import { INCI, P, R } from './palet';
+import { INCI, P, R, efektRengi } from './palet';
 import { Sahne, type SahneSecenek } from './sahne';
 import { Sandik } from './sandik';
 import { TahtaCizimi } from './tahtaCizimi';
@@ -281,7 +281,7 @@ class OyunCiziciSinifi implements OyunCizici {
   }
 
   geometri(): TahtaGeometrisi {
-    if (this.yerlesimGerekli && this.bolum) this.yerlesim();
+    if (this.yerlesimGerekli && this.s.tahta.w) this.yerlesim();
     const s = this.s;
     return { x: s.gx, y: s.gy, hucre: s.c, w: s.tahta.w, h: s.tahta.h };
   }
@@ -351,8 +351,11 @@ class OyunCiziciSinifi implements OyunCizici {
     if (!this.alanVerildi) {
       const dikey = W / H <= 0.75;
       if (dikey) {
-        s.gokBandi = { x: 0, y: 0, w: W, h: Math.round(H * 0.2) };
-        s.alan = { x: 0, y: Math.round(H * 0.2), w: W, h: Math.round(H * 0.66) };
+        // §13.7: hücre 40 px'in altına düşerse üst bant %14'e iner.
+        const hucre = Math.floor(Math.min((W - 32) / t.w, (0.66 * H - 24) / t.h, 64));
+        const ust = Math.round(H * (hucre < 40 ? 0.14 : 0.2));
+        s.gokBandi = { x: 0, y: 0, w: W, h: ust };
+        s.alan = { x: 0, y: ust, w: W, h: Math.round(H * 0.86) - ust };
       } else {
         s.gokBandi = { x: 0, y: 0, w: W, h: Math.round(H * 0.18) };
         s.alan = { x: 0, y: 80, w: Math.round(W * 0.62), h: H - 160 };
@@ -1468,13 +1471,13 @@ class OyunCiziciSinifi implements OyunCizici {
   kare(dtMs: number): void {
     if (this.yokEdildi) return;
     if (!this.donuk) this.guncelle(dtMs);
-    else if (this.yerlesimGerekli && this.bolum) this.yerlesim();
+    else if (this.yerlesimGerekli && this.s.tahta.w) this.yerlesim();
     this.ciz();
   }
 
   private guncelle(dtMs: number): void {
     const s = this.s;
-    if (this.yerlesimGerekli && this.bolum) this.yerlesim();
+    if (this.yerlesimGerekli && this.s.tahta.w) this.yerlesim();
     const gercek = Math.max(0, Math.min(50, dtMs));
     this.kaliteIzle(dtMs);
     s.zaman += gercek;

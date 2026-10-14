@@ -79,7 +79,8 @@ export class FisekSistemi {
     const s = this.s;
     const tarif = desenTarifi(desen);
     const efRenk = renk >= 0 && renk <= 5 ? renk : -1;
-    const ikinci = efRenk < 0 ? R.BEYAZ_SICAK : (efRenk + 2) % 6 === efRenk ? R.ALTIN : renk === 1 ? R.BEYAZ_SICAK : R.ALTIN;
+    // İkincil renk: kehribar fişekte beyaz-sıcak, diğerlerinde altın.
+    const ikinci = efRenk < 0 || efRenk === 1 ? R.BEYAZ_SICAK : R.ALTIN;
     tarif.uret(s.havuz, x, y, { olcek, renk: efRenk, renk2: ikinci, rnd: () => s.rnd.float(), gok: true });
     // Patlama çekirdeği (beyaz flaş) — tarifin sayımına dahil değil.
     const i = s.havuz.ekle(T.NOKTA, x, y, 0, 0, 160, 26 * olcek, R.BEYAZ_SICAK, 0, 0);
@@ -156,10 +157,6 @@ export class FisekSistemi {
       c.drawImage(isikSp[R.BEYAZ_SICAK].t, x - r * 2, y - r * 2, r * 4, r * 4);
     }
     c.globalCompositeOperation = 'source-over';
-  }
-
-  aktifMi(): boolean {
-    return this.kovanlar.some((k) => k.aktif);
   }
 
   temizle(): void {

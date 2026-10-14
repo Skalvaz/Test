@@ -9,7 +9,7 @@
  * çekim ve hızlandırma dahil); `gecikme` dolana kadar efekt görünmez.
  */
 import { B, T } from './parcacik';
-import { R, efektRengi } from './palet';
+import { R } from './palet';
 import { bezier2, inOutCubic, outCubic, tepe } from './matematik';
 import type { Sahne } from './sahne';
 import type { Ctx } from './tuval';
@@ -537,4 +537,3 @@ export function ozelUstCiz(c: Ctx, s: Sahne, ic: Icerik, x: number, y: number, z
   }
 }
 
-export { efektRengi };

@@ -7,7 +7,6 @@
  */
 import { IpCizici, type IpRenkleri } from './ip';
 import { ozelUstCiz } from './efektler';
-import type { GHucre } from './gorselTahta';
 import { INIS_MS, NABIZ_MS } from './gorselTahta';
 import { outBack, outCubic, perlin1, tepe } from './matematik';
 import { P } from './palet';
@@ -82,12 +81,8 @@ export class TahtaCizimi {
           const alt = e.doseme[1];
           c.drawImage(alt.t, x - alt.ox, y - alt.oy, alt.w, alt.h);
           const k = outCubic(h.dosemeAcilis);
-          c.save();
-          c.beginPath();
-          c.arc(x, y, k * hc * 0.75, 0, Math.PI * 2);
-          c.clip();
-          c.drawImage(sp.t, x - sp.ox, y - sp.oy, sp.w, sp.h);
-          c.restore();
+          const kare = e.dosemeAcilis[Math.min(e.dosemeAcilis.length - 1, Math.floor(k * e.dosemeAcilis.length))];
+          c.drawImage(kare.t, x - kare.ox, y - kare.oy, kare.w, kare.h);
           this.isikHalkasi(c, x, y, h.dosemeAcilis, P.sicakIsik);
         } else {
           c.drawImage(sp.t, x - sp.ox, y - sp.oy, sp.w, sp.h);
@@ -196,6 +191,8 @@ export class TahtaCizimi {
       if (h.geriAl >= 0) o *= 1 + 0.1 * (1 - outCubic(h.geriAl / 120));
       if (h.pop >= 0) o *= 0.55 + 0.45 * outBack(Math.min(1, h.pop / 320));
       if (nefes) o *= 1 + 0.02 * Math.sin(zaman * 0.001 * Math.PI * 2 * 0.3 + h.faz);
+      // Karıştırmada kapsüller kalkar (yolun ortasında büyür).
+      if (h.hTur === 2) o *= 1 + 0.16 * tepe(Math.min(1, h.hT / h.hSure));
       let sx = o;
       let sy = o;
       if (h.inis >= 0) {
@@ -482,4 +479,3 @@ function yuvarlakKareYol(c: Ctx, x: number, y: number, r: number, yr: number): v
   c.closePath();
 }
 
-export type { GHucre };

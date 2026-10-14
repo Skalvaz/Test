@@ -17,6 +17,8 @@ export class Sandik {
   private isik: Tuval | null = null;
   private isikCtx: Ctx | null = null;
   private isikliYuva: Sprite | null = null;
+  /** Dairesel maske açılış kareleri (her karede clip() yerine; §16.6). */
+  private acilis: Sprite[] = [];
   /** Tuvalin tahta uzayındaki sol üst köşesi ve boyu. */
   ox = 0;
   oy = 0;
@@ -26,6 +28,8 @@ export class Sandik {
   private pisti: Uint8Array = new Uint8Array(0);
   /** Bölüm sonu parlaması (kazanç) 0..1. */
   parla = 0;
+  /** Işık izi katmanında en az bir yuva var mı (boşsa çizilmez). */
+  private isikVar = false;
 
   constructor(private s: Sahne) {}
 
@@ -67,6 +71,7 @@ export class Sandik {
       yuvarlakDikdortgen(x, -sw / 2 + 0.5, -sw / 2 + 0.5, sw - 1, sw - 1, 0.16 * c);
       x.stroke();
     });
+    this.acilis = maskeKareleri(this.isikliYuva, c, d);
     this.pisti = new Uint8Array(t.w * t.h);
     this.isikGuncelle(true);
   }
@@ -294,6 +299,7 @@ export class Sandik {
     if (hepsi) {
       x.clearRect(0, 0, this.ow, this.oh);
       this.pisti.fill(0);
+      this.isikVar = false;
     }
     for (let i = 0; i < t.hucreler.length; i++) {
       const h = t.hucreler[i];
@@ -301,6 +307,7 @@ export class Sandik {
         if (this.pisti[i]) {
           // Geri sarma vb.: tüm katmanı yeniden kur.
           this.pisti.fill(0);
+          this.isikVar = false;
           x.clearRect(0, 0, this.ow, this.oh);
           this.isikGuncelle(false);
           return;
@@ -309,6 +316,7 @@ export class Sandik {
       }
       if (this.pisti[i] || h.isikAcilis < 1) continue;
       this.pisti[i] = 1;
+      this.isikVar = true;
       const hx = i % t.w;
       const hy = (i - hx) / t.w;
       const sp = this.isikliYuva;
@@ -322,26 +330,20 @@ export class Sandik {
     if (!this.govde || !this.isik) return;
     c.drawImage(this.govde, this.ox, this.oy, this.ow, this.oh);
     this.isikGuncelle();
-    c.drawImage(this.isik, this.ox, this.oy, this.ow, this.oh);
-    // Açılan yuvalar: dairesel maske 0→1.
+    if (this.isikVar) c.drawImage(this.isik, this.ox, this.oy, this.ow, this.oh);
+    // Açılan yuvalar: dairesel maske 0→1 (önceden pişmiş kareler).
     const t = s.tahta;
-    const sp = this.isikliYuva!;
+    const n = this.acilis.length;
     for (let i = 0; i < t.hucreler.length; i++) {
       const h = t.hucreler[i];
       if (!h.isikIzi || h.isikAcilis >= 1) continue;
       const hx = i % t.w;
       const hy = (i - hx) / t.w;
-      const cx = s.mx(hx);
-      const cy = s.my(hy);
       const k = 1 - (1 - h.isikAcilis) * (1 - h.isikAcilis) * (1 - h.isikAcilis);
-      c.save();
-      c.beginPath();
-      c.arc(cx, cy, k * s.c * 0.72, 0, Math.PI * 2);
-      c.clip();
-      c.drawImage(sp.t, cx - s.c / 2, cy - s.c / 2, sp.w, sp.h);
-      c.restore();
+      const sp = this.acilis[Math.min(n - 1, Math.floor(k * n))];
+      c.drawImage(sp.t, s.mx(hx) - sp.ox, s.my(hy) - sp.oy, sp.w, sp.h);
     }
-    if (this.parla > 0) {
+    if (this.parla > 0 && this.isikVar) {
       c.globalCompositeOperation = 'lighter';
       c.globalAlpha = this.parla * (0.55 + 0.25 * Math.sin(s.zaman * 0.004));
       c.drawImage(this.isik, this.ox, this.oy, this.ow, this.oh);
@@ -360,4 +362,20 @@ export class Sandik {
     const h = this.pay;
     c.drawImage(this.govde, 0, 0, this.govde.width, h * d, this.ox, this.oy, this.ow, h);
   }
+}
+
+/** Hücre sprite'ının dairesel maskeyle açılış kareleri (yarıçap 0 → 0,72c). */
+export function maskeKareleri(kaynak: Sprite, c: number, d: number, n = 10): Sprite[] {
+  const kareler: Sprite[] = [];
+  for (let k = 1; k <= n; k++) {
+    kareler.push(
+      spriteUret(kaynak.w, kaynak.h, d, (x) => {
+        x.beginPath();
+        x.arc(0, 0, (k / n) * c * 0.72, 0, Math.PI * 2);
+        x.clip();
+        x.drawImage(kaynak.t, -kaynak.ox, -kaynak.oy, kaynak.w, kaynak.h);
+      }),
+    );
+  }
+  return kareler;
 }

@@ -369,7 +369,22 @@ declare global {
     __cizici: unknown;
   }
 }
+/** Kaba kare maliyeti ölçümü: n kare (16,7 ms adım) ortalaması, ms. */
+function olc(n = 120): { ortalama: number; enKotu: number; parcacik: number } {
+  let enKotu = 0;
+  let enCokParcacik = 0;
+  const t0 = performance.now();
+  for (let i = 0; i < n; i++) {
+    const a = performance.now();
+    cizici.kare(1000 / 60);
+    enKotu = Math.max(enKotu, performance.now() - a);
+    enCokParcacik = Math.max(enCokParcacik, cizici.dev.sayac().parcacik);
+  }
+  return { ortalama: (performance.now() - t0) / n, enKotu, parcacik: enCokParcacik };
+}
+
 window.__cizici = {
+  olc,
   cizici,
   stage,
   dev: cizici.dev,
@@ -385,7 +400,7 @@ window.__cizici = {
 
 // ------------------------------------------------------------------ URL ile başlat
 yerlesim();
-if (q.get('vurgu') === 'zorunlu') cizici.vurgula(BUYUK_YOL, 'zorunlu');
+if (q.get('vurgu') === 'zorunlu') cizici.vurgula(veri.zorunluIlkHamle ? veri.zorunluIlkHamle.map(([x, y]) => ({ x, y })) : BUYUK_YOL, 'zorunlu');
 if (q.get('vurgu') === 'ipucu') cizici.vurgula(BUYUK_YOL, 'ipucu');
 if (q.get('vurgu') === 'secim') cizici.vurgula([{ x: 2, y: 2 }, { x: 3, y: 2 }, { x: 4, y: 2 }, { x: 2, y: 3 }, { x: 3, y: 3 }, { x: 4, y: 3 }], 'secim');
 if (q.get('el') === '1') cizici.elGoster(tahtaAd === 'b1' ? [{ x: 0, y: 5 }, { x: 1, y: 5 }, { x: 2, y: 5 }, { x: 3, y: 5 }] : BUYUK_YOL);

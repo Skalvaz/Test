@@ -28,6 +28,8 @@ export class EngelSpritelari {
   is!: Sprite;
   doseme: Sprite[] = [];
   dosemeIsik!: Sprite;
+  /** Aydınlanma açılışı: dairesel maske kareleri. */
+  dosemeAcilis: Sprite[] = [];
   desen: Sprite[] = [];
   desenBoyali: Sprite[] = [];
   private halka = new Map<string, Sprite>();
@@ -59,6 +61,18 @@ export class EngelSpritelari {
     this.doseme = [];
     for (let kat = 1; kat <= 2; kat++) this.doseme[kat] = spriteUret(c, c, dpr, (x) => doseme(x, c, kat, false));
     this.dosemeIsik = spriteUret(c, c, dpr, (x) => doseme(x, c, 1, true));
+    this.dosemeAcilis = [];
+    for (let k = 1; k <= 10; k++) {
+      const kaynak = this.dosemeIsik;
+      this.dosemeAcilis.push(
+        spriteUret(c, c, dpr, (x) => {
+          x.beginPath();
+          x.arc(0, 0, (k / 10) * c * 0.75, 0, Math.PI * 2);
+          x.clip();
+          x.drawImage(kaynak.t, -kaynak.ox, -kaynak.oy, kaynak.w, kaynak.h);
+        }),
+      );
+    }
     this.desen = renkler.map((k) => spriteUret(c, c, dpr, (x) => desen(x, c, k, false)));
     this.desenBoyali = renkler.map((k) => spriteUret(c, c, dpr, (x) => desen(x, c, k, true)));
     return true;
