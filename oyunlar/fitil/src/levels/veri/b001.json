@@ -1,0 +1,36 @@
+{
+  "id": 1,
+  "ad": "İlk Kıvılcım",
+  "mahalle": 0,
+  "tur": "ogretim",
+  "w": 5,
+  "h": 6,
+  "renkSayisi": 3,
+  "esik": 4,
+  "hamle": 12,
+  "tohum": 1001,
+  "yardim": 3,
+  "ozelEsikleri": [0, 0, 0],
+  "hedefler": [{ "tur": "topla", "renk": "hepsi", "adet": 25 }],
+  "duzen": [
+    ". . . . .",
+    ". . . . .",
+    ". . . . .",
+    ". . . . .",
+    ". . . . .",
+    ". . . . ."
+  ],
+  "sabitKapsuller": [
+    { "x": 0, "y": 4, "renk": 2 }, { "x": 1, "y": 4, "renk": 1, "isi": 3 }, { "x": 2, "y": 4, "renk": 2 },
+    { "x": 0, "y": 5, "renk": 0 }, { "x": 1, "y": 5, "renk": 0 }, { "x": 2, "y": 5, "renk": 0 }, { "x": 3, "y": 5, "renk": 0 }, { "x": 4, "y": 5, "renk": 2 }
+  ],
+  "zorunluIlkHamle": [[0, 5], [1, 5], [2, 5], [3, 5]],
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Aynı renkleri parmağınla birleştir, bırak.", "el": [[0, 5], [1, 5], [2, 5], [3, 5]] },
+    { "tetik": "ilkHamleSonrasi", "metin": "Kızgın kapsüller yanındaki patlamayla tutuşur!" },
+    { "tetik": "kisaYol", "metin": "En az 3." }
+  ],
+  "botBandi": [98, 100],
+  "yildizEsikleri": [1500, 2200],
+  "sonrakiTanitim": "Sıradaki: Roket!"
+}
