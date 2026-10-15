@@ -689,7 +689,7 @@ Usta'nın Eli'ni kullanmaz.
 | rahatlama | ≥ %60 | [95, 100] |
 - Ölçüm: Usta 100 tohum (onay), Acemi 120 tohum (60 tohumda ±%5 oynar); zor bölümde Acemi p50 için 200+ tohum. Bot koşularında en fazla **2 işçi** (makinede 4 çekirdek).
 - **Yıldızlar (K13):** 2★ = min(Usta p50, Acemi kazanç p50), 3★ = Usta p85; kazançların puanı, aşağı 100'e yuvarlanır (`npm run kalibre`, 500 + 500 tohum). Öğretimde elle: 2★ ≈ Acemi kazanç p40, 3★ ≈ Usta p50 (`elleEsik: true`).
-- **Ek ölçütler (doğrulayıcı):** Usta öncesi durumlarda ≥ 2 hazır oranı ≥ %90, 0 hazır ≤ %3; Acemi eşleşen hamle ≥ %60; Tarak ≤ 0,35/hamle; kaskat medyanı ≤ 1; tahmini süre (hamle × 3,5 sn) 60–180 sn; **yakın kaçış:** kayıpların ≥ %30'unda `ilerlemeYuzdesi ≥ 0,8` (yalnız tasarımla, dolum hilesi yok).
+- **Ek ölçütler (doğrulayıcı):** Usta öncesi durumlarda ≥ 2 hazır oranı ≥ %90, 0 hazır ≤ %3; Acemi eşleşen hamle ≥ %60; Tarak ≤ 0,35/hamle; kaskat medyanı ≤ 1; tahmini süre (Usta hamle medyanı × 3,5 sn) 45–150 sn; **yakın kaçış:** kayıpların ≥ %30'unda `ilerlemeYuzdesi ≥ 0,8` (yalnız tasarımla, dolum hilesi yok).
 
 ### 14.5 Doğrulayıcı (CI)
 - **Statik:** boyut ve aralıklar; simge geçerliliği; zemin katmanları delikte değil; yağ/desen mermerin altında değil; desen renkleri karışık ve bölümde doğabilir (ebeveynlerinin ağırlığı > 0); hedefin nesnesi tahtada var; başlangıç tahtası grupsuz ve geçerli hamleli; `garanti` 0–3; `murekkep` yalnız id ≥ 11 (tanıtım hariç); `zorunluIlkHamle` geçerli ve hazır.

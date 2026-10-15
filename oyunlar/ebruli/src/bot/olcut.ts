@@ -8,7 +8,7 @@
  * Bölüm verisindeki `botBandi` / `acemiAlt` bağlayıcıdır (tablo varsayılan).
  * Ek ölçütler (Usta): hamle öncesi ≥ 2 hazır ≥ %90, 0 hazır ≤ %3; Acemi
  * eşleşen hamle ≥ %60; Tarak ≤ 0,35/hamle; kaskat medyanı ≤ 1; tahmini süre
- * (hamle × 3,5 sn) 60–180 sn; yakın kaçış: kayıpların ≥ %30'unda ilerleme
+ * (Usta hamle medyanı × 3,5 sn) 45–150 sn; yakın kaçış: kayıpların ≥ %30'unda ilerleme
  * ≥ 0,8. Öğretimde (kısa, kurgulu) süre alt sınırı ve yakın kaçış uyarıdır.
  */
 import type { BolumVerisi } from '../core/index';
@@ -21,6 +21,10 @@ export const BANTLAR: Record<BolumVerisi['tur'], { acemi: number; usta: [number,
   zor: { acemi: 10, usta: [60, 85] },
   rahatlama: { acemi: 60, usta: [95, 100] },
 };
+
+/** Usta tahmini süre bandı (sn; hamle × 3,5 sn medyanı). */
+export const SURE_ALT = 45;
+export const SURE_UST = 150;
 
 export interface BolumOlcumu {
   bolumId: number;
@@ -153,8 +157,8 @@ export function olcutHatalari(v: BolumVerisi, o: BolumOlcumu, uyarilar: string[]
   if (o.acemiEslesme !== null && o.acemiEslesme < 60) h.push(`Acemi eşleşen hamle %${o.acemiEslesme.toFixed(0)} < %60`);
   if (o.tarakHamle > 0.35) h.push(`Tarak ${o.tarakHamle.toFixed(2)}/hamle > 0,35`);
   if (o.kaskatMedyan > 1) h.push(`kaskat medyanı ${o.kaskatMedyan} > 1`);
-  if (o.sureSn > 180) h.push(`süre ${o.sureSn.toFixed(0)} sn > 180`);
-  if (o.sureSn < 60) (ogretim ? uyarilar : h).push(`süre ${o.sureSn.toFixed(0)} sn < 60`);
+  if (o.sureSn > SURE_UST) h.push(`süre ${o.sureSn.toFixed(0)} sn > ${SURE_UST}`);
+  if (o.sureSn < SURE_ALT) (ogretim ? uyarilar : h).push(`süre ${o.sureSn.toFixed(0)} sn < ${SURE_ALT}`);
   if (o.yakinKacis !== null && o.yakinKacis < 30) (ogretim ? uyarilar : h).push(`yakın kaçış %${o.yakinKacis.toFixed(0)} < %30`);
   const [y2, y3] = v.yildizEsikleri;
   if (!(y2 > 0 && y3 >= y2)) h.push(`yıldız eşikleri [${y2}, ${y3}] geçersiz`);

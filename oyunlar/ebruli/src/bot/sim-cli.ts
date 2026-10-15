@@ -381,7 +381,8 @@ function hamleMetni(h: Hamle): string {
 }
 
 function tek(a: Argumanlar): number {
-  const [v] = seciliBolumler({ ...a, bolumler: a.bolumler ?? [1] });
+  // --dosya verilince varsayılan bölüm 1 eklenmez (yoksa dosya yerine bölüm 1 oynanırdı).
+  const [v] = seciliBolumler({ ...a, bolumler: a.bolumler ?? (a.dosyalar.length ? [] : [1]) });
   const tohum = a.tohum ?? 0;
   console.log(`bölüm ${ad(v)} «${v.ad}» ${v.w}×${v.h}, ${v.hamle} hamle, tohum ${tohum}, bot ${a.bot}`);
   const r = oyunOyna(v, tohum, a.bot, {

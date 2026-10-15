@@ -5,25 +5,12 @@
   "tur": "rahatlama",
   "w": 7,
   "h": 9,
-  "hamle": 20,
+  "hamle": 26,
   "tohum": 1016,
-  "dogum": [
-    30,
-    0,
-    30,
-    8,
-    16,
-    8
-  ],
+  "dogum": [28, 4, 28, 8, 18, 8],
   "garanti": 2,
   "murekkep": true,
-  "hedefler": [
-    {
-      "tur": "topla",
-      "renk": 5,
-      "adet": 18
-    }
-  ],
+  "hedefler": [{ "tur": "topla", "renk": 5, "adet": 40 }],
   "duzen": [
     ". . . . . . .",
     ". . . . . . .",
@@ -33,23 +20,13 @@
     ". . . . . . .",
     ". . . . . . .",
     ". . . . . . .",
-    ". . . . . . ."
+    ". 2 . . . 2 ."
   ],
-  "botBandi": [
-    95,
-    100
-  ],
-  "acemiAlt": 60,
-  "yildizEsikleri": [
-    3000,
-    4500
-  ],
-  "taslak": true,
   "ipuclari": [
-    {
-      "tetik": "baslangic",
-      "metin": "Sarı yağmıyor. Elindekini iyi kullan."
-    }
+    { "tetik": "baslangic", "metin": "Sarı yağmıyor. Elindekini iyi kullan." }
   ],
-  "sonrakiTanitim": "Sıradaki: Karanfil!"
+  "sonrakiTanitim": "Sıradaki: Karanfil deseni!",
+  "botBandi": [95, 100],
+  "acemiAlt": 60,
+  "yildizEsikleri": [2000, 3000]
 }

@@ -5,27 +5,14 @@
   "tur": "normal",
   "w": 7,
   "h": 9,
-  "hamle": 28,
+  "hamle": 26,
   "tohum": 1012,
-  "dogum": [
-    20,
-    20,
-    20,
-    11,
-    11,
-    11
-  ],
+  "dogum": [20, 20, 20, 11, 11, 11],
   "garanti": 2,
   "murekkep": true,
   "hedefler": [
-    {
-      "tur": "topla",
-      "renk": 3,
-      "adet": 15
-    },
-    {
-      "tur": "kagit"
-    }
+    { "tur": "topla", "renk": 3, "adet": 15 },
+    { "tur": "kagit" }
   ],
   "duzen": [
     ". . . . . . .",
@@ -38,69 +25,14 @@
     ". . . . . . .",
     ". . . . . . ."
   ],
-  "botBandi": [
-    85,
-    100
-  ],
-  "acemiAlt": 25,
-  "yildizEsikleri": [
-    3000,
-    4500
-  ],
-  "taslak": true,
   "zemin": {
     "kagit": [
-      [
-        1,
-        7,
-        1
-      ],
-      [
-        2,
-        7,
-        1
-      ],
-      [
-        3,
-        7,
-        1
-      ],
-      [
-        4,
-        7,
-        1
-      ],
-      [
-        5,
-        7,
-        1
-      ],
-      [
-        1,
-        8,
-        1
-      ],
-      [
-        2,
-        8,
-        1
-      ],
-      [
-        3,
-        8,
-        1
-      ],
-      [
-        4,
-        8,
-        1
-      ],
-      [
-        5,
-        8,
-        1
-      ]
+      [0, 5, 1], [1, 5, 1], [1, 4, 1], [2, 4, 1], [2, 3, 1], [3, 3, 1],
+      [3, 2, 1], [4, 2, 1], [4, 1, 1], [5, 1, 1]
     ]
   },
-  "sonrakiTanitim": "Sıradaki: Yağ lekesi!"
+  "sonrakiTanitim": "Sıradaki: Yağ lekesi!",
+  "botBandi": [85, 100],
+  "acemiAlt": 25,
+  "yildizEsikleri": [2000, 3000]
 }
