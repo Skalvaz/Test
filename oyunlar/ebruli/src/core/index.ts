@@ -22,7 +22,7 @@ export { bolumuYukle, BolumHatasi, hedefDurumu, bosIstatistik } from './bolumYuk
 export { karisimSonucu, gruplariBul, gecerliHamleVar, durumKopyala, gruplanir, hamMi, karisikMi, damla, idx, konum, icinde, bosHucre, DIK } from './tahta';
 export { rngSonraki, rngInt, agirlikliSec, oyunTohumu, fnv1a, mulberry32Bir } from './rng';
 export * as SABIT from './sabitler';
-export { hamleUygula, hamleHatasi, gecerliHedefler, HamleHatasiIstisnasi } from './hamle';
+export { hamleUygula, hamleHatasi, gecerliHedefler, gecerliHamleler, HamleHatasiIstisnasi } from './hamle';
 export { onizle, onizleDetay, olumluHamleler, type OnizlemeDetayi } from './onizle';
 export { ebruSoleni, ustaEliUygula, EylemHatasi, SOLEN_TARAK_SINIRI } from './solen';
 export { hazirCiftSayisi, hazirHamleler, karisimHamleleri, type IndeksHamle } from './hazir';

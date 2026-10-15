@@ -10,9 +10,10 @@
  * çözüm belirlenimli ve okunur kalır); garanti varsayılan 0.
  */
 import { BolumHatasi, bolumuYukle, bosIstatistik, hedefDurumu } from './bolumYukle';
+import { gecerliHamleler } from './hamle';
 import { oyunTohumu, rngInt } from './rng';
 import { VARSAYILAN_OZEL_ESIKLERI } from './sabitler';
-import { DIK, bosHucre, damla, karisimSonucu } from './tahta';
+import { bosHucre, damla } from './tahta';
 import type { BolumVerisi, Damla, Hamle, Hedef, Hucre, Icerik, KarisikRenk, Konum, OyunDurumu, Renk } from './types';
 
 export function bolum(satirlar: string[], ek: Partial<BolumVerisi> = {}): BolumVerisi {
@@ -135,28 +136,8 @@ export function tahtaMetni(d: OyunDurumu): string[] {
 
 export const H = (kx: number, ky: number, ex: number, ey: number): Hamle => ({ tur: 'surukle', kaynak: { x: kx, y: ky }, hedef: { x: ex, y: ey } });
 
-/** Bütün geçerli hamleler (karışım + özel sürükleme), kaynak indeksi sonra DIK sırasıyla. */
-export function tumHamleler(d: OyunDurumu): Hamle[] {
-  const out: Hamle[] = [];
-  if (d.bitti || d.kalanHamle <= 0) return out;
-  for (let y = 0; y < d.h; y++)
-    for (let x = 0; x < d.w; x++) {
-      const hk = d.hucreler[y * d.w + x];
-      const a = damla(hk);
-      if (!a || hk.yag) continue;
-      for (const o of DIK) {
-        const xx = x + o.x;
-        const yy = y + o.y;
-        if (xx < 0 || yy < 0 || xx >= d.w || yy >= d.h) continue;
-        const he = d.hucreler[yy * d.w + xx];
-        const b = damla(he);
-        if (!b || he.yag) continue;
-        if (a.ozel === 'yok' && b.ozel === 'yok' && 'hata' in karisimSonucu(a.renk as Renk, b.renk as Renk, d.kurallar.murekkep)) continue;
-        out.push({ tur: 'surukle', kaynak: { x, y }, hedef: { x: xx, y: yy } });
-      }
-    }
-  return out;
-}
+/** Bütün geçerli hamleler (çekirdeğin `gecerliHamleler`i). */
+export const tumHamleler = gecerliHamleler;
 
 /**
  * Rastgele geçerli hamle; özel taşa dokunanlar (özellikle özel + özel)

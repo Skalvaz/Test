@@ -1,0 +1,11 @@
+{
+  "aciklama": "Usta botu ağırlıkları (GDD §14.3). V = hedef·Δ(hedef ilerleme oranı) + puan·Δpuan + ozel·(tarak 1, girdap 2, lale 4) + hazir·min(hazirTavan, sonraki hazır çift) + murekkep·[Mürekkep üretti ve işe yarar] − sonHamle·[kazanç yokken kalanHamle = 0]. 'tamCozum': V0'ı (doğumsuz önizleme) en yüksek bu kadar aday dürüst RNG ile tam çözülür (hazır sayısı dolumlu tahtada).",
+  "hedef": 1000,
+  "puan": 0.05,
+  "ozel": 25,
+  "hazir": 4,
+  "hazirTavan": 6,
+  "murekkep": 6,
+  "sonHamle": 300,
+  "tamCozum": 8
+}

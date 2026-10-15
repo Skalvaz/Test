@@ -59,6 +59,33 @@ export function gecerliHedefler(d: OyunDurumu, kaynak: Konum): Konum[] {
 }
 
 /**
+ * Bütün geçerli hamleler (§14.1): karışımlar ve özel taşa dokunan
+ * sürüklemeler; kaynak indeksi, sonra DIK sırasıyla (yukarı, sağ, aşağı,
+ * sol). Bölüm bittiyse ya da hamle kalmadıysa boş.
+ */
+export function gecerliHamleler(d: OyunDurumu): Hamle[] {
+  const out: Hamle[] = [];
+  if (d.bitti || d.kalanHamle <= 0) return out;
+  for (let y = 0; y < d.h; y++)
+    for (let x = 0; x < d.w; x++) {
+      const hk = d.hucreler[y * d.w + x];
+      const a = damla(hk);
+      if (!a || hk.yag) continue;
+      for (const o of DIK) {
+        const xx = x + o.x;
+        const yy = y + o.y;
+        if (!icinde(d, xx, yy)) continue;
+        const he = d.hucreler[yy * d.w + xx];
+        const b = damla(he);
+        if (!b || he.yag) continue;
+        if (a.ozel === 'yok' && b.ozel === 'yok' && 'hata' in karisimSonucu(a.renk as Renk, b.renk as Renk, d.kurallar.murekkep)) continue;
+        out.push({ tur: 'surukle', kaynak: { x, y }, hedef: { x: xx, y: yy } });
+      }
+    }
+  return out;
+}
+
+/**
  * Eylem (§4.2 adım 1) ve çözümleme döngüsü. Çağıran geçerliliği denetler.
  * Hem `hamleUygula` hem önizleme (`dogumsuz`) bunu kullanır.
  */
