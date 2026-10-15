@@ -12,8 +12,12 @@ import { Uygulama, type SicakVeri } from './app/uygulama';
 declare global {
   interface Window {
     __fitil?: Record<string, unknown>;
+    /** Paket çalıştı: index.html'deki yedek ekran ("oyun açılamadı") gösterilmez. */
+    __fitilAcildi?: boolean;
   }
 }
+
+window.__fitilAcildi = true;
 
 // Gömülü yazı tipi ilk çizimden önce (GDD §13.5: çalışma anında ağ isteği yok).
 yaziTipiniGom();

@@ -12,8 +12,29 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+/* Yedek ekran: oyunun kodu hiç çalışmazsa (dosya önizleyicileri, Android
+   "HTML Görüntüleyici") ya da 5 sn içinde açılamazsa görünür. */
+#jsyok{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:#0B1030;color:#FFF3D6;font:600 17px/1.45 ui-rounded,"SF Pro Rounded","Segoe UI",system-ui,sans-serif;padding:max(24px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));text-align:left;-webkit-user-select:text;user-select:text}
+#jsyok>div{max-width:30em}
+#jsyok h1{margin:0 0 .4em;font-size:40px;letter-spacing:.06em;color:#FFB020}
+#jsyok p{margin:.6em 0}
+#jsyok b{color:#F2C66D}
+#jsyok a{color:#7CC8FF;word-break:break-all}
+.js #jsyok{display:none}
+</style>
+<script>
+document.documentElement.classList.add('js');
+setTimeout(function(){if(!window.__fitilAcildi)document.documentElement.classList.remove('js')},5000);
+</script>
 </head>
 <body>
+<div id="jsyok"><div>
+<h1>FİTİL</h1>
+<p>Oyun bu ekranda açılamadı. Dosya büyük ihtimalle bir <b>önizleme</b> ekranında açıldı; önizlemeler oyunun kodunu çalıştırmaz.</p>
+<p><b>Android:</b> dosyaya dokun, «Birlikte aç» de ve <b>Chrome</b>'u seç. Dosya indirildiyse Dosyalar uygulamasında uzun bas, «Birlikte aç → Chrome».</p>
+<p><b>iPhone:</b> dosya önizlemesinde çalışmaz. Bu bağlantıyı Safari'de aç:<br><a href="https://claude.ai/artifact/1RuRyPm6B9mDRPsYE5CKRC">https://claude.ai/artifact/1RuRyPm6B9mDRPsYE5CKRC</a></p>
+</div></div>
 <div id="app"></div>
 <script type="module" src="./src/main.ts"></script>
 </body>
