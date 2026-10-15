@@ -4,19 +4,17 @@
   "atolye": "uskudar",
   "tur": "zor",
   "w": 7,
-  "h": 9,
-  "hamle": 19,
+  "h": 7,
+  "hamle": 18,
   "tohum": 1006,
   "dogum": [18, 18, 18, 15, 15, 16],
   "garanti": 2,
   "murekkep": false,
   "hedefler": [
     { "tur": "kagit" },
-    { "tur": "topla", "renk": 5, "adet": 26 }
+    { "tur": "topla", "renk": 5, "adet": 22 }
   ],
   "duzen": [
-    ". . . . . . .",
-    ". . . . . . .",
     ". . . . . . .",
     ". . . . . . .",
     ". . . . . . .",

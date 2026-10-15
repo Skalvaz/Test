@@ -5,14 +5,14 @@
   "tur": "normal",
   "w": 7,
   "h": 7,
-  "hamle": 24,
+  "hamle": 28,
   "tohum": 1017,
   "dogum": [22, 24, 16, 16, 6, 16],
   "garanti": 2,
   "murekkep": true,
   "hedefler": [
     { "tur": "desen", "motif": "karanfil" },
-    { "tur": "topla", "renk": 3, "adet": 22 }
+    { "tur": "topla", "renk": 3, "adet": 26 }
   ],
   "duzen": [
     ". . . 2 . . .",
