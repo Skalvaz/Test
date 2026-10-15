@@ -137,4 +137,10 @@ describe('statik doğrulayıcı (§16.5)', () => {
     expect(icerir(bozuk({ botBandi: [30, 50] }), "%35'in altında")).toBe(true);
     expect(icerir(bozuk({ yildizEsikleri: [5000, 4000] }), 'yildizEsikleri')).toBe(true);
   });
+
+  it('eşik kuralı (K24) yalnız k24 ve elle eşikle birlikte değil', () => {
+    expect(bozuk({ esikKurali: 'k24', elleEsik: undefined })).toEqual([]);
+    expect(icerir(bozuk({ esikKurali: 'k25' as 'k24' }), 'esikKurali')).toBe(true);
+    expect(icerir(bozuk({ esikKurali: 'k24', elleEsik: true }), 'elleEsik')).toBe(true);
+  });
 });

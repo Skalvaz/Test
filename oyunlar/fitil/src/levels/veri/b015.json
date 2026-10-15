@@ -7,25 +7,30 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 25,
+  "hamle": 24,
   "tohum": 443875420,
-  "yardim": 1,
+  "yardim": 3,
   "ozelEsikleri": [6, 9, 12],
   "hedefler": [{ "tur": "kaya" }, { "tur": "fener", "adet": 3 }],
   "duzen": [
-    ". F . . . . F .",
     ". . . . . . . .",
-    ". . . K2 K2 . . .",
+    ". . . F . . . .",
+    ". . F . . F . .",
     ". . . . . . . .",
-    "K2 . . . . . . K2",
-    ". . K3 . . K3 . .",
+    "K2 K2 K2 K3 K3 K2 K2 K2",
     ". . . . . . . .",
-    ". . . K2 K2 . . .",
-    "K3 K2 . . . . K2 K3"
+    ". . . . . . . .",
+    ". . . . . . . .",
+    ". . . . . . . ."
   ],
-  "fenerDogum": { "kalan": 1, "sahadaEnFazla": 2 },
-  "kurallar": { "soguma": 4 },
-  "botBandi": [45, 55],
+  "onIsi": [
+    [0, 6, 2], [1, 6, 2], [2, 6, 2], [3, 6, 2], [4, 6, 2], [5, 6, 2], [6, 6, 2], [7, 6, 2],
+    [0, 7, 2], [1, 7, 2], [2, 7, 2], [3, 7, 2], [4, 7, 2], [5, 7, 2], [6, 7, 2], [7, 7, 2],
+    [0, 8, 2], [1, 8, 2], [2, 8, 2], [3, 8, 2], [4, 8, 2], [5, 8, 2], [6, 8, 2], [7, 8, 2]
+  ],
+  "ipuclari": [{ "tetik": "baslangic", "metin": "Dalgakıran kalın: kayalar her patlamada bir kat incelir." }],
+  "kurallar": { "caprazSiniri": 2 },
+  "botBandi": [60, 85],
   "yildizEsikleri": [11200, 13900],
   "sonrakiTanitim": "Sıradaki: Dev Fişek!"
 }

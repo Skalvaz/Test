@@ -187,6 +187,9 @@ export function bolumDogrula(v: BolumVerisi): string[] {
   else if (bMin < 35) hata(`botBandi alt sınırı %35'in altında: ${bMin}`);
   const [p50, p85] = v.yildizEsikleri ?? [];
   if (!aralikta(p50, 0, 1e7) || !aralikta(p85, 0, 1e7) || p50 > p85) hata(`yildizEsikleri geçersiz: ${v.yildizEsikleri}`);
+  // K24: eşik kuralı bayrağı yalnız 'k24'; elle eşikle (K22) birlikte olamaz.
+  if (v.esikKurali !== undefined && v.esikKurali !== 'k24') hata(`esikKurali geçersiz: ${String(v.esikKurali)}`);
+  else if (v.esikKurali && v.elleEsik) hata('esikKurali ile elleEsik birlikte kullanılamaz');
 
   // İpuçları ve zorunlu ilk hamle (§15).
   for (const ip of v.ipuclari ?? []) {

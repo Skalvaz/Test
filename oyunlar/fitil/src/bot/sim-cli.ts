@@ -6,6 +6,7 @@
  *   npm run dogrula -- --bolum 7 --tohum 30               bir bölüm, 30 tohum
  *   npm run kalibre                                       500 tohum, yildizEsikleri yazar
  *   npm run kalibre -- --bolum 7 --yazma                  yazmadan göster
+ *   npm run kalibre -- --bolum 6-19 --kural k24           K24 eşikleri (+ Acemi), bayrağı yazar
  *   npm run bot -- --dagilim --bolum 1-12 --tohum 100 --acemi-tohum 60
  *                                                         Usta + Acemi kazanma ve yıldız dağılımı
  *
@@ -18,13 +19,20 @@
  *   --isci N       İşçi sayısı (varsayılan min(3, çekirdek − 1))
  *   --taslaklar    Taslak bölümleri de simüle et (hataları başarısızlık sayılmaz)
  *   --acemi        Acemi botu her bölümde ölç (öğretim ve tanıtımda varsayılan açık)
- *   --acemi-tohum K  --dagilim'de Acemi tohum sayısı (varsayılan --tohum)
+ *   --acemi-tohum K  --dagilim, --dogrula ve K24 --kalibre'de Acemi tohum sayısı
+ *                  (varsayılan --tohum)
+ *   --kural k24    --kalibre'de K24 eşik kuralı (bölüme "esikKurali": "k24" yazar)
  *   --json DOSYA   Ölçümleri JSON olarak yaz
  *   --yazma        --kalibre'de JSON'a yazma
  *
  * `elleEsik: true` taşıyan bölümlerin (öğretim, GDD K22) yıldız eşiklerini
  * kalibre YAZMAZ, yalnız Usta önerisini gösterir; bu eşikler `--dagilim`
  * çıktısındaki Acemi/Usta yüzdeliklerinden elle seçilir.
+ *
+ * K24 (GDD K24, 6–25): `"esikKurali": "k24"` taşıyan bölümde (ya da
+ * `--kural k24` ile) kalibre Acemi'yi de oynatır ve 2★ = min(Usta p50,
+ * Acemi kazançlarının p50'si), 3★ = Usta p85 yazar; `--kural k24` bayrağı
+ * da JSON'a ekler. `--dagilim` "K24 önerisi" sütununu her bölüm için gösterir.
  *
  * Paralellik worker_threads ile; işçi bu dosyanın kendisidir (tsx API'siyle
  * `import.meta.url` içe aktarılır), yol ayırıcısından bağımsız.
@@ -39,7 +47,7 @@ import { bolumuYukle, ilerlemeYuzdesi } from '../core/index';
 import type { BolumVerisi, Hamle } from '../core/index';
 import { TUM_BOLUMLER, bolumGetir } from '../levels/index';
 import { bolumDogrula } from '../levels/dogrulayici';
-import { olcumHesapla, olcutHatalari, yildizEsikleriHesapla, yildizEsikleriOgretim, yuzdelik, type BolumOlcumu } from './olcut';
+import { olcumHesapla, olcutHatalari, yildizEsikleriHesapla, yildizEsikleriK24, yildizEsikleriOgretim, yuzdelik, type BolumOlcumu } from './olcut';
 import type { BotTuru } from './ortak';
 import { oyunOyna, type OyunSonucu } from './simulasyon';
 
@@ -85,6 +93,8 @@ interface Argumanlar {
   acemiTohum: number | null;
   json: string | null;
   yazma: boolean;
+  /** --kalibre'de eşik kuralı (null = bölümün `esikKurali`'na göre). */
+  kural: 'k24' | null;
 }
 
 function argumanlar(argv: string[]): Argumanlar {
@@ -101,6 +111,7 @@ function argumanlar(argv: string[]): Argumanlar {
     acemiTohum: null,
     json: null,
     yazma: true,
+    kural: null,
   };
   for (let k = 0; k < argv.length; k++) {
     const s = argv[k];
@@ -156,6 +167,12 @@ function argumanlar(argv: string[]): Argumanlar {
       case '--yazma':
         a.yazma = false;
         break;
+      case '--kural': {
+        const k = deger();
+        if (k !== 'k24') throw new Error('--kural k24');
+        a.kural = k;
+        break;
+      }
       case '--yardim':
       case '-h':
         console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('*/')[0]);
@@ -318,9 +335,12 @@ async function dogrula(a: Argumanlar): Promise<number> {
   const ustaG = gorevleriKur(sim, 'usta', a.bas, sayi, () => 0, 0);
   // Acemi ölçümü ucuzdur (Usta'nın ~1/5'i): öğretim ve tanıtımda hep ölçülür (izleme ölçütleri).
   const acemiBolum = sim.filter((v) => a.acemi || v.tur === 'ogretim' || v.tur === 'tanitim');
-  const acemiG = gorevleriKur(acemiBolum, 'acemi', a.bas, sayi, () => 0, ustaG.length);
+  const nA = a.acemiTohum ?? sayi;
+  const acemiG = gorevleriKur(acemiBolum, 'acemi', a.bas, nA, () => 0, ustaG.length);
   const gorevler = [...ustaG, ...acemiG];
-  console.log(`Doğrulama: ${sim.length} bölüm × ${sayi} tohum (Usta${acemiBolum.length ? `, Acemi ${acemiBolum.length} bölüm` : ''}), ${Math.min(a.isci, gorevler.length)} işçi`);
+  console.log(
+    `Doğrulama: ${sim.length} bölüm × ${sayi} tohum (Usta${acemiBolum.length ? `, Acemi ${acemiBolum.length} bölüm × ${nA}` : ''}), ${Math.min(a.isci, gorevler.length)} işçi`,
+  );
   const cevap = await havuz(gorevler, a.isci, ilerlemeYaz);
   if (process.stderr.isTTY) process.stderr.write('\n');
   console.log(tabloBaslik());
@@ -347,12 +367,19 @@ function bolumDosyasi(id: number): string {
   return fileURLToPath(new URL(`../levels/veri/${ad}.json`, import.meta.url));
 }
 
-/** Biçimi koruyarak yalnız `yildizEsikleri` satırını değiştir. */
-function yildizYaz(id: number, esik: [number, number]): void {
+/**
+ * Biçimi koruyarak yalnız `yildizEsikleri` satırını değiştir. `k24`: dosyada
+ * yoksa hemen arkasına `"esikKurali": "k24"` ekler (K24 bayrağı).
+ */
+function yildizYaz(id: number, esik: [number, number], k24 = false): void {
   const dosya = bolumDosyasi(id);
   const metin = readFileSync(dosya, 'utf8');
-  const yeni = metin.replace(/"yildizEsikleri"\s*:\s*\[[^\]]*\]/, `"yildizEsikleri": [${esik[0]}, ${esik[1]}]`);
+  let yeni = metin.replace(/"yildizEsikleri"\s*:\s*\[[^\]]*\]/, `"yildizEsikleri": [${esik[0]}, ${esik[1]}]`);
   if (yeni === metin && !metin.includes(`"yildizEsikleri": [${esik[0]}, ${esik[1]}]`)) throw new Error(`${dosya}: yildizEsikleri bulunamadı`);
+  if (k24 && !/"esikKurali"/.test(yeni)) {
+    const girinti = /^([ \t]*)"yildizEsikleri"/m.exec(yeni)?.[1] ?? '  ';
+    yeni = yeni.replace(/("yildizEsikleri"\s*:\s*\[[^\]]*\])(,?)/, `$1,\n${girinti}"esikKurali": "k24"$2`);
+  }
   writeFileSync(dosya, yeni);
 }
 
@@ -362,15 +389,29 @@ async function kalibre(a: Argumanlar): Promise<number> {
   const secili = seciliBolumler(a, TUM_BOLUMLER.filter((v) => !v.taslak || a.taslaklar));
   const ek = (v: BolumVerisi): number => Math.max(5, Math.ceil(v.hamle / 2));
   // 1) Gerçek hamleyle: yıldız eşikleri. 2) Fazla hamleyle: kazanma hamlesi dağılımı → hamle önerisi.
+  // K24 (GDD K24): bayraklı bölüm ya da --kural k24 (elle eşikli öğretim hariç); Acemi de oynar.
+  const k24 = (v: BolumVerisi): boolean => !v.elleEsik && (v.esikKurali === 'k24' || a.kural === 'k24');
+  const nA = a.acemiTohum ?? sayi;
   const g1 = gorevleriKur(secili, 'usta', a.bas, sayi, () => 0, 0);
   const g2 = gorevleriKur(secili, 'usta', a.bas, Math.min(sayi, 200), ek, g1.length);
-  const gorevler = [...g1, ...g2];
-  console.log(`Kalibrasyon: ${secili.length} bölüm × ${sayi} tohum (+ ${Math.min(sayi, 200)} uzatılmış), ${Math.min(a.isci, gorevler.length)} işçi`);
+  const g3 = gorevleriKur(secili.filter(k24), 'acemi', a.bas, nA, () => 0, g1.length + g2.length);
+  const gorevler = [...g1, ...g2, ...g3];
+  console.log(
+    `Kalibrasyon: ${secili.length} bölüm × ${sayi} tohum (+ ${Math.min(sayi, 200)} uzatılmış${g3.length ? `, K24: Acemi ${nA}` : ''}), ${Math.min(a.isci, gorevler.length)} işçi`,
+  );
   const cevap = await havuz(gorevler, a.isci, ilerlemeYaz);
   if (process.stderr.isTTY) process.stderr.write('\n');
   for (const v of secili) {
-    const o = olcumHesapla(v, topla(gorevler, cevap, v, 'usta'));
-    const esik = yildizEsikleriHesapla(o);
+    const us = topla(gorevler, cevap, v, 'usta');
+    const o = olcumHesapla(v, us);
+    const kazancPuani = (s: OyunSonucu[]): number[] =>
+      s
+        .filter((x) => x.kazandi)
+        .map((x) => x.puan)
+        .sort((x, y) => x - y);
+    const as = k24(v) ? topla(gorevler, cevap, v, 'acemi') : [];
+    const esik = k24(v) ? yildizEsikleriK24(kazancPuani(us), kazancPuani(as)) : yildizEsikleriHesapla(o);
+    const kuralNotu = k24(v) ? ` K24 (Acemi %${((100 * kazancPuani(as).length) / Math.max(1, as.length)).toFixed(0)})` : '';
     // Hamle önerisi: uzatılmış koşularda H hamlede kazanılanların oranı ≈ H hamleli kazanma oranı.
     const uzun = topla(gorevler, cevap, v, 'usta', true);
     const oran = (H: number): number => (100 * uzun.filter((s) => s.kazandi && s.hamle <= H).length) / Math.max(1, uzun.length);
@@ -389,9 +430,9 @@ async function kalibre(a: Argumanlar): Promise<number> {
     // K22: elle seçilmiş eşikler (öğretim) korunur; Usta p50/p85 yalnız bilgi.
     const elle = v.elleEsik ? ' — elle eşik (K22), yazılmadı' : '';
     console.log(
-      `Bölüm ${v.id}${v.taslak ? '*' : ''}: kazanma %${o.kazanmaOrani.toFixed(0)} (bant ${bMin}–${bMax}), yildizEsikleri [${esik.join(', ')}] (eski [${v.yildizEsikleri.join(', ')}])${elle}, hamle ${v.hamle} → öneri ${oneri}  [${egri}]`,
+      `Bölüm ${v.id}${v.taslak ? '*' : ''}: kazanma %${o.kazanmaOrani.toFixed(0)} (bant ${bMin}–${bMax}), yildizEsikleri [${esik.join(', ')}]${kuralNotu} (eski [${v.yildizEsikleri.join(', ')}])${elle}, hamle ${v.hamle} → öneri ${oneri}  [${egri}]`,
     );
-    if (a.yazma && o.kazanc > 0 && a.dosyalar.length === 0 && !v.elleEsik) yildizYaz(v.id, esik);
+    if (a.yazma && o.kazanc > 0 && a.dosyalar.length === 0 && !v.elleEsik) yildizYaz(v.id, esik, k24(v));
   }
   console.log(`${((Date.now() - t0) / 1000).toFixed(1)} sn.${a.yazma ? ' yildizEsikleri yazıldı.' : ''}`);
   return 0;
@@ -434,6 +475,8 @@ interface DagilimSatiri {
   yildizEsikleri: [number, number];
   /** Öğretim eşik önerisi (K22, `yildizEsikleriOgretim`). */
   k22: [number, number];
+  /** K24 eşik önerisi (`yildizEsikleriK24`; 6–25). */
+  k24: [number, number];
   usta: BotDagilimi;
   acemi: BotDagilimi;
 }
@@ -485,7 +528,8 @@ async function dagilim(a: Argumanlar): Promise<number> {
       'Eşik'.padEnd(12),
       'Usta p15/p50/p85'.padEnd(18),
       'Acemi p40/p50/p85'.padEnd(18),
-      'K22 önerisi',
+      'K22 öneri'.padEnd(11),
+      'K24 öneri',
     ].join(' '),
   );
   const satirlar: DagilimSatiri[] = [];
@@ -495,7 +539,8 @@ async function dagilim(a: Argumanlar): Promise<number> {
     const u = ozet(us, v.yildizEsikleri);
     const ac = ozet(as, v.yildizEsikleri);
     const k22 = yildizEsikleriOgretim(puanlar(us), puanlar(as));
-    const s: DagilimSatiri = { bolumId: v.id, tur: v.tur, hamle: v.hamle, hedef: hedefOzeti(v), yildizEsikleri: v.yildizEsikleri, k22, usta: u, acemi: ac };
+    const k24 = yildizEsikleriK24(puanlar(us), puanlar(as));
+    const s: DagilimSatiri = { bolumId: v.id, tur: v.tur, hamle: v.hamle, hedef: hedefOzeti(v), yildizEsikleri: v.yildizEsikleri, k22, k24, usta: u, acemi: ac };
     satirlar.push(s);
     console.log(
       [
@@ -507,14 +552,17 @@ async function dagilim(a: Argumanlar): Promise<number> {
         yd(u.yildiz).padEnd(10),
         yuzde(ac.kazanma).padStart(5),
         yd(ac.yildiz).padEnd(10),
-        `${v.yildizEsikleri[0]}/${v.yildizEsikleri[1]}${v.elleEsik ? 'e' : ''}`.padEnd(12),
+        `${v.yildizEsikleri[0]}/${v.yildizEsikleri[1]}${v.elleEsik ? 'e' : v.esikKurali === 'k24' ? 'k' : ''}`.padEnd(12),
         `${u.p15}/${u.p50}/${u.p85}`.padEnd(18),
         `${ac.p40}/${ac.p50}/${ac.p85}`.padEnd(18),
-        `${k22[0]}/${k22[1]}`,
+        `${k22[0]}/${k22[1]}`.padEnd(11),
+        `${k24[0]}/${k24[1]}`,
       ].join(' '),
     );
   }
-  console.log(`${((Date.now() - t0) / 1000).toFixed(1)} sn. (Eşik sonundaki e = elle; K22 önerisi yalnız elleEsik bölümlerine elle yazılır)`);
+  console.log(
+    `${((Date.now() - t0) / 1000).toFixed(1)} sn. (Eşik sonundaki e = elle (K22), k = K24; K22 önerisi yalnız elleEsik bölümlerine elle yazılır, K24 önerisini kalibre --kural k24 500 tohumla yazar)`,
+  );
   if (a.json) writeFileSync(a.json, JSON.stringify(satirlar, null, 2));
   return 0;
 }

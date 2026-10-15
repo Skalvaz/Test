@@ -10,7 +10,7 @@ import { bolumGetir } from '../levels/index';
 import { SINIR, adaylariUret, sonEksen, tahtaBilgi } from './adaylar';
 import { acemiEnIyiAday, acemiSec } from './acemi';
 import { kazandiranBul } from './kazandiranBul';
-import { olcumHesapla, olcutHatalari, yildizEsikleriOgretim, yuzdelik } from './olcut';
+import { olcumHesapla, olcutHatalari, yildizEsikleriK24, yildizEsikleriOgretim, yuzdelik } from './olcut';
 import { botTohumlari, botTohumuTuret, degerV, korukMerkezi } from './ortak';
 import { oyunAdimlari, oyunOyna } from './simulasyon';
 import { ustaKarar, ustaSec } from './usta';
@@ -227,6 +227,16 @@ describe('ölçütler (§16.5)', () => {
     expect(uc).toBe(4200);
     expect(iki).toBeLessThanOrEqual(uc);
     expect(iki).toBe(4000);
+  });
+
+  it('K24 eşikleri: 2★ = min(Usta p50, Acemi p50), 3★ = Usta p85', () => {
+    const dizi = (a: number, b: number): number[] => Array.from({ length: 100 }, (_, i) => a + ((b - a) * i) / 99);
+    // Usta 8000–12000 (p50 ≈ 9980, p85 ≈ 11390), Acemi 6000–8000 (p50 ≈ 6990).
+    expect(yildizEsikleriK24(dizi(8000, 12000), dizi(6000, 8000))).toEqual([6900, 11300]);
+    // Acemi Usta'dan çok puanlıysa 2★ = Usta p50 (§7.4 ile aynı).
+    expect(yildizEsikleriK24(dizi(8000, 12000), dizi(11000, 13000))).toEqual([9900, 11300]);
+    // Acemi kazancı yoksa §7.4'e düşer.
+    expect(yildizEsikleriK24(dizi(8000, 12000), [])).toEqual([9900, 11300]);
   });
 
   it('bot tohumu tohumdan türetilir ve tohumla değişir', () => {

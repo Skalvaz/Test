@@ -7,9 +7,9 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 3,
-  "hamle": 20,
+  "hamle": 30,
   "tohum": 3777863748,
-  "yardim": 1,
+  "yardim": 3,
   "ozelEsikleri": [6, 9, 12],
   "hedefler": [{ "tur": "zincirleme", "esik": 15, "adet": 7 }],
   "duzen": [
@@ -23,7 +23,7 @@
     ". . . . . . . .",
     ". . . . . . . ."
   ],
-  "korukKapasitesi": 20,
+  "korukKapasitesi": 12,
   "ipuclari": [{ "tetik": "baslangic", "metin": "Kuru gece: kapsüller iki közle kızar, çabuk tutuşur!" }],
   "kurallar": { "caprazSiniri": 2 },
   "bayram": true,

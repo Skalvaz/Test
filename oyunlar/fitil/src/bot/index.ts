@@ -7,5 +7,5 @@ export { ustaKarar, ustaSec, type UstaKarar } from './usta';
 export { acemiEnIyiAday, acemiSec } from './acemi';
 export { kazandiranAra, kazandiranBul, type KazandiranSecenek, type KazandiranYol } from './kazandiranBul';
 export { oyunAdimlari, oyunOyna, DUSUNME_MS, type OyunSecenek, type OyunSonucu } from './simulasyon';
-export { olcumHesapla, olcutHatalari, yildizEsikleriHesapla, yildizEsikleriOgretim, yuzdelik, type BolumOlcumu } from './olcut';
+export { olcumHesapla, olcutHatalari, yildizEsikleriHesapla, yildizEsikleriK24, yildizEsikleriOgretim, yuzdelik, type BolumOlcumu } from './olcut';
 export { AGIRLIKLAR, botTohumuTuret, degerV, type Agirliklar, type BotSecenek, type BotTuru } from './ortak';

@@ -7,11 +7,11 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 23,
+  "hamle": 30,
   "tohum": 3158562268,
-  "yardim": 1,
+  "yardim": 3,
   "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "devFisek", "adet": 3 }, { "tur": "topla", "renk": 1, "adet": 40 }],
+  "hedefler": [{ "tur": "devFisek", "adet": 2 }, { "tur": "topla", "renk": 1, "adet": 38 }],
   "duzen": [
     ". . . . . . .",
     ". . . . . . .",
@@ -36,7 +36,7 @@
     }
   ],
   "kurallar": { "soguma": 2 },
-  "botBandi": [85, 95],
+  "botBandi": [92, 100],
   "yildizEsikleri": [8500, 10500],
   "sonrakiTanitim": "Sıradaki: Körük!"
 }

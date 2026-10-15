@@ -314,6 +314,14 @@ export interface BolumVerisi {
    * bu bölümün `yildizEsikleri`'ni yazmaz. Oyun kuralını etkilemez.
    */
   elleEsik?: boolean;
+  /**
+   * Ek (GDD K24): yıldız eşiği kuralı. `'k24'`: 2★ = min(Usta p50, Acemi
+   * kazançlarının p50'si), 3★ = Usta p85 (§7.4'ün 2★'ından sapma; 6–25).
+   * `npm run kalibre` bu bayrağı taşıyan bölümde K24'ü uygular
+   * (`--kural k24` bayrağı da yazar). Yoksa §7.4 (Usta p50/p85). Oyun
+   * kuralını etkilemez; `elleEsik` ile birlikte kullanılmaz.
+   */
+  esikKurali?: 'k24';
   ipuclari?: { tetik: 'baslangic' | 'ilkHamleSonrasi' | 'bosta5sn' | 'kisaYol' | 'kazanc'; metin: string; el?: [number, number][] }[];
   /** Bölüm 1–2: ilk hamlede yalnız bu hücrelerden yol başlatılabilir (§15). */
   zorunluIlkHamle?: [number, number][];

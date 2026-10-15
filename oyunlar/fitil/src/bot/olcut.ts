@@ -108,6 +108,23 @@ export function yildizEsikleriOgretim(ustaPuan: readonly number[], acemiPuan: re
 }
 
 /**
+ * K24 eşikleri (GDD K24, `esikKurali: 'k24'` bölümleri, 6–25): gündelik
+ * oyuncunun ortalama galibiyeti 2★ getirsin, 3★ iyi oyunun ödülü kalsın.
+ *  - 2★ = min(Usta p50, Acemi kazançlarının p50'si): Acemi kazançlarının
+ *    yarısı, Usta'nın en az yarısı 2★.
+ *  - 3★ = Usta p85 (§7.4'teki gibi).
+ * Acemi hiç kazanmadıysa 2★ = Usta p50 (§7.4'e düşer). Girdiler kazanılan
+ * oyunların SIRALI puanları; aşağı 100'e yuvarlanır.
+ */
+export function yildizEsikleriK24(ustaPuan: readonly number[], acemiPuan: readonly number[]): [number, number] {
+  const yuvarla = (x: number): number => Math.floor(x / 100) * 100;
+  const u50 = yuzdelik(ustaPuan, 50);
+  const uc = yuzdelik(ustaPuan, 85);
+  const iki = acemiPuan.length ? Math.min(u50, yuzdelik(acemiPuan, 50)) : u50;
+  return [yuvarla(iki), yuvarla(uc)];
+}
+
+/**
  * Ölçüt hataları (§16.5). Boş dizi = geçti. `uyarilar` ölçüm dışı
  * izlenenleri toplar (Acemi oranı: öğretimde ≥ %80, tanıtımda ≥ %30 — K22).
  *

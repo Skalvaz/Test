@@ -7,21 +7,21 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 21,
+  "hamle": 30,
   "tohum": 4164822228,
-  "yardim": 1,
+  "yardim": 3,
   "ozelEsikleri": [6, 9, 12],
   "hedefler": [{ "tur": "kaya" }, { "tur": "topla", "renk": 2, "adet": 30 }],
   "duzen": [
-    "K2 . . K1 . . K2",
     ". . . . . . .",
-    ". . . . . . .",
+    ". . . K1 . . .",
+    ". K1 . . . K1 .",
     ". . . K2 . . .",
-    "K1 . . . . . K1",
+    "K1 . K1 . K1 . K1",
     ". K2 . . . K2 .",
     ". . . . . . .",
     ". . . . . . .",
-    "K2 . . . . . K2"
+    ". . . . . . ."
   ],
   "sabitKapsuller": [
     { "x": 1, "y": 7, "renk": 0 }, { "x": 2, "y": 7, "renk": 0, "ozel": "roket", "eksen": 0 },
@@ -30,8 +30,8 @@
   "ipuclari": [
     { "tetik": "baslangic", "metin": "İki özel taşı aynı fitile kat: birleşirler!", "el": [[1, 7], [2, 7], [3, 7], [4, 7]] }
   ],
-  "kurallar": { "soguma": 2, "caprazSiniri": 4 },
-  "botBandi": [85, 95],
+  "kurallar": { "soguma": 2, "caprazSiniri": 3 },
+  "botBandi": [92, 100],
   "yildizEsikleri": [7500, 9100],
   "sonrakiTanitim": "Sıradaki: Liman Fırtınası!"
 }
