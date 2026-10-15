@@ -538,6 +538,7 @@ export class Oturum {
     this.bostaDurdur();
     this.ipucuKapat();
     this.surukleTemizle();
+    b.ui.balonKapat();
     b.girdi.sifirla();
     b.ekran('duraklat');
     const s = await b.ui.duraklat(`${ATOLYELER.find((a) => a.id === this.v!.atolye)?.ad ?? ''} · Bölüm ${this.v!.id}`);
@@ -553,6 +554,9 @@ export class Oturum {
     if (this.durum === 'bekliyor') {
       b.girdi.kipAyarla('acik');
       this.bostaKur();
+      // Zorunlu ilk hamle sürüyorsa talimat balonu geri gelsin.
+      const ip = this.ipucu('baslangic');
+      if (this.zorunlu && ip) b.ui.balon(ip.metin, b.cizici.geometri(), 0);
     }
   }
 
