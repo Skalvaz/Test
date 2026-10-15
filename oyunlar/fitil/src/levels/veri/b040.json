@@ -298,10 +298,7 @@
   40,
   50
  ],
- "yildizEsikleri": [
-  3000,
-  4500
- ],
+ "yildizEsikleri": [15300, 17300],
  "kurallar": {
   "caprazSiniri": 2
  }
