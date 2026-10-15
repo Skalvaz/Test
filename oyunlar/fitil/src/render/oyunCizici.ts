@@ -115,7 +115,7 @@ export interface CiziciDev {
   yalnizGok(b: boolean): void;
 }
 
-export type OyunCiziciTam = OyunCizici & { dev: CiziciDev };
+export type OyunCiziciTam = OyunCizici & Required<Pick<OyunCizici, 'yonetmenZorla' | 'karart' | 'fisekDinle' | 'imlecGoster' | 'kutla'>> & { dev: CiziciDev };
 
 export function oyunCiziciOlustur(stage: Stage, secenek?: CiziciKurulum): OyunCiziciTam {
   return new OyunCiziciSinifi(stage, secenek ?? {});
@@ -252,6 +252,7 @@ class OyunCiziciSinifi implements OyunCizici {
     s.kamera.sifirla();
     this.yol.goster([], false, -1, null);
     this.yol.zorunlu = this.yol.ipucu = this.yol.secim = null;
+    this.yol.imlec = null;
     this.yol.elAyarla(null);
     this.yol.hayaletAyarla(null, false);
     this.yerlesim();
@@ -293,7 +294,9 @@ class OyunCiziciSinifi implements OyunCizici {
   secenekAyarla(p: Partial<CiziciSecenek> & Partial<Pick<SahneSecenek, 'desenler' | 'fitil'>>): void {
     const s = this.s;
     const paletDegisti = p.palet !== undefined && p.palet !== s.secenek.palet;
+    const gokDegisti = p.gokyuzu !== undefined && p.gokyuzu !== s.secenek.gokyuzu;
     Object.assign(s.secenek, p);
+    if (gokDegisti) this.yerlesimGerekli = true;
     s.kamera.hareketiAzalt = s.secenek.hareketiAzalt;
     this.kaliteUygula();
     if (paletDegisti) this.yerlesimGerekli = true;
@@ -376,7 +379,7 @@ class OyunCiziciSinifi implements OyunCizici {
       s.karartma = new Float32Array(n);
     }
     const F = s.cerceve;
-    this.gok.kur(W, H, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F });
+    this.gok.kur(W, H, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F }, s.secenek.gokyuzu || undefined);
     this.sandik.kur();
     this.tc.kur();
     this.yol.yenidenOrnekle();
@@ -401,6 +404,20 @@ class OyunCiziciSinifi implements OyunCizici {
 
   elGoster(yol: readonly Konum[] | null): void {
     this.yol.elAyarla(yol);
+  }
+
+  /** (P5 ek) Klavye imleci: 3 px krem odak halkası (§13.7); null = gizle. */
+  imlecGoster(h: Konum | null): void {
+    this.yol.imlec = h ? { x: h.x, y: h.y } : null;
+  }
+
+  /**
+   * (P5 ek) Kutlama yazısını hemen göster (öğretim senaryosu, §15 Bölüm 3:
+   * kural dışı "Harika!"). Reaksiyon olayının kademesi null olsa da çıkar.
+   */
+  kutla(kademe: string): void {
+    if (!this.s.tahta.w) return;
+    this.reaksiyonYazisi(kademe);
   }
 
   hayaletFitil(yol: readonly Konum[] | null, halka: boolean): void {

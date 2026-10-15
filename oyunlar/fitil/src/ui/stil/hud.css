@@ -333,3 +333,19 @@
 .f-panel .f-guc-resim { width: 46px; height: 46px; }
 .f-panel-son { justify-content: space-between; }
 .f-panel .f-duraklat-dg { width: 56px; height: 56px; }
+
+/* P5: yatay telefonda (kısa ekran) panel sığsın: başlık gizlenir, öğeler küçülür, taşarsa üstten kayar. */
+.f-panel { justify-content: safe center; }
+@media (max-height: 520px) {
+  .f-panel { gap: 8px; padding: 12px 14px; justify-content: flex-start; }
+  .f-panel-baslik { display: none; }
+  .f-panel .f-etiket { display: none; }
+  .f-panel .f-hedef { height: 54px; }
+  .f-panel .f-hedef-ikon, .f-panel .f-hedef-ikon .f-resim { width: 30px; height: 30px; }
+  .f-panel .f-hedef-sayi { font-size: 17px; }
+  .f-panel .f-hamle { width: 58px; height: 58px; }
+  .f-panel .f-hamle-sayi { font-size: 24px; }
+  .f-panel .f-guc { width: 50px; height: 50px; }
+  .f-panel .f-guc-resim { width: 36px; height: 36px; }
+  .f-panel .f-duraklat-dg { width: 46px; height: 46px; }
+}

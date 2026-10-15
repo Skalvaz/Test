@@ -12,7 +12,8 @@
     "bot": "tsx src/bot/sim-cli.ts",
     "dogrula": "tsx src/bot/sim-cli.ts --dogrula",
     "kalibre": "tsx src/bot/sim-cli.ts --kalibre",
-    "shot": "node scripts/shot.mjs"
+    "shot": "node scripts/shot.mjs",
+    "oynanis": "node scripts/oynanis.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

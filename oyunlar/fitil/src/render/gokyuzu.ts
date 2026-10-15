@@ -43,16 +43,21 @@ export class Gokyuzu {
   durgun = false;
   private serit = '#FFFFFF';
 
-  kur(w: number, h: number, dpr: number, mahalle: number, gokBandi: Dikdortgen, sandik: Dikdortgen | null): void {
+  /**
+   * `tema` (P5 ek): oyuncunun Fişek Defteri'nde seçtiği kişisel gökyüzü
+   * (§10.3); verilmezse mahallenin teması. Siluet her zaman mahallenindir.
+   */
+  kur(w: number, h: number, dpr: number, mahalle: number, gokBandi: Dikdortgen, sandik: Dikdortgen | null, tema?: string): void {
     this.w = w;
     this.h = h;
     this.dpr = dpr;
     this.mahalle = mahalle;
     const m = MAHALLELER[((mahalle % 8) + 8) % 8];
-    const g = GOKYUZU[m.gokyuzu];
+    const temaId = (tema && tema in GOKYUZU ? tema : m.gokyuzu) as keyof typeof GOKYUZU;
+    const g = GOKYUZU[temaId];
     this.ust = g.ust;
     this.alt = g.alt;
-    this.ayVar = m.gokyuzu === 'ayIsigi' || m.gokyuzu === 'yildizYagmuru' || m.gokyuzu === 'denizMavisi';
+    this.ayVar = temaId === 'ayIsigi' || temaId === 'yildizYagmuru' || temaId === 'denizMavisi';
     this.ufuk = Math.round(gokBandi.y + gokBandi.h + 6);
     this.serit = karistir(this.alt, '#FFFFFF', 0.35);
     const tohum = 0x51f1 + mahalle * 977;

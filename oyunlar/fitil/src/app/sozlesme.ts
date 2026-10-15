@@ -43,6 +43,8 @@ export interface CiziciSecenek {
   desenler?: readonly string[];
   /** (P2a ek) Fitil görünümü (katalog FitilId); yalnız fitil katmanını değiştirir. */
   fitil?: string;
+  /** (P5 ek) Kişisel gökyüzü (katalog GokyuzuId, §10.3); boş = mahallenin teması. */
+  gokyuzu?: string;
 }
 
 /**
@@ -104,6 +106,10 @@ export interface OyunCizici {
   karart?(alfa: number): void;
   /** (P2a ek) Gökte bir havai fişek patladığında (uzak patlama sesi için). */
   fisekDinle?(fn: (x: number, y: number, desen: string) => void): void;
+  /** (P5 ek) Klavye imleci (§13.7, 3 px krem odak halkası); null = gizle. */
+  imlecGoster?(h: Konum | null): void;
+  /** (P5 ek) Kutlama yazısını hemen göster ('guzel' | 'harika' | 'muhtesem' | 'senlik'). */
+  kutla?(kademe: string): void;
 }
 
 /**
@@ -201,4 +207,6 @@ export interface SesMotoru {
    * Çağrılmazsa varsayılan 7×9 (§2.1) kabul edilir.
    */
   tahtaBoyutu?(w: number, h: number): void;
+  /** (P5 ek) Gökte uzak havai fişek (çizicinin `fisekDinle`'sinden). pan −1..1. */
+  uzakFisek?(pan: number, guc?: number): void;
 }

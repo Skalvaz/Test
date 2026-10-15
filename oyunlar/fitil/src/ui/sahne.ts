@@ -4,7 +4,7 @@
  * belirlenimli (platform Rng); kare başına bellek ayırmaz (CSS animasyonu).
  */
 import { Rng } from '../platform/rng';
-import { h, svg } from './dom';
+import { h, svg, tekilKimlik } from './dom';
 
 const f = (n: number) => n.toFixed(1);
 
@@ -88,7 +88,7 @@ export function kasabaSilueti(tohum: string | number, genislik = 400): SVGSVGEle
     const y = denizY + 10 + i * 12;
     dalga += `<path class="f-dalga" style="animation-delay:${f(-i * 0.7)}s" d="M-20 ${y}q15 -3 30 0${'t30 0'.repeat(tekrar)}" fill="none" stroke="#3A2A6A" stroke-width="1.2" opacity="${(0.5 - i * 0.05).toFixed(2)}"/>`;
   }
-  return svg(`<svg class="f-kasaba" viewBox="0 0 ${W} 260" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+  return svg(tekilKimlik(`<svg class="f-kasaba" viewBox="0 0 ${W} 260" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
     <defs><linearGradient id="f-isik-huzme" x1="1" x2="0" y1="0" y2="0"><stop offset="0" stop-color="#FFF4C2" stop-opacity=".55"/><stop offset="1" stop-color="#FFF4C2" stop-opacity="0"/></linearGradient>
     <linearGradient id="f-deniz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1B1040"/><stop offset="1" stop-color="#0A0E26"/></linearGradient>
     <radialGradient id="f-ufuk" cx=".5" cy="1" r=".7"><stop offset="0" stop-color="#FF8A3C" stop-opacity=".35"/><stop offset="1" stop-color="#FF8A3C" stop-opacity="0"/></radialGradient></defs>
@@ -96,7 +96,7 @@ export function kasabaSilueti(tohum: string | number, genislik = 400): SVGSVGEle
     ${isik}${arka}${binalar}${pencereler}${yamac}${fener}
     <rect x="0" y="${denizY}" width="${W}" height="${260 - denizY}" fill="url(#f-deniz)"/>
     <path d="M0 ${denizY}H${W}" stroke="#FFC86B" stroke-opacity=".25" stroke-width="1"/>
-    ${yansima}${dalga}</svg>`);
+    ${yansima}${dalga}</svg>`, ['f-isik-huzme', 'f-deniz', 'f-ufuk']));
 }
 
 const FISEK_RENKLERI = ['#FF4D4D', '#FFB020', '#2EE07A', '#3AA8FF', '#B266FF', '#FF5FB4', '#FFF4C2'];

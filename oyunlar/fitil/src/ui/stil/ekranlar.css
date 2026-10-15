@@ -659,3 +659,53 @@
   .f-dg { padding-left: 16px; padding-right: 16px; }
   .f-serit { font-size: 21px; padding: 0 20px 4px; }
 }
+
+/* ─────────────── P5 ekleri: bekleme kartı, eksen seçici ─────────────── */
+.f-bekleme-modal .f-kart { width: min(100%, 400px); }
+.f-bekleme { display: flex; flex-direction: column; gap: 18px; padding-top: 6px; }
+.f-bekleme-ust { display: flex; gap: 12px; align-items: center; }
+.f-bekleme-ust strong { display: block; font-size: 18px; font-weight: 800; color: var(--pirinc-acik); line-height: 1.15; }
+.f-bekleme-ust p { margin-top: 4px; font-size: 14px; color: var(--krem-2); }
+.f-bekleme-cubuk { height: 16px; }
+.f-bekleme-cubuk .f-cubuk-dolgu { transition: transform .35s linear; }
+.f-bekleme-ust .f-usta-buyuk { animation: f-bekleme-nefes 1.6s ease-in-out infinite; }
+@keyframes f-bekleme-nefes { 50% { transform: translateY(-3px) rotate(-2deg); } }
+
+.f-eksen-kok { position: absolute; inset: 0; pointer-events: auto; touch-action: none; opacity: 0; transition: opacity .16s; }
+.f-eksen-kok.f-giris { opacity: 1; }
+.f-eksen-kok.f-cikis { opacity: 0; pointer-events: none; }
+.f-eksen-serit {
+  position: absolute;
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(58, 36, 22, .96), rgba(36, 22, 13, .96));
+  box-shadow: 0 0 0 2px var(--pirinc), 0 0 0 3.5px #3A1E08, 0 8px 22px rgba(0, 0, 0, .6);
+  transform: translateY(6px) scale(.92);
+  transition: transform .28s var(--yay);
+}
+.f-eksen-kok.f-giris .f-eksen-serit { transform: none; }
+.f-eksen-dg { width: 52px; height: 52px; }
+.f-eksen-ok { width: 34px; height: 34px; display: block; }
+.f-eksen-iptal { width: 44px; height: 44px; align-self: center; color: var(--krem-2); }
+.f-eksen-etiket {
+  position: absolute;
+  transform: translateX(-50%);
+  padding: 3px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--krem);
+  background: rgba(10, 6, 20, .72);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .6);
+}
+.f-az .f-eksen-serit, .f-az .f-bekleme-ust .f-usta-buyuk { animation: none; transition: none; transform: none; }
+
+/* P5 eki: kazançla gelen duyurular (rozet, açılan bölüm, görev…) */
+.f-kz-duyurular { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; list-style: none; margin: 0; padding: 0; max-width: 100%; opacity: 0; transform: translateY(6px); transition: opacity .45s ease, transform .45s var(--yay); }
+.f-sonraki-goster .f-kz-duyurular { opacity: 1; transform: none; }
+.f-kz-duyuru { display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 8px; border-radius: 999px; font-size: 14px; font-weight: 800; color: var(--krem); background: rgba(0, 0, 0, .3); box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, .5); }
+.f-kz-duyuru .f-ikon { width: 18px; height: 18px; color: var(--pirinc-acik); }
+.f-az .f-kz-duyurular { transition: none; transform: none; }

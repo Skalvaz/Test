@@ -6,7 +6,7 @@
  * Ortak gradyanlar belgeye bir kez eklenen gizli <svg><defs>'tedir
  * (`tanimlariKur`); palet değişince kapsül gradyanları güncellenir.
  */
-import { svg } from './dom';
+import { svg, tekilKimlik } from './dom';
 import { KAPSUL_RENKLERI } from '../app/katalog';
 import type { HedefVM, OdulVM, Palet, RozetId } from './tipler';
 import type { Motif } from '../core/types';
@@ -637,12 +637,12 @@ export function fitilSvg(id: FitilId, acik: boolean): SVGSVGElement {
   const [a, b, c] = acik ? FITIL_RENKLERI[id] : ['#3A3040', '#4A4052', '#4A4052'];
   const d = 'M6 30C20 10 34 10 48 22S76 36 90 18';
   const gok = id === 'gokkusagi' && acik;
-  return svg(`<svg class="f-fitil-svg" viewBox="0 0 100 44" aria-hidden="true">
+  return svg(tekilKimlik(`<svg class="f-fitil-svg" viewBox="0 0 100 44" aria-hidden="true">
     ${gok ? '<defs><linearGradient id="ftl-gk" x1="0" x2="1"><stop offset="0" stop-color="#FF4D4D"/><stop offset=".25" stop-color="#FFB020"/><stop offset=".5" stop-color="#2EE07A"/><stop offset=".75" stop-color="#3AA8FF"/><stop offset="1" stop-color="#B266FF"/></linearGradient></defs>' : ''}
     <path d="${d}" fill="none" stroke="#120A05" stroke-width="9" stroke-linecap="round"/>
     <path d="${d}" fill="none" stroke="${gok ? 'url(#ftl-gk)' : a}" stroke-width="6.4" stroke-linecap="round"/>
     <path d="${d}" fill="none" stroke="${b}" stroke-width="6.4" stroke-dasharray="2.4 3.2" stroke-linecap="butt" opacity=".75"/>
-    ${acik ? `<circle cx="90" cy="18" r="9" fill="url(#ftl-koz)"/><circle cx="90" cy="18" r="3" fill="${c}"/>` : ''}</svg>`);
+    ${acik ? `<circle cx="90" cy="18" r="9" fill="url(#ftl-koz)"/><circle cx="90" cy="18" r="3" fill="${c}"/>` : ''}</svg>`, ['ftl-gk']));
 }
 
 // ─────────────────────────── Rozetler ───────────────────────────
@@ -687,7 +687,7 @@ export function rozetSvg(id: RozetId, acik: boolean): SVGSVGElement {
 
 /** Kıvılcım Usta portresi (yaşlı fişekçi: kasket, gür beyaz bıyık). */
 export function ustaSvg(sinif = ''): SVGSVGElement {
-  return svg(`<svg class="f-usta ${sinif}" viewBox="0 0 64 64" aria-hidden="true">
+  return svg(tekilKimlik(`<svg class="f-usta ${sinif}" viewBox="0 0 64 64" aria-hidden="true">
     <circle cx="32" cy="32" r="31" fill="#2A1A10"/>
     <circle cx="32" cy="32" r="29.5" fill="none" stroke="url(#ftl-pirinc)" stroke-width="3"/>
     <clipPath id="ftl-usta-kirp"><circle cx="32" cy="32" r="28"/></clipPath>
@@ -711,7 +711,7 @@ export function ustaSvg(sinif = ''): SVGSVGElement {
       <circle cx="32" cy="18.5" r="3.2" fill="url(#ftl-pirinc)" stroke="#7A3E1C" stroke-width=".8"/>
       <path d="M44 13l2-4M47 15l4-2M46 10l1-1" stroke="#FFB020" stroke-width="1.6" stroke-linecap="round"/>
       <circle cx="45.5" cy="12" r="1.6" fill="#FFF4C2"/>
-    </g></svg>`);
+    </g></svg>`, ['ftl-usta-kirp']));
 }
 
 /** Bayrak/şerit ikonu yerine kullanılan alev rozeti (Fener Nöbeti). */

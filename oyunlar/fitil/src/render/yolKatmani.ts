@@ -65,6 +65,8 @@ export class YolKatmani {
   zorunlu: Konum[] | null = null;
   ipucu: Konum[] | null = null;
   secim: Konum[] | null = null;
+  /** Klavye imleci (§13.7: 3 px krem odak halkası); null = gizli. */
+  imlec: Konum | null = null;
   private ipucuT = 0;
   // Öğretici el
   private el: Konum[] | null = null;
@@ -493,6 +495,19 @@ export class YolKatmani {
       c.strokeStyle = P.krem;
       c.stroke();
       c.globalAlpha = 1;
+    }
+    if (this.imlec && this.imlec.x >= 0 && this.imlec.y >= 0 && this.imlec.x < t.w && this.imlec.y < t.h) {
+      // Klavye imleci: koyu alt kontur + 3 px krem halka (§13.7), hafif nabız.
+      const p = this.imlec;
+      const r = hc * (0.47 + 0.015 * Math.sin(this.faz * 1.2));
+      c.beginPath();
+      c.roundRect(s.mx(p.x) - r, s.my(p.y) - r, 2 * r, 2 * r, hc * 0.2);
+      c.lineWidth = 6;
+      c.strokeStyle = 'rgba(20,10,4,0.75)';
+      c.stroke();
+      c.lineWidth = 3;
+      c.strokeStyle = P.krem;
+      c.stroke();
     }
   }
 
