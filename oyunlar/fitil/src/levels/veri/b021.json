@@ -44,6 +44,7 @@
   "ipuclari": [{ "tetik": "baslangic", "metin": "Barut izine değen patlama bütün izi tutuşturur." }],
   "kurallar": { "caprazSiniri": 3 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [8500, 10900],
+  "yildizEsikleri": [12700, 17400],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Altı Renk!"
 }

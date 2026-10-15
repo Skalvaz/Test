@@ -38,6 +38,7 @@
   "korukKapasitesi": 20,
   "ipuclari": [{ "tetik": "baslangic", "metin": "Koyu döşeme iki kez yanar: aynı yerde iki kez patlat." }],
   "botBandi": [85, 100],
-  "yildizEsikleri": [10200, 12300],
+  "yildizEsikleri": [11200, 13500],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Bahçe Duvarı!"
 }

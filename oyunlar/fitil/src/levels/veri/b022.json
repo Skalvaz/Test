@@ -42,6 +42,7 @@
   "korukKapasitesi": 20,
   "ipuclari": [{ "tetik": "baslangic", "metin": "Yeni renk: GÜL. Altı renkte zincirler kısalır." }],
   "botBandi": [85, 100],
-  "yildizEsikleri": [9900, 11500],
+  "yildizEsikleri": [9300, 12500],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Lale Tarhı!"
 }
