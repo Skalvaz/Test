@@ -864,6 +864,8 @@ export class Uygulama {
       },
       /** Test: otomatik kaliteyi elle düşür/yükselt (ölçüm sonra yine karar verir). */
       kaliteZorla: (dusuk: boolean) => this.cizici.dev.kaliteZorla(!!dusuk),
+      /** Test: çizici (`dev.dondur/ilerle` ile zaman dondurulur; fişek ekran görüntüleri için). */
+      cizici: () => this.cizici,
       hizli: (on: boolean) => {
         this.hizliKip = !!on;
         this.cizici.secenekAyarla({ hiz: on ? 6 : this.kayit.ayarlar.hiz });
