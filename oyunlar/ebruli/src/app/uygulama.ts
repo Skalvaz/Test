@@ -278,7 +278,10 @@ export class Uygulama {
       galeri: () => void this.galeriAc(),
       ayarlar: () => void this.ayarlarAc(),
       nasil: () => void this.nasilAc(),
-      devami: () => void this.katman('devami', () => this.devamiGoster()),
+      devami: () =>
+        void this.katman('devami', () => this.devamiGoster()).then((s) => {
+          if (s === 'galeri') void this.galeriAc();
+        }),
     });
     if (this.istek) return this.istek;
     if (id === null) return { tur: 'harita', odak };
@@ -484,7 +487,10 @@ export class Uygulama {
         if (ad === 'galeri') return void this.galeriAc();
         if (ad === 'ayarlar') return void this.ayarlarAc();
         if (ad === 'nasil') return void this.nasilAc();
-        if (ad === 'devami') return void this.katman('devami', () => this.devamiGoster());
+        if (ad === 'devami')
+          return void this.katman('devami', () => this.devamiGoster()).then((s) => {
+            if (s === 'galeri') void this.galeriAc();
+          });
       },
       geometri: () => this.cizici.geometri(),
       ogretim: () => o.ogretimDurumu(),

@@ -140,6 +140,9 @@ export class Hud {
     if (y.kip === 'dikey') {
       if (this.tarif.parentElement !== this.kok) this.kok.insertBefore(this.tarif, this.alt);
       if (this.durDugme.parentElement !== this.alt) this.alt.insertBefore(this.durDugme, this.ad);
+      // Yan kipten dönüşte (telefon döndürülünce) panel stilleri temizlensin.
+      this.ust.style.cssText = '';
+      this.alt.style.cssText = '';
       st(this.ust, y.ust);
       st(this.alt, y.alt);
       this.tarif.style.cssText = '';
@@ -148,6 +151,7 @@ export class Hud {
         this.tarif.style.display = '';
       } else this.tarif.style.display = 'none';
     } else {
+      this.ust.style.cssText = '';
       st(this.ust, y.panel);
       this.ust.style.height = 'auto';
       this.ust.style.maxHeight = `${y.panel!.h}px`;
