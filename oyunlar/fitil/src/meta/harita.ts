@@ -104,13 +104,13 @@ export interface HaritaVerisi {
 
 /** Usta Bölümleri (§10.2). */
 export const USTA_BOLUMLERI: readonly { ad: string; kural: string }[] = [
-  { ad: 'Kuru Barut', kural: 'Eşik 2, 12 hamle, puan hedefi' },
+  { ad: 'Kuru Barut', kural: 'Eşik 2, 14 hamle, puan hedefi' },
   { ad: 'Yalnız Halka', kural: 'Yalnız halkalar geçerli hamledir' },
   { ad: 'Dört Yön', kural: 'Çapraz bağlantı yok' },
   { ad: 'Gizli Isı', kural: 'Yalnız kızgın kapsüller görünür' },
-  { ad: 'Domino', kural: 'Barut izi bulmacası, 8 hamle' },
+  { ad: 'Domino', kural: 'Barut izi ve dev fişek düzeneği, 19 hamle' },
   { ad: 'Dev Sandık', kural: '8×10, 6 renk, 3 hedef' },
-  { ad: 'Çisenti Fırtınası', kural: '2 Çisenti, periyot 2' },
+  { ad: 'Çisenti Fırtınası', kural: 'İki çisenti her hamle bir hattı söndürür' },
   { ad: "Kıvılcım Usta'nın Sınavı", kural: 'Bütün öğeler, 30 hamle' },
 ];
 

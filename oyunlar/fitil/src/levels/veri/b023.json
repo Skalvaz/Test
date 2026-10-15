@@ -24,7 +24,7 @@
     "K1 . K1 . . K1 . K1"
   ],
   "korukKapasitesi": 20,
-  "ipuclari": [{ "tetik": "baslangic", "metin": "Tarhtaki boşluklardan fitil geçmez." }],
+  "ipuclari": [{ "tetik": "baslangic", "metin": "Tahtadaki boşluklardan fitil geçmez." }],
   "botBandi": [70, 80],
   "yildizEsikleri": [9600, 11300],
   "sonrakiTanitim": "Sıradaki: Çift Kat!"
