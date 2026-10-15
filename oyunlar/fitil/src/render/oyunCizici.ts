@@ -126,7 +126,7 @@ export interface CiziciDev {
   yalnizGok(b: boolean): void;
 }
 
-export type OyunCiziciTam = OyunCizici & Required<Pick<OyunCizici, 'yonetmenZorla' | 'karart' | 'fisekDinle' | 'imlecGoster' | 'kutla' | 'fisekKatmani'>> & { dev: CiziciDev } & Pick<OyunCiziciSinifi, 'onIsit' | 'sov' | 'ufuk'>;
+export type OyunCiziciTam = OyunCizici & Required<Pick<OyunCizici, 'yonetmenZorla' | 'karart' | 'fisekDinle' | 'imlecGoster' | 'kutla' | 'fisekKatmani'>> & { dev: CiziciDev } & Pick<OyunCiziciSinifi, 'onIsit' | 'sov' | 'ufuk' | 'dinlen'>;
 
 export function oyunCiziciOlustur(stage: Stage, secenek?: CiziciKurulum): OyunCiziciTam {
   return new OyunCiziciSinifi(stage, secenek ?? {});
@@ -390,6 +390,14 @@ class OyunCiziciSinifi implements OyunCizici {
     } catch {
       this.perde = null; // 2B bağlam yoksa tek tuval yeter
     }
+  }
+
+  /**
+   * (Fişek ek) Uygulama kare çağırmayı bıraktı (harita, ekranlar): HUD'un
+   * üstündeki fişek tuvalinde son kare takılı kalmasın.
+   */
+  dinlen(): void {
+    this.perde?.temizle();
   }
 
   /** Gökte havai fişek patladığında (ses için). */

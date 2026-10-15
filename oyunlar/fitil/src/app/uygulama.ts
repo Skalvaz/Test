@@ -80,6 +80,8 @@ export class Uygulama {
   ekranAdi = 'acilis';
   private ciziciAktif = false;
   private sonKare = 0;
+  /** Önceki karede çizici çalışıyor muydu (durunca fişek tuvali boşalır). */
+  private oncekiAktif = false;
   private hizliKip = false;
   private sesAcildi = false;
   private istek: { tur: 'bolum'; id: number } | { tur: 'ekran'; ekran: HaritaSecimi } | null = null;
@@ -180,6 +182,8 @@ export class Uygulama {
       const dt = this.sonKare ? Math.min(100, t - this.sonKare) : 16;
       this.sonKare = t;
       if (this.ciziciAktif) this.cizici.kare(dt);
+      else if (this.oncekiAktif) this.cizici.dinlen();
+      this.oncekiAktif = this.ciziciAktif;
       // Yedek yol (işçi yok): arka plan üretimi oyun ekranında durur (kare süresi bozulmasın).
       this.uretici.duraklat = this.oturum.durum !== 'kapali' || this.oturum.ciziyor;
       requestAnimationFrame(dongu);
