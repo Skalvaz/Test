@@ -739,6 +739,39 @@ Doğum: **D2** = [32, 32, 0, 18, 0, 0] (yalnız K, S, T) · **D3** = [20, 20, 20
 - Ölçek notu (simülasyon, 7×9, garanti 2): Acemi hamle başına renk başına ≈ 0,9 karışık damla toplar (Usta ≈ 1,2–1,3); 2 renkli (D2) tahtada Turuncu ≈ 2,4 (Usta ≈ 3,2). Hedef adetleri buna göre ilk değerdir; P2 botla ayarlar.
 - Her yeni öğenin ilk bölümü kurgulu bir açılışla gösterir (`duzen` + `ozeller`), sonra serbest bırakır. Zor bölüm yeni öğe tanıtmaz.
 
+### 15.3 Ayarlanmış bölümler (P2, bağlayıcı olan `src/levels/veri/bNNN.json`)
+Bot bantları (§14.4) ve süre bandı (Usta hamle medyanı × 3,5 sn, 45–150 sn) tutturulurken §15.2 planından sapıldı. Tablo `npm run dogrula` (Usta 100, Acemi 120 tohum) ve `npm run kalibre` (500 + 500 tohum; öğretimde elle) sonucudur. **DM** = [18, 18, 18, 15, 15, 16] (karışık zengin), **DM2** = [19, 19, 19, 14, 14, 15].
+
+| # | Ad | Tür | Boyut | Hamle | Doğum | G | Hedef | Öğeler | Usta / Acemi % | Süre sn | 2★ / 3★ |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | İlk Damla | ogretim | 5×6 | 12 | D2 | 3 | 10 Turuncu | – | 100 / 100 | 10 | 2000 / 2900 |
+| 2 | Renk Çarkı | ogretim | 6×7 | 18 | D3 | 3 | 6 Mor + 6 Yeşil | – | 100 / 99 | 14 | 2900 / 4100 |
+| 3 | Tarak | ogretim | 6×8 | 17 | D3 | 3 | 10 Mor | – | 100 / 100 | 18 | 2900 / 4000 |
+| 4 | Kâğıda Al | tanitim | 7×8 | 28 | DM | 2 | kâğıt (10 hücre, 10 kat) + 20 Turuncu | tekne biçimi | 99 / 59 | 49 | 6800 / 10500 |
+| 5 | Girdap | tanitim | 7×9 | 26 | D3 | 2 | 28 Yeşil | – | 95 / 52 | 60 | 4500 / 8700 |
+| 6 | İki Kat | zor | 7×7 | 18 | DM | 2 | kâğıt (8 hücre, 12 kat) + 22 Mor | tarak | 82 / 12 | 52 | 5500 / 8000 |
+| 7 | Lale | rahatlama | 7×9 | 29 | D3 | 2 | 28 Turuncu + puan 2500 | tarak | 99 / 72 | 52 | 6100 / 11800 |
+| 8 | Mermer | tanitim | 7×9 | 26 | [20, 20, 19, 13, 13, 15] | 2 | kâğıt (6 hücre, 6 kat) + 28 Yeşil | mermer 7 | 99 / 60 | 49 | 6600 / 10700 |
+| 9 | Lale Deseni | tanitim | 7×9 | 34 | [18, 18, 24, 4, 18, 18] | 2 | desen lale (7) + 28 Yeşil | girdap | 98 / 43 | 46 | 9300 / 14600 |
+| 10 | Üsküdar Lalesi | zor | 7×9 | 24 | [18, 18, 24, 4, 18, 18] | 2 | desen lale (7) + kâğıt (4 hücre, 4 kat) | mermer 2, girdap | 80 / 12 | 52 | 7100 / 11700 |
+| 11 | Kara Mürekkep | tanitim | 7×9 | 26 | DM | 2 | kâğıt (9 hücre, 9 kat) + 22 Turuncu | – | 100 / 58 | 49 | 7200 / 11800 |
+| 12 | İpek Yolu | normal | 7×9 | 26 | D3 | 2 | 15 Turuncu + kâğıt (10 hücre, 10 kat) | – | 96 / 38 | 56 | 5800 / 9600 |
+| 13 | Yağ Lekesi | tanitim | 7×9 | 25 | [16, 24, 24, 9, 9, 14] | 2 | 28 Yeşil | yağ 8 | 98 / 67 | 52 | 4400 / 8300 |
+| 14 | Sabun Hanı | normal | 7×9 | 30 | DM2 | 2 | kâğıt (10 hücre, 10 kat) + 20 Mor | yağ 6 | 97 / 39 | 56 | 7900 / 12200 |
+| 15 | Koza | zor | 7×9 | 22 | DM | 2 | kâğıt (9 hücre, 9 kat) + 30 Yeşil | mermer 4, yağ 6 | 76 / 14 | 63 | 6000 / 10500 |
+| 16 | Sarı Yağmıyor | rahatlama | 7×9 | 26 | [29, 2, 29, 8, 18, 8] | 2 | 40 Mor | – | 100 / 88 | 49 | 5600 / 11400 |
+| 17 | Karanfil | normal | 7×7 | 28 | [22, 24, 16, 16, 6, 16] | 2 | desen karanfil (8) + 26 Turuncu | mermer 3 | 94 / 32 | 52 | 6800 / 11500 |
+| 18 | Usta İşi | normal | 7×9 | 28 | D3 | 2 | 22 Mor + 22 Yeşil | mermer 4, tarak, girdap | 98 / 68 | 63 | 5700 / 10700 |
+| 19 | Şal | normal | 7×9 | 30 | DM | 2 | kâğıt (20 hücre, 20 kat) + 20 Yeşil | – | 100 / 44 | 56 | 8100 / 13100 |
+| 20 | Bursa Karanfili | zor | 7×7 | 22 | [22, 24, 16, 16, 6, 16] | 2 | desen karanfil (8) + kâğıt (4 hücre, 6 kat) | mermer 3, yağ 4 | 78 / 16 | 49 | 6100 / 10300 |
+
+Bot ölçümünden çıkan tasarım kuralları:
+- **"Hepsini temizle" hedefleri (kâğıt, desen) botlar için çok zordur:** ikisi de bir hamle ileri bakar; Acemi amaca kördür. Acemi'nin bir hücreyi hamle başına temizleme olasılığı 7×9'da satır 1–2, sütun 2–4'te %12–15, alt satırda ve sağ kenarda %1–3'tür (garanti adayları x artan sırada tarandığı için sol taraf belirgin sıcaktır). Bu yüzden kâğıt ve desen hücreleri **sıcak bölgede** (satır 1–4, orta sütunlar), az sayıda ve düz çizgiler hâlinde (tek grup birkaç hücreyi boyar) durur; desen için doğum desen renklerine kaydırılır.
+- **Desen motifleri küçüldü** (lale 7, karanfil 8 hücre; plan 9–14). Kurgulu açılış: taçta hazır bir karışım + Girdap (lale) ya da beşli taç (karanfil, ilk hamlede Girdap doğar); ilk hamle motifin çoğunu boyar.
+- **Usta süresi:** tek bir temizle hedefinde Usta 8–12 hamlede biter (< 45 sn); ikinci hedef olarak bir **toplama** eklenir (toplamada Usta/Acemi oranı ≈ 1,5, temizlemede ≈ 3).
+- **Zor bölümler:** zorluğu toplama hedefi ve hamle sayısı belirler; temizle hedefi küçük tutulur. Garanti 1 ile "≥ 2 hazır ≥ %90" ölçütü tutmadığından (%79–87) zor bölümlerde **garanti 2** (K3'ten sapma; doğrulayıcı uyarısı). Daha küçük tahta (7×7) Acemi'yi Usta'dan çok güçlendirir.
+- 16'da Sarı ağırlığı 2 (0 iken 0 hazır %3–6, ölçüt ≤ %3).
+
 ---
 
 ## 16. İş paketleri (ajan ekibi)
