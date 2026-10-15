@@ -5,14 +5,14 @@
   "tur": "rahatlama",
   "w": 7,
   "h": 9,
-  "hamle": 18,
+  "hamle": 26,
   "tohum": 1007,
   "dogum": [20, 20, 20, 11, 11, 11],
   "garanti": 2,
   "murekkep": false,
   "hedefler": [
-    { "tur": "topla", "renk": 3, "adet": 20 },
-    { "tur": "puan", "puan": 3000 }
+    { "tur": "topla", "renk": 3, "adet": 28 },
+    { "tur": "puan", "puan": 2500 }
   ],
   "duzen": [
     ". . . . . . .",
@@ -25,7 +25,9 @@
     ". 3 3 2 3 3 .",
     ". 1 6 3 1 2 ."
   ],
-  "ozeller": [{ "x": 2, "y": 8, "ozel": "tarak", "renk": 6, "yon": "dikey" }],
+  "ozeller": [
+    { "x": 2, "y": 8, "ozel": "tarak", "renk": 6, "yon": "dikey" }
+  ],
   "ipuclari": [
     { "tetik": "baslangic", "metin": "Altı damla: LALE. Bir rengin hepsini alır.", "el": [[3, 6], [3, 7]] },
     { "tetik": "ozelOlusunca", "metin": "İki özel taşı birbirine sürükle!", "el": [[2, 8], [3, 8]] }

@@ -5,37 +5,40 @@
   "tur": "tanitim",
   "w": 7,
   "h": 9,
-  "hamle": 20,
+  "hamle": 30,
   "tohum": 1009,
-  "dogum": [20, 20, 20, 11, 11, 11],
+  "dogum": [18, 18, 24, 4, 18, 18],
   "garanti": 2,
   "murekkep": false,
-  "hedefler": [{ "tur": "desen", "motif": "lale" }],
+  "hedefler": [
+    { "tur": "desen", "motif": "lale" },
+    { "tur": "topla", "renk": 6, "adet": 28 }
+  ],
   "duzen": [
     ". . . . . . .",
-    ". . . . . . .",
-    ". . . . 2 . .",
     ". . . . 4 . .",
-    ". . 5 5 1 2 .",
-    ". . . . . . .",
+    ". . 5 . 1 . .",
+    ". . . 6 . . .",
+    ". . . 6 . . .",
+    ". . . 1 . . .",
     ". . . . . . .",
     ". . . . . . .",
     ". . . . . . ."
+  ],
+  "ozeller": [
+    { "x": 3, "y": 2, "ozel": "girdap", "renk": 5 }
   ],
   "zemin": {
     "desen": {
       "motif": "lale",
       "hucreler": [
-        [2, 3, 5], [4, 3, 5],
-        [2, 4, 5], [3, 4, 5], [4, 4, 5],
-        [3, 5, 6],
-        [2, 6, 6], [3, 6, 6],
-        [3, 7, 6]
+        [2, 1, 5], [4, 1, 5], [2, 2, 5], [3, 2, 5], [4, 2, 5],
+        [3, 3, 6], [3, 4, 6]
       ]
     }
   },
   "ipuclari": [
-    { "tetik": "baslangic", "metin": "Her desen hücresi kendi rengini ister.", "el": [[4, 3], [4, 4]] }
+    { "tetik": "baslangic", "metin": "Her desen hücresi kendi rengini ister.", "el": [[4, 1], [4, 2]] }
   ],
   "sonrakiTanitim": "Sıradaki: Üsküdar Lalesi!",
   "botBandi": [92, 100],
