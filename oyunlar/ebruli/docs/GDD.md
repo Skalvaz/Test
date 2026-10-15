@@ -46,7 +46,7 @@ Rastgele bot (önizlemesiz, kör oyuncu): konseptte (%30–45 karışık) %22–
 | K4 | Yayılma, kümeli doğum ve ham eşleşmesi **reddedildi** (§0.1). | Ölçüm. |
 | K5 | **Yön kuralı korunur:** sonuç hedefte oluşur, kaynak boşalır, kaynağın üstündeki sütun bir hücre iner. Önizleme bunu gösterir: sonuç damlasının düşeceği hücre ve kayacak sütunda soluk oklar. | Konseptin özgün fiili; önizlemeyle okunur. |
 | K6 | **Geçersiz hamleler hiç gösterilmez.** Bir damlaya basınca yalnız geçerli komşular hafifçe şişer. Geçersiz bırakma ücretsizdir (3 titreme). | Hakem: "oyuncu ne yapacağını bilemeyebilir". |
-| K7 | **Özel taş eşikleri 4 / 5 / 6** (Tarak / Girdap / Lale; konsept 4 / 5–6 / 7+). Girdap **baklava** alanını (|dx|+|dy| ≤ 2, 13 hücre) yutar; konseptin 5×5 halka döndürmesi kaldırıldı. | 7+ grup ölçümde hiç oluşmadı; 6 ile ara sıra. Halka döndürme okunmuyor ve çekirdeği şişiriyor (hakem). |
+| K7 | **Özel taş eşikleri 4 / 5 / 6** (Tarak / Girdap / Lale; konsept 4 / 5–6 / 7+). Girdap **baklava** alanını (Manhattan uzaklığı ≤ 2, 13 hücre) yutar; konseptin 5×5 halka döndürmesi kaldırıldı. | 7+ grup ölçümde hiç oluşmadı, 6+ da çok nadir (< 0,01/hamle); eşik 6 Lale’yi olası tutar, Lale bölümleri kurgulu açılışla gelir. Halka döndürme okunmuyor ve çekirdeği şişiriyor (hakem). |
 | K8 | **Önizleme baştan açık:** sürüklerken sonuç rengi hayaleti, eşleşecek gruplar (altın nabız), özel taş hayaleti, etki alanı ve hedef kartı nabzı (§3.5). | Konseptin "aha" anı; yükün çoğunu gözden alır. |
 | K9 | **Özel taşa dokunan her sürükleme geçerlidir** (iki yönde de). Düz damla özel taşa sürüklenirse özel taş yerinde ateşlenir. | Gündelik oyuncu "ters yöne" çekince bir şey olmaması kafa karıştırıyordu. |
 | K10 | **Dar kapsam:** 4 hedef türü (renk topla, kâğıda al, desen, puan) ve 3 engel (Kâğıt zemini, Mermer, Yağ). Küf, Altın varak, Akıntı, biçimli tekne (maske dışında) yok. | Deneme sürümü: dar kapsam, yüksek cila. |
@@ -194,7 +194,7 @@ Parmak geçerli bir hedefin üstündeyken çekirdek hamleyi **doğumsuz** çöze
 Değişiklik kalmayana kadar tekrarlanır:
 1. **Düz düşme:** her sütunda alttan yukarı, damlalar ilk boş hücreye iner; mermer ve delik engeldir (üstündeki parça ayrı bölümdür).
 2. **Çapraz kayma:** alttan yukarı, soldan sağa taranan her boş hücre, düz yoldan beslenemiyorsa (üstü engel ya da üstündeki parçada damla yok ve o parça doğum yeri değil) önce **sol-üst**, sonra **sağ-üst** çaprazdaki damlayı alır (o damla kendi sütununda aşağı düşemiyorsa).
-Dolum (§4.6) yalnız **y = 0** satırındaki açık hücrelerden yapılır; üstü mermer/delikle kapalı parçalar dolumla değil kaymayla beslenir. Dolumdan sonra yerçekimi yeniden işler (doğanlar da düşer ve kayar).
+Dolum (§4.6) yalnız **y = 0** satırındaki açık hücrelerden yapılır; üstü mermer/delikle kapalı parçalar dolumla değil kaymayla beslenir. Dolum turu: (doğum → yerçekimi) boş yuva kalmayana kadar dönüşümlü tekrarlanır (doğanlar da düşer ve kayar; kayma üstte yeni boşluk açarsa yeniden doğum; en fazla w·h tur). Hiç boş yuva yoksa dolum olmaz ve döngü biter (garanti yalnız doğan varsa çalışır).
 `yercekimi.dusenler` her damlanın turdaki ilk ve son konumunu verir (çapraz dahil); `doganlar` doğanların tam damlasını ve `sanalY` (−1, −2…: tahta üstündeki başlangıç satırı) taşır.
 
 ### 4.6 Dolum
@@ -260,7 +260,7 @@ dolum (her dolumda; soldan sağa sütun, aşağıdan yukarı yuva) → garanti k
 | Taş | Alan | Not |
 |---|---|---|
 | Tarak yatay / dikey | bütün satır / sütun | engeller −1, delikler atlanır |
-| Girdap | baklava |dx|+|dy| ≤ 2 (13 hücre) | |
+| Girdap | baklava: Manhattan uzaklığı ≤ 2 (13 hücre) | |
 | Lale | hedef rengin **bütün** damlaları (ham dahil) | ham boyayı silmenin yollarından biri |
 | Mürekkep | 3×3 | ham dahil her şey, engeller −1 |
 Özel güçle temizlenen damla 20 puan (Mürekkep 15). Alana giren Lale, tahtada en bol rengi (eşitlikte `DOGUM_SIRASI`) temizler; alana giren Tarak/Girdap/Mürekkep kendi etkisini başlatır (BFS).
@@ -280,7 +280,7 @@ dolum (her dolumda; soldan sağa sütun, aşağıdan yukarı yuva) → garanti k
 | | Tarak | Girdap | Lale | Mürekkep |
 |---|---|---|---|---|
 | **Tarak** | Artı: satır + sütun | 3 satır + 3 sütun | Tarak'ın rengindeki bütün damlalar tarağa döner (yön sırayla yatay/dikey), 80 tik arayla ateşlenir | Kalın tarak: tarağın yönünde 3 hat |
-| **Girdap** | | Büyük baklava |dx|+|dy| ≤ 4 | Girdap'ın rengindeki bütün damlalar girdaba döner, ateşlenir | Baklava |dx|+|dy| ≤ 3 |
+| **Girdap** | | Büyük baklava: Manhattan ≤ 4 (41 hücre) | Girdap'ın rengindeki bütün damlalar girdaba döner, ateşlenir | Baklava: Manhattan ≤ 3 (25 hücre) |
 | **Lale** | | | Bütün tahta (engeller −1) | Bütün ham boyalar (1, 2, 4) silinir, ardından kaskat |
 | **Mürekkep** | | | | 5×5 patlama |
 Dönüşümler `donustu` olayıyla yazılır; birleşim `birlesim{kombo, alan}`; puan: birleşim alanındaki damla 20, ek `puanEklendi{ozel}` 300 (Lale içerenler 600).
