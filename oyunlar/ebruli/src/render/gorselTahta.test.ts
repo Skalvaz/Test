@@ -5,7 +5,7 @@
  * `cekirdekVarMi`).
  */
 import { describe, expect, it } from 'vitest';
-import { bolumuYukle, hamleUygula } from '../core/index';
+import { bolumuYukle, ebruSoleni, hamleUygula } from '../core/index';
 import type { BolumVerisi, Hamle, OyunDurumu } from '../core/types';
 import b001 from '../levels/veri/b001.json';
 import { GorselTahta, damlaOlcegi, gDamla } from './gorselTahta';
@@ -83,6 +83,32 @@ describe('GorselTahta (sahte çözücüyle)', () => {
       const r = oyna(VITRIN, t, 18, hamleUygula);
       expect(r.fark, `tohum ${t}, hamle ${r.i}`).toEqual([]);
     }
+  });
+
+  it.runIf(cekirdekVarMi())('gerçek çekirdek: kazanç + Ebru Şöleni olayları da eşit (donustu, şölen taramaları)', () => {
+    const KOLAY = { ...SADE, id: 903, hedefler: [{ tur: 'puan' as const, puan: 240 }] };
+    let solen = 0;
+    for (let t = 1; t <= 20; t++) {
+      const rnd = mulberry(t * 7);
+      let d = bolumuYukle(KOLAY, t);
+      const g = new GorselTahta();
+      g.kur(d);
+      for (let i = 0; i < 25 && !d.bitti; i++) {
+        const hs = gecerliHamleler(d);
+        const r = hamleUygula(d, hs[Math.floor(rnd() * hs.length)]);
+        for (const o of r.olaylar) g.uygula(o);
+        expect(g.farklar(r.durum)).toEqual([]);
+        d = r.durum;
+      }
+      if (d.bitti === 'kazanc' && d.kalanHamle > 0) {
+        const r = ebruSoleni(d);
+        for (const o of r.olaylar) g.uygula(o);
+        expect(g.farklar(r.durum), `tohum ${t}`).toEqual([]);
+        expect(g.uyumsuz).toBe(0);
+        solen++;
+      }
+    }
+    expect(solen).toBeGreaterThan(5);
   });
 
   it('esitle: aynı kimlikli damlanın canlandırması korunur, farklı olan yenilenir', () => {

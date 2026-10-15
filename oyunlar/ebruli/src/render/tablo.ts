@@ -230,7 +230,7 @@ export function tabloPlani(istek: TabloIstegi): TabloPlani {
   if (laleLale || enK >= 5 || (istek.yildiz === 3 && tekSay >= 3)) nadirlik = 2;
 
   const teknikler = TEKNIKLER.map((t) => t.id).filter((t) => teknik.has(t));
-  const oncelik: Teknik[] = ['sal', 'bulbulYuvasi', 'cicek', 'tarakli', 'gelgit', 'battal'];
+  const oncelik: Teknik[] = ['sal', 'cicek', 'bulbulYuvasi', 'tarakli', 'gelgit', 'battal'];
   const bas = oncelik.find((t) => teknik.has(t)) ?? 'battal';
   const ad = TEKNIKLER.find((t) => t.id === bas)!.ad;
   const kunye = `${atolye.ad} · Bölüm ${istek.bolumId} · ${ad}`;
