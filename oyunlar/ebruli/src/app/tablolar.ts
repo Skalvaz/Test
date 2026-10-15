@@ -9,6 +9,11 @@ import { gunlukCozGuvenli, type TabloKaydi } from '../meta/index';
 
 const onbellek = new Map<string, TabloIstegi>();
 
+/** Yerel tercih: bu cihazda tablo sade çizilsin mi (§9.3 zayıf cihaz). */
+export const SADE_ANAHTARI = 'ebruli.sadeTablo';
+/** Kâğıt çekme arkasındaki parçalı çizim bundan uzun sürerse cihaz zayıf sayılır (8 ms dilimlerle ≈ 150 ms iş). */
+export const SADE_ESIGI_MS = 1400;
+
 export function tabloIstegi(v: BolumVerisi, t: TabloKaydi): TabloIstegi {
   const a = `${v.id}|${t.tohum}|${t.gunluk.length}|${t.gunluk.slice(-24)}`;
   const o = onbellek.get(a);

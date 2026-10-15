@@ -17,6 +17,7 @@ import { tabloCiziciOlustur, type TabloCiziciTam } from '../render/tablo';
 import { sesMotoruOlustur, type SesMotoruAyrintili } from '../audio/sesMotoru';
 import { surukleGirdiOlustur, type SurukleGirdiTam } from '../input/surukle';
 import { buzz, setHaptics } from '../platform/haptics';
+import { prefGet } from '../platform/storage';
 import { bolumuYukle, type BolumVerisi, type Renk } from '../core/index';
 import { Arayuz, type AyarlarVM, type BolumOncesiVM, type GaleriVM, type HaritaVM, type HedefVM } from '../ui/arayuz';
 import { gorselAyarla } from '../ui/gorsel';
@@ -29,7 +30,7 @@ import type { Ayarlar, Kayit } from '../meta/index';
 import { ATOLYELER, type AtolyeId } from './katalog';
 import { Kayitci } from './kayitci';
 import { Oturum } from './oturum';
-import { tabloIstegi } from './tablolar';
+import { SADE_ANAHTARI, tabloIstegi } from './tablolar';
 
 type Hedef = { tur: 'harita'; odak?: number; kartAc?: number | null } | { tur: 'bolum'; id: number } | { tur: 'devami' };
 
@@ -79,7 +80,8 @@ export class Uygulama {
     this.cizici = oyunCiziciOlustur(this.stage);
     this.cizici.secenekAyarla({ palet: a.palet, motifler: a.motifler, hiz: a.hiz, hareketiAzalt: this.azMi() });
     gorselAyarla(a.palet, a.motifler);
-    this.tablo = tabloCiziciOlustur({ dpr: Math.min(2, window.devicePixelRatio || 1) });
+    // Zayıf cihaz (önceki oturumda tablo çizimi yavaştı): sade tablo (§9.3). Oturum boyunca değişmez.
+    this.tablo = tabloCiziciOlustur({ dpr: Math.min(2, window.devicePixelRatio || 1), sade: prefGet(SADE_ANAHTARI, false) });
     this.ses = sesMotoruOlustur({ hata: () => {} });
     this.ses.ayarla({ sfx: a.sfx, muzik: a.muzik, ortam: a.ortam });
     setHaptics(a.titresim);
@@ -179,7 +181,15 @@ export class Uygulama {
 
   // ─── Açılış ve akış ────────────────────────────────────────────────
 
-  async baslat(): Promise<void> {
+  /**
+   * @param sicak claude.ai görüntüleyicisinin canlı güncelleme verisi: süren
+   * bölüm varsa açılış atlanır ve o bölümün yeni denemesi açılır.
+   */
+  async baslat(sicak: { bolum?: number | null } = {}): Promise<void> {
+    if (sicak.bolum && meta.bolumAcik(this.kayit, sicak.bolum)) {
+      void this.akis({ tur: 'bolum', id: sicak.bolum });
+      return;
+    }
     // Açılış beklerken ilk oynanacak bölüm önden pişer (ilk dokunuşta donma olmasın).
     const ilkId = meta.ilkOturum(this.kayit) ? 1 : meta.siradakiBolum(this.kayit);
     const v = bolumBul(ilkId) ?? BOLUMLER[0];
@@ -473,7 +483,7 @@ export class Uygulama {
       ogretim: () => o.ogretimDurumu(),
       boyut: () => ({ w: this.stage.width, h: this.stage.height, dpr: this.stage.dpr }),
       yaziHazir: () => yaziHazir.then(() => true),
-      cizici: () => ({ fark: this.cizici.dev.sonFark(), oynuyor: this.cizici.dev.oynuyor(), ...this.cizici.dev.sayac() }),
+      cizici: () => ({ fark: this.cizici.dev.sonFark(), oynuyor: this.cizici.dev.oynuyor(), tabloMs: o.sonTabloMs, ...this.cizici.dev.sayac() }),
     };
   }
 

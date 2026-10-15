@@ -103,7 +103,7 @@ export function kazandinEkrani(y: EkranYoneticisi, vm: KazandinVM, ek: SonEk): P
     devam.setAttribute('data-odak', '');
     const alt = h(
       'div',
-      { s: 'e-kz-alt', css: px(L.alt) },
+      { s: `e-kz-alt${secim ? ' secimli' : ''}`, css: px(L.alt) },
       h('div', { s: 'e-kz-puan' }, puanEl, h('small', { t: M.puan })),
       etiket,
       secim,

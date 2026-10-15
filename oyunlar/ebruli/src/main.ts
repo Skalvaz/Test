@@ -26,14 +26,15 @@ const yaziHazir = yaziTipiniGom();
 let uygulama: Uygulama | null = null;
 
 bootWithHot(
-  () => {
+  (veri) => {
     const host = document.getElementById('app');
     if (!host || uygulama) return;
     uygulama = new Uygulama(host);
     const kanca = uygulama.testKancasi(yaziHazir);
     window.__ebruli = kanca;
     window.__ebru = kanca;
-    void uygulama.baslat();
+    const v = (veri ?? {}) as { bolum?: number | null };
+    void uygulama.baslat({ bolum: typeof v.bolum === 'number' ? v.bolum : null });
   },
   () => uygulama?.anlik() ?? {},
 );

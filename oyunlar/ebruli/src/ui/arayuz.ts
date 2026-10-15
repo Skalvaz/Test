@@ -154,9 +154,13 @@ export class Arayuz {
     this.balonSure = null;
     this.balonMetin.textContent = metin;
     const bant = Math.max(10, Math.round(g.hucre * 0.3));
-    this.balonEl.style.left = `${g.x + (g.w * g.hucre) / 2}px`;
-    this.balonEl.style.top = `${g.y - bant}px`;
-    this.balonEl.style.maxWidth = `${Math.max(220, g.w * g.hucre + bant)}px`;
+    const W = this.kok.clientWidth || 390;
+    const genislik = Math.min(W - 24, Math.max(260, g.w * g.hucre + bant * 2 + 40));
+    // Tahtanın üst kenarına yapışık; ekranın üstünden taşmasın (yatay telefon).
+    const ust = Math.max(this.guvenliAlan().ust + 26, g.y - bant);
+    this.balonEl.style.left = `${Math.round(Math.min(W - 12 - genislik / 2, Math.max(12 + genislik / 2, g.x + (g.w * g.hucre) / 2)))}px`;
+    this.balonEl.style.top = `${ust}px`;
+    this.balonEl.style.maxWidth = `${genislik}px`;
     this.balonEl.classList.remove('gor');
     void this.balonEl.offsetWidth;
     this.balonEl.classList.add('gor');

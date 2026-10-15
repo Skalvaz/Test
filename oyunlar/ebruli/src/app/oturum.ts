@@ -43,7 +43,8 @@ import type { TabloIstegi } from './sozlesme';
 import { balonGoruldu, bolumBitti, bolumKaydi, gunlukKodla, tabloSakla, ustaEliOnerilir, type TabloKaydi } from '../meta/index';
 import type { Kayitci } from './kayitci';
 import { bolumBul, SON_BOLUM } from '../levels/index';
-import { tabloIstegi } from './tablolar';
+import { SADE_ANAHTARI, SADE_ESIGI_MS, tabloIstegi } from './tablolar';
+import { prefSet } from '../platform/storage';
 
 export type OturumSonucu = { tur: 'kazanc'; secim: 'devam' | 'tekrar' } | { tur: 'kayip'; secim: 'tekrar' | 'harita' } | { tur: 'cik' } | { tur: 'yeniden' };
 
@@ -73,6 +74,8 @@ export class Oturum {
   v: BolumVerisi | null = null;
   denemeNo = 0;
   duraklatildi = false;
+  /** Son kazançta parçalı tablo çiziminin süresi (ms; test kancası). */
+  sonTabloMs = 0;
   /** Son yerleşim (kaybettin ekranı da kullanır). */
   yer: Yerlesim | null = null;
   private coz: ((s: OturumSonucu) => void) | null = null;
@@ -88,6 +91,8 @@ export class Oturum {
   private ipucuZ: ReturnType<typeof setTimeout> | null = null;
   private elZ: ReturnType<typeof setTimeout> | null = null;
   private bostaBalonu = false;
+  /** Bu denemede gösterilen öğretim tetikleri. */
+  private gosterilen = new Set<string>();
 
   constructor(private readonly b: OturumBaglam) {}
 
@@ -105,6 +110,7 @@ export class Oturum {
     this.eslestiT = null;
     this.hataGosterildi.clear();
     this.bostaBalonu = false;
+    this.gosterilen.clear();
     this.duraklatildi = false;
     b.cizici.bolumKur(d, v);
     b.cizici.karart(0);
@@ -239,13 +245,17 @@ export class Oturum {
   }
 
   /** Öğretim bölümünde her seferinde; tanıtım balonları yalnız ilk kez (kayıtta). */
-  private balonGoster(tetik: string, metin: string, sure = 4200): void {
+  private balonGoster(tetik: string, metin: string, sure = 4200): boolean {
     const v = this.v!;
     const anahtar = `${v.id}:${tetik}`;
     const kayit = this.b.kayitci.kayit;
-    if (v.tur !== 'ogretim' && kayit.ogretim.gorulenBalonlar.includes(anahtar)) return;
+    // Her tetik bir denemede bir kez; tanıtım balonları yalnız ilk kez (öğretimde her denemede).
+    if (this.gosterilen.has(tetik)) return false;
+    if (v.tur !== 'ogretim' && kayit.ogretim.gorulenBalonlar.includes(anahtar)) return false;
+    this.gosterilen.add(tetik);
     this.b.ui.balon(metin, this.b.cizici.geometri(), sure);
     this.b.kayitci.guncelle((k) => balonGoruldu(k, anahtar));
+    return true;
   }
 
   private elGosterSureli(yol: Konum[], ms = 4600): void {
@@ -278,20 +288,21 @@ export class Oturum {
     }
   }
 
-  private ilkHamleSonrasi(): void {
+  private ilkHamleSonrasi(): boolean {
     const ip = this.ipucu('ilkHamleSonrasi');
-    if (!ip) return;
-    this.balonGoster('ilkHamleSonrasi', ip.metin);
+    if (!ip) return false;
+    if (!this.balonGoster('ilkHamleSonrasi', ip.metin)) return false;
     if (ip.el && ip.el.length >= 2) {
       const yol = ip.el.map(([x, y]) => ({ x, y }));
       if (!hamleHatasi(this.d!, { tur: 'surukle', kaynak: yol[0], hedef: yol[1] })) this.elGosterSureli(yol);
     }
+    return true;
   }
 
   private ozelOlusunca(): void {
     const ip = this.ipucu('ozelOlusunca');
-    if (!ip) return;
-    this.balonGoster('ozelOlusunca', ip.metin);
+    if (!ip || this.durum !== 'bekliyor') return;
+    if (!this.balonGoster('ozelOlusunca', ip.metin)) return;
     const d = this.d!;
     // El: özel taştan geçerli bir komşuya (ilk bulunan).
     for (let i = 0; i < d.hucreler.length; i++) {
@@ -476,8 +487,15 @@ export class Oturum {
       void this.kayip(n, true);
       return true;
     }
-    if (ilk) this.ilkHamleSonrasi();
-    if (this.ozelOlustu) this.ozelOlusunca();
+    const ilkBalon = ilk && this.ilkHamleSonrasi();
+    if (this.ozelOlustu) {
+      // İlk hamle balonu okunsun, sonra özel taş balonu.
+      if (ilkBalon) {
+        setTimeout(() => {
+          if (n === this.nesil) this.ozelOlusunca();
+        }, 2600);
+      } else this.ozelOlusunca();
+    }
     this.durum = 'bekliyor';
     b.girdi.kipAyarla('acik');
     this.bostaKur();
@@ -580,7 +598,13 @@ export class Oturum {
     b.ui.hud.goster(false);
     b.ekran('kagitCekme');
     b.ses.arayuz('kagitCek');
+    const tabloT0 = performance.now();
     const parca = b.tablo.tabloCizParcali(istek);
+    void parca.then(() => {
+      // Zayıf cihaz: sonraki açılışlarda sade tablo (bu oturumda tablo görünümü değişmesin).
+      this.sonTabloMs = Math.round(performance.now() - tabloT0);
+      if (this.sonTabloMs > SADE_ESIGI_MS) prefSet(SADE_ANAHTARI, true);
+    });
     const cek = b.cizici.kagitCek(null);
     void parca.then((r) => {
       if (n === this.nesil) b.cizici.kagitTablo(r.tuval);

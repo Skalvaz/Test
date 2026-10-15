@@ -321,7 +321,17 @@ svg.bos { color: rgba(90, 78, 63, 0.45); }
 .e-hud[data-kip='yan'] .e-tarif-baslik { align-self: center; background: rgba(90, 58, 34, 0.12); color: var(--ceviz); border-color: var(--kagit-kenar); }
 .e-hud[data-kip='yan'] .e-tarif-baslik svg { color: var(--altin-koyu); }
 .e-hud[data-kip='yan'] .e-tarif.acik .e-tarif-baslik { display: none; }
-.e-hud[data-kip='yan'] .e-dur { align-self: center; }
+.e-hud[data-kip='yan'] .e-dur { align-self: center; flex: none; }
+/* Yatay telefon: panel kısa; ad gizlenir, tarifler yan yana. */
+@media (max-height: 520px) {
+  .e-hud[data-kip='yan'] .e-hud-ust { gap: 10px; padding: 12px 14px; }
+  .e-hud[data-kip='yan'] .e-panel-ad { display: none; }
+  .e-hud[data-kip='yan'] .e-hud-sira { row-gap: 10px; }
+  .e-hud[data-kip='yan'] .e-hedef { width: 66px; height: 54px; }
+  .e-hud[data-kip='yan'] .e-tarif-ic { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 4px; }
+  .e-hud[data-kip='yan'] .e-cip { height: 26px; }
+  .e-hud[data-kip='yan'] .e-dur { width: 44px; height: 44px; min-height: 44px; }
+}
 
 /* ─── Usta balonu ve bilgi ────────────────────────────────────────── */
 .e-balon {
@@ -337,12 +347,12 @@ svg.bos { color: rgba(90, 78, 63, 0.45); }
   border-radius: 10px;
   box-shadow: 0 0 0 3px rgba(59, 36, 22, 0.85), 0 8px 18px rgba(0, 0, 0, 0.4);
   font: 500 16px/1.25 var(--govde-yigini);
-  white-space: nowrap;
+  width: max-content;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.3);
 }
-.e-balon span { overflow: hidden; text-overflow: ellipsis; }
+.e-balon span { white-space: normal; text-align: left; }
 .e-balon.gor { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
 .e-balon-ikon { width: 22px; height: 22px; flex: none; color: var(--ceviz); }
 .e-bilgi {
@@ -719,6 +729,8 @@ svg.bos { color: rgba(90, 78, 63, 0.45); }
 .e-bo-yeni small { display: block; font: 800 12px/1.2 var(--govde-yigini); letter-spacing: 0.12em; text-transform: uppercase; color: var(--altin-koyu); }
 .e-bo-yeni p { margin: 3px 0 0; font: 500 15px/1.3 var(--govde-yigini); }
 .e-yeni-ikon { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.e-bo-yeni .e-yeni-ikon img { animation: e-bob 1.8s ease-in-out infinite alternate; }
+.e-bo-yeni .e-yeni-ikon img:nth-child(3) { animation-delay: -0.9s; }
 .e-yeni-ikon i { font: 800 16px/1 var(--govde-yigini); font-style: normal; color: var(--murekkep-ikincil); }
 .e-yeni-ikon.kit img { filter: grayscale(0.7); opacity: 0.6; }
 .e-dur-kart .e-dikey-dugmeler .e-dugme { width: 100%; }
@@ -762,6 +774,8 @@ svg.bos { color: rgba(90, 78, 63, 0.45); }
 .e-muhur.bos svg { color: rgba(243, 233, 210, 0.45); }
 @keyframes e-muhur { 0% { opacity: 0; transform: scale(2.2) rotate(-14deg); } 70% { opacity: 1; transform: scale(0.94) rotate(2deg); } 100% { opacity: 1; transform: none; } }
 .e-kz-alt { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; padding: 0 16px; box-sizing: border-box; color: var(--kagit); }
+.e-kz-alt > * { flex-shrink: 0; }
+.e-kz-alt.secimli .e-kz-siradaki { display: none; }
 .e-kz-puan { display: flex; align-items: baseline; gap: 8px; }
 .e-kz-puan b { font: 800 36px/1 var(--govde-yigini); color: var(--kagit); font-variant-numeric: lining-nums tabular-nums; }
 .e-kz-puan small { font: 800 13px/1 var(--govde-yigini); letter-spacing: 0.14em; text-transform: uppercase; color: rgba(243, 233, 210, 0.7); }
