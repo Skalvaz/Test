@@ -5,7 +5,7 @@
  * Düğmeler: [Devam] (büyük) ve [Tekrar oyna].
  */
 import { h, say, bekle } from '../dom';
-import { yildizSvg, sandikSvg } from '../ikonlar';
+import { yildizSvg, sandikSvg, ikon, type IkonAdi } from '../ikonlar';
 import { M, NADIRLIK_ADLARI, bolumBasligi, sayi } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { odulOgesi, tabloCercevesi, yeniOgeOnizleme, ustaIpucu, nadirlikSirasi } from './ortak';
@@ -79,6 +79,15 @@ export function kazandinEkrani(
     icerik.appendChild(oduller);
   }
 
+  if (vm.duyurular && vm.duyurular.length) {
+    icerik.appendChild(
+      h(
+        'ul',
+        { s: 'f-kz-duyurular', 'aria-label': 'Kazanılanlar' },
+        vm.duyurular.map((d) => h('li', { s: 'f-kz-duyuru' }, ikon(d.ikon as IkonAdi), h('span', { t: d.metin }))),
+      ),
+    );
+  }
   if (vm.sonrakiTanitim) {
     icerik.appendChild(
       h('div', { s: 'f-kz-sonraki' }, vm.sonrakiOge ? yeniOgeOnizleme(vm.sonrakiOge, b.palet) : null, h('span', { t: vm.sonrakiTanitim })),

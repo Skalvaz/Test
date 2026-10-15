@@ -124,6 +124,8 @@ export interface HaritaVM {
   /** Fişek Defteri / Rozetler'de görülmemiş yenilik noktası. */
   defterYeni?: boolean;
   rozetYeni?: boolean;
+  /** (P5 ek) Sonsuz Şenlik (§10.7): 40. bölümden sonra açılır; sıradaki n. */
+  sonsuz?: { acik: boolean; siradaki: number };
 }
 
 export type HaritaSecimi =
@@ -134,6 +136,8 @@ export type HaritaSecimi =
   | { tur: 'istatistik' }
   | { tur: 'ayarlar' }
   | { tur: 'nasil' }
+  /** (P5 ek) Sonsuz Şenlik'in sıradaki bölümü. */
+  | { tur: 'sonsuz' }
   /** Harita başka bir ekranla programlı olarak kapatıldı. */
   | { tur: 'kapandi' };
 
@@ -196,6 +200,11 @@ export interface KazandinVM {
   sonrakiOge?: YeniOge | null;
   /** Kazanç balonu (ör. 5. bölüm: "Yıldızlar puanından gelir."). */
   ipucu?: string | null;
+  /**
+   * (P5 ek) Kazançla gelen kısa duyurular (rozet, açılan bölüm/güçlendirici,
+   * görev, Usta Bölümü…): kartta küçük çipler. `ikon` çizgi ikon adı.
+   */
+  duyurular?: { ikon: string; metin: string }[];
 }
 
 export interface KaybettinVM {

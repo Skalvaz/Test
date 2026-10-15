@@ -20,6 +20,8 @@ export interface SahneSecenek extends CiziciSecenek {
   desenler: readonly string[];
   /** Fitil görünümü (katalog FITILLER kimliği). */
   fitil: string;
+  /** (P5 ek) Kişisel gökyüzü teması (katalog GokyuzuId); boş = mahallenin teması. */
+  gokyuzu?: string;
 }
 
 export class Sahne {

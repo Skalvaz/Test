@@ -24,7 +24,16 @@ npm run dogrula -- --bolum 11-15 --tohum 30          # --tohum: tohum SAYISI
 npm run dogrula -- --dosya deneme/ --tohum 30        # varyant JSON'ları (klasör ya da dosya)
 npm run kalibre -- --bolum 12                        # 500 tohum, yildizEsikleri yazar, hamle önerir
 node scripts/shot.mjs <url> <png> [w] [h] [bekleme-ms] [js]   # telefon görünümü (390×844)
+npm run oynanis -- http://127.0.0.1:5185/ playtest-output [telefon|masaustu|kucuk]   # tam akış duman testi
 ```
+
+Oynanış testi (`scripts/oynanis.mjs`) dev sunucusuna ya da `file://…/fitil.html`'e
+karşı koşar: açılış → bölüm 1 (zorunlu ilk hamle gerçek dokunmatik sürüklemeyle)
+→ bot ile 1–6 ve 10 → kazandın/kaybettin (Tekrar dene < 1 sn ölçülür) → harita →
+ayarlar → defter → Günün Şenliği; pageerror/console.error başarısızlıktır.
+Test kancası `window.__fitil`: `durum()`, `bolum()`, `ekran()`, `bolumAc(id)`,
+`botHamle('usta'|'acemi')`, `hizli(on)`, `kayit()`, `kayitYama({...})`,
+`ac('gunluk'|'defter'|'ayarlar'|'istatistik'|'nasil'|'sonsuz')`, `geometri()`, `ogretim()`.
 
 ## Bölüm tasarımı (bot ve doğrulayıcı)
 
@@ -63,7 +72,13 @@ gibi POSIX sözdizimi kullanma.
 - `src/meta/` — kayıt şeması ve ilerleme mantığı (saf, testli).
 - `src/platform/` — RNG (görsel), kayıt deposu (bulut/tarayıcı/bellek),
   titreşim, canlı güncelleme kancası.
-- `src/app/` — oyun akışı, modülleri birbirine bağlar.
+- `src/app/` — oyun akışı (P5): `uygulama.ts` (ekran akışı, harita döngüsü,
+  günlük/sonsuz, ayarlar, test kancası), `oturum.ts` (bölüm içi döngü: girdi →
+  önizleme → hamle → oynatma → HUD; final, kazandın/kaybettin, hayalet fitil,
+  Usta'nın Eli, güçlendiriciler, Körük, öğretim balonları/el/boşta ipucu),
+  `gorunum.ts` (meta → arayüz VM eşlemeleri, testli), `kayitci.ts` (SaveStore +
+  yedek döndürme + bulut), `uretim.ts` (günlük/sonsuz üretimi zaman dilimli +
+  önbellek). Reaksiyon yazısı ve "Şenlik başlıyor!" yalnız tuvalde çizilir.
 
 ## Hedef ortam (oyuncu telefondan, WhatsApp'tan gelen bağlantıyla açar)
 

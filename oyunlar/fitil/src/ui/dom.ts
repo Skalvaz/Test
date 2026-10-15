@@ -50,6 +50,21 @@ export function h<K extends keyof HTMLElementTagNameMap>(etiket: K, oz?: Ozellik
 const sablon = typeof document !== 'undefined' ? document.createElement('template') : null;
 
 /** Modülün kendi SVG işaretlemesinden öğe üretir. */
+let kimlikSayaci = 0;
+
+/**
+ * (P5 düzeltmesi) SVG içindeki yerel kimlikleri (gradyan, clipPath) örneğe
+ * özgü yapar. Aynı kimlik DOM'da birden çok kez olunca `url(#…)` İLK örneğe
+ * çözülür; ilk örnek gizli bir ekrandaysa (harita `visibility:hidden`)
+ * Chrome kırpmayı/dolguyu boş çizer (Kıvılcım Usta portresi boş daire kalıyordu).
+ */
+export function tekilKimlik(isaretleme: string, kimlikler: readonly string[]): string {
+  const n = ++kimlikSayaci;
+  let s = isaretleme;
+  for (const k of kimlikler) s = s.split(`"${k}"`).join(`"${k}-${n}"`).split(`#${k})`).join(`#${k}-${n})`);
+  return s;
+}
+
 export function svg(isaretleme: string): SVGSVGElement {
   sablon!.innerHTML = isaretleme.trim();
   const e = sablon!.content.firstElementChild as SVGSVGElement;

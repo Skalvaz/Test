@@ -632,3 +632,69 @@ Uzlaştırma kararları (şartname testlerinin hiçbiri kırmızı değildi; tes
   - zorunluIlkHamle'nin girdi katmanında uygulanması.
   - kazandiranAra ve gunlukUret'in Worker ya da zamanDilimli ile bağlanması.
 - Push yapılmadı.
+
+
+## P5 entegrasyon (src/app, src/main.ts)
+
+### Akış
+- Açılış ("Dokun ve başla" sesi açar) → **ilk açılışta doğrudan Bölüm 1** (bölüm
+  öncesi kartı atlanır; K5: oyunun farkı ilk 20 saniyede hissedilsin). Harita ilk
+  kazancın ödülüdür: fitil 2. bölüme yanar, ~1,5 sn sonra sıradaki bölümün kartı
+  kendiliğinden açılır (yalnız ilerleme sınırındaki bölüm için; eski bölüm
+  tekrarında açılmaz). Sonraki açılışlarda açılış → harita.
+- Bölüm: kart → oyun → Kazandın (Devam → harita / Tekrar oyna) ya da Kaybettin
+  (Tekrar dene ~0,4 sn, Haritaya dön, hayalet, Usta'nın Eli). Duraklat: devam /
+  yeniden (hamle yapıldıysa kayıp sayılır) / ayarlar / harita (hamle yapıldıysa kayıp).
+- Kazanç: Final Gösterisi önce HESAPLANIR ve sonuç kaydedilir, sonra oynatılır
+  (final sırasında sayfa kapansa da kazanç kaybolmaz). Bölümü bitiren oynatma ve
+  final duraklatılamaz.
+- Mahalle tamamlanınca 6 sn'lik gök şovu (dokunuş atlar) + Fener Koyu Defteri kartı.
+- Günün Şenliği / Sonsuz Şenlik: `levels/uretici` üreticisi rAF dilimleriyle
+  sürülür (bekleme kartında 34 ms/kare, arka planda 7 ms/kare; oynatma ve çizim
+  sırasında durur). Sonuç `fitil.uretim.<id>` anahtarında önbelleklenir. Bekleme
+  kartı kapatılabilir; üretim arka planda sürer. Harita açılınca bugünün tahtası
+  ve sıradaki sonsuz bölüm arka planda hazırlanır.
+- Kayıt: `fitil.kayit.v1` (GDD §16.7; meta `KAYIT_ANAHTARI`), yazımdan önce
+  yedek döndürme (`…yedek1/2`), 500 ms gecikmeli, sekme gizlenince hemen.
+  `connectRemote()` bulut daha ilerideyse yükler ve haritayı tazeler.
+
+### Sözleşme/modül ekleri (eklemeli)
+- `OyunCizici`: `imlecGoster(h)` (klavye imleci, 3 px krem halka), `kutla(kademe)`
+  (öğretimde zorla "Harika!"), `CiziciSecenek.gokyuzu` (Defter'de seçilen kişisel
+  gökyüzü; Ay Işığı = mahallenin teması). `OyunCiziciTam` bu ekleri zorunlu tutar.
+- `SesMotoru.uzakFisek(pan, guc)`: gökteki havai fişeklerin boğuk patlaması
+  (`fisekDinle`'ye bağlı).
+- Arayüz: `bekleme(metin, alt, iptal)` (üretim ilerleme kartı), `eksenSec(merkez,
+  hucre)` (Fişek Kalıbı: 4 yön düğmesi), `modalAcik`, `HaritaVM.sonsuz` +
+  `HaritaSecimi {tur:'sonsuz'}` (40 bitince büyük düğme "Sonsuz Şenlik N"),
+  `KazandinVM.duyurular` (rozet, açılış, görev çipleri — tost yığını yerine).
+- Arayüz düzeltmeleri: SVG yerel kimlikleri örneğe özgü (`tekilKimlik`): gizli
+  haritadaki ilk portre yüzünden balonlardaki Kıvılcım Usta boş daire
+  çiziliyordu. Yatay kısa ekranda (≤ 520 px) HUD paneli sıkışır ve kayar.
+
+### Kararlar
+- Reaksiyon yazısı ve "Şenlik başlıyor!" yalnız tuvalde (olay anında,
+  kıvılcımlarla); `ui.reaksiyonYazisi`/`ui.bant('Şenlik…')` kullanılmıyor.
+  "Son hamle!" bandı HUD'un. Son hamlede kalp atışı 900 ms'de bir yinelenir.
+- Kısayol çakışması: HUD K/1/2/3/P (document), girdi oklar/QEZC/Boşluk/Enter/
+  Backspace/Esc/D (window). Girdi kipi oturum durumundan türer; menü, oynatma ve
+  sonuç ekranlarında girdi 'kapali' (modal açıkken tuşlar tahtaya gitmez).
+- Öğretim balonları: 'ogretim' bölümlerinde her denemede, diğerlerinde bir kez
+  (kayıtta `b<id>:<tetik>:<i>`). El yolu `yolDogrula` ile denetlenir (geçersizse
+  gösterilmez); çizim başlayınca gizlenir, vazgeçilirse geri gelir. 5 sn boşta
+  Acemi botun en iyi adayında parıltı (el açıkken değil). 5. bölümün iki kazanç
+  balonundan sonuncusu final sırasında, ilki Kazandın kartında.
+- Hayalet fitil: son hamle öncesi durumda `kazandiranAra` (300 tam çözüm) en fazla
+  1,2 sn zaman dilimli; bulunamazsa düğme yok.
+- Fişek Kalıbı ekseni sürükleme yerine 4 düğmeyle seçilir (dokunmatikte kesin).
+- Ayarlar > İpuçları kapalı → balon, el ve boşta ipucu yok (zorunlu ilk hamle kural
+  olarak kalır).
+
+### Açık işler / bilinenler
+- Gerçek telefonda (iOS/Android WhatsApp içi tarayıcı) denenmedi; ses kulakla
+  dinlenmedi. Üretim süresi telefonda ölçülmedi (masaüstü Node: 0,7–11 sn).
+- Yazı tipi gömülmedi (§13.5): Google Fonts bağlantısı (claude.ai'de izinli);
+  çevrimdışı `fitil.html` sistem yazı tipine düşer.
+- Günlük görevler 10. bölüm kazancıyla açılınca o oyunun ilerlemesi yeni
+  görevlere sayılıyor (meta `bolumSonucu` sırası); ilk günden 3/3 + 3 sandık gelebilir.
+- Roket "çat" sesi 2×/4× hızlandırmada birkaç on ms geç kalabilir (P2b notu).

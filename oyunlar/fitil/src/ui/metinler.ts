@@ -46,6 +46,7 @@ export const M = {
   kilitliUsta: (gereken: number) => `${gereken} yıldızda açılır`,
   kilitliMahalle: (ilk: number) => `${ilk}. bölümde açılır`,
   gunlukKilitli: '10. bölümden sonra açılır',
+  sonsuzSenlik: 'Sonsuz Şenlik',
 
   // Bölüm öncesi
   hazirRoket: 'Hazır roketle başlıyorsun!',

@@ -3,7 +3,7 @@
  * ödül etiketleri, yeni öğe önizlemesi (küçük CSS animasyonu), Gece Tablosu
  * çerçevesi, mahalle çipi, satır düzenleri.
  */
-import { h, svg } from '../dom';
+import { h, svg, tekilKimlik } from '../dom';
 import { kapsulIsaretleme, hedefIkonu, odulIkonu, yildizSvg, kucukYildiz, motifIsaretleme, guclendiriciIsaretleme, ustaSvg } from '../ikonlar';
 import { hedefMetni, NADIRLIK_ADLARI, GUCLENDIRICI_ADLARI, YENI_OGE } from '../metinler';
 import { DESENLER, FITILLER, MAHALLELER } from '../../app/katalog';
@@ -94,10 +94,10 @@ function tabloYerTutucu(): SVGSVGElement {
       s += `<path d="M${cx} ${cy}L${(cx + Math.cos(a) * r).toFixed(1)} ${(cy + Math.sin(a) * r).toFixed(1)}" stroke="${renk[k % 6]}" stroke-width=".8" opacity=".7" stroke-linecap="round"/>`;
     }
   }
-  return svg(`<svg viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice" class="f-tablo-tuval" aria-hidden="true">
+  return svg(tekilKimlik(`<svg viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice" class="f-tablo-tuval" aria-hidden="true">
     <defs><linearGradient id="f-tb-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B1030"/><stop offset="1" stop-color="#2A1450"/></linearGradient></defs>
     <rect width="100" height="150" fill="url(#f-tb-g)"/>${s}
-    <path d="M0 128h12v-14h8v10h10v-20h6v-6h4v6h6v20h10v-12h8v16h12v-22l6-6 6 6v22h12v22H0z" fill="#120A1E"/></svg>`);
+    <path d="M0 128h12v-14h8v10h10v-20h6v-6h4v6h6v20h10v-12h8v16h12v-22l6-6 6 6v22h12v22H0z" fill="#120A1E"/></svg>`, ['f-tb-g']));
 }
 
 /** Kıvılcım Usta ipucu satırı (kart içinde). */

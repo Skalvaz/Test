@@ -37,6 +37,8 @@ import { defterEkrani } from './ekranlar/defter';
 import { gunlukEkrani } from './ekranlar/gunluk';
 import { istatistikEkrani } from './ekranlar/istatistik';
 import { molaEkrani, defterKartiEkrani, sandikEkrani } from './ekranlar/kucukler';
+import { beklemeEkrani, eksenSecici, type BeklemeTutamak } from './ekranlar/ek';
+import type { Eksen } from '../core/types';
 import type { Dikdortgen, SesMotoru } from '../app/sozlesme';
 import type { GuclendiriciId } from '../app/katalog';
 import type {
@@ -314,6 +316,24 @@ export class Arayuz {
   /** Tek başına sandık (günlük görev, Fener Nöbeti basamağı). */
   sandikAc(sandik: SandikVM, baslik?: string): Promise<void> {
     return this.ac(sandikEkrani(this.b, sandik, baslik));
+  }
+
+  /** (P5 ek) Uzun hazırlık (günlük tahta üretimi) için ilerleme kartı. */
+  bekleme(metin: string, alt?: string, iptal?: () => void): BeklemeTutamak {
+    return beklemeEkrani(this.b, metin, alt, iptal);
+  }
+
+  /**
+   * (P5 ek) Fişek Kalıbı ekseni (§9): hücre merkezinin yanında 4 yön düğmesi.
+   * `merkez` kök öğeye göre CSS px. İptal → null.
+   */
+  eksenSec(merkez: { x: number; y: number }, hucre: number): Promise<Eksen | null> {
+    return this.ac(eksenSecici(this.b, merkez, hucre, this.yer.ekranW));
+  }
+
+  /** (P5 ek) Modal ya da ekran kartı açık mı (girdi kısayolları için). */
+  get modalAcik(): boolean {
+    return this.b.modalAcik || this.acikEkranlar.size > 0;
   }
 
   /** Açık kart ekranlarını kapatır (her biri "geri" seçimiyle çözülür). */

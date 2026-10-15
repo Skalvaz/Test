@@ -1,23 +1,31 @@
+/**
+ * FİTİL önyükleme (P5). claude.ai görüntüleyicisinin canlı güncelleme
+ * kancasıyla başlar (`bootWithHot`): sayfa yeni sürümle yeniden yüklenirse
+ * süren bölüm anlık görüntüden sürdürülür. Bağımsız dosyada (file://)
+ * doğrudan başlar.
+ */
 import './style.css';
-import { Stage } from './render/stage';
 import { bootWithHot } from './platform/hot';
+import { Uygulama, type SicakVeri } from './app/uygulama';
 
-// P0 yer tutucu: entegrasyon (P5) gerçek oyun akışını buraya bağlar.
-bootWithHot(() => {
-  const host = document.getElementById('app')!;
-  const stage = new Stage(host, 2);
-  const loop = (t: number) => {
-    const c = stage.begin();
-    const g = c.createLinearGradient(0, 0, 0, stage.height);
-    g.addColorStop(0, '#0B1030');
-    g.addColorStop(1, '#2A1450');
-    c.fillStyle = g;
-    c.fillRect(0, 0, stage.width, stage.height);
-    c.fillStyle = '#FFF3D6';
-    c.font = '800 44px "Baloo 2", ui-rounded, system-ui, sans-serif';
-    c.textAlign = 'center';
-    c.fillText('FİTİL', stage.width / 2, stage.height / 2 + 10 * Math.sin(t / 400));
-    requestAnimationFrame(loop);
-  };
-  requestAnimationFrame(loop);
-}, () => ({}));
+declare global {
+  interface Window {
+    __fitil?: Record<string, unknown>;
+  }
+}
+
+let uygulama: Uygulama | null = null;
+
+bootWithHot(
+  (veri) => {
+    const host = document.getElementById('app');
+    if (!host || uygulama) return;
+    uygulama = new Uygulama(host);
+    window.__fitil = uygulama.testKancasi();
+    const sicak = (veri && typeof veri === 'object' ? veri : {}) as SicakVeri;
+    void uygulama.calistir(sicak).catch((e) => {
+      console.error('[fitil] akış hatası', e);
+    });
+  },
+  () => uygulama?.anlik() ?? {},
+);

@@ -106,7 +106,9 @@ export class HaritaEkrani {
     this.oynaDg = h('button', { s: 'f-dg f-dg-birincil f-dg-buyuk f-harita-oyna', type: 'button' }) as HTMLButtonElement;
     this.oynaDg.addEventListener('click', () => {
       const v = this.vm;
-      if (v) this.sec({ tur: 'bolum', id: simdikiBolum(v) });
+      if (!v) return;
+      if (sonsuzSirada(v)) this.sec({ tur: 'sonsuz' });
+      else this.sec({ tur: 'bolum', id: simdikiBolum(v) });
     });
     const alt = h('nav', { s: 'f-harita-alt', 'aria-label': 'Menü' });
     const kok = h(
@@ -328,7 +330,8 @@ export class HaritaEkrani {
       this.sekme(M.ayarlar, 'ayar', { tur: 'ayarlar' }),
     );
     const hepsiBitti = vm.bolumler.length >= 40 && vm.bolumler.every((x) => x.durum === 'acik');
-    this.oynaDg!.replaceChildren(ikon('oynat'), h('span', { t: hepsiBitti ? `${M.bolum} 40` : `${M.bolum} ${simdiki}` }));
+    const etiket = sonsuzSirada(vm) ? `${M.sonsuzSenlik} ${vm.sonsuz!.siradaki}` : hepsiBitti ? `${M.bolum} 40` : `${M.bolum} ${simdiki}`;
+    this.oynaDg!.replaceChildren(ikon('oynat'), h('span', { t: etiket }));
   }
 
   private sekme(ad: string, ik: Parameters<typeof ikon>[0], secim: HaritaSecimi, nokta = false, kilitli = false): HTMLElement {
@@ -367,6 +370,11 @@ export class HaritaEkrani {
     };
     requestAnimationFrame(adim);
   }
+}
+
+/** (P5 ek) 40 bölüm bitti ve Sonsuz Şenlik açık: büyük düğme ona gider (§10.7). */
+function sonsuzSirada(vm: HaritaVM): boolean {
+  return !!vm.sonsuz?.acik && vm.bolumler.length >= 40 && vm.bolumler.every((x) => x.durum === 'acik');
 }
 
 /** Şimdiki (oynanacak) bölüm: 'simdiki' durumlu, yoksa son açık + 1. */

@@ -90,6 +90,8 @@ export interface SesMotoruSecenek {
 /** Sözleşmenin üstüne geliştirme/test yardımcıları. */
 export interface SesMotoruAyrintili extends SesMotoru {
   tahtaBoyutu(w: number, h: number): void;
+  /** (P5 ek) Gökte uzak havai fişek patlaması: boğuk güm + gecikmeli çıtırtı. pan −1..1, guc 0..1. */
+  uzakFisek(pan: number, guc?: number): void;
   /** Etkin bağlam (yoksa null). */
   readonly baglam: BaseAudioContext | null;
   /** Havuzdaki etkin ses sayısı. */
@@ -1544,6 +1546,17 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
     }),
     tahtaBoyutu: sarmala((w: number, h: number) => {
       if (w > 0 && h > 0) tahta = { w, h };
+    }),
+    uzakFisek: sarmala((pan: number, guc = 1) => {
+      // Uzak patlama: alçak geçirenden boğuk "güm" (mesafe), ardından seyrek
+      // çıtırtı kuyruğu. Aynı anda gelenler birleşir (gökte çok fişek olunca).
+      const g = sinirla(guc, 0, 1);
+      const s = sesAc('uzakFisek', 1.3, { pan: sinirla(pan, -0.8, 0.8), kazanc: 0.32 * g, birlestir: 0.07, yanki: 0.35 });
+      if (!s) return;
+      ton(s, { f: 120 + 30 * r01(), f2: 42, kayma: 0.12, a: 0.006, d: 0.42, g: 1, lp: 600 });
+      gur(s, { renk: 'kahve', filtre: 'lowpass', f: 380, a: 0.008, d: 0.32, g: 0.9 });
+      gur(s, { renk: 'pembe', filtre: 'bandpass', f: 1800, q: 0.8, a: 0.004, d: 0.08, g: 0.12 });
+      citirti(s, 10, 0.16, 0.7, 0.2, 3000);
     }),
     etkinSes() {
       if (ctx) havuz.temizle(ctx.currentTime);
