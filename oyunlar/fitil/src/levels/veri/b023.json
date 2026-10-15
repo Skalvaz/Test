@@ -7,7 +7,7 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 26,
+  "hamle": 30,
   "tohum": 1774968236,
   "yardim": 0,
   "ozelEsikleri": [6, 9, 12],
@@ -15,17 +15,17 @@
   "duzen": [
     "# . # . . # . #",
     ". . . . . . . .",
-    ". . . . . . . .",
+    ". . . K1 K1 . . .",
     ". . . . . . . .",
     "# . . . . . . #",
     "# # . . . . # #",
-    "K1 K1 # . . # K1 K1",
+    ". K1 # . . # K1 .",
     ". . . . . . . .",
-    "K1 . K1 . . K1 . K1"
+    ". K1 . K1 K1 . K1 ."
   ],
   "korukKapasitesi": 20,
   "ipuclari": [{ "tetik": "baslangic", "metin": "Tahtadaki boşluklardan fitil geçmez." }],
-  "botBandi": [70, 80],
+  "botBandi": [85, 100],
   "yildizEsikleri": [9600, 11300],
   "sonrakiTanitim": "Sıradaki: Çift Kat!"
 }

@@ -7,7 +7,7 @@
   "h": 9,
   "renkSayisi": 6,
   "esik": 4,
-  "hamle": 22,
+  "hamle": 27,
   "tohum": 3354779828,
   "yardim": 0,
   "ozelEsikleri": [6, 9, 12],
@@ -41,7 +41,7 @@
   ],
   "korukKapasitesi": 20,
   "ipuclari": [{ "tetik": "baslangic", "metin": "Yeni renk: GÜL. Altı renkte zincirler kısalır." }],
-  "botBandi": [70, 80],
+  "botBandi": [85, 100],
   "yildizEsikleri": [9900, 11500],
   "sonrakiTanitim": "Sıradaki: Lale Tarhı!"
 }
