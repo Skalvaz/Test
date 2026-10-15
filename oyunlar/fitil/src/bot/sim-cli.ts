@@ -12,7 +12,7 @@
  * Seçenekler:
  *   --bolum N      Bölüm id (1..40, 101..108). Virgülle ya da aralıkla: 1-10,12
  *   --dosya YOL    Diskteki bölüm JSON'u ya da klasörü (varyant denemesi; virgülle birden çok)
- *   --tohum K      Tek oyunda tohum; --dogrula/--kalibre'de tohum SAYISI
+ *   --tohum K      Tek oyunda tohum; --dogrula/--kalibre/--dagilim'de tohum SAYISI
  *   --bas S        İlk tohum (varsayılan 0)
  *   --bot usta|acemi
  *   --isci N       İşçi sayısı (varsayılan min(3, çekirdek − 1))
