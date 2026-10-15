@@ -12,10 +12,11 @@
  *  - Geçerli hamle yoksa bütün rastgele hücreler yeniden çekilir (en fazla
  *    50 kez).
  *  - P1 eki (§4.7): ilk tahtaya da garanti uygulanır (en az `garanti` hazır
- *    çift); `olumluHamleler` gelince burada, rastgele hücrelerin rengini
- *    garanti sırasıyla seçerek. Bu P0 sürümü yalnız geçerli hamle arar.
+ *    çift): rastgele hücrelerin rengi garanti sırasıyla (y azalan, x artan)
+ *    ilk tahta akışından seçilir; grup doğurmaz.
  */
 import { agirlikliSec, oyunTohumu } from './rng';
+import { garantiSirasi, garantiUygula } from './garanti';
 import { DOGUM_SIRASI, GARANTI_SINIRI, VARSAYILAN_OZEL_ESIKLERI } from './sabitler';
 import { bosHucre, gecerliHamleVar, gruplariBul, karisikMi } from './tahta';
 import type { BolumIstatistigi, BolumVerisi, Damla, Hedef, HedefDurumu, Hucre, KarisikRenk, OyunDurumu, Renk } from './types';
@@ -184,6 +185,11 @@ export function bolumuYukle(v: BolumVerisi, denemeNo: number): OyunDurumu {
     if (deneme >= 50 || yenidenCekilebilir.length === 0) throw new BolumHatasi(`${ad}: ilk tahtada geçerli hamle yok`);
     for (const i of yenidenCekilebilir) cek(i);
   }
+
+  // İlk tahtaya garanti (§4.7, P1): rastgele hücrelerin rengi, en az
+  // `garanti` hazır karışım çifti olacak biçimde, ilk tahta akışıyla seçilir
+  // (her denemede aynı tahta).
+  garantiUygula(durum, garantiSirasi(v.w, yenidenCekilebilir), ilk, agirlik, v.garanti);
 
   // Kimlikler okuma sırasıyla.
   for (const h of hucreler) if (h.icerik?.tur === 'damla') (h.icerik.damla as Damla).id = sonrakiId++;

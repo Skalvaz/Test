@@ -235,20 +235,30 @@ export type Teknik = 'battal' | 'gelgit' | 'tarakli' | 'sal' | 'bulbulYuvasi' | 
  * `src/core/oynatici.ts` (P1) başvuru indirgeyicisi ve bulanık testi
  * (görsel tahta == durum) bunu güvenceler.
  *
- * "Tahta" etkisi (olayUygula):
+ * "Tahta" etkisi (olayUygula; başvuru `src/core/oynatici.ts`, P1):
  *  - karisti: kaynak boşalır; hedefteki damla { id: yeniId, renk: sonuc,
- *    ozel: sonuc === 7 ? 'murekkep' : 'yok' } olur.
- *  - ozelSuruklendi: kaynak boşalır; `tasindi` ise özel taş hedef hücreye
- *    geçer (hedefin eski damlası `temizlendi` ile ayrıca kalkar).
- *  - temizlendi: hücre içeriği boşalır.
+ *    ozel: sonuc === 7 ? 'murekkep' : 'yok', yon: 'yatay' } olur.
+ *  - ozelSuruklendi: `tasindi` ise kaynak boşalır (taş hedefe kayar ve
+ *    orada TÜKETİLİR: hedefte yazılmaz; hedefin eski damlası ardından
+ *    `temizlendi` ile kalkar, taş hedef hücrede ateşlenir/birleşir).
+ *    `tasindi` değilse (Lale/Mürekkep kaynakta yerinde, ya da `ters`)
+ *    tahta değişmez: ateşlenen taş ateşleme anında KENDİ `temizlendi`
+ *    olayıyla kalkar (altındaki kâğıt/yağ da alınır).
+ *  - temizlendi: hücre içeriği boşalır; puan += puan.
  *  - ozelOlustu: hücreye yeni özel taş yazılır (hücre o anda boştur).
+ *  - ozelTetiklendi, birlesim: tahta değişmez (ateşlenen taş önceden
+ *    `temizlendi` ya da `ozelSuruklendi{tasindi}` ile kalktı; alan
+ *    hücreleri ardından kendi `temizlendi`/`mermerHasar` olaylarıyla).
  *  - mermerHasar: can = kalan; 0 ise içerik boşalır.
  *  - kagitAlindi: kagit = kalan. yagKalkti: yag = false.
  *  - desenBoyandi: desenBoyali = true.
  *  - yercekimi: önce bütün `den`ler okunup boşaltılır, sonra `e`lere yazılır;
  *    ardından doğanlar boş yuvalara yazılır.
  *  - karistirma: eşleme aynı anda uygulanır (permütasyon).
- *  - donustu: hücredeki damla verilen damlaya döner (Lale birleşimi, şölen).
+ *  - donustu: hücredeki damla (aynı kimlik) verilen damlaya döner (Lale
+ *    birleşimi, şölen, karıştırmanın son çaresi).
+ *  - hedefIlerledi: hedefler[indeks] = {deger, tamam}. puanEklendi: puan +=
+ *    miktar. bolumBitti: bitti = sonuc.
  */
 export type Olay = { t: number } & (
   | {
@@ -265,7 +275,8 @@ export type Olay = { t: number } & (
    * Özel taşa dokunan sürükleme (§5.3, K9). Üç biçim:
    *  - özel → düz damla: `ozel` kaynağın türü; Tarak/Girdap hedefe taşınır
    *    (`tasindi: true`; hedefin damlası ardından `temizlendi` ile kalkar),
-   *    Lale ve Mürekkep yerinde kalır (`tasindi: false`).
+   *    Lale ve Mürekkep yerinde ateşlenir (`tasindi: false`; ateşleme anında
+   *    kendi `temizlendi`si ile kalkar).
    *  - düz damla → özel (`ters: true`): `ozel` HEDEFİN türü; hiçbir şey
    *    taşınmaz, özel taş hedefte (yerinde) ateşlenir; Lale kaynağın rengini alır.
    *  - özel → özel: kaynak hedefe taşınır (`tasindi: true`), ardından
@@ -278,6 +289,11 @@ export type Olay = { t: number } & (
       ozel: OzelTur;
       tasindi: boolean;
       ters?: boolean;
+      /**
+       * (P1 eki) `tasindi` ise taşınıp tüketilen özel taş (çizici kaydırma
+       * canlandırması; hedef "renk topla" o renkteki Tarak/Girdap'ı sayar).
+       */
+      damla?: Damla;
     }
   /** Bir grup eşleşti (aynı adımdaki bütün gruplar aynı t'de). */
   | { tur: 'eslesti'; renk: KarisikRenk; hucreler: Konum[]; k: number; merkez: Konum }
