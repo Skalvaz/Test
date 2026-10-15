@@ -1,0 +1,32 @@
+{
+  "name": "ebruli",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "build:single": "vite build --mode single && node scripts/bundle-single.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p .",
+    "bot": "tsx src/bot/sim-cli.ts",
+    "dogrula": "tsx src/bot/sim-cli.ts --dogrula",
+    "kalibre": "tsx src/bot/sim-cli.ts --kalibre",
+    "shot": "node scripts/shot.mjs",
+    "oynanis": "node scripts/oynanis.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/alegreya-sans": "5.3.0",
+    "@fontsource/cormorant-garamond": "5.3.0",
+    "@types/node": "^22.20.5",
+    "playwright": "^1.63.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.2"
+  },
+  "config": {
+    "slug": "ebruli"
+  },
+  "description": "EBRULİ — ham boyaları karıştır, aynı renkleri buluştur, kendi ebru tablonu kâğıda al. Eşleştirmeli bulmaca oyunu (deneme sürümü)."
+}

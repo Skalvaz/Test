@@ -1,0 +1,81 @@
+/*
+ * Genel sayfa stili (GDD §11). Tek görsel dünya: koyu su teknesi, krem
+ * aharlı kâğıt arayüz, altın varak vurgu, ceviz çerçeve. Ekran stilleri
+ * arayüz paketinde (src/ui/stil/) bu belirteçleri kullanır.
+ */
+:root {
+  color-scheme: dark;
+  /* su (tekne) */
+  --su-ust: #0B2B2E;
+  --su-alt: #0A1E33;
+  --su-parilti: #1F4D4F;
+  /* kâğıt (ahar) */
+  --kagit: #F3E9D2;
+  --kagit-golge: #E4D5B4;
+  --kagit-kenar: #CDB892;
+  /* mürekkep yazı */
+  --murekkep: #1E1A16;
+  --murekkep-ikincil: #5A4E3F;
+  /* altın varak */
+  --altin: #C9A227;
+  --altin-acik: #E8CD6A;
+  --altin-koyu: #8A6D12;
+  /* ceviz */
+  --ceviz-koyu: #3B2416;
+  --ceviz: #5A3A22;
+  --ceviz-damar: #7A5233;
+  /* durum */
+  --uyari: #B8322A;
+  --basari: #2F7D4F;
+  --baslik-yigini: "Cormorant Garamond", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --govde-yigini: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  background: var(--su-ust);
+}
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--su-ust);
+  color: var(--kagit);
+  font-family: var(--govde-yigini);
+  font-weight: 500;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+#app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.sahne { display: block; }
+
+/* P0 iskelet kartı (uygulama paketi gelince kalkar). */
+.iskelet-kart {
+  position: absolute;
+  left: 50%;
+  bottom: max(24px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(86vw, 360px);
+  box-sizing: border-box;
+  padding: 16px 18px 14px;
+  background: var(--kagit);
+  color: var(--murekkep);
+  border: 2px solid var(--altin);
+  border-radius: 10px;
+  box-shadow: 0 0 0 5px var(--ceviz-koyu), 0 10px 30px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+.iskelet-kart h1 {
+  margin: 0;
+  font: 700 44px/1 var(--baslik-yigini);
+  color: var(--ceviz-koyu);
+  letter-spacing: 0.02em;
+}
+.iskelet-kart p { margin: 8px 0 0; font: 500 16px/1.35 var(--govde-yigini); color: var(--murekkep-ikincil); }
+.iskelet-kart b { font-weight: 800; color: var(--altin-koyu); }

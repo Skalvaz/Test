@@ -1,0 +1,33 @@
+{
+  "id": 1,
+  "ad": "İlk Damla",
+  "atolye": "uskudar",
+  "tur": "ogretim",
+  "w": 5,
+  "h": 6,
+  "hamle": 12,
+  "tohum": 1001,
+  "dogum": [32, 32, 0, 18, 0, 0],
+  "garanti": 3,
+  "murekkep": false,
+  "hedefler": [{ "tur": "topla", "renk": 3, "adet": 10 }],
+  "duzen": [
+    ". . . . .",
+    ". . . . .",
+    ". . . . .",
+    ". . . . .",
+    "1 2 1 . .",
+    "3 3 2 1 ."
+  ],
+  "zorunluIlkHamle": { "kaynak": [3, 5], "hedef": [2, 5] },
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Kırmızıyı sarıya sürükle.", "el": [[3, 5], [2, 5]] },
+    { "tetik": "ilkHamleSonrasi", "metin": "Aynı renkten 3'ü değince kâğıda geçer!" },
+    { "tetik": "bosta5sn", "metin": "Parlayan damlayı komşusuna sürükle." }
+  ],
+  "sonrakiTanitim": "Sıradaki: Mavi boya!",
+  "botBandi": [98, 100],
+  "acemiAlt": 95,
+  "yildizEsikleri": [1200, 1800],
+  "elleEsik": true
+}
