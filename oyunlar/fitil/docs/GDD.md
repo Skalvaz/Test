@@ -1038,7 +1038,7 @@ Sprite önbelleğine bir kez çizilir; boyut ve DPR'ye göre yeniden üretilir. 
   - Solda en fazla 3 hedef kartı (64×48).
   - Ortada hamle dairesi (56 px).
   - Sağda puan ve 3 yıldız işaretli çubuk (120×40).
-  - Göğe uçan kıvılcımlar ve havai fişekler bu bantta patlar.
+  - Göğe uçan kıvılcımlar ve havai fişekler bu bantta patlar. HUD plakası bandın üst kısmını kapladığından (claude.ai görüntüleyicisinde ~390×700'de bandın ~%55'i) merkezler **görünür gök şeridine** (HUD'un ölçülen alt kenarı → ufuk/sandık üstü) düşer, patlama ölçeği şeride göre ayarlanır (yarıçap ≈ 1,7 × şerit, en az 105 px). Patlamanın HUD'a taşan üst kısmı HUD'un üstündeki **fişek katmanında** (ikinci, bant boyunda tuval; `pointer-events: none`; üstte %60, sınırda tam opak) çizilir: HUD kısa süre okunur kalır, balon/bant/modallar fişeklerin üstündedir. Hedef kartlarına uçan kıvılcımlar ve kart patlamaları da bu katmanda kartların üstünde görünür.
 - Tahta %20–%86: `hucre = floor(min((G − 32)/w, (0,66·Y − 24)/h, 64))`. Alt sınır 40 px; altına düşerse üst bant %14'e iner. Tahta yatayda ortalanır, 16 px kenar boşluğu bırakılır.
 - Alt çubuk %86–%100 (güvenli alan payı dahil), bütün düğmeler burada:
   - [Duraklat] solda.
@@ -1049,7 +1049,7 @@ Sprite önbelleğine bir kez çizilir; boyut ve DPR'ye göre yeniden üretilir. 
 **Masaüstü ve yatay** (en/boy oranı > 0,75):
 - Tahta solda %62'lik alanda ortalanır, `hucre = min(64, (Y − 160)/h)`.
 - Sağda 320 px panel: hedefler, hamle, puan, güçlendiriciler, Körük.
-- Gökyüzü ve kasaba tam arka planda; kasaba üstte.
+- Gökyüzü ve kasaba tam arka planda; kasaba üstte. Gök fişekleri panelin solundaki gökte patlar.
 
 **Klavye:**
 - Ok tuşları imleci dik yönde taşır; Q/E/Z/C ya da numpad 7/9/1/3 çapraz taşır.
