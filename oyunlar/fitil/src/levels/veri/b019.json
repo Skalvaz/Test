@@ -3,7 +3,6 @@
   "ad": "Kuru Gece",
   "mahalle": 3,
   "tur": "rahatlama",
-  "taslak": true,
   "w": 8,
   "h": 9,
   "renkSayisi": 5,
@@ -12,7 +11,7 @@
   "tohum": 3777863748,
   "yardim": 1,
   "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "zincirleme", "esik": 15, "adet": 3 }],
+  "hedefler": [{ "tur": "zincirleme", "esik": 15, "adet": 7 }],
   "duzen": [
     ". . . . . . . .",
     ". . . . . . . .",
@@ -25,8 +24,10 @@
     ". . . . . . . ."
   ],
   "korukKapasitesi": 20,
+  "ipuclari": [{ "tetik": "baslangic", "metin": "Kuru gece: kapsüller iki közle kızar, çabuk tutuşur!" }],
+  "kurallar": { "caprazSiniri": 2 },
   "bayram": true,
   "botBandi": [90, 100],
-  "yildizEsikleri": [3000, 4500],
+  "yildizEsikleri": [17300, 20300],
   "sonrakiTanitim": "Sıradaki: Gece Yarısı!"
 }

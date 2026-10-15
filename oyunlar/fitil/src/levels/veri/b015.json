@@ -3,7 +3,6 @@
   "ad": "Liman Fırtınası",
   "mahalle": 2,
   "tur": "zor",
-  "taslak": true,
   "w": 8,
   "h": 9,
   "renkSayisi": 5,
@@ -14,17 +13,19 @@
   "ozelEsikleri": [6, 9, 12],
   "hedefler": [{ "tur": "kaya" }, { "tur": "fener", "adet": 3 }],
   "duzen": [
-    ". F . . F . F .",
+    ". F . . . . F .",
     ". . . . . . . .",
-    ". . . K2 . . . .",
-    ". K2 . . K3 . K2 .",
+    ". . . K2 K2 . . .",
     ". . . . . . . .",
-    "K2 . K3 K2 . K2 . K3",
+    "K2 . . . . . . K2",
+    ". . K3 . . K3 . .",
     ". . . . . . . .",
-    ". K2 . . K2 . K3 .",
-    ". . . . . . . ."
+    ". . . K2 K2 . . .",
+    "K3 K2 . . . . K2 K3"
   ],
+  "fenerDogum": { "kalan": 1, "sahadaEnFazla": 2 },
+  "kurallar": { "soguma": 4 },
   "botBandi": [45, 55],
-  "yildizEsikleri": [3000, 4500],
+  "yildizEsikleri": [11200, 13900],
   "sonrakiTanitim": "Sıradaki: Dev Fişek!"
 }

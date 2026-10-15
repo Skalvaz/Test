@@ -3,12 +3,11 @@
   "ad": "Altı Renk",
   "mahalle": 4,
   "tur": "normal",
-  "taslak": true,
   "w": 7,
   "h": 9,
   "renkSayisi": 6,
   "esik": 4,
-  "hamle": 25,
+  "hamle": 22,
   "tohum": 3354779828,
   "yardim": 0,
   "ozelEsikleri": [6, 9, 12],
@@ -27,8 +26,22 @@
     ". . . . . . .",
     ". . . . . . ."
   ],
+  "sabitKapsuller": [
+    { "x": 2, "y": 2, "renk": 1 }, { "x": 3, "y": 2, "renk": 3 }, { "x": 4, "y": 2, "renk": 0 },
+    { "x": 1, "y": 3, "renk": 1 }, { "x": 2, "y": 3, "renk": 3 }, { "x": 3, "y": 3, "renk": 5 },
+    { "x": 4, "y": 3, "renk": 1 }, { "x": 5, "y": 3, "renk": 3 }, { "x": 1, "y": 4, "renk": 3 },
+    { "x": 2, "y": 4, "renk": 5 }, { "x": 3, "y": 4, "renk": 4 }, { "x": 4, "y": 4, "renk": 5 },
+    { "x": 5, "y": 4, "renk": 0 }, { "x": 1, "y": 5, "renk": 0 }, { "x": 2, "y": 5, "renk": 1 },
+    { "x": 3, "y": 5, "renk": 5 }, { "x": 4, "y": 5, "renk": 0 }, { "x": 5, "y": 5, "renk": 1 },
+    { "x": 1, "y": 6, "renk": 1 }, { "x": 2, "y": 6, "renk": 3 }, { "x": 3, "y": 6, "renk": 2 },
+    { "x": 4, "y": 6, "renk": 1 }, { "x": 5, "y": 6, "renk": 3 }, { "x": 1, "y": 7, "renk": 3 },
+    { "x": 2, "y": 7, "renk": 2 }, { "x": 3, "y": 7, "renk": 2 }, { "x": 4, "y": 7, "renk": 2 },
+    { "x": 5, "y": 7, "renk": 0 }, { "x": 1, "y": 8, "renk": 0 }, { "x": 2, "y": 8, "renk": 1 },
+    { "x": 3, "y": 8, "renk": 2 }, { "x": 4, "y": 8, "renk": 0 }, { "x": 5, "y": 8, "renk": 1 }
+  ],
   "korukKapasitesi": 20,
+  "ipuclari": [{ "tetik": "baslangic", "metin": "Yeni renk: GÜL. Altı renkte zincirler kısalır." }],
   "botBandi": [70, 80],
-  "yildizEsikleri": [3000, 4500],
+  "yildizEsikleri": [9900, 11500],
   "sonrakiTanitim": "Sıradaki: Lale Tarhı!"
 }
