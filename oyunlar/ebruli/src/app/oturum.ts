@@ -570,6 +570,14 @@ export class Oturum {
     return this.hamleYap(h);
   }
 
+  /** Test: kalan hamleyi ayarla (yakın kaçış ve hayalet senaryoları). */
+  testKalanHamle(n: number): boolean {
+    if (this.durum !== 'bekliyor' || !this.d) return false;
+    this.d = { ...this.d, kalanHamle: Math.max(1, Math.round(n)) };
+    this.b.ui.hud.hamle(this.d.kalanHamle, false);
+    return true;
+  }
+
   ogretimDurumu(): { zorunlu: Hamle | null; el: [number, number][] | null; balon: boolean } {
     const z = this.zorunlu;
     return { zorunlu: z, el: z ? [[z.kaynak.x, z.kaynak.y], [z.hedef.x, z.hedef.y]] : null, balon: this.b.ui.balonAcik };

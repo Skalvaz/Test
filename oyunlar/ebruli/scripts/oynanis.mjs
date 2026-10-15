@@ -10,7 +10,8 @@
  * Akış: açılış → Bölüm 1 öğretimi (zorunlu küme dışı sürükleme REDDEDİLMELİ;
  * zorunlu ilk hamle GERÇEK sürüklemeyle) → bot ile 1, 2, 3, 5, 10 →
  * kazandın (kâğıt çekme, tablo DOM'da ve boş değil, galeriye girdi) /
- * kaybettin (Tekrar dene < 1 sn; 3. kayıpta Usta'nın Eli) → harita →
+ * kaybettin (Tekrar dene < 1 sn; 3. kayıpta Usta'nın Eli; "Bu hamle
+ * kazandırırdı" hayaleti) → harita →
  * bölüm öncesi → duraklat → galeri → ayarlar (palet kayda geçer) → nasıl
  * oynanır → deneme sonu. Her aşamada ekran görüntüsü. pageerror ya da
  * console.error → başarısız (çıkış kodu 1).
@@ -282,6 +283,35 @@ async function profilKos(browser, p) {
         await kare('b6-usta-eli');
       }
     }
+  }
+
+  // ── 5b. Yakın kaçış: hedefe yaklaşınca tek hamle bırakılır, Acemi kaybeder →
+  // "Bu hamle kazandırırdı" hayaleti (yalnız telefon; bulunamazsa not düşülür).
+  if (p.ad === 'telefon') {
+    let bulundu = false;
+    for (let deneme = 0; deneme < 6 && !bulundu; deneme++) {
+      await page.evaluate(() => window.__ebruli.bolumAc(2));
+      await bekleKosul(page, () => window.__ebruli.ekran() === 'oyun' && window.__ebruli.bolum() === 2, null, 15000, 'bölüm 2 (hayalet)');
+      await page.evaluate(() => window.__ebruli.hizli(true));
+      for (let i = 0; i < 30; i++) {
+        const d = await page.evaluate(() => window.__ebruli.durum());
+        if (!d || d.bitti || (await ekran(page)) !== 'oyun') break;
+        const il = d.hedefler.reduce((s, h) => s + Math.min(1, h.ilerleme / h.gerekli), 0) / d.hedefler.length;
+        if (il >= 0.7 + deneme * 0.04 && d.hamleNo > 0) {
+          await page.evaluate(() => window.__ebruli.kalanHamle(1));
+          await page.evaluate(() => window.__ebruli.botHamle('acemi'));
+          break;
+        }
+        await page.evaluate(() => window.__ebruli.botHamle('usta'));
+      }
+      await page.evaluate(() => window.__ebruli.hizli(false));
+      await page.waitForTimeout(1600);
+      bulundu = (await ekran(page)) === 'kaybettin' && (await page.evaluate(() => !!document.querySelector('.e-kb-hayalet.gor')));
+    }
+    if (bulundu) {
+      await kare('kaybettin-hayalet');
+      not(`[${p.ad}] "Bu hamle kazandırırdı" hayaleti görüldü`);
+    } else not(`[${p.ad}] hayalet senaryosu kurulamadı (kazandıran hamle yoktu)`);
   }
 
   // ── 6. Duraklat

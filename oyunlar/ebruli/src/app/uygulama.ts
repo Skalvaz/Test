@@ -472,6 +472,7 @@ export class Uygulama {
         this.git({ tur: 'bolum', id });
       },
       botHamle: (tur: 'usta' | 'acemi' = 'usta') => o.botHamle(tur),
+      kalanHamle: (n: number) => o.testKalanHamle(n),
       hizli: (on: boolean) => {
         this.hizliKip = !!on;
         this.cizici.secenekAyarla({ hiz: on ? 6 : this.ayar.hiz });
