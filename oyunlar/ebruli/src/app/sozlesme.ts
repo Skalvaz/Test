@@ -119,7 +119,7 @@ export interface OyunCizici {
 
 /**
  * Sürükleme girdisi (src/input). Pointer Events; 12 px eşik ve baskın eksen
- * (§3.2); masaüstünde fare sürükleme ya da dokun-dokun; klavye (§11.6).
+ * (§3.2); masaüstünde fare sürükleme ya da dokun-dokun; klavye (§3.2).
  * Yalnız ilk pointerId izlenir. Çizim yapmaz: geri çağırımla uygulamaya
  * bildirir, uygulama çiziciyi ve çekirdeği sürer.
  */

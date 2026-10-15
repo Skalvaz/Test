@@ -1,5 +1,5 @@
 /**
- * EBRULİ çekirdek sözleşmesi (P0). Kaynak: docs/GDD.md §2–§6, §8.1, §13.2.
+ * EBRULİ çekirdek sözleşmesi (P0). Kaynak: docs/GDD.md §2–§9, §13.2, §15.1.
  *
  * Bu dosya bütün paketlerin ortak dilidir: çekirdek (core) bu tipleri üretir,
  * çizici/ses/arayüz/tablo yalnız okur. Alan eklemek serbesttir; var olan
@@ -214,7 +214,7 @@ export type KomboTuru =
 
 export type TemizlikNedeni = 'grup' | 'tarak' | 'girdap' | 'lale' | 'murekkep' | 'birlesim' | 'solen';
 
-/** Kaskat kutlaması (§10.1): k=2 Güzel, 3 Nefis, 4 Harika, 5+ Şaheser. */
+/** Kaskat kutlaması (§8.2): k=2 Güzel, 3 Nefis, 4 Harika, 5+ Şaheser. */
 export type KaskatKademesi = 'guzel' | 'nefis' | 'harika' | 'saheser';
 
 /** Ebru tablosu teknikleri (§9.2). */
@@ -357,7 +357,7 @@ export interface HamleSonucu {
 }
 
 /**
- * Bölüm verisi (§8.1). Anahtarlar ASCII. Düzen simgeleri:
+ * Bölüm verisi (§15.1). Anahtarlar ASCII. Düzen simgeleri:
  *   `.` rastgele damla · `#` delik · `1 2 4 3 5 6 7` sabit düz damla (renk
  *   kodu) · `X1 X2 X3` mermer (can).
  * Zemin katmanları ayrı listelerdedir; özel taşlar `damlalar` ile konur.

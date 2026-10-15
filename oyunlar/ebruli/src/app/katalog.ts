@@ -1,5 +1,5 @@
 /**
- * Ebruli katalogu (P0, GDD §1, §8, §11): renkler, motifler, atölyeler, ebru
+ * Ebruli katalogu (P0, GDD §1, §2.3, §9, §11): renkler, motifler, atölyeler, ebru
  * tablosu teknikleri. Çizici, ses, arayüz ve tablo bu sabitleri paylaşır;
  * çekirdek yalnız renk KODLARINI bilir (src/core/types.ts `Renk`).
  *
@@ -26,7 +26,10 @@ export interface RenkTanimi {
   standart: readonly [string, string, string];
   /** Renk körü paleti (Okabe–Ito uyarlaması) [ana, açık, koyu]. */
   renkKoru: readonly [string, string, string];
-  /** Ses: hicaz dizisinde derece (0 tabanlı; §10.3). */
+  /**
+   * Ses (§10.3): Re hicaz dizisinde derece (0 D4, 1 E♭4, 2 F♯4, 3 G4, 4 A4,
+   * 5 B♭4, 6 C5, 7 D5; −7 = D3). Renk notaları konsonanstır (K18).
+   */
   derece: number;
 }
 
@@ -34,17 +37,17 @@ export const RENK_TANIMLARI: Readonly<Record<Renk, RenkTanimi>> = {
   1: { kod: 1, ad: 'Kırmızı', ebruAdi: 'lal', ham: true, ebeveyn: null, motifler: ['nokta'], standart: ['#D6423A', '#F29A8E', '#7E1D1A'], renkKoru: ['#D55E00', '#F2A36B', '#7A3600'], derece: 0 },
   2: { kod: 2, ad: 'Sarı', ebruAdi: 'zerrin', ham: true, ebeveyn: null, motifler: ['halka'], standart: ['#F0C23B', '#FBE7A1', '#8A6A10'], renkKoru: ['#F0E442', '#FBF5B0', '#8A8212'], derece: 2 },
   4: { kod: 4, ad: 'Mavi', ebruAdi: 'çivit', ham: true, ebeveyn: null, motifler: ['dalga'], standart: ['#4A86D4', '#A9C8F0', '#1D3F73'], renkKoru: ['#0072B2', '#7FB8DC', '#003E61'], derece: 4 },
-  3: { kod: 3, ad: 'Turuncu', ebruAdi: 'nar çiçeği', ham: false, ebeveyn: [1, 2], motifler: ['nokta', 'halka'], standart: ['#EE7F2D', '#F9C08F', '#8A3F0C'], renkKoru: ['#E69F00', '#F5CF7A', '#7D5600'], derece: 1 },
-  5: { kod: 5, ad: 'Mor', ebruAdi: 'menekşe', ham: false, ebeveyn: [1, 4], motifler: ['nokta', 'dalga'], standart: ['#9A5CC6', '#D3B3EA', '#4B2468'], renkKoru: ['#CC79A7', '#EBC0D8', '#6E3A57'], derece: 3 },
-  6: { kod: 6, ad: 'Yeşil', ebruAdi: 'zümrüt', ham: false, ebeveyn: [2, 4], motifler: ['halka', 'dalga'], standart: ['#3FA86B', '#A6DDBC', '#175C36'], renkKoru: ['#009E73', '#7FD1B9', '#00553E'], derece: 5 },
-  7: { kod: 7, ad: 'Mürekkep', ebruAdi: 'is mürekkebi', ham: false, ebeveyn: null, motifler: ['nokta', 'halka', 'dalga'], standart: ['#1A1714', '#4A4038', '#000000'], renkKoru: ['#1A1714', '#5A5048', '#000000'], derece: 6 },
+  3: { kod: 3, ad: 'Turuncu', ebruAdi: 'nar çiçeği', ham: false, ebeveyn: [1, 2], motifler: ['nokta', 'halka'], standart: ['#EE7F2D', '#F9C08F', '#8A3F0C'], renkKoru: ['#E69F00', '#F5CF7A', '#7D5600'], derece: 3 },
+  5: { kod: 5, ad: 'Mor', ebruAdi: 'menekşe', ham: false, ebeveyn: [1, 4], motifler: ['nokta', 'dalga'], standart: ['#9A5CC6', '#D3B3EA', '#4B2468'], renkKoru: ['#CC79A7', '#EBC0D8', '#6E3A57'], derece: 5 },
+  6: { kod: 6, ad: 'Yeşil', ebruAdi: 'zümrüt', ham: false, ebeveyn: [2, 4], motifler: ['halka', 'dalga'], standart: ['#3FA86B', '#A6DDBC', '#175C36'], renkKoru: ['#009E73', '#7FD1B9', '#00553E'], derece: 6 },
+  7: { kod: 7, ad: 'Mürekkep', ebruAdi: 'is mürekkebi', ham: false, ebeveyn: null, motifler: ['nokta', 'halka', 'dalga'], standart: ['#1A1714', '#4A4038', '#000000'], renkKoru: ['#1A1714', '#5A5048', '#000000'], derece: -7 },
 };
 
 /** Ham boyalar ve karışık renkler (sıra: arayüz, tarif şeridi). */
 export const HAM_RENKLER: readonly Renk[] = [1, 2, 4];
 export const KARISIK_RENKLER: readonly Renk[] = [3, 5, 6];
 
-/** Tarif şeridi (§9.4): ham + ham = karışık. */
+/** Tarif şeridi (§11.6): ham + ham = karışık. */
 export const TARIFLER: readonly { a: Renk; b: Renk; sonuc: Renk }[] = [
   { a: 1, b: 2, sonuc: 3 },
   { a: 1, b: 4, sonuc: 5 },
@@ -110,19 +113,19 @@ export interface TeknikTanimi {
   ad: string;
   /** Galeri kartı açıklaması (tek satır). */
   aciklama: string;
-  /** Hangi koşulda tabloya girer (§7.3, bilgi amaçlı; karar `src/meta`'da). */
+  /** Hangi koşulda tabloya girer (§9.2; bilgi amaçlı, karar `src/tablo`'da). */
   kosul: string;
 }
 
-/** Ebru tablosu teknikleri (§7). Gerçek ebru türleri; tamamı prosedürel. */
+/** Ebru tablosu teknikleri (§9.2). Gerçek ebru türleri; tamamı prosedürel. */
 export const TEKNIKLER: readonly TeknikTanimi[] = [
   { id: 'battal', ad: 'Battal ebru', aciklama: 'Serpilmiş boya halkaları; ebrunun temeli.', kosul: 'her tablo (taban katman)' },
   { id: 'gelgit', ad: 'Gelgit ebru', aciklama: 'Biz ile ileri geri çekilmiş dalgalar.', kosul: 'uzun kaskat (k ≥ 3)' },
   { id: 'tarakli', ad: 'Taraklı ebru', aciklama: 'Tarakla taranmış ince dalgalı çizgiler.', kosul: 'Tarak ateşlendi' },
-  { id: 'sal', ad: 'Şal ebru', aciklama: 'Gelgitin üstünden geçen tarak: şal deseni.', kosul: 'Tarak + kaskat birlikte' },
+  { id: 'sal', ad: 'Şal ebru', aciklama: 'Gelgitin üstünden geçen tarak: şal deseni.', kosul: 'gelgit ve taraklı aynı tabloda' },
   { id: 'bulbulYuvasi', ad: 'Bülbül yuvası', aciklama: 'Biz ile çevrilmiş sarmal yuvalar.', kosul: 'Girdap ateşlendi' },
   { id: 'cicek', ad: 'Çiçek ebrusu', aciklama: 'Atölyenin çiçeği: lale ya da karanfil.', kosul: 'Lale ya da desen hedefi' },
 ];
 
-/** Tablo nadirliği (§7.4). */
+/** Tablo nadirliği (§9.4). */
 export const NADIRLIK = ['Sade', 'Zarif', 'Şaheser'] as const;
