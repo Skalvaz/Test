@@ -163,8 +163,11 @@ export class Arayuz {
     if (s.palet && s.palet !== this.b.palet) {
       this.b.palet = s.palet;
       tanimlariKur(s.palet);
+      // Yalnız görünür HUD yeniden kurulur: haritadan açılan Ayarlar'da palet
+      // değişince son bölümün HUD'u (ve fişek katmanı) pencerenin arkasında belirmesin.
+      // Gizli HUD sonraki hudKur'da yeni paletle kurulur.
       const vm = this.hud.model;
-      if (vm) this.hud.kur(vm, this.yer);
+      if (vm && this.hud.gorunur) this.hud.kur(vm, this.yer);
     }
     if (s.hareketiAzalt !== undefined) {
       this.b.hareketiAzalt = s.hareketiAzalt;
