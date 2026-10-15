@@ -1,30 +1,88 @@
 {
-  "id": 104,
-  "ad": "Gizli Isı",
-  "mahalle": 3,
-  "tur": "usta",
-  "taslak": true,
-  "w": 7,
-  "h": 9,
-  "renkSayisi": 5,
-  "esik": 4,
-  "hamle": 22,
-  "tohum": 430592800,
-  "yardim": 0,
-  "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "kafes" }, { "tur": "topla", "renk": "hepsi", "adet": 80 }],
-  "duzen": [
-    ". . . . . . .",
-    ". . . . . . .",
-    ". C . . . C .",
-    ". . . . . . .",
-    ". . . C . . .",
-    ". . . . . . .",
-    ". C . . . C .",
-    ". . . . . . .",
-    ". . . . . . ."
+ "id": 104,
+ "ad": "Gizli Isı",
+ "mahalle": 3,
+ "tur": "usta",
+ "w": 7,
+ "h": 9,
+ "renkSayisi": 5,
+ "esik": 4,
+ "hamle": 20,
+ "tohum": 430592800,
+ "yardim": 0,
+ "ozelEsikleri": [
+  6,
+  9,
+  12
+ ],
+ "hedefler": [
+  {
+   "tur": "kafes"
+  }
+ ],
+ "duzen": [
+  ". . . C . . .",
+  "C . . . . . C",
+  ". . . . . . .",
+  ". . . . . . .",
+  "C . . . . . C",
+  ". . . . . . .",
+  ". . . . . . .",
+  "C . . . . . C",
+  ". . . C . . ."
+ ],
+ "kurallar": {
+  "gizliIsi": true,
+  "caprazSiniri": 2
+ },
+ "botBandi": [
+  35,
+  60
+ ],
+ "yildizEsikleri": [
+  3000,
+  4500
+ ],
+ "onIsi": [
+  [
+   2,
+   2,
+   1
   ],
-  "kurallar": { "gizliIsi": true },
-  "botBandi": [50, 90],
-  "yildizEsikleri": [3000, 4500]
+  [
+   4,
+   2,
+   1
+  ],
+  [
+   1,
+   4,
+   1
+  ],
+  [
+   5,
+   4,
+   1
+  ],
+  [
+   3,
+   3,
+   1
+  ],
+  [
+   3,
+   5,
+   1
+  ],
+  [
+   2,
+   6,
+   1
+  ],
+  [
+   4,
+   6,
+   1
+  ]
+ ]
 }

@@ -3,16 +3,30 @@
   "ad": "Meltem",
   "mahalle": 5,
   "tur": "rahatlama",
-  "taslak": true,
   "w": 7,
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 20,
+  "hamle": 22,
   "tohum": 3010760460,
   "yardim": 0,
-  "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "topla", "renk": 0, "adet": 50 }, { "tur": "topla", "renk": 1, "adet": 50 }],
+  "ozelEsikleri": [
+    6,
+    9,
+    12
+  ],
+  "hedefler": [
+    {
+      "tur": "topla",
+      "renk": 0,
+      "adet": 50
+    },
+    {
+      "tur": "topla",
+      "renk": 1,
+      "adet": 50
+    }
+  ],
   "duzen": [
     ". . . . . . .",
     ". . . . . . .",
@@ -24,10 +38,41 @@
     ". . . . . . .",
     ". . . . . . ."
   ],
-  "havaOlaylari": [{ "tur": "meltem", "eksen": "satir", "hatlar": [6, 3, 7], "periyot": 3, "baslangic": 3 }],
+  "havaOlaylari": [
+    {
+      "tur": "meltem",
+      "eksen": "satir",
+      "hatlar": [
+        6,
+        3,
+        7
+      ],
+      "periyot": 3,
+      "baslangic": 2
+    }
+  ],
   "korukKapasitesi": 20,
-  "botBandi": [90, 100],
-  "yildizEsikleri": [3000, 4500],
-  "ipuclari": [{ "tetik": "baslangic", "metin": "Meltem satırı kızdırır. Sırasını bekle!" }],
-  "sonrakiTanitim": "Sıradaki: Tepe Şenliği!"
+  "ipuclari": [
+    {
+      "tetik": "baslangic",
+      "metin": "Meltem satırı kızdırır. Sırasını bekle!"
+    }
+  ],
+  "botBandi": [
+    90,
+    100
+  ],
+  "yildizEsikleri": [
+    3000,
+    4500
+  ],
+  "sonrakiTanitim": "Sıradaki: Tepe Şenliği!",
+  "bayram": true,
+  "dogumAgirliklari": [
+    3,
+    3,
+    2,
+    2,
+    2
+  ]
 }

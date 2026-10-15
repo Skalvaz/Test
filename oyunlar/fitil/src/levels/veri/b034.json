@@ -1,32 +1,52 @@
 {
-  "id": 34,
-  "ad": "Kuru Gece II",
-  "mahalle": 6,
-  "tur": "rahatlama",
-  "taslak": true,
-  "w": 8,
-  "h": 9,
-  "renkSayisi": 5,
-  "esik": 3,
-  "hamle": 18,
-  "tohum": 1550272172,
-  "yardim": 0,
-  "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "zincirleme", "esik": 25, "adet": 2 }],
-  "duzen": [
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . ."
-  ],
-  "korukKapasitesi": 20,
-  "bayram": true,
-  "botBandi": [90, 100],
-  "yildizEsikleri": [3000, 4500],
-  "sonrakiTanitim": "Sıradaki: Fabrika Yangını!"
+ "id": 34,
+ "ad": "Kuru Gece II",
+ "mahalle": 6,
+ "tur": "rahatlama",
+ "w": 8,
+ "h": 9,
+ "renkSayisi": 5,
+ "esik": 3,
+ "hamle": 18,
+ "tohum": 1550272172,
+ "yardim": 0,
+ "ozelEsikleri": [
+  6,
+  9,
+  12
+ ],
+ "hedefler": [
+  {
+   "tur": "zincirleme",
+   "esik": 25,
+   "adet": 2
+  },
+  {
+   "tur": "topla",
+   "renk": "hepsi",
+   "adet": 300
+  }
+ ],
+ "duzen": [
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . ."
+ ],
+ "korukKapasitesi": 20,
+ "bayram": true,
+ "botBandi": [
+  90,
+  100
+ ],
+ "yildizEsikleri": [
+  3000,
+  4500
+ ],
+ "sonrakiTanitim": "Sıradaki: Fabrika Yangını!"
 }

@@ -3,29 +3,84 @@
   "ad": "Kova Bulmacası",
   "mahalle": 5,
   "tur": "normal",
-  "taslak": true,
   "w": 8,
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 25,
+  "hamle": 20,
   "tohum": 288134948,
   "yardim": 0,
-  "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "kafes" }],
+  "ozelEsikleri": [
+    6,
+    9,
+    12
+  ],
+  "hedefler": [
+    {
+      "tur": "kafes"
+    }
+  ],
   "duzen": [
     ". . . . . . . .",
-    "S C . . . . C S",
+    ". . C . . C . .",
+    ". C S . . S C .",
     ". . . . . . . .",
-    ". . C S S C . .",
     ". . . . . . . .",
-    "S C . . . . C S",
     ". . . . . . . .",
-    ". . . C C . . .",
+    ". C S1 . . S1 C .",
+    ". . C . . C . .",
     ". . . . . . . ."
   ],
   "korukKapasitesi": 20,
-  "botBandi": [65, 80],
-  "yildizEsikleri": [3000, 4500],
-  "sonrakiTanitim": "Sıradaki: Meltem!"
+  "botBandi": [
+    65,
+    80
+  ],
+  "yildizEsikleri": [
+    3000,
+    4500
+  ],
+  "sonrakiTanitim": "Sıradaki: Meltem!",
+  "onIsi": [
+    [
+      2,
+      1,
+      1
+    ],
+    [
+      1,
+      2,
+      1
+    ],
+    [
+      5,
+      1,
+      1
+    ],
+    [
+      6,
+      2,
+      1
+    ],
+    [
+      1,
+      6,
+      1
+    ],
+    [
+      2,
+      7,
+      1
+    ],
+    [
+      6,
+      6,
+      1
+    ],
+    [
+      5,
+      7,
+      1
+    ]
+  ]
 }

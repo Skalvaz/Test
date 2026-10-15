@@ -1,33 +1,53 @@
 {
-  "id": 36,
-  "ad": "Kale Kapısı",
-  "mahalle": 7,
-  "tur": "normal",
-  "taslak": true,
-  "w": 8,
-  "h": 10,
-  "renkSayisi": 5,
-  "esik": 4,
-  "hamle": 26,
-  "tohum": 1626682980,
-  "yardim": 0,
-  "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "kaya" }, { "tur": "fener", "adet": 4 }],
-  "duzen": [
-    ". . . F F . . .",
-    ". . . . . . . .",
-    ". . K2 K1 K1 K2 . .",
-    ". K3 K1 . . K1 K3 .",
-    ". K2 . . . . K2 .",
-    ". K1 . . . . K1 .",
-    ". K2 . . . . K2 .",
-    ". K1 . . . . K1 .",
-    ". . . . . . . .",
-    ". . . . . . . ."
-  ],
-  "fenerDogum": { "kalan": 2, "sahadaEnFazla": 2 },
-  "korukKapasitesi": 20,
-  "botBandi": [65, 80],
-  "yildizEsikleri": [3000, 4500],
-  "sonrakiTanitim": "Sıradaki: Barut Deposu!"
+ "id": 36,
+ "ad": "Kale Kapısı",
+ "mahalle": 7,
+ "tur": "normal",
+ "w": 8,
+ "h": 10,
+ "renkSayisi": 5,
+ "esik": 4,
+ "hamle": 24,
+ "tohum": 1626682980,
+ "yardim": 0,
+ "ozelEsikleri": [
+  6,
+  9,
+  12
+ ],
+ "hedefler": [
+  {
+   "tur": "kaya"
+  },
+  {
+   "tur": "fener",
+   "adet": 4
+  }
+ ],
+ "duzen": [
+  ". . . . F . . .",
+  ". . . . . . . .",
+  ". . K2 K3 K3 K2 . .",
+  ". K2 K1 . . K1 K2 .",
+  ". K2 . . . . K2 .",
+  ". K1 . . . . K1 .",
+  ". K2 . . . . K2 .",
+  ". K3 . . . . K3 .",
+  ". . . . . . . .",
+  ". . . . . . . ."
+ ],
+ "fenerDogum": {
+  "kalan": 3,
+  "sahadaEnFazla": 2
+ },
+ "korukKapasitesi": 20,
+ "botBandi": [
+  65,
+  80
+ ],
+ "yildizEsikleri": [
+  3000,
+  4500
+ ],
+ "sonrakiTanitim": "Sıradaki: Barut Deposu!"
 }

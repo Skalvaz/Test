@@ -3,39 +3,249 @@
   "ad": "Lale Deseni",
   "mahalle": 5,
   "tur": "tanitim",
-  "taslak": true,
   "w": 7,
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 24,
-  "tohum": 1318864668,
+  "hamle": 27,
+  "tohum": 2615,
   "yardim": 0,
-  "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "desen", "motif": "lale" }],
+  "ozelEsikleri": [
+    6,
+    9,
+    12
+  ],
+  "hedefler": [
+    {
+      "tur": "desen",
+      "motif": "lale"
+    }
+  ],
   "duzen": [
+    "# . . . . . #",
     ". . . . . . .",
     ". . . . . . .",
     ". . . . . . .",
-    ". . . . . . .",
-    ". . . . . . .",
-    ". . . . . . .",
-    ". . . . . . .",
-    ". . . . . . .",
-    ". . . . . . ."
+    "# . . . . . #",
+    "# . . . . . #",
+    "# . . . . . #",
+    "# # . . . # #",
+    "# # . . . # #"
+  ],
+  "sabitKapsuller": [
+    {
+      "x": 1,
+      "y": 2,
+      "renk": 0
+    },
+    {
+      "x": 2,
+      "y": 2,
+      "renk": 0
+    },
+    {
+      "x": 3,
+      "y": 2,
+      "renk": 0
+    },
+    {
+      "x": 4,
+      "y": 2,
+      "renk": 0
+    },
+    {
+      "x": 5,
+      "y": 2,
+      "renk": 0
+    },
+    {
+      "x": 3,
+      "y": 4,
+      "renk": 2
+    },
+    {
+      "x": 1,
+      "y": 5,
+      "renk": 2
+    },
+    {
+      "x": 3,
+      "y": 5,
+      "renk": 2
+    },
+    {
+      "x": 5,
+      "y": 5,
+      "renk": 2
+    },
+    {
+      "x": 2,
+      "y": 6,
+      "renk": 2
+    },
+    {
+      "x": 3,
+      "y": 6,
+      "renk": 2
+    },
+    {
+      "x": 4,
+      "y": 6,
+      "renk": 2
+    },
+    {
+      "x": 3,
+      "y": 7,
+      "renk": 2
+    }
   ],
   "zemin": {
     "desen": {
       "motif": "lale",
       "hucreler": [
-        [2, 1, 4], [3, 1, 4], [4, 1, 4], [1, 2, 4], [2, 2, 4], [3, 2, 4], [4, 2, 4], [5, 2, 4], [2, 3, 4],
-        [4, 3, 4], [3, 3, 2], [3, 4, 2], [3, 5, 2], [3, 6, 2], [2, 5, 2], [4, 5, 2], [3, 7, 2], [2, 6, 2]
+        [
+          1,
+          1,
+          0
+        ],
+        [
+          5,
+          1,
+          0
+        ],
+        [
+          1,
+          2,
+          0
+        ],
+        [
+          2,
+          2,
+          0
+        ],
+        [
+          3,
+          2,
+          0
+        ],
+        [
+          4,
+          2,
+          0
+        ],
+        [
+          5,
+          2,
+          0
+        ],
+        [
+          2,
+          3,
+          0
+        ],
+        [
+          3,
+          3,
+          0
+        ],
+        [
+          4,
+          3,
+          0
+        ],
+        [
+          3,
+          4,
+          2
+        ],
+        [
+          1,
+          5,
+          2
+        ],
+        [
+          3,
+          5,
+          2
+        ],
+        [
+          5,
+          5,
+          2
+        ],
+        [
+          2,
+          6,
+          2
+        ],
+        [
+          3,
+          6,
+          2
+        ],
+        [
+          4,
+          6,
+          2
+        ],
+        [
+          3,
+          7,
+          2
+        ]
       ]
     }
   },
   "korukKapasitesi": 20,
-  "botBandi": [85, 90],
-  "yildizEsikleri": [3000, 4500],
-  "ipuclari": [{ "tetik": "baslangic", "metin": "Desendeki her karo kendi renginin patlamasını ister." }],
-  "sonrakiTanitim": "Sıradaki: Nemli Gece!"
+  "ipuclari": [
+    {
+      "tetik": "baslangic",
+      "metin": "Desendeki her karo kendi renginin patlamasını ister.",
+      "el": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          4,
+          2
+        ],
+        [
+          5,
+          2
+        ]
+      ]
+    },
+    {
+      "tetik": "ilkHamleSonrasi",
+      "metin": "Boyanan karo kalıcıdır. Sap ve yapraklar yeşil ister."
+    }
+  ],
+  "botBandi": [
+    85,
+    90
+  ],
+  "yildizEsikleri": [
+    3000,
+    4500
+  ],
+  "sonrakiTanitim": "Sıradaki: Nemli Gece!",
+  "dogumAgirliklari": [
+    3,
+    1,
+    3,
+    1,
+    1
+  ],
+  "kurallar": {
+    "caprazSiniri": 3
+  }
 }

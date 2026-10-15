@@ -1,32 +1,56 @@
 {
-  "id": 39,
-  "ad": "Arife",
-  "mahalle": 7,
-  "tur": "rahatlama",
-  "taslak": true,
-  "w": 8,
-  "h": 9,
-  "renkSayisi": 5,
-  "esik": 3,
-  "hamle": 20,
-  "tohum": 1163238956,
-  "yardim": 0,
-  "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "zincirleme", "esik": 30, "adet": 2 }, { "tur": "topla", "renk": "hepsi", "adet": 40 }],
-  "duzen": [
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . ."
-  ],
-  "korukKapasitesi": 20,
-  "bayram": true,
-  "botBandi": [90, 100],
-  "yildizEsikleri": [3000, 4500],
-  "sonrakiTanitim": "Sıradaki: Büyük Şenlik!"
+ "id": 39,
+ "ad": "Arife",
+ "mahalle": 7,
+ "tur": "rahatlama",
+ "w": 8,
+ "h": 9,
+ "renkSayisi": 5,
+ "esik": 3,
+ "hamle": 20,
+ "tohum": 1163238956,
+ "yardim": 0,
+ "ozelEsikleri": [
+  6,
+  9,
+  12
+ ],
+ "hedefler": [
+  {
+   "tur": "zincirleme",
+   "esik": 30,
+   "adet": 2
+  },
+  {
+   "tur": "topla",
+   "renk": "hepsi",
+   "adet": 40
+  },
+  {
+   "tur": "halka",
+   "adet": 2
+  }
+ ],
+ "duzen": [
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . ."
+ ],
+ "korukKapasitesi": 20,
+ "bayram": true,
+ "botBandi": [
+  90,
+  100
+ ],
+ "yildizEsikleri": [
+  3000,
+  4500
+ ],
+ "sonrakiTanitim": "Sıradaki: Büyük Şenlik!"
 }
