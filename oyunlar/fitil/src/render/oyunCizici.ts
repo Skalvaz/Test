@@ -170,6 +170,8 @@ class OyunCiziciSinifi implements OyunCizici {
   /** Ekran tazeleme aralığı tahmini (ms): 60 Hz varsayılır, daha hızlısı görülürse iner. */
   private tazeleme = 1000 / 60;
   private iyiPencere = 0;
+  /** Art arda 100 ms üstü kare sayısı (takılma mı, yavaş cihaz mı). */
+  private uzunSeri = 0;
   /** Yeniden yükseltmek için gereken art arda iyi pencere (her düşüşte ikiye katlanır). */
   private gerekenIyi = 4;
   private nokta = { x: 0, y: 0 };
@@ -1669,13 +1671,20 @@ class OyunCiziciSinifi implements OyunCizici {
     const onceki = this.sonKareZamani;
     this.sonKareZamani = t0;
     if (s.secenek.kalite !== 'oto' || !onceki) return;
-    const aralik = t0 - onceki;
-    if (aralik > 100 || aralik <= 0) {
-      this.kaliteAtla = Math.max(this.kaliteAtla, 10);
-      this.pAralik = this.pIs = this.pN = 0;
-      return;
-    }
-    if (this.kaliteAtla > 0) {
+    let aralik = t0 - onceki;
+    if (aralik <= 0) return;
+    // Tek tük uzun kare (sekme dönüşü, pişirme) takılmadır, ölçülmez; art arda
+    // uzun kareler ise cihazın gerçek hızıdır (çok yavaş cihazda kalite düşmeli).
+    if (aralik > 100) {
+      this.uzunSeri++;
+      if (this.uzunSeri <= 2) {
+        this.kaliteAtla = Math.max(this.kaliteAtla, 10);
+        this.pAralik = this.pIs = this.pN = 0;
+        return;
+      }
+      aralik = Math.min(aralik, 250);
+    } else this.uzunSeri = 0;
+    if (this.kaliteAtla > 0 && this.uzunSeri <= 2) {
       this.kaliteAtla--;
       return;
     }

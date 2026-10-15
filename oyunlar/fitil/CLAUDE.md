@@ -77,8 +77,10 @@ gibi POSIX sözdizimi kullanma.
   önizleme → hamle → oynatma → HUD; final, kazandın/kaybettin, hayalet fitil,
   Usta'nın Eli, güçlendiriciler, Körük, öğretim balonları/el/boşta ipucu),
   `gorunum.ts` (meta → arayüz VM eşlemeleri, testli), `kayitci.ts` (SaveStore +
-  yedek döndürme + bulut), `uretim.ts` (günlük/sonsuz üretimi zaman dilimli +
-  önbellek). Reaksiyon yazısı ve "Şenlik başlıyor!" yalnız tuvalde çizilir.
+  yedek döndürme + bulut), `uretim.ts` (günlük/sonsuz üretimi Web Worker'da —
+  `uretimIsci.ts`, `?worker&inline`; CSP engellerse ana iş parçacığında zaman
+  dilimli — + önbellek). Reaksiyon yazısı ve "Şenlik başlıyor!" yalnız tuvalde
+  çizilir. Açılış ekranı beklerken ilk bölüm `cizici.onIsit` ile önden pişer.
 
 ## Hedef ortam (oyuncu telefondan, WhatsApp'tan gelen bağlantıyla açar)
 
@@ -86,7 +88,8 @@ gibi POSIX sözdizimi kullanma.
   fare + klavye. Tüm düğmeler alt bantta, başparmakla erişilebilir.
 - claude.ai sayfa çerçevesinde çalışır: `alert/confirm/prompt` YOK (onayı
   sayfa içinde yap), indirme bağlantısı yok, `window.open` yok, harici
-  görsel/ses/fetch yok (yalnız Google Fonts stil bağlantısı). Her şey prosedürel.
+  görsel/ses/fetch yok. Her şey prosedürel; "Baloo 2" `src/ui/yazitipi.ts` ile
+  gömülü (FontFace'e ikili veri: CSP font-src'ye takılmaz, ağ isteği yok).
 - WhatsApp içi tarayıcı (Android Custom Tab, iOS Safari görünümü): ses yalnız
   ilk dokunuştan sonra; `localStorage` her erişimde try/catch; güvenli alan
   (`env(safe-area-inset-*)`) payları; `touch-action: none`; çift dokunma

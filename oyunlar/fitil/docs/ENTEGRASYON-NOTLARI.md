@@ -692,9 +692,66 @@ Uzlaştırma kararları (şartname testlerinin hiçbiri kırmızı değildi; tes
 
 ### Açık işler / bilinenler
 - Gerçek telefonda (iOS/Android WhatsApp içi tarayıcı) denenmedi; ses kulakla
-  dinlenmedi. Üretim süresi telefonda ölçülmedi (masaüstü Node: 0,7–11 sn).
-- Yazı tipi gömülmedi (§13.5): Google Fonts bağlantısı (claude.ai'de izinli);
-  çevrimdışı `fitil.html` sistem yazı tipine düşer.
+  dinlenmedi. Üretim süresi telefonda ölçülmedi (masaüstü Node: 1–22 sn; işçide
+  ana iş parçacığına yük değil).
 - Günlük görevler 10. bölüm kazancıyla açılınca o oyunun ilerlemesi yeni
   görevlere sayılıyor (meta `bolumSonucu` sırası); ilk günden 3/3 + 3 sandık gelebilir.
 - Roket "çat" sesi 2×/4× hızlandırmada birkaç on ms geç kalabilir (P2b notu).
+
+## Düzeltme turu (üç doğrulayıcının bulguları)
+
+### Kararlar ve sapmalar
+- **İlk dokunuş:** dokunuşta yalnız AudioContext kurulur/sürdürülür; gürültü
+  tamponları ve yankı dürtüsü sonra, her biri ayrı görevde (boşta). İlk bölümün
+  sprite, gök ve sandık pişirmeleri açılış ekranı beklerken `cizici.onIsit` ile
+  parça parça yapılır. `gurultu2` kapanış ayırmıyor (sandık damarı 5–10 kat hızlı).
+  Sandık ve gök aynı girdide yeniden pişmez (Tekrar dene, yeniden boyutlanma).
+- **Üretim (§10.5):** Web Worker (`uretimIsci.ts`, Vite `?worker&inline`; tek
+  dosyada Blob URL). İşçi kurulamazsa (CSP `script-src` Blob'u engelliyorsa
+  konsola bir CSP satırı düşer) ana iş parçacığında tahminli bütçeyle sürer ve
+  oyun ekranında durur. İşçi varsa günlük tahta 7. bölümden itibaren önden
+  hazırlanır. Erken eleme: banda giremeyecek aday kalan koşuları oynamaz
+  (bant içi seçim değişmez; yalnız hiçbir aday banda girmezse yedek seçimi
+  olası en iyi orana göre). Önbellek günlük 8 / sonsuz 4 ayrı sınırla.
+- **Otomatik kalite (§16.6):** ölçüt kare aralığı, eşik ekran tazelemesine göre
+  (60 Hz'de 30 kare ort. > ~22 ms → düşük); yükseltme aralık tazelemeye
+  yetişip JS iş süresi aralığın yarısından azsa, oynatma yokken; gereken iyi
+  pencere her yükseltmede ikiye katlanır. Tek tük >100 ms takılmalar (art arda
+  en çok 2) ve pişirme sonrası 30 kare ölçülmez; sürekli uzun kareler (yavaş
+  cihaz) 250 ms'ye kırpılıp sayılır, yoksa kalite hiç düşmezdi.
+- **Yazı tipi (§13.5):** Google Fonts bağlantısı kaldırıldı; "Baloo 2" 700/800
+  Latin + Latin Ext (`@fontsource/baloo-2`) JS'e gömülü, FontFace'e ikili veri
+  olarak verilir (CSP font-src data: yazı tipini reddetse de yüklenir).
+- **Coşku Serisi:** hazır roket öğretim bölümlerinde (1–5) verilmez (§15 tek
+  kavram; b5 çapraz roket nişanını öğretir); seri sayacı öğretimde de ilerler,
+  roket 6. bölümde gelir. Tutumlu ve Üçüncü Kuşak öğretim oyunlarında sayılmaz.
+- **Usta'nın Eli devamı:** meta, devam sonucunda özeti istatistikle
+  tamamlamaz ve oyun sayısını artırmaz; Eli ile kazanılırsa sayılmış kayıp
+  kazanca döner. Uygulama Eli sonrası özeti sıfırlar.
+- **Günün Şenliği denemesi:** `siradakiDenemeNo` günlükte `gunluk.enIyi[t].deneme`
+  okur (K15: her deneme taze dolum).
+- **Kazandın:** öğretim balonu yıldızların altında, "Sıradaki" duyurulardan önce,
+  duyurular önem sırasıyla (küçük ekranda 1, değilse 3 + "+N daha"). 1★ başlığı
+  "Başardın!". Mahalle kartı yalnız gerçekten verilen güçlendiricileri ve toplam
+  tozu gösterir.
+- **Mahalle şovu:** tahta çizilmez (`cizici.sov`), gök ekranın %60'ına açılır,
+  3–5'li salvolar + final salvosu, mahalle adı altın şeritte.
+- **Bildirimler:** oyun ekranında gök bandında (tahtayı örtmez); hareketi
+  azaltta transform'suz ortalanır; bellek kaydı uyarısı yalnız haritada, bir kez.
+- **Bulut:** bağlantı kurucuda başlar; ilk açılış kararı en fazla 1,5 sn bekler;
+  oturum sürerken gelen bulut kaydı harita dönüşünde uygulanır ve yerele yazılır.
+- **Yatay telefon (yükseklik ≤ 480):** kartlar iki sütun, düğmeler kaydırmadan
+  görünür; oyun balonu tahtanın solundaki boşluğu da kullanır (3 satır).
+- **Öğretim:** bölüm 1'de 3 sn tereddütte el sona varıp bir düğüm geri döner
+  (geri alma, §15 adım 5); "En az 3." kapanınca ana talimat döner; zorunlu
+  küme dışına basış fıs + titreşim + vurgu/el yeniden. Balon ve el duraklat
+  ya da çizim sırasında açılmaz; duraklat açık balonu kapatır, Devam geri getirir.
+
+### Açık kalanlar
+- Kalibrasyon (26–40, Usta yer tutucu eşikleri), öğretim sonrası zorluk duvarı
+  (b6–b12 Acemi %0) ve ilk bölümlerin 1★ eşikleri bölüm verisi işi (JSON'a
+  dokunulmadı); b023 ipucundaki yazım hatası ("Tarhtaki") da öyle.
+- claude.ai'nin gerçek CSP'si Blob işçiye izin vermiyorsa üretim ana iş
+  parçacığına düşer (doğrulandı: sandbox + katı CSP'de Günün Şenliği ~10 sn).
+- "Bu çizgi kazandırırdı" kazandıran çizgi yoksa çıkmaz (isteğe bağlı "en çok
+  ilerleten çizgi" eklenmedi). Boşta kare başına ~200 B ayırma kaldı.
