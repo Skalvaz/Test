@@ -1,35 +1,259 @@
 {
-  "id": 108,
-  "ad": "Kıvılcım Usta'nın Sınavı",
-  "mahalle": 7,
-  "tur": "usta",
-  "taslak": true,
-  "w": 8,
-  "h": 10,
-  "renkSayisi": 6,
-  "esik": 4,
-  "hamle": 30,
-  "tohum": 3762737792,
-  "yardim": 0,
-  "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "kafes" }, { "tur": "fener", "adet": 1 }, { "tur": "aydinlat" }],
-  "duzen": [
-    ". . . F . . . .",
-    ". . . . . . . .",
-    ". C . . . . C .",
-    ". . . I W . . .",
-    ". . K2 . . K2 . .",
-    "S1 . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . .",
-    ". . . . . . . D"
-  ],
-  "zemin": {
-    "dosemeler": [[0, 9, 1], [1, 9, 1], [2, 9, 1], [3, 9, 1], [4, 9, 1], [5, 9, 1], [6, 9, 1]],
-    "barutIzleri": [[[6, 8], [5, 8], [4, 8]]]
+ "id": 108,
+ "ad": "Kıvılcım Usta'nın Sınavı",
+ "mahalle": 7,
+ "tur": "usta",
+ "w": 8,
+ "h": 10,
+ "renkSayisi": 5,
+ "esik": 4,
+ "hamle": 30,
+ "tohum": 3762737792,
+ "yardim": 0,
+ "ozelEsikleri": [
+  6,
+  9,
+  12
+ ],
+ "dogumAgirliklari": [
+  4,
+  6,
+  4,
+  4,
+  4
+ ],
+ "hedefler": [
+  {
+   "tur": "desen",
+   "motif": "burc"
   },
-  "havaOlaylari": [{ "tur": "meltem", "eksen": "satir", "hatlar": [6, 4], "periyot": 4, "baslangic": 4 }],
-  "botBandi": [50, 90],
-  "yildizEsikleri": [3000, 4500]
+  {
+   "tur": "fener",
+   "adet": 2
+  },
+  {
+   "tur": "devFisek",
+   "adet": 2
+  }
+ ],
+ "duzen": [
+  "# . # F F # . #",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  "K2 . . . . . . K2",
+  "K2 . . W W . . K2",
+  ". S1 C . . C S1 .",
+  ". . . . . . . .",
+  "I . D . . D . I",
+  ". . . K3 K3 . . ."
+ ],
+ "sabitKapsuller": [
+  {
+   "x": 2,
+   "y": 2,
+   "renk": 1
+  },
+  {
+   "x": 5,
+   "y": 2,
+   "renk": 1
+  },
+  {
+   "x": 2,
+   "y": 3,
+   "renk": 1
+  },
+  {
+   "x": 3,
+   "y": 3,
+   "renk": 1
+  },
+  {
+   "x": 4,
+   "y": 3,
+   "renk": 1
+  },
+  {
+   "x": 5,
+   "y": 3,
+   "renk": 1
+  },
+  {
+   "x": 2,
+   "y": 6,
+   "renk": 1
+  },
+  {
+   "x": 5,
+   "y": 6,
+   "renk": 1
+  }
+ ],
+ "zemin": {
+  "dosemeler": [
+   [
+    3,
+    6,
+    1
+   ],
+   [
+    4,
+    6,
+    1
+   ],
+   [
+    3,
+    7,
+    1
+   ],
+   [
+    4,
+    7,
+    1
+   ],
+   [
+    3,
+    8,
+    2
+   ],
+   [
+    4,
+    8,
+    2
+   ]
+  ],
+  "desen": {
+   "motif": "burc",
+   "hucreler": [
+    [
+     2,
+     2,
+     1
+    ],
+    [
+     5,
+     2,
+     1
+    ],
+    [
+     2,
+     3,
+     1
+    ],
+    [
+     3,
+     3,
+     1
+    ],
+    [
+     4,
+     3,
+     1
+    ],
+    [
+     5,
+     3,
+     1
+    ],
+    [
+     2,
+     4,
+     1
+    ],
+    [
+     5,
+     4,
+     1
+    ],
+    [
+     2,
+     5,
+     1
+    ],
+    [
+     5,
+     5,
+     1
+    ],
+    [
+     2,
+     6,
+     1
+    ],
+    [
+     5,
+     6,
+     1
+    ]
+   ]
+  },
+  "barutIzleri": [
+   [
+    [
+     1,
+     9
+    ],
+    [
+     2,
+     8
+    ],
+    [
+     3,
+     9
+    ],
+    [
+     4,
+     9
+    ],
+    [
+     5,
+     8
+    ],
+    [
+     6,
+     9
+    ]
+   ]
+  ]
+ },
+ "cikislar": [
+  3,
+  4
+ ],
+ "devFisekKapasite": 4,
+ "havaOlaylari": [
+  {
+   "tur": "meltem",
+   "eksen": "satir",
+   "hatlar": [
+    7,
+    4
+   ],
+   "periyot": 3,
+   "baslangic": 3
+  },
+  {
+   "tur": "cisenti",
+   "eksen": "sutun",
+   "hatlar": [
+    2,
+    5
+   ],
+   "periyot": 4,
+   "baslangic": 4
+  }
+ ],
+ "korukKapasitesi": 20,
+ "kurallar": {
+  "caprazSiniri": 2
+ },
+ "botBandi": [
+  35,
+  60
+ ],
+ "yildizEsikleri": [
+  3000,
+  4500
+ ]
 }
