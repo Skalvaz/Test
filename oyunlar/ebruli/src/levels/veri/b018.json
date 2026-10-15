@@ -1,0 +1,36 @@
+{
+  "id": 18,
+  "ad": "Usta İşi",
+  "atolye": "bursa",
+  "tur": "normal",
+  "w": 7,
+  "h": 9,
+  "hamle": 22,
+  "tohum": 1018,
+  "dogum": [20, 20, 20, 11, 11, 11],
+  "garanti": 2,
+  "murekkep": true,
+  "hedefler": [
+    { "tur": "topla", "renk": 5, "adet": 12 },
+    { "tur": "topla", "renk": 6, "adet": 12 }
+  ],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". X1 . . . X1 .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". X1 . . . X1 .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "ozeller": [
+    { "x": 2, "y": 8, "ozel": "tarak", "renk": 5, "yon": "yatay" },
+    { "x": 3, "y": 8, "ozel": "girdap", "renk": 6 }
+  ],
+  "sonrakiTanitim": "Sıradaki: Şal",
+  "botBandi": [85, 100],
+  "acemiAlt": 25,
+  "yildizEsikleri": [2000, 3000]
+}

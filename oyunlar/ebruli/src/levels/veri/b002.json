@@ -1,0 +1,37 @@
+{
+  "id": 2,
+  "ad": "Renk Çarkı",
+  "atolye": "uskudar",
+  "tur": "ogretim",
+  "w": 6,
+  "h": 7,
+  "hamle": 15,
+  "tohum": 1002,
+  "dogum": [20, 20, 20, 11, 11, 11],
+  "garanti": 3,
+  "murekkep": false,
+  "hedefler": [
+    { "tur": "topla", "renk": 5, "adet": 6 },
+    { "tur": "topla", "renk": 6, "adet": 6 }
+  ],
+  "duzen": [
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . 1",
+    "2 4 1 2 6 4",
+    "5 5 4 1 6 2"
+  ],
+  "zorunluIlkHamle": { "kaynak": [3, 6], "hedef": [2, 6] },
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Mavi geldi: üç tarif, üç renk.", "el": [[3, 6], [2, 6]] },
+    { "tetik": "ilkHamleSonrasi", "metin": "Yeşil = Sarı + Mavi.", "el": [[5, 5], [5, 6]] },
+    { "tetik": "bosta5sn", "metin": "Parlayan damlayı komşusuna sürükle." }
+  ],
+  "sonrakiTanitim": "Sıradaki: Tarak!",
+  "botBandi": [98, 100],
+  "acemiAlt": 95,
+  "yildizEsikleri": [1200, 1800],
+  "elleEsik": true
+}

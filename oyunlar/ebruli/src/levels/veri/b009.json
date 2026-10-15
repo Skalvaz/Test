@@ -1,0 +1,44 @@
+{
+  "id": 9,
+  "ad": "Lale Deseni",
+  "atolye": "uskudar",
+  "tur": "tanitim",
+  "w": 7,
+  "h": 9,
+  "hamle": 20,
+  "tohum": 1009,
+  "dogum": [20, 20, 20, 11, 11, 11],
+  "garanti": 2,
+  "murekkep": false,
+  "hedefler": [{ "tur": "desen", "motif": "lale" }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . 2 . .",
+    ". . . . 4 . .",
+    ". . 5 5 1 2 .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "zemin": {
+    "desen": {
+      "motif": "lale",
+      "hucreler": [
+        [2, 3, 5], [4, 3, 5],
+        [2, 4, 5], [3, 4, 5], [4, 4, 5],
+        [3, 5, 6],
+        [2, 6, 6], [3, 6, 6],
+        [3, 7, 6]
+      ]
+    }
+  },
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Her desen hücresi kendi rengini ister.", "el": [[4, 3], [4, 4]] }
+  ],
+  "sonrakiTanitim": "Sıradaki: Üsküdar Lalesi!",
+  "botBandi": [92, 100],
+  "acemiAlt": 40,
+  "yildizEsikleri": [2000, 3000]
+}

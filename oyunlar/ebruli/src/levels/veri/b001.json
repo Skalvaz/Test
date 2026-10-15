@@ -23,7 +23,8 @@
   "ipuclari": [
     { "tetik": "baslangic", "metin": "Kırmızıyı sarıya sürükle.", "el": [[3, 5], [2, 5]] },
     { "tetik": "ilkHamleSonrasi", "metin": "Aynı renkten 3'ü değince kâğıda geçer!" },
-    { "tetik": "bosta5sn", "metin": "Parlayan damlayı komşusuna sürükle." }
+    { "tetik": "bosta5sn", "metin": "Parlayan damlayı komşusuna sürükle." },
+    { "tetik": "kazanc", "metin": "Bu tablo senin. Galerine eklendi." }
   ],
   "sonrakiTanitim": "Sıradaki: Mavi boya!",
   "botBandi": [98, 100],

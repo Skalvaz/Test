@@ -1,0 +1,33 @@
+{
+  "id": 5,
+  "ad": "Girdap",
+  "atolye": "uskudar",
+  "tur": "tanitim",
+  "w": 7,
+  "h": 9,
+  "hamle": 18,
+  "tohum": 1005,
+  "dogum": [20, 20, 20, 11, 11, 11],
+  "garanti": 2,
+  "murekkep": false,
+  "hedefler": [{ "tur": "topla", "renk": 6, "adet": 14 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . 1 . . .",
+    ". 1 2 4 1 2 .",
+    "1 6 6 2 6 6 1"
+  ],
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Beş damla: GİRDAP. Çevresini yutar.", "el": [[3, 7], [3, 8]] },
+    { "tetik": "ozelOlusunca", "metin": "Girdabı bir komşuya sürükle.", "el": [[3, 8], [3, 7]] }
+  ],
+  "sonrakiTanitim": "Sıradaki: İki kat kâğıt!",
+  "botBandi": [92, 100],
+  "acemiAlt": 40,
+  "yildizEsikleri": [2000, 3000]
+}
