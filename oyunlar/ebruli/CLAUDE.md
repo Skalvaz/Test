@@ -85,9 +85,10 @@ gibi POSIX sözdizimi kullanma. Bot koşularında en fazla 2 işçi (4 çekirdek
   girdi → önizleme → hamle → oynatma → HUD; öğretim, boşta ipucu, şölen,
   kâğıt çekme, kaybettin hayaleti, Usta'nın Eli), `kayitci.ts` (SaveStore +
   500 ms gecikmeli yazma), `tablolar.ts` (kayıttaki tablodan istek).
-- `src/levels/index.ts` — b001–b020 açık içe aktarım. Henüz ayarlanmamış
-  bölümler `"taslak": true` (GDD §15.2 planından `scripts/taslakUret.mts` ile
-  üretildi; P2 bölüm tasarımı yalnız JSON'ları değiştirir).
+- `src/levels/index.ts` — b001–b020 açık içe aktarım (liste ve dosya adları
+  sabit; bölüm tasarımı yalnız `veri/bNNN.json`'ları değiştirir). P2 ayarlı
+  bölümleri birleşti. `scripts/taslakUret.mts` GDD §15.2 planından eksik
+  bölümler için `"taslak": true` yer tutucu üretir (var olanı ezmez).
 
 ## Hedef ortam (oyuncu telefondan, WhatsApp'tan gelen claude.ai bağlantısıyla açar)
 
