@@ -25,6 +25,7 @@
   ],
   "ipuclari": [{ "tetik": "baslangic", "metin": "Islak barut zincire girmez. Yanında patlat, kurusun." }],
   "botBandi": [92, 100],
-  "yildizEsikleri": [9400, 11000],
+  "yildizEsikleri": [8100, 11000],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Halka!"
 }

@@ -31,6 +31,7 @@
   ],
   "kurallar": { "soguma": 3 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [8900, 10400],
+  "yildizEsikleri": [6200, 10400],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Işıklı Sokak!"
 }

@@ -30,6 +30,7 @@
     { "tetik": "ilkHamleSonrasi", "metin": "Fenerin altındakileri patlat; en alta inen fener toplanır." }
   ],
   "botBandi": [92, 100],
-  "yildizEsikleri": [9600, 11700],
+  "yildizEsikleri": [8100, 11700],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Yıldız Topu!"
 }

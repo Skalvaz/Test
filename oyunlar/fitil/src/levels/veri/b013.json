@@ -26,6 +26,7 @@
   "ipuclari": [{ "tetik": "baslangic", "metin": "Kayalar yanındaki patlamayla ufalanır." }],
   "kurallar": { "soguma": 3 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [8500, 10300],
+  "yildizEsikleri": [6900, 10800],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Çifte Roket!"
 }

@@ -28,6 +28,7 @@
   "kurallar": { "caprazSiniri": 2 },
   "bayram": true,
   "botBandi": [90, 100],
-  "yildizEsikleri": [17300, 20300],
+  "yildizEsikleri": [18900, 22000],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Gece Yarısı!"
 }

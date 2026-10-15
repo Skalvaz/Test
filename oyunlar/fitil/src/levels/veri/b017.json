@@ -36,6 +36,7 @@
   "ipuclari": [{ "tetik": "baslangic", "metin": "Isıyla patlayanlar Körük'ü doldurur. Dolunca dokun, nereyi istersen ısıt." }],
   "kurallar": { "soguma": 2, "caprazSiniri": 5 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [10100, 11900],
+  "yildizEsikleri": [6500, 10500],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Su Kovası!"
 }

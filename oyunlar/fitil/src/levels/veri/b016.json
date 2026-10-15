@@ -31,12 +31,13 @@
   "ipuclari": [
     {
       "tetik": "baslangic",
-      "metin": "Dev fişeği yanında patlatarak doldur.",
+      "metin": "Dev fişeği yanında patlatarak doldur. İkisi yeter!",
       "el": [[0, 8], [1, 7], [2, 8], [3, 7], [4, 8], [5, 7], [6, 8]]
     }
   ],
   "kurallar": { "soguma": 2 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [8500, 10500],
+  "yildizEsikleri": [7100, 10600],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Körük!"
 }

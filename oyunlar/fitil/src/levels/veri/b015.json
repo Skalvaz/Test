@@ -31,6 +31,7 @@
   "ipuclari": [{ "tetik": "baslangic", "metin": "Dalgakıran kalın: kayalar her patlamada bir kat incelir." }],
   "kurallar": { "caprazSiniri": 2 },
   "botBandi": [60, 85],
-  "yildizEsikleri": [11200, 13900],
+  "yildizEsikleri": [7600, 10000],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Dev Fişek!"
 }

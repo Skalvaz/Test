@@ -26,6 +26,7 @@
   "korukKapasitesi": 20,
   "ipuclari": [{ "tetik": "baslangic", "metin": "Kova yanındakileri ısıtmaz. Önce kovayı kır." }],
   "botBandi": [80, 90],
-  "yildizEsikleri": [8800, 11200],
+  "yildizEsikleri": [7700, 11200],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Kuru Gece!"
 }

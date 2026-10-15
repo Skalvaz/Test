@@ -32,6 +32,7 @@
   ],
   "kurallar": { "soguma": 2, "caprazSiniri": 3 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [7500, 9100],
+  "yildizEsikleri": [6600, 9900],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Liman Fırtınası!"
 }

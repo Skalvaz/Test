@@ -36,6 +36,7 @@
   ],
   "kurallar": { "soguma": 3 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [8300, 9500],
+  "yildizEsikleri": [6400, 9500],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Islak Barut!"
 }

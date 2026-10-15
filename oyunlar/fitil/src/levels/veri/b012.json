@@ -39,6 +39,7 @@
   ],
   "kurallar": { "caprazSiniri": 1, "soguma": 1 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [9100, 10600],
+  "yildizEsikleri": [6600, 10600],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Kayalık!"
 }

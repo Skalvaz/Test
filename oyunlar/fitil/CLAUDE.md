@@ -23,6 +23,7 @@ npm run dogrula             # bölüm doğrulama (bot bantları)
 npm run dogrula -- --bolum 11-15 --tohum 30          # --tohum: tohum SAYISI
 npm run dogrula -- --dosya deneme/ --tohum 30        # varyant JSON'ları (klasör ya da dosya)
 npm run kalibre -- --bolum 12                        # 500 tohum, yildizEsikleri yazar, hamle önerir
+npm run kalibre -- --bolum 6-19 --kural k24          # K24 eşikleri (+500 Acemi), "esikKurali": "k24" yazar
 npm run bot -- --dagilim --bolum 1-12 --tohum 100 --acemi-tohum 60   # Usta+Acemi kazanma, 1/2/3★, puan yüzdelikleri, K22 önerisi
 node scripts/shot.mjs <url> <png> [w] [h] [bekleme-ms] [js]   # telefon görünümü (390×844)
 npm run oynanis -- http://127.0.0.1:5185/ playtest-output [telefon|masaustu|kucuk]   # tam akış duman testi
@@ -53,11 +54,15 @@ Test kancası `window.__fitil`: `durum()`, `bolum()`, `ekran()`, `bolumAc(id)`,
   %15'e kadar oynar; yükleyici ilk tahtayı karıştırırsa doğrulayıcı hata verir.
 - Usta ağırlıkları `src/bot/agirliklar.json` (GDD değerlerinden sapma ve
   gerekçesi dosyada). Ağırlık değişirse bütün bölümler yeniden doğrulanmalı.
-- İlk oturum (GDD K22, K23): öğretimin (1–5) yıldız eşikleri elle
+- İlk oturum (GDD K22, K23, K24): öğretimin (1–5) yıldız eşikleri elle
   (`"elleEsik": true`; `kalibre` yazmaz, eşikler `--dagilim`'in "K22 önerisi"
-  sütunundan). 6–12 Acemi botuna göre ayarlı: tanıtımda Acemi ≥ %35, Bölüm 10
-  ≥ %15 (Acemi ölçümü 60 tohum). `dogrula` öğretim ve tanıtımda Acemi'yi de
-  ölçer; tanıtımda < %30 uyarı verir (başarısızlık değil; 13–14 şu an uyarır).
+  sütunundan). 6–25 K24 eşikli (`"esikKurali": "k24"`: 2★ = min(Usta p50,
+  Acemi kazanç p50), 3★ = Usta p85; `kalibre` bayraklı bölümde Acemi'yi de
+  oynatıp yazar, yeni bölüme `--kural k24`). 6–19 Acemi botuna göre ayarlı
+  (Acemi ölçümü 60 tohum): tanıtımda Acemi ≥ %30 (Usta [92, 100]), zor ≥ %8
+  ve Usta [60, 85] (Bölüm 10: ≥ %15, [70, 85]), rahatlama ≥ %60. `dogrula` öğretim ve
+  tanıtımda Acemi'yi de ölçer (< %30 uyarı); zor/rahatlamada
+  `--acemi --acemi-tohum 60` ile ölç.
 - Deneyerek bulundu: `soguma` Acemi'yi en çok cezalandıran düğmedir (ısı
   şansını siler); kaldırmak Acemi'yi 3–5 kat artırır ama reaksiyon p90'ı 14'ü
   aşar. Süre ≥ 60 sn ≈ Usta'nın ≥ 15 hamlede kazanması: hedef adedini çok
@@ -66,6 +71,19 @@ Test kancası `window.__fitil`: `durum()`, `bolum()`, `ekran()`, `bolumAc(id)`,
   ve köşeye yakın kafesler onu en çok tıkayan hedeflerdir (sönmeyen döşeme
   ısı haritasıyla görüldü); halka ve fener hedeflerini de neredeyse hiç
   kovalamaz (amaç körü), bu yüzden bu hedeflerde adet düşük tutulur.
+- Deneyerek bulundu (13–19): Acemi orta satırları (8×9'da 4–5) en hızlı
+  temizler; üst ve alt sıralar ~1,4 kat yavaş. Hedef türüne göre Acemi/Usta
+  hamle oranı: kaya ~3, `topla` hepsi ~1,6, fener (ısısız) Acemi'de neredeyse
+  hiç biter. Fener + kaya zorunda Acemi'ye şans veren tek düzen: fenerlerin
+  altındaki sıralar ön ısılı (2) ve `soguma` kapalı (her soğuma Acemi'yi
+  sıfırlar); `caprazSiniri` 2 Usta'yı Acemi'den çok yavaşlatır. Kaya
+  çıkarınca reaksiyon p90 artar (kaya ısıyı keser). Dev fişeği yukarı
+  taşımak p90'ı 18–22'ye çıkarır; bunun yerine "M dev fişekten N'si" hedefi.
+  Bayramda düşük Körük kapasitesi (12) Acemi'yi en çok yükselten düğme;
+  ama bayramda uzun oynayan Acemi Usta'dan çok puan toplar (b19 Acemi
+  kazançlarının ~%89'u 3★: K24'ün 3★ = Usta p85'i orada iyi oyunu ayırmaz).
+  Varyant ölçümünde Acemi'yi 120+ tohumla ölç: hamle değişince oyunlar
+  bağımsız örneklere döner, 60 tohumda ±%5 oynar.
 
 Komutlar Windows PowerShell'de de çalışmalı: npm betiklerinde `VAR=1 komut`
 gibi POSIX sözdizimi kullanma.

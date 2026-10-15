@@ -37,6 +37,7 @@
   "ipuclari": [{ "tetik": "baslangic", "metin": "Döşemelerin üstünde patlat, sokak aydınlansın." }],
   "kurallar": { "soguma": 4 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [10300, 12200],
+  "yildizEsikleri": [8100, 12200],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Çarşı Gecesi!"
 }
