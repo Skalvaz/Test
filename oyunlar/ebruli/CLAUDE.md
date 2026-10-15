@@ -100,5 +100,7 @@ gibi POSIX sözdizimi kullanma. Bot koşularında en fazla 2 işçi (4 çekirdek
 - Yayılma (ham kümesi bütünüyle karışır), kümeli doğum ve ham eşleşmesi
   denendi, reddedildi (tablo GDD §0.1). Lale (6+) doğal oyunda çok nadir
   (< 0,01/hamle): Lale bölümleri kurgulu açılışla gelir.
-- Prototip: scratchpad `ebruli-sim/` (oturum dışı); yeniden ölçmek gerekirse
-  P1 çekirdeği + P2 botuyla yap.
+- Prototip ve ham çıktılar: `dev/kural-sim/` (çekirdekten bağımsız, özel
+  taşları basitleştirilmiş; `npx tsx dev/kural-sim/tarama4.ts 150 a`, bir
+  yapılandırma ≈ 1–3 dk; `t1-temel.txt` yarıda kesildi). Bölüm ayarı için
+  değil, kural kıyası için; bağlayıcı ölçüm P1 çekirdeği + P2 botuyla yapılır.

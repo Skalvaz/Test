@@ -1,0 +1,3 @@
+HAM EŞLEŞİR kar=0.3 rastgele       | eşl  50% | anlık  42% | hazır 13.3 | h0/1/2/3/4/5+ 0%/1%/1%/2%/3%/94% | geçerli 75 | ölü 0% | yrd 0%/0% | dmlH 10.1 | kskt 50% | yrtG 3% | özel/H 0.55 (0.36,0.16,0.03) | mrk 36% | T/Mo/Y 1.0/1.1/1.1
+HAM EŞLEŞİR kar=0.3 acemi          | eşl  92% | anlık  90% | hazır 14.6 | h0/1/2/3/4/5+ 0%/0%/0%/1%/2%/97% | geçerli 81 | ölü 0% | yrd 0%/0% | dmlH 17.7 | kskt 49% | yrtG 3% | özel/H 0.98 (0.68,0.26,0.04) | mrk 18% | T/Mo/Y 1.8/1.8/1.8
+HAM EŞLEŞİR kar=0.3 acgozlu        | eşl 100% | anlık 100% | hazır 14.3 | h0/1/2/3/4/5+ 0%/0%/0%/1%/1%/97% | geçerli 79 | ölü 0% | yrd 0%/0% | dmlH 47.2 | kskt 46% | yrtG 1% | özel/H 2.84 (1.86,0.83,0.15) | mrk 25% | T/Mo/Y 4.6/4.6/4.6
