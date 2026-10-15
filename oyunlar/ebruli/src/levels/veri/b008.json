@@ -7,12 +7,12 @@
   "h": 9,
   "hamle": 26,
   "tohum": 1008,
-  "dogum": [19, 19, 19, 14, 14, 15],
+  "dogum": [20, 20, 19, 13, 13, 15],
   "garanti": 2,
   "murekkep": false,
   "hedefler": [
     { "tur": "kagit" },
-    { "tur": "topla", "renk": 6, "adet": 30 }
+    { "tur": "topla", "renk": 6, "adet": 28 }
   ],
   "duzen": [
     ". . . . . . .",
