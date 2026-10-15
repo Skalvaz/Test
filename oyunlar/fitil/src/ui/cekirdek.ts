@@ -71,6 +71,8 @@ export class Baglam {
   private tusDinleyici: (e: KeyboardEvent) => void;
   /** Modal açıkken HUD kısayolları kapalıdır. */
   tusBaskasi: ((e: KeyboardEvent) => boolean) | null = null;
+  /** (P5) Bildirimin üst konumu (px; oyun ekranında gök bandı). null = varsayılan (alt). */
+  toastKonumu: (() => number | null) | null = null;
 
   constructor(s: BaglamSecenek) {
     this.sesMotoru = s.ses ?? null;
@@ -253,6 +255,11 @@ export class Baglam {
     }
     if (this.toastSure) clearTimeout(this.toastSure);
     const t = h('div', { s: 'f-toast', role: 'status', t: metin });
+    const ust = this.toastKonumu?.() ?? null;
+    if (ust !== null) {
+      t.style.top = `${ust}px`;
+      t.style.bottom = 'auto';
+    }
     this.bildirimKatmani.appendChild(t);
     this.toastEl = t;
     this.duyur(metin);

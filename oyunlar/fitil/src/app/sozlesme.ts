@@ -75,7 +75,8 @@ export interface OyunCizici {
    */
   vurgula(hucreler: readonly Konum[] | null, kip: 'zorunlu' | 'ipucu' | 'secim'): void;
   /** Öğretici saydam el animasyonu (null = kapat). Döngüde oynar. */
-  elGoster(yol: readonly Konum[] | null): void;
+  /** Öğretici el; `geriAl` (P5 ek): sona varınca bir düğüm geri döner (geri almayı gösterir). */
+  elGoster(yol: readonly Konum[] | null, secenek?: { geriAl?: boolean }): void;
   /** "Bu çizgi kazandırırdı" hayalet fitili (null = kapat). */
   hayaletFitil(yol: readonly Konum[] | null, halka: boolean): void;
   /** Tahtanın ekran geometrisi (girdi isabet testi, arayüz yerleşimi). */
@@ -145,6 +146,11 @@ export interface YolGeriCagirim {
    * kullanılınca gizlenir). Çizici imleç hücresine 3 px krem odak halkası çizer.
    */
   imlecDegisti?(h: Konum | null): void;
+  /**
+   * (P5 ek) Zorunlu ilk hamle kısıtı açıkken kümenin DIŞINDAKİ bir kapsüle
+   * basıldı (§15): yol başlamaz; uygulama vurgulu kümeyi hatırlatır.
+   */
+  kisitliBasildi?(h: Konum): void;
 }
 
 /**

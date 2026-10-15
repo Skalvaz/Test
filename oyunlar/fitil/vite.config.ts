@@ -13,6 +13,8 @@ export default defineConfig(({ mode }) => ({
   server: { host: true },
   test: {
     exclude: ['**/node_modules/**', '**/.git/**', '.claude/**'],
+    // Bot/simülasyon testleri tek başına birkaç saniye; tam koşuda (dosyalar paralel) yük altında 5 sn'yi aşabiliyor.
+    testTimeout: 20_000,
   },
   build: mode === 'single'
     ? {

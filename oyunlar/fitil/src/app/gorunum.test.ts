@@ -7,7 +7,7 @@ import { bolumuYukle } from '../core/index';
 import { bolumGetir } from '../levels/index';
 import * as meta from '../meta';
 import { ilerlet, kazan } from '../meta/_test/yardimci';
-import { bolumOncesiVM, gunlukVM, haritaVM, hedefVM, hudVM, kaybettinVM, nasilVM, odulDuyurulari, sandiklarVM, yeniOge } from './gorunum';
+import { bolumOncesiVM, gunlukVM, haritaVM, hedefVM, hudVM, kaybettinVM, mahalleOdulleri, nasilVM, odulDuyurulari, sandiklarVM, yeniOge } from './gorunum';
 
 describe('harita eşlemesi', () => {
   it('kazanılan → acik, sıradaki → simdiki, gerisi kilitli; 40 düğüm ve 8 Usta', () => {
@@ -103,5 +103,27 @@ describe('günlük ve nasıl oynanır', () => {
     expect(nasilVM(meta.yeniKayit(1)).acikEngeller).toEqual([]);
     expect(nasilVM(ilerlet(11)).acikEngeller).toEqual(expect.arrayContaining(['kafes', 'islak', 'doseme', 'fener']));
     expect(nasilVM(ilerlet(11)).acikEngeller).not.toContain('kaya');
+  });
+});
+
+describe('mahalle ödülleri (Fener Koyu Defteri kartı)', () => {
+  it('açılmamış güçlendirici "+1" görünmez; toz tek satırda toplanır', () => {
+    const v = (guc: 'kibrit' | 'kalip' | 'geriSar', adet: number, toz: number): meta.Odul => ({ tur: 'guclendirici', neden: 'mahalle', verilen: { guc, adet, toz } });
+    expect(mahalleOdulleri([v('kibrit', 0, 2), v('kalip', 0, 2), v('geriSar', 0, 2)])).toEqual([{ tur: 'toz', adet: 6 }]);
+    expect(mahalleOdulleri([v('kibrit', 1, 0), v('kalip', 0, 2), v('geriSar', 0, 2), { tur: 'guclendirici', neden: 'rozet', verilen: { guc: 'kibrit', adet: 1, toz: 0 } }])).toEqual([
+      { tur: 'guclendirici', id: 'kibrit', adet: 1 },
+      { tur: 'toz', adet: 4 },
+    ]);
+  });
+
+  it('gerçek akış: İskele (1–5) bitince kart kayıttaki stok ve tozla tutarlı', () => {
+    const k0 = ilerlet(4);
+    const r = kazan(k0, 5);
+    const odul = mahalleOdulleri(r.oduller);
+    const gucler = odul.filter((o) => o.tur === 'guclendirici');
+    const toz = odul.find((o) => o.tur === 'toz');
+    for (const g of gucler) if (g.tur === 'guclendirici') expect(r.kayit.guclendiriciler[g.id]).toBeGreaterThanOrEqual(g.adet);
+    expect(gucler.length).toBe(0);
+    expect(toz).toBeDefined();
   });
 });

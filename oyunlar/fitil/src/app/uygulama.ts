@@ -21,7 +21,7 @@ import { oyunCiziciOlustur, type OyunCiziciTam } from '../render/oyunCizici';
 import { tabloCiz } from '../render/tablo';
 import { sesMotoruOlustur, type SesMotoruAyrintili } from '../audio/sesMotoru';
 import { yolCiziciOlustur } from '../input/yolCizici';
-import { Arayuz, type AyarDegisikligi, type HaritaSecimi, type OdulVM } from '../ui/arayuz';
+import { Arayuz, type AyarDegisikligi, type HaritaSecimi } from '../ui/arayuz';
 import { buzz, setHaptics } from '../platform/haptics';
 import { prefGet, prefSet } from '../platform/storage';
 import { bolumuYukle } from '../core/index';
@@ -45,6 +45,7 @@ import {
   gunlukVM,
   haritaVM,
   istatistikVM,
+  mahalleOdulleri,
   nasilVM,
   takiliDesenler,
 } from './gorunum';
@@ -84,11 +85,15 @@ export class Uygulama {
   private haritaAcik = false;
   private molaD = meta.molaBaslat();
   private molaBekliyor = false;
-  private bildirimler: string[] = [];
+  private bildirimler: { m: string; sure: number }[] = [];
   private bildirimSure: ReturnType<typeof setTimeout> | null = null;
   private otomatikKart: number | null = null;
   private tabloOnbellek = new Map<string, HTMLCanvasElement>();
   private bulutGeldi = false;
+  /** Oturum sürerken gelen bulut kaydı: harita dönüşünde uygulanır (sürmekte olan deneme ezilmesin). */
+  private bekleyenBulut: Kayit | null = null;
+  /** Bellek kaydı uyarısı bu açılışta gösterildi mi. */
+  private bellekUyarildi = false;
 
   constructor(private host: HTMLElement) {
     this.stage = new Stage(host, 2);
@@ -115,7 +120,8 @@ export class Uygulama {
       hareketiAzalt: az,
       geri: this.geriCagirimlar(),
     });
-    this.kayitci.uyari = (m) => this.bildir(m);
+    // Bulut kaydı (claude.ai, oturum açık) açılış ekranı beklerken yüklensin: ilk açılış kararı ona göre.
+    void this.kayitci.bulutaBaglan();
     // Girdi: geri çağırımlar oturuma gider (oturum hemen ardından kurulur).
     this.yc = yolCiziciOlustur({
       hedef: this.stage.canvas,
@@ -131,6 +137,7 @@ export class Uygulama {
         parmak: (p) => this.oturum.parmak(p),
         dokunuldu: () => this.oturum.dokunuldu(),
         imlecDegisti: (h) => this.oturum.imlecDegisti(h),
+        kisitliBasildi: (h) => this.oturum.kisitliBasildi(h),
       },
     });
     this.oturum = new Oturum({
@@ -148,7 +155,8 @@ export class Uygulama {
     });
     this.yc.kipAyarla('kapali');
     this.cizici.olayDinle((o) => {
-      this.ses.olay(o);
+      // Kesilen eski oynatmanın artık olayları (yeni bölüm kurulurken bildirilir) ses de çalmasın.
+      if (this.oturum.olayGecerli()) this.ses.olay(o);
       this.oturum.olay(o);
     });
     this.cizici.kameraDinle((y) => {
@@ -169,8 +177,8 @@ export class Uygulama {
       const dt = this.sonKare ? Math.min(100, t - this.sonKare) : 16;
       this.sonKare = t;
       if (this.ciziciAktif) this.cizici.kare(dt);
-      // Arka plan üretimi oynatma ve çizim sırasında durur (kare süresi bozulmasın).
-      this.uretici.duraklat = this.oturum.durum === 'oynuyor' || this.oturum.ciziyor;
+      // Yedek yol (işçi yok): arka plan üretimi oyun ekranında durur (kare süresi bozulmasın).
+      this.uretici.duraklat = this.oturum.durum !== 'kapali' || this.oturum.ciziyor;
       requestAnimationFrame(dongu);
     };
     requestAnimationFrame(dongu);
@@ -193,17 +201,49 @@ export class Uygulama {
 
   async calistir(veri: SicakVeri): Promise<void> {
     this.ekranAdi = 'acilis';
+    void this.onIsinma(veri);
     await this.ui.acilis(() => this.sesAc());
-    void this.bulutaBaglan();
+    // Bulut bağlantısı açılışta başladı; ilk açılış kararı (öğretim mi harita mı) ondan sonra,
+    // en fazla 1,5 sn beklenir. Geç gelirse oturum dışındayken uygulanır.
+    const bulut = await Promise.race([this.kayitci.bulutaBaglan(), bekle(1500).then(() => undefined)]);
+    if (bulut) this.bulutKaydiUygula(bulut);
+    else if (bulut === undefined) void this.kayitci.bulutaBaglan().then((k) => k && this.bulutKaydiGeldi(k));
     this.gunTazele();
     const ilk = !Object.keys(this.kayit.bolumler).length;
     const sicak = veri.bolum ? this.kaynakBolum(veri.bolum) : null;
-    if (sicak) await this.bolumAkisi(sicak, { kartAtla: true });
-    else if (ilk) {
+    if (sicak) {
+      const r = await this.bolumAkisi(sicak, { kartAtla: true });
+      if (r === 'sonraki') this.sonrakiniAyarla(sicak);
+    } else if (ilk) {
       const r = await this.bolumAkisi(this.kaynakBolum(1)!, { kartAtla: true });
       if (r === 'sonraki') this.otomatikKart = 2;
     }
     await this.haritaDongusu();
+  }
+
+  /**
+   * Açılış ekranı dokunuşu beklerken ilk gidilecek bölümün pişirmeleri
+   * (sprite önbelleği, gök, sandık) parça parça yapılır: dokunuşta yalnız
+   * tahta kurulur, ekran donmaz (K5 ilk 20 saniye). İlk açılışta Bölüm 1,
+   * sonrakilerde sıradaki bölüm (haritadan büyük olasılıkla o seçilir).
+   */
+  private async onIsinma(veri: SicakVeri): Promise<void> {
+    try {
+      // Logo tutuşması (1,2 sn) akıcı oynasın; adımlar sonra, her biri ayrı görevde.
+      await bekle(1350);
+      const iptal = () => this.oturum.durum !== 'kapali' || this.ciziciAktif;
+      if (iptal()) return;
+      const ilk = !Object.keys(this.kayit.bolumler).length;
+      const id = veri.bolum ?? (ilk ? 1 : Math.min(40, meta.acikEnYuksek(this.kayit)));
+      const v = this.kaynakBolum(id);
+      if (!v) return;
+      const cosku = v.tur !== 'gunluk' && meta.coskuAktif(this.kayit);
+      const d0 = bolumuYukle(v, meta.siradakiDenemeNo(this.kayit, v.id), { cosku });
+      const a = this.ui.onYerlesim(d0.w, d0.h);
+      await this.cizici.onIsit(d0, v, a.tahta, a.gokBandi, () => bekle(60), iptal);
+    } catch {
+      /* önden ısınma isteğe bağlı: bölüm kurulurken yine pişer */
+    }
   }
 
   private sesAc(): void {
@@ -216,13 +256,33 @@ export class Uygulama {
     this.ses.muzik(a.muzik > 0);
   }
 
-  private async bulutaBaglan(): Promise<void> {
-    const k = await this.kayitci.bulutaBaglan();
-    if (!k) return;
+  /** Geç gelen bulut kaydı: oturum sürüyorsa harita dönüşüne kadar bekler. */
+  private bulutKaydiGeldi(k: Kayit): void {
+    if (this.oturum.durum !== 'kapali') {
+      this.bekleyenBulut = k;
+      return;
+    }
+    this.bulutKaydiUygula(k);
+  }
+
+  private bulutKaydiUygula(k: Kayit): void {
+    this.bekleyenBulut = null;
+    if (!this.kayitci.bulutUygula(k)) return;
     this.bulutGeldi = true;
+    this.tabloOnbellek.clear();
     this.ayarlariUygula();
     if (this.haritaAcik && this.oturum.durum === 'kapali') void this.ui.harita(this.haritaModeli());
     this.bildir('Bulut kaydı yüklendi');
+  }
+
+  /** Depolama yoksa (gizli pencere) haritada bir kez, öğretimden sonra: oyun ekranında tahtayı örtmesin. */
+  private bellekUyarisi(): void {
+    if (this.bellekUyarildi || !this.kayitci.bellekte) return;
+    this.bellekUyarildi = true;
+    void this.bekle(900).then(() => {
+      if (this.haritaAcik) this.bildir('Bu tarayıcı ilerlemeni saklamıyor. Ayarlar > Kayıt kodu ile yedekleyebilirsin.', 4200);
+      else this.bellekUyarildi = false;
+    });
   }
 
   private gunTazele(): void {
@@ -263,6 +323,7 @@ export class Uygulama {
         this.haritaAcik = false;
         continue;
       }
+      if (this.bekleyenBulut) this.bulutKaydiUygula(this.bekleyenBulut);
       this.gunTazele();
       this.ciziciAktif = false;
       this.ekranAdi = 'harita';
@@ -270,6 +331,7 @@ export class Uygulama {
       this.arkaPlanUretim();
       const p = this.ui.harita(this.haritaModeli());
       this.molaGosterBekliyorsa();
+      this.bellekUyarisi();
       let secim: HaritaSecimi;
       const oto = this.otomatikKart;
       this.otomatikKart = null;
@@ -388,13 +450,11 @@ export class Uygulama {
 
   /** Kazandın'dan sonra: mahalle tamamlandıysa şov ve Fener Koyu Defteri kartı (§10.1). */
   private async odulleriGoster(sonuc: meta.BolumSonucCiktisi, v: BolumVerisi): Promise<void> {
-    const mahalleOdul: OdulVM[] = [];
     let mahalle: number | null = null;
-    for (const o of sonuc.oduller) {
-      if (o.tur === 'mahalleTamam') mahalle = o.mahalle;
-      if (o.tur === 'guclendirici' && o.neden === 'mahalle') mahalleOdul.push({ tur: 'guclendirici', id: o.verilen.guc, adet: Math.max(1, o.verilen.adet) });
-    }
+    for (const o of sonuc.oduller) if (o.tur === 'mahalleTamam') mahalle = o.mahalle;
     if (mahalle === null) return;
+    // Açılmamış güçlendirici meta'da toza döner: kart gerçekte verileni gösterir.
+    const mahalleOdul = mahalleOdulleri(sonuc.oduller);
     await this.mahalleSovu(v);
     this.ekranAdi = 'defterKarti';
     await this.ui.defterKarti({ mahalle, oduller: mahalleOdul });
@@ -429,7 +489,10 @@ export class Uygulama {
 
   private arkaPlanUretim(): void {
     const t = bugun();
-    if (meta.gunlukAcik(this.kayit) && !this.uretici.hazir(t)) void this.uretici.gunluk(t).catch(() => {});
+    // İşçi varsa (ana iş parçacığına yük değil) Günün Şenliği açılmadan önce, 7. bölümden
+    // itibaren hazırlanır: 10. bölüm kazanılınca tahta beklemeden açılır (§10.5).
+    const erken = meta.acikEnYuksek(this.kayit) >= 7 && this.uretici.isciVar;
+    if ((meta.gunlukAcik(this.kayit) || erken) && !this.uretici.hazir(t)) void this.uretici.gunluk(t).catch(() => {});
     if (meta.sonsuzAcikMi(this.kayit)) {
       const n = this.kayit.sonsuzEnYuksek + 1;
       if (!this.uretici.hazir(meta.SONSUZ_TABANI + n)) void this.uretici.sonsuz(n).catch(() => {});
@@ -553,6 +616,8 @@ export class Uygulama {
       this.ui.balonKapat();
       this.cizici.elGoster(null);
       this.cizici.vurgula(null, 'ipucu');
+      // Oturumun el durumu da kapanır: tek dokunuşla geri gelmesin.
+      this.oturum.ipuclariKapat();
     }
     if (d.mola !== undefined) this.molaD = meta.molaAyarDegisti(this.molaD, d.mola);
   }
@@ -575,6 +640,8 @@ export class Uygulama {
       kayitYukle: (kod) => {
         const r = meta.kayitKoduCoz(kod);
         if (!r.tamam) return false;
+        // Oyun içinden (Duraklat > Ayarlar): süren deneme yeni kayda yazılmadan biter.
+        this.oturum.kayitsizBitir();
         this.kayitci.degistir(r.kayit, 0);
         this.ayarlariUygula();
         this.tabloOnbellek.clear();
@@ -583,6 +650,7 @@ export class Uygulama {
         return true;
       },
       ilerlemeyiSifirla: () => {
+        this.oturum.kayitsizBitir();
         this.kayitci.degistir(meta.ilerlemeyiSifirla(this.kayit, rastgeleTohum()), 0);
         this.tabloOnbellek.clear();
         prefSet(GORULEN_ANAHTARI, { parca: this.kayit.koleksiyon.parcalar.length, rozet: 0 });
@@ -704,19 +772,19 @@ export class Uygulama {
   }
 
   /** Sıralı kısa bildirimler (art arda gelen ödüller üst üste binmesin). */
-  bildir(m: string): void {
-    this.bildirimler.push(m);
+  bildir(m: string, sure = 2000): void {
+    this.bildirimler.push({ m, sure });
     if (!this.bildirimSure) this.bildirimSirasi();
   }
 
   private bildirimSirasi(): void {
-    const m = this.bildirimler.shift();
-    if (!m) {
+    const b = this.bildirimler.shift();
+    if (!b) {
       this.bildirimSure = null;
       return;
     }
-    this.ui.toast(m, 2000);
-    this.bildirimSure = setTimeout(() => this.bildirimSirasi(), 2200);
+    this.ui.toast(b.m, b.sure);
+    this.bildirimSure = setTimeout(() => this.bildirimSirasi(), b.sure + 200);
   }
 
   // ─────────────────────────── Test kancası ───────────────────────────
@@ -724,7 +792,7 @@ export class Uygulama {
   /** `window.__fitil` (oynanış testleri, scripts/oynanis.mjs). */
   testKancasi(): Record<string, unknown> {
     return {
-      durum: () => ({ ekran: this.ekranAdi, ...this.oturum.ozet(), oynuyor: this.cizici.dev.oynuyor(), modal: this.ui.modalAcik, depo: this.kayitci.depo.backend, bulut: this.bulutGeldi }),
+      durum: () => ({ ekran: this.ekranAdi, ...this.oturum.ozet(), oynuyor: this.cizici.dev.oynuyor(), modal: this.ui.modalAcik, depo: this.kayitci.depo.backend, bulut: this.bulutGeldi, uretim: this.uretici.durum(), kalite: this.cizici.dev.sayac().kalite }),
       bolum: () => this.oturum.aktifBolum(),
       ekran: () => this.ekranAdi,
       bolumAc: (id: number) => {

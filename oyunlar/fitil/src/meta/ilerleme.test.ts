@@ -66,6 +66,17 @@ describe('ilk kazanç, kilit, deneme', () => {
     expect(k.bolumler['3'].deneme).toBe(10);
   });
 
+  it('Günün Şenliği: her deneme yeni denemeNo alır (K15 taze dolum)', () => {
+    let k = ilerlet(10, 1);
+    const gun = 20261015;
+    expect(siradakiDenemeNo(k, gun)).toBe(0);
+    k = kaybet(k, gun, { tarih: gun, tur: 'gunluk' }).kayit;
+    expect(siradakiDenemeNo(k, gun)).toBe(1);
+    k = kaybet(k, gun, { tarih: gun, tur: 'gunluk' }).kayit;
+    expect(siradakiDenemeNo(k, gun)).toBe(2);
+    expect(k.bolumler[String(gun)]).toBeUndefined();
+  });
+
   it('yıldız sınırları: güçlendirici ≤ 2, Usta\'nın Eli ≤ 1, kayıpta 0', () => {
     expect(yildizSiniri(bosIst())).toBe(3);
     expect(yildizSiniri(bosIst({ guclendirici: 1 }))).toBe(2);
@@ -147,6 +158,21 @@ describe('Usta\'nın Eli ve Coşku Serisi', () => {
     const r6 = kaybet(k, 9, { ist: { ustaEli: true } });
     expect(tur(r6.oduller, 'ustaEli')).toEqual([]);
     expect(r6.kayit.bolumler['9']).toMatchObject({ deneme: 4, basarisizSeri: 4 });
+  });
+
+  it('Eli devamı istatistiği ve görevleri ikinci kez saymaz (özet yalnız Eli sonrası)', () => {
+    let k = ilerlet(8);
+    for (let i = 1; i <= 4; i++) k = kaybet(k, 9, { ist: { toplamPatlama: 90 }, oz: { ...ozetBaslat(), toplamPatlama: 90 } }).kayit;
+    const once = k.istatistik;
+    // Devam: hiç hamle yapmadan bırakıldı (Duraklat > Haritaya dön) → hiçbir sayaç artmaz.
+    const bos = kaybet(k, 9, { ist: { ustaEli: true, toplamPatlama: 90 }, oz: ozetBaslat() }).kayit;
+    expect(bos.istatistik).toEqual(once);
+    // Devam: 12 patlamayla kazandı → yalnız 12 eklenir, kayıp kazanca döner.
+    const kaz = kazan(k, 9, 1, { ist: { ustaEli: true, toplamPatlama: 102 }, oz: { ...ozetBaslat(), toplamPatlama: 12 } }).kayit;
+    expect(kaz.istatistik.toplamPatlama).toBe(once.toplamPatlama + 12);
+    expect(kaz.istatistik.oyun).toBe(once.oyun);
+    expect(kaz.istatistik.kazanc).toBe(once.kazanc + 1);
+    expect(kaz.istatistik.kayip).toBe(once.kayip - 1);
   });
 
   it('üst üste 3 ilk deneme kazancı → hazır roket; kayıp sıfırlar; tekrar oynanış nötr', () => {

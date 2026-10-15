@@ -94,13 +94,15 @@ export function gurultu2(x: number, y: number): number {
   const yi = Math.floor(y);
   const fx = x - xi;
   const fy = y - yi;
-  const h = (i: number, j: number) => PERM[(PERM[i & 255] + j) & 511] / 255;
+  // Satır içi karma (çağrı başına kapanış nesnesi yok: sandık/gök pişirmede yüz binlerce çağrı).
+  const p0 = PERM[xi & 255];
+  const p1 = PERM[(xi + 1) & 255];
   const u = fx * fx * (3 - 2 * fx);
   const v = fy * fy * (3 - 2 * fy);
-  const a = h(xi, yi);
-  const b = h(xi + 1, yi);
-  const c = h(xi, yi + 1);
-  const d = h(xi + 1, yi + 1);
+  const a = PERM[(p0 + yi) & 511] / 255;
+  const b = PERM[(p1 + yi) & 511] / 255;
+  const c = PERM[(p0 + yi + 1) & 511] / 255;
+  const d = PERM[(p1 + yi + 1) & 511] / 255;
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
 

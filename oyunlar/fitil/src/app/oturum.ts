@@ -70,10 +70,11 @@ export interface OturumOrtami {
 
 type SecimTuru = 'koruk' | 'kibrit' | 'kalip';
 
+// Dar ekranda (360 px) tek satıra sığsın: "Ne: ne seçilir".
 const SECIM_METNI: Record<SecimTuru, string> = {
-  koruk: 'Körük: ısıtılacak 3×3 alanın merkezini seç',
-  kibrit: 'Kibrit: tutuşturulacak hücreyi seç',
-  kalip: 'Fişek Kalıbı: rokete dönecek kapsülü seç',
+  koruk: 'Körük: 3×3 alanın ortasını seç',
+  kibrit: 'Kibrit: yakılacak hücreyi seç',
+  kalip: 'Kalıp: roket olacak kapsülü seç',
 };
 
 /** İpucu balonu kimliği (kayıtta "görüldü"). */
@@ -122,6 +123,16 @@ export class Oturum {
   private sonucAcik = false;
   /** Hayalet izlenirken dokunuşla atlama. */
   private hayaletAtla: (() => void) | null = null;
+  /** Oynatılan eylemin sonraki durumu (oynatma sürerken Duraklat kartı bunu gösterir). */
+  private oynatilanSonraki: OyunDurumu | null = null;
+  /** Bu denemenin sonucu meta'ya yazıldı (sıcak yeniden yüklemede bölüme dönülmez). */
+  private sonucYazildi = false;
+  /** Başlangıç balonu menü/çizim yüzünden gösterilemedi; girdi açılınca gösterilir. */
+  private baslangicBekliyor = false;
+  /** Balon sırası: kısa balon kapanınca ana talimat yalnız araya başka balon girmediyse döner. */
+  private balonSira = 0;
+  /** Bölüm 1: 3 sn tereddütte el geri almayı gösterir (§15 Bölüm 1, adım 5). */
+  private tereddutSure: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private o: OturumOrtami) {}
 
@@ -138,8 +149,14 @@ export class Oturum {
     return this.durum === 'bekliyor' || this.durum === 'secim' ? this.d : null;
   }
 
+  /** Süren bölüm (sıcak yeniden yükleme); sonucu yazılmış deneme (Kazandın/Kaybettin, final) sayılmaz. */
   aktifBolum(): number | null {
-    return this.durum !== 'kapali' && this.v ? this.v.id : null;
+    return this.durum !== 'kapali' && !this.sonucYazildi && this.v ? this.v.id : null;
+  }
+
+  /** Çizici olayı bu oturumun güncel oynatmasına mı ait (eski oynatmanın artığı sesi de çalmasın). */
+  olayGecerli(): boolean {
+    return this.olayJetonu === this.jeton && this.durum !== 'kapali';
   }
 
   // ─────────────────────────── Başlat / bitir ───────────────────────────
@@ -168,6 +185,9 @@ export class Oturum {
     this.elAcik = false;
     this.elYol = null;
     this.ipucuGosteriliyor = false;
+    this.oynatilanSonraki = null;
+    this.sonucYazildi = false;
+    this.baslangicBekliyor = false;
     ses.tahtaBoyutu(d0.w, d0.h);
     ui.hudKur(this.hudModeli());
     const alan = ui.tahtaAlani();
@@ -191,7 +211,48 @@ export class Oturum {
   cik(): void {
     if (this.durum === 'kapali') return;
     this.o.ui.ekranlariKapat();
+    this.o.cizici.karart(0);
     this.bitir({ tur: 'harita' });
+  }
+
+  /**
+   * Kayıt oyun içinden değişti (Duraklat > Ayarlar: ilerlemeyi sıfırla, kayıt
+   * içe aktar): süren deneme yeni kayda YAZILMADAN biter, haritaya dönülür.
+   */
+  kayitsizBitir(): void {
+    this.cik();
+  }
+
+  /** Ayarlar > İpuçları kapandı: balon, el ve boşta vurgusu kalıcı olarak kalkar. */
+  ipuclariKapat(): void {
+    this.elAcik = false;
+    this.elYol = null;
+    this.baslangicBekliyor = false;
+    this.balonSira++;
+    if (this.tereddutSure) clearTimeout(this.tereddutSure);
+    this.tereddutSure = null;
+    this.o.ui.balonKapat();
+    this.o.cizici.elGoster(null);
+    this.o.cizici.vurgula(null, 'ipucu');
+    this.ipucuGosteriliyor = false;
+    if (this.bostaSure) clearTimeout(this.bostaSure);
+    this.bostaSure = null;
+  }
+
+  /** Eylem zinciri güvenliği: beklenmeyen hata oturumu 'bitti'de kilitlemesin, haritaya dönülsün. */
+  private guvenli(p: Promise<unknown>): void {
+    p.catch((e) => {
+      try {
+        console.warn('[fitil] oturum hatası', e);
+      } catch {
+        /* yok */
+      }
+      if (this.durum === 'kapali') return;
+      this.o.ui.ekranlariKapat();
+      this.o.cizici.karart(0);
+      this.bitir({ tur: 'harita' });
+      this.o.ui.toast('Bir aksilik oldu, haritaya dönüldü');
+    });
   }
 
   private bitir(s: OturumSonucu): void {
@@ -218,6 +279,8 @@ export class Oturum {
   private zamanlayicilariDurdur(): void {
     if (this.bostaSure) clearTimeout(this.bostaSure);
     this.bostaSure = null;
+    if (this.tereddutSure) clearTimeout(this.tereddutSure);
+    this.tereddutSure = null;
     if (this.kalpAtisi) clearInterval(this.kalpAtisi);
     this.kalpAtisi = null;
   }
@@ -240,15 +303,16 @@ export class Oturum {
     } else {
       this.bostaKur();
       this.kalpAtisiKur();
+      if (this.baslangicBekliyor) queueMicrotask(() => this.baslangicGoster());
     }
   }
 
   // ─────────────────────────── HUD ───────────────────────────
 
-  hudModeli() {
+  hudModeli(d: OyunDurumu = this.d!) {
     return hudVM({
       v: this.v!,
-      d: this.d!,
+      d,
       kayit: this.kayit,
       girdiAcik: this.durum === 'bekliyor' || this.durum === 'secim',
       geriSarHazir: !!this.geriSarAnlik && this.d!.istatistik.guclendirici === 0,
@@ -350,6 +414,8 @@ export class Oturum {
     if (yol.length === 0) {
       cizici.yolGoster([], false, -1, null);
       this.sonHayalet = null;
+      // Özel taşa dokunuş 'temizlendi' ile biter (birakildi/iptal gelmez).
+      this.ciziyor = false;
       return;
     }
     const on = onizle(this.d, yol as Konum[], halka);
@@ -385,12 +451,13 @@ export class Oturum {
     this.sonHayalet = null;
     const temizle = () => {
       cizici.yolGoster([], false, -1, null);
-      if (this.elAcik && this.elYol) cizici.elGoster(this.elYol);
+      if (this.elAcik && this.elYol && this.ayar.ipuclari) cizici.elGoster(this.elYol);
     };
     if (yol.length < 3) {
       temizle();
       ses.iptal();
       if (yol.length === 2) this.tetikIpucu('kisaYol');
+      else if (this.baslangicBekliyor) this.baslangicGoster();
       return;
     }
     const hata = yolDogrula(this.d, yol as Konum[], halka);
@@ -403,23 +470,38 @@ export class Oturum {
     }
     ses.tutusma();
     temizle();
-    void this.eylem({ tur: 'fitil', yol: yol.map((p) => ({ x: p.x, y: p.y })), halka });
+    this.guvenli(this.eylem({ tur: 'fitil', yol: yol.map((p) => ({ x: p.x, y: p.y })), halka }));
   }
 
   iptal(): void {
     this.ciziyor = false;
     this.o.cizici.yolGoster([], false, -1, null);
-    if (this.elAcik && this.elYol && this.durum === 'bekliyor') this.o.cizici.elGoster(this.elYol);
+    if (this.elAcik && this.elYol && this.durum === 'bekliyor' && this.ayar.ipuclari) this.o.cizici.elGoster(this.elYol);
     this.o.cizici.parmak(null);
     this.sonHayalet = null;
     if (this.durum === 'secim') this.secimBitir();
+    else if (this.baslangicBekliyor) this.baslangicGoster();
   }
 
   ciftDokunus(h: Konum): void {
     if (this.durum !== 'bekliyor' || !this.d) return;
     const hamle: Hamle = { tur: 'ciftDokunus', hucre: { x: h.x, y: h.y } };
     if (hamleHatasi(this.d, hamle)) return;
-    void this.eylem(hamle);
+    this.guvenli(this.eylem(hamle));
+  }
+
+  /** Zorunlu ilk hamlede kümenin dışına basıldı (§15): fıs, kısa titreşim; vurgu, el ve balon yeniden. */
+  kisitliBasildi(_h: Konum): void {
+    if (this.durum !== 'bekliyor' || this.hamleSayisi > 0) return;
+    this.etkilesim();
+    this.o.ses.iptal();
+    this.titret(12);
+    const z = this.zorunluHucreler();
+    // Vurguyu yeniden kur: nabız baştan başlar, göz kümeye döner.
+    this.o.cizici.vurgula(null, 'zorunlu');
+    this.o.cizici.vurgula(z, 'zorunlu');
+    if (this.elAcik && this.elYol && this.ayar.ipuclari) this.o.cizici.elGoster(this.elYol);
+    this.baslangicGoster();
   }
 
   ozelDokunus(_h: Konum): void {
@@ -448,7 +530,7 @@ export class Oturum {
 
   hucreSecildi(h: Konum): void {
     if (this.durum !== 'secim' || !this.d || !this.secimTuru) return;
-    void this.secimHucresi(h);
+    this.guvenli(this.secimHucresi(h));
   }
 
   // ─────────────────────────── Güçlendiriciler ve Körük ───────────────────────────
@@ -653,8 +735,10 @@ export class Oturum {
     this.gPuan = onceki.puan;
     this.olayJetonu = jeton;
     this.oynatilanBitti = sonuc.durum.bitti;
+    this.oynatilanSonraki = sonuc.durum;
     await cizici.oynat(onceki, sonuc.olaylar, sonuc.durum);
     this.oynatilanBitti = null;
+    this.oynatilanSonraki = null;
     if (jeton !== this.jeton) return;
     if (this.kutlaBekliyor) {
       cizici.kutla(this.kutlaBekliyor);
@@ -696,7 +780,8 @@ export class Oturum {
       this.o.ekran('duraklat');
       // Coşku Serisi Günün Şenliği'nden etkilenmez (meta: günlük nötr).
       const cosku = this.v.tur !== 'gunluk' && (meta.coskuAktif(this.kayit) || this.kayit.cosku > 0);
-      secim = await ui.duraklat(duraklatVM(this.v, this.d, cosku));
+      // Oynatma sürerken HUD olaylarla ilerlemiştir: kart hamle SONRASI durumu göstersin.
+      secim = await ui.duraklat(duraklatVM(this.v, this.oynatilanSonraki ?? this.d, cosku));
       if (jeton !== this.jeton) return;
       if (secim !== 'ayarlar') break;
       await this.o.ayarlarAc();
@@ -742,6 +827,7 @@ export class Oturum {
     const onceki = this.kayit;
     const sonuc = meta.bolumSonucu(onceki, this.sonucGirdisi(kazandi, kalanHamle));
     this.o.kayitci.degistir(sonuc.kayit, 500);
+    this.sonucYazildi = true;
     return { sonuc, onceki };
   }
 
@@ -907,9 +993,11 @@ export class Oturum {
   }
 
   private async hayaletGoster(once: OyunDurumu, yol: KazandiranYol, jeton: number): Promise<void> {
-    const { cizici } = this.o;
+    const { cizici, ui } = this.o;
     cizici.karart(0);
     cizici.durumGoster(once);
+    // HUD tahtayla aynı ana dönsün (son hamleden önce): hamle, hedef, puan.
+    ui.hudGuncelle(this.hudModeli(once));
     cizici.hayaletFitil(yol.yol, yol.halka);
     this.o.ekran('hayalet');
     // İki tur (2 × 1,8 sn) oynar; dokunuş atlar.
@@ -927,6 +1015,7 @@ export class Oturum {
     if (jeton !== this.jeton) return;
     cizici.hayaletFitil(null, false);
     cizici.durumGoster(this.d!);
+    ui.hudGuncelle(this.hudModeli());
     cizici.karart(0.55);
   }
 
@@ -948,6 +1037,9 @@ export class Oturum {
     if (jeton !== this.jeton) return;
     this.d = r.durum;
     this.geriSarAnlik = null;
+    // Kayıp ve o ana kadarki olaylar meta'ya işlendi: devam sonucu yalnız Eli sonrasını taşır.
+    this.oz = meta.ozetBaslat();
+    this.sonucYazildi = false;
     this.o.ekran('oyun');
     ui.hudGuncelle(this.hudModeli());
     ui.hamleSayaci(this.d.kalanHamle);
@@ -992,25 +1084,71 @@ export class Oturum {
   private async baslangicIpuclari(jeton: number): Promise<void> {
     await this.o.bekle(550);
     if (jeton !== this.jeton || this.hamleSayisi > 0) return;
+    // Duraklat/mola açıkken ya da oyuncu çizmeye başlamışsa balon ve el beklesin (yolun üstüne binmesin).
+    if (this.durum !== 'bekliyor' || this.ciziyor) {
+      this.baslangicBekliyor = true;
+      return;
+    }
     this.tetikIpucu('baslangic');
+  }
+
+  /** Bekleyen ya da kısa balonla kapanan ana talimatı yeniden göster (yalnız ilk hamleden önce). */
+  private baslangicGoster(): void {
+    if (this.durum !== 'bekliyor' || this.ciziyor || this.hamleSayisi > 0 || !this.ayar.ipuclari) return;
+    const ilk = this.baslangicBekliyor;
+    this.baslangicBekliyor = false;
+    if (ilk) {
+      this.tetikIpucu('baslangic');
+      return;
+    }
+    const t = (this.v?.ipuclari ?? []).find((x) => x.tetik === 'baslangic');
+    if (t) void this.balonGoster(t.metin, 0);
+  }
+
+  private balonGoster(metin: string, sure: number): Promise<void> {
+    this.balonSira++;
+    return this.o.ui.balon(metin, sure);
   }
 
   private tetikIpucu(tetik: 'baslangic' | 'ilkHamleSonrasi' | 'kisaYol'): void {
     const v = this.v;
     if (!v || this.durum === 'kapali') return;
+    if (tetik !== 'ilkHamleSonrasi' && (this.durum !== 'bekliyor' || (tetik === 'baslangic' && this.ciziyor))) return;
     const liste = v.ipuclari ?? [];
+    const jeton = this.jeton;
     liste.forEach((t, i) => {
       if (t.tetik !== tetik || !this.ipucuGosterilsinMi(tetik, i)) return;
       const sure = tetik === 'kisaYol' ? 2200 : 0;
-      void this.o.ui.balon(t.metin, sure);
+      const p = this.balonGoster(t.metin, sure);
+      if (tetik === 'kisaYol') {
+        // "En az 3." kapanınca ana talimat geri gelsin (araya başka balon girmediyse).
+        const sira = this.balonSira;
+        void p.then(() => {
+          if (jeton === this.jeton && sira === this.balonSira) this.baslangicGoster();
+        });
+      }
       this.ipucuGoruldu(tetik, i);
       const el = this.elYolu(t.el);
       if (el && tetik !== 'kisaYol') {
         this.o.cizici.elGoster(el);
         this.elAcik = true;
         this.elYol = el;
+        this.tereddutKur();
       }
     });
+  }
+
+  /** §15 Bölüm 1, adım 5: 3 sn tereddütte el bir kez ileri çizip son düğümden geri adım atar (geri alma). */
+  private tereddutKur(): void {
+    if (this.tereddutSure) clearTimeout(this.tereddutSure);
+    this.tereddutSure = null;
+    if (this.v?.id !== 1 || this.hamleSayisi > 0 || !this.elAcik) return;
+    const jeton = this.jeton;
+    this.tereddutSure = setTimeout(() => {
+      this.tereddutSure = null;
+      if (jeton !== this.jeton || this.durum !== 'bekliyor' || this.ciziyor || this.hamleSayisi > 0 || !this.elAcik || !this.elYol || !this.ayar.ipuclari) return;
+      this.o.cizici.elGoster(this.elYol, { geriAl: true });
+    }, 3000);
   }
 
   private etkilesim(): void {
@@ -1018,7 +1156,10 @@ export class Oturum {
       this.o.cizici.vurgula(null, 'ipucu');
       this.ipucuGosteriliyor = false;
     }
-    if (this.durum === 'bekliyor') this.bostaKur();
+    if (this.durum === 'bekliyor') {
+      this.bostaKur();
+      if (this.tereddutSure) this.tereddutKur();
+    }
   }
 
   /** 5 sn hareketsizlikte Acemi botun en iyi adayında parıltı dalgası (§15). */
@@ -1042,7 +1183,7 @@ export class Oturum {
       this.ipucuGosteriliyor = true;
       const bosta = (this.v?.ipuclari ?? []).findIndex((t) => t.tetik === 'bosta5sn');
       if (bosta >= 0 && this.ipucuGosterilsinMi('bosta5sn', bosta)) {
-        void this.o.ui.balon(this.v!.ipuclari![bosta].metin, 2600);
+        void this.balonGoster(this.v!.ipuclari![bosta].metin, 2600);
         this.ipucuGoruldu('bosta5sn', bosta);
       }
     }, 5000);
@@ -1065,7 +1206,7 @@ export class Oturum {
     const z = this.zorunluHucreler();
     const h = sec(this.d, z ? z.map((p) => [p.x, p.y] as const) : null);
     if (h.tur === 'fitil') this.o.ses.tutusma();
-    void this.eylem(h);
+    this.guvenli(this.eylem(h));
     // Oynatma bitene ya da sonuç ekranı açılana kadar bekle (kazanç/kayıp akışı kullanıcı seçimini bekler).
     const son = simdi() + 120000;
     while (simdi() < son) {

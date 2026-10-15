@@ -39,6 +39,7 @@ import type { Ctx } from './tuval';
 
 /** Oynatma sonunda son olaydan sonra beklenen pay (tik). */
 const KUYRUK = 140;
+const simdiMs = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 const REAKSIYON_METNI: Record<string, string> = { guzel: 'Güzel!', harika: 'Harika!', muhtesem: 'Muhteşem!', senlik: 'ŞENLİK!' };
 
@@ -111,11 +112,13 @@ export interface CiziciDev {
   sonFark(): number;
   /** Anlık sayaçlar. */
   sayac(): { parcacik: number; efekt: number; kalite: string; c: number };
+  /** Test: otomatik kaliteyi elle düşür/yükselt (ölçüm sonradan yine karar verir). */
+  kaliteZorla(dusuk: boolean): void;
   /** Yalnız gökyüzü ve havai fişekleri çiz (desen ızgarası). */
   yalnizGok(b: boolean): void;
 }
 
-export type OyunCiziciTam = OyunCizici & Required<Pick<OyunCizici, 'yonetmenZorla' | 'karart' | 'fisekDinle' | 'imlecGoster' | 'kutla'>> & { dev: CiziciDev };
+export type OyunCiziciTam = OyunCizici & Required<Pick<OyunCizici, 'yonetmenZorla' | 'karart' | 'fisekDinle' | 'imlecGoster' | 'kutla'>> & { dev: CiziciDev } & Pick<OyunCiziciSinifi, 'onIsit'>;
 
 export function oyunCiziciOlustur(stage: Stage, secenek?: CiziciKurulum): OyunCiziciTam {
   return new OyunCiziciSinifi(stage, secenek ?? {});
@@ -154,11 +157,19 @@ class OyunCiziciSinifi implements OyunCizici {
   private yukluEfekt: Efekt | null = null;
   /** Son patlayan içerik (hücre indeksine göre): yüklenme/kombinasyon için. */
   private sonIcerik = new Map<number, Icerik>();
-  // Otomatik kalite
-  private kareSureleri = new Float32Array(30);
-  private kareSira = 0;
-  private iyiKare = 0;
+  // Otomatik kalite (§16.6): kare ARALIĞI ekran tazelemesine göre, iş süresi ayrıca ölçülür.
   private dusukKalite = false;
+  private sonKareZamani = 0;
+  /** Pişirme/takılma sonrası ölçüme katılmayacak kare sayısı. */
+  private kaliteAtla = 30;
+  private pAralik = 0;
+  private pIs = 0;
+  private pN = 0;
+  /** Ekran tazeleme aralığı tahmini (ms): 60 Hz varsayılır, daha hızlısı görülürse iner. */
+  private tazeleme = 1000 / 60;
+  private iyiPencere = 0;
+  /** Yeniden yükseltmek için gereken art arda iyi pencere (her düşüşte ikiye katlanır). */
+  private gerekenIyi = 4;
   private nokta = { x: 0, y: 0 };
   private yokEdildi = false;
   readonly dev: CiziciDev;
@@ -225,6 +236,10 @@ class OyunCiziciSinifi implements OyunCizici {
         self.yalnizGokBayrak = b;
       },
       sayac: () => ({ parcacik: s.havuz.sayi, efekt: self.ef.liste.filter((e) => e.aktif).length, kalite: self.dusukKalite ? 'dusuk' : 'yuksek', c: s.c }),
+      kaliteZorla(dusuk) {
+        self.dusukKalite = dusuk;
+        self.kaliteUygula();
+      },
     };
   }
 
@@ -342,6 +357,48 @@ class OyunCiziciSinifi implements OyunCizici {
   /** §13.7 yerleşimi ve offscreen katmanların pişirilmesi. */
   private yerlesim(): void {
     this.yerlesimGerekli = false;
+    if (!this.yerlesimHesapla()) return;
+    this.s.kaynaklariHazirla(this.s.secenek.palet);
+    this.gokKur();
+    this.sandik.kur();
+    this.tc.kur();
+    this.yol.yenidenOrnekle();
+    // Pişirme takılması otomatik kaliteyi düşürmesin.
+    this.kaliteAtla = Math.max(this.kaliteAtla, 30);
+  }
+
+  /**
+   * (P5 ek) Bölümün pişirmelerini (sprite önbelleği, gök, sandık) önceden ve
+   * parça parça yap: açılış ekranı dokunuşu beklerken ilk bölüm hazırlanır,
+   * dokunuş anında `bolumKur` önbellekten çizer. `ara` adımlar arasında
+   * sırayı bırakır; `iptal` true dönerse (oyun başladı) durur. Çizici bu
+   * sırada etkin olmamalı (çizilmez).
+   */
+  async onIsit(d: OyunDurumu, bolum: BolumVerisi, alan: Dikdortgen, gokBandi: Dikdortgen, ara: () => Promise<void>, iptal: () => boolean): Promise<void> {
+    this.alanAyarla(alan, gokBandi);
+    this.bolum = bolum;
+    this.s.tahta.kur(d);
+    if (!this.yerlesimHesapla()) return;
+    const s = this.s;
+    const adimlar = [() => s.kaynaklariHazirla(s.secenek.palet), () => this.gokKur(), () => this.sandik.kur()];
+    for (const a of adimlar) {
+      await ara();
+      if (iptal() || this.yokEdildi) return;
+      a();
+    }
+    this.yerlesimGerekli = true;
+  }
+
+  private gokKur(): void {
+    const s = this.s;
+    const t = s.tahta;
+    const F = s.cerceve;
+    const c = s.c;
+    this.gok.kur(s.ekranW, s.ekranH, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F }, s.secenek.gokyuzu || undefined);
+  }
+
+  /** Yerleşim hesabı (pişirme yok). Tahta yoksa false. */
+  private yerlesimHesapla(): boolean {
     const s = this.s;
     const st = this.stage;
     s.ekranW = st.width;
@@ -351,7 +408,7 @@ class OyunCiziciSinifi implements OyunCizici {
     const W = s.ekranW;
     const H = s.ekranH;
     const t = s.tahta;
-    if (!t.w) return;
+    if (!t.w) return false;
     if (!this.alanVerildi) {
       const dikey = W / H <= 0.75;
       if (dikey) {
@@ -372,17 +429,12 @@ class OyunCiziciSinifi implements OyunCizici {
     s.cerceve = Math.max(10, Math.min(16, Math.round(c * 0.26)));
     s.gx = Math.round(a.x + (a.w - t.w * c) / 2);
     s.gy = Math.round(a.y + (a.h - t.h * c) / 2);
-    s.kaynaklariHazirla(s.secenek.palet);
     const n = t.w * t.h;
     if (s.titresim.length !== n) {
       s.titresim = new Float32Array(n);
       s.karartma = new Float32Array(n);
     }
-    const F = s.cerceve;
-    this.gok.kur(W, H, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F }, s.secenek.gokyuzu || undefined);
-    this.sandik.kur();
-    this.tc.kur();
-    this.yol.yenidenOrnekle();
+    return true;
   }
 
   // ------------------------------------------------------------------ çizim katmanı API
@@ -402,8 +454,8 @@ class OyunCiziciSinifi implements OyunCizici {
     else this.yol.secim = k;
   }
 
-  elGoster(yol: readonly Konum[] | null): void {
-    this.yol.elAyarla(yol);
+  elGoster(yol: readonly Konum[] | null, secenek?: { geriAl?: boolean }): void {
+    this.yol.elAyarla(yol, !!secenek?.geriAl);
   }
 
   /** (P5 ek) Klavye imleci: 3 px krem odak halkası (§13.7); null = gizle. */
@@ -1489,16 +1541,17 @@ class OyunCiziciSinifi implements OyunCizici {
 
   kare(dtMs: number): void {
     if (this.yokEdildi) return;
+    const t0 = simdiMs();
     if (!this.donuk) this.guncelle(dtMs);
     else if (this.yerlesimGerekli && this.s.tahta.w) this.yerlesim();
     this.ciz();
+    this.kaliteIzle(t0, simdiMs() - t0);
   }
 
   private guncelle(dtMs: number): void {
     const s = this.s;
     if (this.yerlesimGerekli && this.s.tahta.w) this.yerlesim();
     const gercek = Math.max(0, Math.min(50, dtMs));
-    this.kaliteIzle(dtMs);
     s.zaman += gercek;
     s.kamera.guncelle(gercek);
     const olcek = s.kamera.zamanOlcegi;
@@ -1579,26 +1632,53 @@ class OyunCiziciSinifi implements OyunCizici {
     }
   }
 
-  private kaliteIzle(dt: number): void {
+  /**
+   * Otomatik kalite (§16.6). Ölçüt kare ARALIĞI (rAF), eşik ekran tazelemesine
+   * göre: 60 Hz'de 30 karelik ortalama > ~22 ms ise düşer. Yükseltme için kare
+   * aralığı tazelemeye yetişmeli VE karenin JS iş süresi aralığın yarısından az
+   * olmalı (oynatma yokken); gereken iyi pencere sayısı her düşüşte ikiye
+   * katlanır (zorlanan cihazda kalite gidip gelmesin). 100 ms'den uzun kareler
+   * (sekme dönüşü, pişirme) ve pişirmeden sonraki 30 kare ölçülmez.
+   */
+  private kaliteIzle(t0: number, is: number): void {
     const s = this.s;
-    if (s.secenek.kalite !== 'oto' || dt <= 0 || dt > 100) return;
-    this.kareSureleri[this.kareSira] = dt;
-    this.kareSira = (this.kareSira + 1) % 30;
-    if (this.kareSira === 0) {
-      let top = 0;
-      for (let k = 0; k < 30; k++) top += this.kareSureleri[k];
-      if (!this.dusukKalite && top / 30 > 20) {
-        this.dusukKalite = true;
-        this.iyiKare = 0;
-        this.kaliteUygula();
-      }
+    const onceki = this.sonKareZamani;
+    this.sonKareZamani = t0;
+    if (s.secenek.kalite !== 'oto' || !onceki) return;
+    const aralik = t0 - onceki;
+    if (aralik > 100 || aralik <= 0) {
+      this.kaliteAtla = Math.max(this.kaliteAtla, 10);
+      this.pAralik = this.pIs = this.pN = 0;
+      return;
     }
-    if (this.dusukKalite) {
-      this.iyiKare = dt < 12 ? this.iyiKare + 1 : 0;
-      if (this.iyiKare >= 120) {
-        this.dusukKalite = false;
+    if (this.kaliteAtla > 0) {
+      this.kaliteAtla--;
+      return;
+    }
+    this.pAralik += aralik;
+    this.pIs += is;
+    this.pN++;
+    if (this.pN < 30) return;
+    const ort = this.pAralik / this.pN;
+    const isOrt = this.pIs / this.pN;
+    this.pAralik = this.pIs = this.pN = 0;
+    if (ort < this.tazeleme) this.tazeleme = Math.max(6, ort);
+    const esik = Math.max(this.tazeleme * 1.3, this.tazeleme + 5);
+    if (!this.dusukKalite) {
+      if (ort > esik) {
+        this.dusukKalite = true;
+        this.iyiPencere = 0;
         this.kaliteUygula();
       }
+      return;
+    }
+    const iyi = !this.oynatma && ort <= this.tazeleme * 1.12 && isOrt < this.tazeleme * 0.5;
+    this.iyiPencere = iyi ? this.iyiPencere + 1 : 0;
+    if (this.iyiPencere >= this.gerekenIyi) {
+      this.dusukKalite = false;
+      this.iyiPencere = 0;
+      this.gerekenIyi = Math.min(64, this.gerekenIyi * 2);
+      this.kaliteUygula();
     }
   }
 

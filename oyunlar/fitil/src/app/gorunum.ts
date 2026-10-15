@@ -370,6 +370,24 @@ export function odulDuyurulari(oduller: readonly meta.Odul[]): { ikon: string; m
   return r;
 }
 
+/**
+ * Mahalle tamamlanınca Fener Koyu Defteri kartındaki ödüller (§10.1). Meta,
+ * henüz açılmamış güçlendiriciyi toza çevirir (`verilen.adet` 0, `toz` 2):
+ * kart yalnız gerçekten verilen güçlendiricileri gösterir, tozlar tek
+ * satırda toplanır ("+6 toz").
+ */
+export function mahalleOdulleri(oduller: readonly meta.Odul[]): OdulVM[] {
+  const r: OdulVM[] = [];
+  let toz = 0;
+  for (const o of oduller) {
+    if (o.tur !== 'guclendirici' || o.neden !== 'mahalle') continue;
+    if (o.verilen.adet > 0) r.push({ tur: 'guclendirici', id: o.verilen.guc, adet: o.verilen.adet });
+    toz += o.verilen.toz;
+  }
+  if (toz > 0) r.push({ tur: 'toz', adet: toz });
+  return r;
+}
+
 /** Takılı desenler (çizici gökte bunlardan seçer). */
 export function takiliDesenler(k: Kayit): string[] {
   const t = k.koleksiyon.takili.filter((d) => DESENLER.some((x) => x.id === d));

@@ -126,6 +126,7 @@ export class Arayuz {
     tanimlariKur(this.b.palet);
     this.hud = new Hud(this.b);
     this.hud.bantGoster = (m) => void this.bant(m);
+    this.b.toastKonumu = () => this.toastUst();
     this.haritaEkrani = new HaritaEkrani(this.b);
     this.sonda = h('div', { s: 'f-sonda', 'aria-hidden': 'true' });
     this.b.kok.appendChild(this.sonda);
@@ -190,12 +191,31 @@ export class Arayuz {
     }
   }
 
-  private olc(): Yerlesim {
+  private olc(tahtaW?: number, tahtaH?: number): Yerlesim {
     const r = this.b.kok.getBoundingClientRect();
     const w = Math.max(1, Math.round(r.width || window.innerWidth));
     const hh = Math.max(1, Math.round(r.height || window.innerHeight));
     const vm = this.hud.model;
-    return yerlesimHesapla(w, hh, vm?.tahtaW ?? 7, vm?.tahtaH ?? 9, this.guvenliOlc());
+    return yerlesimHesapla(w, hh, tahtaW ?? vm?.tahtaW ?? 7, tahtaH ?? vm?.tahtaH ?? 9, this.guvenliOlc());
+  }
+
+  /**
+   * (P5 ek) HUD'u kurmadan, verilen tahta boyutu için `tahtaAlani()` ile aynı
+   * sonuç: açılış ekranı beklerken bölümün pişirmeleri önceden yapılır.
+   */
+  onYerlesim(tahtaW: number, tahtaH: number): { tahta: Dikdortgen; gokBandi: Dikdortgen } {
+    const y = this.olc(tahtaW, tahtaH);
+    return { tahta: { ...y.tahtaAlani }, gokBandi: { ...y.gokBandi } };
+  }
+
+  /** Oyun ekranında bildirimin üst konumu: HUD ile tahta arasındaki gök bandı (tahta satırlarını örtmesin). */
+  private toastUst(): number | null {
+    if (!this.hud.gorunur || this.acikEkranlar.size > 0 || this.b.modalAcik) return null;
+    const y = this.yer;
+    if (!y || y.kip !== 'dikey') return null;
+    const ust = y.ustBant.y + y.ustBant.h;
+    const bosluk = y.tahta.y - ust;
+    return Math.round(ust + Math.max(6, bosluk / 2 - 24));
   }
 
   private boyutDegisti(): void {

@@ -487,11 +487,15 @@
 
 /* ─────────────── Bildirimler ─────────────── */
 .f-toast {
+  /* Ortalama transform'suz (left/right + otomatik pay): "hareketi azalt" transform'u
+     kaldırınca bildirim ekranın sağına kaymasın. */
   position: absolute;
-  left: 50%;
+  left: 0;
+  right: 0;
+  margin-inline: auto;
   bottom: calc(var(--guv-alt) + 22%);
   width: max-content;
-  max-width: min(92vw, 420px);
+  max-width: min(calc(100% - 32px), 420px);
   padding: 10px 18px 11px;
   border-radius: 999px;
   font-size: 16px;
@@ -500,13 +504,13 @@
   color: var(--krem);
   background: linear-gradient(180deg, rgba(58, 36, 22, .97), rgba(36, 22, 13, .97));
   box-shadow: 0 0 0 2px var(--pirinc), 0 10px 26px rgba(0, 0, 0, .55);
-  transform: translate(-50%, 16px) scale(.92);
+  transform: translateY(16px) scale(.92);
   opacity: 0;
   transition: transform .34s var(--yay), opacity .2s ease;
   pointer-events: none;
 }
-.f-toast.f-giris { transform: translate(-50%, 0) scale(1); opacity: 1; }
-.f-toast.f-cikis { transform: translate(-50%, 8px) scale(.96); opacity: 0; transition-duration: .2s; }
+.f-toast.f-giris { transform: none; opacity: 1; }
+.f-toast.f-cikis { transform: translateY(8px) scale(.96); opacity: 0; transition-duration: .2s; }
 
 /* Ortadaki şerit ("Son hamle!", "Şenlik başlıyor!") */
 .f-bant {

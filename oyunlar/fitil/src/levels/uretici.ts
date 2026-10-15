@@ -21,6 +21,12 @@
  *  - Süzme: aday başına hafif Usta botuyla 12 koşu (64 aday, 16 tam
  *    çözümleme); kazanma oranı %55–85 bandına giren ilk aday seçilir.
  *    Hiçbiri girmezse banda en yakın aday (eşitlikte ilk) seçilir (P4a eki).
+ *  - Erken eleme (P5 eki, süre): kalan koşuların hepsi kazanılsa da banda
+ *    giremeyecek ya da bandı çoktan aşmış aday kalan koşuları oynamadan
+ *    elenir. Bant içi adaylar her zaman 12 koşuyu tamamlar, dolayısıyla
+ *    seçilen bölüm değişmez; yalnız hiçbir aday banda girmezse "en yakın"
+ *    karşılaştırması elenenler için olası en iyi orana göre yapılır ve
+ *    seçilen aday eksik koşularını tamamlar (yıldız eşikleri 12 koşudan).
  *  - Yıldız eşikleri bu 12 koşunun kazançlarından (p50, p85, aşağı 100'e).
  *
  * §10.7 (P4a yorumu): bölüm n için tohum ve id 1 000 000 + n. Zorluk n ile
@@ -231,35 +237,59 @@ function* suz(tohum0: number, id: number, tur: 'gunluk' | 'sonsuz', z: Zorluk, s
   const bot = s.bot ?? VARSAYILAN.bot;
   const [bAlt, bUst] = z.bant;
   const merkez = (bAlt + bUst) / 2;
-  let en: BolumVerisi | null = null;
+  // Bant, kazanç sayısı olarak: [enAz, enCok] (oran = 100·kazanç/koşu).
+  const enAz = Math.ceil((bAlt * kosu) / 100 - 1e-9);
+  const enCok = Math.floor((bUst * kosu) / 100 + 1e-9);
+  let en: { v: BolumVerisi; kazananlar: OyunSonucu[]; kosulan: number; k: number } | null = null;
   let enFark = Infinity;
   let eylem = 0;
+  function* kos(v: BolumVerisi, k: number, t: number, kazananlar: OyunSonucu[]): Generator<UretimIlerleme, void, void> {
+    const g = oyunAdimlari(v, t, 'usta', { bot });
+    let r = g.next();
+    while (!r.done) {
+      eylem++;
+      yield { aday: k, kosu: t, eylem };
+      r = g.next();
+    }
+    if (r.value.kazandi) kazananlar.push(r.value);
+  }
+  const esikler = (v: BolumVerisi, kazananlar: OyunSonucu[]) => {
+    const puan = kazananlar.map((x) => x.puan);
+    v.yildizEsikleri = [Math.floor(yuzdelik(puan, 50) / 100) * 100, Math.floor(yuzdelik(puan, 85) / 100) * 100];
+  };
   for (let k = 0; k < adaySayisi; k++) {
     const v = adayBolum(mulberry32Bir((tohum0 ^ Math.imul(k + 1, 0x9e3779b9)) >>> 0), id, tur, z);
     if (bolumDogrula(v).length) continue;
     const kazananlar: OyunSonucu[] = [];
-    for (let t = 0; t < kosu; t++) {
-      const g = oyunAdimlari(v, t, 'usta', { bot });
-      let r = g.next();
-      while (!r.done) {
-        eylem++;
-        yield { aday: k, kosu: t, eylem };
-        r = g.next();
+    let t = 0;
+    for (; t < kosu; t++) {
+      yield* kos(v, k, t, kazananlar);
+      const kalan = kosu - t - 1;
+      // Erken eleme: banda artık giremez (çok zor) ya da bandı aştı (çok kolay).
+      if (kazananlar.length + kalan < enAz || kazananlar.length > enCok) {
+        t++;
+        break;
       }
-      if (r.value.kazandi) kazananlar.push(r.value);
     }
-    const oran = (100 * kazananlar.length) / kosu;
-    const puan = kazananlar.map((x) => x.puan);
-    v.yildizEsikleri = [Math.floor(yuzdelik(puan, 50) / 100) * 100, Math.floor(yuzdelik(puan, 85) / 100) * 100];
-    if (oran >= bAlt && oran <= bUst) return v;
+    const tamam = t >= kosu;
+    if (tamam && kazananlar.length >= enAz && kazananlar.length <= enCok) {
+      esikler(v, kazananlar);
+      return v;
+    }
+    // Banda en yakın aday: elenende olası en iyi oran (zor adayda kalanların hepsi kazanılırsa).
+    const zor = kazananlar.length <= enCok;
+    const oran = (100 * (zor ? kazananlar.length + (kosu - t) : kazananlar.length)) / kosu;
     const fark = Math.abs(oran - merkez);
     if (fark < enFark) {
       enFark = fark;
-      en = v;
+      en = { v, kazananlar, kosulan: t, k };
     }
   }
   if (!en) throw new Error(`üretici: geçerli aday yok (tohum ${tohum0})`);
-  return en;
+  // Seçilen yedek aday eksik koşularını tamamlar (yıldız eşikleri 12 koşudan).
+  for (let t = en.kosulan; t < kosu; t++) yield* kos(en.v, en.k, t, en.kazananlar);
+  esikler(en.v, en.kazananlar);
+  return en.v;
 }
 
 /** Günün Şenliği üreticisi (§10.5); tarih yyyymmdd. */
