@@ -119,8 +119,51 @@ export class EbruModeli {
     if (ornekle) this.yenidenOrnekle();
   }
 
+  /**
+   * Biz hattının yakınındaki kenarları dönüşümden ÖNCE sıklaştır: dar ℓ'li
+   * uzun çekmede (sap, yaprak) iz kesintisiz ve pürüzsüz çıksın.
+   */
+  private yakiniSiklastir(ax: number, ay: number, bx: number, by: number, bant: number, adim: number): void {
+    const vx = bx - ax;
+    const vy = by - ay;
+    const L2 = vx * vx + vy * vy || 1;
+    const uzak = (x: number, y: number) => {
+      let t = ((x - ax) * vx + (y - ay) * vy) / L2;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      return Math.hypot(x - (ax + vx * t), y - (ay + vy * t));
+    };
+    for (const c of this.cokgenler) {
+      if (c.donuk) continue;
+      const k = c.k;
+      const n = c.n;
+      let gerek = false;
+      for (let i = 0; i < n && !gerek; i++) if (uzak(k[2 * i], k[2 * i + 1]) < bant * 2) gerek = true;
+      if (!gerek) continue;
+      const out: number[] = [];
+      for (let i = 0; i < n; i++) {
+        const x0 = k[2 * i];
+        const y0 = k[2 * i + 1];
+        const j = (i + 1) % n;
+        const x1 = k[2 * j];
+        const y1 = k[2 * j + 1];
+        out.push(x0, y0);
+        const d = Math.hypot(x1 - x0, y1 - y0);
+        if (d <= adim) continue;
+        const yakin = Math.min(uzak(x0, y0), uzak(x1, y1), uzak((x0 + x1) / 2, (y0 + y1) / 2)) < bant;
+        if (!yakin) continue;
+        const p = Math.min(64, Math.ceil(d / adim));
+        for (let q = 1; q < p; q++) out.push(x0 + ((x1 - x0) * q) / p, y0 + ((y1 - y0) * q) / p);
+      }
+      if (out.length / 2 !== n) {
+        c.k = Float32Array.from(out);
+        c.n = out.length / 2;
+      }
+    }
+  }
+
   /** Biz çekme: (ax, ay) → (bx, by) parçası boyunca, uçlarda yumuşak sönümle. */
   biz(ax: number, ay: number, bx: number, by: number, z: number, l: number, u = 0.5): void {
+    this.yakiniSiklastir(ax, ay, bx, by, l * 4, Math.max(0.6, l * 0.35));
     const L = Math.hypot(bx - ax, by - ay) || 1;
     const mx = (bx - ax) / L;
     const my = (by - ay) / L;
@@ -229,26 +272,33 @@ export class EbruModeli {
       c.k = Float32Array.from(tmp.subarray(0, m2));
       c.n = m;
     }
-    // Toplam bütçe: en eskiden başlayarak dondur.
+    // Toplam bütçe: en eskiden başlayarak dondur (dondurulan seyreltilir); yetmezse
+    // dondurulmuşları en eskiden yeniden seyrelt (en az 24 köşe kalır).
     let toplam = this.koseSayisi();
+    const seyrelt = (c: Cokgen, alt: number): void => {
+      if (c.n <= alt) return;
+      const yeni = new Float32Array(Math.ceil(c.n / 2) * 2);
+      let j = 0;
+      for (let i = 0; i < c.n; i += 2) {
+        yeni[j++] = c.k[2 * i];
+        yeni[j++] = c.k[2 * i + 1];
+      }
+      toplam -= c.n - j / 2;
+      c.k = yeni;
+      c.n = j / 2;
+    };
     for (const c of this.cokgenler) {
       if (toplam <= s.toplamMax) break;
       if (!c.donuk) {
         c.donuk = true;
-        // Dondurulan çokgeni seyrelt (her ikinci köşe), bütçeye yer aç.
-        if (c.n > 48) {
-          const yeni = new Float32Array(Math.ceil(c.n / 2) * 2);
-          let j = 0;
-          for (let i = 0; i < c.n; i += 2) {
-            yeni[j++] = c.k[2 * i];
-            yeni[j++] = c.k[2 * i + 1];
-          }
-          toplam -= c.n - j / 2;
-          c.k = yeni;
-          c.n = j / 2;
-        }
+        seyrelt(c, 48);
       }
     }
+    for (let tur = 0; tur < 3 && toplam > s.toplamMax; tur++)
+      for (const c of this.cokgenler) {
+        if (toplam <= s.toplamMax) break;
+        if (c.donuk) seyrelt(c, 24);
+      }
   }
 
   /** Köşe karması (belirlenimlilik testi): FNV-1a, 0,01 px'e yuvarlanmış. */

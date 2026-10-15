@@ -162,10 +162,16 @@ export function tabloPlani(istek: TabloIstegi): TabloPlani {
         const c1 = boyaTonu(kod, rnd);
         const c2 = boyaTonu(kod, rnd, 0.45);
         const c3 = boyaTonu(ikinci === kod ? ana : ikinci, rnd, -0.05);
-        islemler.push({ t: 'damla', x: p.x, y: p.y, r: 30 * olcek, ...c1 });
-        islemler.push({ t: 'damla', x: p.x, y: p.y, r: 20 * olcek, ...c2 });
-        islemler.push({ t: 'damla', x: p.x, y: p.y, r: 11 * olcek, ...c3 });
-        islemler.push({ t: 'girdap', x: p.x, y: p.y, a: 2.6, s: 40 * olcek });
+        // Bülbül yuvası: iç içe dört damla (koyu/açık/karşı renk), sonra biz ile çevrilir.
+        const c4 = boyaTonu(kod, rnd, 0.6);
+        islemler.push({ t: 'damla', x: p.x, y: p.y, r: 54 * olcek, ...c1 });
+        islemler.push({ t: 'damla', x: p.x, y: p.y, r: 41 * olcek, ...c2 });
+        islemler.push({ t: 'damla', x: p.x, y: p.y, r: 28 * olcek, ...c3 });
+        islemler.push({ t: 'damla', x: p.x, y: p.y, r: 14 * olcek, ...c4 });
+        // İç içe halkalar kendi merkezinde dönünce değişmez: önce içlerinden biz geçir, sonra çevir.
+        const bA = rnd() * Math.PI * 2;
+        islemler.push({ t: 'biz', ax: p.x - Math.cos(bA) * 40 * olcek, ay: p.y - Math.sin(bA) * 40 * olcek, bx: p.x + Math.cos(bA) * 56 * olcek, by: p.y + Math.sin(bA) * 56 * olcek, z: 36 * olcek, l: 10 * olcek });
+        islemler.push({ t: 'girdap', x: p.x, y: p.y, a: 8.5, s: 38 * olcek });
         break;
       }
       case 'lale':
@@ -212,9 +218,9 @@ export function tabloPlani(istek: TabloIstegi): TabloPlani {
   if (motif) {
     teknik.add('cicek');
     const cx = ALAN.x + ALAN.w * (0.5 + (rnd() - 0.5) * 0.16);
-    const cy = ALAN.y + ALAN.h * 0.74;
+    const cy = ALAN.y + ALAN.h * 0.6;
     const tac = motif === 'lale' ? (siklik.has(5) ? 5 : ana) : siklik.has(3) ? 3 : ana;
-    cicekPlani(islemler, motif, cx, cy, olcek, tac, rnd);
+    cicekPlani(islemler, motif, cx, cy, olcek, tac, zemin, rnd);
   }
 
   // Nadirlik (§9.4).
@@ -231,40 +237,53 @@ export function tabloPlani(istek: TabloIstegi): TabloPlani {
   return { islemler, teknikler, nadirlik, zemin, kunye, tohum: istek.tohum };
 }
 
-/** Lale ya da karanfil: damlalar + biz çekme (Necmeddin Okyay geleneği). */
-function cicekPlani(is: Islem[], motif: 'lale' | 'karanfil', cx: number, cy: number, s: number, tac: number, rnd: () => number): void {
+/**
+ * Lale ya da karanfil (Necmeddin Okyay geleneği): önce çiçeğin oturacağı
+ * sakin, açık bir zemin damlası (madalyon), sonra sap (sık küçük yeşil
+ * damlalar + aşağı biz), yapraklar (damla + dışa biz) ve taç (damlalar +
+ * aşağıdan yukarı biz çekmeleri). Ölçek F ≈ 1,75 × alan ölçeği.
+ */
+function cicekPlani(is: Islem[], motif: 'lale' | 'karanfil', cx: number, cy: number, s: number, tac: number, zemin: string, rnd: () => number): void {
+  const F = s * 1.75;
   const yesil = (a = 0) => boyaTonu(6, rnd, a);
   const tacT = (a = 0) => boyaTonu(tac, rnd, a);
-  // Sap ve yapraklar önce (taç üstte kalsın).
-  for (let i = 0; i < 6; i++) is.push({ t: 'damla', x: cx + Math.sin(i * 0.9) * 2 * s, y: cy + (34 + i * 13) * s, r: 7 * s, ...yesil(-0.05) });
-  is.push({ t: 'biz', ax: cx, ay: cy + 28 * s, bx: cx + 2 * s, by: cy + 132 * s, z: 30 * s, l: 8 * s });
-  for (const yon of [-1, 1]) {
-    is.push({ t: 'damla', x: cx + yon * 13 * s, y: cy + 84 * s, r: 12 * s, ...yesil(0.05) });
-    is.push({ t: 'biz', ax: cx + yon * 6 * s, ay: cy + 96 * s, bx: cx + yon * 44 * s, by: cy + 52 * s, z: 42 * s, l: 8 * s });
-  }
+  // Madalyon: çiçeğin çevresi sakin ve açık.
+  const acik = rgbHex(karistir(zemin, [250, 244, 230], 0.55));
+  is.push({ t: 'damla', x: cx, y: cy + 46 * F, r: 84 * F, renk: acik, kenar: rgbHex(karistir(acik, [40, 30, 20], 0.3)) });
   if (motif === 'lale') {
-    is.push({ t: 'damla', x: cx, y: cy, r: 32 * s, ...tacT() });
-    for (const yon of [-1, 1]) is.push({ t: 'damla', x: cx + yon * 23 * s, y: cy + 8 * s, r: 18 * s, ...tacT(-0.08) });
-    is.push({ t: 'damla', x: cx, y: cy + 4 * s, r: 12 * s, ...tacT(0.42) });
-    // Taç: ortadan yukarı biz (sivri uç), yanlardan yukarı-dışa.
-    is.push({ t: 'biz', ax: cx, ay: cy + 34 * s, bx: cx, by: cy - 44 * s, z: 60 * s, l: 14 * s });
-    for (const yon of [-1, 1]) is.push({ t: 'biz', ax: cx + yon * 22 * s, ay: cy + 22 * s, bx: cx + yon * 30 * s, by: cy - 30 * s, z: 34 * s, l: 9 * s });
+    is.push({ t: 'damla', x: cx, y: cy, r: 34 * F, ...tacT(-0.04) });
+    is.push({ t: 'damla', x: cx, y: cy - 4 * F, r: 21 * F, ...tacT(0.3) });
+    is.push({ t: 'damla', x: cx, y: cy - 2 * F, r: 9 * F, ...tacT(-0.12) });
+    // Taç: biz çanağın İÇİNDEN yukarı (alt kenar yuvarlak kalır): ortada sivri uç, yanlarda iki uç.
+    is.push({ t: 'biz', ax: cx, ay: cy + 8 * F, bx: cx, by: cy - 64 * F, z: 66 * F, l: 12 * F });
+    for (const yon of [-1, 1]) is.push({ t: 'biz', ax: cx + yon * 17 * F, ay: cy + 6 * F, bx: cx + yon * 36 * F, by: cy - 44 * F, z: 44 * F, l: 9 * F });
   } else {
-    is.push({ t: 'damla', x: cx, y: cy, r: 30 * s, ...tacT() });
-    is.push({ t: 'damla', x: cx, y: cy, r: 13 * s, ...tacT(0.38) });
-    // Kenarda 10 küçük damla, her biri dışa kısa biz: tırtıklı karanfil tacı.
-    for (let i = 0; i < 10; i++) {
-      const a = -Math.PI / 2 + ((i - 4.5) / 10) * Math.PI * 1.5;
-      const dx = Math.cos(a);
-      const dy = Math.sin(a);
-      is.push({ t: 'damla', x: cx + dx * 30 * s, y: cy + dy * 30 * s, r: 8 * s, ...tacT(i % 2 ? 0.25 : -0.1) });
+    // Yelpaze taç: üç iç içe geçen damla (koyu/açık), tepede tırtıklı saçak, altta yeşil çanak.
+    is.push({ t: 'damla', x: cx - 17 * F, y: cy + 5 * F, r: 19 * F, ...tacT(0.22) });
+    is.push({ t: 'damla', x: cx + 17 * F, y: cy + 5 * F, r: 19 * F, ...tacT(0.22) });
+    is.push({ t: 'damla', x: cx, y: cy, r: 26 * F, ...tacT(-0.06) });
+    const aci = (i: number) => -Math.PI + 0.2 + (i / 11) * (Math.PI - 0.4);
+    for (let i = 0; i < 12; i++) {
+      const a = aci(i);
+      is.push({ t: 'damla', x: cx + Math.cos(a) * 30 * F, y: cy + Math.sin(a) * 30 * F, r: 8 * F, ...tacT(i % 2 ? 0.32 : -0.14) });
     }
-    for (let i = 0; i < 10; i++) {
-      const a = -Math.PI / 2 + ((i - 4.5) / 10) * Math.PI * 1.5;
-      const dx = Math.cos(a);
-      const dy = Math.sin(a);
-      is.push({ t: 'biz', ax: cx + dx * 20 * s, ay: cy + dy * 20 * s, bx: cx + dx * 46 * s, by: cy + dy * 46 * s, z: 16 * s, l: 6 * s });
+    for (let i = 0; i < 12; i++) {
+      const a = aci(i);
+      is.push({ t: 'biz', ax: cx + Math.cos(a) * 22 * F, ay: cy + Math.sin(a) * 22 * F, bx: cx + Math.cos(a) * 52 * F, by: cy + Math.sin(a) * 52 * F, z: 22 * F, l: 6 * F });
     }
+    is.push({ t: 'damla', x: cx, y: cy + 30 * F, r: 12 * F, ...yesil(-0.02) });
+    is.push({ t: 'biz', ax: cx, ay: cy + 24 * F, bx: cx, by: cy + 56 * F, z: 22 * F, l: 7 * F });
+  }
+  // Sap ve yapraklar taçtan SONRA (taç damlaları onları itmesin): taç
+  // altından tek yeşil damla, içinden uzun ve ince biz (incelen sap).
+  is.push({ t: 'damla', x: cx, y: cy + 44 * F, r: 6 * F, ...yesil(-0.06) });
+  is.push({ t: 'damla', x: cx + 2 * F, y: cy + 66 * F, r: 6 * F, ...yesil(-0.02) });
+  is.push({ t: 'biz', ax: cx, ay: cy + 38 * F, bx: cx + 3 * F, by: cy + 122 * F, z: 70 * F, l: 3.6 * F });
+  // Yapraklar: damla + içinden dışa-yukarı biz; ℓ ≈ yarıçap → bütün damla uzar, ucu sivrilir.
+  for (const yon of [-1, 1]) {
+    const ly = cy + (yon < 0 ? 92 : 80) * F;
+    is.push({ t: 'damla', x: cx + yon * 14 * F, y: ly, r: 13 * F, ...yesil(yon < 0 ? 0.02 : 0.14) });
+    is.push({ t: 'biz', ax: cx + yon * 8 * F, ay: ly + 6 * F, bx: cx + yon * 62 * F, by: ly - 40 * F, z: 38 * F, l: 15 * F });
   }
 }
 
