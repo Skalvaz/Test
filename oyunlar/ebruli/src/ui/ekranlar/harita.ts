@@ -136,14 +136,15 @@ function yakinda(devamiAcik: boolean, ac: () => void): HTMLElement {
 }
 
 export function haritaEkrani(y: EkranYoneticisi, vm: HaritaVM, geri: HaritaGeri): Promise<number | null> {
-  return y.ac<number | null>({ sinif: 'e-harita', geri: null }, (bitir) => {
+  return y.ac<number | null>({ sinif: 'e-harita', geri: null }, (bitir, kok) => {
     let kartAcik = false;
+    const acik = (): boolean => kok.isConnected && !kok.classList.contains('cik');
     const sec = async (id: number): Promise<void> => {
-      if (kartAcik) return;
+      if (kartAcik || !acik()) return;
       kartAcik = true;
       const basla = await geri.bolumKarti(id);
       kartAcik = false;
-      if (basla) bitir(id);
+      if (basla && acik()) bitir(id);
     };
     const yildiz = svg(YILDIZ_DOLU);
     const ust = h(

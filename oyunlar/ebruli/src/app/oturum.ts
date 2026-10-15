@@ -696,7 +696,9 @@ export class Oturum {
     b.cizici.karart(0);
     if (s === 'ustaEli' && this.d!.bitti === 'kayip') {
       const r = ustaEliUygula(this.d!);
-      const o = this.d!;
+      // bitti = null olay değildir (§8.4): görsel tahtada önceden sıfırla.
+      const o: OyunDurumu = { ...this.d!, bitti: null };
+      b.cizici.durumGoster(o);
       this.d = r.durum;
       b.ui.hud.goster(true);
       b.ui.hud.hamle(this.d.kalanHamle);
