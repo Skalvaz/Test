@@ -14,7 +14,7 @@ import { oyunCiziciOlustur } from '../oyunCizici';
 import { surukleGirdiOlustur } from '../../input/surukle';
 import * as cekirdek from '../../core/index';
 import { bolumuYukle, gecerliHedefler, hamleHatasi } from '../../core/index';
-import type { BolumVerisi, Hamle, HamleSonucu, Konum, Onizleme, OyunDurumu } from '../../core/types';
+import type { BolumVerisi, Hamle, HamleSonucu, Konum, Olay, Onizleme, OyunDurumu } from '../../core/types';
 import { sahteBotHamle, sahteHamle as sahteHamle0, sahteOnizle as sahteOnizle0 } from './sahteCozum';
 import { SADE, VITRIN } from './ornekBolumler';
 import { RENK_TANIMLARI } from '../../app/katalog';
@@ -244,6 +244,11 @@ async function senaryo(ad: string): Promise<string> {
   cizici.surukleGoster({ kaynak: null, parmak: null, hedefler: [], onizleme: null });
   cizici.vurgula(null, 'ipucu');
   cizici.elGoster(null);
+  cizici.hayaletHamle(null);
+  cizici.imlecGoster(null);
+  cizici.karart(0);
+  cizici.kagitKaldir();
+  girdi.zorunluAyarla(null);
   switch (ad) {
     case 'tahta':
       bolumAc('vitrin');
@@ -269,6 +274,25 @@ async function senaryo(ad: string): Promise<string> {
       cizici.elGoster([{ x: 3, y: 5 }, { x: 2, y: 5 }]);
       girdi.zorunluAyarla({ tur: 'surukle', kaynak: { x: 3, y: 5 }, hedef: { x: 2, y: 5 } });
       return 'zorunlu';
+    case 'kaskat':
+    case 'saheser':
+    case 'solen': {
+      bolumAc('vitrin');
+      cizici.dev.dondur(true);
+      const o: Olay[] =
+        ad === 'solen' ? [{ t: 0, tur: 'solenBasladi', kalanHamle: 5 }] : [{ t: 0, tur: 'kaskat', k: ad === 'kaskat' ? 3 : 5, kademe: ad === 'kaskat' ? 'nefis' : 'saheser' }];
+      void cizici.oynat(d, o, d);
+      return ad;
+    }
+    case 'hayalet':
+      bolumAc('vitrin');
+      cizici.hayaletHamle({ tur: 'surukle', kaynak: { x: 2, y: 5 }, hedef: { x: 3, y: 5 } });
+      cizici.imlecGoster({ x: 5, y: 2 });
+      return 'hayalet';
+    case 'kararma':
+      bolumAc('sade');
+      cizici.karart(0.55);
+      return 'kararma';
     case 'ipucu': {
       bolumAc('sade');
       const h = olumluBul(3);
@@ -332,5 +356,10 @@ window.__sahne = {
   kagit,
   bolum: bolumAc,
   sayac: () => cizici.dev.sayac(),
+  onIsit: async (ad: string) => {
+    const t0 = performance.now();
+    await cizici.onIsit(BOLUMLER[ad] ?? VITRIN);
+    return { ms: Math.round(performance.now() - t0), ...cizici.dev.sayac() };
+  },
   yazi: () => yazi.then(() => true),
 };

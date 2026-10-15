@@ -151,6 +151,8 @@ class OyunCiziciSinifi implements OyunCiziciTam {
   private oyn: Oynatma | null = null;
   private hizCarpani = 1;
   private yavasKalan = 0;
+  /** Kıl payı donması kalan gerçek ms (oynatma ve canlandırma durur). */
+  private donma = 0;
   private sur: SurukleDurumu = { kaynak: null, parmak: null, hedefler: [], onizleme: null, kalkis: 0, giris: 0, hedefAnahtar: '' };
   private vurgu: { hucreler: readonly Konum[]; kip: 'zorunlu' | 'ipucu'; t: number } | null = null;
   private el: { yol: Konum[]; t: number } | null = null;
@@ -165,6 +167,8 @@ class OyunCiziciSinifi implements OyunCiziciTam {
   private ucusSayisi: number[] = [];
   private bekleyen: Olay[][] = [];
   private ogretim = false;
+  /** Önizleme hücre maskesi (bit 1 grup, bit 2 etki alanı); kare başına ayırma olmasın diye surukleGoster'de kurulur. */
+  private maske = new Uint8Array(0);
   private gelistirme: boolean;
   private donuk = false;
   private sonFarkSayisi = 0;
@@ -336,6 +340,16 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     const yeniKaynak = !!s.kaynak && (!eski.kaynak || eski.kaynak.x !== s.kaynak.x || eski.kaynak.y !== s.kaynak.y);
     const hedef = s.onizleme && s.onizleme.gecerli ? this.onizlemeHedefi(s) : null;
     const ha = hedef ? `${hedef.x},${hedef.y}` : '';
+    if (s.onizleme !== eski.onizleme) {
+      const n = this.gt.w * this.gt.h;
+      if (this.maske.length !== n) this.maske = new Uint8Array(n);
+      else this.maske.fill(0);
+      const o = s.onizleme;
+      if (o && o.gecerli) {
+        for (const gr of o.gruplar) for (const k of gr.hucreler) if (k.x >= 0 && k.y >= 0 && k.x < this.gt.w && k.y < this.gt.h) this.maske[k.y * this.gt.w + k.x] |= 1;
+        for (const k of o.etkiAlani) if (k.x >= 0 && k.y >= 0 && k.x < this.gt.w && k.y < this.gt.h) this.maske[k.y * this.gt.w + k.x] |= 2;
+      }
+    }
     this.sur = {
       kaynak: s.kaynak ? { ...s.kaynak } : null,
       parmak: s.parmak ? { ...s.parmak } : null,
@@ -557,6 +571,11 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     this.yerlesim();
     let animDt = dt * this.sec.hiz;
     const o = this.oyn;
+    if (this.donma > 0) {
+      this.donma -= dt;
+      this.yazi.guncelle(dt);
+      return;
+    }
     if (o) {
       let hiz = this.sec.hiz * this.hizCarpani;
       if (this.yavasKalan > 0) {
@@ -920,6 +939,12 @@ class OyunCiziciSinifi implements OyunCiziciTam {
         if (o.hucre && o.miktar > 0 && (o.neden === 'ozel' || o.neden === 'desen')) this.metin(this.mx(o.hucre.x), this.my(o.hucre.y) + h * 0.15, `+${o.miktar}`, Math.round(h * 0.3 + 4), 60, o.neden !== 'ozel');
         break;
       }
+      case 'bolumBitti': {
+        this.gt.uygula(o);
+        // Son hamle kazandırdı: 0,3 sn kare donması ("kıl payı", §10.2).
+        if (o.sonuc === 'kazanc' && this.oyn && this.oyn.sonraki.kalanHamle === 0 && !this.sec.hareketiAzalt) this.donma = 300;
+        break;
+      }
       case 'solenBasladi': {
         this.gt.uygula(o);
         const x = this.geo.x + (this.geo.w * h) / 2;
@@ -1111,16 +1136,9 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     // Hedef nabzı (geçerli komşular hafifçe şişer, 1,5 Hz).
     const hedefNabiz = 1 + 0.06 * (0.5 + 0.5 * Math.sin(zs * TAU * 1.5));
     const ipucuNabiz = this.vurgu?.kip === 'ipucu' ? 1 + 0.07 * (0.5 + 0.5 * Math.sin(this.vurgu.t * 0.001 * TAU * 1.5)) : 1;
-    const olcekBul = (x: number, y: number): number => {
-      let s = 1;
-      for (const k of this.sur.hedefler)
-        if (k.x === x && k.y === y) {
-          s *= hedefNabiz;
-          break;
-        }
-      if (ipucuNabiz !== 1 && this.vurgu) for (const k of this.vurgu.hucreler) if (k.x === x && k.y === y) s *= ipucuNabiz;
-      return s;
-    };
+    this.hedefNabiz = hedefNabiz;
+    this.ipucuNabiz = ipucuNabiz;
+    const olcekBul = this.olcekBulBagli;
     // 1. geçiş: haleler.
     for (let i = 0; i < gt.hucreler.length; i++) {
       const ic = gt.hucreler[i].icerik;
@@ -1167,6 +1185,20 @@ class OyunCiziciSinifi implements OyunCiziciTam {
       this.damlaGovdesi(c, d, this.mx(x), this.my(y), k, damlaAlfasi(d));
     }
   }
+
+  private hedefNabiz = 1;
+  private ipucuNabiz = 1;
+  /** Geçerli komşu nabzı ve ipucu nabzı (kapanış yok: kare başına ayırma olmasın). */
+  private readonly olcekBulBagli = (x: number, y: number): number => {
+    let s = 1;
+    for (const k of this.sur.hedefler)
+      if (k.x === x && k.y === y) {
+        s *= this.hedefNabiz;
+        break;
+      }
+    if (this.ipucuNabiz !== 1 && this.vurgu) for (const k of this.vurgu.hucreler) if (k.x === x && k.y === y) s *= this.ipucuNabiz;
+    return s;
+  };
 
   /** Damla gövdesi + özel taş katmanları + karışım girdabı (hücre merkezi cx, cy). */
   private damlaGovdesi(c: Ctx, d: GDamla, cx: number, cy: number, k: number, alfa: number, ekX = 1, ekY = 1): void {
@@ -1383,13 +1415,11 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     const giris = Math.min(1, (this.zaman - s.giris) / 120);
     const nabiz = 0.5 + 0.5 * Math.sin(zs * TAU * 2);
     // Temizlenecek bütün hücreler (kaskat/özel dahil): soluk işaret alfa 0,35.
-    const grupta = new Set<string>();
-    for (const gr of o.gruplar) for (const k of gr.hucreler) grupta.add(`${k.x},${k.y}`);
     c.strokeStyle = rgba(PALET.altinAcik, 0.35 * giris);
     c.lineWidth = Math.max(1, h * 0.03);
     c.setLineDash([h * 0.08, h * 0.06]);
     for (const k of o.temizlenecek) {
-      if (grupta.has(`${k.x},${k.y}`)) continue;
+      if (this.maskeVar(k.x, k.y, 1)) continue;
       c.beginPath();
       c.arc(this.mx(k.x), this.my(k.y), h * 0.4, 0, TAU);
       c.stroke();
@@ -1545,11 +1575,15 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     c.globalAlpha = 1;
   }
 
+  private maskeVar(x: number, y: number, bit: number): boolean {
+    if (x < 0 || y < 0 || x >= this.gt.w || y >= this.gt.h) return false;
+    return (this.maske[y * this.gt.w + x] & bit) !== 0;
+  }
+
   private alanCiz(c: Ctx, alan: readonly Konum[], giris: number): void {
     const g = this.geo;
     const h = g.hucre;
-    const set = new Set(alan.map((k) => `${k.x},${k.y}`));
-    const var_ = (x: number, y: number) => set.has(`${x},${y}`);
+    const var_ = (x: number, y: number) => this.maskeVar(x, y, 2);
     c.fillStyle = rgba(PALET.altin, 0.08 * giris);
     for (const k of alan) c.fillRect(g.x + k.x * h, g.y + k.y * h, h, h);
     c.setLineDash([h * 0.12, h * 0.08]);
