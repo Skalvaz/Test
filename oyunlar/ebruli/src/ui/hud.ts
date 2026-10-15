@@ -39,6 +39,7 @@ export class Hud {
   private vm: HudVM | null = null;
   private puanDeger = 0;
   private tarifAcik = true;
+  private tarifSabit = true;
   private kip: 'dikey' | 'yan' = 'dikey';
 
   constructor(ebeveyn: HTMLElement, geri: HudGeri) {
@@ -58,7 +59,9 @@ export class Hud {
     this.alt.append(this.durDugme, this.ad);
     const tarifBaslik = h('button', { s: 'e-tarif-baslik', type: 'button', 'aria-label': M.tarifler });
     tarifBaslik.append(svg(IKON.tarif), h('span', { t: M.tarifler }));
-    tarifBaslik.addEventListener('click', (e) => {
+    // Katlanır şerit (bölüm 6+, ayar "İlk bölümlerde"): dokununca açılır/katlanır.
+    this.tarif.addEventListener('click', (e) => {
+      if (this.tarifSabit) return;
       e.stopPropagation();
       this.tarifAc(!this.tarifAcik);
     });
@@ -96,7 +99,14 @@ export class Hud {
       this.tarifIc.appendChild(cip);
     }
     this.tarif.classList.toggle('yok', vm.tarifler.length === 0);
-    this.tarifAc(vm.tarifAcik, false);
+    this.tarifSabitle(vm.tarifAcik);
+  }
+
+  /** Sabit açık (bölüm 1–5 ya da ayar "Her zaman") ya da katlanır (dokununca açılır). */
+  tarifSabitle(sabit: boolean): void {
+    this.tarifSabit = sabit;
+    this.tarif.classList.toggle('sabit', sabit);
+    this.tarifAc(sabit, false);
   }
 
   private kartEtiketi(hd: HedefVM): string {

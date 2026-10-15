@@ -57,7 +57,8 @@ export function galeriEkrani(y: EkranYoneticisi, vm: GaleriVM, W: number, H: num
     const sayac = h('div', { s: 'e-galeri-sayac' });
     const ciz = (): void => {
       izgara.textContent = '';
-      const kw = Math.floor(Math.min(110, (Math.min(W, 560) - 32 - 3 * 10) / 4));
+      // Sayfa payı 12+12, kart iç payı 16+16, kenar 2+2.
+      const kw = Math.floor(Math.min(110, (Math.min(W - 24, 560) - 36 - 3 * 10) / 4));
       const kh = Math.round(kw * 1.5);
       let n = 0;
       for (const k of secili.kartlar) {
@@ -108,7 +109,7 @@ export function galeriEkrani(y: EkranYoneticisi, vm: GaleriVM, W: number, H: num
 export function devamiEkrani(y: EkranYoneticisi, vm: DevamiVM, W: number): Promise<'galeri' | 'harita'> {
   return y.ac<'galeri' | 'harita'>({ sinif: 'e-devami e-sayfali', geri: 'harita' }, (bitir) => {
     const mozaik = h('div', { s: 'e-mozaik' });
-    const kw = Math.floor(Math.min(64, (Math.min(W, 520) - 40 - 4 * 6) / 5));
+    const kw = Math.floor(Math.min(64, (Math.min(W - 24, 560) - 36 - 4 * 6) / 5));
     for (const t of vm.tablolar) {
       if (t.ciz) mozaik.appendChild(tabloResmi(t.ciz, kw, Math.round(kw * 1.5), 'e-mozaik-tablo'));
       else {

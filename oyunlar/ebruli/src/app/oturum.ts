@@ -595,8 +595,6 @@ export class Oturum {
     b.ses.arayuz('kazandin');
     const a = ATOLYELER.find((x) => x.id === v.atolye) ?? ATOLYELER[0];
     const sonraki = v.id < SON_BOLUM ? bolumBul(v.id + 1) : undefined;
-    const H = b.stage.height;
-    const g = b.ui.guvenliAlan();
     b.ekran('kazandin');
     const secim = await b.ui.kazandin(
       {
@@ -611,15 +609,16 @@ export class Oturum {
         eskiPuan: eski?.puan ?? 0,
         siradaki: v.sonrakiTanitim ?? (sonraki ? `${M.siradaki}: ${sonraki.ad}!` : null),
         ilkTablo: !eski && kayitOnce.istatistik.kazanilan === 0,
-        tablo: b.cizici.kagitDikdortgeni(),
+        tuval: r.tuval,
+        baslangic: b.cizici.kagitDikdortgeni(),
         ustaEli: d.istatistik.ustaEli,
       },
       {
         W: b.stage.width,
-        H,
-        guvenliAlt: g.alt,
-        guvenliUst: g.ust,
+        H: b.stage.height,
+        guvenli: b.ui.guvenliAlan(),
         azalt: b.hareketiAzalt(),
+        devral: () => b.cizici.kagitKaldir(),
         muhur: (i, x, y) => {
           b.ses.arayuz((['yildiz1', 'yildiz2', 'yildiz3'] as const)[i] ?? 'yildiz1');
           b.cizici.altinTozu(x, y, 26);

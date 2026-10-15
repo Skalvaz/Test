@@ -423,7 +423,7 @@ export class Uygulama {
       this.cizici.secenekAyarla({ palet: a.palet, motifler: a.motifler });
       gorselAyarla(a.palet, a.motifler);
     }
-    if (y.tarifSeridi !== undefined && this.oturum.v && this.oturum.durum !== 'kapali') this.ui.hud.tarifAc(this.oturum.v.id <= 5 || a.tarifSeridi === 'her');
+    if (y.tarifSeridi !== undefined && this.oturum.v && this.oturum.durum !== 'kapali') this.ui.hud.tarifSabitle(this.oturum.v.id <= 5 || a.tarifSeridi === 'her');
     if (y.ipuclari !== undefined) this.oturum.bostaKur();
   }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EN_AZ_ARALIK, puanOrani, yildizKonumlari, doluIsaret } from './puanCubugu';
-import { SIFIR_KENAR, yerlesimHesapla } from './yerlesim';
+import { kazandinYerlesimi, SIFIR_KENAR, yerlesimHesapla } from './yerlesim';
 
 describe('puan çubuğu (§11.6): işaretler üst üste binmez', () => {
   const ornekler: [number, number][] = [
@@ -41,6 +41,33 @@ describe('puan çubuğu (§11.6): işaretler üst üste binmez', () => {
     expect(doluIsaret(100, [3000, 4000], true)).toBe(1);
     expect(doluIsaret(3000, [3000, 4000], true)).toBe(2);
     expect(doluIsaret(4000, [3000, 4000], true)).toBe(3);
+  });
+});
+
+describe('kazandın yerleşimi (§9.5): mühürler tabloyu örtmez, her şey ekrana sığar', () => {
+  it('telefon ve masaüstü', () => {
+    for (const [W, H, ust, alt] of [
+      [390, 844, 44, 34],
+      [360, 640, 0, 0],
+      [412, 915, 24, 16],
+      [1280, 800, 0, 0],
+      [768, 1024, 20, 20],
+    ]) {
+      const y = kazandinYerlesimi(W, H, { ust, sag: 0, alt, sol: 0 });
+      expect(y.tablo.w / y.tablo.h).toBeCloseTo(2 / 3, 1);
+      expect(y.tablo.x).toBeGreaterThanOrEqual(0);
+      expect(y.tablo.x + y.tablo.w).toBeLessThanOrEqual(W);
+      expect(y.tablo.y).toBeGreaterThanOrEqual(ust);
+      if (!y.yan) {
+        expect(y.muhurY).toBeGreaterThanOrEqual(y.tablo.y + y.tablo.h);
+        expect(y.alt.y).toBeGreaterThan(y.muhurY);
+        expect(y.alt.y + y.alt.h).toBeLessThanOrEqual(H - alt);
+        expect(y.alt.h).toBeGreaterThanOrEqual(150);
+      } else {
+        expect(y.alt.x).toBeGreaterThanOrEqual(y.tablo.x + y.tablo.w);
+        expect(y.tablo.y + y.tablo.h).toBeLessThanOrEqual(H);
+      }
+    }
   });
 });
 

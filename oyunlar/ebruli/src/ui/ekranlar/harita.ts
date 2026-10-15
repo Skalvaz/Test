@@ -87,6 +87,8 @@ function dugum(b: HaritaBolumVM, k: { x: number; y: number }, sec: (id: number) 
 function sayfa(a: HaritaAtolyeVM, sec: (id: number) => void): HTMLElement {
   const motif = svg(a.cicek === 'lale' ? LALE : KARANFIL);
   motif.classList.add('e-sayfa-motif');
+  const motif2 = svg(a.cicek === 'lale' ? LALE : KARANFIL);
+  motif2.classList.add('e-sayfa-motif', 'sag');
   const rumi = svg(RUMI);
   rumi.classList.add('e-rumi');
   const serit = h('div', { s: 'e-serit', 'aria-label': `${a.ad} tabloları` });
@@ -106,7 +108,7 @@ function sayfa(a: HaritaAtolyeVM, sec: (id: number) => void): HTMLElement {
   return h(
     'section',
     { s: `e-sayfa e-sayfa-${a.id}`, 'data-atolye': a.id },
-    h('header', { s: 'e-sayfa-bas' }, motif, h('div', { s: 'e-sayfa-ad' }, h('h2', { t: a.ad }), h('p', { t: a.altBaslik })), rumi, serit),
+    h('header', { s: 'e-sayfa-bas' }, motif, motif2, h('div', { s: 'e-sayfa-ad' }, h('h2', { t: a.ad }), h('p', { t: a.altBaslik })), rumi, serit),
     tekne,
   );
 }

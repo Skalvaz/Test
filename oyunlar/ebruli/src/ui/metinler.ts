@@ -50,6 +50,7 @@ export const M = {
 
   // Kaybettin
   azKaldi: 'Az kaldı!',
+  hamleBitti: 'Hamleler bitti',
   tekrarDene: 'Tekrar dene',
   kazandirirdi: 'Bu hamle kazandırırdı',
   ustaEli: "Usta'nın Eli",

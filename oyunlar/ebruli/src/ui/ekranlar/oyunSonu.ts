@@ -1,11 +1,12 @@
 /**
  * Kazandın (GDD §12.3 #6, §9.5) ve Kaybettin (#7).
  *
- * Kazandın, kâğıt çekmenin sonunda tuvalde duran tablonun ÇEVRESİNE
- * yerleşir: üstte başlık, tablonun alt kenarında yıldız mühürleri (300 ms
- * arayla basılır), altta sayarak artan puan, nadirlik etiketi, "Galeriye
- * eklendi", eski tablo varsa [Bunu sakla | Eskisini koru], "Sıradaki: X!",
- * [Tekrar oyna] [Devam].
+ * Kazandın: kâğıt çekmenin sonunda tablo tuvalden DOM'a devralınır (aynı
+ * karede, aynı yer ve karartma) ve ekran boyuna göre son yerine süzülür
+ * (`kazandinYerlesimi`): üstte başlık, ALTINDA yıldız mühürleri (300 ms
+ * arayla basılır; tablonun künyesini örtmez), sayarak artan puan, nadirlik
+ * etiketi, "Galeriye eklendi", eski tablo varsa [Bunu sakla | Eskisini
+ * koru], "Sıradaki: X!", [Tekrar oyna] [Devam]. Masaüstünde tablo solda.
  *
  * Kaybettin tahtayı örtmez: üst bantta "Az kaldı!" + ilerleme çubuğu +
  * eksik hedef + soluk yarım tablo; alt bantta büyük [Tekrar dene] (< 1 sn)
@@ -19,36 +20,49 @@ import { NADIRLIK } from '../../app/katalog';
 import { dugme, tabloResmi } from './ortak';
 import type { EkranYoneticisi } from './cekirdek';
 import type { KaybettinSecimi, KaybettinVM, KazandinSecimi, KazandinVM } from '../tipler';
-import type { Yerlesim } from '../yerlesim';
+import { kazandinYerlesimi, type Kenarlar, type Yerlesim } from '../yerlesim';
 
 export interface SonEk {
   W: number;
   H: number;
-  guvenliAlt: number;
-  guvenliUst: number;
+  guvenli: Kenarlar;
   azalt: boolean;
+  /** Ekran DOM'a kuruldu: tuvaldeki kâğıdı kaldır (aynı karede; tablo artık DOM'da). */
+  devral(): void;
   /** Yıldız mührü basıldı (ses + altın tozu; ekran koordinatı). */
   muhur(i: number, x: number, y: number): void;
 }
 
+const px = (r: { x: number; y: number; w: number; h: number }): Record<string, string> => ({ left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
+
 export function kazandinEkrani(y: EkranYoneticisi, vm: KazandinVM, ek: SonEk): Promise<KazandinSecimi> {
   return y.ac<KazandinSecimi>({ sinif: 'e-kazandin', geri: { secim: 'devam', tabloSakla: false } }, (bitir, kok) => {
-    const W = ek.W;
-    const H = ek.H;
-    const t = vm.tablo ?? { x: W * 0.1, y: H * 0.12, w: W * 0.8, h: H * 0.5 };
+    const L = kazandinYerlesimi(ek.W, ek.H, ek.guvenli);
+    kok.classList.toggle('yan', L.yan);
+    kok.classList.toggle('dar', L.dar);
+    const t = L.tablo;
     let sakla = !vm.eskiTablo || vm.puan >= vm.eskiPuan;
 
-    // Başlık (tablonun üstü).
-    const ustAlan = t.y - ek.guvenliUst;
-    const baslik = h(
-      'div',
-      { s: `e-kz-baslik${ustAlan < 64 ? ' dar' : ''}`, css: { bottom: `${H - t.y + 6}px` } },
-      h('h2', { t: M.kazandin }),
-      h('small', { t: `${vm.atolyeAd} · ${vm.bolumId} · ${vm.ad}` }),
-    );
+    // Tablo: kâğıt çekmenin bittiği yerden (tuvalde) son yerine süzülür.
+    const tablo = h('canvas', { s: 'e-kz-tablo', css: px(t), 'aria-label': `${vm.ad} ebru tablosu` });
+    tablo.width = vm.tuval.width;
+    tablo.height = vm.tuval.height;
+    tablo.getContext('2d')?.drawImage(vm.tuval as CanvasImageSource, 0, 0);
+    const b0 = vm.baslangic;
+    if (b0 && !ek.azalt) {
+      tablo.style.transform = `translate(${b0.x - t.x}px, ${b0.y - t.y}px) scale(${b0.w / t.w}, ${b0.h / t.h})`;
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          tablo.classList.add('suz');
+          tablo.style.transform = '';
+        }),
+      );
+    }
 
-    // Yıldız mühürleri (tablonun alt kenarında).
-    const muhurler = h('div', { s: 'e-kz-muhurler', css: { top: `${t.y + t.h - 30}px` } });
+    const baslik = h('div', { s: 'e-kz-baslik', css: L.yan ? { left: `${L.alt.x}px`, width: `${L.alt.w}px`, top: `${L.baslikY}px` } : { top: `${L.baslikY}px` } }, h('h2', { t: M.kazandin }), h('small', { t: `${vm.atolyeAd} · ${vm.bolumId} · ${vm.ad}` }));
+
+    // Yıldız mühürleri (tablonun altında; künyeyi örtmez).
+    const muhurler = h('div', { s: 'e-kz-muhurler', css: L.yan ? { left: `${L.alt.x}px`, width: `${L.alt.w}px`, top: `${L.muhurY}px` } : { top: `${L.muhurY}px` } });
     const muhurEl: HTMLElement[] = [];
     for (let i = 0; i < 3; i++) {
       const m = h('div', { s: `e-muhur${i === 1 ? ' orta' : ''}` });
@@ -57,7 +71,6 @@ export function kazandinEkrani(y: EkranYoneticisi, vm: KazandinVM, ek: SonEk): P
       muhurler.appendChild(m);
     }
 
-    // Alt bölüm.
     const puanEl = h('b', { s: 'e-kz-puan-sayi', t: '0' });
     const etiket = h(
       'div',
@@ -68,8 +81,8 @@ export function kazandinEkrani(y: EkranYoneticisi, vm: KazandinVM, ek: SonEk): P
     let secim: HTMLElement | null = null;
     if (vm.eskiTablo) {
       const yeniB = h('button', { s: 'e-seg', type: 'button', role: 'radio' }, h('span', { t: M.buTablo }));
-      const eskiB = h('button', { s: 'e-seg', type: 'button', role: 'radio' }, tabloResmi(vm.eskiTablo, 20, 30, 'e-seg-tablo'), h('span', { t: M.eskiTablo }));
-      const guncelle = () => {
+      const eskiB = h('button', { s: 'e-seg', type: 'button', role: 'radio' }, tabloResmi(vm.eskiTablo, 18, 27, 'e-seg-tablo'), h('span', { t: M.eskiTablo }));
+      const guncelle = (): void => {
         yeniB.setAttribute('aria-checked', String(sakla));
         eskiB.setAttribute('aria-checked', String(!sakla));
       };
@@ -90,18 +103,17 @@ export function kazandinEkrani(y: EkranYoneticisi, vm: KazandinVM, ek: SonEk): P
     devam.setAttribute('data-odak', '');
     const alt = h(
       'div',
-      { s: 'e-kz-alt', css: { top: `${t.y + t.h + 30}px`, bottom: `${ek.guvenliAlt + 10}px` } },
+      { s: 'e-kz-alt', css: px(L.alt) },
       h('div', { s: 'e-kz-puan' }, puanEl, h('small', { t: M.puan })),
       etiket,
       secim,
       vm.siradaki ? h('div', { s: 'e-kz-siradaki', t: vm.siradaki }) : null,
       h('div', { s: 'e-dugmeler' }, dugme(M.tekrarOyna, { tur: 'ikincil', ikon: 'yeniden', on: () => bitir({ secim: 'tekrar', tabloSakla: sakla }) }), devam),
     );
-    if (ek.H - (t.y + t.h) < 190) alt.classList.add('dar');
 
-    // Sıra: başlık → mühürler → puan → etiket.
+    // Sıra: tablo süzülür → mühürler 300 ms arayla → puan sayar → etiket.
     void (async () => {
-      await bekle(ek.azalt ? 0 : 160);
+      await bekle(ek.azalt ? 0 : 520);
       for (let i = 0; i < 3; i++) {
         if (i < vm.yildiz) {
           muhurEl[i].classList.add('basildi');
@@ -114,7 +126,9 @@ export function kazandinEkrani(y: EkranYoneticisi, vm: KazandinVM, ek: SonEk): P
       await sayarakYaz(puanEl, vm.puan, 900, sayi, ek.azalt);
       etiket.classList.add('gor');
     })();
-    return [baslik, muhurler, alt];
+    // Tuvaldeki kâğıt bu karede kalkar; tablo ve karartma artık DOM'da (aynı renk ve alfa).
+    ek.devral();
+    return [tablo, baslik, muhurler, alt];
   });
 }
 
@@ -127,7 +141,7 @@ export function kaybettinEkrani(y: EkranYoneticisi, vm: KaybettinVM, yer: Yerles
   return y.ac<KaybettinSecimi>({ sinif: `e-kaybettin ${yer.kip}`, geri: 'harita' }, (bitir) => {
     const yuzde = Math.round(vm.yuzde * 100);
     const cubuk = h('div', { s: 'e-kb-cubuk', role: 'progressbar', 'aria-valuenow': String(yuzde), 'aria-valuemin': '0', 'aria-valuemax': '100' }, h('i', { css: { '--o': String(vm.yuzde) } }), h('b', { t: `%${yuzde}` }));
-    const bilgi = h('div', { s: 'e-kb-bilgi' }, h('h2', { t: M.azKaldi }), cubuk, vm.eksik ? h('p', { s: 'e-kb-eksik', t: vm.eksik }) : null);
+    const bilgi = h('div', { s: 'e-kb-bilgi' }, h('h2', { t: vm.yuzde >= 0.7 ? M.azKaldi : M.hamleBitti }), cubuk, vm.eksik ? h('p', { s: 'e-kb-eksik', t: vm.eksik }) : null);
     const ust = h('div', { s: 'e-kb-ust' });
     if (vm.yarimTablo) {
       const t = tabloResmi(() => vm.yarimTablo!, 44, 66, 'e-kb-tablo');

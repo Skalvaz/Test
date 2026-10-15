@@ -96,8 +96,9 @@ export interface KazandinVM {
   /** "Sıradaki: Mavi boya!" */
   siradaki: string | null;
   ilkTablo: boolean;
-  /** Tablonun ekrandaki yeri (kâğıt çekme sonu). */
-  tablo: { x: number; y: number; w: number; h: number } | null;
+  /** Tablo (tam boy tuval) ve kâğıt çekme sonundaki ekran yeri (devralma canlandırması). */
+  tuval: HTMLCanvasElement | OffscreenCanvas;
+  baslangic: { x: number; y: number; w: number; h: number } | null;
   ustaEli: boolean;
 }
 

@@ -102,3 +102,50 @@ export function yerlesimHesapla(W: number, H: number, g: Kenarlar, bw: number, b
   if (tarifIstegi && y.hucre < 40) return kur(false);
   return y;
 }
+
+export interface KazandinYerlesimi {
+  yan: boolean;
+  /** Tablonun son yeri. */
+  tablo: Dikdortgen;
+  /** Başlık bloğunun üstü (dikey) ya da bilgi sütununun üstü (yan). */
+  baslikY: number;
+  muhurY: number;
+  /** Alt bilgi bölgesi (puan, etiket, düğmeler). */
+  alt: Dikdortgen;
+  /** Kısa ekran: künye gizlenir, aralıklar daralır. */
+  dar: boolean;
+}
+
+export const MUHUR_SATIRI = 66;
+
+/**
+ * Kazandın ekranı (GDD §9.5, §12.3 #6): tablo, üstünde başlık, ALTINDA
+ * yıldız mühürleri (tablonun künyesini örtmesin), puan, etiket, düğmeler.
+ * Masaüstünde tablo solda, bilgi sütunu sağda. Saf, testli: bölgeler
+ * çakışmaz ve ekrana sığar.
+ */
+export function kazandinYerlesimi(W: number, H: number, g: Kenarlar): KazandinYerlesimi {
+  const M = MUHUR_SATIRI;
+  if (W / Math.max(1, H) > 1.1 && W >= 760) {
+    const th = Math.round(Math.min(H - g.ust - g.alt - 60, 620));
+    const tw = Math.round(th / 1.5);
+    const tablo = { x: Math.round(W / 2 - tw - 28), y: Math.round((H - th) / 2), w: tw, h: th };
+    const sw = Math.round(Math.min(400, W / 2 - 60));
+    const sx = Math.round(W / 2 + 28);
+    const sh = 440;
+    const sy = Math.round((H - sh) / 2);
+    return { yan: true, tablo, baslikY: sy, muhurY: sy + 100, alt: { x: sx, y: sy + 100 + M + 14, w: sw, h: sh - 100 - M - 14 }, dar: false };
+  }
+  const dar = H < 720;
+  const ust = g.ust + 10;
+  const baslikH = dar ? 44 : 60;
+  const altH = dar ? 156 : 196;
+  const bos = H - ust - baslikH - 8 - 10 - M - 6 - altH - g.alt - 10;
+  let tw = Math.min(W * 0.84, Math.max(150, bos) / 1.5, 420);
+  tw = Math.round(tw);
+  const th = Math.round(tw * 1.5);
+  const tablo = { x: Math.round((W - tw) / 2), y: ust + baslikH + 8, w: tw, h: th };
+  const muhurY = tablo.y + th + 10;
+  const altY = muhurY + M + 6;
+  return { yan: false, tablo, baslikY: ust, muhurY, alt: { x: 0, y: altY, w: W, h: Math.max(altH, H - g.alt - 10 - altY) }, dar };
+}

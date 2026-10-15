@@ -27,7 +27,7 @@ export const IKON = {
   palet: C('<path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.4 0 1.9-1 1.5-2.1-.5-1.3.4-2.4 1.8-2.4H17a3.5 3.5 0 0 0 3.5-3.5C20.5 7.2 16.7 3.5 12 3.5z"/><circle cx="8" cy="10.5" r="1.2" fill="currentColor"/><circle cx="11.5" cy="7.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="9" r="1.2" fill="currentColor"/>'),
   motif: C('<circle cx="7" cy="8" r="1.8" fill="currentColor"/><circle cx="17" cy="8" r="3"/><path d="M4 17c1.6-1.4 3.2-1.4 4.8 0s3.2 1.4 4.8 0 3.2-1.4 4.8 0"/>'),
   ipucu: C('<path d="M9 17h6M10 20h4"/><path d="M12 3.5a5.5 5.5 0 0 0-3.2 10c.6.5 1 1.1 1 1.8v.2h4.4v-.2c0-.7.4-1.3 1-1.8A5.5 5.5 0 0 0 12 3.5z"/>'),
-  tarif: C('<circle cx="5.5" cy="12" r="2.5"/><circle cx="12" cy="12" r="2.5"/><path d="M15.5 10.5h2M15.5 13.5h2"/><circle cx="20" cy="12" r="1.6" fill="currentColor"/>'),
+  tarif: C('<circle cx="6" cy="7.5" r="3"/><circle cx="6" cy="16.5" r="3"/><path d="M10.5 12h4.5M13 9.5l2.5 2.5-2.5 2.5"/><circle cx="19" cy="12" r="3" fill="currentColor"/>'),
   bilgi: C('<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle cx="12" cy="7.7" r=".7" fill="currentColor"/>'),
   sil: C('<path d="M5 7h14M10 7V5h4v2M7 7l1 12.5h8L17 7"/>'),
   tik: C('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
