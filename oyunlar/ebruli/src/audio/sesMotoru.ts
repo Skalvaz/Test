@@ -648,7 +648,7 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
     if (yakindaCalindi('tut', 0.04)) return;
     const s = sesAc('tut', 0.08, { kazanc: 1 });
     if (!s) return;
-    ton(s, { f: 1600, a: 0.001, d: 0.012, g: 0.05 });
+    ton(s, { f: 1600, a: 0.001, d: 0.012, g: 0.08 });
     ton(s, { f: 820, f2: 640, a: 0.001, d: 0.03, g: 0.04 });
   }
 
@@ -773,7 +773,7 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
   function yag(pan: number): void {
     const s = sesAc('yag', 0.16, { pan, kazanc: 1, birlestir: 0.02 });
     if (!s) return;
-    gur(s, { renk: 'beyaz', filtre: 'bandpass', f: 1200, q: 1.2, a: 0.008, d: 0.09, g: 0.16 });
+    gur(s, { renk: 'beyaz', filtre: 'bandpass', f: 1200, q: 1.2, a: 0.008, d: 0.09, g: 0.3 });
   }
 
   function desen(renk: number, pan: number): void {
@@ -911,7 +911,7 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
           return;
         case 'ozelSuruklendi': {
           const s = sesAc('kayma', 0.2, { pan: panX(o.hedef), kazanc: 1 });
-          if (s) gur(s, { renk: 'pembe', filtre: 'bandpass', f: 800, f2: 1800, q: 1.2, a: 0.02, d: 0.1, g: 0.08 });
+          if (s) gur(s, { renk: 'pembe', filtre: 'bandpass', f: 800, f2: 1800, q: 1.2, a: 0.02, d: 0.1, g: 0.18 });
           return;
         }
         case 'temizlendi':
