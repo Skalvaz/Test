@@ -2,15 +2,18 @@
  * Arayüz simgeleri oyunun kendi çizim tarifinden (src/render/damla.ts,
  * zemin.ts): hedef kartı, tarif şeridi, harita düğümü ve "Nasıl oynanır"
  * kartlarındaki damlalar oyundakilerle birebir aynı görünür. Bir kez
- * çizilip `data:` URL olarak önbelleklenir (anahtar: tür × boyut × DPR ×
- * palet × motif).
+ * offscreen tuvale çizilip önbelleklenir (anahtar: tür × boyut × DPR ×
+ * palet × motif); her kullanım küçük bir <canvas> kopyasıdır (data: URL
+ * yok: sayfa çerçevesinin CSP'sinden bağımsız, toDataURL maliyeti yok).
  */
 import type { OzelTur, Renk, Yon } from '../core/types';
 import type { Palet } from '../app/sozlesme';
 import { girdapKolCiz, govdeCiz, haleCiz, laleSiluetCiz, mermerCiz } from '../render/damla';
 import { desenCiz, kagitCiz } from '../render/zemin';
 
-const onbellek = new Map<string, string>();
+export type Resim = HTMLCanvasElement;
+
+const onbellek = new Map<string, Resim>();
 let ayar: { palet: Palet; motifler: boolean } = { palet: 'standart', motifler: true };
 
 export function gorselAyarla(palet: Palet, motifler: boolean): void {
@@ -23,7 +26,7 @@ function dpr(): number {
   return Math.min(2, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
 }
 
-function resim(anahtar: string, boyut: number, ciz: (c: CanvasRenderingContext2D, s: number) => void): string {
+function resim(anahtar: string, boyut: number, ciz: (c: CanvasRenderingContext2D, s: number) => void): Resim {
   const d = dpr();
   const k = `${anahtar}|${boyut}|${d}|${ayar.palet}|${ayar.motifler}`;
   const v = onbellek.get(k);
@@ -32,22 +35,18 @@ function resim(anahtar: string, boyut: number, ciz: (c: CanvasRenderingContext2D
   t.width = Math.round(boyut * d);
   t.height = Math.round(boyut * d);
   const c = t.getContext('2d');
-  if (!c) return '';
-  c.scale(d, d);
-  c.translate(boyut / 2, boyut / 2);
-  ciz(c, boyut);
-  let url = '';
-  try {
-    url = t.toDataURL('image/png');
-  } catch {
-    url = '';
+  if (c) {
+    c.scale(d, d);
+    c.translate(boyut / 2, boyut / 2);
+    ciz(c, boyut);
   }
-  onbellek.set(k, url);
-  return url;
+  if (onbellek.size > 160) onbellek.clear();
+  onbellek.set(k, t);
+  return t;
 }
 
 /** Damla (özel taş dahil). `hale`: suya yayılan leke (harita düğümü). */
-export function damlaResmi(kod: Renk | 0, boyut: number, ozel: OzelTur = 'yok', yon: Yon = 'yatay', hale = false): string {
+export function damlaResmi(kod: Renk | 0, boyut: number, ozel: OzelTur = 'yok', yon: Yon = 'yatay', hale = false): Resim {
   return resim(`d${kod}${ozel}${yon}${hale ? 'h' : ''}`, boyut, (c, s) => {
     const h = hale ? s * 0.78 : s * 1.08;
     if (hale) haleCiz(c, h, kod, ayar.palet);
@@ -57,15 +56,15 @@ export function damlaResmi(kod: Renk | 0, boyut: number, ozel: OzelTur = 'yok', 
   });
 }
 
-export function mermerResmi(boyut: number, can = 2): string {
+export function mermerResmi(boyut: number, can = 2): Resim {
   return resim(`m${can}`, boyut, (c, s) => mermerCiz(c, s * 1.1, can, 0, 7));
 }
 
-export function kagitResmi(boyut: number, kat = 1): string {
+export function kagitResmi(boyut: number, kat = 1): Resim {
   return resim(`k${kat}`, boyut, (c, s) => kagitCiz(c, s * 1.05, kat, 3));
 }
 
-export function desenResmi(boyut: number, renk: 3 | 5 | 6, boyali = false): string {
+export function desenResmi(boyut: number, renk: 3 | 5 | 6, boyali = false): Resim {
   return resim(`p${renk}${boyali ? 1 : 0}`, boyut, (c, s) => {
     c.fillStyle = 'rgba(11,43,46,0.9)';
     c.beginPath();
@@ -76,7 +75,7 @@ export function desenResmi(boyut: number, renk: 3 | 5 | 6, boyali = false): stri
 }
 
 /** Yağ lekesi simgesi: koyu zemin + yanardöner halka. */
-export function yagResmi(boyut: number): string {
+export function yagResmi(boyut: number): Resim {
   return resim('y', boyut, (c, s) => {
     const r = s * 0.44;
     c.fillStyle = 'rgba(42,47,30,0.85)';
@@ -96,13 +95,17 @@ export function yagResmi(boyut: number): string {
   });
 }
 
-export function img(src: string, boyut: number, sinif = '', alt = ''): HTMLImageElement {
-  const e = document.createElement('img');
-  e.src = src;
-  e.width = boyut;
-  e.height = boyut;
-  e.alt = alt;
-  e.draggable = false;
-  if (sinif) e.className = sinif;
+export function img(src: Resim, boyut: number, sinif = '', alt = ''): HTMLCanvasElement {
+  const e = document.createElement('canvas');
+  e.width = src.width;
+  e.height = src.height;
+  e.style.width = `${boyut}px`;
+  e.style.height = `${boyut}px`;
+  e.className = sinif ? `e-resim ${sinif}` : 'e-resim';
+  if (alt) {
+    e.setAttribute('role', 'img');
+    e.setAttribute('aria-label', alt);
+  } else e.setAttribute('aria-hidden', 'true');
+  e.getContext('2d')?.drawImage(src, 0, 0);
   return e;
 }

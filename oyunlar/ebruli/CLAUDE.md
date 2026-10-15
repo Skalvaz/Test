@@ -41,6 +41,7 @@ npm run typecheck
 npm run build:single        # → ebruli.html + dist-single/artifact.html
 node scripts/shot.mjs <url> <png> [w] [h] [bekleme-ms] [js]   # ekran görüntüsü (varsayılan 390×844)
 npm run oynanis -- file:///…/ebruli.html playtest-output [telefon|kucuk|masaustu]
+npm run oynanis -- http://127.0.0.1:5285/ playtest-output telefon   # dev sunucusu (npx vite --port 5285)
 # P2 gelince:
 npm run bot -- --bolum 5 --tohum 200 --bot usta
 npm run dogrula             # bölüm doğrulama (bot bantları, GDD §14)
@@ -65,11 +66,28 @@ gibi POSIX sözdizimi kullanma. Bot koşularında en fazla 2 işçi (4 çekirdek
 - `src/audio/` — WebAudio sentezi; `synth.ts`, `havuz.ts`, `gurultu.ts` taban
   (FİTİL'den), `sesMotoru.ts` P5.
 - `src/input/` — `SurukleGirdi` (pointer, dokun-dokun, klavye).
-- `src/ui/` — DOM ekranları; `yazitipi.ts` (Cormorant Garamond 700 + Alegreya
-  Sans 500/800, FontFace'e ikili veri).
+- `src/ui/` — DOM arayüzü (P7). Giriş noktası `arayuz.ts` (`Arayuz`: ekranlar
+  Promise döndürür, Esc/`ekranlariKapat` "geri" değeriyle çözer); `hud.ts`
+  (hedef kartları, hamle mührü, puan çubuğu, katlanır tarif şeridi);
+  `ekranlar/` (açılış, harita + bölüm öncesi, duraklat, kazandın/kaybettin,
+  galeri + devamı yakında, ayarlar, nasıl oynanır); `yerlesim.ts` ve
+  `puanCubugu.ts` saf + testli (yerleşim, kazandın yerleşimi, yıldız
+  işaretleri çakışmaz); `gorsel.ts` simgeleri oyunun damla tarifinden
+  <canvas> kopyası olarak üretir (data: URL yok); `metinler.ts`; stil
+  `stil/arayuz.css`; `yazitipi.ts` (Cormorant Garamond 700 + Alegreya Sans
+  500/800, FontFace'e ikili veri).
+- `src/meta/` — saf, testli: `kayit.ts` (şema `ebruli.kayit.v1` + `kayitGoc`
+  temizleme/göç, günlük sıkıştırma 6 bayt/kayıt, sığmazsa JSON yedeği),
+  `ilerleme.ts` (kilitler, yıldız, en iyi, ardışık kayıp, tablo seçimi).
 - `src/platform/` — SaveStore (bulut/tarayıcı/bellek), hot, haptics, görsel RNG.
-- `src/app/` — `iskelet.ts` (P0 geçici sahne; P7 siler), P7: `uygulama.ts`,
-  `oturum.ts`, test kancası `window.__ebruli` (GDD §13.6).
+- `src/app/` — `uygulama.ts` (ekran akışı, ayarlar, test kancası
+  `window.__ebruli`, kısa adı `__ebru`), `oturum.ts` (bölüm içi döngü:
+  girdi → önizleme → hamle → oynatma → HUD; öğretim, boşta ipucu, şölen,
+  kâğıt çekme, kaybettin hayaleti, Usta'nın Eli), `kayitci.ts` (SaveStore +
+  500 ms gecikmeli yazma), `tablolar.ts` (kayıttaki tablodan istek).
+- `src/levels/index.ts` — b001–b020 açık içe aktarım. Henüz ayarlanmamış
+  bölümler `"taslak": true` (GDD §15.2 planından `scripts/taslakUret.mts` ile
+  üretildi; P2 bölüm tasarımı yalnız JSON'ları değiştirir).
 
 ## Hedef ortam (oyuncu telefondan, WhatsApp'tan gelen claude.ai bağlantısıyla açar)
 
@@ -104,3 +122,26 @@ gibi POSIX sözdizimi kullanma. Bot koşularında en fazla 2 işçi (4 çekirdek
   taşları basitleştirilmiş; `npx tsx dev/kural-sim/tarama4.ts 150 a`, bir
   yapılandırma ≈ 1–3 dk; `t1-temel.txt` yarıda kesildi). Bölüm ayarı için
   değil, kural kıyası için; bağlayıcı ölçüm P1 çekirdeği + P2 botuyla yapılır.
+
+## Uygulama (P7) — deneyerek bulundu
+
+- Test kancası `window.__ebruli`: `ekran()` (acilis, harita, bolumOncesi, oyun,
+  duraklat, kagitCekme, kazandin, kaybettin, galeri, ayarlar, nasil, devami),
+  `durum()`, `bolum()`, `bolumAc(id)` (kilidi test için açar), `botHamle(tur)`,
+  `hizli(on)`, `kayit()`, `kayitYama({...})`, `ac(ad)`, `geometri()`,
+  `ogretim()`, `cizici()` (görsel tahta farkı, son tablo süresi).
+- Kazandın: kâğıt çekme bitince tablo tuvalden DOM'a aynı karede devralınır
+  (`kagitKaldir` + aynı alfa perde); sonra ekran boyuna göre süzülür. Mühürler
+  tablonun altında (tablo künyesini örtmesin).
+- Usta'nın Eli'nde `bitti = null` olay değildir: oynatmadan önce görsel tahta
+  `{...d, bitti: null}` ile eşitlenir, yoksa geliştirmede `console.error`.
+- Harita kartı kendiliğinden açılırken (kazanınca sıradaki) zamanlayıcı,
+  harita kapandıysa kartı açmamalı (test kancası araya girince oyunun üstünde
+  kart kalıyordu).
+- Headless (yazılım çizimi) 1280×800'de kare 50–85 ms: süre ölçümlerini sayfa
+  içinde yap (Tekrar dene: telefon dev ~180–600 ms, tek dosya ~180 ms).
+- Zayıf cihaz: kâğıt çekme arkasındaki parçalı tablo > 1,4 sn sürerse yerel
+  tercih `ebruli.sadeTablo` yazılır, sonraki açılışta sade tablo.
+- Yayın: `dist-single/artifact.html`, yetenekler `db` + `user` (bulut kaydı;
+  yoksa tarayıcı/bellek). Katı CSP'li sarmalda (img-src data:, font-src none)
+  oynanış testi geçti.

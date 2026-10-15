@@ -3,7 +3,7 @@
  */
 import { h, svg } from '../dom';
 import { RUMI } from '../ikonlar';
-import { damlaResmi, desenResmi, img, kagitResmi, mermerResmi, yagResmi } from '../gorsel';
+import { damlaResmi, desenResmi, img, kagitResmi, mermerResmi, yagResmi, type Resim } from '../gorsel';
 import { M, sayi } from '../metinler';
 import { dugme, hedefIkonu, hedefMetni, kart, tabloResmi, yildizSirasi } from './ortak';
 import type { EkranYoneticisi } from './cekirdek';
@@ -18,7 +18,7 @@ function rumi(): SVGSVGElement {
 /** Yeni öğe simgesi (oyun çizim tarifinden). */
 export function yeniOgeIkonu(ikon: string, boyut: number): HTMLElement {
   const k = h('span', { s: 'e-yeni-ikon' });
-  const ekle = (src: string, b = boyut) => k.appendChild(img(src, b));
+  const ekle = (src: Resim, b = boyut) => k.appendChild(img(src, b));
   switch (ikon) {
     case 'karisim':
       ekle(damlaResmi(1, boyut * 0.7), boyut * 0.7);

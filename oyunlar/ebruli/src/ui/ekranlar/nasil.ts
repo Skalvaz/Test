@@ -5,7 +5,7 @@
  */
 import { h, svg } from '../dom';
 import { RUMI } from '../ikonlar';
-import { damlaResmi, desenResmi, img, kagitResmi, mermerResmi, yagResmi } from '../gorsel';
+import { damlaResmi, desenResmi, img, kagitResmi, mermerResmi, yagResmi, type Resim } from '../gorsel';
 import { M } from '../metinler';
 import { TARIFLER } from '../../app/katalog';
 import { dugme } from './ortak';
@@ -22,11 +22,11 @@ function sahne(sinif: string, ...c: Node[]): HTMLElement {
   return h('div', { s: `e-n-sahne ${sinif}`, 'aria-hidden': 'true' }, ...c);
 }
 
-function dimg(kod: Parameters<typeof damlaResmi>[0], sinif: string, ozel: Parameters<typeof damlaResmi>[2] = 'yok'): HTMLImageElement {
+function dimg(kod: Parameters<typeof damlaResmi>[0], sinif: string, ozel: Parameters<typeof damlaResmi>[2] = 'yok'): HTMLCanvasElement {
   return img(damlaResmi(kod, D, ozel), D, sinif);
 }
 
-function oge(src: string, ad: string, acik: boolean): HTMLElement {
+function oge(src: Resim, ad: string, acik: boolean): HTMLElement {
   return h('figure', { s: `e-n-oge${acik ? '' : ' kilitli'}` }, img(src, 40), h('figcaption', { t: acik ? ad : '?' }));
 }
 
