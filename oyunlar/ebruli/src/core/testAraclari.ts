@@ -3,16 +3,17 @@
  * aktarmaz).
  *
  * Kompakt tahta (`kur`): her hücre boşlukla ayrılmış bir simge.
- *   `1 2 4 3 5 6` düz damla, `7` Mürekkep, `.` rastgele, `-` boş (yalnız
- *   `bosluklu` ile; yükledikten sonra boşaltılır), `#` delik, `X1..X3` mermer,
- *   `T5` Tarak (renk 5, yatay), `T5d` dikey Tarak, `G6` Girdap, `L` Lale.
+ *   `1 2 4 3 5 6` düz damla, `7` Mürekkep, `-` boş, `#` delik, `X1..X3`
+ *   mermer, `T5` Tarak (renk 5, yatay), `T5d` dikey Tarak, `G6` Girdap,
+ *   `L` Lale. Zemin `ek.zemin` ile.
  * Dolum varsayılan olarak yalnız Kırmızı doğurur (ham boya eşleşmez:
  * çözüm belirlenimli ve okunur kalır); garanti varsayılan 0.
  */
-import { BolumHatasi, bolumuYukle } from './bolumYukle';
-import { rngInt } from './rng';
-import { DIK, damla, karisimSonucu } from './tahta';
-import type { BolumVerisi, Hamle, Hedef, KarisikRenk, Konum, OyunDurumu, Renk } from './types';
+import { BolumHatasi, bolumuYukle, bosIstatistik, hedefDurumu } from './bolumYukle';
+import { oyunTohumu, rngInt } from './rng';
+import { VARSAYILAN_OZEL_ESIKLERI } from './sabitler';
+import { DIK, bosHucre, damla, karisimSonucu } from './tahta';
+import type { BolumVerisi, Damla, Hamle, Hedef, Hucre, Icerik, KarisikRenk, Konum, OyunDurumu, Renk } from './types';
 
 export function bolum(satirlar: string[], ek: Partial<BolumVerisi> = {}): BolumVerisi {
   const izgara = satirlar.map((s) => s.trim().split(/\s+/));
@@ -59,13 +60,54 @@ export function bolum(satirlar: string[], ek: Partial<BolumVerisi> = {}): BolumV
   };
 }
 
-/** Tahtayı kur; `-` hücreleri boşaltılır (yerçekimi testleri). */
+/**
+ * Tahtayı DOĞRUDAN kur (bolumuYukle'nin boyut, grupsuzluk ve garanti
+ * denetimleri olmadan; küçük kural tahtaları için). `.` yasak; `-` boş.
+ * Kimlikler okuma sırasıyla 1'den; oyun akışı `oyunTohumu(tohum, denemeNo)`.
+ */
 export function kur(satirlar: string[], ek: Partial<BolumVerisi> = {}, denemeNo = 0): OyunDurumu {
   const v = bolum(satirlar, ek);
-  const d = bolumuYukle(v, denemeNo);
   const izgara = satirlar.map((s) => s.trim().split(/\s+/));
-  for (let y = 0; y < d.h; y++) for (let x = 0; x < d.w; x++) if (izgara[y][x] === '-') d.hucreler[y * d.w + x].icerik = null;
-  return d;
+  const hucreler: Hucre[] = [];
+  let id = 1;
+  for (let y = 0; y < v.h; y++)
+    for (let x = 0; x < v.w; x++) {
+      const t = izgara[y][x];
+      const c = bosHucre();
+      const dm = (renk: Renk | 0, ozel: Damla['ozel'], yon: Damla['yon'] = 'yatay'): Icerik => ({ tur: 'damla', damla: { id: id++, renk, ozel, yon } });
+      let m: RegExpExecArray | null;
+      if (t === '-') c.icerik = null;
+      else if (t === '#') c.delik = true;
+      else if ((m = /^X([123])$/.exec(t))) c.icerik = { tur: 'mermer', can: Number(m[1]) as 1 | 2 | 3 };
+      else if ((m = /^([TG])([356])(d?)$/.exec(t))) c.icerik = dm(Number(m[2]) as Renk, m[1] === 'T' ? 'tarak' : 'girdap', m[3] ? 'dikey' : 'yatay');
+      else if (t === 'L') c.icerik = dm(0, 'lale');
+      else if (/^[1-7]$/.test(t)) c.icerik = dm(Number(t) as Renk, t === '7' ? 'murekkep' : 'yok');
+      else throw new Error(`kur: bilinmeyen simge ${t}`);
+      hucreler.push(c);
+    }
+  for (const [x, y, k] of v.zemin?.kagit ?? []) hucreler[y * v.w + x].kagit = k;
+  for (const [x, y] of v.zemin?.yag ?? []) hucreler[y * v.w + x].yag = true;
+  for (const [x, y, r] of v.zemin?.desen?.hucreler ?? []) hucreler[y * v.w + x].desen = r;
+  return {
+    bolumId: v.id,
+    denemeNo,
+    w: v.w,
+    h: v.h,
+    hucreler,
+    dogumAgirliklari: [...v.dogum] as OyunDurumu['dogumAgirliklari'],
+    kurallar: { murekkep: v.murekkep, garanti: v.garanti, ozelEsikleri: [...(v.ozelEsikleri ?? VARSAYILAN_OZEL_ESIKLERI)] as [number, number, number] },
+    kalanHamle: v.hamle,
+    toplamHamle: v.hamle,
+    puan: 0,
+    hedefler: v.hedefler.map((h) => hedefDurumu(h, hucreler)),
+    rng: oyunTohumu(v.tohum, denemeNo),
+    hamleNo: 0,
+    sonrakiId: id,
+    gunluk: [],
+    istatistik: bosIstatistik(),
+    bitti: null,
+    solenYapildi: false,
+  };
 }
 
 /** Tahtanın kompakt metni (içerik): renk/özel, `-` boş, `#`, `X2`. */
