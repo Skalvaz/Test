@@ -10,7 +10,7 @@ import { bolumGetir } from '../levels/index';
 import { SINIR, adaylariUret, sonEksen, tahtaBilgi } from './adaylar';
 import { acemiEnIyiAday, acemiSec } from './acemi';
 import { kazandiranBul } from './kazandiranBul';
-import { olcumHesapla, olcutHatalari, yuzdelik } from './olcut';
+import { olcumHesapla, olcutHatalari, yildizEsikleriOgretim, yuzdelik } from './olcut';
 import { botTohumlari, botTohumuTuret, degerV, korukMerkezi } from './ortak';
 import { oyunAdimlari, oyunOyna } from './simulasyon';
 import { ustaKarar, ustaSec } from './usta';
@@ -216,6 +216,17 @@ describe('ölçütler (§16.5)', () => {
     const h = olcutHatalari(v, { ...o, kazanmaOrani: 90, rP99: 50 });
     expect(h.some((m) => m.includes('bant'))).toBe(true);
     expect(h.some((m) => m.includes('p99'))).toBe(true);
+  });
+
+  it('öğretim yıldız eşiği önerisi (K22): 2★ Acemi p40 / Usta p15, 3★ Acemi p85 ile Usta p50 arası', () => {
+    const dizi = (a: number, b: number): number[] => Array.from({ length: 100 }, (_, i) => a + ((b - a) * i) / 99);
+    // Acemi 2000–3000 (p40 ≈ 2400, p85 ≈ 2850), Usta 2600–3400 (p15 ≈ 2720, p50 ≈ 2990).
+    expect(yildizEsikleriOgretim(dizi(2600, 3400), dizi(2000, 3000))).toEqual([2300, 2900]);
+    // Acemi Usta'dan çok puan topluyorsa (Usta erken bitirir): 3★ = Usta p50, 2★ ≤ 3★.
+    const [iki, uc] = yildizEsikleriOgretim(dizi(4000, 4600), dizi(5000, 7000));
+    expect(uc).toBe(4200);
+    expect(iki).toBeLessThanOrEqual(uc);
+    expect(iki).toBe(4000);
   });
 
   it('bot tohumu tohumdan türetilir ve tohumla değişir', () => {

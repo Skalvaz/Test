@@ -7,9 +7,9 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 23,
+  "hamle": 25,
   "tohum": 7007,
-  "yardim": 2,
+  "yardim": 3,
   "ozelEsikleri": [6, 9, 0],
   "hedefler": [{ "tur": "topla", "renk": 0, "adet": 38 }, { "tur": "topla", "renk": 3, "adet": 34 }],
   "duzen": [
@@ -24,7 +24,7 @@
     ". . . . . . ."
   ],
   "ipuclari": [{ "tetik": "baslangic", "metin": "Islak barut zincire girmez. Yanında patlat, kurusun." }],
-  "botBandi": [85, 95],
+  "botBandi": [92, 100],
   "yildizEsikleri": [9000, 10700],
   "sonrakiTanitim": "Sıradaki: Halka!"
 }

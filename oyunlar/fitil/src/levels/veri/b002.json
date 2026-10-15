@@ -34,6 +34,7 @@
     { "tetik": "kisaYol", "metin": "En az 3." }
   ],
   "botBandi": [97, 100],
-  "yildizEsikleri": [4000, 4800],
+  "yildizEsikleri": [3500, 4000],
+  "elleEsik": true,
   "sonrakiTanitim": "Sıradaki: Isınma!"
 }

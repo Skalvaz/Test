@@ -91,8 +91,25 @@ export function yildizEsikleriHesapla(o: BolumOlcumu): [number, number] {
 }
 
 /**
+ * Öğretim eşik önerisi (GDD K22, `elleEsik` bölümleri): makul oynayan (Acemi
+ * medyanı civarı) çoğunlukla 2★, iyi oynayan (Usta medyanı) 3★ alsın.
+ *  - 2★ = min(Acemi p40, Usta p15): Acemi'nin ~%60'ı, Usta'nın ~%85'i en az 2★.
+ *  - 3★ = min(Usta p50, (Acemi p85 + Usta p50) / 2): Acemi p85 ile Usta p50
+ *    arasının ortası; Acemi p85 Usta p50'yi aşıyorsa (kısa öğretimde Usta
+ *    erken bitirip daha az puan toplar) Usta p50.
+ * Girdiler kazanılan oyunların SIRALI puanları; aşağı 100'e yuvarlanır.
+ */
+export function yildizEsikleriOgretim(ustaPuan: readonly number[], acemiPuan: readonly number[]): [number, number] {
+  const yuvarla = (x: number): number => Math.floor(x / 100) * 100;
+  const u50 = yuzdelik(ustaPuan, 50);
+  const uc = Math.min(u50, (yuzdelik(acemiPuan, 85) + u50) / 2);
+  const iki = Math.min(yuzdelik(acemiPuan, 40), yuzdelik(ustaPuan, 15), uc);
+  return [yuvarla(iki), yuvarla(uc)];
+}
+
+/**
  * Ölçüt hataları (§16.5). Boş dizi = geçti. `uyarilar` ölçüm dışı
- * izlenenleri toplar (Acemi oranı).
+ * izlenenleri toplar (Acemi oranı: öğretimde ≥ %80, tanıtımda ≥ %30 — K22).
  *
  * P4a yorumları:
  *  - Özel taş sıklığı ölçütü tanıtım ve öğretim bölümlerinde uygulanmaz
@@ -128,5 +145,7 @@ export function olcutHatalari(v: BolumVerisi, o: BolumOlcumu, uyarilar: string[]
   if (o.sureSn > 180) h.push(`süre ${o.sureSn.toFixed(0)} sn > 180`);
   if (o.sureSn < 60 && !ogretim) h.push(`süre ${o.sureSn.toFixed(0)} sn < 60`);
   if (o.acemiOrani !== null && v.tur === 'ogretim' && o.acemiOrani < 80) uyarilar.push(`Acemi %${o.acemiOrani.toFixed(0)} < %80 (öğretim)`);
+  // İzleme (K22, ilk oturum tutunması): tanıtımda gündelik oyuncu vekili Acemi en az %30 kazanmalı.
+  if (o.acemiOrani !== null && v.tur === 'tanitim' && o.acemiOrani < 30) uyarilar.push(`Acemi %${o.acemiOrani.toFixed(0)} < %30 (tanıtım)`);
   return h;
 }

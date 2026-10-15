@@ -36,6 +36,8 @@ Kazanan konseptten saptığımız ya da üstüne eklediğimiz noktalar şunlar. 
 | K19 | Sandıkta güçlendirici payı %35'e indi. Birincil ödül desen, tablo ve motiflerdir. | Mühendis hakemi. |
 | K20 | Klavye ile tam oynanabilirlik. | Tasarımcı ve mühendis hakemleri. |
 | K21 | Yedek denge düğmeleri (`caprazSiniri`, `soguma`) şemada var. İlk 40 bölümde kapalıdır; bot bantları tutmazsa açılır. | Kaçak reaksiyon ve uzun zincir riski. |
+| K22 | **Öğretim (1–5) yıldız eşikleri gündelik oyuncuya göre, elle** (§7.4'ten sapma). 2★ = min(Acemi p40, Usta p15), 3★ = min(Usta p50, Acemi p85 ile Usta p50'nin ortası); kazançların puanı, aşağı 100'e yuvarlanır (`yildizEsikleriOgretim`, `npm run bot -- --dagilim`). Bölüm verisinde `elleEsik: true`; `npm run kalibre` bu eşikleri yazmaz. 6. bölümden sonrası §7.4'e uyar. | Usta p50/p85 eşikleriyle makul oynayan oyuncu öğretimde çoğunlukla 1★ alıyordu (Bölüm 1'de Acemi kazançlarının %95'i). Hedef: makul oyuncu çoğunlukla 2★, iyi oyuncu 3★. |
+| K23 | **İlk oturum ayarı (6–12) Acemi botuna göre:** tanıtımda Acemi ≥ %35 (izleme uyarısı < %30), Usta bandı [92, 100]; Bölüm 10 (zor) Usta [70, 85], Acemi ≥ %15 — testere dişi korunur. Araçlar: hamle (≤ 30), hedef adedi, yardım 3, ön ısı, `soguma`/`caprazSiniri`; yeni öğe korunur. §8.2 bantlarından ve §8.3 tablosunun H/Y/hedef değerlerinden sapar. 13. bölümden sonrası değişmedi. | Öğretimden hemen sonra Acemi kazanma oranı 0'a düşüyordu (b6, b8–b12: 0/40; Usta %86–92). Gündelik oyuncu ilk 10 dakikada kaçmasın. |
 
 Kapsam dışı (sonraki sürüm): Cep yuvası, sunucu veritabanı, çok oyunculu mod, harici ses ve görsel dosyası.
 
@@ -400,7 +402,7 @@ Bütün patlamalar §7.1'e göre puanlanır. Oyuncu dokunarak gösteriyi 4× hı
 
 ### 7.4 Yıldızlar
 - **1★:** bütün hedefler tamam.
-- **2★ / 3★:** Usta botun 500 tohumluk kalibrasyonunda **kazandığı** oyunların (final dahil) puan dağılımının **medyanı** ve **85. yüzdeliği**, aşağı doğru 100'e yuvarlanır. Bölüm verisinde `yildizEsikleri: [p50, p85]` olarak durur ve `npm run kalibre` ile üretilir.
+- **2★ / 3★:** Usta botun 500 tohumluk kalibrasyonunda **kazandığı** oyunların (final dahil) puan dağılımının **medyanı** ve **85. yüzdeliği**, aşağı doğru 100'e yuvarlanır. Bölüm verisinde `yildizEsikleri: [p50, p85]` olarak durur ve `npm run kalibre` ile üretilir. İstisna: öğretim bölümleri (1–5) gündelik oyuncuya göre elle seçilir (K22, `elleEsik`).
 - Bölümde güçlendirici kullanılmışsa en fazla 2★ alınır. "Kıvılcım Usta'nın Eli" kullanılmışsa en fazla 1★.
 
 ---
@@ -442,6 +444,7 @@ interface BolumVerisi {
   bayram?: boolean;              // reaksiyon üst bandından muaf
   botBandi: [min:number, max:number];   // Usta kazanma oranı (%)
   yildizEsikleri: [number, number];     // kalibrasyon çıktısı
+  elleEsik?: boolean;            // K22: eşikler elle (öğretim); kalibre yazmaz
   ipuclari?: { tetik:'baslangic'|'ilkHamleSonrasi'|'bosta5sn'|'kisaYol'|'kazanc'; metin:string; el?: [x:number,y:number][] }[];
   sonrakiTanitim?: string;       // "Sıradaki: Fener!"
 }
@@ -1332,7 +1335,7 @@ Ağırlıklar `bot/agirliklar.json` dosyasındadır. Körük, doluysa en çok e�
   - Özel taş sıklığı (tanıtım bölümleri hariç): roket ≤ hamlelerin %35'i, kasımpatı ≤ %15, yıldız ≤ %6.
   - Hamle sonu ortalama ısı ≤ 0,3·eşik.
   - Tahmini süre 60–180 sn.
-- **Ölçüm dışı:** Acemi kazanma oranı raporlanır ve izlenir (öğretimde ≥ %80).
+- **Ölçüm dışı:** Acemi kazanma oranı raporlanır ve izlenir (öğretimde ≥ %80, tanıtımda ≥ %30 — K23; uyarı, başarısızlık değil).
 
 ### 16.6 Performans (60 fps)
 - **Katmanlar:**

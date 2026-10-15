@@ -37,6 +37,7 @@
     { "tetik": "kisaYol", "metin": "En az 3." }
   ],
   "botBandi": [95, 100],
-  "yildizEsikleri": [4400, 5000],
+  "yildizEsikleri": [4100, 4400],
+  "elleEsik": true,
   "sonrakiTanitim": "Sıradaki: Nişan!"
 }

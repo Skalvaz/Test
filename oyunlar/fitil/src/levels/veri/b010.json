@@ -7,9 +7,9 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 20,
+  "hamle": 25,
   "tohum": 1938274011,
-  "yardim": 2,
+  "yardim": 3,
   "ozelEsikleri": [6, 9, 0],
   "hedefler": [{ "tur": "aydinlat" }, { "tur": "kafes" }],
   "duzen": [
@@ -32,8 +32,9 @@
       [1, 3, 1], [5, 3, 1]
     ]
   },
-  "kurallar": { "soguma": 3 },
-  "botBandi": [45, 55],
+  "onIsi": [[1, 1, 3], [5, 1, 3], [3, 3, 2], [1, 5, 2], [5, 5, 2]],
+  "kurallar": { "caprazSiniri": 1 },
+  "botBandi": [70, 85],
   "yildizEsikleri": [7800, 9500],
   "sonrakiTanitim": "Sıradaki: Fener Alayı!"
 }

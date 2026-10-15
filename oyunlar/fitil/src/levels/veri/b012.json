@@ -7,11 +7,12 @@
   "h": 9,
   "renkSayisi": 4,
   "esik": 4,
-  "hamle": 24,
+  "hamle": 30,
   "tohum": 900625316,
-  "yardim": 1,
+  "yardim": 3,
   "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "topla", "renk": 0, "adet": 48 }, { "tur": "topla", "renk": 3, "adet": 48 }],
+  "dogumAgirliklari": [6, 3, 3, 6],
+  "hedefler": [{ "tur": "topla", "renk": 0, "adet": 50 }, { "tur": "topla", "renk": 3, "adet": 62 }],
   "duzen": [
     ". . . . . . . .",
     ". . . C C . . .",
@@ -36,8 +37,8 @@
       "el": [[0, 6], [0, 7], [0, 8], [1, 8], [2, 8], [3, 8], [4, 8], [5, 8], [6, 8], [7, 8], [7, 7], [7, 6]]
     }
   ],
-  "kurallar": { "caprazSiniri": 1, "soguma": 2 },
-  "botBandi": [90, 95],
+  "kurallar": { "caprazSiniri": 1, "soguma": 1 },
+  "botBandi": [92, 100],
   "yildizEsikleri": [8500, 10500],
   "sonrakiTanitim": "Sıradaki: Kayalık!"
 }
