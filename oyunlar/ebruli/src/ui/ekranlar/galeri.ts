@@ -24,7 +24,7 @@ function teknikAdi(id: string): string {
 
 export function tabloBuyukEkrani(y: EkranYoneticisi, k: GaleriKartVM, atolyeAd: string, W: number, H: number): Promise<void> {
   return y.ac<void>({ sinif: 'e-tablo-buyuk', geri: undefined, perde: true, perdeKapatir: true }, (bitir) => {
-    const tw = Math.floor(Math.min(W - 48, (H - 260) * (2 / 3), 420));
+    const tw = Math.floor(Math.min(W - 48, (H - 330) * (2 / 3), 420));
     const th = Math.floor(tw * 1.5);
     const teknikler = h('ul', { s: 'e-teknikler' });
     for (const t of k.teknikler) {
