@@ -32,6 +32,7 @@ import type { TahtaGeometrisi, YolCizici, YolCiziciSecenek } from '../app/sozles
 import {
   CIFT_DOKUNUS_HAREKETI,
   CiftDokunusTakibi,
+  baslatilabilir,
   boslukAdimi,
   geriAlAdimi,
   hucreAnahtari,
@@ -198,6 +199,10 @@ export function yolCiziciOlustur(s: YolCiziciSecenek): YolCizici {
       if (r) {
         bildir(r);
         gc.parmak(piksel(e));
+      } else if (kisit.zorunlu) {
+        // Zorunlu ilk hamle: küme dışındaki geçerli bir kapsüle basıldı (§15).
+        const h = noktadakiHucre(d, basNokta);
+        if (h && baslatilabilir(d, h)) gc.kisitliBasildi?.({ x: h.x, y: h.y });
       }
     }
   }

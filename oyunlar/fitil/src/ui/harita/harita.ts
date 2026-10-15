@@ -351,7 +351,23 @@ export class HaritaEkrani {
     if (!k || !ic) return;
     const p = dugumKonumu(id);
     const olcek = ic.clientWidth / HARITA_W;
-    const hedef = Math.max(0, ic.offsetTop + p.y * olcek - k.clientHeight * 0.56);
+    // Görünür bant: üst çubuk ile alttaki "Bölüm N" + menü arası. Şimdiki düğüm bandın
+    // ortasında; bir önceki düğümün yıldızları (mahallenin ilk iki bölümünde mahalle
+    // tabelası da) alt çubuğun ÜSTÜNDE kalır (ilk harita görünümü, 360×640).
+    let ust = 64;
+    try {
+      ust = parseFloat(getComputedStyle(k).paddingTop) || 64;
+    } catch {
+      /* varsayılan */
+    }
+    const altKap = k.parentElement?.querySelector<HTMLElement>('.f-harita-alt-kap');
+    const bantAlt = k.clientHeight - (altKap?.offsetHeight ?? 160) - 10;
+    const m = Math.floor((id - 1) / 5);
+    const altNokta = id === 1 ? baslangicKonumu().y + 74 + 48 : (id - 1) % 5 <= 1 ? bolgeUst(m) + BOLGE_H + 18 : dugumKonumu(Math.max(1, id - 1)).y + 56;
+    const enCok = Math.max(0, k.scrollHeight - k.clientHeight);
+    const ortada = ic.offsetTop + p.y * olcek - (ust + Math.max(0, bantAlt - ust) * 0.55);
+    const altGorunur = ic.offsetTop + altNokta * olcek - bantAlt;
+    const hedef = Math.min(enCok, Math.max(0, ortada, Math.min(altGorunur, ic.offsetTop + p.y * olcek - ust - 96)));
     if (this.b.az() || !ilk) {
       if (yeni && !this.b.az()) k.scrollTo({ top: hedef, behavior: 'smooth' });
       else k.scrollTop = hedef;

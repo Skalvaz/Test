@@ -42,12 +42,18 @@ export class Gokyuzu {
   /** Deniz durağan mı (otomatik kalite düşük). */
   durgun = false;
   private serit = '#FFFFFF';
+  /** Son pişirmenin girdileri (aynıysa kur() hiçbir şey yapmaz). */
+  private anahtar = '';
 
   /**
    * `tema` (P5 ek): oyuncunun Fişek Defteri'nde seçtiği kişisel gökyüzü
    * (§10.3); verilmezse mahallenin teması. Siluet her zaman mahallenindir.
    */
   kur(w: number, h: number, dpr: number, mahalle: number, gokBandi: Dikdortgen, sandik: Dikdortgen | null, tema?: string): void {
+    // Aynı girdiyle yeniden pişirme yok (Tekrar dene, aynı yerleşimde yeni bölüm).
+    const anahtar = `${w},${h},${dpr},${mahalle},${gokBandi.x},${gokBandi.y},${gokBandi.w},${gokBandi.h},${sandik ? `${sandik.x},${sandik.y},${sandik.w},${sandik.h}` : '-'},${tema ?? ''}`;
+    if (anahtar === this.anahtar && this.taban) return;
+    this.anahtar = anahtar;
     this.w = w;
     this.h = h;
     this.dpr = dpr;

@@ -5,7 +5,10 @@
  */
 import { describe, expect, it } from 'vitest';
 import { bolumuYukle } from '../core/bolumYukle';
-import type { BolumVerisi, Hamle, OyunDurumu } from '../core/types';
+import type { BolumVerisi, Hamle, Olay, OyunDurumu } from '../core/types';
+import { finalGosterisi, hamleUygula, ustaEliUygula } from '../core/index';
+import { rngInt } from '../core/rng';
+import { rastgeleBolum, rastgeleHamle } from '../core/testAraclari';
 import { GorselTahta, DUSME_MS, INIS_MS } from './gorselTahta';
 import { sahteFinal, sahteHamle } from './dev/sahteOlaylar';
 import { BUYUK_YOL, ZENGIN } from './dev/zenginTahta';
@@ -139,5 +142,43 @@ describe('GorselTahta canlandırma', () => {
     expect(g.farklar(d2).length).toBe(1);
     g.esitle(d2);
     expect(g.farklar(d2)).toEqual([]);
+  });
+});
+
+describe('gerçek çekirdekle bulanık tutarlılık (§16.1)', () => {
+  it('rastgele bölüm ve eylemler (kalıp, kombinasyon, final, Usta\'nın Eli dahil): her eylemden sonra fark yok', () => {
+    let eylem = 0;
+    let kalip = 0;
+    for (let oyun = 0; oyun < 60; oyun++) {
+      const r = { rng: (oyun * 0x85ebca6b + 0x1234567) >>> 0 };
+      const v = rastgeleBolum(r, 7000 + oyun);
+      let d = bolumuYukle(v, rngInt(r, 3));
+      const g = new GorselTahta();
+      g.kur(d);
+      const uygula = (s: { olaylar: Olay[]; durum: OyunDurumu }, ad: string) => {
+        for (const o of s.olaylar) g.uygula(o);
+        expect(g.farklar(s.durum), `oyun ${oyun} ${ad}`).toEqual([]);
+        eylem++;
+      };
+      let eli = true;
+      for (let adim = 0; adim < 40; adim++) {
+        if (d.bitti === 'kayip' && eli && !d.istatistik.ustaEli) {
+          eli = false;
+          const u = ustaEliUygula(d);
+          uygula(u, 'ustaEli');
+          d = u.durum;
+        }
+        if (d.bitti) break;
+        const h = rastgeleHamle(d, r);
+        if (!h) break;
+        if (h.tur === 'kalip') kalip++;
+        const s = hamleUygula(d, h);
+        uygula(s, `adım ${adim} ${h.tur}`);
+        d = s.durum;
+      }
+      if (d.bitti === 'kazanc') uygula(finalGosterisi(d), 'final');
+    }
+    expect(eylem).toBeGreaterThan(300);
+    expect(kalip).toBeGreaterThan(0);
   });
 });

@@ -288,9 +288,17 @@ export class GorselTahta {
       case 'ozelOlustu': {
         const h = this.hucre(o.hucre);
         if (!h) return;
-        h.icerik = { tur: 'kapsul', renk: o.ozel === 'yildiz' ? -1 : (o.renk as 0), isi: 0, ozel: o.ozel, eksen: o.eksen };
-        h.isiGorunen = 0;
-        h.kizgin = 0;
+        // Çekirdekle aynı: `isi` yoksa önceki kapsülün ısısı korunur (kalıp, kombinasyon, final).
+        const once = h.icerik?.tur === 'kapsul' ? h.icerik.isi : 0;
+        const isi = o.isi ?? once;
+        h.icerik = { tur: 'kapsul', renk: o.ozel === 'yildiz' ? -1 : (o.renk as 0), isi, ozel: o.ozel, eksen: o.eksen };
+        if (isi === 0) {
+          h.isiGorunen = 0;
+          h.kizgin = 0;
+        } else if (isi < once) {
+          h.isiGorunen = Math.min(h.isiGorunen, isi);
+          if (isi < this.esik - 1) h.kizgin = Math.min(h.kizgin, 0.999);
+        }
         h.pop = 0;
         h.gizli = false;
         return;

@@ -11,6 +11,10 @@
  *  - Defterci: baştan açık üç desen dışında 12 desen toplamak.
  *  - "Bazı rozetler" güçlendirici verir (§9): Halkacı, Otuzluk, ŞENLİK!,
  *    Usta Çırak, Domino — birer adet (stok doluysa toza döner).
+ *  - Öğretim bölümleri (§15, 1–5) önceden ısıtılmış, kurgulu tahtalardır:
+ *    Üçüncü Kuşak ve Tutumlu orada kendiliğinden düşüyordu (rozet
+ *    değersizleşir). Bu iki beceri rozeti öğretim oyunlarında sayılmaz;
+ *    Üçüncü Kuşak bu yüzden kayıt rekorundan değil oyunun özetinden okunur.
  */
 import type { GuclendiriciId } from '../app/katalog';
 import { toplananDesenSayisi } from './defter';
@@ -42,6 +46,10 @@ export interface RozetTanimi {
   kosul(b: RozetBaglami): boolean;
 }
 
+/** §15: ilk 5 bölüm öğretim. */
+const OGRETIM_SON = 5;
+const ogretimOyunu = (b: RozetBaglami): boolean => !!b.oyun && b.oyun.bolumId >= 1 && b.oyun.bolumId <= OGRETIM_SON;
+
 function mahalleUcYildiz(k: Kayit, ayar: MetaAyar): boolean {
   for (let m = 0; m < mahalleSayisi(ayar); m++) {
     const ids = mahalleBolumleri(m, ayar);
@@ -57,11 +65,11 @@ const TANIMLAR: Record<RozetId, Omit<RozetTanimi, 'id'>> = {
   halkaci: { ad: 'Halkacı', aciklama: 'Toplam 50 halka çiz', odul: { guc: 'kibrit', adet: 1 }, kosul: (b) => b.kayit.istatistik.toplamHalka >= 50 },
   otuzluk: { ad: 'Otuzluk', aciklama: 'Tek hamlede 30+ reaksiyon', odul: { guc: 'kalip', adet: 1 }, kosul: (b) => b.kayit.rekorlar.enBuyukReaksiyon >= 30 },
   senlik: { ad: 'ŞENLİK!', aciklama: 'Tek hamlede 40+ reaksiyon', odul: { guc: 'geriSar', adet: 1 }, kosul: (b) => b.kayit.rekorlar.enBuyukReaksiyon >= 40 },
-  ucuncuKusak: { ad: 'Üçüncü Kuşak', aciklama: 'Bir hamlede 3. nesil patlama', kosul: (b) => b.kayit.rekorlar.enCokNesil >= 3 },
+  ucuncuKusak: { ad: 'Üçüncü Kuşak', aciklama: 'Bir hamlede 3. nesil patlama', kosul: (b) => !!b.oyun && !ogretimOyunu(b) && b.oyun.ozet.enCokNesil >= 3 },
   buyukFinal: { ad: 'Büyük Final', aciklama: 'Yıldız + Yıldız kombinasyonu', kosul: (b) => !!b.oyun?.ozet.kombolar.includes('buyukFinal') },
   roketYagmuru: { ad: 'Roket Yağmuru', aciklama: 'Yıldız + Roket kombinasyonu', kosul: (b) => !!b.oyun?.ozet.kombolar.includes('roketYagmuru') },
   kilpayi: { ad: 'Kılpayı', aciklama: 'Son hamlede kazan', kosul: (b) => !!b.oyun?.kazandi && b.oyun.kalanHamle === 0 },
-  tutumlu: { ad: 'Tutumlu', aciklama: '10+ hamle kalarak kazan', kosul: (b) => !!b.oyun?.kazandi && (b.oyun.kalanHamle ?? 0) >= 10 },
+  tutumlu: { ad: 'Tutumlu', aciklama: '10+ hamle kalarak kazan', kosul: (b) => !!b.oyun?.kazandi && !ogretimOyunu(b) && (b.oyun.kalanHamle ?? 0) >= 10 },
   ustaCirak: { ad: 'Usta Çırak', aciklama: 'Bir mahallenin tamamında 3★', odul: { guc: 'kibrit', adet: 1 }, kosul: (b) => mahalleUcYildiz(b.kayit, b.ayar) },
   saheser: {
     ad: 'Şaheser',

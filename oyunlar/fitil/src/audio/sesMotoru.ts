@@ -176,7 +176,8 @@ interface Yollar {
   komp: DynamicsCompressorNode;
   cikis: GainNode;
   kirpici: WaveShaperNode;
-  gurultu: Record<GurultuRengi, AudioBuffer>;
+  /** Gürültü tamponları; gerçek bağlamda ilk dokunuştan sonra parça parça üretilir (eksikse o katman susar). */
+  gurultu: Partial<Record<GurultuRengi, AudioBuffer>>;
 }
 
 type AcSinifi = new (o?: AudioContextOptions) => AudioContext;
@@ -247,7 +248,9 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
         }
         ctx = gercek;
       }
-      yolKur(ctx);
+      // Gerçek bağlamda ağır tamponlar (yankı dürtüsü, gürültüler) dokunuş olayında üretilmez:
+      // "Dokun ve başla" ana iş parçacığını dondurmasın, bölüm 1 önce çizilsin (P5).
+      yolKur(ctx, !!gercek);
       if (gercek) {
         gercek.addEventListener?.('statechange', () => {
           if (gercek && gercek.state !== 'running' && !askidaOlmali()) bekleyenAcilis = true;
@@ -262,7 +265,7 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
     }
   }
 
-  function yolKur(c: BaseAudioContext): void {
+  function yolKur(c: BaseAudioContext, ertele = false): void {
     const kazanc = (v: number) => {
       const g = c.createGain();
       g.gain.value = v;
@@ -275,7 +278,9 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
       b.getChannelData(0).set(gurultuUret(renk, n, tohum));
       return b;
     };
-    const gurultu = { beyaz: tampon('beyaz', 11), pembe: tampon('pembe', 23), kahve: tampon('kahve', 37) };
+    const TOHUM: Record<GurultuRengi, number> = { beyaz: 11, pembe: 23, kahve: 37 };
+    const gurultu: Partial<Record<GurultuRengi, AudioBuffer>> = {};
+    if (!ertele) for (const r of ['beyaz', 'pembe', 'kahve'] as const) gurultu[r] = tampon(r, TOHUM[r]);
 
     const ana = kazanc(1);
     const alcak = c.createBiquadFilter();
@@ -301,9 +306,12 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
     // Yankı: 1,8 sn stereo gürültü, exp(−t/0,45). Dönüşte yumuşak süzgeç (sıcak kuyruk).
     const conv = c.createConvolver();
     const ir = c.createBuffer(2, Math.floor(oran * 1.8), oran);
-    ir.getChannelData(0).set(yankiKanali(oran, 101));
-    ir.getChannelData(1).set(yankiKanali(oran, 202));
-    conv.buffer = ir;
+    const yankiKanal = (k: 0 | 1) => ir.getChannelData(k).set(yankiKanali(oran, k === 0 ? 101 : 202));
+    if (!ertele) {
+      yankiKanal(0);
+      yankiKanal(1);
+      conv.buffer = ir;
+    }
     const yankiGiris = kazanc(1);
     const donusAlcak = c.createBiquadFilter();
     donusAlcak.type = 'lowpass';
@@ -335,7 +343,43 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
 
     yol = { sfx, muzik, kisma, ortam, yankiGiris, ana, alcak, komp, cikis, kirpici, gurultu };
     if (yavas) alcak.frequency.value = ALCAK_YAVAS;
+    if (ertele) {
+      // Her tampon ayrı görevde (telefonda her biri birkaç on ms): bölüm çizildikten sonra.
+      const adimlar: (() => void)[] = [
+        () => (gurultu.pembe = tampon('pembe', TOHUM.pembe)),
+        () => (gurultu.beyaz = tampon('beyaz', TOHUM.beyaz)),
+        () => (gurultu.kahve = tampon('kahve', TOHUM.kahve)),
+        () => yankiKanal(0),
+        () => {
+          yankiKanal(1);
+          conv.buffer = ir;
+        },
+      ];
+      let i = 0;
+      // Boşta zamanı varsa ona (kare arası), yoksa kısa zamanlayıcıyla.
+      const sira = (fn: () => void, ms: number) => {
+        const w = window as unknown as { requestIdleCallback?: (f: () => void, o?: { timeout: number }) => number };
+        if (typeof w.requestIdleCallback === 'function') setTimeout(() => w.requestIdleCallback!(fn, { timeout: 300 }), ms);
+        else setTimeout(fn, ms);
+      };
+      const sonraki = () => {
+        try {
+          adimlar[i++]();
+        } catch (e) {
+          secenek.hata?.(e);
+        }
+        if (i < adimlar.length) sira(sonraki, 30);
+        else {
+          // Ortam ve müzik gürültü tamponlarını bekledi.
+          if (ortamIstendi) ortamBaslat();
+          if (muzikIstendi) muzikBaslat();
+        }
+      };
+      sira(sonraki, 450);
+    }
   }
+
+  const gurultuHazir = () => !!(yol && yol.gurultu.beyaz && yol.gurultu.pembe && yol.gurultu.kahve);
 
   /** |x| ≤ 0,8 doğrusal; üstü tanh ile 0,95'e yumuşak yaklaşır. */
   function kirpiciEgrisi(): Float32Array<ArrayBuffer> {
@@ -530,8 +574,10 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
     const c = ctx!;
     const t0 = s.bas + (r.gec ?? 0);
     const a = r.a ?? 0.002;
+    const tamponu = yol!.gurultu[r.renk];
+    if (!tamponu) return; // açılıştan hemen sonra: gürültü katmanı henüz üretilmedi
     const src = c.createBufferSource();
-    src.buffer = yol!.gurultu[r.renk];
+    src.buffer = tamponu;
     src.loop = true;
     if (r.hiz) src.playbackRate.value = r.hiz;
     let son: AudioNode = src;
@@ -1246,7 +1292,7 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
   let ortamDugum: { kok: GainNode; kaynaklar: AudioScheduledSourceNode[] } | null = null;
 
   function ortamBaslat(): void {
-    if (!ctx || !yol || ortamDugum) return;
+    if (!ctx || !yol || ortamDugum || !gurultuHazir()) return;
     const c = ctx;
     const t = c.currentTime + PLAN;
     const kok = c.createGain();
@@ -1256,7 +1302,7 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
     const kaynaklar: AudioScheduledSourceNode[] = [];
     const kaynak = (renk: GurultuRengi, hiz: number) => {
       const s = c.createBufferSource();
-      s.buffer = yol!.gurultu[renk];
+      s.buffer = yol!.gurultu[renk]!;
       s.loop = true;
       s.playbackRate.value = hiz;
       s.start(t, r01() * 1.8);

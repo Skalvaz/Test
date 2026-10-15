@@ -90,10 +90,25 @@ export function sistemAzHareket(): boolean {
   }
 }
 
+/**
+ * Çerçeve izin politikası Clipboard API'ye izin veriyor mu. claude.ai'nin
+ * sandbox'lı iframe'inde izin yoksa writeText konsola "Permissions policy
+ * violation" hatası basar; o durumda doğrudan execCommand yedeğine geçilir.
+ */
+function panoApiIzinli(): boolean {
+  try {
+    const d = document as unknown as { permissionsPolicy?: { allowsFeature(f: string): boolean }; featurePolicy?: { allowsFeature(f: string): boolean } };
+    const p = d.permissionsPolicy ?? d.featurePolicy;
+    return p ? p.allowsFeature('clipboard-write') : true;
+  } catch {
+    return true;
+  }
+}
+
 /** Panoya kopyala; olmazsa false (çağıran metni seçili gösterir). */
 export async function panoyaKopyala(metin: string): Promise<boolean> {
   try {
-    if (navigator.clipboard?.writeText) {
+    if (navigator.clipboard?.writeText && panoApiIzinli()) {
       await navigator.clipboard.writeText(metin);
       return true;
     }

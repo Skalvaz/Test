@@ -36,7 +36,9 @@
  *    yoktur; sistem açılmadan gelen seri sandıkları bekletilir.
  *  - "İlk deneme": bölümün ilk kez oynanışı kazanıldı (deneme sayacı 0'dı).
  *  - Usta'nın Eli ile devam eden oyunun sonucu (`istatistik.ustaEli`) yeni
- *    deneme sayılmaz; kaybı zaten işlenmiştir.
+ *    deneme sayılmaz; kaybı zaten işlenmiştir. Devam sonucunun olay özeti
+ *    yalnız Eli'den sonrasını taşır (istatistikle tamamlanmaz), oyun sayısı
+ *    artmaz; kazanılırsa sayılmış kayıp kazanca döner.
  *  - Yeniden başlatma uygulamada kayıp olarak bildirilir (§14.5: Coşku bozulur).
  */
 import { GUCLENDIRICILER, MAHALLELER } from '../app/katalog';
@@ -156,7 +158,12 @@ export function yildizHesapla(puan: number, esikler: readonly [number, number], 
 
 /** `bolumuYukle(v, siradakiDenemeNo(k, id))`: her deneme taze dolum akışı alır, oturumlar arasında da. */
 export function siradakiDenemeNo(k: Kayit, bolumId: number): number {
-  return k.bolumler[String(bolumId)]?.deneme ?? 0;
+  const b = k.bolumler[String(bolumId)];
+  if (b) return b.deneme;
+  // Günün Şenliği bölüm kaydı tutmaz; denemeler o günün sonuç kaydında sayılır
+  // (K15, §8.1: plan öğrenilebilir, her deneme taze dolum).
+  if (tarihGecerli(bolumId)) return k.gunluk.enIyi[String(bolumId)]?.deneme ?? 0;
+  return 0;
 }
 
 /** Coşku Serisi aktif mi: `bolumuYukle(v, n, { cosku: coskuAktif(k) })` (§15). */
@@ -234,9 +241,12 @@ export function bolumSonucu(kayit: Kayit, g: BolumSonucGirdisi, ayarK?: Partial<
   const anahtar = String(bolumId);
   const tur = g.tur ?? bolumTuru(bolumId, ayar);
   const ist = g.istatistik ?? ({} as BolumIstatistigi);
-  const ozet = ozetIstatistikleTamamla(g.olaylarOzeti ?? ozetBaslat(), ist);
   // Usta'nın Eli devamı: yalnız Eli gerçekten sunulmuşsa (4+ başarısızlık) yeni deneme sayılmaz.
   const ustaEliDevami = ist.ustaEli === true && tur !== 'gunluk' && (k.bolumler[anahtar]?.basarisizSeri ?? 0) >= USTA_ELI_ESIGI;
+  // Devamda uygulama yalnız Eli'den sonraki olayların özetini verir; denemenin
+  // tamamını taşıyan istatistikle tamamlanırsa kayıpta işlenmiş sayaçlar
+  // (patlama, roket, görevler) ikinci kez eklenir.
+  const ozet = ustaEliDevami && g.olaylarOzeti ? g.olaylarOzeti : ozetIstatistikleTamamla(g.olaylarOzeti ?? ozetBaslat(), ist);
   const kazandi = g.kazandi === true;
   const yildiz: Yildiz = kazandi ? (Math.min(Math.max(1, Math.floor(g.yildiz || 1)), 3, yildizSiniri(ist)) as Yildiz) : 0;
   const puan = tamsayi(g.puan);
@@ -341,16 +351,22 @@ export function bolumSonucu(kayit: Kayit, g: BolumSonucGirdisi, ayarK?: Partial<
 
   // 5. İstatistik ve rekorlar.
   const s = k.istatistik;
-  s.oyun++;
-  if (kazandi) s.kazanc++;
-  else s.kayip++;
+  if (!ustaEliDevami) {
+    s.oyun++;
+    if (kazandi) s.kazanc++;
+    else s.kayip++;
+  } else if (kazandi) {
+    // Kayıp zaten sayılmıştı; Eli ile kazanılınca aynı oyun kazanç olur.
+    s.kazanc++;
+    s.kayip = Math.max(0, s.kayip - 1);
+  }
   s.toplamPatlama += ozet.toplamPatlama;
   s.toplamHalka += ozet.halka;
   s.isiPatlamasi += ozet.isiPatlamasi;
   s.roket += ozet.roketAtesi;
   s.kasimpati += ozet.kasimpatiAtesi;
   s.yildiz += ozet.yildizAtesi;
-  s.kombinasyon += Math.max(ozet.kombolar.length, ist.kombinasyon ?? 0);
+  s.kombinasyon += ustaEliDevami ? ozet.kombolar.length : Math.max(ozet.kombolar.length, ist.kombinasyon ?? 0);
   s.kafes += ozet.kafesKirilan;
   s.kaya += ozet.kayaYokEdilen;
   s.fener += ozet.fenerToplanan;

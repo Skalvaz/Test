@@ -30,6 +30,8 @@ export class Sandik {
   parla = 0;
   /** Işık izi katmanında en az bir yuva var mı (boşsa çizilmez). */
   private isikVar = false;
+  /** Son gövde pişirmesinin girdileri. */
+  private anahtar = '';
 
   constructor(private s: Sahne) {}
 
@@ -46,6 +48,18 @@ export class Sandik {
     this.ow = t.w * c + 2 * pay;
     this.oh = t.h * c + 2 * pay;
     const d = Math.min(2, s.dpr);
+    // Gövde (ahşap damarı, yuvalar, perçinler) yalnız boyut/hücre/DPR/delik deseni değişince
+    // pişer: Tekrar dene, aynı boyutta yeni bölüm ve yalnız konumu değişen yeniden
+    // boyutlanma (tarayıcı çubuğu) önbellekten çizer (§16.6).
+    let delik = '';
+    for (const h of t.hucreler) delik += h.delik ? '1' : '0';
+    const anahtar = `${t.w}x${t.h}|${c}|${F}|${d}|${delik}`;
+    if (anahtar === this.anahtar && this.govde && this.isikCtx) {
+      this.pisti = new Uint8Array(t.w * t.h);
+      this.isikGuncelle(true);
+      return;
+    }
+    this.anahtar = anahtar;
     const { tuval, ctx } = tuvalOlustur(this.ow * d, this.oh * d);
     ctx.setTransform(d, 0, 0, d, 0, 0);
     this.cizGovde(ctx, d);

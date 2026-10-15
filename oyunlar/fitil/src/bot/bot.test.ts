@@ -208,7 +208,8 @@ describe('ölçütler (§16.5)', () => {
     expect(yuzdelik([], 50)).toBe(0);
   });
 
-  it('bant ve reaksiyon ölçütleri hata verir', () => {
+  // 10 Usta oyunu tek başına ~2 sn; tam koşuda (50 dosya paralel) yük altında 5 sn'yi aşabiliyor.
+  it('bant ve reaksiyon ölçütleri hata verir', { timeout: 30_000 }, () => {
     const v = testBolumu(['R G Z', 'G Z R', 'Z R G', 'R G Z', 'G Z R', 'Z R G'], { botBandi: [45, 55] });
     const sonuc = Array.from({ length: 10 }, (_, k) => oyunOyna(v, k, 'usta'));
     const o = olcumHesapla(v, sonuc);

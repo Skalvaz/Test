@@ -17,6 +17,7 @@ import type { Baglam } from './cekirdek';
 import type { HudVM, HedefVM, GuclendiriciVM } from './tipler';
 import type { Yerlesim } from './yerlesim';
 import type { GuclendiriciId } from '../app/katalog';
+import { puanOrani, yildizKonumlari } from './puanCubugu';
 
 interface HedefEl {
   kart: HTMLElement;
@@ -198,8 +199,8 @@ export class Hud {
     this.puanSayi = h('span', { s: 'f-puan-sayi f-sayi', t: sayi(vm.puan) });
     this.puanDolgu = h('div', { s: 'f-puan-dolgu' });
     const cubuk = h('div', { s: 'f-puan-cubuk' }, this.puanDolgu);
-    const enCok = this.puanTavan(vm);
-    const konumlar = [0.07, vm.yildizEsikleri[0] / enCok, vm.yildizEsikleri[1] / enCok];
+    const [, k2, k3] = yildizKonumlari(vm.yildizEsikleri);
+    const konumlar = [0.07, k2, k3];
     konumlar.forEach((o, i) => {
       const isaret = h('span', { s: 'f-yildiz-isaret', css: { left: `${(Math.min(0.94, o) * 100).toFixed(1)}%` } }, ikon('yildizDolu'));
       if (i + 1 > vm.yildizSiniri) isaret.classList.add('f-sinirli');
@@ -209,9 +210,6 @@ export class Hud {
     return h('div', { s: 'f-puan', 'aria-label': M.puan }, this.puanSayi, cubuk);
   }
 
-  private puanTavan(vm: HudVM): number {
-    return Math.max(1, vm.yildizEsikleri[1] * 1.12, vm.yildizEsikleri[0] * 1.5);
-  }
 
   private guclendiriciDugmesi(g: GuclendiriciVM): HTMLElement {
     const res = svg(`<svg class="f-resim f-guc-resim" viewBox="-24 -24 48 48" aria-hidden="true">${guclendiriciIsaretleme(g.id)}</svg>`);
@@ -374,8 +372,7 @@ export class Hud {
     const bas = this.gosterilenPuan;
     this.gosterilenPuan = puan;
     this.puanSayimIptal = say(this.puanSayi, bas, puan, canli && !this.b.az() ? 420 : 0, sayi);
-    const tavan = this.puanTavan(vm);
-    this.puanDolgu.style.transform = `scaleX(${Math.min(1, puan / tavan).toFixed(4)})`;
+    this.puanDolgu.style.transform = `scaleX(${puanOrani(puan, vm.yildizEsikleri).toFixed(4)})`;
     const hedeflerTamam = vm.hedefler.every((x) => x.tamam);
     const yanik = [hedeflerTamam, puan >= vm.yildizEsikleri[0], puan >= vm.yildizEsikleri[1]];
     this.isaretler.forEach((e, i) => {

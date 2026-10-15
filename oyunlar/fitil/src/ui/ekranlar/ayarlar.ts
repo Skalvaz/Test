@@ -28,10 +28,10 @@ function anahtar(acik: boolean, etiket: string, degisti: (v: boolean) => void): 
   return a;
 }
 
-function parcali<T extends string | number>(secenekler: { d: T; ad: string }[], secili: T, etiket: string, degisti: (v: T) => void): HTMLElement {
+function parcali<T extends string | number>(secenekler: { d: T; ad: string; uzun?: string }[], secili: T, etiket: string, degisti: (v: T) => void): HTMLElement {
   const kap = h('div', { s: 'f-parcali', role: 'radiogroup', 'aria-label': etiket });
   const dgler = secenekler.map((s) => {
-    const d = h('button', { type: 'button', role: 'radio', 'aria-checked': String(s.d === secili), t: s.ad });
+    const d = h('button', { type: 'button', role: 'radio', 'aria-checked': String(s.d === secili), t: s.ad, 'aria-label': s.uzun ?? s.ad });
     d.addEventListener('click', () => {
       dgler.forEach((x) => x.setAttribute('aria-checked', 'false'));
       d.setAttribute('aria-checked', 'true');
@@ -107,7 +107,7 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
       { s: 'f-satir f-satir-dikey' },
       h('span', { s: 'f-satir-ust' }, h('span', { s: 'f-satir-ikon' }, ikon('palet')), h('span', { s: 'f-satir-etiket', t: M.renkPaleti })),
       parcali(
-        (['standart', 'renkKoru', 'yuksekKontrast'] as Palet[]).map((p) => ({ d: p, ad: M.paletAdlari[p] })),
+        (['standart', 'renkKoru', 'yuksekKontrast'] as Palet[]).map((p) => ({ d: p, ad: M.paletAdlari[p], uzun: M.paletUzunAdlari[p] })),
         d.palet,
         M.renkPaleti,
         (p) => {

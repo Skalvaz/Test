@@ -8,13 +8,18 @@
  *    Her başarılı yazımdan önce önceki ana kayıt yedek1'e, yedek1 yedek2'ye
  *    kayar (son 2 başarılı yazım). Sekme gizlenince bekleyen yazım hemen.
  *  - Bulut (`connectRemote`): claude.ai sayfasında oturum açıksa kişiye özel
- *    belge. Bulut daha ilerideyse (`progressScore`) yüklenir.
- *  - Depolama yoksa (gizli pencere) bellek kaydı + tek seferlik uyarı.
+ *    belge. Bağlantı açılışta (dokunuştan önce) başlar; bulut daha ilerideyse
+ *    (`progressScore`) aday kayıt döner, uygulama onu oturum dışındayken
+ *    `bulutUygula` ile yerine koyar (yerele de yazılır).
+ *  - Depolama yoksa (gizli pencere) bellek kaydı; uyarıyı uygulama haritada,
+ *    öğretim bittikten sonra bir kez gösterir (`bellekte`).
  *
  * Bütün localStorage erişimleri try/catch içinde (WhatsApp içi tarayıcı).
  */
 import { SaveStore } from '../platform/storage';
 import { KAYIT_ANAHTARI, KAYIT_YEDEK_ANAHTARLARI, kayitDeposuAyarlari, kayitYukle, type Kayit } from '../meta';
+
+const ilerlemePuani = kayitDeposuAyarlari().progressScore;
 import { rastgeleTohum } from './zaman';
 
 function okuHam(anahtar: string): string | null {
@@ -53,11 +58,11 @@ export class Kayitci {
   readonly ilkAcilis: boolean;
   /** Kayıt hangi adaydan geldi (0 ana, 1–2 yedek, −1 yeni). */
   readonly kaynak: number;
-  /** Bellek kaydı uyarısı (tek seferlik). */
-  uyari: ((metin: string) => void) | null = null;
   private zamanlayici: ReturnType<typeof setTimeout> | null = null;
   private bekliyor = false;
-  private bellekUyarildi = false;
+  private bulutSozu: Promise<Kayit | null> | null = null;
+  /** Bulut bağlantısı başladığında yerel kayıt (sonra değiştiyse bulut körü körüne ezmesin). */
+  private bulutOncesi: Kayit | null = null;
 
   constructor() {
     this.depo = new SaveStore<Kayit>(kayitDeposuAyarlari());
@@ -110,26 +115,44 @@ export class Kayitci {
     } catch {
       /* SaveStore kendi içinde yutar; yine de oyun durmasın */
     }
-    if (this.depo.backend === 'bellek' && !this.bellekUyarildi) {
-      this.bellekUyarildi = true;
-      this.uyari?.('Bu tarayıcı kaydı saklamıyor. İlerlemeni Ayarlar > Kayıt kodu ile yedekleyebilirsin.');
-    }
+  }
+
+  /** Kayıt yalnız bellekte mi (gizli pencere, engelli depolama): sayfa kapanınca kaybolur. */
+  get bellekte(): boolean {
+    return this.depo.backend === 'bellek';
   }
 
   /**
-   * Bulut kaydına bağlan (10 sn'ye kadar sürebilir). Bulut daha ilerideyse
-   * yerel kaydın yerine geçer ve yeni kayıt döner; değilse null.
+   * Bulut kaydına bağlan (10 sn'ye kadar sürebilir; bir kez başlar, söz
+   * paylaşılır). Bulut daha ilerideyse onun kaydı döner (henüz UYGULANMAZ);
+   * değilse null.
    */
-  async bulutaBaglan(): Promise<Kayit | null> {
-    try {
-      const zarf = await this.depo.connectRemote();
-      if (!zarf) return null;
-      const r = kayitYukle([zarf.data], this.kayit.kayitTohumu);
-      if (r.kaynak !== 0) return null;
-      this.kayit = r.kayit;
-      return r.kayit;
-    } catch {
-      return null;
+  bulutaBaglan(): Promise<Kayit | null> {
+    if (!this.bulutSozu) {
+      this.bulutOncesi = this.kayit;
+      this.bulutSozu = (async () => {
+        try {
+          const zarf = await this.depo.connectRemote();
+          if (!zarf) return null;
+          const r = kayitYukle([zarf.data], this.kayit.kayitTohumu);
+          return r.kaynak === 0 ? r.kayit : null;
+        } catch {
+          return null;
+        }
+      })();
     }
+    return this.bulutSozu;
+  }
+
+  /**
+   * Bulut adayını uygula (oturum dışında çağrılır). Yerel kayıt bağlantıdan
+   * sonra değiştiyse ve en az bulut kadar ilerideyse yerel kalır. Uygulanırsa
+   * yerele de hemen yazılır (çevrimdışı sonraki açılış aynı kaydı görür).
+   */
+  bulutUygula(k: Kayit): boolean {
+    if (this.kayit !== this.bulutOncesi && ilerlemePuani(this.kayit) >= ilerlemePuani(k)) return false;
+    this.kayit = k;
+    this.planla(0);
+    return true;
   }
 }

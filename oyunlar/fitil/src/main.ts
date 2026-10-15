@@ -5,6 +5,7 @@
  * doğrudan başlar.
  */
 import './style.css';
+import { yaziTipiniGom } from './ui/yazitipi';
 import { bootWithHot } from './platform/hot';
 import { Uygulama, type SicakVeri } from './app/uygulama';
 
@@ -13,6 +14,9 @@ declare global {
     __fitil?: Record<string, unknown>;
   }
 }
+
+// Gömülü yazı tipi ilk çizimden önce (GDD §13.5: çalışma anında ağ isteği yok).
+yaziTipiniGom();
 
 let uygulama: Uygulama | null = null;
 

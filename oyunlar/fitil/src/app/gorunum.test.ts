@@ -7,7 +7,7 @@ import { bolumuYukle } from '../core/index';
 import { bolumGetir } from '../levels/index';
 import * as meta from '../meta';
 import { ilerlet, kazan } from '../meta/_test/yardimci';
-import { bolumOncesiVM, gunlukVM, haritaVM, hedefVM, hudVM, kaybettinVM, nasilVM, odulDuyurulari, sandiklarVM, yeniOge } from './gorunum';
+import { bolumOncesiVM, coskuRoketi, gunlukVM, haritaVM, hedefVM, hudVM, kaybettinVM, mahalleOdulleri, nasilVM, odulDuyurulari, sandiklarVM, yeniOge } from './gorunum';
 
 describe('harita eşlemesi', () => {
   it('kazanılan → acik, sıradaki → simdiki, gerisi kilitli; 40 düğüm ve 8 Usta', () => {
@@ -103,5 +103,47 @@ describe('günlük ve nasıl oynanır', () => {
     expect(nasilVM(meta.yeniKayit(1)).acikEngeller).toEqual([]);
     expect(nasilVM(ilerlet(11)).acikEngeller).toEqual(expect.arrayContaining(['kafes', 'islak', 'doseme', 'fener']));
     expect(nasilVM(ilerlet(11)).acikEngeller).not.toContain('kaya');
+  });
+});
+
+describe('Coşku Serisi ve öğretim (§15)', () => {
+  it('hazır roket öğretim bölümünde verilmez, tanıtımda verilir; duyuru da buna uyar', () => {
+    const k = { ...ilerlet(3), cosku: 3 };
+    expect(coskuRoketi(bolumGetir(4)!, k)).toBe(false);
+    expect(coskuRoketi(bolumGetir(6)!, k)).toBe(true);
+    const o: meta.Odul = { tur: 'cosku', seri: 3, aktif: true, bozuldu: false };
+    expect(odulDuyurulari([o], { sonrakiBolum: 4 })).toEqual([]);
+    expect(odulDuyurulari([o], { sonrakiBolum: 6 })).toHaveLength(1);
+  });
+
+  it('duyurular önem sırasıyla: mahalle ve açılanlar rozetten önce', () => {
+    const d = odulDuyurulari([
+      { tur: 'rozet', rozet: 'ilkKivilcim', ad: 'İlk Kıvılcım' },
+      { tur: 'cosku', seri: 3, aktif: true, bozuldu: false },
+      { tur: 'gunlukAcildi' },
+    ]);
+    expect(d.map((x) => x.ikon)).toEqual(['takvim', 'roket', 'rozet']);
+  });
+});
+
+describe('mahalle ödülleri (Fener Koyu Defteri kartı)', () => {
+  it('açılmamış güçlendirici "+1" görünmez; toz tek satırda toplanır', () => {
+    const v = (guc: 'kibrit' | 'kalip' | 'geriSar', adet: number, toz: number): meta.Odul => ({ tur: 'guclendirici', neden: 'mahalle', verilen: { guc, adet, toz } });
+    expect(mahalleOdulleri([v('kibrit', 0, 2), v('kalip', 0, 2), v('geriSar', 0, 2)])).toEqual([{ tur: 'toz', adet: 6 }]);
+    expect(mahalleOdulleri([v('kibrit', 1, 0), v('kalip', 0, 2), v('geriSar', 0, 2), { tur: 'guclendirici', neden: 'rozet', verilen: { guc: 'kibrit', adet: 1, toz: 0 } }])).toEqual([
+      { tur: 'guclendirici', id: 'kibrit', adet: 1 },
+      { tur: 'toz', adet: 4 },
+    ]);
+  });
+
+  it('gerçek akış: İskele (1–5) bitince kart kayıttaki stok ve tozla tutarlı', () => {
+    const k0 = ilerlet(4);
+    const r = kazan(k0, 5);
+    const odul = mahalleOdulleri(r.oduller);
+    const gucler = odul.filter((o) => o.tur === 'guclendirici');
+    const toz = odul.find((o) => o.tur === 'toz');
+    for (const g of gucler) if (g.tur === 'guclendirici') expect(r.kayit.guclendiriciler[g.id]).toBeGreaterThanOrEqual(g.adet);
+    expect(gucler.length).toBe(0);
+    expect(toz).toBeDefined();
   });
 });

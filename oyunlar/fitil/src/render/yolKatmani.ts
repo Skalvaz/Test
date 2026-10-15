@@ -70,6 +70,7 @@ export class YolKatmani {
   private ipucuT = 0;
   // Öğretici el
   private el: Konum[] | null = null;
+  private elGeri = false;
   private elT = 0;
   private elIp = new IpCizici();
   // Hayalet fitil
@@ -522,8 +523,10 @@ export class YolKatmani {
     c.globalAlpha = 1;
   }
 
-  elAyarla(yol: readonly Konum[] | null): void {
+  /** `geriAl`: el sona varınca bir düğüm geri döner (geri almayı gösterir, §15 Bölüm 1 adım 5). */
+  elAyarla(yol: readonly Konum[] | null, geriAl = false): void {
     this.el = yol && yol.length ? yol.map((p) => ({ ...p })) : null;
+    this.elGeri = geriAl && !!this.el && this.el.length >= 3;
     this.elT = 0;
   }
 
@@ -581,13 +584,30 @@ export class YolKatmani {
     const yol = this.el;
     const n = yol.length;
     // Döngü: 450 ms belir+bas, düğüm başı 380 ms sürükle, 400 ms bekle, 450 ms kalk+sol.
+    // Geri alma gösterimi: sona varınca 300 ms durur, bir düğüm geri döner (iz kısalır), sonra kalkar.
     const ADIM = 380;
     const giris = 450;
     const surukle = Math.max(1, n - 1) * ADIM;
+    const geri = this.elGeri ? 300 + 520 : 0;
     const bekle = 400;
     const cikis = 450;
-    const dongu = giris + surukle + bekle + cikis + 300;
-    const t = this.elT % dongu;
+    const dongu = giris + surukle + geri + bekle + cikis + 300;
+    let t = this.elT % dongu;
+    // Geri adım sonrası el bir önceki düğümde biter: kalan aşamalar yolun bu kısaltılmış sonunu kullanır.
+    let son = n - 1;
+    if (this.elGeri && t >= giris + surukle) {
+      const g = t - giris - surukle;
+      if (g < geri) {
+        const k = Math.max(0, (g - 300) / 520);
+        const u = inOutCubic(Math.min(1, k));
+        const px0 = s.mx(yol[n - 1].x) + (s.mx(yol[n - 2].x) - s.mx(yol[n - 1].x)) * u;
+        const py0 = s.my(yol[n - 1].y) + (s.my(yol[n - 2].y) - s.my(yol[n - 1].y)) * u;
+        this.elCiz(c, yol, n, px0, py0, 1, 0.88, n - u);
+        return;
+      }
+      t -= geri;
+      son = n - 2;
+    }
     let px: number;
     let py: number;
     let alfa = 1;
@@ -609,17 +629,23 @@ export class YolKatmani {
       bas = 0.88;
       ilerleme = f + 1;
     } else if (t < giris + surukle + bekle) {
-      px = s.mx(yol[n - 1].x);
-      py = s.my(yol[n - 1].y);
+      px = s.mx(yol[son].x);
+      py = s.my(yol[son].y);
       bas = 0.88;
-      ilerleme = n;
+      ilerleme = son + 1;
     } else {
       const k = Math.min(1, (t - giris - surukle - bekle) / cikis);
-      px = s.mx(yol[n - 1].x);
-      py = s.my(yol[n - 1].y) + outCubic(k) * s.c * 0.4;
+      px = s.mx(yol[son].x);
+      py = s.my(yol[son].y) + outCubic(k) * s.c * 0.4;
       alfa = 1 - k;
-      ilerleme = n;
+      ilerleme = son + 1;
     }
+    this.elCiz(c, yol, n, px, py, alfa, bas, ilerleme);
+  }
+
+  /** El ve arkasındaki saydam iz (ilerleme: geçilen düğüm sayısı, kesirli olabilir). */
+  private elCiz(c: Ctx, yol: readonly Konum[], n: number, px: number, py: number, alfa: number, bas: number, ilerleme: number): void {
+    const s = this.s;
     // Elin arkasında saydam fitil izi: geçilen düğümler + elin konumu.
     if (ilerleme > 1 && n > 1) {
       const j = Math.min(n - 1, Math.floor(ilerleme - 1 + 1e-6));

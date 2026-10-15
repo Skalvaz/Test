@@ -79,7 +79,8 @@ export const M = {
   coskuBozulur: 'Yeniden başlamak Coşku Serisi’ni bozar.',
 
   // Kazandın
-  kazandinBaslik: ['Tamam!', 'Tamam!', 'Harika!', 'Muhteşem!'] as const,
+  // 1★ da bir kazançtır (bütün hedefler tamam): başlık olumlu; ilk bölümde çoğu oyuncu 1★ alır.
+  kazandinBaslik: ['Başardın!', 'Başardın!', 'Harika!', 'Muhteşem!'] as const,
   yeniRekor: 'YENİ REKOR!',
   sandikAc: 'Dokun, aç!',
   sonrakiSandik: 'Sonraki sandık',
@@ -116,7 +117,9 @@ export const M = {
   normal: 'Normal',
   hizli: 'Hızlı',
   renkPaleti: 'Renk paleti',
-  paletAdlari: { standart: 'Standart', renkKoru: 'Renk körü', yuksekKontrast: 'Yüksek kontrast' } as Record<string, string>,
+  // Parçalı seçicide kısa ad (390 px'te 'Yüksek ko…' diye kesiliyordu); ekran okuyucuya uzun ad.
+  paletAdlari: { standart: 'Standart', renkKoru: 'Renk körü', yuksekKontrast: 'Kontrast' } as Record<string, string>,
+  paletUzunAdlari: { standart: 'Standart', renkKoru: 'Renk körü', yuksekKontrast: 'Yüksek kontrast' } as Record<string, string>,
   yardim: 'Yardım',
   ipuclari: 'İpuçları',
   balonlariYenidenIzle: 'Balonları yeniden izle',

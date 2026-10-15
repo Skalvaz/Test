@@ -319,10 +319,47 @@ export function nasilVM(k: Kayit): NasilVM {
 
 const GUC_ADI: Record<'kibrit' | 'kalip' | 'geriSar', string> = { kibrit: 'Kibrit', kalip: 'Fişek Kalıbı', geriSar: 'Geri Sar' };
 
-/** Kazançla gelen ödüllerden Kazandın kartındaki kısa duyurular (sandık ve tablo kendi yerinde). */
-export function odulDuyurulari(oduller: readonly meta.Odul[]): { ikon: string; metin: string }[] {
+/**
+ * Kazandın duyurularının önemi (küçük sayı önce): kart yalnız ilk birkaçını
+ * gösterir, gerisi "+N daha" çipinde. Yeni açılan oyun öğeleri ve mahalle
+ * önce; rozet ve görevler sonra.
+ */
+const DUYURU_ONEMI: Partial<Record<meta.Odul['tur'], number>> = {
+  mahalleTamam: 0,
+  guclendiriciAcildi: 1,
+  gunlukAcildi: 1,
+  sonsuzAcildi: 1,
+  ustaAcildi: 1,
+  fitil: 2,
+  efsane: 2,
+  motif: 2,
+  guclendirici: 3,
+  cosku: 4,
+  seriBasamagi: 5,
+  gorev: 6,
+  rozet: 7,
+};
+
+/**
+ * Coşku Serisi'nin hazır roketi bu bölümde verilir mi. Öğretim bölümleri
+ * (§15) tek kavram öğretir: b4–b5'in merkezinde açıklanmamış bir roket
+ * (b5 çapraz roket nişanını öğretir) dersi bulandırır. Seri sayacı öğretimde
+ * de ilerler; roket ilk tanıtım bölümünde (6) gelir.
+ */
+export function coskuRoketi(v: BolumVerisi, k: Kayit): boolean {
+  return v.tur !== 'gunluk' && v.tur !== 'ogretim' && meta.coskuAktif(k);
+}
+
+/** Kazançla gelen ödüllerden Kazandın kartındaki kısa duyurular (sandık ve tablo kendi yerinde), önem sırasıyla. */
+export function odulDuyurulari(oduller: readonly meta.Odul[], s: { sonrakiBolum?: number } = {}): { ikon: string; metin: string }[] {
+  // Sıradaki bölüm öğretimse hazır roket verilmez (coskuRoketi): duyuru da çıkmaz.
+  const sonrakiOgretim = s.sonrakiBolum !== undefined && bolumGetir(s.sonrakiBolum)?.tur === 'ogretim';
+  const sirali = oduller
+    .map((o, i) => ({ o, i }))
+    .sort((a, b) => (DUYURU_ONEMI[a.o.tur] ?? 9) - (DUYURU_ONEMI[b.o.tur] ?? 9) || a.i - b.i)
+    .map((x) => x.o);
   const r: { ikon: string; metin: string }[] = [];
-  for (const o of oduller) {
+  for (const o of sirali) {
     switch (o.tur) {
       case 'guclendiriciAcildi':
         r.push({ ikon: o.guc, metin: `${GUC_ADI[o.guc]} açıldı · ${o.verilen.adet} hediye` });
@@ -361,12 +398,30 @@ export function odulDuyurulari(oduller: readonly meta.Odul[]): { ikon: string; m
         r.push({ ikon: 'denizFeneri', metin: 'Deniz Feneri fitili senin' });
         break;
       case 'cosku':
-        if (o.aktif && !o.bozuldu) r.push({ ikon: 'roket', metin: 'Coşku Serisi: sıradaki bölüm hazır roketle' });
+        if (o.aktif && !o.bozuldu && !sonrakiOgretim) r.push({ ikon: 'roket', metin: 'Coşku: sıradaki bölüm roketle başlar' });
         break;
       default:
         break;
     }
   }
+  return r;
+}
+
+/**
+ * Mahalle tamamlanınca Fener Koyu Defteri kartındaki ödüller (§10.1). Meta,
+ * henüz açılmamış güçlendiriciyi toza çevirir (`verilen.adet` 0, `toz` 2):
+ * kart yalnız gerçekten verilen güçlendiricileri gösterir, tozlar tek
+ * satırda toplanır ("+6 toz").
+ */
+export function mahalleOdulleri(oduller: readonly meta.Odul[]): OdulVM[] {
+  const r: OdulVM[] = [];
+  let toz = 0;
+  for (const o of oduller) {
+    if (o.tur !== 'guclendirici' || o.neden !== 'mahalle') continue;
+    if (o.verilen.adet > 0) r.push({ tur: 'guclendirici', id: o.verilen.guc, adet: o.verilen.adet });
+    toz += o.verilen.toz;
+  }
+  if (toz > 0) r.push({ tur: 'toz', adet: toz });
   return r;
 }
 
