@@ -7,6 +7,7 @@
  * Mor 5, Yeşil 6 (karışık renkler); Mürekkep 7. Karışım bit VEYA'dır.
  */
 import type { Renk, OzelTur, Teknik } from '../core/types';
+import { fnv1a } from '../core/rng';
 
 export type Motif = 'nokta' | 'halka' | 'dalga';
 
@@ -129,3 +130,8 @@ export const TEKNIKLER: readonly TeknikTanimi[] = [
 
 /** Tablo nadirliği (§9.4). */
 export const NADIRLIK = ['Sade', 'Zarif', 'Şaheser'] as const;
+
+/** Ebru tablosu tohumu (§9.3): aynı bölüm, deneme ve puan → aynı tablo. */
+export function tabloTohumu(bolumId: number, denemeNo: number, puan: number): number {
+  return fnv1a(`ebruli|${bolumId}|${denemeNo}|${puan}`);
+}

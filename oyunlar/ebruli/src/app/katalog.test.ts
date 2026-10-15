@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ATOLYELER, KARISIK_RENKLER, RENK_TANIMLARI, TARIFLER, TEKNIKLER } from './katalog';
+import { ATOLYELER, KARISIK_RENKLER, RENK_TANIMLARI, TARIFLER, TEKNIKLER, tabloTohumu } from './katalog';
 import type { Renk } from '../core/types';
 
 describe('katalog (§1, §9, §11)', () => {
@@ -28,5 +28,11 @@ describe('katalog (§1, §9, §11)', () => {
       [11, 20],
     ]);
     expect(new Set(TEKNIKLER.map((t) => t.id)).size).toBe(TEKNIKLER.length);
+  });
+
+  it('tablo tohumu belirlenimli ve girdiye duyarlı', () => {
+    expect(tabloTohumu(4, 0, 2150)).toBe(tabloTohumu(4, 0, 2150));
+    expect(tabloTohumu(4, 0, 2150)).not.toBe(tabloTohumu(4, 1, 2150));
+    expect(tabloTohumu(4, 0, 2150)).not.toBe(tabloTohumu(4, 0, 2160));
   });
 });

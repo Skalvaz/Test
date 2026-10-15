@@ -212,6 +212,11 @@ export type KomboTuru =
   | 'murekkepLale'
   | 'murekkepMurekkep';
 
+/**
+ * Temizlik nedeni. Özel güçle temizlenen hücrenin nedeni o gücün türüdür;
+ * birleşim alanındakiler 'birlesim'; Ebru Şöleni taraklarının temizledikleri
+ * 'solen' (§8.3).
+ */
 export type TemizlikNedeni = 'grup' | 'tarak' | 'girdap' | 'lale' | 'murekkep' | 'birlesim' | 'solen';
 
 /** Kaskat kutlaması (§8.2): k=2 Güzel, 3 Nefis, 4 Harika, 5+ Şaheser. */
@@ -256,13 +261,23 @@ export type Olay = { t: number } & (
       sonuc: Renk;
       yeniId: number;
     }
+  /**
+   * Özel taşa dokunan sürükleme (§5.3, K9). Üç biçim:
+   *  - özel → düz damla: `ozel` kaynağın türü; Tarak/Girdap hedefe taşınır
+   *    (`tasindi: true`; hedefin damlası ardından `temizlendi` ile kalkar),
+   *    Lale ve Mürekkep yerinde kalır (`tasindi: false`).
+   *  - düz damla → özel (`ters: true`): `ozel` HEDEFİN türü; hiçbir şey
+   *    taşınmaz, özel taş hedefte (yerinde) ateşlenir; Lale kaynağın rengini alır.
+   *  - özel → özel: kaynak hedefe taşınır (`tasindi: true`), ardından
+   *    `birlesim` olayı hedefte.
+   */
   | {
       tur: 'ozelSuruklendi';
       kaynak: Konum;
       hedef: Konum;
       ozel: OzelTur;
-      /** Tarak/Girdap hedefe taşınıp orada ateşlenir; Lale ve Mürekkep yerinde kalır. */
       tasindi: boolean;
+      ters?: boolean;
     }
   /** Bir grup eşleşti (aynı adımdaki bütün gruplar aynı t'de). */
   | { tur: 'eslesti'; renk: KarisikRenk; hucreler: Konum[]; k: number; merkez: Konum }

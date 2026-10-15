@@ -90,6 +90,8 @@ export interface OyunCizici {
   elGoster(yol: readonly Konum[] | null): void;
   /** "Bu hamle kazandırırdı" hayaleti (kaybettin ekranı, null = kapat). */
   hayaletHamle(h: Hamle | null): void;
+  /** Klavye imleci (§3.2): 3 px altın odak halkası; null = gizle. */
+  imlecGoster(h: Konum | null): void;
   /** Tahtanın ekran geometrisi (girdi isabet testi, arayüz yerleşimi). */
   geometri(): TahtaGeometrisi;
   /** Tahtaya ayrılan alan (HUD'lar çıkarılmış). Su tüm tuvali kaplar. */
@@ -202,7 +204,7 @@ export interface SesMotoru {
 export interface TabloIstegi {
   bolumId: number;
   atolye: 'uskudar' | 'bursa';
-  /** Tablo tohumu: fnv1a(bolumId, deneme, puan) — aynı günlük + tohum = aynı tablo. */
+  /** Tablo tohumu: `tabloTohumu(bolumId, denemeNo, puan)` (katalog.ts) — aynı günlük + tohum = aynı tablo. */
   tohum: number;
   gunluk: readonly TemizlikKaydi[];
   /** Tahta boyutu (günlük koordinatlarını tuvale eşlemek için). */
@@ -227,8 +229,14 @@ export interface TabloSonucu {
  * önbelleklenir.
  */
 export interface TabloCizici {
-  /** Tam tablo (varsayılan 512×768 CSS px, DPR ≤ 2). */
+  /** Tam tablo, eşzamanlı (testler, galeri büyütme). Varsayılan 512×768 CSS px, DPR ≤ 2. */
   tabloCiz(istek: TabloIstegi, boyut?: { w: number; h: number }): TabloSonucu;
+  /**
+   * Aynı tablo, kare başına `dilimMs` (varsayılan 8 ms) dilimlerle (§9.3):
+   * kâğıt çekme animasyonu sürerken çizilir, kare düşmez. Sonuç
+   * `tabloCiz` ile piksel piksel aynıdır.
+   */
+  tabloCizParcali(istek: TabloIstegi, boyut?: { w: number; h: number }, dilimMs?: number): Promise<TabloSonucu>;
   /** Galeri küçük resmi (önbellekli; anahtar bolumId + tohum + boyut). */
   kucukResim(istek: TabloIstegi, w: number, h: number): HTMLCanvasElement | OffscreenCanvas;
   /** Sudaki canlı iz (§9.3): oyun sırasında temizlikleri suya damga olarak ekler. */
