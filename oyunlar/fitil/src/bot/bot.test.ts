@@ -10,7 +10,7 @@ import { bolumGetir } from '../levels/index';
 import { SINIR, adaylariUret, sonEksen, tahtaBilgi } from './adaylar';
 import { acemiEnIyiAday, acemiSec } from './acemi';
 import { kazandiranBul } from './kazandiranBul';
-import { olcumHesapla, olcutHatalari, yildizEsikleriK24, yildizEsikleriOgretim, yuzdelik } from './olcut';
+import { olcumHesapla, olcutHatalari, yildizEsikleriIlkIzlenim, yildizEsikleriK24, yildizEsikleriOgretim, yuzdelik } from './olcut';
 import { botTohumlari, botTohumuTuret, degerV, korukMerkezi } from './ortak';
 import { oyunAdimlari, oyunOyna } from './simulasyon';
 import { ustaKarar, ustaSec } from './usta';
@@ -227,6 +227,16 @@ describe('ölçütler (§16.5)', () => {
     expect(uc).toBe(4200);
     expect(iki).toBeLessThanOrEqual(uc);
     expect(iki).toBe(4000);
+  });
+
+  it('ilk izlenim eşikleri (K22, 1–3): 2★ Acemi p20, 3★ Acemi p70 ile Usta p50 ortası', () => {
+    const dizi = (a: number, b: number): number[] => Array.from({ length: 100 }, (_, i) => a + ((b - a) * i) / 99);
+    // Acemi 1800–2800 (p20 ≈ 1998, p70 ≈ 2499), Usta 2400–3000 (p50 ≈ 2697).
+    expect(yildizEsikleriIlkIzlenim(dizi(2400, 3000), dizi(1800, 2800))).toEqual([1900, 2500]);
+    // 3★ her zaman 2★'ın üstünde; Acemi hiç kazanmadıysa Usta p15/p50.
+    const [iki, uc] = yildizEsikleriIlkIzlenim(dizi(2000, 2010), dizi(3000, 3010));
+    expect(uc).toBeGreaterThan(iki);
+    expect(yildizEsikleriIlkIzlenim(dizi(2000, 3000), [])).toEqual([2100, 2400]);
   });
 
   it('K24 eşikleri: 2★ = min(Usta p50, Acemi p50), 3★ = Usta p85', () => {

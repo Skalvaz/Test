@@ -47,7 +47,7 @@ import { bolumuYukle, ilerlemeYuzdesi } from '../core/index';
 import type { BolumVerisi, Hamle } from '../core/index';
 import { TUM_BOLUMLER, bolumGetir } from '../levels/index';
 import { bolumDogrula } from '../levels/dogrulayici';
-import { olcumHesapla, olcutHatalari, yildizEsikleriHesapla, yildizEsikleriK24, yildizEsikleriOgretim, yuzdelik, type BolumOlcumu } from './olcut';
+import { olcumHesapla, olcutHatalari, yildizEsikleriHesapla, yildizEsikleriIlkIzlenim, yildizEsikleriK24, yildizEsikleriOgretim, yuzdelik, type BolumOlcumu } from './olcut';
 import type { BotTuru } from './ortak';
 import { oyunOyna, type OyunSonucu } from './simulasyon';
 
@@ -462,8 +462,10 @@ interface BotDagilimi {
   yildiz: [number, number, number];
   /** Kazançların puan yüzdelikleri (final dahil). */
   p15: number;
+  p20: number;
   p40: number;
   p50: number;
+  p70: number;
   p85: number;
 }
 
@@ -473,8 +475,10 @@ interface DagilimSatiri {
   hamle: number;
   hedef: string;
   yildizEsikleri: [number, number];
-  /** Öğretim eşik önerisi (K22, `yildizEsikleriOgretim`). */
+  /** Öğretim eşik önerisi (K22, `yildizEsikleriOgretim`; 4–5). */
   k22: [number, number];
+  /** İlk izlenim eşik önerisi (K22, `yildizEsikleriIlkIzlenim`; 1–3). */
+  ilk: [number, number];
   /** K24 eşik önerisi (`yildizEsikleriK24`; 6–25). */
   k24: [number, number];
   usta: BotDagilimi;
@@ -509,8 +513,10 @@ async function dagilim(a: Argumanlar): Promise<number> {
       kazanma: (100 * p.length) / Math.max(1, s.length),
       yildiz: yildizPayi(s, esik),
       p15: yuzdelik(p, 15),
+      p20: yuzdelik(p, 20),
       p40: yuzdelik(p, 40),
       p50: yuzdelik(p, 50),
+      p70: yuzdelik(p, 70),
       p85: yuzdelik(p, 85),
     };
   };
@@ -527,7 +533,8 @@ async function dagilim(a: Argumanlar): Promise<number> {
       '1/2/3★ %'.padEnd(10),
       'Eşik'.padEnd(12),
       'Usta p15/p50/p85'.padEnd(18),
-      'Acemi p40/p50/p85'.padEnd(18),
+      'Acemi p20/p40/p50/p70/p85'.padEnd(26),
+      'İlk izl.'.padEnd(11),
       'K22 öneri'.padEnd(11),
       'K24 öneri',
     ].join(' '),
@@ -539,8 +546,9 @@ async function dagilim(a: Argumanlar): Promise<number> {
     const u = ozet(us, v.yildizEsikleri);
     const ac = ozet(as, v.yildizEsikleri);
     const k22 = yildizEsikleriOgretim(puanlar(us), puanlar(as));
+    const ilk = yildizEsikleriIlkIzlenim(puanlar(us), puanlar(as));
     const k24 = yildizEsikleriK24(puanlar(us), puanlar(as));
-    const s: DagilimSatiri = { bolumId: v.id, tur: v.tur, hamle: v.hamle, hedef: hedefOzeti(v), yildizEsikleri: v.yildizEsikleri, k22, k24, usta: u, acemi: ac };
+    const s: DagilimSatiri = { bolumId: v.id, tur: v.tur, hamle: v.hamle, hedef: hedefOzeti(v), yildizEsikleri: v.yildizEsikleri, k22, ilk, k24, usta: u, acemi: ac };
     satirlar.push(s);
     console.log(
       [
@@ -554,14 +562,15 @@ async function dagilim(a: Argumanlar): Promise<number> {
         yd(ac.yildiz).padEnd(10),
         `${v.yildizEsikleri[0]}/${v.yildizEsikleri[1]}${v.elleEsik ? 'e' : v.esikKurali === 'k24' ? 'k' : ''}`.padEnd(12),
         `${u.p15}/${u.p50}/${u.p85}`.padEnd(18),
-        `${ac.p40}/${ac.p50}/${ac.p85}`.padEnd(18),
+        `${ac.p20}/${ac.p40}/${ac.p50}/${ac.p70}/${ac.p85}`.padEnd(26),
+        `${ilk[0]}/${ilk[1]}`.padEnd(11),
         `${k22[0]}/${k22[1]}`.padEnd(11),
         `${k24[0]}/${k24[1]}`,
       ].join(' '),
     );
   }
   console.log(
-    `${((Date.now() - t0) / 1000).toFixed(1)} sn. (Eşik sonundaki e = elle (K22), k = K24; K22 önerisi yalnız elleEsik bölümlerine elle yazılır, K24 önerisini kalibre --kural k24 500 tohumla yazar)`,
+    `${((Date.now() - t0) / 1000).toFixed(1)} sn. (Eşik sonundaki e = elle (K22), k = K24; elleEsik bölümlerine elle yazılır: 1–3 "İlk izl." (2★ Acemi p20, 3★ Acemi p70 ile Usta p50 ortası), 4–5 "K22 öneri"; K24 önerisini kalibre --kural k24 500 tohumla yazar)`,
   );
   if (a.json) writeFileSync(a.json, JSON.stringify(satirlar, null, 2));
   return 0;

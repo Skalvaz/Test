@@ -35,7 +35,10 @@ karşı koşar: açılış → bölüm 1 (zorunlu ilk hamle gerçek dokunmatik s
 ayarlar → defter → Günün Şenliği; pageerror/console.error başarısızlıktır.
 Test kancası `window.__fitil`: `durum()`, `bolum()`, `ekran()`, `bolumAc(id)`,
 `botHamle('usta'|'acemi')`, `hizli(on)`, `kayit()`, `kayitYama({...})`,
-`ac('gunluk'|'defter'|'ayarlar'|'istatistik'|'nasil'|'sonsuz')`, `geometri()`, `ogretim()`.
+`ac('gunluk'|'defter'|'ayarlar'|'istatistik'|'nasil'|'sonsuz')`, `geometri()`, `ogretim()`,
+`cizici()` (çizici: `dev.dondur(true)` + `dev.ilerle(ms)` ile kare dondurulur; özel
+yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
+`devFisekFirlat({x, y})` — fişek ekran görüntüleri için).
 
 ## Bölüm tasarımı (bot ve doğrulayıcı)
 
@@ -55,9 +58,11 @@ Test kancası `window.__fitil`: `durum()`, `bolum()`, `ekran()`, `bolumAc(id)`,
 - Usta ağırlıkları `src/bot/agirliklar.json` (GDD değerlerinden sapma ve
   gerekçesi dosyada). Ağırlık değişirse bütün bölümler yeniden doğrulanmalı.
 - İlk oturum (GDD K22, K23, K24): öğretimin (1–5) yıldız eşikleri elle
-  (`"elleEsik": true`; `kalibre` yazmaz, eşikler `--dagilim`'in "K22 önerisi"
-  sütunundan). 6–25 K24 eşikli (`"esikKurali": "k24"`: 2★ = min(Usta p50,
-  Acemi kazanç p50), 3★ = Usta p85; `kalibre` bayraklı bölümde Acemi'yi de
+  (`"elleEsik": true`; `kalibre` yazmaz). 1–3 (ilk izlenim) `--dagilim`'in
+  "İlk izl." sütunundan (2★ Acemi kazanç p20, 3★ Acemi p70 ile Usta p50
+  ortası; `--tohum 100 --acemi-tohum 200`), 4–5 "K22 öneri" sütunundan.
+  6–25 K24 eşikli (`"esikKurali": "k24"`: 2★ = min(Usta p50, Acemi kazanç
+  p50), 3★ = Usta p85; `kalibre` bayraklı bölümde Acemi'yi de
   oynatıp yazar, yeni bölüme `--kural k24`). 6–25 Acemi botuna göre ayarlı
   (Acemi ölçümü 60 tohum): tanıtımda Acemi ≥ %30 (Usta [92, 100]), normal
   (22–24) ≥ %20 (Usta [85, 100]), zor ≥ %8 ve Usta [60, 85] (Bölüm 10: ≥ %15,
@@ -120,6 +125,12 @@ gibi POSIX sözdizimi kullanma.
 - `src/bot/` — Acemi/Usta bot, `sim-cli.ts` (tsx ile Node'da).
 - `src/render/` — tek tuval sahnesi (`OyunCizici`), sprite önbelleği, parçacık
   havuzu, olay oynatıcı, kamera. `shadowBlur` yasak (parıltı sprite'tan).
+  Dikeyde üst bandın çoğunu DOM HUD kaplar: gök fişekleri görünür şeritte
+  (`gorunurGok`: HUD'un ölçülen alt kenarı → tahta üstü) patlar; HUD bandına
+  taşan kısım (gök parçacıkları, kovanlar, kartlara uçan kıvılcımlar, kart
+  patlamaları) HUD'un üstündeki küçük ikinci tuvalde (`fisekPerdesi.ts`,
+  arayüzün `f-fisek-katman`ı, z 25: HUD'un üstü, balon/bant/modalların altı)
+  çizilir, ana tuvalde o banda kırpılır.
 - `src/audio/` — WebAudio sentezi (`SesMotoru`); `src/audio/synth.ts` taban.
 - `src/input/` — `YolCizici` (pointer + klavye).
 - `src/ui/` — DOM ekranları ve HUD; metinler `src/ui/metinler.ts`.

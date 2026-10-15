@@ -91,7 +91,25 @@ export function yildizEsikleriHesapla(o: BolumOlcumu): [number, number] {
 }
 
 /**
- * Öğretim eşik önerisi (GDD K22, `elleEsik` bölümleri): makul oynayan (Acemi
+ * İlk izlenim eşik önerisi (GDD K22, bölüm 1–3, `elleEsik`): ilk dakikalarda
+ * gündelik oyuncunun galibiyeti neredeyse hep 2★ getirsin (gerçek oyuncu
+ * bölüm 1'i Acemi'nin altında bitirdi: 1.845 puan, eski eşik 2.000 → 1★).
+ *  - 2★ = Acemi kazançlarının p20'si: Acemi kazançlarının ~%80'i en az 2★.
+ *  - 3★ = (Acemi p70 + Usta p50) / 2: Acemi'nin iyi oyunu ile Usta medyanının
+ *    ortası; 3★ erişilebilir ama hâlâ iyi oyunun ödülü.
+ * Girdiler kazanılan oyunların SIRALI puanları; aşağı 100'e yuvarlanır.
+ */
+export function yildizEsikleriIlkIzlenim(ustaPuan: readonly number[], acemiPuan: readonly number[]): [number, number] {
+  const yuvarla = (x: number): number => Math.floor(x / 100) * 100;
+  const u50 = yuzdelik(ustaPuan, 50);
+  if (!acemiPuan.length) return [yuvarla(yuzdelik(ustaPuan, 15)), yuvarla(u50)];
+  const iki = yuzdelik(acemiPuan, 20);
+  const uc = Math.max(iki + 100, (yuzdelik(acemiPuan, 70) + u50) / 2);
+  return [yuvarla(iki), yuvarla(uc)];
+}
+
+/**
+ * Öğretim eşik önerisi (GDD K22, `elleEsik` bölümleri 4–5): makul oynayan (Acemi
  * medyanı civarı) çoğunlukla 2★, iyi oynayan (Usta medyanı) 3★ alsın.
  *  - 2★ = min(Acemi p40, Usta p15): Acemi'nin ~%60'ı, Usta'nın ~%85'i en az 2★.
  *  - 3★ = min(Usta p50, (Acemi p85 + Usta p50) / 2): Acemi p85 ile Usta p50
