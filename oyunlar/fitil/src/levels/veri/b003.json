@@ -40,6 +40,7 @@
   ],
   "senaryo": { "ilkReaksiyonVurgusu": true },
   "botBandi": [97, 100],
-  "yildizEsikleri": [3500, 3900],
+  "yildizEsikleri": [3100, 3500],
+  "elleEsik": true,
   "sonrakiTanitim": "Sıradaki: Kafes!"
 }

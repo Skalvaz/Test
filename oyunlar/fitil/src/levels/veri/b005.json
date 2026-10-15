@@ -33,6 +33,7 @@
     { "tetik": "kazanc", "metin": "Kalan hamlelerin rokete döner!" }
   ],
   "botBandi": [92, 100],
-  "yildizEsikleri": [4200, 5800],
+  "yildizEsikleri": [3700, 4200],
+  "elleEsik": true,
   "sonrakiTanitim": "Sıradaki: Kasımpatı!"
 }

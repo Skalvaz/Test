@@ -7,18 +7,18 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 24,
+  "hamle": 25,
   "tohum": 2471846724,
-  "yardim": 1,
+  "yardim": 3,
   "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "fener", "adet": 3 }, { "tur": "topla", "renk": 3, "adet": 35 }],
+  "hedefler": [{ "tur": "fener", "adet": 2 }, { "tur": "topla", "renk": 3, "adet": 34 }],
   "duzen": [
-    ". . F . F . .",
     ". . . . . . .",
     ". . . . . . .",
     ". . . . . . .",
+    ". . . . F . .",
     ". . . . . . .",
-    ". . . . . . .",
+    ". . F . . . .",
     ". . . . . . .",
     ". . . . . . .",
     ". . . . . . ."
@@ -29,8 +29,7 @@
     { "tetik": "baslangic", "metin": "Feneri en alt sıraya indir.", "el": [[2, 8], [2, 7], [2, 6]] },
     { "tetik": "ilkHamleSonrasi", "metin": "Fenerin altındakileri patlat; en alta inen fener toplanır." }
   ],
-  "kurallar": { "soguma": 5 },
-  "botBandi": [85, 95],
-  "yildizEsikleri": [9300, 11100],
+  "botBandi": [92, 100],
+  "yildizEsikleri": [9600, 11700],
   "sonrakiTanitim": "Sıradaki: Yıldız Topu!"
 }

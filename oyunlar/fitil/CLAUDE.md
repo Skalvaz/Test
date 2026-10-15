@@ -23,6 +23,7 @@ npm run dogrula             # bölüm doğrulama (bot bantları)
 npm run dogrula -- --bolum 11-15 --tohum 30          # --tohum: tohum SAYISI
 npm run dogrula -- --dosya deneme/ --tohum 30        # varyant JSON'ları (klasör ya da dosya)
 npm run kalibre -- --bolum 12                        # 500 tohum, yildizEsikleri yazar, hamle önerir
+npm run bot -- --dagilim --bolum 1-12 --tohum 100 --acemi-tohum 60   # Usta+Acemi kazanma, 1/2/3★, puan yüzdelikleri, K22 önerisi
 node scripts/shot.mjs <url> <png> [w] [h] [bekleme-ms] [js]   # telefon görünümü (390×844)
 npm run oynanis -- http://127.0.0.1:5185/ playtest-output [telefon|masaustu|kucuk]   # tam akış duman testi
 ```
@@ -52,6 +53,19 @@ Test kancası `window.__fitil`: `durum()`, `bolum()`, `ekran()`, `bolumAc(id)`,
   %15'e kadar oynar; yükleyici ilk tahtayı karıştırırsa doğrulayıcı hata verir.
 - Usta ağırlıkları `src/bot/agirliklar.json` (GDD değerlerinden sapma ve
   gerekçesi dosyada). Ağırlık değişirse bütün bölümler yeniden doğrulanmalı.
+- İlk oturum (GDD K22, K23): öğretimin (1–5) yıldız eşikleri elle
+  (`"elleEsik": true`; `kalibre` yazmaz, eşikler `--dagilim`'in "K22 önerisi"
+  sütunundan). 6–12 Acemi botuna göre ayarlı: tanıtımda Acemi ≥ %35, Bölüm 10
+  ≥ %15 (Acemi ölçümü 60 tohum). `dogrula` öğretim ve tanıtımda Acemi'yi de
+  ölçer; tanıtımda < %30 uyarı verir (başarısızlık değil; 13–14 şu an uyarır).
+- Deneyerek bulundu: `soguma` Acemi'yi en çok cezalandıran düğmedir (ısı
+  şansını siler); kaldırmak Acemi'yi 3–5 kat artırır ama reaksiyon p90'ı 14'ü
+  aşar. Süre ≥ 60 sn ≈ Usta'nın ≥ 15 hamlede kazanması: hedef adedini çok
+  düşürmek süreyi bozar, hamle eklemek (≤ 30) bozmaz. Acemi kenar ve köşe
+  hücrelerini (az komşu, az aday) seyrek patlatır: kenar/alt köşe döşemeleri
+  ve köşeye yakın kafesler onu en çok tıkayan hedeflerdir (sönmeyen döşeme
+  ısı haritasıyla görüldü); halka ve fener hedeflerini de neredeyse hiç
+  kovalamaz (amaç körü), bu yüzden bu hedeflerde adet düşük tutulur.
 
 Komutlar Windows PowerShell'de de çalışmalı: npm betiklerinde `VAR=1 komut`
 gibi POSIX sözdizimi kullanma.

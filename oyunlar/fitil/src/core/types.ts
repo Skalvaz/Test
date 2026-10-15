@@ -308,6 +308,12 @@ export interface BolumVerisi {
   bayram?: boolean;
   botBandi: [number, number];
   yildizEsikleri: [number, number];
+  /**
+   * Ek (GDD K22): yıldız eşikleri elle seçildi (öğretim 1–5: Acemi/Usta
+   * dağılımından, §7.4'ün Usta p50/p85 kuralından sapma). `npm run kalibre`
+   * bu bölümün `yildizEsikleri`'ni yazmaz. Oyun kuralını etkilemez.
+   */
+  elleEsik?: boolean;
   ipuclari?: { tetik: 'baslangic' | 'ilkHamleSonrasi' | 'bosta5sn' | 'kisaYol' | 'kazanc'; metin: string; el?: [number, number][] }[];
   /** Bölüm 1–2: ilk hamlede yalnız bu hücrelerden yol başlatılabilir (§15). */
   zorunluIlkHamle?: [number, number][];
