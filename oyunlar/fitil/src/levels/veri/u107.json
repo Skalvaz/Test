@@ -1,33 +1,125 @@
 {
-  "id": 107,
-  "ad": "Çisenti Fırtınası",
-  "mahalle": 6,
-  "tur": "usta",
-  "taslak": true,
-  "w": 7,
-  "h": 9,
-  "renkSayisi": 5,
-  "esik": 4,
-  "hamle": 24,
-  "tohum": 2114894488,
-  "yardim": 0,
-  "ozelEsikleri": [6, 9, 12],
-  "hedefler": [{ "tur": "kafes" }],
-  "duzen": [
-    ". . . . . . .",
-    ". . . . . . .",
-    ". . . . . . .",
-    ". C . . . C .",
-    ". . . . . . .",
-    ". . . C . . .",
-    ". . . . . . .",
-    ". C . . . C .",
-    ". . . . . . ."
-  ],
-  "havaOlaylari": [
-    { "tur": "cisenti", "eksen": "satir", "hatlar": [3, 7], "periyot": 2, "baslangic": 2 },
-    { "tur": "cisenti", "eksen": "sutun", "hatlar": [1, 5, 3], "periyot": 2, "baslangic": 3 }
-  ],
-  "botBandi": [50, 90],
-  "yildizEsikleri": [3000, 4500]
+ "id": 107,
+ "ad": "Çisenti Fırtınası",
+ "mahalle": 6,
+ "tur": "usta",
+ "w": 8,
+ "h": 10,
+ "renkSayisi": 6,
+ "esik": 4,
+ "hamle": 26,
+ "tohum": 2114894488,
+ "yardim": 0,
+ "ozelEsikleri": [
+  6,
+  9,
+  12
+ ],
+ "dogumAgirliklari": [
+  3,
+  3,
+  3,
+  6,
+  3,
+  3
+ ],
+ "hedefler": [
+  {
+   "tur": "desen",
+   "motif": "mart"
+  },
+  {
+   "tur": "kafes"
+  }
+ ],
+ "duzen": [
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . . . . .",
+  ". . . . C . . .",
+  ". . . C . . . .",
+  ". . . . C . . .",
+  ". . . C . . . .",
+  ". . . . . . . ."
+ ],
+ "zemin": {
+  "desen": {
+   "motif": "mart",
+   "hucreler": [
+    [
+     1,
+     2,
+     3
+    ],
+    [
+     2,
+     2,
+     3
+    ],
+    [
+     5,
+     2,
+     3
+    ],
+    [
+     6,
+     2,
+     3
+    ],
+    [
+     1,
+     3,
+     3
+    ],
+    [
+     3,
+     3,
+     3
+    ],
+    [
+     4,
+     3,
+     3
+    ],
+    [
+     6,
+     3,
+     3
+    ]
+   ]
+  }
+ },
+ "havaOlaylari": [
+  {
+   "tur": "cisenti",
+   "eksen": "satir",
+   "hatlar": [
+    6,
+    3,
+    8
+   ],
+   "periyot": 2,
+   "baslangic": 2
+  },
+  {
+   "tur": "cisenti",
+   "eksen": "sutun",
+   "hatlar": [
+    4,
+    1,
+    3,
+    6
+   ],
+   "periyot": 2,
+   "baslangic": 3
+  }
+ ],
+ "korukKapasitesi": 12,
+ "botBandi": [
+  35,
+  60
+ ],
+ "yildizEsikleri": [11400, 15200]
 }

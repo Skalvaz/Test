@@ -15,6 +15,14 @@
   9,
   12
  ],
+ "dogumAgirliklari": [
+  5,
+  5,
+  4,
+  4,
+  4,
+  4
+ ],
  "hedefler": [
   {
    "tur": "desen",
@@ -298,10 +306,7 @@
   40,
   50
  ],
- "yildizEsikleri": [
-  3000,
-  4500
- ],
+ "yildizEsikleri": [15000, 17800],
  "kurallar": {
   "caprazSiniri": 2
  }
