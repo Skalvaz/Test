@@ -746,6 +746,18 @@ class OyunCiziciSinifi implements OyunCiziciTam {
       }
       case 'ozelSuruklendi': {
         const a = this.damlaKonumu(o.kaynak);
+        const tas = this.gt.damla(o.kaynak);
+        if (o.tasindi && tas) {
+          // Taş hedefe kayar ve orada tüketilir (görsel tahtada yazılmaz).
+          const e = this.ef.al(E.TAS, 260);
+          e.x = a.x;
+          e.y = a.y;
+          e.x2 = this.mx(o.hedef.x);
+          e.y2 = this.my(o.hedef.y);
+          e.renk = tas.renk;
+          e.ozel = tas.ozel;
+          e.yon = tas.yon;
+        }
         this.gt.uygula(o);
         this.halka(a.x, a.y, h * 0.2, h * 0.6, 0.35, 360, 0);
         break;
@@ -904,7 +916,8 @@ class OyunCiziciSinifi implements OyunCiziciTam {
       }
       case 'puanEklendi': {
         this.gt.uygula(o);
-        if (o.hucre && o.miktar > 0 && o.neden !== 'solen') this.metin(this.mx(o.hucre.x), this.my(o.hucre.y) - h * 0.3, `+${o.miktar}`, Math.round(h * 0.3 + 4), 0, o.neden !== 'ozel');
+        // Özel taş ve desen puanı hücrede yükselir; engel puanı (kâğıt/mermer/yağ) uçuşla zaten okunur.
+        if (o.hucre && o.miktar > 0 && (o.neden === 'ozel' || o.neden === 'desen')) this.metin(this.mx(o.hucre.x), this.my(o.hucre.y) + h * 0.15, `+${o.miktar}`, Math.round(h * 0.3 + 4), 60, o.neden !== 'ozel');
         break;
       }
       case 'solenBasladi': {
@@ -1047,6 +1060,7 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     this.zem.ciz(c, this.gt, g, this.spriteDpr(), this.zaman);
     this.izgaraCiz(c);
     this.damlalariCiz(c);
+    this.zem.ustCiz(c, this.gt, g, this.spriteDpr(), this.zaman);
     this.onizlemeCiz(c);
     const b: EfektCizimBaglami = { spr: this.spr, efs: this.efs, hucre: h, palet: this.sec.palet, dpr: this.spriteDpr() };
     this.ef.ciz(c, b, false, this.zaman);
@@ -1129,6 +1143,7 @@ class OyunCiziciSinifi implements OyunCiziciTam {
       c.drawImage(s.t, this.mx(e.hucre.x) - s.ox, this.my(e.hucre.y) - s.oy, s.w, s.h);
     }
     c.globalAlpha = 1;
+    this.onizlemeAltCiz(c);
     // 2. geçiş: mermer ve damlalar.
     for (const e of gt.ezilen) this.damlaGovdesi(c, e.d, this.mx(e.hucre.x), this.my(e.hucre.y), 1, 1);
     for (let i = 0; i < gt.hucreler.length; i++) {
@@ -1178,6 +1193,13 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     const s = this.spr.govde(d.renk, d.ozel, d.yon);
     c.drawImage(s.t, x - s.ox * kx, y - s.oy * ky, s.w * kx, s.h * ky);
     if (d.karisim >= 0 && d.karisim < KARISIM_MS) this.karisimGirdabi(c, d, x, y, kx);
+    this.ozelKatmanCiz(c, d, x, y, kx, ky);
+    c.globalAlpha = 1;
+  }
+
+  /** Dönen özel taş katmanları: Girdap kolları (0,3 Hz), Lale filmi (0,15 Hz) ve silueti. */
+  private ozelKatmanCiz(c: Ctx, d: GDamla, x: number, y: number, kx: number, ky: number): void {
+    const zs = this.zaman / 1000;
     if (d.ozel === 'girdap') {
       const kol = this.spr.girdapKol();
       c.save();
@@ -1197,7 +1219,6 @@ class OyunCiziciSinifi implements OyunCiziciTam {
       const l = this.spr.laleSiluet();
       c.drawImage(l.t, x - l.ox * kx, y - l.oy * ky, l.w * kx, l.h * ky);
     }
-    c.globalAlpha = 1;
   }
 
   /** Karışım: iki renk dönen konik gradyanla dolanır (220 ms), sonuç rengine çözülür. */
@@ -1259,7 +1280,7 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     const ah = this.efs.altinHale;
     const r = (h * 0.62) / 32;
     c.globalCompositeOperation = 'lighter';
-    c.globalAlpha = 0.45;
+    c.globalAlpha = 0.32;
     c.drawImage(ah.t, cx - ah.ox * r, cy - ah.oy * r, ah.w * r, ah.h * r);
     c.globalCompositeOperation = 'source-over';
     c.globalAlpha = 1;
@@ -1317,7 +1338,27 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     c.rotate(-aci);
     c.drawImage(govde.t, -govde.ox, -govde.oy, govde.w, govde.h);
     c.restore();
-    if (d.ozel === 'girdap' || d.ozel === 'lale') this.damlaGovdesi(c, { ...d, ox: 0, oy: 0 }, cx + ox, cy + oy, kalk, 0.001);
+    if (d.ozel === 'girdap' || d.ozel === 'lale') this.ozelKatmanCiz(c, d, cx + ox, cy + oy, kalk * (1 + 0.1 * e), kalk * (1 - 0.04 * e));
+  }
+
+  /** Önizlemenin damlaların ALTINDAKİ kısmı: eşleşecek grubun altın parıltısı (2 Hz). */
+  private onizlemeAltCiz(c: Ctx): void {
+    const s = this.sur;
+    const o = s.onizleme;
+    if (!s.kaynak || !o || !o.gecerli || !o.gruplar.length || !this.onizlemeHedefi(s)) return;
+    const h = this.geo.hucre;
+    const giris = Math.min(1, (this.zaman - s.giris) / 120);
+    const nabiz = 0.5 + 0.5 * Math.sin((this.zaman / 1000) * TAU * 2);
+    const ah = this.efs.altinHale;
+    c.globalCompositeOperation = 'lighter';
+    for (const gr of o.gruplar)
+      for (const k of gr.hucreler) {
+        const r = (h * (0.62 + 0.08 * nabiz)) / 32;
+        c.globalAlpha = (0.45 + 0.35 * nabiz) * giris;
+        c.drawImage(ah.t, this.mx(k.x) - ah.ox * r, this.my(k.y) - ah.oy * r, ah.w * r, ah.h * r);
+      }
+    c.globalAlpha = 1;
+    c.globalCompositeOperation = 'source-over';
   }
 
   private onizlemeCiz(c: Ctx): void {
@@ -1354,20 +1395,7 @@ class OyunCiziciSinifi implements OyunCiziciTam {
       c.stroke();
     }
     c.setLineDash([]);
-    // Eşleşecek gruplar: altın kontur, 2 Hz nabız.
-    c.globalCompositeOperation = 'lighter';
-    const ah = this.efs.altinHale;
-    for (const gr of o.gruplar) {
-      for (const k of gr.hucreler) {
-        const x = this.mx(k.x);
-        const y = this.my(k.y);
-        const r = (h * (0.55 + 0.06 * nabiz)) / 32;
-        c.globalAlpha = (0.35 + 0.35 * nabiz) * giris;
-        c.drawImage(ah.t, x - ah.ox * r, y - ah.oy * r, ah.w * r, ah.h * r);
-      }
-    }
-    c.globalAlpha = 1;
-    c.globalCompositeOperation = 'source-over';
+    // Eşleşecek gruplar: altın kontur, 2 Hz nabız (parıltı damlaların altında, onizlemeAltCiz).
     c.strokeStyle = rgba(PALET.altinAcik, (0.6 + 0.4 * nabiz) * giris);
     c.lineWidth = Math.max(1.5, h * 0.05);
     for (const gr of o.gruplar)
@@ -1397,7 +1425,7 @@ class OyunCiziciSinifi implements OyunCiziciTam {
         const yak = sinirla01(1 - Math.hypot(p.x - hx, p.y - hy) / (h * 1.0));
         const ga = this.gt.damla(s.kaynak);
         const gb = this.gt.damla(hedef);
-        if (yak > 0.02 && ga && gb) this.girdapKarisimCiz(c, (kx + hx) / 2, (ky + hy) / 2, h * (0.12 + 0.22 * yak), yak, ga.renk, gb.renk, o.sonuc);
+        if (yak > 0.02 && ga && gb) this.girdapKarisimCiz(c, kx + (hx - kx) * 0.58, ky + (hy - ky) * 0.58, h * (0.1 + 0.2 * yak), yak, ga.renk, gb.renk, o.sonuc);
       }
       if (o.sonucHucre && (o.sonucHucre.x !== hedef.x || o.sonucHucre.y !== hedef.y)) {
         const sx = this.mx(o.sonucHucre.x);
@@ -1453,36 +1481,67 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     }
   }
 
-  /** İki rengin girdap gibi karışması (sürüklerken, iki damla arasında). */
+  /**
+   * İki rengin girdap gibi karışması (sürüklerken, iki damla arasında):
+   * iki boyanın dönen konik gradyanı + krem sarmal çizgiler, sonuç renginin
+   * halesi; parmak hedefe yaklaştıkça büyür.
+   */
   private girdapKarisimCiz(c: Ctx, x: number, y: number, R: number, k: number, a: Renk | 0, b: Renk | 0, sonuc: Renk): void {
     const zs = this.zaman / 1000;
     const hs = this.spr.hale(sonuc);
-    const kk = (R * 2.2) / (this.geo.hucre * 0.66);
-    c.globalAlpha = 0.55 * k;
+    const kk = (R * 2.6) / (this.geo.hucre * 0.66);
+    c.globalAlpha = 0.7 * k;
     c.drawImage(hs.t, x - hs.ox * kk, y - hs.oy * kk, hs.w * kk, hs.h * kk);
-    const renkler = [renkUclu(a, this.sec.palet)[0], renkUclu(b, this.sec.palet)[0]];
-    c.lineCap = 'round';
-    for (let kol = 0; kol < 2; kol++) {
-      c.strokeStyle = renkler[kol];
-      c.globalAlpha = 0.95 * k;
-      const N = 22;
-      for (let i = 0; i < N; i++) {
-        const u0 = i / N;
-        const u1 = (i + 1) / N;
-        const an0 = zs * 5 + kol * Math.PI + u0 * 7;
-        const an1 = zs * 5 + kol * Math.PI + u1 * 7;
-        c.lineWidth = Math.max(1, R * 0.32 * (1 - u0 * 0.7));
-        c.beginPath();
-        c.moveTo(x + Math.cos(an0) * R * (1 - u0), y + Math.sin(an0) * R * (1 - u0));
-        c.lineTo(x + Math.cos(an1) * R * (1 - u1), y + Math.sin(an1) * R * (1 - u1));
-        c.stroke();
-      }
-    }
-    c.fillStyle = renkUclu(sonuc, this.sec.palet)[1];
-    c.globalAlpha = k;
+    const [ra] = renkUclu(a, this.sec.palet);
+    const [rb] = renkUclu(b, this.sec.palet);
+    const [rs, rsAcik] = renkUclu(sonuc, this.sec.palet);
+    const aci = zs * 4.2;
+    c.save();
     c.beginPath();
-    c.arc(x, y, R * 0.2, 0, TAU);
-    c.fill();
+    c.arc(x, y, R, 0, TAU);
+    c.clip();
+    c.globalAlpha = 0.95 * k;
+    const cc = c as Ctx & { createConicGradient?: (a: number, x: number, y: number) => CanvasGradient };
+    if (typeof cc.createConicGradient === 'function') {
+      const g = cc.createConicGradient(aci, x, y);
+      g.addColorStop(0, ra);
+      g.addColorStop(0.2, rs);
+      g.addColorStop(0.33, rb);
+      g.addColorStop(0.53, rs);
+      g.addColorStop(0.66, ra);
+      g.addColorStop(0.86, rs);
+      g.addColorStop(1, ra);
+      c.fillStyle = g;
+    } else c.fillStyle = rs;
+    c.fillRect(x - R, y - R, 2 * R, 2 * R);
+    // Ortada sonuç rengi açılıyor.
+    const mg = c.createRadialGradient(x, y, 0, x, y, R);
+    mg.addColorStop(0, rgba(rsAcik, 0.9 * k));
+    mg.addColorStop(0.45, rgba(rs, 0.55 * k));
+    mg.addColorStop(1, rgba(rs, 0));
+    c.fillStyle = mg;
+    c.fillRect(x - R, y - R, 2 * R, 2 * R);
+    // Krem sarmal çizgiler (ebru'da bizle çekilmiş gibi).
+    c.strokeStyle = 'rgba(243,233,210,0.7)';
+    c.lineWidth = Math.max(1, R * 0.07);
+    c.lineCap = 'round';
+    for (let kol = 0; kol < 3; kol++) {
+      c.beginPath();
+      for (let i = 0; i <= 20; i++) {
+        const u = i / 20;
+        const an = aci * 1.3 + (kol * TAU) / 3 + u * 3.6;
+        const rr = R * (0.12 + 0.85 * u);
+        if (i === 0) c.moveTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr);
+        else c.lineTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr);
+      }
+      c.stroke();
+    }
+    c.restore();
+    c.strokeStyle = rgba(PALET.altinAcik, 0.6 * k);
+    c.lineWidth = Math.max(1, R * 0.06);
+    c.beginPath();
+    c.arc(x, y, R, 0, TAU);
+    c.stroke();
     c.globalAlpha = 1;
   }
 

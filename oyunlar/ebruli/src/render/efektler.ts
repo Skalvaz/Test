@@ -10,7 +10,7 @@
  */
 import { PALET } from '../app/katalog';
 import type { Palet } from '../app/sozlesme';
-import type { Renk, Yon } from '../core/types';
+import type { OzelTur, Renk, Yon } from '../core/types';
 import { kagitYapragi } from './zemin';
 import { inOutCubic, karma01, outCubic, TAU, bezier2 } from './matematik';
 import { renkUclu, rgba } from './palet';
@@ -32,6 +32,8 @@ export const E = {
   METIN: 12,
   MERMER: 13,
   TARAK_IZ: 14,
+  /** Taşınan özel taş: kaynaktan hedefe kayar (120 ms), hedefte ateşlenirken söner. */
+  TAS: 15,
 } as const;
 
 export interface Efekt {
@@ -51,6 +53,8 @@ export interface Efekt {
   renk: number;
   renk2: number;
   yon: Yon;
+  /** Taşınan özel taşın türü (E.TAS). */
+  ozel: OzelTur;
   /** Tarak: hat boyunca hücre sayısı (merkezden iki yöne). */
   n1: number;
   n2: number;
@@ -81,6 +85,7 @@ function bosEfekt(): Efekt {
     renk: 0,
     renk2: 0,
     yon: 'yatay',
+    ozel: 'yok',
     n1: 0,
     n2: 0,
     aci: 0,
@@ -202,6 +207,27 @@ export class Efektler {
           c.scale(k * (1 + 0.25 * Math.sin(Math.PI * u)), k * (1 - 0.12 * Math.sin(Math.PI * u)));
           c.drawImage(s.t, -s.ox, -s.oy, s.w, s.h);
           c.restore();
+          c.globalAlpha = 1;
+          break;
+        }
+        case E.TAS: {
+          const u = outCubic(Math.min(1, e.t / 120));
+          const x = e.x + (e.x2 - e.x) * u;
+          const y = e.y + (e.y2 - e.y) * u;
+          const s = b.spr.govde(e.renk as Renk | 0, e.ozel, e.yon);
+          const sonme = e.t > 120 ? (e.t - 120) / Math.max(1, e.sure - 120) : 0;
+          const k = 1.08 + 0.25 * sonme;
+          c.globalAlpha = 1 - sonme;
+          c.drawImage(s.t, x - s.ox * k, y - s.oy * k, s.w * k, s.h * k);
+          if (e.ozel === 'girdap') {
+            const kol = b.spr.girdapKol();
+            c.save();
+            c.translate(x, y);
+            c.rotate(e.t * 0.012);
+            c.scale(k, k);
+            c.drawImage(kol.t, -kol.ox, -kol.oy, kol.w, kol.h);
+            c.restore();
+          }
           c.globalAlpha = 1;
           break;
         }

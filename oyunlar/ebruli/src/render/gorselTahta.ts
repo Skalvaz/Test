@@ -7,10 +7,9 @@
  * damla bir `GDamla` nesnesidir ve canlandırma durumu damlayla birlikte
  * taşınır (düşen damlanın ofseti, karışım girdabı, iniş ezilmesi…).
  *
- * Sağlamlık: `ozelSuruklendi{tasindi}` özel taşı dolu bir hedefe taşırsa
- * hedefin eski damlası "ezilen" listesine alınır; ardından gelen
- * `temizlendi{id}` onu oradan kaldırır (olay sırası hangisi olursa olsun
- * özel taş silinmez).
+ * `ozelSuruklendi{tasindi}`: taş kaynaktan kalkar ve hedefte tüketilir
+ * (P1 çekirdeği, `src/core/oynatici.ts` ile aynı anlam); kayması çizicinin
+ * efektidir. `ezilen` listesi eski olay sırasına karşı sağlamlık içindir.
  */
 import type { Damla, Konum, Olay, OyunDurumu, OzelTur, Renk, Yon } from '../core/types';
 import { inOutCubic, inQuad, outBack, outCubic, karma01 } from './matematik';
@@ -175,21 +174,12 @@ export class GorselTahta {
         return;
       }
       case 'ozelSuruklendi': {
+        // P1 anlamı: `tasindi` ise taş kaynaktan kalkar ve hedefte TÜKETİLİR (hedefe
+        // yazılmaz; kayma çizicinin efektidir). Değilse tahta değişmez.
         if (!o.tasindi) return;
         const k = this.hucre(o.kaynak);
-        const e = this.hucre(o.hedef);
-        if (!k || !e || !k.icerik || k.icerik.tur !== 'damla') return void this.uyumsuz++;
-        const g = k.icerik.d;
+        if (!k || !k.icerik || k.icerik.tur !== 'damla') return void this.uyumsuz++;
         k.icerik = null;
-        if (e.icerik && e.icerik.tur === 'damla') this.ezilen.push({ hucre: { ...o.hedef }, d: e.icerik.d });
-        g.hTur = 3;
-        g.hT = 0;
-        g.hSure = KAYMA_MS;
-        g.hx0 = o.kaynak.x - o.hedef.x;
-        g.hy0 = o.kaynak.y - o.hedef.y;
-        g.ox = g.hx0;
-        g.oy = g.hy0;
-        e.icerik = { tur: 'damla', d: g };
         return;
       }
       case 'eslesti': {

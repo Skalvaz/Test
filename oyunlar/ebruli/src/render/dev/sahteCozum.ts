@@ -243,7 +243,7 @@ function coz(d0: OyunDurumu, h: Hamle, dogum: boolean): Cozucu {
     // Yerinden edilen hedef taşı ve taşınan kaynak taşı birlikte kalkar.
     cz.olaylar.push({ t: cz.t, tur: 'temizlendi', hucre: { ...h.hedef }, id: b.id, renk: b.renk, ozel: b.ozel, neden: 'birlesim', k: 1, puan: SABIT.PUAN.ozelDamla });
     d.puan += SABIT.PUAN.ozelDamla;
-    he.icerik = { tur: 'damla', damla: a };
+    he.icerik = null;
     cz.temizlenen++;
     cz.olaylar.push({ t: cz.t, tur: 'puanEklendi', miktar: kombo.includes('lale') ? 600 : 300, neden: 'ozel', hucre: { ...h.hedef } });
     d.puan += kombo.includes('lale') ? 600 : 300;
@@ -262,7 +262,8 @@ function coz(d0: OyunDurumu, h: Hamle, dogum: boolean): Cozucu {
       cz.temizlenen++;
       cz.tumTemiz.push({ ...h.hedef });
       if (karisikMi(b.renk)) hedefIlerlet(cz, 'topla', 1, SABIT.ZAMAN.ozelKayma, b.renk);
-      he.icerik = { tur: 'damla', damla: a };
+      // Taş hedefte tüketilir (P1 anlamı): hedef boşalır, taş orada ateşlenir.
+      he.icerik = null;
       hk.icerik = null;
       cz.t = SABIT.ZAMAN.ozelKayma;
       ates(cz, h.hedef, a.ozel, a.yon, 1);

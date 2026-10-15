@@ -80,6 +80,46 @@ export class ZeminKatmani {
     }
   }
 
+  private rozetler = new Map<string, Sprite>();
+
+  /** Damlaların ÜSTÜNE: desen rozetleri ve dönen yağ halkaları. */
+  ustCiz(c: Ctx, gt: GorselTahta, geo: TahtaGeometrisi, dpr: number, zamanMs: number): void {
+    const h = geo.hucre;
+    const aci = (zamanMs / 1000) * 0.1 * TAU;
+    for (let i = 0; i < gt.hucreler.length; i++) {
+      const hc = gt.hucreler[i];
+      if (hc.delik || (!hc.yag && !(hc.desen && !hc.desenBoyali))) continue;
+      const x = geo.x + ((i % gt.w) + 0.5) * h;
+      const y = geo.y + (Math.floor(i / gt.w) + 0.5) * h;
+      const dm = hc.icerik?.tur === 'damla' ? hc.icerik.d : null;
+      const ox = dm ? dm.ox * h : 0;
+      const oy = dm ? dm.oy * h : 0;
+      if (hc.yag) {
+        const k = `y|${h}|${dpr}`;
+        let s = this.rozetler.get(k);
+        if (!s) {
+          s = spriteUret(h * 1.1, h * 1.1, dpr, (cc) => yagHalkasi(cc, h));
+          this.rozetler.set(k, s);
+        }
+        c.save();
+        c.translate(x + ox, y + oy);
+        c.rotate(aci * 3 + karma01(i, 9) * TAU);
+        c.drawImage(s.t, -s.ox, -s.oy, s.w, s.h);
+        c.restore();
+      }
+      if (hc.desen && !hc.desenBoyali) {
+        const k = `d|${h}|${dpr}|${hc.desen}|${this.palet}`;
+        let s = this.rozetler.get(k);
+        if (!s) {
+          const renk = hc.desen;
+          s = spriteUret(h * 0.4, h * 0.4, dpr, (cc) => desenRozeti(cc, h, renk, this.palet));
+          this.rozetler.set(k, s);
+        }
+        c.drawImage(s.t, x - h * 0.33 - s.ox, y - h * 0.33 - s.oy, s.w, s.h);
+      }
+    }
+  }
+
   private pisir(gt: GorselTahta, geo: TahtaGeometrisi, dpr: number): void {
     const h = geo.hucre;
     const W = gt.w * h;
@@ -240,68 +280,136 @@ export function kagitCiz(c: Ctx, h: number, kat: number, tohum: number): void {
   kagitYapragi(c, h, tohum);
 }
 
-/** Desen hücresi: istenen rengin motif parçası (kesik çizgi) ya da boyanmış hali. */
+/** Motif parçası yolu: taç yaprağı (karışık taç rengi) ya da sap + yaprak (Yeşil). (0,0) merkez, yarıçap r. */
+export function desenParcaYolu(c: Ctx, r: number, sap: boolean): void {
+  c.beginPath();
+  if (sap) {
+    c.moveTo(-r * 0.12, -r);
+    c.quadraticCurveTo(r * 0.05, 0, -r * 0.1, r);
+    c.lineTo(r * 0.14, r);
+    c.quadraticCurveTo(r * 0.3, 0, r * 0.12, -r);
+    c.closePath();
+    c.moveTo(r * 0.1, r * 0.3);
+    c.quadraticCurveTo(r * 0.75, r * 0.1, r * 0.95, -r * 0.55);
+    c.quadraticCurveTo(r * 0.35, -r * 0.35, r * 0.1, r * 0.3);
+    c.closePath();
+  } else {
+    c.moveTo(0, -r);
+    c.bezierCurveTo(r * 0.75, -r * 0.35, r * 0.9, r * 0.55, 0, r * 0.95);
+    c.bezierCurveTo(-r * 0.9, r * 0.55, -r * 0.75, -r * 0.35, 0, -r);
+    c.closePath();
+  }
+}
+
+/**
+ * Desen hücresi (§7.3): suyun altında istenen rengin karosu. Boyanmamışken
+ * silik renkli zemin + kesik çizgili kenar (damla ortayı örtse de köşeler
+ * okunur) ve ortada büyük motif parçası; boyanınca dolu, ebru halkalı,
+ * altın kenarlı karo.
+ */
 export function desenCiz(c: Ctx, h: number, renk: 3 | 5 | 6, boyali: boolean, palet: Palet, tohum: number): void {
   const [ana, acik, koyu] = renkUclu(renk, palet);
-  const sap = renk === 6;
-  const r = h * 0.4;
-  const parca = () => {
+  const s = h * 0.46;
+  const r = h * 0.14;
+  const karo = () => {
     c.beginPath();
-    if (sap) {
-      // Sap: hafif kavisli gövde + yaprak.
-      c.moveTo(-r * 0.12, -r);
-      c.quadraticCurveTo(r * 0.05, 0, -r * 0.1, r);
-      c.lineTo(r * 0.14, r);
-      c.quadraticCurveTo(r * 0.3, 0, r * 0.12, -r);
-      c.closePath();
-      c.moveTo(r * 0.1, r * 0.3);
-      c.quadraticCurveTo(r * 0.75, r * 0.1, r * 0.95, -r * 0.55);
-      c.quadraticCurveTo(r * 0.35, -r * 0.35, r * 0.1, r * 0.3);
-      c.closePath();
-    } else {
-      // Taç yaprağı: uca doğru sivrilen damla.
-      c.moveTo(0, -r);
-      c.bezierCurveTo(r * 0.75, -r * 0.35, r * 0.9, r * 0.55, 0, r * 0.95);
-      c.bezierCurveTo(-r * 0.9, r * 0.55, -r * 0.75, -r * 0.35, 0, -r);
-      c.closePath();
-    }
+    c.moveTo(-s + r, -s);
+    c.arcTo(s, -s, s, s, r);
+    c.arcTo(s, s, -s, s, r);
+    c.arcTo(-s, s, -s, -s, r);
+    c.arcTo(-s, -s, s, -s, r);
+    c.closePath();
   };
   if (boyali) {
-    const g = c.createRadialGradient(-r * 0.2, -r * 0.3, r * 0.05, 0, 0, r * 1.05);
+    const g = c.createRadialGradient(-s * 0.3, -s * 0.35, s * 0.05, 0, 0, s * 1.4);
     g.addColorStop(0, acik);
-    g.addColorStop(0.55, ana);
+    g.addColorStop(0.5, ana);
     g.addColorStop(1, koyu);
     c.fillStyle = g;
-    parca();
+    karo();
     c.fill();
-    // Ebru dokusu: parçanın içinde ince halkalar.
     c.save();
-    parca();
+    karo();
     c.clip();
-    c.lineWidth = Math.max(0.7, h * 0.018);
-    for (let k = 0; k < 3; k++) {
-      c.strokeStyle = k % 2 ? rgba(koyu, 0.35) : 'rgba(243,233,210,0.4)';
+    c.lineWidth = Math.max(0.8, h * 0.02);
+    for (let k = 0; k < 4; k++) {
+      c.strokeStyle = k % 2 ? rgba(koyu, 0.4) : 'rgba(243,233,210,0.45)';
       c.beginPath();
-      const ox = (karma01(tohum, k) - 0.5) * r * 0.4;
-      c.arc(ox, r * 0.1, r * (0.35 + k * 0.22), 0, TAU);
+      const ox = (karma01(tohum, k) - 0.5) * s * 0.5;
+      const oy = (karma01(tohum, k + 7) - 0.5) * s * 0.5;
+      c.arc(ox, oy, s * (0.35 + k * 0.28), 0, TAU);
       c.stroke();
     }
+    c.fillStyle = 'rgba(243,233,210,0.35)';
+    desenParcaYolu(c, h * 0.36, renk === 6);
+    c.fill();
     c.restore();
-    c.strokeStyle = rgba(PALET.altin, 0.9);
-    c.lineWidth = Math.max(1, h * 0.03);
-    parca();
+    c.strokeStyle = PALET.altin;
+    c.lineWidth = Math.max(1.2, h * 0.04);
+    karo();
     c.stroke();
   } else {
-    c.fillStyle = rgba(ana, 0.12);
-    parca();
+    c.fillStyle = rgba(ana, 0.2);
+    karo();
     c.fill();
-    c.setLineDash([h * 0.07, h * 0.05]);
-    c.strokeStyle = rgba(rgbHex(karistir(ana, '#FFFFFF', 0.25)), 0.6);
-    c.lineWidth = Math.max(1, h * 0.03);
-    parca();
+    c.fillStyle = rgba(ana, 0.3);
+    desenParcaYolu(c, h * 0.4, renk === 6);
+    c.fill();
+    c.setLineDash([h * 0.09, h * 0.06]);
+    c.strokeStyle = rgba(rgbHex(karistir(ana, '#FFFFFF', 0.35)), 0.85);
+    c.lineWidth = Math.max(1.2, h * 0.04);
+    karo();
     c.stroke();
     c.setLineDash([]);
   }
+}
+
+/** Desen rozeti (damlanın üstünde, sol üst köşe): istenen rengin motif parçası. */
+export function desenRozeti(c: Ctx, h: number, renk: 3 | 5 | 6, palet: Palet): void {
+  const [ana] = renkUclu(renk, palet);
+  const r = h * 0.13;
+  c.fillStyle = 'rgba(20,14,8,0.75)';
+  c.beginPath();
+  c.arc(0, 0, r * 1.25, 0, TAU);
+  c.fill();
+  c.fillStyle = ana;
+  desenParcaYolu(c, r, renk === 6);
+  c.fill();
+  c.strokeStyle = 'rgba(243,233,210,0.9)';
+  c.lineWidth = Math.max(0.8, h * 0.015);
+  c.beginPath();
+  c.arc(0, 0, r * 1.25, 0, TAU);
+  c.stroke();
+}
+
+/** Yağ halkası (damlanın üstünde): yanardöner ince halka, yağın damlayı sardığını gösterir. */
+export function yagHalkasi(c: Ctx, h: number): void {
+  const r = h * 0.46;
+  const ctx = c as Ctx & { createConicGradient?: (a: number, x: number, y: number) => CanvasGradient };
+  const renkler = ['#9FF0DA', '#F5E38A', '#F5A3C8', '#A3BCF8', '#9FF0DA'];
+  c.lineWidth = Math.max(1.5, h * 0.05);
+  if (typeof ctx.createConicGradient === 'function') {
+    const g = ctx.createConicGradient(0, 0, 0);
+    renkler.forEach((k, i) => g.addColorStop(i / (renkler.length - 1), k));
+    c.strokeStyle = g;
+  } else c.strokeStyle = renkler[0];
+  c.globalAlpha = 0.7;
+  c.beginPath();
+  for (let i = 0; i <= 40; i++) {
+    const a = (i / 40) * TAU;
+    const rr = r * (1 + 0.04 * Math.sin(a * 3) + 0.03 * Math.sin(a * 5 + 1));
+    if (i === 0) c.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    else c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  c.closePath();
+  c.stroke();
+  // Damlanın üstünde yağ parıltısı (yarım ay).
+  c.globalAlpha = 0.28;
+  c.fillStyle = '#E8FFF7';
+  c.beginPath();
+  c.ellipse(r * 0.25, -r * 0.42, r * 0.42, r * 0.12, 0.35, 0, TAU);
+  c.fill();
+  c.globalAlpha = 1;
 }
 
 /** Yağ filmi: yanardöner konik gradyan, alfa 0,25 (çizici döndürür). */
