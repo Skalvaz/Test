@@ -11,8 +11,8 @@
   "tohum": 900625316,
   "yardim": 3,
   "ozelEsikleri": [6, 9, 12],
-  "dogumAgirliklari": [6, 3, 3, 6],
-  "hedefler": [{ "tur": "topla", "renk": 0, "adet": 50 }, { "tur": "topla", "renk": 3, "adet": 62 }],
+  "dogumAgirliklari": [5, 3, 3, 5],
+  "hedefler": [{ "tur": "topla", "renk": 0, "adet": 48 }, { "tur": "topla", "renk": 3, "adet": 58 }],
   "duzen": [
     ". . . . . . . .",
     ". . . C C . . .",
@@ -39,6 +39,6 @@
   ],
   "kurallar": { "caprazSiniri": 1, "soguma": 1 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [9300, 10900],
+  "yildizEsikleri": [9100, 10600],
   "sonrakiTanitim": "Sıradaki: Kayalık!"
 }
