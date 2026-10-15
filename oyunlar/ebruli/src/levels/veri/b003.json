@@ -1,0 +1,87 @@
+{
+  "id": 3,
+  "ad": "Tarak",
+  "atolye": "uskudar",
+  "tur": "ogretim",
+  "w": 6,
+  "h": 8,
+  "hamle": 16,
+  "tohum": 1003,
+  "dogum": [
+    20,
+    20,
+    20,
+    11,
+    11,
+    11
+  ],
+  "garanti": 3,
+  "murekkep": false,
+  "hedefler": [
+    {
+      "tur": "topla",
+      "renk": 5,
+      "adet": 12
+    }
+  ],
+  "duzen": [
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . 1 . . .",
+    "5 5 4 5 . ."
+  ],
+  "botBandi": [
+    98,
+    100
+  ],
+  "acemiAlt": 95,
+  "yildizEsikleri": [
+    2600,
+    3800
+  ],
+  "taslak": true,
+  "zorunluIlkHamle": {
+    "kaynak": [
+      2,
+      6
+    ],
+    "hedef": [
+      2,
+      7
+    ]
+  },
+  "ipuclari": [
+    {
+      "tetik": "baslangic",
+      "metin": "Dört damla: TARAK doğar.",
+      "el": [
+        [
+          2,
+          6
+        ],
+        [
+          2,
+          7
+        ]
+      ]
+    },
+    {
+      "tetik": "ilkHamleSonrasi",
+      "metin": "Boşalan yere üstteki kayar."
+    },
+    {
+      "tetik": "ozelOlusunca",
+      "metin": "Tarağı bir komşuya sürükle."
+    },
+    {
+      "tetik": "bosta5sn",
+      "metin": "Parlayan damlayı komşusuna sürükle."
+    }
+  ],
+  "sonrakiTanitim": "Sıradaki: Kâğıda al!",
+  "elleEsik": true
+}
