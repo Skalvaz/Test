@@ -23,7 +23,7 @@ npm run dogrula             # bölüm doğrulama (bot bantları)
 npm run dogrula -- --bolum 11-15 --tohum 30          # --tohum: tohum SAYISI
 npm run dogrula -- --dosya deneme/ --tohum 30        # varyant JSON'ları (klasör ya da dosya)
 npm run kalibre -- --bolum 12                        # 500 tohum, yildizEsikleri yazar, hamle önerir
-npm run kalibre -- --bolum 6-19 --kural k24          # K24 eşikleri (+500 Acemi), "esikKurali": "k24" yazar
+npm run kalibre -- --bolum 6-25 --kural k24          # K24 eşikleri (+500 Acemi), "esikKurali": "k24" yazar
 npm run bot -- --dagilim --bolum 1-12 --tohum 100 --acemi-tohum 60   # Usta+Acemi kazanma, 1/2/3★, puan yüzdelikleri, K22 önerisi
 node scripts/shot.mjs <url> <png> [w] [h] [bekleme-ms] [js]   # telefon görünümü (390×844)
 npm run oynanis -- http://127.0.0.1:5185/ playtest-output [telefon|masaustu|kucuk]   # tam akış duman testi
@@ -58,11 +58,15 @@ Test kancası `window.__fitil`: `durum()`, `bolum()`, `ekran()`, `bolumAc(id)`,
   (`"elleEsik": true`; `kalibre` yazmaz, eşikler `--dagilim`'in "K22 önerisi"
   sütunundan). 6–25 K24 eşikli (`"esikKurali": "k24"`: 2★ = min(Usta p50,
   Acemi kazanç p50), 3★ = Usta p85; `kalibre` bayraklı bölümde Acemi'yi de
-  oynatıp yazar, yeni bölüme `--kural k24`). 6–19 Acemi botuna göre ayarlı
-  (Acemi ölçümü 60 tohum): tanıtımda Acemi ≥ %30 (Usta [92, 100]), zor ≥ %8
-  ve Usta [60, 85] (Bölüm 10: ≥ %15, [70, 85]), rahatlama ≥ %60. `dogrula` öğretim ve
-  tanıtımda Acemi'yi de ölçer (< %30 uyarı); zor/rahatlamada
-  `--acemi --acemi-tohum 60` ile ölç.
+  oynatıp yazar, yeni bölüme `--kural k24`). 6–25 Acemi botuna göre ayarlı
+  (Acemi ölçümü 60 tohum): tanıtımda Acemi ≥ %30 (Usta [92, 100]), normal
+  (22–24) ≥ %20 (Usta [85, 100]), zor ≥ %8 ve Usta [60, 85] (Bölüm 10: ≥ %15,
+  [70, 85]; 20, 25: [65, 85]), rahatlama ≥ %60. `dogrula` öğretim ve
+  tanıtımda Acemi'yi de ölçer (< %30 uyarı); normal/zor/rahatlamada
+  `--acemi --acemi-tohum 60` ile ölç. 26–30 henüz ayarlanmadı: bağımsız
+  denetimde (tohum 3000+, 120 tohum) Acemi 26 %55, 27 %13, 28 %11, 29 %32
+  (rahatlama), 30 %3 ve eşikleri §7.4'te (Acemi kazançlarının %69–100'ü 1★);
+  sıradaki uçurum 27'de.
 - Deneyerek bulundu: `soguma` Acemi'yi en çok cezalandıran düğmedir (ısı
   şansını siler); kaldırmak Acemi'yi 3–5 kat artırır ama reaksiyon p90'ı 14'ü
   aşar. Süre ≥ 60 sn ≈ Usta'nın ≥ 15 hamlede kazanması: hedef adedini çok
@@ -84,6 +88,24 @@ Test kancası `window.__fitil`: `durum()`, `bolum()`, `ekran()`, `bolumAc(id)`,
   kazançlarının ~%89'u 3★: K24'ün 3★ = Usta p85'i orada iyi oyunu ayırmaz).
   Varyant ölçümünde Acemi'yi 120+ tohumla ölç: hamle değişince oyunlar
   bağımsız örneklere döner, 60 tohumda ±%5 oynar.
+- Deneyerek bulundu (20–25): barut izini Acemi'nin yakamadığı kenar/köşe
+  döşemelerinden geçirmek yeni öğeyi hedefin merkezine koyar (b21). Bir
+  bölümde `soguma` 3, Acemi'yi %5–28'e düşürürken `caprazSiniri` 3 reaksiyon
+  p90'ını Acemi'yi ezmeden sınırlar. Acemi'de sağ–sol asimetrisi var (sağ
+  kenar hedefleri daha sık kalır; bot artefaktı). Zor bölümde Acemi p50'si
+  (K24 2★) için 60 tohum yetmez (~6 kazanç): 200+ tohum. b24, b25'te Acemi
+  kazanç p50'si Usta p50'sinden yüksek (geç kazanıp çok puan toplar).
+- Bağımsız denetim (tohum 3000+, 300 tohum): zor bölümde Usta oranı tohum
+  kümesine göre ±5 puan oynar (b25: 0–99 %78, 3000+ %87, 5000+ %86, 7000+
+  %79, kalibre 0–499 %80; birleşik ~%82, Acemi ~%10); sınırda karar vermeden 2–3
+  bağımsız küme birleştir. `caprazSiniri` mutlak puanda Usta'yı çok düşürür ama oranca
+  Acemi'yi daha çok düşürür (b25 `caprazSiniri` 2: Usta 86 → 63, Acemi 10 → 4;
+  b14 3 → 2: Acemi 49 → 35); zorda Usta–Acemi bağını gevşetmez. b25'te 4
+  yerine 3 fener: 24 hamlede Acemi +1,5 puan (Usta aynı), 25 hamlede Acemi
+  +6 ama Usta ~%86 (değiştirilmedi). b14 reaksiyon p90'ı tohum kümesine göre
+  13–15 (sınır 14). Acemi kazanç puanları dar dağılır (p40–p50 arası
+  150–300 puan): K24'ün 2★'ı (Acemi p50) bağımsız tohumlarda Acemi
+  kazançlarının %38–64'ünü en az 2★ yapar.
 
 Komutlar Windows PowerShell'de de çalışmalı: npm betiklerinde `VAR=1 komut`
 gibi POSIX sözdizimi kullanma.

@@ -26,7 +26,7 @@
   "korukKapasitesi": 20,
   "kurallar": { "caprazSiniri": 6 },
   "botBandi": [65, 85],
-  "yildizEsikleri": [7200, 9700],
+  "yildizEsikleri": [7100, 9700],
   "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Barut İzi!"
 }
