@@ -22,7 +22,10 @@ export function yildizKonumlari(esikler: readonly [number, number] | readonly nu
     k3 = Math.min(0.9, Math.max(k3, k2 + EN_AZ_ARALIK));
     if (k3 - k2 < EN_AZ_ARALIK) k2 = k3 - EN_AZ_ARALIK;
   }
-  return [0.07, Math.max(0.2, k2), k3];
+  // 1★ işareti (%7) ile 2★ arasında da en az aralık.
+  k2 = Math.max(0.07 + EN_AZ_ARALIK, k2);
+  k3 = Math.max(k3, Math.min(0.94, k2 + EN_AZ_ARALIK));
+  return [0.07, k2, k3];
 }
 
 /** Puanın çubuktaki dolgu oranı: [0, e1] → [0, k2], [e1, e2] → [k2, k3], [e2, tavan] → [k3, 1]. */
@@ -33,7 +36,7 @@ export function puanOrani(puan: number, esikler: readonly [number, number] | rea
   const [, k2, k3] = yildizKonumlari([e1, e2]);
   const p = Math.max(0, puan);
   const dogru = (x: number, x0: number, x1: number, y0: number, y1: number) => (x1 > x0 ? y0 + ((x - x0) / (x1 - x0)) * (y1 - y0) : y1);
-  if (p <= e1) return e1 > 0 ? dogru(p, 0, e1, 0, k2) : k2;
+  if (p <= e1) return e1 > 0 ? dogru(p, 0, e1, 0, k2) : 0;
   if (p <= e2) return dogru(p, e1, e2, k2, k3);
   return Math.min(1, dogru(p, e2, tavan, k3, 1));
 }

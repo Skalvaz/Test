@@ -351,7 +351,8 @@ export class Uygulama {
     const ilk = await Promise.race([p, zaman]);
     if (ilk) return ilk;
     const v = this.kaynakBolum(id);
-    if (!v || !meta.bolumAcikMi(this.kayit, id)) return p;
+    // Bu arada (ör. geç gelen bulut kaydıyla) kazanılmış görünüyorsa kart açılmaz.
+    if (!v || !meta.bolumAcikMi(this.kayit, id) || meta.bolumKazanildi(this.kayit, id)) return p;
     return { tur: 'bolum', id };
   }
 
@@ -861,6 +862,8 @@ export class Uygulama {
         if (this.haritaAcik) this.ui.haritaGizle();
         return true;
       },
+      /** Test: otomatik kaliteyi elle düşür/yükselt (ölçüm sonra yine karar verir). */
+      kaliteZorla: (dusuk: boolean) => this.cizici.dev.kaliteZorla(!!dusuk),
       hizli: (on: boolean) => {
         this.hizliKip = !!on;
         this.cizici.secenekAyarla({ hiz: on ? 6 : this.kayit.ayarlar.hiz });

@@ -363,7 +363,7 @@ export class HaritaEkrani {
     const altKap = k.parentElement?.querySelector<HTMLElement>('.f-harita-alt-kap');
     const bantAlt = k.clientHeight - (altKap?.offsetHeight ?? 160) - 10;
     const m = Math.floor((id - 1) / 5);
-    const altNokta = (id - 1) % 5 <= 1 ? bolgeUst(m) + BOLGE_H + 18 : dugumKonumu(Math.max(1, id - 1)).y + 56;
+    const altNokta = id === 1 ? baslangicKonumu().y + 74 + 48 : (id - 1) % 5 <= 1 ? bolgeUst(m) + BOLGE_H + 18 : dugumKonumu(Math.max(1, id - 1)).y + 56;
     const enCok = Math.max(0, k.scrollHeight - k.clientHeight);
     const ortada = ic.offsetTop + p.y * olcek - (ust + Math.max(0, bantAlt - ust) * 0.55);
     const altGorunur = ic.offsetTop + altNokta * olcek - bantAlt;

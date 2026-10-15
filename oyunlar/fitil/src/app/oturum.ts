@@ -133,6 +133,8 @@ export class Oturum {
   private balonSira = 0;
   /** Bölüm 1: 3 sn tereddütte el geri almayı gösterir (§15 Bölüm 1, adım 5). */
   private tereddutSure: ReturnType<typeof setTimeout> | null = null;
+  /** Ekranda açık başlangıç balonunun metni (Duraklat kapatır, Devam geri getirir). */
+  private acikBaslangic: string | null = null;
 
   constructor(private o: OturumOrtami) {}
 
@@ -188,6 +190,7 @@ export class Oturum {
     this.oynatilanSonraki = null;
     this.sonucYazildi = false;
     this.baslangicBekliyor = false;
+    this.acikBaslangic = null;
     ses.tahtaBoyutu(d0.w, d0.h);
     ui.hudKur(this.hudModeli());
     const alan = ui.tahtaAlani();
@@ -774,6 +777,9 @@ export class Oturum {
     this.o.yc.kipAyarla('kapali');
     if (this.bostaSure) clearTimeout(this.bostaSure);
     cizici.karart(0.5);
+    // Açık başlangıç balonu duraklat kartının arkasında yarım görünmesin; Devam'da geri gelir.
+    const geriBalon = this.hamleSayisi === 0 ? this.acikBaslangic : null;
+    ui.balonKapat();
     this.o.ses.arayuz('ac');
     let secim: 'devam' | 'yeniden' | 'ayarlar' | 'harita';
     for (;;) {
@@ -794,6 +800,12 @@ export class Oturum {
         cizici.dev.dondur(false);
         this.durum = 'oynuyor';
       } else this.durumAyarla('bekliyor');
+      if (geriBalon && this.hamleSayisi === 0 && this.ayar.ipuclari && !oynuyordu) {
+        this.acikBaslangic = geriBalon;
+        void this.balonGoster(geriBalon, 0).then(() => {
+          if (this.acikBaslangic === geriBalon) this.acikBaslangic = null;
+        });
+      }
       return;
     }
     // Yeniden başlamak ve haritaya dönmek kayıp sayılır (§14.5; Coşku bozulur) — hamle yapıldıysa.
@@ -1120,6 +1132,12 @@ export class Oturum {
       if (t.tetik !== tetik || !this.ipucuGosterilsinMi(tetik, i)) return;
       const sure = tetik === 'kisaYol' ? 2200 : 0;
       const p = this.balonGoster(t.metin, sure);
+      if (tetik === 'baslangic') {
+        this.acikBaslangic = t.metin;
+        void p.then(() => {
+          if (this.acikBaslangic === t.metin) this.acikBaslangic = null;
+        });
+      }
       if (tetik === 'kisaYol') {
         // "En az 3." kapanınca ana talimat geri gelsin (araya başka balon girmediyse).
         const sira = this.balonSira;
