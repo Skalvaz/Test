@@ -123,7 +123,10 @@ export class Uygulama {
     this.stage.onResize(() => this.oturum.yerlesimUygula());
     document.addEventListener('visibilitychange', () => this.ses.askiya(document.hidden));
     // İlk dokunuş sesi açar (iOS kilidi); sonraki dokunuşlar da bağlamı sürdürür.
-    host.addEventListener('pointerdown', () => this.sesAc(), { capture: true });
+    // Kullanıcı etkinleştirmesi sayılan olaylar: dokunmatikte pointerup, farede/klavyede basış.
+    host.addEventListener('pointerup', () => this.sesAc(), { capture: true });
+    host.addEventListener('pointerdown', (e) => e.pointerType === 'mouse' && this.sesAc(), { capture: true });
+    window.addEventListener('keydown', () => this.sesAc(), { capture: true });
     const dongu = (t: number) => {
       const dt = this.sonKare ? Math.min(100, t - this.sonKare) : 16;
       this.sonKare = t;
