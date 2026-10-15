@@ -5,14 +5,14 @@
   "tur": "normal",
   "w": 7,
   "h": 9,
-  "hamle": 22,
+  "hamle": 28,
   "tohum": 1018,
   "dogum": [20, 20, 20, 11, 11, 11],
   "garanti": 2,
   "murekkep": true,
   "hedefler": [
-    { "tur": "topla", "renk": 5, "adet": 12 },
-    { "tur": "topla", "renk": 6, "adet": 12 }
+    { "tur": "topla", "renk": 5, "adet": 22 },
+    { "tur": "topla", "renk": 6, "adet": 22 }
   ],
   "duzen": [
     ". . . . . . .",
