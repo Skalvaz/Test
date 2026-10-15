@@ -455,8 +455,12 @@ export class Arayuz {
     if (!el) return;
     const y = this.yer;
     const t = y.tahta;
-    const genislik = Math.min(t.w + 8, y.ekranW - 16, 460);
-    const sol = Math.max(8, Math.round(t.x + t.w / 2 - genislik / 2));
+    // Yatayda tahta dar (ör. 5 × 40 px): balon tahtanın solundaki boş alanı da kullanır,
+    // sağ panelin üstüne taşmaz; talimat kesilmesin.
+    const sag = y.kip === 'yatay' && y.panel ? y.panel.x - 8 : y.ekranW - 8;
+    const enAz = y.kip === 'yatay' ? 320 : 0;
+    const genislik = Math.min(Math.max(t.w + 8, enAz), sag - 8, 460);
+    const sol = Math.max(8, Math.min(sag - genislik, Math.round(t.x + t.w / 2 - genislik / 2)));
     el.style.left = `${sol}px`;
     el.style.width = `${genislik}px`;
     // Üst plakanın altıyla tahta arasında yer varsa tahtanın hemen üstüne, yoksa üst kenarına biner.

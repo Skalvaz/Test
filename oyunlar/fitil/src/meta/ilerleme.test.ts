@@ -513,6 +513,16 @@ describe('rozetler (§10.6)', () => {
     expect(rozetler(kaybet(k, 6, { kalanHamle: 0 }))).not.toContain('kilpayi');
   });
 
+  it('öğretim bölümlerinde (1–5) Tutumlu ve Üçüncü Kuşak kendiliğinden düşmez (§15)', () => {
+    const k = ilerlet(1);
+    expect(rozetler(kazan(k, 2, 1, { kalanHamle: 12 }))).not.toContain('tutumlu');
+    const r = kazan(yeniKayit(7), 1, 1, { oz: oz({ enCokNesil: 3 }) });
+    expect(rozetler(r)).toContain('ilkKivilcim');
+    expect(rozetler(r)).not.toContain('ucuncuKusak');
+    // Rekor kayıtta kalır ama sonraki oyun kendi özetinde 3. nesil yoksa rozet gelmez.
+    expect(rozetler(kaybet(r.kayit, 2))).not.toContain('ucuncuKusak');
+  });
+
   it('kayıttan: Halkacı (toplam 50), Üçüncü Kuşak, Otuzluk/ŞENLİK!, Defterci; bir kez verilir', () => {
     let k = ilerlet(5);
     let r = kaybet(k, 6, { oz: oz({ halka: 30 }) });

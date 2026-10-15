@@ -90,27 +90,40 @@
 @keyframes f-kivilcim { from { opacity: 1; } to { opacity: 0; transform: translate(var(--dx), var(--dy)); } }
 .f-slogan { font-size: clamp(16px, 4.6vw, 20px); font-weight: 700; color: #F2DEB8; text-align: center; text-shadow: 0 2px 6px rgba(0, 0, 0, .7); opacity: 0; transform: translateY(8px); transition: opacity .7s .1s, transform .7s .1s var(--cikis); }
 .f-hazir .f-slogan { opacity: 1; transform: none; }
+/* Eylem çağrısı: kasaba siluetinin üstündeki boş gökte, pirinç çerçeveli kapsül;
+   nabız parlaklıkla (soluklaşmadan) atar. Deniz/kasaba üstünde okunmuyordu. */
 .f-dokun {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(var(--guv-alt) + 8vh);
+  bottom: calc(var(--guv-alt) + 31vh);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 14px;
   font-size: 23px;
   font-weight: 800;
-  color: var(--krem);
-  text-shadow: 0 2px 0 rgba(0, 0, 0, .6), 0 0 22px rgba(255, 170, 70, .65);
+  color: #FFF6DE;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .6);
   opacity: 0;
   transition: opacity .6s .35s;
+  pointer-events: none;
 }
+.f-dokun > span:nth-child(2) {
+  padding: 9px 26px 11px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(74, 46, 26, .92), rgba(36, 22, 13, .92));
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, .3), 0 0 0 2px var(--pirinc), 0 0 0 3.5px #3A1E08, 0 0 26px rgba(255, 170, 70, .45), 0 8px 18px rgba(0, 0, 0, .5);
+}
+@media (max-height: 560px) { .f-dokun { bottom: calc(var(--guv-alt) + 12vh); } }
 .f-hazir .f-dokun { opacity: 1; }
 .f-hazir .f-dokun span:nth-child(2) { animation: f-dokun 1.6s ease-in-out 1s infinite; }
 .f-dokun-cizgi { width: 36px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--pirinc-acik)); }
 .f-dokun-cizgi:last-child { transform: scaleX(-1); }
-@keyframes f-dokun { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .65; transform: scale(.96); } }
+@keyframes f-dokun {
+  0%, 100% { transform: scale(1); box-shadow: inset 0 1px 0 rgba(255, 220, 160, .3), 0 0 0 2px var(--pirinc), 0 0 0 3.5px #3A1E08, 0 0 22px rgba(255, 170, 70, .35), 0 8px 18px rgba(0, 0, 0, .5); }
+  50% { transform: scale(1.05); box-shadow: inset 0 1px 0 rgba(255, 220, 160, .3), 0 0 0 2px #FFD15C, 0 0 0 3.5px #3A1E08, 0 0 38px rgba(255, 190, 90, .75), 0 8px 18px rgba(0, 0, 0, .5); }
+}
 
 /* ─────────────── Bölüm öncesi ─────────────── */
 .f-bo { display: flex; flex-direction: column; gap: 14px; }
@@ -262,8 +275,9 @@
 .f-kz-sonraki .f-yo-svg { width: 40px; height: 40px; }
 .f-kz-dugmeler { width: 100%; margin-top: 6px; }
 .f-kz-dugmeler > .f-dg-birincil { flex-grow: 1.25; }
-.f-kz-dugmeler .f-dg-ikincil { font-size: 16px; padding-left: 12px; padding-right: 12px; white-space: normal; line-height: 1.05; }
+.f-kz-dugmeler .f-dg-ikincil { font-size: 16px; padding-left: 12px; padding-right: 12px; white-space: nowrap; line-height: 1.05; }
 @media (max-width: 420px) { .f-kz-dugmeler .f-dg-ikincil .f-ikon { display: none; } }
+@media (max-width: 380px) { .f-kz-dugmeler .f-dg-ikincil { font-size: 15px; padding-left: 8px; padding-right: 8px; letter-spacing: -.01em; } }
 .f-usta-ipucu { display: flex; align-items: center; gap: 10px; padding: 5px 14px 5px 5px; border-radius: 999px; background: linear-gradient(180deg, #FFFBEF, #FFF3D6 55%, #F2DDB0); color: #3A1606; font-size: 15px; font-weight: 700; box-shadow: 0 0 0 2px #B8742E, 0 6px 14px rgba(0, 0, 0, .35); }
 .f-usta-ipucu .f-usta { width: 40px; height: 40px; }
 
@@ -394,7 +408,8 @@
   border: 0;
   border-radius: 12px;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 13px;
+  /* iOS Safari 16 px altındaki alana odaklanınca sayfayı yakınlaştırır (geri dönmez). */
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.35;
   color: var(--krem);
@@ -402,7 +417,7 @@
   box-shadow: inset 0 2px 5px rgba(0, 0, 0, .6), 0 0 0 1.5px rgba(217, 164, 65, .5);
   word-break: break-all;
   pointer-events: auto;
-  touch-action: auto;
+  touch-action: pan-y; /* çift dokunma yakınlaştırması yok, metin kaydırılabilir */
 }
 .f-kod:focus-visible { outline: 3px solid var(--krem); outline-offset: 2px; }
 .f-kod::placeholder { color: rgba(205, 184, 154, .6); }
@@ -660,6 +675,62 @@
   .f-serit { font-size: 21px; padding: 0 20px 4px; }
 }
 
+/* ─────────────── Yatay telefon / kısa ekran (§13.7) ───────────────
+   Yükseklik ≤ 480 px: kartlar genişler, içerik iki sütuna yayılır, düğmeler
+   yan yana; başlık ve yıldızlar küçülür. Böylece hedefler ve düğmeler
+   kaydırmadan görünür. */
+@media (max-height: 480px) and (min-width: 560px) {
+  .f-modal { padding-top: calc(var(--guv-ust) + 28px); padding-bottom: calc(var(--guv-alt) + 8px); }
+  .f-kart, .f-kart-genis { width: min(100%, 660px); }
+  .f-kart-ic { padding: 26px 16px 12px; }
+  .f-yapiskan-alt { margin: 0 -16px -12px; padding: 10px 16px 12px; }
+  .f-serit { height: 42px; font-size: 20px; }
+  .f-dg-buyuk { min-height: 50px; font-size: 19px; }
+  .f-dg { min-height: 46px; }
+  .f-baslik { font-size: 22px; }
+  .f-dg-sutun { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .f-dg-sutun > .f-dg-birincil:first-child { grid-column: 1 / -1; }
+  .f-dg-sutun > .f-not, .f-dg-sutun > .f-usta-eli { grid-column: 1 / -1; }
+
+  /* Bölüm öncesi: üst bilgi solda, hedefler sağda. */
+  .f-bo { display: grid; grid-template-columns: 1fr 1.15fr; gap: 8px 14px; align-items: center; }
+  .f-bo > * { grid-column: 1; }
+  .f-bo > .f-bo-hedefler, .f-bo > .f-bo-yeni, .f-bo > .f-bo-cosku { grid-column: 2; }
+  .f-bo > .f-bo-hedefler { grid-row: 1 / span 4; align-self: stretch; justify-content: center; }
+  .f-bo > .f-bo-dugmeler { grid-column: 1 / -1; }
+  .f-bo { grid-auto-flow: row dense; }
+  .f-bo-ad { font-size: 24px; margin-top: 0; }
+  .f-bo-rekor .f-kyildiz { width: 24px; height: 24px; }
+  .f-hedef-kutu-ikon { width: 52px; height: 52px; }
+  .f-hedef-kutu-ikon .f-resim { width: 40px; height: 40px; }
+
+  /* Kazandın: yıldız ve puan solda, ödüller ve duyurular sağda. */
+  .f-kz { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; align-items: center; justify-items: center; grid-auto-flow: row dense; }
+  .f-kz > * { grid-column: 1; }
+  .f-kz > .f-kz-oduller, .f-kz > .f-kz-sonraki, .f-kz > .f-kz-duyurular { grid-column: 2; }
+  .f-kz > .f-kz-dugmeler { grid-column: 1 / -1; justify-self: stretch; }
+  .f-kz-bolum .f-etiket { display: none; }
+  .f-kz-yildizlar { height: 70px; }
+  .f-kz-yildiz { width: 56px; height: 56px; }
+  .f-kz-yildiz.f-y1 { width: 68px; height: 68px; }
+  .f-kz-puan-sayi { font-size: 32px; }
+  .f-sandik { width: 96px; height: 84px; }
+  .f-sandik-svg { width: 80px; }
+  .f-kz-tablo .f-tablo { width: 60px; max-width: 60px; }
+
+  /* Kaybettin: ilerleme solda, düğmeler sağda. */
+  .f-kb { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; align-items: center; }
+  .f-kb > * { grid-column: 1; }
+  .f-kb > .f-kb-dugmeler { grid-column: 2; grid-row: 1 / span 3; display: flex; flex-direction: column; gap: 8px; }
+  .f-kb { grid-auto-flow: row dense; }
+  .f-kb-baslik { font-size: 22px; }
+
+  /* Duraklat: başlık ve hedefler solda, düğmeler sağda (2×2). */
+  .f-dr { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 8px 14px; align-items: center; }
+  .f-dr > .f-dr-bolum, .f-dr > .f-dr-hedefler { grid-column: 1; }
+  .f-dr > .f-dg-sutun { grid-column: 2; grid-row: 1 / span 2; }
+}
+
 /* ─────────────── P5 ekleri: bekleme kartı, eksen seçici ─────────────── */
 .f-bekleme-modal .f-kart { width: min(100%, 400px); }
 .f-bekleme { display: flex; flex-direction: column; gap: 18px; padding-top: 6px; }
@@ -708,4 +779,8 @@
 .f-sonraki-goster .f-kz-duyurular { opacity: 1; transform: none; }
 .f-kz-duyuru { display: flex; align-items: center; gap: 6px; padding: 4px 12px 4px 8px; border-radius: 999px; font-size: 14px; font-weight: 800; color: var(--krem); background: rgba(0, 0, 0, .3); box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, .5); }
 .f-kz-duyuru .f-ikon { width: 18px; height: 18px; color: var(--pirinc-acik); }
+/* "+N daha": kalan duyuruları açan çip (dokunma alanı 44 px'e genişletilmiş). */
+.f-kz-daha { position: relative; border: 0; font: inherit; font-size: 14px; font-weight: 800; color: var(--pirinc-acik); cursor: pointer; pointer-events: auto; }
+.f-kz-daha::after { content: ''; position: absolute; inset: -9px -4px; }
+.f-kz-daha-li { display: contents; }
 .f-az .f-kz-duyurular { transition: none; transform: none; }

@@ -118,7 +118,7 @@ export interface CiziciDev {
   yalnizGok(b: boolean): void;
 }
 
-export type OyunCiziciTam = OyunCizici & Required<Pick<OyunCizici, 'yonetmenZorla' | 'karart' | 'fisekDinle' | 'imlecGoster' | 'kutla'>> & { dev: CiziciDev } & Pick<OyunCiziciSinifi, 'onIsit'>;
+export type OyunCiziciTam = OyunCizici & Required<Pick<OyunCizici, 'yonetmenZorla' | 'karart' | 'fisekDinle' | 'imlecGoster' | 'kutla'>> & { dev: CiziciDev } & Pick<OyunCiziciSinifi, 'onIsit' | 'sov' | 'ufuk'>;
 
 export function oyunCiziciOlustur(stage: Stage, secenek?: CiziciKurulum): OyunCiziciTam {
   return new OyunCiziciSinifi(stage, secenek ?? {});
@@ -154,6 +154,8 @@ class OyunCiziciSinifi implements OyunCizici {
   private sonFark = 0;
   private yonetmenZorlaBayrak = false;
   private yalnizGokBayrak = false;
+  /** Mahalle şovu: tahta çizilmez, gök büyük (sov()). */
+  private sovAcik = false;
   private yukluEfekt: Efekt | null = null;
   /** Son patlayan içerik (hücre indeksine göre): yüklenme/kombinasyon için. */
   private sonIcerik = new Map<number, Icerik>();
@@ -247,6 +249,7 @@ class OyunCiziciSinifi implements OyunCizici {
 
   bolumKur(d: OyunDurumu, bolum: BolumVerisi): void {
     this.bitirAninda();
+    this.sovAcik = false;
     this.bolum = bolum;
     this.hedefler = d.hedefler.map((h) => h.hedef);
     const s = this.s;
@@ -334,6 +337,27 @@ class OyunCiziciSinifi implements OyunCizici {
   /** Tahta kararması (ekran üstü panel açılırken). */
   karart(alfa: number): void {
     this.karanlikHedef = Math.max(0, Math.min(0.85, alfa));
+  }
+
+  /**
+   * (P5 ek) Mahalle şovu (§10.1): tahta çizilmez; gök ve kasaba ekranın
+   * üçte ikisine açılır, havai fişekler bütün göğe yayılır. `false` ya da
+   * sonraki `bolumKur` normal yerleşime döndürür.
+   */
+  sov(acik: boolean): void {
+    if (this.sovAcik === acik) return;
+    this.sovAcik = acik;
+    const s = this.s;
+    if (acik && s.ekranW > 0) {
+      const H = s.ekranH;
+      this.gok.kur(s.ekranW, H, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, { x: 0, y: 0, w: s.ekranW, h: Math.round(H * 0.6) }, null, s.secenek.gokyuzu || undefined);
+      this.kaliteAtla = Math.max(this.kaliteAtla, 20);
+    } else this.yerlesimGerekli = true;
+  }
+
+  /** Şovda gök (ufuk) yüksekliği: fişekler bunun üstünde patlar. */
+  ufuk(): number {
+    return this.gok.ufuk;
   }
 
   /** Gökte havai fişek patladığında (ses için). */
@@ -1730,6 +1754,10 @@ class OyunCiziciSinifi implements OyunCizici {
     this.fisek.cizKovan(ctx);
     s.tEkran.uygula(ctx);
     if (this.yalnizGokBayrak) return;
+    if (this.sovAcik) {
+      this.ortuCiz(ctx);
+      return;
+    }
     // 2–3. Sandık ve tahta (kamera)
     s.tTahta.uygula(ctx);
     this.sandik.ciz(ctx);
@@ -1762,6 +1790,12 @@ class OyunCiziciSinifi implements OyunCizici {
     }
     this.yazi.ciz(ctx, s.tEkran, s.secenek.hareketiAzalt);
     this.yol.cizVinyet(ctx);
+    this.ortuCiz(ctx);
+  }
+
+  /** Kararma ve flaş örtüsü (en üstte). */
+  private ortuCiz(ctx: Ctx): void {
+    const s = this.s;
     if (this.karanlik > 0.004) {
       ctx.fillStyle = '#05030C';
       ctx.globalAlpha = this.karanlik;

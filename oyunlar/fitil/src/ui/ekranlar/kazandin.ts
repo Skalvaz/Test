@@ -43,6 +43,9 @@ export function kazandinEkrani(
     yildizSira,
     h('div', { s: 'f-kz-orta' }, puan, rekor),
   );
+  // Öğretim balonu (§15 Bölüm 5: "Yıldızlar puanından gelir.") yıldızların hemen altında:
+  // düğmelerin arkasında kalmasın, anlattığı şeyin yanında dursun.
+  if (vm.ipucu) icerik.appendChild(ustaIpucu(vm.ipucu));
 
   // ── Ödüller: sandık + tablo
   const oduller = h('div', { s: 'f-kz-oduller' });
@@ -79,21 +82,29 @@ export function kazandinEkrani(
     icerik.appendChild(oduller);
   }
 
-  if (vm.duyurular && vm.duyurular.length) {
-    icerik.appendChild(
-      h(
-        'ul',
-        { s: 'f-kz-duyurular', 'aria-label': 'Kazanılanlar' },
-        vm.duyurular.map((d) => h('li', { s: 'f-kz-duyuru' }, ikon(d.ikon as IkonAdi), h('span', { t: d.metin }))),
-      ),
-    );
-  }
+  // "Sıradaki: X!" duyurulardan önce: bir bölüm daha hissi düğmelerin üstünde görünsün.
   if (vm.sonrakiTanitim) {
     icerik.appendChild(
       h('div', { s: 'f-kz-sonraki' }, vm.sonrakiOge ? yeniOgeOnizleme(vm.sonrakiOge, b.palet) : null, h('span', { t: vm.sonrakiTanitim })),
     );
   }
-  if (vm.ipucu) icerik.appendChild(ustaIpucu(vm.ipucu));
+  if (vm.duyurular && vm.duyurular.length) {
+    // Çok duyuru kartı taşırır (küçük ekranda düğmelerin altında kalır): ilk birkaçı, gerisi "+N" çipinde.
+    const sinir = window.innerHeight <= 700 || window.innerWidth > window.innerHeight ? 1 : 3;
+    const liste = vm.duyurular;
+    const ogeler = liste.map((d) => h('li', { s: 'f-kz-duyuru' }, ikon(d.ikon as IkonAdi), h('span', { t: d.metin })));
+    const ul = h('ul', { s: 'f-kz-duyurular', 'aria-label': 'Kazanılanlar' }, liste.length > sinir + 1 ? ogeler.slice(0, sinir) : ogeler);
+    if (liste.length > sinir + 1) {
+      const fazla = ogeler.slice(sinir);
+      const dg = h('button', { s: 'f-kz-duyuru f-kz-daha', type: 'button', 'aria-label': `${fazla.length} kazanım daha` }, h('span', { t: `+${fazla.length} daha` }));
+      const li = h('li', { s: 'f-kz-daha-li' }, dg);
+      dg.addEventListener('click', () => {
+        li.replaceWith(...fazla);
+      });
+      ul.appendChild(li);
+    }
+    icerik.appendChild(ul);
+  }
 
   const bitir = (s: 'devam' | 'tekrar') => {
     if (!sec(s)) return;

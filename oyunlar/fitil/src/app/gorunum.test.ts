@@ -7,7 +7,7 @@ import { bolumuYukle } from '../core/index';
 import { bolumGetir } from '../levels/index';
 import * as meta from '../meta';
 import { ilerlet, kazan } from '../meta/_test/yardimci';
-import { bolumOncesiVM, gunlukVM, haritaVM, hedefVM, hudVM, kaybettinVM, mahalleOdulleri, nasilVM, odulDuyurulari, sandiklarVM, yeniOge } from './gorunum';
+import { bolumOncesiVM, coskuRoketi, gunlukVM, haritaVM, hedefVM, hudVM, kaybettinVM, mahalleOdulleri, nasilVM, odulDuyurulari, sandiklarVM, yeniOge } from './gorunum';
 
 describe('harita eşlemesi', () => {
   it('kazanılan → acik, sıradaki → simdiki, gerisi kilitli; 40 düğüm ve 8 Usta', () => {
@@ -103,6 +103,26 @@ describe('günlük ve nasıl oynanır', () => {
     expect(nasilVM(meta.yeniKayit(1)).acikEngeller).toEqual([]);
     expect(nasilVM(ilerlet(11)).acikEngeller).toEqual(expect.arrayContaining(['kafes', 'islak', 'doseme', 'fener']));
     expect(nasilVM(ilerlet(11)).acikEngeller).not.toContain('kaya');
+  });
+});
+
+describe('Coşku Serisi ve öğretim (§15)', () => {
+  it('hazır roket öğretim bölümünde verilmez, tanıtımda verilir; duyuru da buna uyar', () => {
+    const k = { ...ilerlet(3), cosku: 3 };
+    expect(coskuRoketi(bolumGetir(4)!, k)).toBe(false);
+    expect(coskuRoketi(bolumGetir(6)!, k)).toBe(true);
+    const o: meta.Odul = { tur: 'cosku', seri: 3, aktif: true, bozuldu: false };
+    expect(odulDuyurulari([o], { sonrakiBolum: 4 })).toEqual([]);
+    expect(odulDuyurulari([o], { sonrakiBolum: 6 })).toHaveLength(1);
+  });
+
+  it('duyurular önem sırasıyla: mahalle ve açılanlar rozetten önce', () => {
+    const d = odulDuyurulari([
+      { tur: 'rozet', rozet: 'ilkKivilcim', ad: 'İlk Kıvılcım' },
+      { tur: 'cosku', seri: 3, aktif: true, bozuldu: false },
+      { tur: 'gunlukAcildi' },
+    ]);
+    expect(d.map((x) => x.ikon)).toEqual(['takvim', 'roket', 'rozet']);
   });
 });
 

@@ -31,7 +31,7 @@ import type { Kayit } from '../meta';
 import { bolumGetir } from '../levels/index';
 import { acemiSec, ustaSec } from '../bot/index';
 import { tarihUzun } from '../ui/metinler';
-import { KAPSUL_RENKLERI } from './katalog';
+import { KAPSUL_RENKLERI, MAHALLELER } from './katalog';
 import type { YolCizici } from './sozlesme';
 import { Kayitci } from './kayitci';
 import { BolumUretici } from './uretim';
@@ -39,6 +39,7 @@ import { Oturum } from './oturum';
 import {
   ayarlarVM,
   bolumOncesiVM,
+  coskuRoketi,
   defterVM,
   fitilGorunumu,
   gokyuzuTemasi,
@@ -237,7 +238,7 @@ export class Uygulama {
       const id = veri.bolum ?? (ilk ? 1 : Math.min(40, meta.acikEnYuksek(this.kayit)));
       const v = this.kaynakBolum(id);
       if (!v) return;
-      const cosku = v.tur !== 'gunluk' && meta.coskuAktif(this.kayit);
+      const cosku = coskuRoketi(v, this.kayit);
       const d0 = bolumuYukle(v, meta.siradakiDenemeNo(this.kayit, v.id), { cosku });
       const a = this.ui.onYerlesim(d0.w, d0.h);
       await this.cizici.onIsit(d0, v, a.tahta, a.gokBandi, () => bekle(60), iptal);
@@ -420,7 +421,7 @@ export class Uygulama {
     let kart = !s.kartAtla;
     for (;;) {
       const deneme = meta.siradakiDenemeNo(this.kayit, v.id);
-      const cosku = v.tur !== 'gunluk' && meta.coskuAktif(this.kayit);
+      const cosku = coskuRoketi(v, this.kayit);
       let d0: OyunDurumu;
       try {
         d0 = bolumuYukle(v, deneme, { cosku });
@@ -455,34 +456,63 @@ export class Uygulama {
     if (mahalle === null) return;
     // Açılmamış güçlendirici meta'da toza döner: kart gerçekte verileni gösterir.
     const mahalleOdul = mahalleOdulleri(sonuc.oduller);
-    await this.mahalleSovu(v);
+    await this.mahalleSovu(v, mahalle);
     this.ekranAdi = 'defterKarti';
     await this.ui.defterKarti({ mahalle, oduller: mahalleOdul });
   }
 
-  /** Mahalle tamamlanınca 6 sn'lik şov: toplanan desenler gökte patlar; dokunuş atlar (§10.1). */
-  private async mahalleSovu(v: BolumVerisi): Promise<void> {
+  /**
+   * Mahalle tamamlanınca 6 sn'lik şov (§10.1): tahta kararıp çekilir, gök ve
+   * kasaba ekranın üçte ikisine açılır; toplanan desenler 3–5'li salvolarla,
+   * bütün göğe yayılarak patlar, sonda büyük final salvosu. Mahalle adı
+   * altın şeritte. Dokunuş atlar.
+   */
+  private async mahalleSovu(v: BolumVerisi, mahalle: number): Promise<void> {
     this.ekranAdi = 'mahalleSovu';
     const desenler = meta.desenDurumlari(this.kayit).filter((d) => d.tamam).map((d) => d.id as string);
     const liste = desenler.length ? desenler : takiliDesenler(this.kayit);
     this.ciziciAktif = true;
-    this.cizici.karart(0.15);
     let bitti = false;
     const atla = () => (bitti = true);
     this.host.addEventListener('pointerdown', atla, { once: true });
+    // Tahta kararır, sonra gök büyür ve aydınlanır.
+    this.cizici.karart(0.85);
+    await this.bekle(420);
+    this.cizici.sov(true);
+    this.cizici.karart(0);
+    const ad = MAHALLELER[mahalle]?.ad;
+    if (ad) void this.ui.bant(`${ad} tamamlandı!`, 'altin');
     const W = this.stage.width;
-    const H = this.stage.height;
+    const ufuk = Math.max(120, this.cizici.ufuk());
+    const sure = this.hizliKip ? 300 : 6000;
     const bas = simdi();
     let i = 0;
-    while (!bitti && simdi() - bas < (this.hizliKip ? 300 : 6000)) {
-      const x = W * (0.12 + 0.76 * ((i * 0.618) % 1));
-      const y = H * (0.12 + 0.3 * (((i * 0.382) % 1) * 0.9));
+    let salvo = 0;
+    const patlat = (x: number, y: number) => {
       this.cizici.havaiFisek(x, y, (i + v.mahalle) % 6, liste[i % liste.length]);
       i++;
-      await this.bekle(i < 4 ? 220 : 380);
+    };
+    while (!bitti && simdi() - bas < sure - 900) {
+      // Salvo: 3–5 fişek; yükseklik ve yatay konum altın oranla dağılır, aynı yere yığılmaz.
+      const n = 3 + (salvo % 3);
+      for (let k = 0; k < n && !bitti; k++) {
+        const u = (i * 0.618 + 0.13) % 1;
+        const w = (i * 0.382 + salvo * 0.17) % 1;
+        patlat(W * (0.1 + 0.8 * u), ufuk * (0.14 + 0.62 * w));
+        await this.bekle(90);
+      }
+      salvo++;
+      await this.bekle(520 + (salvo % 2) * 160);
+    }
+    // Final: ufuk boyunca geniş salvo.
+    if (!bitti) {
+      for (let k = 0; k < 7 && !bitti; k++) {
+        patlat(W * (0.08 + (0.84 * k) / 6), ufuk * (0.22 + 0.3 * ((k * 0.618) % 1)));
+        await this.bekle(60);
+      }
+      await this.bekle(this.hizliKip ? 50 : 900);
     }
     this.host.removeEventListener('pointerdown', atla);
-    this.cizici.karart(0);
   }
 
   // ─────────────────────────── Günlük ve Sonsuz ───────────────────────────
@@ -721,17 +751,32 @@ export class Uygulama {
     };
   }
 
+  /**
+   * Gece Tablosu tuvali. Önbellekteki tuval DOM'a hiç girmez; her gösterim
+   * için kopyası verilir: önbellekteki tuval kapanan kartın içinde kalırsa
+   * bütün kart ağacını (≈200 düğüm) bellekte tutuyordu (Kazandın → Tekrar oyna).
+   */
   private tablo(kod: string, mahalle: number, nadirlik: meta.Nadirlik, bolumId: number, gunluk?: number): HTMLCanvasElement | null {
     const anahtar = `${bolumId}:${nadirlik}:${kod}`;
-    const c = this.tabloOnbellek.get(anahtar);
-    if (c) return c;
-    const kayitlar = meta.tabloCoz(kod);
-    if (!kayitlar) return null;
-    try {
-      const t = tabloCiz(kayitlar, mahalle, nadirlik, 512, 768, meta.tabloTohumu(bolumId, gunluk));
+    let c = this.tabloOnbellek.get(anahtar) ?? null;
+    if (!c) {
+      const kayitlar = meta.tabloCoz(kod);
+      if (!kayitlar) return null;
+      try {
+        c = tabloCiz(kayitlar, mahalle, nadirlik, 512, 768, meta.tabloTohumu(bolumId, gunluk));
+      } catch {
+        return null;
+      }
       if (this.tabloOnbellek.size > 24) this.tabloOnbellek.clear();
-      this.tabloOnbellek.set(anahtar, t);
-      return t;
+      this.tabloOnbellek.set(anahtar, c);
+    }
+    try {
+      const kopya = document.createElement('canvas');
+      kopya.width = c.width;
+      kopya.height = c.height;
+      kopya.className = c.className;
+      kopya.getContext('2d')?.drawImage(c, 0, 0);
+      return kopya;
     } catch {
       return null;
     }

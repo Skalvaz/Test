@@ -779,7 +779,7 @@ export class Oturum {
     for (;;) {
       this.o.ekran('duraklat');
       // Coşku Serisi Günün Şenliği'nden etkilenmez (meta: günlük nötr).
-      const cosku = this.v.tur !== 'gunluk' && (meta.coskuAktif(this.kayit) || this.kayit.cosku > 0);
+      const cosku = this.v.tur !== 'gunluk' && this.v.tur !== 'ogretim' && (meta.coskuAktif(this.kayit) || this.kayit.cosku > 0);
       // Oynatma sürerken HUD olaylarla ilerlemiştir: kart hamle SONRASI durumu göstersin.
       secim = await ui.duraklat(duraklatVM(this.v, this.oynatilanSonraki ?? this.d, cosku));
       if (jeton !== this.jeton) return;
@@ -921,7 +921,7 @@ export class Oturum {
       sonrakiTanitim: ana ? (v.sonrakiTanitim ?? null) : null,
       sonrakiOge: ana ? yeniOge(v.id + 1) : null,
       ipucu,
-      duyurular: odulDuyurulari(sonuc.oduller),
+      duyurular: odulDuyurulari(sonuc.oduller, { sonrakiBolum: ana ? v.id + 1 : undefined }),
     };
   }
 
