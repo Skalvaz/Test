@@ -194,7 +194,7 @@ export class Oturum {
     ses.tahtaBoyutu(d0.w, d0.h);
     ui.hudKur(this.hudModeli());
     const alan = ui.tahtaAlani();
-    cizici.alanAyarla(alan.tahta, alan.gokBandi);
+    cizici.alanAyarla(alan.tahta, alan.gokBandi, alan.gorunurGok);
     cizici.bolumKur(d0, v);
     cizici.karart(0);
     cizici.hizlandir(1);

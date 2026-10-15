@@ -227,6 +227,12 @@ export class Efektler {
     for (const e of this.liste) if (e.aktif && e.ekran && e.gecikme <= 0) this.ciz1(c, e);
   }
 
+  /** (Fişek ek) Çizilecek ekran uzayı efekti var mı (fişek perdesi için). */
+  ekranVar(): boolean {
+    for (const e of this.liste) if (e.aktif && e.ekran && e.gecikme <= 0) return true;
+    return false;
+  }
+
   private ciz1(c: Ctx, e: Efekt): void {
     const s = this.s;
     const sp = s.parilti;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { yerlesimHesapla, yatayMi, dikeyHucre } from './yerlesim';
+import { yerlesimHesapla, yatayMi, dikeyHucre, gorunurGokHesapla, hudAltTahmini, HUD_PLAKA, PANEL_PAY } from './yerlesim';
 import { paylasimMetni, hamleSimgesi } from './paylasim';
 import { kalanMetni, hedefMetni, yuzde, sayi, tarihKisa, tarihUzun, bolumBasligi, esikBilgisi, kayipBasligi, sonrakiSeriBasamagi, gorevMetni } from './metinler';
 import type { HedefVM } from './tipler';
@@ -60,6 +60,50 @@ describe('yerleşim (§13.7)', () => {
     expect(y.tahta.x + y.tahta.w).toBeLessThan(y.panel!.x);
     const k = yerlesimHesapla(1280, 600, 8, 10);
     expect(k.hucre).toBe(Math.floor((600 - 160) / 10));
+  });
+});
+
+describe('görünür gök (fişek ek): HUD altı → tahta üstü', () => {
+  it('claude.ai görüntüleyicisi 390×700: HUD 77 px, şerit tahtanın üstüne kadar', () => {
+    const y = yerlesimHesapla(390, 700, 7, 9);
+    expect(y.hudDar).toBe(false);
+    // 8 pay + 31 plaka ortası + 33 madalyon yarıçapı + 5 halka
+    expect(y.hudAlt).toBe(HUD_PLAKA.pay + HUD_PLAKA.boy / 2 + HUD_PLAKA.madalyon / 2 + HUD_PLAKA.halka);
+    expect(y.gorunurGok).toEqual({ x: 0, y: 77, w: 390, h: y.tahta.y - 77 });
+    // HUD bandı gök bandının içinde: fişeklerin bir kısmı HUD'un arkasına düşer.
+    expect(y.hudAlt).toBeLessThan(y.gokBandi.h);
+  });
+
+  it('küçük ekranda (375×600) HUD dar kip: plaka 58, madalyon 60', () => {
+    const y = yerlesimHesapla(375, 600, 7, 9);
+    expect(y.hudDar).toBe(true);
+    expect(y.hudAlt).toBe(hudAltTahmini(0, true));
+    expect(y.hudAlt).toBe(5 + 29 + 30 + 5);
+    expect(y.gorunurGok.h).toBeGreaterThan(30);
+  });
+
+  it('üst bant %14 iken de dar kip; güvenli alan HUD\'u aşağı iter', () => {
+    expect(yerlesimHesapla(360, 640, 8, 10).hudDar).toBe(true);
+    const y = yerlesimHesapla(390, 844, 7, 9, { ust: 47, sag: 0, alt: 34, sol: 0 });
+    expect(y.hudAlt).toBe(47 + 77);
+    expect(y.gorunurGok.y).toBe(47 + 77);
+    expect(y.gorunurGok.y + y.gorunurGok.h).toBe(y.tahta.y);
+  });
+
+  it('ölçülen HUD alt kenarı tahminin yerine geçer', () => {
+    const y = yerlesimHesapla(390, 700, 7, 9);
+    const g = gorunurGokHesapla(y, 81.4);
+    expect(g.y).toBe(81);
+    expect(g.h).toBe(y.tahta.y - 81);
+  });
+
+  it('yatay: üstte HUD yok; görünür gök sağ panelin solunda kalır', () => {
+    const y = yerlesimHesapla(1280, 800, 7, 9);
+    expect(y.hudAlt).toBe(0);
+    expect(y.gorunurGok.x).toBe(0);
+    expect(y.gorunurGok.y).toBe(0);
+    expect(y.gorunurGok.x + y.gorunurGok.w).toBe(y.panel!.x - PANEL_PAY);
+    expect(y.gorunurGok.h).toBe(y.tahta.y);
   });
 });
 

@@ -58,6 +58,12 @@ export class Baglam {
   readonly hudKatmani: HTMLElement;
   readonly ustKatman: HTMLElement;
   readonly modalKatmani: HTMLElement;
+  /**
+   * (Fişek ek) HUD'un üstünde, balon/bant/modal katmanlarının altında:
+   * çizicinin fişek tuvali buraya eklenir (HUD'un arkasında kalan gök
+   * fişekleri). Yalnız HUD açıkken görünür (`f-acik`).
+   */
+  readonly fisekKatmani: HTMLElement;
   readonly bildirimKatmani: HTMLElement;
   readonly canli: HTMLElement;
   palet: Palet = 'standart';
@@ -80,11 +86,12 @@ export class Baglam {
     this.kok = h('div', { s: 'f-kok', 'data-fitil-arayuz': '' });
     this.ekranKatmani = h('div', { s: 'f-ekran-katman' });
     this.hudKatmani = h('div', { s: 'f-hud-katman f-hud' });
+    this.fisekKatmani = h('div', { s: 'f-fisek-katman', 'aria-hidden': 'true' });
     this.ustKatman = h('div', { s: 'f-ust-katman' });
     this.modalKatmani = h('div', { s: 'f-modal-katman' });
     this.bildirimKatmani = h('div', { s: 'f-bildirim-katman' });
     this.canli = h('div', { s: 'f-gizli', 'aria-live': 'polite', role: 'status' });
-    this.kok.append(this.ekranKatmani, this.hudKatmani, this.ustKatman, this.modalKatmani, this.bildirimKatmani, this.canli);
+    this.kok.append(this.ekranKatmani, this.hudKatmani, this.fisekKatmani, this.ustKatman, this.modalKatmani, this.bildirimKatmani, this.canli);
     s.kok.appendChild(this.kok);
     this.tusDinleyici = (e) => this.tusa(e);
     document.addEventListener('keydown', this.tusDinleyici);

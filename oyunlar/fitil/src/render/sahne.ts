@@ -36,6 +36,11 @@ export class Sahne {
   /** Tahtaya ayrılan alan ve gök bandı. */
   alan: Dikdortgen = { x: 0, y: 0, w: 1, h: 1 };
   gokBandi: Dikdortgen = { x: 0, y: 0, w: 1, h: 1 };
+  /**
+   * (Fişek ek) Görünür gök: HUD'un alt kenarı ile tahtanın üstü arası (yatayda
+   * sağ panelin solu). Gök fişekleri burada patlar; y < gorunurGok.y HUD'un arkası.
+   */
+  gorunurGok: Dikdortgen = { x: 0, y: 0, w: 1, h: 1 };
   /** Çerçeve kalınlığı (px). */
   cerceve = 14;
 

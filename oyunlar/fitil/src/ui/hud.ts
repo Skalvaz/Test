@@ -15,7 +15,7 @@ import { ikon, hedefIkonu, guclendiriciIsaretleme, alevSvg } from './ikonlar';
 import { M, GUCLENDIRICI_ADLARI, hedefKalan, hedefEtiketi, sayi, bolumBasligi } from './metinler';
 import type { Baglam } from './cekirdek';
 import type { HudVM, HedefVM, GuclendiriciVM } from './tipler';
-import type { Yerlesim } from './yerlesim';
+import { HUD_PLAKA, type Yerlesim } from './yerlesim';
 import type { GuclendiriciId } from '../app/katalog';
 import { puanOrani, yildizKonumlari } from './puanCubugu';
 
@@ -68,6 +68,9 @@ export class Hud {
   kur(vm: HudVM, yer: Yerlesim): void {
     this.vm = vm;
     this.yer = yer;
+    // Fişek katmanı (HUD'un üstünde) yalnız HUD açıkken görünür: harita ve
+    // ekranlarda çizicinin son karesi takılı kalmasın.
+    this.b.fisekKatmani.classList.add('f-acik');
     this.gosterilenPuan = vm.puan;
     this.oncekiKorukDolu = vm.korukKapasite > 0 && vm.korukDolum >= vm.korukKapasite;
     this.ciz();
@@ -84,12 +87,40 @@ export class Hud {
 
   gizle(): void {
     this.puanSayimIptal?.();
+    this.b.fisekKatmani.classList.remove('f-acik');
     if (!this.kok) return;
     const k = this.kok;
     k.classList.add('f-hud-cikis');
     setTimeout(() => k.remove(), 200);
     this.kok = null;
     this.secimEl = null;
+  }
+
+  /**
+   * (Fişek ek) Dikey HUD'un gerçek alt kenarı: plaka ve hamle madalyonunun
+   * (dış halkasıyla) altı, arayüz köküne göre CSS px. Düzen ölçüsüdür
+   * (offsetTop): giriş animasyonunun dönüşümünden etkilenmez. HUD yoksa,
+   * yataysa ya da ölçülemiyorsa (gizli, test ortamı) null.
+   */
+  altKenar(): number | null {
+    const k = this.kok;
+    if (!k || this.yer?.kip !== 'dikey') return null;
+    const plaka = k.querySelector<HTMLElement>('.f-plaka');
+    if (!plaka || !plaka.offsetHeight) return null;
+    let alt = this.kokeGoreY(plaka) + plaka.offsetHeight;
+    const m = this.hamleKutu;
+    if (m && m.offsetHeight) alt = Math.max(alt, this.kokeGoreY(m) + m.offsetHeight + HUD_PLAKA.halka);
+    return Number.isFinite(alt) && alt > 0 ? Math.round(alt) : null;
+  }
+
+  private kokeGoreY(el: HTMLElement): number {
+    let y = 0;
+    let e: Element | null = el;
+    while (e instanceof HTMLElement && e !== this.b.kok) {
+      y += e.offsetTop;
+      e = e.offsetParent;
+    }
+    return y;
   }
 
   // ───────────────────── Kurulum ─────────────────────
@@ -155,7 +186,7 @@ export class Hud {
     if (yer.kip === 'dikey') {
       const ust = k.querySelector<HTMLElement>('.f-hud-ust')!;
       ust.style.height = `${yer.ustBant.h}px`;
-      k.classList.toggle('f-dar', yer.ustOran < 0.2 || yer.ekranH < 700);
+      k.classList.toggle('f-dar', yer.hudDar);
       const alt = k.querySelector<HTMLElement>('.f-hud-alt')!;
       alt.style.top = `${yer.altBant!.y}px`;
       alt.style.height = `${yer.altBant!.h}px`;

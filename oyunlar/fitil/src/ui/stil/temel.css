@@ -71,11 +71,15 @@
 .f-resim { display: block; flex: none; overflow: visible; }
 
 /* ─────────────── Katmanlar ─────────────── */
-.f-ekran-katman, .f-hud, .f-ust-katman, .f-modal-katman, .f-bildirim-katman {
+.f-ekran-katman, .f-hud, .f-fisek-katman, .f-ust-katman, .f-modal-katman, .f-bildirim-katman {
   position: absolute; inset: 0; pointer-events: none;
 }
 .f-ekran-katman { z-index: 10; }
 .f-hud { z-index: 20; }
+/* Gök fişekleri HUD'un üstünde; balon, bant ve modal ekranlar (perdeleriyle) fişeklerin üstünde. */
+.f-fisek-katman { z-index: 25; display: none; overflow: hidden; }
+.f-fisek-katman.f-acik { display: block; }
+.f-fisek-katman canvas { position: absolute; left: 0; top: 0; display: block; pointer-events: none; }
 .f-ust-katman { z-index: 30; }
 .f-modal-katman { z-index: 40; }
 .f-bildirim-katman { z-index: 60; }

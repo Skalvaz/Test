@@ -104,6 +104,16 @@ export class ParcacikHavuzu {
     for (let i = 0; i < HAVUZ; i++) if (this.aktif[i]) this.sil(i);
   }
 
+  /**
+   * (Fişek ek) Bayrağı `maske` ile kesişen, `yMax`'ın üstünde (y < yMax)
+   * etkin parçacık var mı. Fişek perdesi yalnız içerik varken çizilsin diye.
+   */
+  katmanVar(maske: number, yMax: number): boolean {
+    if (this.sayi === 0) return false;
+    for (let i = 0; i < HAVUZ; i++) if (this.aktif[i] && this.bayrak[i] & maske && this.y[i] < yMax) return true;
+    return false;
+  }
+
   guncelle(dtMs: number): void {
     if (dtMs <= 0 || this.sayi === 0) return;
     const t = dtMs / 1000;

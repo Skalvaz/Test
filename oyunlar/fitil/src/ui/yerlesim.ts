@@ -9,6 +9,11 @@
  *
  * Masaüstü / yatay (en/boy > 0,75): sağda 320 px panel, tahta panelin
  * solundaki alanda ortalanır, hucre = min(64, (Y − 160)/h).
+ *
+ * Görünür gök (fişek ek): dikeyde üst bandın büyük kısmını DOM HUD plakası
+ * kaplar; gök fişekleri HUD'un alt kenarı ile tahtanın üstü arasındaki
+ * şeritte patlar (`gorunurGok`). HUD'un alt kenarı burada CSS ölçülerinden
+ * tahmin edilir (`hudAltTahmini`); arayüz HUD kurulunca gerçeğini ölçer.
  */
 import type { Dikdortgen } from '../app/sozlesme';
 
@@ -38,6 +43,19 @@ export interface Yerlesim {
   tahtaAlani: Dikdortgen;
   /** Gökyüzü bandı: göğe uçan kıvılcımlar ve havai fişekler. */
   gokBandi: Dikdortgen;
+  /**
+   * (Fişek ek) Dikey: HUD plakası dar kipte mi (`f-dar`: üst bant %14 ya da
+   * ekran < 700 px). Yatay: false.
+   */
+  hudDar: boolean;
+  /** (Fişek ek) Dikey: DOM HUD'un (plaka + hamle madalyonu) tahmini alt kenarı. Yatay: güvenli alan üstü. */
+  hudAlt: number;
+  /**
+   * (Fişek ek) Görünür gök: HUD'un alt kenarından tahtanın üst kenarına
+   * (yatayda sağ panelin solu). Gök fişekleri burada patlar; üstünde kalan
+   * kısım (y < gorunurGok.y) HUD'un arkasıdır.
+   */
+  gorunurGok: Dikdortgen;
   /** §13.7 hücre boyu (CSS px). */
   hucre: number;
   /** Tahtanın kendisi: alan içinde ortalanmış hücre·w × hücre·h. */
@@ -51,6 +69,38 @@ export const HUCRE_EN_KUCUK = 40;
 export const UST_ORAN = 0.2;
 export const UST_ORAN_DAR = 0.14;
 export const ALT_SINIR = 0.86;
+
+/**
+ * HUD plakası ölçüleri (src/ui/stil/hud.css ile aynı tutulmalı): üst pay,
+ * plaka yüksekliği, hamle madalyonu çapı ve dış halkası (box-shadow 5 px).
+ */
+export const HUD_PLAKA = { pay: 8, boy: 62, madalyon: 66, darPay: 5, darBoy: 58, darMadalyon: 60, halka: 5 } as const;
+
+/** Dikey HUD dar kipte mi (hud.css `.f-dar`). */
+export function hudDarMi(ustOran: number, ekranH: number): boolean {
+  return ustOran < UST_ORAN || ekranH < 700;
+}
+
+/** Dikey HUD'un alt kenarı (güvenli alan üstü + pay + plaka ortası + madalyon yarıçapı + halka). */
+export function hudAltTahmini(guvenliUst: number, dar: boolean): number {
+  const P = HUD_PLAKA;
+  return dar ? guvenliUst + P.darPay + P.darBoy / 2 + P.darMadalyon / 2 + P.halka : guvenliUst + P.pay + P.boy / 2 + P.madalyon / 2 + P.halka;
+}
+
+/**
+ * Görünür gök şeridi: `hudAlt` (ölçülen ya da tahmini) ile tahtanın üstü
+ * arası. Yatayda üstte HUD yok; sağ panelin solundaki alan.
+ */
+export function gorunurGokHesapla(y: Pick<Yerlesim, 'kip' | 'ekranW' | 'guvenli' | 'tahta' | 'panel' | 'hudAlt'>, hudAlt: number | null = null): Dikdortgen {
+  if (y.kip === 'yatay') {
+    const x = y.guvenli.sol;
+    const sag = y.panel ? y.panel.x - PANEL_PAY : y.ekranW - y.guvenli.sag;
+    const ust = y.guvenli.ust;
+    return { x, y: ust, w: Math.max(1, sag - x), h: Math.max(0, y.tahta.y - ust) };
+  }
+  const ust = Math.round(hudAlt ?? y.hudAlt);
+  return { x: 0, y: ust, w: y.ekranW, h: Math.max(0, y.tahta.y - ust) };
+}
 
 /** GDD §13.7: en/boy oranı > 0,75 ise masaüstü/yatay yerleşim. */
 export function yatayMi(ekranW: number, ekranH: number): boolean {
@@ -88,6 +138,8 @@ export function yerlesimHesapla(ekranW: number, ekranH: number, tahtaW: number, 
       w: tW,
       h: tH,
     };
+    const hudDar = hudDarMi(ustOran, ekranH);
+    const hudAlt = hudAltTahmini(guvenli.ust, hudDar);
     return {
       kip: 'dikey',
       ekranW,
@@ -99,6 +151,9 @@ export function yerlesimHesapla(ekranW: number, ekranH: number, tahtaW: number, 
       panel: null,
       tahtaAlani,
       gokBandi: { x: 0, y: 0, w: ekranW, h: ustSon },
+      hudDar,
+      hudAlt,
+      gorunurGok: gorunurGokHesapla({ kip: 'dikey', ekranW, guvenli, tahta, panel: null, hudAlt }),
       hucre,
       tahta,
     };
@@ -138,6 +193,9 @@ export function yerlesimHesapla(ekranW: number, ekranH: number, tahtaW: number, 
     panel,
     tahtaAlani,
     gokBandi: { x: 0, y: 0, w: ekranW, h: Math.max(ustSon, tahta.y) },
+    hudDar: false,
+    hudAlt: guvenli.ust,
+    gorunurGok: gorunurGokHesapla({ kip: 'yatay', ekranW, guvenli, tahta, panel, hudAlt: guvenli.ust }),
     hucre,
     tahta,
   };

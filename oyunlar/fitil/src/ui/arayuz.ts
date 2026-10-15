@@ -6,7 +6,8 @@
  *   const s = await ui.harita(haritaVm);              // { tur: 'bolum', id } …
  *   if ((await ui.bolumOncesi(vm)) === 'basla') {
  *     ui.hudKur(hudVm);                               // harita gizlenir
- *     const { tahta, gokBandi } = ui.tahtaAlani();    // → cizici.alanAyarla(tahta, gokBandi)
+ *     const { tahta, gokBandi, gorunurGok } = ui.tahtaAlani();    // → cizici.alanAyarla(tahta, gokBandi, gorunurGok)
+ *     cizici.fisekKatmani(ui.fisekKatmani());         // HUD'un üstündeki fişek tuvali
  *     cizici.hedefKonumlari(ui.hedefKartKonumlari());
  *     ui.yerlesimDinle(() => { … yeniden uygula … });
  *   }
@@ -24,7 +25,7 @@ import { h, kare } from './dom';
 import { tanimlariKur, ustaSvg } from './ikonlar';
 import { Baglam } from './cekirdek';
 import { Hud } from './hud';
-import { yerlesimHesapla, SIFIR_KENAR, type Kenarlar, type Yerlesim } from './yerlesim';
+import { gorunurGokHesapla, yerlesimHesapla, SIFIR_KENAR, type Kenarlar, type Yerlesim } from './yerlesim';
 import { HaritaEkrani } from './harita/harita';
 import { acilisEkrani } from './ekranlar/acilis';
 import { bolumOncesiEkrani } from './ekranlar/bolumOncesi';
@@ -203,9 +204,22 @@ export class Arayuz {
    * (P5 ek) HUD'u kurmadan, verilen tahta boyutu için `tahtaAlani()` ile aynı
    * sonuç: açılış ekranı beklerken bölümün pişirmeleri önceden yapılır.
    */
-  onYerlesim(tahtaW: number, tahtaH: number): { tahta: Dikdortgen; gokBandi: Dikdortgen } {
+  onYerlesim(tahtaW: number, tahtaH: number): { tahta: Dikdortgen; gokBandi: Dikdortgen; gorunurGok: Dikdortgen } {
     const y = this.olc(tahtaW, tahtaH);
-    return { tahta: { ...y.tahtaAlani }, gokBandi: { ...y.gokBandi } };
+    return { tahta: { ...y.tahtaAlani }, gokBandi: { ...y.gokBandi }, gorunurGok: { ...y.gorunurGok } };
+  }
+
+  /**
+   * (Fişek ek) Görünür gök şeridi: HUD kuruluysa plakanın ölçülen alt
+   * kenarından (yoksa CSS ölçülerinden tahmin) tahtanın üstüne.
+   */
+  private gorunurGok(y: Yerlesim): Dikdortgen {
+    return gorunurGokHesapla(y, y.kip === 'dikey' ? this.hud.altKenar() : null);
+  }
+
+  /** (Fişek ek) Çizicinin fişek tuvalinin ekleneceği katman (HUD'un üstü, balon/modal altı). */
+  fisekKatmani(): HTMLElement {
+    return this.b.fisekKatmani;
   }
 
   /** Oyun ekranında bildirimin üst konumu: HUD ile tahta arasındaki gök bandı (tahta satırlarını örtmesin). */
@@ -237,10 +251,11 @@ export class Arayuz {
   /**
    * HUD'lar yerleştikten sonra tuvalde tahtaya kalan alan ve gökyüzü bandı
    * (§13.7). `tahta` alanının içinde tahta `yerlesim().tahta` olarak ortalanır.
+   * `gorunurGok`: HUD'un ölçülen alt kenarı ile tahta arası (gök fişekleri).
    */
-  tahtaAlani(): { tahta: Dikdortgen; gokBandi: Dikdortgen } {
+  tahtaAlani(): { tahta: Dikdortgen; gokBandi: Dikdortgen; gorunurGok: Dikdortgen } {
     const y = this.yerlesim();
-    return { tahta: { ...y.tahtaAlani }, gokBandi: { ...y.gokBandi } };
+    return { tahta: { ...y.tahtaAlani }, gokBandi: { ...y.gokBandi }, gorunurGok: this.gorunurGok(y) };
   }
 
   /** Ekran boyutu/kip değişince çağrılır. Dönen işlev aboneliği kaldırır. */

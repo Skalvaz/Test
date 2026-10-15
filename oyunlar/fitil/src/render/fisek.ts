@@ -159,6 +159,13 @@ export class FisekSistemi {
     c.globalCompositeOperation = 'source-over';
   }
 
+  /** (Fişek ek) Yükselen kovan ya da sönen gök ışığı var mı. */
+  aktifMi(): boolean {
+    for (const k of this.kovanlar) if (k.aktif) return true;
+    for (const g of this.isiklar) if (g.aktif) return true;
+    return false;
+  }
+
   temizle(): void {
     for (const k of this.kovanlar) k.aktif = false;
     for (const g of this.isiklar) g.aktif = false;

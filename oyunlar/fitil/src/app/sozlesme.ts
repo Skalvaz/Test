@@ -81,8 +81,13 @@ export interface OyunCizici {
   hayaletFitil(yol: readonly Konum[] | null, halka: boolean): void;
   /** Tahtanın ekran geometrisi (girdi isabet testi, arayüz yerleşimi). */
   geometri(): TahtaGeometrisi;
-  /** Tahtaya ayrılan alan (HUD'lar çıkarılmış). Gökyüzü/kasaba tüm tuvali kaplar. */
-  alanAyarla(r: Dikdortgen, gokBandi: Dikdortgen): void;
+  /**
+   * Tahtaya ayrılan alan (HUD'lar çıkarılmış). Gökyüzü/kasaba tüm tuvali kaplar.
+   * (Fişek ek) `gorunurGok`: HUD'un alt kenarı ile tahtanın üstü arası (yatayda
+   * sağ panelin solu); gök fişekleri burada patlar, üstünde kalan kısım
+   * (y < gorunurGok.y) DOM HUD'un arkasıdır. Verilmezse `gokBandi`.
+   */
+  alanAyarla(r: Dikdortgen, gokBandi: Dikdortgen, gorunurGok?: Dikdortgen): void;
   /** Hedef kartlarının ekran konumları: patlayan kapsülden kıvılcım uçuşu için. */
   hedefKonumlari(k: readonly { x: number; y: number }[]): void;
   secenekAyarla(s: Partial<CiziciSecenek>): void;
@@ -111,6 +116,13 @@ export interface OyunCizici {
   imlecGoster?(h: Konum | null): void;
   /** (P5 ek) Kutlama yazısını hemen göster ('guzel' | 'harika' | 'muhtesem' | 'senlik'). */
   kutla?(kademe: string): void;
+  /**
+   * (Fişek ek) DOM HUD'un üstündeki katman (`pointer-events:none`): çizici
+   * buraya HUD bandı boyunda ikinci bir tuval ekler ve gök fişeklerinin,
+   * hedef kartlarına uçan kıvılcımların HUD'un arkasında kalan kısmını orada
+   * çizer. null = kaldır (her şey yine tek tuvalde).
+   */
+  fisekKatmani?(kap: HTMLElement | null): void;
 }
 
 /**

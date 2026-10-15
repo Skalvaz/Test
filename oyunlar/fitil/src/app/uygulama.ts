@@ -164,6 +164,8 @@ export class Uygulama {
       this.ses.yavasCekim(y);
       this.oturum.kamera(y);
     });
+    // Gök fişeklerinin HUD'un arkasında kalan kısmı HUD'un üstündeki tuvalde çizilir.
+    this.cizici.fisekKatmani(this.ui.fisekKatmani());
     this.cizici.fisekDinle((x) => {
       const w = Math.max(1, this.stage.width);
       this.ses.uzakFisek((x / w - 0.5) * 1.4, 0.8);
@@ -788,7 +790,7 @@ export class Uygulama {
   private yerlesimTazele(): void {
     if (this.oturum.durum === 'kapali') return;
     const a = this.ui.tahtaAlani();
-    this.cizici.alanAyarla(a.tahta, a.gokBandi);
+    this.cizici.alanAyarla(a.tahta, a.gokBandi, a.gorunurGok);
     requestAnimationFrame(() => this.oturum.hedefKonumlariniVer());
   }
 

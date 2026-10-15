@@ -9,6 +9,13 @@
  *   3 dinamik: zemin, kapsüller, engeller, vurgu, yanan fitil, efektler,
  *     parçacıklar, çizilen fitil + önizleme, öğretici el
  *   ekran üstü: uçan kıvılcımlar, reaksiyon yazısı, vinyet, kararma, flaş
+ *   fişek perdesi (fişek ek, `fisekPerdesi.ts`): DOM HUD'un üstündeki ikinci
+ *     tuval; gök ışığı/parçacıkları, kovanlar, ekran efektleri ve kart
+ *     patlamalarının HUD bandına (y < gorunurGok.y) düşen kısmı orada, ana
+ *     tuvalde aynı katmanlar o bandın altına kırpılır.
+ *
+ * Gök fişekleri görünür gök şeridinde (HUD'un altı → ufuk/sandık üstü)
+ * patlar; dikeyde ölçek şeride göre (`gokOlcek`), üst kısmı HUD'a taşabilir.
  *
  * Olay oynatıcı: `oynat()` olayları tik zamanında sıralı işler (tik → ms:
  * seçenek hızı × hızlandırma × yönetmen zaman ölçeği); her olay görsel
@@ -23,6 +30,7 @@ import type { BolumVerisi, Eksen, Hedef, Icerik, Konum, Olay, Onizleme, OyunDuru
 import type { Stage } from './stage';
 import { E, Efektler, type Efekt } from './efektler';
 import { FisekSistemi } from './fisek';
+import { FisekPerdesi } from './fisekPerdesi';
 import { Gokyuzu } from './gokyuzu';
 import { IpCizici, type IpRenkleri } from './ip';
 
@@ -118,7 +126,7 @@ export interface CiziciDev {
   yalnizGok(b: boolean): void;
 }
 
-export type OyunCiziciTam = OyunCizici & Required<Pick<OyunCizici, 'yonetmenZorla' | 'karart' | 'fisekDinle' | 'imlecGoster' | 'kutla'>> & { dev: CiziciDev } & Pick<OyunCiziciSinifi, 'onIsit' | 'sov' | 'ufuk'>;
+export type OyunCiziciTam = OyunCizici & Required<Pick<OyunCizici, 'yonetmenZorla' | 'karart' | 'fisekDinle' | 'imlecGoster' | 'kutla' | 'fisekKatmani'>> & { dev: CiziciDev } & Pick<OyunCiziciSinifi, 'onIsit' | 'sov' | 'ufuk'>;
 
 export function oyunCiziciOlustur(stage: Stage, secenek?: CiziciKurulum): OyunCiziciTam {
   return new OyunCiziciSinifi(stage, secenek ?? {});
@@ -175,6 +183,10 @@ class OyunCiziciSinifi implements OyunCizici {
   /** Yeniden yükseltmek için gereken art arda iyi pencere (her düşüşte ikiye katlanır). */
   private gerekenIyi = 4;
   private nokta = { x: 0, y: 0 };
+  /** (Fişek ek) HUD'un üstündeki fişek tuvali (uygulama bağlar; yoksa tek tuval). */
+  private perde: FisekPerdesi | null = null;
+  /** Görünür gök şeridi (gokSeridi() yazar; ayırmasız). */
+  private serit = { x: 0, y: 0, w: 0, h: 0 };
   private yokEdildi = false;
   readonly dev: CiziciDev;
 
@@ -267,6 +279,7 @@ class OyunCiziciSinifi implements OyunCizici {
     this.ef.temizle(true);
     s.havuz.temizle();
     this.fisek.temizle();
+    this.perde?.temizle();
     this.yazi.gizle();
     this.bilgi.gizle();
     s.kamera.sifirla();
@@ -294,9 +307,10 @@ class OyunCiziciSinifi implements OyunCizici {
     this.karanlikHedef = d.bitti === 'kayip' ? this.karanlikHedef : 0;
   }
 
-  alanAyarla(r: Dikdortgen, gokBandi: Dikdortgen): void {
+  alanAyarla(r: Dikdortgen, gokBandi: Dikdortgen, gorunurGok?: Dikdortgen): void {
     this.s.alan = { ...r };
     this.s.gokBandi = { ...gokBandi };
+    this.s.gorunurGok = { ...(gorunurGok ?? gokBandi) };
     this.alanVerildi = true;
     this.yerlesimGerekli = true;
   }
@@ -360,6 +374,22 @@ class OyunCiziciSinifi implements OyunCizici {
   /** Şovda gök (ufuk) yüksekliği: fişekler bunun üstünde patlar. */
   ufuk(): number {
     return this.gok.ufuk;
+  }
+
+  /**
+   * (Fişek ek) HUD'un üstündeki katmana fişek tuvali ekle (null = kaldır).
+   * Tuval HUD bandı boyundadır; ölçüsü her karede `gorunurGok.y`'ye göre tazelenir.
+   */
+  fisekKatmani(kap: HTMLElement | null): void {
+    if (this.perde?.kap === kap) return;
+    this.perde?.kaldir();
+    this.perde = null;
+    if (!kap) return;
+    try {
+      this.perde = new FisekPerdesi(kap);
+    } catch {
+      this.perde = null; // 2B bağlam yoksa tek tuval yeter
+    }
   }
 
   /** Gökte havai fişek patladığında (ses için). */
@@ -447,6 +477,7 @@ class OyunCiziciSinifi implements OyunCizici {
         s.gokBandi = { x: 0, y: 0, w: W, h: Math.round(H * 0.18) };
         s.alan = { x: 0, y: 80, w: Math.round(W * 0.62), h: H - 160 };
       }
+      s.gorunurGok = { ...s.gokBandi };
     }
     const a = s.alan;
     const dikeyMi = W / H <= 0.75;
@@ -1281,9 +1312,11 @@ class OyunCiziciSinifi implements OyunCizici {
     r.r0 = 0.4;
     r.bitince = () => {
       s.ekrana(x, y - uz * hc, this.nokta);
-      const g = s.gokBandi;
-      const hx = Math.max(40, Math.min(s.ekranW - 40, this.nokta.x));
-      this.fisek.firlat(this.nokta.x, this.nokta.y, hx, g.y + g.h * 0.42, s.rnd.int(6), s.rnd.float() < 0.5 ? 'kasimpati' : 'palmiye', 380, this.fisek.olcek() * 1.25);
+      const g = this.gokSeridi();
+      const hx = Math.max(g.x + 40, Math.min(g.x + g.w - 40, this.nokta.x));
+      // Görünür gök şeridinin üst yarısında, normal gök fişeğinden 1,25 kat büyük.
+      const hy = Math.min(this.nokta.y - 24, g.y + g.h * 0.4);
+      this.fisek.firlat(this.nokta.x, this.nokta.y, hx, hy, s.rnd.int(6), s.rnd.float() < 0.5 ? 'kasimpati' : 'palmiye', 380, this.gokOlcek() * 1.25);
     };
   }
 
@@ -1367,13 +1400,13 @@ class OyunCiziciSinifi implements OyunCizici {
   private gokKivilcimi(x: number, y: number, renk: number): void {
     const s = this.s;
     s.ekrana(x, y, this.nokta);
-    const g = s.gokBandi;
+    const g = this.gokSeridi();
     const f = this.ef.ekle(E.KIVILCIM, this.nokta.x, this.nokta.y, 700);
     if (!f) return;
     f.ekran = true;
     f.renk = renk;
     f.x1 = g.x + g.w * (0.08 + 0.84 * s.rnd.float());
-    f.y1 = g.y + g.h * (0.3 + 0.5 * s.rnd.float());
+    f.y1 = g.y + g.h * (0.25 + 0.5 * s.rnd.float());
     f.cx = (f.x + f.x1) / 2 + (s.rnd.float() - 0.5) * 120;
     f.cy = Math.min(f.y, f.y1) - 40;
     f.bitince = () => {
@@ -1384,14 +1417,50 @@ class OyunCiziciSinifi implements OyunCizici {
     };
   }
 
-  /** Gök bandında rastgele (ya da verilen yerde) takılı desenlerden fişek. */
+  /** Görünür gök şeridinde rastgele (ya da verilen yerde) takılı desenlerden fişek. */
   private gokFisegi(x?: number, y?: number, renk?: number): void {
     const s = this.s;
-    const g = s.gokBandi;
-    const px = x ?? g.x + g.w * (0.15 + 0.7 * s.rnd.float());
-    const py = y ?? g.y + g.h * (0.36 + 0.42 * s.rnd.float());
+    const g = this.gokSeridi();
+    const px = x ?? g.x + g.w * (0.14 + 0.72 * s.rnd.float());
+    // Dikey: şeridin üst-orta kısmı (üstü HUD'a taşar, altı sandığın arkasında).
+    // Yatay: üstte HUD yok, ekranın üst kenarı keser: biraz aşağıda.
+    const dikey = s.ekranW / Math.max(1, s.ekranH) <= 0.75;
+    const py = y ?? g.y + g.h * (dikey ? 0.3 + 0.32 * s.rnd.float() : 0.42 + 0.36 * s.rnd.float());
     const d = s.secenek.desenler[s.rnd.int(Math.max(1, s.secenek.desenler.length))] ?? DESENLER[0].id;
-    this.fisek.firlat(px + (s.rnd.float() - 0.5) * 30, Math.min(s.ekranH, this.gok.ufuk + 10), px, py, renk ?? s.rnd.int(6), d, 600);
+    this.fisek.firlat(px + (s.rnd.float() - 0.5) * 30, Math.min(s.ekranH, this.gok.ufuk + 10), px, py, renk ?? s.rnd.int(6), d, 600, this.gokOlcek());
+  }
+
+  /**
+   * (Fişek ek) Görünür gök şeridi: `gorunurGok`'un üstünden (HUD'un altı)
+   * ufka ya da sandığın üst kenarına (hangisi üstteyse). Şeritte fişek
+   * merkezleri, gök kıvılcımlarının varış noktaları. Ayırmasız (alan yazılır).
+   */
+  private gokSeridi(): Dikdortgen {
+    const s = this.s;
+    const g = this.sovAcik ? s.gokBandi : s.gorunurGok;
+    const r = this.serit;
+    const alt = Math.min(g.y + g.h, s.gy - s.cerceve, this.gok.ufuk > 0 ? this.gok.ufuk : g.y + g.h);
+    r.x = g.x;
+    r.w = Math.max(1, g.w);
+    // Çok dar şeritte (< 40 px) şerit HUD'a doğru büyütülür: merkezler yine de görünür kalsın.
+    r.h = Math.max(40, alt - g.y);
+    r.y = Math.max(0, Math.min(g.y, alt - r.h));
+    return r;
+  }
+
+  /**
+   * (Fişek ek) Gök fişeği ölçeği. Dikeyde görünür şerit dar (~55–100 px):
+   * patlama yarıçapı (ölçek 1'de ~150 px) şeridin ~1,7 katına iner ama
+   * 105 px'in altına düşmez — küçücük kalmasın; üst yarısı HUD'un üstüne
+   * (fişek perdesine, yarı saydam) taşar, alt ucu sandığın arkasında kalır.
+   * Yatay/masaüstünde üstte HUD yok: genişliğe göre (eski ölçek).
+   */
+  private gokOlcek(): number {
+    const s = this.s;
+    const tam = this.fisek.olcek();
+    if (this.sovAcik || s.ekranW / Math.max(1, s.ekranH) > 0.75) return tam;
+    const r = Math.max(105, Math.min(150, this.gokSeridi().h * 1.7));
+    return Math.min(tam, r / 150);
   }
 
   private reaksiyonYazisi(kademe: string): void {
@@ -1571,6 +1640,7 @@ class OyunCiziciSinifi implements OyunCizici {
     if (!this.donuk) this.guncelle(dtMs);
     else if (this.yerlesimGerekli && this.s.tahta.w) this.yerlesim();
     this.ciz();
+    this.perdeCiz();
     this.kaliteIzle(t0, simdiMs() - t0);
   }
 
@@ -1752,15 +1822,22 @@ class OyunCiziciSinifi implements OyunCizici {
     } else this.gok.cizArka(ctx, s.zaman);
     // Gök ışığı kasabanın arkasında; fişeklerin kendisi kasabanın önünde
     // (telefonda gök bandı dar, HUD kartları da üstünde: fişek görünür kalsın).
+    // Fişek perdesi varsa HUD bandı (y < pa) orada çizilir, burada kırpılır.
+    const pa = this.perdeAlt();
+    if (pa > 0) this.kirp(ctx, pa);
     s.tGok.uygula(ctx);
     this.fisek.cizIsik(ctx);
+    if (pa > 0) ctx.restore();
     if (!this.yalnizGokBayrak) {
       s.tEkran.uygula(ctx);
       this.gok.cizOn(ctx, s.zaman);
     }
+    if (pa > 0) this.kirp(ctx, pa);
     s.tGok.uygula(ctx);
     s.havuz.ciz(ctx, s.parilti, s.tGok, B.GOK, s.zaman);
+    s.tGok.uygula(ctx);
     this.fisek.cizKovan(ctx);
+    if (pa > 0) ctx.restore();
     s.tEkran.uygula(ctx);
     if (this.yalnizGokBayrak) return;
     if (this.sovAcik) {
@@ -1779,10 +1856,13 @@ class OyunCiziciSinifi implements OyunCizici {
     s.havuz.ciz(ctx, s.parilti, s.tTahta, 0, s.zaman);
     this.yol.ciz(ctx);
     this.yol.cizEl(ctx);
-    // Ekran üstü
+    // Ekran üstü (hedef kartlarına uçan kıvılcımlar, kart patlamaları: HUD bandı perdede)
+    if (pa > 0) this.kirp(ctx, pa);
     s.tEkran.uygula(ctx);
     this.ef.cizEkran(ctx);
     s.havuz.ciz(ctx, s.parilti, s.tEkran, B.UST, s.zaman);
+    if (pa > 0) ctx.restore();
+    s.tEkran.uygula(ctx);
     this.bilgi.ciz(ctx, s.tEkran, s.secenek.hareketiAzalt);
     if (this.yazi.aktif) {
       // Reaksiyon yazısının arkasında sıcak ışık patlaması (lighter, sprite'tan).
@@ -1800,6 +1880,59 @@ class OyunCiziciSinifi implements OyunCizici {
     this.yazi.ciz(ctx, s.tEkran, s.secenek.hareketiAzalt);
     this.yol.cizVinyet(ctx);
     this.ortuCiz(ctx);
+  }
+
+  /**
+   * (Fişek ek) Fişek perdesinin alt kenarı (= HUD'un alt kenarı, CSS px);
+   * perde yoksa, şovda, desen ızgarasında ya da DPR > 2 ise 0 (tek tuval).
+   */
+  private perdeAlt(): number {
+    const s = this.s;
+    if (!this.perde || this.sovAcik || this.yalnizGokBayrak || !s.tahta.w || this.yerlesimGerekli || s.dpr > 2) return 0;
+    const y = Math.round(s.gorunurGok.y);
+    return y >= 4 ? Math.min(y, s.ekranH) : 0;
+  }
+
+  /** Ana tuvalde çizimi HUD bandının altına kırp (`ctx.restore()` çağıran yapar). */
+  private kirp(ctx: Ctx, pa: number): void {
+    const s = this.s;
+    ctx.save();
+    s.tEkran.uygula(ctx);
+    ctx.beginPath();
+    ctx.rect(0, pa, s.ekranW, Math.max(0, s.ekranH - pa));
+    ctx.clip();
+  }
+
+  /**
+   * (Fişek ek) Fişek perdesi: HUD bandına düşen gök ışığı, gök parçacıkları,
+   * kovanlar, ekran efektleri ve kart patlamaları. Yalnız bantta içerik
+   * varken çizilir; yoksa (bir kez) temizlenir.
+   */
+  private perdeCiz(): void {
+    const p = this.perde;
+    if (!p) return;
+    const s = this.s;
+    const pa = this.perdeAlt();
+    if (pa <= 0) {
+      p.temizle();
+      return;
+    }
+    p.boyutla(s.ekranW, pa, s.dpr);
+    // Parçacık boyu/izi bant sınırını ~40 px aşabilir.
+    if (!this.fisek.aktifMi() && !this.ef.ekranVar() && !s.havuz.katmanVar(B.GOK | B.UST, pa + 40)) {
+      p.temizle();
+      return;
+    }
+    const c = p.basla();
+    s.tGok.uygula(c);
+    this.fisek.cizIsik(c);
+    s.havuz.ciz(c, s.parilti, s.tGok, B.GOK, s.zaman);
+    s.tGok.uygula(c);
+    this.fisek.cizKovan(c);
+    s.tEkran.uygula(c);
+    this.ef.cizEkran(c);
+    s.havuz.ciz(c, s.parilti, s.tEkran, B.UST, s.zaman);
+    p.bitir();
   }
 
   /** Kararma ve flaş örtüsü (en üstte). */
@@ -1926,6 +2059,7 @@ class OyunCiziciSinifi implements OyunCizici {
   yokEt(): void {
     this.bitirAninda();
     this.yokEdildi = true;
+    this.fisekKatmani(null);
     this.dinleyiciler = [];
     this.kameraDinleyiciler = [];
     this.ef.temizle(true);
