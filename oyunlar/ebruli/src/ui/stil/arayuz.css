@@ -817,7 +817,8 @@ svg.bos { color: rgba(90, 78, 63, 0.45); }
   animation: e-in 0.3s ease both;
 }
 @keyframes e-in { from { transform: translateY(-100%); } to { transform: none; } }
-.e-kb-tablo-kap { flex: none; position: relative; }
+.e-kb-tablo-kap { flex: none; position: relative; width: 44px; height: 66px; }
+.e-kb-tablo-yer { width: 44px; height: 66px; border: 1px dashed rgba(138, 109, 18, 0.45); border-radius: 2px; box-sizing: border-box; }
 .e-kb-tablo { display: block; opacity: 0.5; border: 1px solid var(--altin); border-radius: 2px; -webkit-mask-image: linear-gradient(135deg, #000 45%, rgba(0, 0, 0, 0.15) 75%); mask-image: linear-gradient(135deg, #000 45%, rgba(0, 0, 0, 0.15) 75%); }
 .e-kb-bilgi { flex: 1; min-width: 0; }
 .e-kb-bilgi h2 { margin: 0 0 6px; font: 700 28px/1 var(--baslik-yigini); color: var(--ceviz-koyu); }

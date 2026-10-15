@@ -166,6 +166,8 @@ export class Oturum {
   }
 
   private bitir(s: OturumSonucu): void {
+    // Süren akışlar (oynatma sonrası, kazanç/kayıp) bu nesille durur.
+    this.nesil++;
     this.temizle();
     this.durum = 'kapali';
     const c = this.coz;
@@ -571,12 +573,19 @@ export class Oturum {
 
   // ─── Kazanç (§8.3, §9.5, §12.3 #6) ─────────────────────────────────
 
+  /** Duraklat açıkken bitiş akışı bekler (oyuncu "Haritaya dön" derse nesil değişir). */
+  private async duraklamayiBekle(n: number): Promise<boolean> {
+    while (this.duraklatildi && n === this.nesil) await new Promise((r) => setTimeout(r, 120));
+    return n === this.nesil;
+  }
+
   private async kazanc(n: number): Promise<void> {
     const b = this.b;
     const v = this.v!;
     this.durum = 'bitti';
     b.girdi.kipAyarla('kapali');
     b.ui.balonKapat();
+    if (!(await this.duraklamayiBekle(n))) return;
     await b.bekle(360);
     if (n !== this.nesil) return;
     let d = this.d!;
@@ -675,16 +684,14 @@ export class Oturum {
     this.durum = 'bitti';
     b.girdi.kipAyarla('kapali');
     b.ui.balonKapat();
+    if (!(await this.duraklamayiBekle(n))) return;
     b.ses.arayuz('kaybettin');
     b.kayitci.guncelle((k) => bolumBitti(k, { id: v.id, kazanc: false, puan: d.puan, yildiz: 0, kaskat: d.istatistik.enUzunKaskat, lale: d.istatistik.lale }), true);
     const ustaEli = !olu && d.bitti === 'kayip' && !d.istatistik.ustaEli && ustaEliOnerilir(b.kayitci.kayit, v.id);
     const eksik = eksikMetni(d.hedefler.map((h) => ({ tur: h.hedef.tur, renk: h.hedef.tur === 'topla' ? h.hedef.renk : undefined, kalan: Math.max(0, h.gerekli - h.ilerleme) })));
-    let yarim: HTMLCanvasElement | OffscreenCanvas | null = null;
-    try {
-      if (d.gunluk.length) yarim = b.tablo.kucukResim(this.tabloIstegiKur(d, 0), 44, 66);
-    } catch {
-      yarim = null;
-    }
+    // Yarım tablo ekran açıldıktan sonra çizilir (kayıp ekranı beklemesin).
+    const yarimIstek = d.gunluk.length ? this.tabloIstegiKur(d, 0) : null;
+    const yarim = yarimIstek ? (w: number, h: number) => b.tablo.kucukResim(yarimIstek, w, h) : null;
     b.ui.hud.goster(false);
     b.cizici.karart(0.42);
     const yer = this.yer ?? this.yerlesimHesapla();

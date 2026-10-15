@@ -133,7 +133,10 @@ export class Uygulama {
     requestAnimationFrame(dongu);
     // Bulut kaydı açılış ekranı beklerken yüklensin.
     void this.kayitci.bulutaBaglan().then((k) => {
-      if (k && meta.ilerlemePuani(k) > meta.ilerlemePuani(this.kayitci.kayit) && this.oturum.durum === 'kapali') this.kayitci.degistir(k, false);
+      if (!k || meta.ilerlemePuani(k) <= meta.ilerlemePuani(this.kayitci.kayit) || this.oturum.durum !== 'kapali') return;
+      this.kayitci.degistir(k, false);
+      // Harita açık ve üstünde katman yoksa yeni ilerlemeyle yeniden kur.
+      if (this.ekranAdi === 'harita' && !this.katmanlar.length) this.git({ tur: 'harita' });
     });
   }
 

@@ -144,8 +144,16 @@ export function kaybettinEkrani(y: EkranYoneticisi, vm: KaybettinVM, yer: Yerles
     const bilgi = h('div', { s: 'e-kb-bilgi' }, h('h2', { t: vm.yuzde >= 0.7 ? M.azKaldi : M.hamleBitti }), cubuk, vm.eksik ? h('p', { s: 'e-kb-eksik', t: vm.eksik }) : null);
     const ust = h('div', { s: 'e-kb-ust' });
     if (vm.yarimTablo) {
-      const t = tabloResmi(() => vm.yarimTablo!, 44, 66, 'e-kb-tablo');
-      ust.appendChild(h('div', { s: 'e-kb-tablo-kap', 'aria-hidden': 'true' }, t));
+      const kap = h('div', { s: 'e-kb-tablo-kap', 'aria-hidden': 'true' }, h('div', { s: 'e-kb-tablo-yer' }));
+      ust.appendChild(kap);
+      const ciz = vm.yarimTablo;
+      setTimeout(() => {
+        try {
+          kap.replaceChildren(tabloResmi(ciz, 44, 66, 'e-kb-tablo'));
+        } catch {
+          /* tablo isteğe bağlı */
+        }
+      }, 80);
     }
     ust.appendChild(bilgi);
     const tekrar = dugme(M.tekrarDene, { tur: 'ana', ikon: 'yeniden', on: () => bitir('tekrar') });

@@ -108,7 +108,8 @@ export interface KaybettinVM {
   ad: string;
   yuzde: number;
   eksik: string;
-  yarimTablo: HTMLCanvasElement | OffscreenCanvas | null;
+  /** Yarım kalan tablo (soluk; ekran açıldıktan sonra çizilir). */
+  yarimTablo: ((w: number, h: number) => HTMLCanvasElement | OffscreenCanvas) | null;
   ustaEli: boolean;
 }
 
