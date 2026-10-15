@@ -54,28 +54,3 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 .sahne { display: block; }
-
-/* P0 iskelet kartı (uygulama paketi gelince kalkar). */
-.iskelet-kart {
-  position: absolute;
-  left: 50%;
-  bottom: max(24px, env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  width: min(86vw, 360px);
-  box-sizing: border-box;
-  padding: 16px 18px 14px;
-  background: var(--kagit);
-  color: var(--murekkep);
-  border: 2px solid var(--altin);
-  border-radius: 10px;
-  box-shadow: 0 0 0 5px var(--ceviz-koyu), 0 10px 30px rgba(0, 0, 0, 0.45);
-  text-align: center;
-}
-.iskelet-kart h1 {
-  margin: 0;
-  font: 700 44px/1 var(--baslik-yigini);
-  color: var(--ceviz-koyu);
-  letter-spacing: 0.02em;
-}
-.iskelet-kart p { margin: 8px 0 0; font: 500 16px/1.35 var(--govde-yigini); color: var(--murekkep-ikincil); }
-.iskelet-kart b { font-weight: 800; color: var(--altin-koyu); }
