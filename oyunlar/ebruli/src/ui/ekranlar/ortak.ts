@@ -55,7 +55,7 @@ export function hedefIkonu(hd: HedefVM, boyut: number): HTMLElement {
   else if (hd.tur === 'kagit') kap.appendChild(img(kagitResmi(boyut), boyut, '', 'kâğıt'));
   else if (hd.tur === 'desen') {
     const m = svg(hd.motif === 'karanfil' ? KARANFIL : LALE);
-    m.classList.add('e-motif');
+    m.classList.add('e-motif', hd.motif === 'karanfil' ? 'karanfil' : 'lale');
     kap.appendChild(m);
   } else {
     const s = svg(YILDIZ_DOLU);

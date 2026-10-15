@@ -164,6 +164,8 @@ svg.bos { color: rgba(90, 78, 63, 0.45); }
 .e-hedef-ikon { display: inline-flex; align-items: center; justify-content: center; }
 .e-hedef-ikon .e-resim { display: block; }
 .e-motif { width: 100%; height: 100%; color: var(--altin-koyu); --tac: #9A5CC6; --yaprak: #3FA86B; }
+/* Desen hedefinin taç rengi bölümlerdeki desenle aynı: lale Mor, karanfil Turuncu. */
+.e-motif.karanfil { --tac: #EE7F2D; }
 .e-puan-ikon { width: 80%; height: 80%; color: var(--altin); }
 .e-hedef-sayi { font: 800 18px/1 var(--govde-yigini); color: var(--murekkep); font-variant-numeric: lining-nums tabular-nums; }
 .e-hedef .e-tik {
