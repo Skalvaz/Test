@@ -7,7 +7,7 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 22,
+  "hamle": 20,
   "tohum": 57104356,
   "yardim": 1,
   "ozelEsikleri": [6, 9, 12],
@@ -24,8 +24,9 @@
     ". . . . . . . ."
   ],
   "korukKapasitesi": 20,
-  "kurallar": { "soguma": 2, "caprazSiniri": 6 },
-  "botBandi": [45, 55],
-  "yildizEsikleri": [7800, 9400],
+  "kurallar": { "caprazSiniri": 6 },
+  "botBandi": [65, 85],
+  "yildizEsikleri": [7200, 9700],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Barut İzi!"
 }
