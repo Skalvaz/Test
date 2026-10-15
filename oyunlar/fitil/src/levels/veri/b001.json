@@ -31,7 +31,7 @@
     { "tetik": "kisaYol", "metin": "En az 3." }
   ],
   "botBandi": [98, 100],
-  "yildizEsikleri": [1900, 2400],
+  "yildizEsikleri": [1800, 2400],
   "elleEsik": true,
   "sonrakiTanitim": "Sıradaki: Roket!"
 }
