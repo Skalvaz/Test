@@ -4,6 +4,15 @@ Gerçek termodinamik modelle çalışan jet motoru eğitim oyunu: three.js (r186
 + TypeScript + Vite. Yol haritası `ROADMAP.md`'de (Faz 3 kilometre taşları
 M1…), varlık kaynakları `ASSETS.md`'de.
 
+## Ayrı proje: FİTİL (oyunlar/fitil)
+
+`oyunlar/fitil/` turbofan'dan bağımsız eşleştirmeli bulmaca oyunudur (Canvas 2D
++ DOM + TS + Vite, kendi package.json'ı). Çalışma notları, komutlar ve kurallar
+`oyunlar/fitil/CLAUDE.md`'de; tasarım `oyunlar/fitil/docs/GDD.md`. Kök vitest
+`oyunlar/**`'ı dışarıda bırakır. Yayın: claude.ai sayfası
+https://claude.ai/artifact/1RuRyPm6B9mDRPsYE5CKRC (`npm run build:single` →
+`dist-single/artifact.html` aynı yolla yeniden yayınlanır; yetenekler db + user).
+
 ## Kurallar
 
 - Kullanıcıyla Türkçe konuş. Kod yorumları ve commit mesajları da Türkçe.
