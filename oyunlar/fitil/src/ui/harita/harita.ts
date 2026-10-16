@@ -16,7 +16,7 @@ import { M, sayi } from '../metinler';
 import { yildizAlani } from '../sahne';
 import type { Baglam } from '../cekirdek';
 import type { HaritaSecimi, HaritaVM, BolumDugumuVM } from '../tipler';
-import { MAHALLELER, USTA_BOLUM_IDLERI } from '../../app/katalog';
+import { KASABA_ISLERI, MAHALLELER, USTA_BOLUM_IDLERI } from '../../app/katalog';
 import type { Motif } from '../../core/types';
 import {
   HARITA_W,
@@ -34,7 +34,11 @@ import {
   altPayCiz,
   haritaTanimlari,
   baslangicKonumu,
+  bolgeGeo,
 } from './cizim';
+import type { Nokta } from './cizim';
+import { isCapasi, sancakOgesi } from './susler';
+import type { CanliOge, KutlamaCizimi, SusSecenek } from './susler';
 
 const yuzdeX = (x: number) => `${((x / HARITA_W) * 100).toFixed(3)}%`;
 const yuzdeY = (y: number) => `${((y / HARITA_H) * 100).toFixed(4)}%`;
@@ -49,6 +53,11 @@ export class HaritaEkrani {
   private gozcu: IntersectionObserver | null = null;
   private ustBar: HTMLElement | null = null;
   private oynaDg: HTMLButtonElement | null = null;
+  /** Mahalle bölge kapları (canlı süsler ve kutlama katmanı bunların içinde). */
+  private bolgeKaplari: HTMLElement[] = [];
+  /** Süren iş kutlaması (+ gerekiyorsa Mahalle şenliği); `kutlamaBitti` bekler. */
+  private kutlamaSozu: Promise<void> | null = null;
+  private senlikIptal: (() => void) | null = null;
 
   constructor(b: Baglam) {
     this.b = b;
@@ -68,9 +77,13 @@ export class HaritaEkrani {
     const simdiki = simdikiBolum(vm);
     const oncekiSimdiki = onceki ? simdikiBolum(onceki) : null;
     const yeniAcilan = oncekiSimdiki !== null && simdiki > oncekiSimdiki && simdiki - oncekiSimdiki <= 1 ? oncekiSimdiki : null;
-    this.ciz(vm, yeniAcilan);
+    // (Kancalar §C.1) Önceki çizimde olmayıp şimdi yapılmış işler: kutlanır.
+    const oncekiIsler = onceki?.kasaba ? new Set(onceki.kasaba.isler) : null;
+    const yeniIsler = new Set(oncekiIsler ? (vm.kasaba?.isler ?? []).filter((x) => !oncekiIsler.has(x)) : []);
+    const kutlamalar = this.ciz(vm, yeniAcilan, yeniIsler);
     this.kok!.classList.remove('f-gizli-ekran');
-    if (ilk || simdiki !== oncekiSimdiki) requestAnimationFrame(() => this.kaydirSimdiye(simdiki, ilk, yeniAcilan !== null));
+    if (kutlamalar.length) this.kutlamaSozu = this.kutlamalariOynat(kutlamalar, vm);
+    else if (ilk || simdiki !== oncekiSimdiki) requestAnimationFrame(() => this.kaydirSimdiye(simdiki, ilk, yeniAcilan !== null));
     return new Promise((r) => {
       this.coz = (s) => {
         this.coz = null;
@@ -81,12 +94,14 @@ export class HaritaEkrani {
 
   gizle(): void {
     this.coz?.({ tur: 'kapandi' });
+    this.senlikIptal?.();
     if (!this.kok) return;
     this.kok.classList.add('f-gizli-ekran');
   }
 
   yokEt(): void {
     this.coz?.({ tur: 'kapandi' });
+    this.senlikIptal?.();
     this.gozcu?.disconnect();
     this.kok?.remove();
     this.kok = null;
@@ -135,7 +150,7 @@ export class HaritaEkrani {
 
   // ─────────────────────── Çizim ───────────────────────
 
-  private ciz(vm: HaritaVM, yeniAcilan: number | null): void {
+  private ciz(vm: HaritaVM, yeniAcilan: number | null, yeniIsler: ReadonlySet<string> = new Set()): KutlamaBilgisi[] {
     const icerik = this.icerik!;
     this.gozcu?.disconnect();
     icerik.replaceChildren();
@@ -150,9 +165,18 @@ export class HaritaEkrani {
     const motifMahalle = new Map<number, Motif[]>();
     for (const mo of vm.motifler) motifMahalle.set(mo.mahalle, [...(motifMahalle.get(mo.mahalle) ?? []), mo.motif]);
     const catilar: { id: number; x: number; y: number }[] = [];
+    // Kasaba süsleri (KANCALAR §B.6): yapılan işler; süslenen mahallede yapılmamışların hayaleti.
+    const kasabaAcik = !!vm.kasaba?.acik;
+    const yapilan = new Set(kasabaAcik ? vm.kasaba!.isler : []);
+    const suslenen = kasabaAcik ? suslenenMahalle(yapilan) : -1;
+    const canlilar = new Map<number, CanliOge[]>();
+    const kutla = new Map<number, KutlamaCizimi[]>();
     for (let m = MAHALLE_SAYISI - 1; m >= 0; m--) {
-      const c = bolgeCiz(m, bolumler, motifMahalle.get(m) ?? []);
+      const sus: SusSecenek | undefined = kasabaAcik ? { yapilan, hayalet: m === suslenen, yeni: yeniIsler } : undefined;
+      const c = bolgeCiz(m, bolumler, motifMahalle.get(m) ?? [], sus);
       catilar.push(...c.catilar);
+      canlilar.set(m, [...c.canli, ...c.sancaklar.map((x) => sancakOgesi(x.id, x, m))]);
+      if (c.kutla.length) kutla.set(m, c.kutla);
       // Bu mahallenin alt düğümlerinden çıkan fitil parçaları (k = id; id → id+1).
       let yol = '';
       for (let id = m * 5 + 1; id <= m * 5 + 5 && id < 40; id++) yol += this.yolParcasi(yollar[id].d, bolumler[id], id === yeniAcilan);
@@ -177,23 +201,38 @@ export class HaritaEkrani {
     }
 
     // Mahalle şeritleri + bölge kapları (görünürlük için)
+    this.bolgeKaplari = [];
+    const muhurGorunur = bolumler[5]?.durum === 'acik';
+    const kutlamalar: KutlamaBilgisi[] = [];
     for (let m = 0; m < MAHALLE_SAYISI; m++) {
       const ust = bolgeUst(m);
       const kap = h('div', { s: 'f-harita-bolge', css: { top: yuzdeY(ust), height: yuzdeY(BOLGE_H) } });
       ogeler.appendChild(kap);
+      this.bolgeKaplari[m] = kap;
       this.gozcu?.observe(kap);
       const mh = MAHALLELER[m];
       const ilkBolum = bolumler[m * 5];
       const kilitli = ilkBolum.durum === 'kilitli';
       const yildiz = bolumler.slice(m * 5, m * 5 + 5).reduce((a, x) => a + x.yildiz, 0);
+      const suslendi = !kilitli && mahalleSuslu(yapilan, m);
+      // Mühür çipi "● 9/15" (İskele mühürsüz; mühürler 6. bölüm kazanılınca görünür).
+      const muhur = bolumler.slice(m * 5, m * 5 + 5).reduce((a, x) => a + (x.muhur ?? 0), 0);
+      const muhurCipi = muhurGorunur && !kilitli && m > 0 ? h('span', { s: 'f-serit-muhur', 'aria-label': `Mühür ${muhur}/15` }, h('i', { 'aria-hidden': 'true' }), h('span', { s: 'f-sayi', t: `${muhur}/15` })) : null;
       ogeler.appendChild(
         h(
           'div',
-          { s: `f-mahalle-serit${kilitli ? ' f-kilitli' : ''}`, css: { left: '50%', top: yuzdeY(ust + BOLGE_H - 28), '--vurgu': mh.vurgu } },
+          { s: `f-mahalle-serit${kilitli ? ' f-kilitli' : ''}${suslendi ? ' f-suslendi' : ''}`, css: { left: '50%', top: yuzdeY(ust + BOLGE_H - 28), '--vurgu': mh.vurgu } },
           h('span', { s: 'f-mahalle-ad', t: mh.ad }),
-          kilitli ? h('small', null, ikon('kilit'), h('span', { t: M.kilitliMahalle(m * 5 + 1) })) : h('small', null, kucukYildiz(true), h('span', { s: 'f-sayi', t: `${yildiz}/15` })),
+          kilitli ? h('small', null, ikon('kilit'), h('span', { t: M.kilitliMahalle(m * 5 + 1) })) : h('small', null, kucukYildiz(true), h('span', { s: 'f-sayi', t: `${yildiz}/15` }), muhurCipi),
         ),
       );
+      if (!kilitli) {
+        for (const o of canlilar.get(m) ?? []) kap.appendChild(canliOge(o, ust, yeniIsler.has(o.sahip)));
+        for (const k of kutla.get(m) ?? []) {
+          kap.appendChild(svg(`<svg class="f-sus-kutla" viewBox="0 ${ust} ${HARITA_W} ${BOLGE_H}" preserveAspectRatio="none" aria-hidden="true">${k.svg}</svg>`));
+          kutlamalar.push({ ...k, m, mahalleTamam: mahalleSuslu(yapilan, m) && [...yeniIsler].some((x) => x.startsWith(`${mh.id}.`)) });
+        }
+      }
       if (m === 4 && !kilitli) {
         // Ateş böcekleri
         for (let k = 0; k < 9; k++)
@@ -201,9 +240,16 @@ export class HaritaEkrani {
       }
     }
 
-    // Başlık tabelası (alt payda)
+    // Başlık tabelası (alt payda); "İskele tabelası" işi yapıldıysa ampullerle ışıl ışıl (§B.3).
     const bas = baslangicKonumu();
-    ogeler.appendChild(h('div', { s: 'f-harita-tabela', css: { left: '50%', top: yuzdeY(bas.y + 74) } }, h('span', { t: M.fenerKoyu })));
+    const tabelaIsikli = yapilan.has('iskele.tabela');
+    const tabela = h(
+      'div',
+      { s: `f-harita-tabela${tabelaIsikli ? ' f-isikli' : ''}${yeniIsler.has('iskele.tabela') ? ' f-yeni' : ''}`, css: { left: '50%', top: yuzdeY(bas.y + 74) } },
+      h('span', { t: M.fenerKoyu }, tabelaIsikli ? h('b', { s: 'f-tabela-ampul', 'aria-hidden': 'true' }, tabelaAmpulleri().map((p, i) => h('i', { css: { left: `${p.x.toFixed(1)}%`, top: `${p.y.toFixed(1)}%`, '--i': String(i) } }))) : null),
+    );
+    ogeler.appendChild(tabela);
+    if (tabelaIsikli) this.gozcu?.observe(tabela);
 
     // Çatı fişekleri (3★)
     for (const c of catilar) {
@@ -285,6 +331,7 @@ export class HaritaEkrani {
 
     this.ustCubuk(vm);
     this.altCubuk(vm, simdiki);
+    return kutlamalar;
   }
 
   private yolParcasi(d: string, hedef: BolumDugumuVM, yeni: boolean): string {
@@ -345,6 +392,137 @@ export class HaritaEkrani {
     return d;
   }
 
+  // ─────────────────────── Kasaba kutlamaları ───────────────────────
+
+  /**
+   * Süren iş kutlaması ve (mahalle 6/6 olduysa) Mahalle şenliği bitince
+   * çözülür; kutlama yoksa hemen. Uygulama Defter kartını bundan sonra açar.
+   */
+  kutlamaBitti(): Promise<void> {
+    return this.kutlamaSozu ?? Promise.resolve();
+  }
+
+  /** Haritayı bir noktaya (küresel) kaydırır; nokta görünür bandın ortasına gelir. */
+  private kaydirYere(p: Nokta, yumusak: boolean): void {
+    const k = this.kaydir;
+    const ic = this.icerik;
+    if (!k || !ic) return;
+    const olcek = ic.clientWidth / HARITA_W;
+    let ust = 64;
+    try {
+      ust = parseFloat(getComputedStyle(k).paddingTop) || 64;
+    } catch {
+      /* varsayılan */
+    }
+    const altKap = k.parentElement?.querySelector<HTMLElement>('.f-harita-alt-kap');
+    const bantAlt = k.clientHeight - (altKap?.offsetHeight ?? 160) - 10;
+    const hedef = Math.max(0, Math.min(k.scrollHeight - k.clientHeight, ic.offsetTop + p.y * olcek - (ust + Math.max(0, bantAlt - ust) * 0.5)));
+    if (yumusak && !this.b.az()) k.scrollTo({ top: hedef, behavior: 'smooth' });
+    else k.scrollTop = hedef;
+  }
+
+  /**
+   * İş kutlaması (KANCALAR §C.1): harita çapaya kayar, ışıklar sırayla yanar
+   * (CSS, `.f-sus-kutla .f-sl`), ışık halkası + parıltılar + küçük fişek,
+   * ses ve titreşim, sakin balonu. Mahalle 6/6 olduysa ardından şenlik.
+   */
+  private async kutlamalariOynat(liste: KutlamaBilgisi[], vm: HaritaVM): Promise<void> {
+    const az = this.b.az();
+    for (const k of liste) {
+      if (this.vm !== vm) return;
+      this.kaydirYere(k.capa, true);
+      const kap = this.bolgeKaplari[k.m];
+      if (!kap) continue;
+      const ust = bolgeUst(k.m);
+      const yer = { left: yuzdeX(k.capa.x), top: `${(((k.capa.y - ust) / BOLGE_H) * 100).toFixed(3)}%` };
+      // Kutlama katmanı (fişek, halka, parıltı) — ışıklar yanmaya başlayınca.
+      const fisek = h('span', { s: 'f-sus-fisek', 'aria-hidden': 'true', css: yer }, [
+        h('b', { s: 'f-sus-halka' }),
+        ...Array.from({ length: 12 }, (_, i) => h('i', { css: { '--a': `${i * 30}deg`, '--r': ['#FFD15C', '#FF5FB4', '#3AA8FF', '#2EE07A', '#FFB020', '#B266FF'][i % 6] } })),
+      ]);
+      kap.appendChild(fisek);
+      const is = KASABA_ISLERI.find((x) => x.id === k.id);
+      await this.bekle(az ? 0 : 520);
+      this.b.ses('parca');
+      this.b.titret(20);
+      if (is) {
+        this.b.duyur(`${is.ad} yapıldı`);
+        const soz = h('div', { s: 'f-sus-soz', role: 'status', css: { left: `${Math.max(22, Math.min(78, (k.capa.x / HARITA_W) * 100)).toFixed(2)}%`, top: yuzdeY(k.capa.y - 30) } }, h('span', { t: is.sakin }));
+        this.icerik?.querySelector('.f-harita-ogeler')?.appendChild(soz);
+        setTimeout(() => soz.remove(), az ? 2400 : 3200);
+      }
+      await this.bekle(az ? 400 : Math.min(2400, 900 + k.isik * 70));
+      setTimeout(() => fisek.remove(), 1800);
+      if (k.mahalleTamam) await this.senlik(k.m);
+    }
+  }
+
+  private bekle(ms: number): Promise<void> {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+
+  /**
+   * Mahalle şenliği (6/6, §B.5): harita mahalleye kayar; mahallenin süsleri
+   * hızla yanıp söner, görünür gök şeridinde fişekler patlar, altın şeritte
+   * "Mahalle şenliği" yazar. 6 sn; dokunuş atlar. Hareketi azaltta kısa.
+   */
+  senlik(m: number): Promise<void> {
+    const kap = this.bolgeKaplari[m];
+    const kok = this.kok;
+    if (!kap || !kok) return Promise.resolve();
+    this.senlikIptal?.();
+    const az = this.b.az();
+    this.kaydirYere({ x: 200, y: bolgeUst(m) + BOLGE_H * 0.45 }, true);
+    kap.classList.add('f-senlik');
+    const katman = h('div', { s: 'f-senlik-katman', 'aria-hidden': 'true' });
+    const bant = h('div', { s: 'f-senlik-bant', role: 'status' }, h('small', { t: MAHALLELER[m]?.ad ?? '' }), h('span', { t: 'Mahalle şenliği' }));
+    kok.appendChild(katman);
+    kok.appendChild(bant);
+    this.b.duyur(`${MAHALLELER[m]?.ad ?? ''} mahalle şenliği`);
+    this.b.titret([30, 20, 60]);
+    this.b.ses('kazandin');
+    const renk = ['#FF5FB4', '#FFB020', '#3AA8FF', '#2EE07A', '#B266FF', '#FF4D4D', MAHALLELER[m]?.vurgu ?? '#FFD15C'];
+    let n = 0;
+    const patlat = () => {
+      // Görünür gök şeridi: üst çubuğun altı → alt düğmelerin üstü (HUD yok).
+      const ustBar = this.ustBar?.getBoundingClientRect();
+      const alt = kok.querySelector('.f-harita-alt-kap')?.getBoundingClientRect();
+      const kr = kok.getBoundingClientRect();
+      const y0 = (ustBar ? ustBar.bottom : kr.top + 70) - kr.top + 16;
+      const y1 = Math.max(y0 + 40, (alt ? alt.top : kr.bottom - 170) - kr.top - 140);
+      const u = (n * 0.618 + 0.11) % 1;
+      const w = (n * 0.382 + 0.07) % 1;
+      const p = h('span', { s: 'f-senlik-fisek', css: { left: `${(8 + u * 84).toFixed(1)}%`, top: `${(y0 + w * (y1 - y0)).toFixed(0)}px`, '--r': renk[n % renk.length], '--s': `${(0.8 + ((n * 7) % 5) * 0.12).toFixed(2)}` } }, Array.from({ length: 14 }, (_, i) => h('i', { css: { '--a': `${i * (360 / 14)}deg` } })));
+      katman.appendChild(p);
+      setTimeout(() => p.remove(), 1500);
+      n++;
+    };
+    return new Promise((coz) => {
+      const zamanlar: ReturnType<typeof setTimeout>[] = [];
+      let bitti = false;
+      const bitir = () => {
+        if (bitti) return;
+        bitti = true;
+        zamanlar.forEach(clearTimeout);
+        kok.removeEventListener('pointerdown', bitir);
+        kap.classList.remove('f-senlik');
+        bant.classList.add('f-cik');
+        katman.classList.add('f-cik');
+        setTimeout(() => {
+          bant.remove();
+          katman.remove();
+        }, 400);
+        this.senlikIptal = null;
+        coz();
+      };
+      this.senlikIptal = bitir;
+      setTimeout(() => kok.addEventListener('pointerdown', bitir), 150);
+      const sure = az ? 1800 : 6000;
+      if (!az) for (let t = 300, k = 0; t < sure - 700; t += 320 + (k % 3) * 140, k++) zamanlar.push(setTimeout(patlat, t));
+      zamanlar.push(setTimeout(bitir, sure));
+    });
+  }
+
   private kaydirSimdiye(id: number, ilk: boolean, yeni: boolean): void {
     const k = this.kaydir;
     const ic = this.icerik;
@@ -402,3 +580,61 @@ export function simdikiBolum(vm: HaritaVM): number {
   return Math.min(40, son + 1);
 }
 
+
+interface KutlamaBilgisi extends KutlamaCizimi {
+  m: number;
+  /** Bu iş mahalleyi 6/6 süsledi: ardından Mahalle şenliği. */
+  mahalleTamam: boolean;
+}
+
+const MAHALLE_ISLERI: string[][] = MAHALLELER.map((mh) => KASABA_ISLERI.filter((x) => x.id.startsWith(`${mh.id}.`)).map((x) => x.id));
+
+/** Mahallenin bütün işleri yapıldı mı (6/6). */
+function mahalleSuslu(yapilan: ReadonlySet<string>, m: number): boolean {
+  const isler = MAHALLE_ISLERI[m] ?? [];
+  return isler.length > 0 && isler.every((x) => yapilan.has(x));
+}
+
+/** Kasabada süslenen mahalle (ilk bitmemiş); hepsi bittiyse −1. */
+function suslenenMahalle(yapilan: ReadonlySet<string>): number {
+  for (let m = 0; m < MAHALLELER.length; m++) if (!mahalleSuslu(yapilan, m)) return m;
+  return -1;
+}
+
+/**
+ * Canlı süs öğesi: kutusu mahalle kabının yüzdesiyle yerleşir (harita
+ * genişliği değişince SVG ile birlikte ölçeklenir), içi küçük bir SVG.
+ * Yeni yapılan işin öğeleri, ışıkları sırayla yanarken belirir (`f-sus-yeni`).
+ */
+function canliOge(o: CanliOge, ust: number, yeni: boolean): HTMLElement {
+  const css: Record<string, string> = {
+    left: `${((o.x / HARITA_W) * 100).toFixed(3)}%`,
+    top: `${(((o.y - ust) / BOLGE_H) * 100).toFixed(3)}%`,
+    width: `${((o.w / HARITA_W) * 100).toFixed(3)}%`,
+    'aspect-ratio': `${o.w.toFixed(2)} / ${o.h.toFixed(2)}`,
+  };
+  if (o.koken) css['--o'] = o.koken;
+  if (o.gecikme !== undefined) css['--g'] = `${o.gecikme.toFixed(2)}s`;
+  if (o.sure !== undefined) css['--s'] = `${o.sure.toFixed(2)}s`;
+  if (o.dy !== undefined) css['--dy'] = `${((-o.dy / o.h) * 100).toFixed(0)}%`;
+  if (yeni) css['--gec'] = `${(0.55 + (o.sira ?? 0) * 0.07).toFixed(2)}s`;
+  const e = h('span', { s: `f-sus f-sus-${o.tur}${yeni ? ' f-sus-yeni' : ''}`, 'aria-hidden': 'true', css });
+  e.appendChild(svg(`<svg viewBox="0 0 ${o.w.toFixed(2)} ${o.h.toFixed(2)}" overflow="visible">${o.ic}</svg>`));
+  return e;
+}
+
+/** Bir işin haritadaki çapası (küresel), harita kaydırması için. */
+export function kasabaIsCapasi(id: string): Nokta | null {
+  const is = KASABA_ISLERI.find((x) => x.id === id);
+  return is ? isCapasi(id, bolgeGeo(is.mahalle)) : null;
+}
+
+/** Tabela çevresinde 22 ampul (yüzde konum): üst ve altta 8'er, yanlarda 3'er. */
+function tabelaAmpulleri(): { x: number; y: number }[] {
+  const p: { x: number; y: number }[] = [];
+  for (let i = 0; i < 8; i++) p.push({ x: 4 + (92 * i) / 7, y: 0 });
+  for (let i = 0; i < 3; i++) p.push({ x: 100, y: 25 + 25 * i });
+  for (let i = 0; i < 8; i++) p.push({ x: 96 - (92 * i) / 7, y: 100 });
+  for (let i = 0; i < 3; i++) p.push({ x: 0, y: 75 - 25 * i });
+  return p;
+}
