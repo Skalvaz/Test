@@ -21,6 +21,20 @@ describe('harita eşlemesi', () => {
     expect(vm.sonsuz?.acik).toBe(false);
   });
 
+  it('(Kancalar) mühür sayısı, sancak ve kasaba süsleri haritaya taşınır', () => {
+    let k = ilerlet(8, 3);
+    k.bolumler['6'].muhur = 7;
+    k.bolumler['7'].muhur = 0b010;
+    const r = meta.kasabaIsYap(k, 'iskele.kayikFenerleri');
+    if (!r.tamam) throw new Error(r.hata);
+    k = r.kayit;
+    const vm = haritaVM(k, { parca: 0, rozet: 0 });
+    expect(vm.bolumler[2]).toEqual({ id: 3, yildiz: 3, durum: 'acik' });
+    expect(vm.bolumler[5]).toMatchObject({ id: 6, muhur: 3, sancak: true });
+    expect(vm.bolumler[6]).toMatchObject({ id: 7, muhur: 1, sancak: false });
+    expect(vm.kasaba).toEqual({ acik: true, kandil: meta.kandilBakiyesi(k), isler: ['iskele.kayikFenerleri'], yapilabilir: true });
+  });
+
   it('yenilik noktaları görülen sayılara göre', () => {
     const k = meta.yeniKayit(1);
     const vm = haritaVM(k, { parca: k.koleksiyon.parcalar.length - 1, rozet: 0 });
