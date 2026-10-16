@@ -17,7 +17,7 @@
  * Bütün localStorage erişimleri try/catch içinde (WhatsApp içi tarayıcı).
  */
 import { SaveStore } from '../platform/storage';
-import { KAYIT_ANAHTARI, KAYIT_YEDEK_ANAHTARLARI, kayitDeposuAyarlari, kayitYukle, type Kayit } from '../meta';
+import { KAYIT_ANAHTARI, KAYIT_YEDEK_ANAHTARLARI, kancaBirlestir, kayitDeposuAyarlari, kayitYukle, type Kayit } from '../meta';
 
 const ilerlemePuani = kayitDeposuAyarlari().progressScore;
 import { rastgeleTohum } from './zaman';
@@ -150,8 +150,13 @@ export class Kayitci {
    * yerele de hemen yazılır (çevrimdışı sonraki açılış aynı kaydı görür).
    */
   bulutUygula(k: Kayit): boolean {
-    if (this.kayit !== this.bulutOncesi && ilerlemePuani(this.kayit) >= ilerlemePuani(k)) return false;
-    this.kayit = k;
+    if (this.kayit !== this.bulutOncesi && ilerlemePuani(this.kayit) >= ilerlemePuani(k)) {
+      // Yerel kalır; buluttaki mühür ve kasaba işleri kaybolmasın (KANCALAR §D.3).
+      const b = kancaBirlestir(this.kayit, k);
+      if (JSON.stringify(b) !== JSON.stringify(this.kayit)) this.degistir(b, 0);
+      return false;
+    }
+    this.kayit = this.kayit === this.bulutOncesi ? k : kancaBirlestir(k, this.kayit);
     this.planla(0);
     return true;
   }

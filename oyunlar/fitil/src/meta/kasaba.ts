@@ -21,7 +21,7 @@
 import { KASABA_ISLERI, KASABA_IS_PER_MAHALLE, MAHALLELER } from '../app/katalog';
 import type { KasabaIsi } from '../app/katalog';
 import type { Kayit } from './kayit';
-import { muhurSayisi } from './muhur';
+import { MUHUR_ACILIS_BOLUMU, MUHUR_MASKE_TAVANI, MUHUR_SON_BOLUM, muhurSayisi } from './muhur';
 import { bolumTuru, mahalleBolumleri, mahalleSayisi, metaAyar } from './sabitler';
 import type { MetaAyar } from './sabitler';
 
@@ -127,6 +127,42 @@ export function kandilBakiyesi(k: Pick<Kayit, 'bolumler' | 'kasaba'>, ayarK?: Pa
   return kandilDokumu(k, ayarK).bakiye;
 }
 
+/** Bir kayıt değişikliğinin kandil kazanımı (Kazandın kazanç şeridi, `Odul kandil`). */
+export interface KandilKazanimi {
+  /** Değişiklikten önceki ve sonraki bakiye. */
+  onceki: number;
+  yeni: number;
+  /** Kaynaklara göre kazanılan kandil (her biri ≥ 0; harcama dahil değil). */
+  kaynak: { yildiz: number; muhur: number; mahalle: number; gunluk: number };
+  /** Toplam kazanılan (kaynakların toplamı). */
+  toplam: number;
+}
+
+/**
+ * Önceki → yeni kayıt arasında kazanılan kandil (§B.2, KANCALAR §D.4 adım
+ * 11). Kaynaklar rekor olduğundan aynı bölümü tekrar oynamak (yıldız
+ * artmadan) 0 verir. Hiç kazanım yoksa null. Harcama (iş yapma) kazanım
+ * sayılmaz; `yeni` yine güncel bakiyedir.
+ */
+export function kandilKazanimi(onceki: Pick<Kayit, 'bolumler' | 'kasaba'>, yeni: Pick<Kayit, 'bolumler' | 'kasaba'>, ayarK?: Partial<MetaAyar>): KandilKazanimi | null {
+  const a = kandilDokumu(onceki, ayarK);
+  const b = kandilDokumu(yeni, ayarK);
+  const kaynak = {
+    yildiz: Math.max(0, b.yildiz - a.yildiz) * KANDIL.yildiz,
+    muhur: Math.max(0, b.muhur - a.muhur) * KANDIL.muhur,
+    mahalle: Math.max(0, b.mahalle - a.mahalle) * KANDIL.mahalle,
+    gunluk: Math.max(0, b.gunluk - a.gunluk) * KANDIL.gunluk,
+  };
+  const toplam = kaynak.yildiz + kaynak.muhur + kaynak.mahalle + kaynak.gunluk;
+  if (toplam === 0) return null;
+  return { onceki: a.bakiye, yeni: b.bakiye, kaynak, toplam };
+}
+
+/** Kasaba bu değişiklikle mi açıldı (3. bölümün ilk kazancı; `Odul kasabaAcildi`). */
+export function kasabaAcildi(onceki: Pick<Kayit, 'bolumler'>, yeni: Pick<Kayit, 'bolumler'>): boolean {
+  return !kasabaAcikMi(onceki) && kasabaAcikMi(yeni);
+}
+
 // ─────────────────────────── İş durumu ───────────────────────────
 
 /**
@@ -225,6 +261,8 @@ export function kasabaIsYap(k: Kayit, id: string, ayarK?: Partial<MetaAyar>): { 
  * işaretler (oto-kart iş başına bir kez atlanır).
  */
 export function kasabaUyarisi(k: Pick<Kayit, 'bolumler' | 'kasaba'>, ayarK?: Partial<MetaAyar>): KasabaIsi | null {
+  // Yalnız sıradaki (en ucuz) iş uyarılır: oyuncu uyarıyı geçerse o iş
+  // yapılana kadar oto-kart yeniden atlanmaz ("bir bölüm daha" akışı bozulmaz).
   const s = siradakiKasabaIsi(k, ayarK);
   if (!s || s.durum !== 'yapilabilir') return null;
   return (k.kasaba?.uyarilan ?? []).includes(s.is.id) ? null : s.is;
@@ -292,4 +330,44 @@ export function kasabaOnar(ham: unknown, k: Pick<Kayit, 'bolumler'>, not: (yol: 
     v.uyarilan = [...u];
   } else if (o.uyarilan !== undefined) not('kasaba.uyarilan');
   return v;
+}
+
+// ─────────────────────────── Birleştirme ───────────────────────────
+
+/**
+ * İki kaydın kanca ilerlemesini birleştirir (bulut + tarayıcı, KANCALAR §D.3).
+ * Kayıt deposu ilerleme puanı büyük olan kaydı seçer (`pickBetter`); bu,
+ * öbür kayıttaki mühürleri ve kasaba işlerini sessizce kaybettirebilirdi
+ * (ör. eski sürümün açık kalmış bir sekmesi şema 3 alanlarını bilmeden yazar,
+ * ya da iki cihazda ayrı işler yapılır). `kazanan` esas alınır, `diger`den
+ * yalnız kaybolmaması gerekenler eklenir:
+ *  - mühür maskeleri: kazananda kazanılmış 6–40. bölümlerde bit bit VEYA;
+ *  - kasaba işleri: kazananın sırası korunur, öbürünün eksik işleri kendi
+ *    sırasıyla eklenir; kurallara ya da bütçeye uymayan atılır (`kasabaOnar`);
+ *  - günlük kandil: büyük olan (iki cihazın ortak geçmişi iki kez sayılmaz);
+ *  - uyarılan işler birleşimi; süslenmiş mahallenin `kasaba:` kartı.
+ * Yıldız, rozet, koleksiyon ve mühür ödülleri kazananınkidir (bu birleştirme
+ * yalnız kandili ve işleri korur). Girdiler onarılmış kayıtlar olmalı; saf.
+ */
+export function kancaBirlestir(kazanan: Kayit, diger: Kayit, ayarK?: Partial<MetaAyar>): Kayit {
+  const ayar = metaAyar(ayarK);
+  const y = JSON.parse(JSON.stringify(kazanan)) as Kayit;
+  for (const [a, b] of Object.entries(y.bolumler)) {
+    const id = Number(a);
+    if (bolumTuru(id, ayar) !== 'ana' || id < MUHUR_ACILIS_BOLUMU || id > MUHUR_SON_BOLUM || b.yildiz < 1) continue;
+    const m = ((b.muhur ?? 0) | (diger.bolumler?.[a]?.muhur ?? 0)) & MUHUR_MASKE_TAVANI;
+    if (m > 0) b.muhur = m;
+  }
+  const kendi = new Set(y.kasaba.isler);
+  const aday: KasabaKaydi = {
+    isler: [...y.kasaba.isler, ...(diger.kasaba?.isler ?? []).filter((id) => !kendi.has(id))],
+    gunlukKandil: Math.max(y.kasaba.gunlukKandil, diger.kasaba?.gunlukKandil ?? 0),
+    uyarilan: [...new Set([...y.kasaba.uyarilan, ...(diger.kasaba?.uyarilan ?? [])])],
+  };
+  y.kasaba = kasabaOnar(aday, y, () => undefined, ayar);
+  for (let m = 0; m < MAHALLELER.length; m++) {
+    const kart = `${KASABA_KART_ONEKI}${MAHALLELER[m].id}`;
+    if (mahalleSuslendi(y, m) && !y.koleksiyon.kartlar.includes(kart)) y.koleksiyon.kartlar.push(kart);
+  }
+  return y;
 }

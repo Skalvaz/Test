@@ -143,7 +143,14 @@ export function haritaVM(k: Kayit, gorulen: { parca: number; rozet: number }): H
   const bolumler: HaritaVM['bolumler'] = [];
   const ustalar: HaritaVM['ustalar'] = [];
   for (const d of hv.dugumler) {
-    if (d.tur === 'bolum') bolumler.push({ id: d.id, yildiz: d.yildiz, durum: d.durum === 'kazanildi' ? 'acik' : d.durum === 'acik' ? 'simdiki' : 'kilitli' });
+    if (d.tur === 'bolum')
+      bolumler.push({
+        id: d.id,
+        yildiz: d.yildiz,
+        durum: d.durum === 'kazanildi' ? 'acik' : d.durum === 'acik' ? 'simdiki' : 'kilitli',
+        // (Kancalar) Mühür sayısı ve 3/3'te çatı sancağı (mühürsüz bölümde yok).
+        ...(d.muhur !== null ? { muhur: meta.muhurSayisi(d.muhur), sancak: d.sancak } : {}),
+      });
     else ustalar.push({ id: d.id, acik: d.durum !== 'kilitli', yildiz: d.yildiz, gerekenYildiz: d.gerekenYildiz });
   }
   const motifler: HaritaVM['motifler'] = [];
@@ -159,6 +166,8 @@ export function haritaVM(k: Kayit, gorulen: { parca: number; rozet: number }): H
     defterYeni: k.koleksiyon.parcalar.length > gorulen.parca,
     rozetYeni: k.rozetler.length > gorulen.rozet,
     sonsuz: { acik: hv.sonsuz.acik, siradaki: hv.sonsuz.siradaki },
+    // (Kancalar §C.1, §B.6) Kasaba düğmesi ve harita süsleri.
+    kasaba: { acik: hv.kasaba.acik, kandil: hv.kasaba.kandil, isler: hv.kasaba.isler, yapilabilir: hv.kasaba.yapilabilir },
   };
 }
 

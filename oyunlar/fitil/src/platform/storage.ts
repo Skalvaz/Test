@@ -10,7 +10,8 @@
  *
  * İki kaynakta da kayıt varsa `progressScore` değeri büyük olan (eşitse
  * daha yeni) kazanır; böylece önce dosyada oynayıp sonra giriş yapan
- * oyuncunun ilerlemesi kaybolmaz. Yazma birleştirilir: art arda gelen
+ * oyuncunun ilerlemesi kaybolmaz. `merge` verilmişse kazanan kayda öbüründen
+ * kaybolmaması gerekenler eklenir (FİTİL: mühürler ve kasaba işleri). Yazma birleştirilir: art arda gelen
  * kayıtlar tek yazmaya iner, aynı belgeye aynı anda iki yazma gitmez.
  */
 import type { ClaudeDb, ClaudeDocRef } from './claude';
@@ -35,10 +36,14 @@ export class SaveStore<T> {
   private timer: ReturnType<typeof setTimeout> | null = null;
   backend: StorageBackend = 'bellek';
 
-  constructor(opts: { key: string; version: number; progressScore: (d: T) => number }) {
+  /** İki kaynak birleşirken seçilen kayda öbüründen eklenecekler (isteğe bağlı; `pickMerged`). */
+  private merge: ((better: T, other: T) => T) | undefined;
+
+  constructor(opts: { key: string; version: number; progressScore: (d: T) => number; merge?: (better: T, other: T) => T }) {
     this.key = opts.key;
     this.version = opts.version;
     this.score = opts.progressScore;
+    this.merge = opts.merge;
     if (localGet(this.key) !== undefined) this.backend = 'tarayici';
     else if (localAvailable()) this.backend = 'tarayici';
   }
@@ -71,9 +76,9 @@ export class SaveStore<T> {
       this.backend = 'bulut';
       const remoteEnv = snap.exists ? parseEnvelope<T>(JSON.stringify(snap.data()), this.version) : null;
       const localEnv = this.loadLocal();
-      const better = pickBetter(localEnv, remoteEnv);
-      if (better && better === localEnv && better !== remoteEnv) this.queue(better);
-      return better && better === remoteEnv ? remoteEnv : null;
+      const better = pickMerged(localEnv, remoteEnv, this.merge, (d) => ({ v: this.version, savedAt: Date.now(), progressScore: this.score(d), data: d }));
+      if (better && better !== remoteEnv) this.queue(better);
+      return better && better !== localEnv ? better : null;
     } catch {
       this.remote = null;
       return null;
@@ -122,6 +127,24 @@ export function pickBetter<T>(a: SaveEnvelope<T> | null, b: SaveEnvelope<T> | nu
   if (!b) return a;
   if (a.progressScore !== b.progressScore) return a.progressScore > b.progressScore ? a : b;
   return a.savedAt >= b.savedAt ? a : b;
+}
+
+/**
+ * `pickBetter` + birleştirme: iki kaynakta da kayıt varsa seçilen kayda
+ * öbüründen kaybolmaması gerekenler eklenir (`merge(seçilen, öbürü)`; FİTİL'de
+ * mühür ve kasaba işleri). Birleşim seçilen veriden farklıysa yeni zarf
+ * (`wrap`) döner; aynıysa ya da birleştirme hata verirse seçilen zarf aynen.
+ */
+export function pickMerged<T>(local: SaveEnvelope<T> | null, remote: SaveEnvelope<T> | null, merge: ((better: T, other: T) => T) | undefined, wrap: (d: T) => SaveEnvelope<T>): SaveEnvelope<T> | null {
+  const better = pickBetter(local, remote);
+  if (!better || !local || !remote || !merge) return better;
+  const other = better === local ? remote : local;
+  try {
+    const data = merge(better.data, other.data);
+    return JSON.stringify(data) === JSON.stringify(better.data) ? better : wrap(data);
+  } catch {
+    return better;
+  }
 }
 
 function parseEnvelope<T>(raw: string | undefined | null, version: number): SaveEnvelope<T> | null {

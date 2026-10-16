@@ -423,6 +423,19 @@ betiğin başında; katalog değişince birlikte güncellenir ve bu tablo yenide
   px üçgen bayrak (Kale kremi için koyu kontur), CSS ile hafif dalgalanır.
 - Mahalle şeridi: "★ 12/15" yanına mühür çipi "● 9/15" (İskele'de yok),
   6/6 süslenmiş mahallede şeridin kenarı ışıklı.
+- **Uygulama (süs paketi, `src/ui/harita/susler.ts`):** her mahallede
+  "giriş yuvası" (şeridin üstü, ortada: İskele kemeri, Çarşı kapısı, Liman
+  kapısı, çeşme, gül kemeri, ateş çanakları, depo kapısı, kale kapısı),
+  "cep ipleri" (düğüm lambasından karşı kenara fener/flama dizisi), bina
+  süsleri ve arka plan simgeleri (kubbe, mahya, saat kulesi, tepe sırtı);
+  taç işlerin bir kısmı mahallenin üst ortasında. "Canlı öğe" = bir HTML
+  öğesi: iş başına 1 (ip + fenerleri tek öğe, skewX ile sallanır; Tepe'de
+  iki değirmen için 2, Gök haritası durağan), ölçüm mahalle başına 5–6.
+  Yapılmamış işler yalnız süslenen mahallede sönük "hayalet" çizilir.
+  Katalog `yer` = çizimin çapası (`isCapasi`, test). Yeni iş, `harita(vm)`
+  önceki modelde yoksa kutlanır (1–2 iş; toplu değişiklikte kutlama yok);
+  6/6 olduysa ardından Mahalle şenliği; `Arayuz.haritaKutlamasi()` bitince
+  uygulama Defter kartını açar.
 
 ---
 

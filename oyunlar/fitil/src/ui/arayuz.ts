@@ -295,6 +295,21 @@ export class Arayuz {
     this.haritaEkrani.gizle();
   }
 
+  /**
+   * (Kancalar §C.1) Yeni yapılan kasaba işinin harita kutlaması — `harita(vm)`
+   * önceki modelde olmayan işi görünce kendiliğinden oynar — ve mahalle 6/6
+   * olduysa ardından Mahalle şenliği bitince çözülür. Uygulama Defter kartını
+   * (`kasaba:<mahalleId>`) bundan sonra gösterir.
+   */
+  haritaKutlamasi(): Promise<void> {
+    return this.haritaEkrani.kutlamaBitti();
+  }
+
+  /** (Kancalar §B.5) Haritada Mahalle şenliği (6 sn, dokunuş atlar). */
+  haritaSenligi(mahalle: number): Promise<void> {
+    return this.haritaEkrani.senlik(mahalle);
+  }
+
   bolumOncesi(vm: BolumOncesiVM): Promise<'basla' | 'geri'> {
     return this.ac(bolumOncesiEkrani(this.b, vm));
   }

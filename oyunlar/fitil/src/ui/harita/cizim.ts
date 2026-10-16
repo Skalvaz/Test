@@ -16,6 +16,8 @@ import { GOKYUZU, MAHALLELER } from '../../app/katalog';
 import { motifIsaretleme } from '../ikonlar';
 import type { Motif } from '../../core/types';
 import type { BolumDugumuVM } from '../tipler';
+import { mahalleSusleri, susTanimlari } from './susler';
+import type { BinaGeo, BolgeGeo, CanliOge, DugumGeo, Katman, KutlamaCizimi, SusSecenek } from './susler';
 
 export const HARITA_W = 400;
 export const BOLGE_H = 660;
@@ -90,6 +92,16 @@ export function yolParcasi(a: Nokta, b: Nokta): string {
 interface BinaSonucu {
   svg: string;
   cati: Nokta;
+  /** Duvar üstü (y), genişlik ve süslerin tutunacağı noktalar (BinaGeo). */
+  ust: number;
+  w: number;
+  /** Çatı sancağının direk dibi (çatının sol kesimi, KANCALAR §A.6). */
+  sancak: Nokta;
+  kapi: Nokta | null;
+  baca: { x: number; ust: number } | null;
+  agac: Nokta | null;
+  /** Yel değirmeni göbeği (Tepe) ya da rasathane kubbesi merkezi. */
+  gobek: Nokta | null;
 }
 
 type Durum = BolumDugumuVM['durum'];
@@ -132,11 +144,14 @@ function yanikSayisi(toplam: number, yildiz: number, durum: Durum): number {
   return Math.round((toplam * yildiz) / 3);
 }
 
-function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, durum: Durum, ozel: number): BinaSonucu {
+function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, durum: Durum, ozel: number, gizle?: ReadonlySet<string>): BinaSonucu {
   const kil = durum === 'kilitli';
   const kat = (c: string) => (kil ? karistir(c, '#05030A', 0.55) : c);
   let s = '';
   let cati: Nokta = { x: cx, y: taban - 80 };
+  const g: Omit<BinaSonucu, 'svg' | 'cati'> = { ust: taban - 60, w: 60, sancak: { x: cx - 20, y: taban - 60 }, kapi: null, baca: null, agac: null, gobek: null };
+  /** Sol çatı eğimi üstünde bir nokta (a: saçak, b: mahya). */
+  const egim = (ax: number, ay: number, bx2: number, by: number, t: number): Nokta => ({ x: ax + (bx2 - ax) * t, y: ay + (by - ay) * t });
   switch (tema) {
     case 0: {
       // İskele: ahşap ev, kırma çatı, tahta kaplama.
@@ -152,6 +167,7 @@ function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, d
       s += pencereler(r, x + 9, y + 10, 3, 2, (w - 26) / 2, 22, 8, 11, yanikSayisi(6, yildiz, durum), false, kil);
       s += `<rect x="${f(cx - 6)}" y="${f(taban - 18)}" width="12" height="18" fill="${kat('#1A0E06')}"/>`;
       cati = { x: cx, y: y - 34 };
+      Object.assign(g, { ust: y, w, sancak: egim(x - 7, y + 2, cx, y - 30, 0.32), kapi: { x: cx, y: taban - 18 }, baca: { x: cx + w * 0.2 + 3.5, ust: y - 26 } });
       break;
     }
     case 1: {
@@ -172,6 +188,7 @@ function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, d
       }
       s += pencereler(r, x + 9, y + 12, 3, 2, (w - 26) / 2, 22, 8, 13, yanikSayisi(6, yildiz, durum), true, kil);
       cati = { x: cx, y: y - 4 - kr - 16 };
+      Object.assign(g, { ust: y, w, sancak: { x: x + 6, y: y - 4 }, gobek: { x: cx, y: y - 4 - kr * 0.95 } });
       break;
     }
     case 2: {
@@ -186,6 +203,7 @@ function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, d
       s += pencereler(r, x + 7, y + 8, 6, 1, (w - 22) / 5, 0, 7, 9, yanikSayisi(6, yildiz, durum), false, kil);
       s += `<circle cx="${f(cx)}" cy="${f(y - 7)}" r="3.5" fill="${kil ? '#0C0814' : yildiz > 0 ? PENCERE_ISIK : '#160F22'}"/>`;
       cati = { x: cx, y: y - 24 };
+      Object.assign(g, { ust: y, w, sancak: egim(x - 5, y + 1, cx, y - 18, 0.3), kapi: { x: cx, y: taban - 37 } });
       break;
     }
     case 3: {
@@ -204,6 +222,7 @@ function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, d
         s += `<path d="M${f(cx)} ${f(y + 15)}v-9M${f(cx)} ${f(y + 15)}h6" stroke="#3A2416" stroke-width="1.8" stroke-linecap="round"/>`;
         s += pencereler(r, x + 8, y + 46, 2, 3, 16, 26, 8, 14, yanikSayisi(6, yildiz, durum), true, kil);
         cati = { x: cx, y: y - 38 };
+        Object.assign(g, { ust: y, w, sancak: egim(x - 5, y, cx, y - 34, 0.35), gobek: { x: cx, y: y + 15 } });
       } else {
         const w = 56 + r.int(10);
         const hh = 74 + r.int(18);
@@ -214,6 +233,7 @@ function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, d
         s += `<rect x="${f(x)}" y="${f(y + hh * 0.48)}" width="${w}" height="4" fill="${kat('#5A3A30')}"/>`;
         s += pencereler(r, x + 9, y + 10, 2, 3, w - 26, 24, 9, 14, yanikSayisi(6, yildiz, durum), false, kil);
         cati = { x: cx, y: y - 24 };
+        Object.assign(g, { ust: y, w, sancak: { x: x + 13, y: y - 20 }, kapi: { x: cx, y: y + hh * 0.48 } });
       }
       break;
     }
@@ -231,6 +251,7 @@ function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, d
       s += pencereler(r, x + 8, y + 10, 4, 1, (w - 24) / 3, 0, 8, 14, yanikSayisi(4, yildiz, durum) , false, kil);
       s += pencereler(r, x + 14, y + 30, 2, 1, w - 36, 0, 8, 10, Math.max(0, yanikSayisi(6, yildiz, durum) - yanikSayisi(4, yildiz, durum)), false, kil);
       cati = { x: cx, y: y - 30 };
+      Object.assign(g, { ust: y, w, sancak: { x: x + 25, y: y - 24 }, agac: { x: agacX, y: taban - 30 } });
       break;
     }
     case 5: {
@@ -245,10 +266,12 @@ function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, d
           const uy = Math.sin(rad);
           return `<path d="M${f(cx)} ${f(y - 4)}L${f(cx + ux * 46 - uy * 5)} ${f(y - 4 + uy * 46 + ux * 5)}L${f(cx + ux * 46 + uy * 4)} ${f(y - 4 + uy * 46 - ux * 4)}z" fill="${kat('#4A3A3E')}" stroke="${kat('#2A1E22')}" stroke-width="1"/>`;
         };
-        s += kanat(20) + kanat(110) + kanat(200) + kanat(290);
+        // Kasaba işi "Değirmen kanatları" yapıldıysa ışıklı kanatlar canlı katmanda döner.
+        if (!gizle?.has(`kanat-${ozel}`)) s += kanat(20) + kanat(110) + kanat(200) + kanat(290);
         s += `<circle cx="${f(cx)}" cy="${f(y - 4)}" r="3.5" fill="${kat('#D9A441')}"/>`;
         s += pencereler(r, cx - 4, y + 16, 1, 3, 0, 18, 8, 11, yanikSayisi(3, yildiz, durum), true, kil);
         cati = { x: cx, y: y - 50 };
+        Object.assign(g, { ust: y, w: 36, sancak: { x: cx - 14, y: y + 2 }, gobek: { x: cx, y: y - 4 } });
       } else if (ozel === 4) {
         const w = 66;
         const hh = 46;
@@ -260,6 +283,7 @@ function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, d
         s += `<path d="M${f(cx + 4)} ${f(y - 20)}l20 -16" stroke="${kat('#8A80A0')}" stroke-width="4" stroke-linecap="round"/>`;
         s += pencereler(r, x + 8, y + 14, 3, 2, (w - 24) / 2, 14, 8, 8, yanikSayisi(6, yildiz, durum), false, kil);
         cati = { x: cx, y: y - w / 2 - 6 };
+        Object.assign(g, { ust: y, w, sancak: { x: x + 7, y: y - 2 }, gobek: { x: cx, y } });
       } else {
         const w = 58 + r.int(10);
         const hh = 54 + r.int(10);
@@ -269,6 +293,7 @@ function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, d
         s += `<path d="M${f(x - 5)} ${f(y + 2)}L${f(cx)} ${f(y - 24)}L${f(x + w + 5)} ${f(y + 2)}z" fill="${kat('#2A1E30')}"/>`;
         s += pencereler(r, x + 8, y + 10, 3, 2, (w - 24) / 2, 20, 8, 11, yanikSayisi(6, yildiz, durum), false, kil);
         cati = { x: cx, y: y - 28 };
+        Object.assign(g, { ust: y, w, sancak: egim(x - 5, y + 2, cx, y - 24, 0.3) });
       }
       break;
     }
@@ -291,6 +316,8 @@ function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, d
       for (let k = 1; k < hh / 8; k++) s += `<path d="M${f(x)} ${f(y + k * 8)}h${w}" stroke="${kat('#3A1A18')}" stroke-width=".8"/>`;
       s += pencereler(r, x + 8, y + 10, 3, 2, (w - 26) / 2, 20, 10, 12, yanikSayisi(6, yildiz, durum), false, kil);
       cati = { x: bx, y: y - 70 };
+      const tepe = bx < cx ? x + (2 * w) / dis : x;
+      Object.assign(g, { ust: y, w, sancak: { x: tepe + 1.5, y: y - 15 }, baca: { x: bx, ust: y - 60 } });
       break;
     }
     default: {
@@ -308,10 +335,11 @@ function bina(tema: number, cx: number, taban: number, r: Rng, yildiz: number, d
       s += pencereler(r, x + 10, y + 14, 2, 3, w - 28, (hh - 40) / 3, 8, 13, yanikSayisi(6, yildiz, durum), true, kil);
       s += `<path d="M${f(cx - 9)} ${f(taban)}v-14a9 9 0 0 1 18 0v14z" fill="${kat('#1A1420')}"/>`;
       cati = { x: cx, y: y - 40 };
+      Object.assign(g, { ust: y, w, sancak: { x: x - 3 + (w + 6) / 10, y: y - 9 }, kapi: { x: cx, y: taban - 23 } });
       break;
     }
   }
-  return { svg: s, cati };
+  return { svg: s, cati, ...g };
 }
 
 /** Teras (bina ve düğümün durduğu set). */
@@ -472,13 +500,19 @@ export interface BolgeCizimi {
   svg: string;
   /** 3★ binalarda çatı fişeği yerleri. */
   catilar: { id: number; x: number; y: number }[];
+  /** 3/3 mühürlü binalarda sancak direğinin dibi (bayrak canlı katmanda). */
+  sancaklar: { id: number; x: number; y: number }[];
+  /** Yapılmış işlerin canlı öğeleri (salınan fener, dalgalanan bayrak, alev…). */
+  canli: CanliOge[];
+  /** Bu çizimde yeni yapılan işler: kutlama katmanında ayrı çizilir. */
+  kutla: KutlamaCizimi[];
 }
 
 /**
  * Bir mahallenin SVG'si. `bolumler`: 40 düğüm (id sırasıyla), `motifler`:
  * bu mahallede asılı motifler.
  */
-export function bolgeCiz(m: number, bolumler: readonly BolumDugumuVM[], motifler: readonly Motif[]): BolgeCizimi {
+export function bolgeCiz(m: number, bolumler: readonly BolumDugumuVM[], motifler: readonly Motif[], susSecenek?: SusSecenek): BolgeCizimi {
   const ust = bolgeUst(m);
   const r = new Rng(`mahalle-${m}`);
   const dugum = (id: number): BolumDugumuVM => bolumler[id - 1] ?? { id, yildiz: 0, durum: 'kilitli' };
@@ -504,8 +538,14 @@ export function bolgeCiz(m: number, bolumler: readonly BolumDugumuVM[], motifler
       <path d="M-20-26v-14M20-26v-14" stroke="#3A2416" stroke-width="2"/>${motifIsaretleme(mo, 1.3, !kilitli)}</g>`;
   });
 
+  // Kasaba süsleri (KANCALAR §B.6): katmanlara ayrılmış durağan SVG + canlı öğeler.
+  const geo = bolgeGeo(m);
+  const sus = susSecenek && !kilitli ? mahalleSusleri(geo, susSecenek) : null;
+  if (sus) s += sus.katman('arka');
+
   // Teraslar, binalar, lambalar (üstten alta: alttakiler önde)
   const catilar: { id: number; x: number; y: number }[] = [];
+  const sancaklar: { id: number; x: number; y: number }[] = [];
   for (let j = 4; j >= 0; j--) {
     const bid = m * 5 + j + 1;
     const d = dugum(bid);
@@ -514,12 +554,55 @@ export function bolgeCiz(m: number, bolumler: readonly BolumDugumuVM[], motifler
     const br = new Rng(`bina-${bid}`);
     s += teras(m, k.taraf, k.x + (k.taraf === 'sol' ? 46 : -46), zemin, br, d.durum === 'kilitli');
     const bx = k.x + (k.taraf === 'sol' ? -64 : 64);
-    const b = bina(m, bx, zemin - 4, br, d.yildiz, d.durum, j);
+    const b = bina(m, bx, zemin - 4, br, d.yildiz, d.durum, j, sus?.gizle);
     s += b.svg;
     s += lamba(k.x + (k.taraf === 'sol' ? 40 : -40), zemin - 4, d.durum !== 'kilitli');
+    if (sus) s += sus.katman(j as Katman);
     if (d.durum === 'acik' && d.yildiz >= 3) catilar.push({ id: bid, x: b.cati.x, y: b.cati.y });
+    if (d.durum === 'acik' && d.sancak) {
+      sancaklar.push({ id: bid, x: b.sancak.x, y: b.sancak.y });
+      s += sancakDiregi(b.sancak, m);
+    }
   }
-  return { svg: s, catilar };
+  if (sus) s += sus.katman('on');
+  return { svg: s, catilar, sancaklar, canli: sus?.canli ?? [], kutla: sus?.kutla ?? [] };
+}
+
+/**
+ * Mahallenin süs geometrisi (düğümler, lamba direkleri, binaların tutunma
+ * noktaları). Yalnız mahalleye bağlıdır (belirlenimli): iş çapası kayıttan
+ * bağımsız hesaplanır.
+ */
+const GEO_ONBELLEK = new Map<number, BolgeGeo>();
+
+export function bolgeGeo(m: number): BolgeGeo {
+  const onbellek = GEO_ONBELLEK.get(m);
+  if (onbellek) return onbellek;
+  const dugumler: DugumGeo[] = [];
+  const binalar: BinaGeo[] = [];
+  for (let j = 0; j < 5; j++) {
+    const bid = m * 5 + j + 1;
+    const k = dugumKonumu(bid);
+    const zemin = k.y + 18;
+    const lx = k.x + (k.taraf === 'sol' ? 40 : -40);
+    dugumler.push({ id: bid, j, x: k.x, y: k.y, taraf: k.taraf, zemin, lamba: { x: lx, y: zemin - 4 - 30 } });
+    const br = new Rng(`bina-${bid}`);
+    // teras() aynı Rng'den çeker: sırayı korumak için önce o çağrılır (çıktısı atılır).
+    teras(m, k.taraf, k.x + (k.taraf === 'sol' ? 46 : -46), zemin, br, false);
+    const bx = k.x + (k.taraf === 'sol' ? -64 : 64);
+    const b = bina(m, bx, zemin - 4, br, 3, 'acik', j);
+    binalar.push({ id: bid, j, taraf: k.taraf, x: bx, w: b.w, taban: zemin - 4, ust: b.ust, cati: b.cati, sancak: b.sancak, kapi: b.kapi, baca: b.baca, agac: b.agac, gobek: b.gobek });
+  }
+  const b0 = baslangicKonumu();
+  const geo: BolgeGeo = { m, ust: bolgeUst(m), dugumler, binalar, tabela: m === 0 ? { x: b0.x, y: b0.y + 74 } : null };
+  GEO_ONBELLEK.set(m, geo);
+  return geo;
+}
+
+/** Çatı sancağının durağan direği (bayrak canlı katmanda dalgalanır). */
+function sancakDiregi(p: Nokta, m: number): string {
+  const kale = m === 7;
+  return `<path d="M${f(p.x)} ${f(p.y + 1)}v-17" stroke="${kale ? '#2A2230' : '#2A1A10'}" stroke-width="1.3" stroke-linecap="round"/><circle cx="${f(p.x)}" cy="${f(p.y - 16.5)}" r="1.4" fill="#F2C66D"/>`;
 }
 
 /** Ortak <defs>: teras yüzü kararması, deniz. Haritada bir kez. */
@@ -530,6 +613,7 @@ export function haritaTanimlari(): string {
     <linearGradient id="hb-deniz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1B1040"/><stop offset="1" stop-color="#0A0E26"/></linearGradient>
     <clipPath id="hb-yatay" clipPathUnits="userSpaceOnUse"><rect x="0" y="-2000" width="${HARITA_W}" height="${HARITA_H + 4000}"/></clipPath>
     <linearGradient id="hb-sis" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0A0614" stop-opacity=".25"/><stop offset=".5" stop-color="#0A0614" stop-opacity=".55"/><stop offset="1" stop-color="#0A0614" stop-opacity=".35"/></linearGradient>
+    ${susTanimlari()}
   </defs>`;
 }
 
