@@ -40,6 +40,24 @@ export const KANDIL = {
   /** Günün 3 görevinin üçü de tamamlandı (günde en çok 1). */
   gunluk: 1,
 } as const;
+/**
+ * Kanca öğretim balonlarının kimlikleri (KANCALAR §C.6; `ipuclari.gorulen`
+ * ile bir kez gösterilir).
+ */
+export const KANCA_IPUCU = {
+  /** 3. bölümün ilk kazancından sonra haritada: "Yıldızların kandile döndü!". */
+  kasabaIlk: 'kasaba-ilk',
+  /** Göçle gelen oyuncunun ilk haritası (kasaba açık, hiç iş yok). */
+  kasabaHosgeldin: 'kasaba-hosgeldin',
+  /** Mühürlerin tanıtıldığı Kazandın. */
+  muhurTanitim: 'muhur-tanitim',
+  /** Mühürlü ilk bölüm öncesi kartı. */
+  muhurKart: 'muhur-kart',
+  /** İlk 'tuttu' uçuşu (oyun içinde). */
+  muhurHud: 'muhur-hud',
+  /** İlk sancaktan sonraki harita. */
+  sancakIlk: 'sancak-ilk',
+} as const;
 /** Kart kimliği öneki: `kasaba:<mahalleId>`. */
 export const KASABA_KART_ONEKI = 'kasaba:';
 

@@ -27,6 +27,20 @@
  *  9. Sandıklar: ilk kazanç, artan her yıldız (3. yıldız parlak), günlük,
  *     görevler (3/3 olanı parlak), seri; sistem kapalıysa bekletilir.
  * 10. Rozetler.
+ * 11. (Şema 3, KANCALAR §D.4) Kandil kazanımı ve kasabanın açılışı.
+ *
+ * Şema 3 ek adımları (KANCALAR §D.4):
+ *  2b. Mühürler (kazanç, ana 6–40, Usta'nın Eli yok, `g.muhurler` var):
+ *      maske birleşir; yeni mühür ya da mühürlerin tanıtımı (ilk mühürlü
+ *      kazanç) → `muhur`; maske bu kazançla 3/3 olduysa → `sancak`.
+ *  2c. Mahallenin mühür sayısı 5/10/15 basamağını ilk kez geçtiyse
+ *      (`muhurOdulleri`'nde yoksa): mahalle fitilinin en küçük eksik parçası,
+ *      üçü de varsa toz → `muhurParcasi`. Kendini onarır (birleştirmeyle
+ *      gelen mühürler sonraki kazançta sayılır).
+ *  7b. 3/3 görev parlak sandığı verildiği anda +1 günlük kandil.
+ *  11. Kasaba açıksa ve kandil kazanıldıysa → `kandil`; kasaba bu kazançla
+ *      açıldıysa → `kasabaAcildi`. Kasaba açılmadan (1–2. bölüm) kandil
+ *      ödülü çıkmaz (birim henüz tanıtılmadı; bakiye yine türetilir).
  *
  * Kararlar (GDD yorumu):
  *  - Yıldız sandıkları: ilk kazanç 1. yıldızı karşılar; 2. ve 3. yıldız ayrı
@@ -41,10 +55,10 @@
  *    artmaz; kazanılırsa sayılmış kayıp kazanca döner.
  *  - Yeniden başlatma uygulamada kayıp olarak bildirilir (§14.5: Coşku bozulur).
  */
-import { GUCLENDIRICILER, MAHALLELER } from '../app/katalog';
+import { GUCLENDIRICILER, MAHALLELER, MUHUR_FITILLERI } from '../app/katalog';
 import type { FitilId, GokyuzuId, GuclendiriciId } from '../app/katalog';
 import type { BolumIstatistigi, Motif } from '../core/types';
-import { guclendiriciAcik, guclendiriciVer_yerinde } from './envanter';
+import { guclendiriciAcik, guclendiriciVer_yerinde, tozEkle_yerinde } from './envanter';
 import type { GuclendiriciVerildi } from './envanter';
 import { nadirlikHesapla, tabloUret } from './galeri';
 import type { Tablo } from './galeri';
@@ -52,6 +66,8 @@ import { arsivdeMi, gorevIlerlet, gorevMetni, gunlukAcik, gunlukDahaIyi, gunlukT
 import type { SeriSonucu } from './gunluk';
 import { acikEnYuksek, anaYildiz, bolumKazanildi, kayitKopyala, parcaId, sonsuzAcikMi } from './kayit';
 import type { BolumKaydi, GorevDurumu, GunlukSonucKaydi, KartId, Kayit, Nadirlik, ParcaId, Rekorlar, SandikNedeni, Yildiz } from './kayit';
+import { kandilKazanimi, kasabaAcikMi, toplamMuhur } from './kasaba';
+import { MUHUR_ACILIS_BOLUMU, MUHUR_MASKE_TAVANI, MUHUR_PARCA_ESIKLERI, MUHUR_SON_BOLUM, muhurBirlestir, muhurSayisi } from './muhur';
 import type { MuhurKademe } from './muhur';
 import { ozetBaslat } from './ozet';
 import type { OyunOzeti } from './ozet';
@@ -63,6 +79,7 @@ import {
   SANDIK_ACILIS_BOLUMU,
   SERI_BASAMAKLARI,
   SONSUZ_TABANI,
+  TOZ_PARCA_BEDELI,
   USTA_ELI_ESIGI,
   bolumMahallesi,
   bolumTuru,
@@ -261,6 +278,7 @@ export function bolumSonucu(kayit: Kayit, g: BolumSonucGirdisi, ayarK?: Partial<
   const k = kayitKopyala(kayit);
   const oduller: Odul[] = [];
   const bolumId = g.bolumId;
+  const oncekiMuhur = toplamMuhur(kayit, ayar);
   const anahtar = String(bolumId);
   const tur = g.tur ?? bolumTuru(bolumId, ayar);
   const ist = g.istatistik ?? ({} as BolumIstatistigi);
@@ -336,6 +354,19 @@ export function bolumSonucu(kayit: Kayit, g: BolumSonucGirdisi, ayarK?: Partial<
       }
     }
     k.bolumler[anahtar] = b;
+
+    // 2b–2c. Mühürler ve mahalle mühür ödülleri (KANCALAR §D.4).
+    if (kazandi && tur === 'ana' && bolumId >= MUHUR_ACILIS_BOLUMU && bolumId <= MUHUR_SON_BOLUM && ist.ustaEli !== true && g.muhurler) {
+      const eski = (b.muhur ?? 0) & MUHUR_MASKE_TAVANI;
+      const r = muhurBirlestir(eski, g.muhurler);
+      if (r.maske > 0) b.muhur = r.maske;
+      // Tanıtım: hiç mühür basılmamış oyuncunun ilk mühürlü kazancı (6. bölüm
+      // için tutan olmasa da satır gösterilir: "Yeni: Mühürler").
+      const tanitim = oncekiMuhur === 0 && (r.yeni.length > 0 || (bolumId === MUHUR_ACILIS_BOLUMU && ilkKazanc));
+      if (r.yeni.length > 0 || tanitim) oduller.push({ tur: 'muhur', bolumId, yeni: r.yeni, maske: r.maske, tanitim });
+      if (r.maske === MUHUR_MASKE_TAVANI && eski !== MUHUR_MASKE_TAVANI) oduller.push({ tur: 'sancak', bolumId, mahalle: bolumMahallesi(bolumId, ayar) });
+    }
+    if (kazandi && tur === 'ana') muhurParcaOdulleri(k, bolumId, ayar, oduller);
 
     // 3. Coşku Serisi.
     const onceki = k.cosku;
@@ -462,7 +493,11 @@ export function bolumSonucu(kayit: Kayit, g: BolumSonucGirdisi, ayarK?: Partial<
     r.tamamlanan.forEach((i, j) => {
       oduller.push({ tur: 'gorev', indeks: i, gorev: r.gorevler[i], metin: gorevMetni(r.gorevler[i]) });
       const parlak = hepsi && j === r.tamamlanan.length - 1 && !k.gunluk.ucGorevSandigi;
-      if (parlak) k.gunluk.ucGorevSandigi = true;
+      if (parlak) {
+        k.gunluk.ucGorevSandigi = true;
+        // 7b. Günün üç görevi: günde en çok 1 kandil (parlak sandık bir kez verilir).
+        k.kasaba.gunlukKandil += 1;
+      }
       gorevSandiklari.push({ tur: parlak ? 'parlak' : 'normal', neden: 'gorev' });
     });
   }
@@ -500,6 +535,13 @@ export function bolumSonucu(kayit: Kayit, g: BolumSonucGirdisi, ayarK?: Partial<
     oduller.push(o);
   }
 
+  // 11. Kandil (türetilmiş bakiyenin kazanımı) ve kasabanın açılışı.
+  if (kasabaAcikMi(k)) {
+    const kz = kandilKazanimi(kayit, k, ayar);
+    if (kz) oduller.push({ tur: 'kandil', onceki: kz.onceki, yeni: kz.yeni, kaynak: kz.kaynak });
+    if (!kasabaAcikMi(kayit)) oduller.push({ tur: 'kasabaAcildi', kandil: kz?.yeni ?? 0 });
+  }
+
   return {
     kayit: k,
     oduller,
@@ -530,6 +572,37 @@ function mahalleOdulleri(k: Kayit, bolumId: number, ayar: MetaAyar, oduller: Odu
   if (ids.every((id) => (k.bolumler[String(id)]?.yildiz ?? 0) >= 3) && !k.koleksiyon.kartlar.includes(efsane)) {
     k.koleksiyon.kartlar.push(efsane);
     oduller.push({ tur: 'efsane', mahalle: m, kart: efsane });
+  }
+}
+
+/**
+ * Mahallenin mühür sayısı 5/10/15 basamağını geçtiyse (verilmemişse) mahalle
+ * fitilinin en küçük eksik parçası; üçü de varsa `TOZ_PARCA_BEDELI` toz
+ * (KANCALAR §A.6, §D.4 2c). Basamak `muhurOdulleri`'ne yazılır.
+ */
+function muhurParcaOdulleri(k: Kayit, bolumId: number, ayar: MetaAyar, oduller: Odul[]): void {
+  const m = bolumMahallesi(bolumId, ayar);
+  const fitil = MUHUR_FITILLERI[m];
+  if (!fitil || m < 0 || m >= MAHALLELER.length) return;
+  let sayi = 0;
+  for (const id of mahalleBolumleri(m, ayar)) if (id >= MUHUR_ACILIS_BOLUMU && id <= MUHUR_SON_BOLUM) sayi += muhurSayisi(k.bolumler[String(id)]?.muhur);
+  for (const esik of MUHUR_PARCA_ESIKLERI) {
+    const anahtar = `${MAHALLELER[m].id}:${esik}`;
+    if (sayi < esik || k.muhurOdulleri.includes(anahtar)) continue;
+    k.muhurOdulleri.push(anahtar);
+    let parca: ParcaId | null = null;
+    for (let i = 0; i < 3 && !parca; i++) {
+      const p = parcaId('fitil', fitil, i);
+      if (!k.koleksiyon.parcalar.includes(p)) parca = p;
+    }
+    if (parca) {
+      k.koleksiyon.parcalar.push(parca);
+      k.istatistik.parca++;
+      oduller.push({ tur: 'muhurParcasi', mahalle: m, esik, fitil, parca, toz: 0 });
+    } else {
+      tozEkle_yerinde(k, TOZ_PARCA_BEDELI);
+      oduller.push({ tur: 'muhurParcasi', mahalle: m, esik, fitil, parca: null, toz: TOZ_PARCA_BEDELI });
+    }
   }
 }
 

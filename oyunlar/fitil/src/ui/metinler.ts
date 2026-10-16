@@ -389,6 +389,18 @@ export const DEFTER_KARTLARI: readonly { baslik: string; metin: string }[] = [
   },
 ];
 
+/** (Kancalar §B.5) Kasaba kartları: mahallenin 6 işi bitince sakinin mektubu (mahalle sırasıyla). */
+export const KASABA_KARTLARI: readonly { baslik: string; metin: string }[] = [
+  { baslik: 'Kayıkçı Rıza\'nın mektubu', metin: 'Çırak, iskele yeniden ışıl ışıl. Kayıklar artık gece de yolunu buluyor, çocuklar fenerlerin altında oyun kuruyor. Deniz fenerinin döndüğünü gören balıkçılar sabaha kadar türkü söyledi. Babamın feneri sana emanet.' },
+  { baslik: 'Kandilci Nazlı\'nın mektubu', metin: 'Dükkânların kapısında kandiller yandığından beri çarşı gece de kapanmıyor. Mahyadaki ŞENLİK yazısını ta tepeden okuyorlarmış. Kandillerin mırıldandığı ezgiyi sen de duydun mu? Bu ışıklar senin elinden.' },
+  { baslik: 'Kaptan Yakup\'un mektubu', metin: 'Gemim donandı, vinç bile bayramlık giydi. Mendirekteki fenerler yanınca uzak limanlardan selam geldi. Tayfalar "Fener Koyu yeniden uyandı" diyor. Bir gün seni de denize çıkarırım, çırak.' },
+  { baslik: 'Saatçi Hüsnü Usta\'nın mektubu', metin: 'Kadran yeniden aydınlandı, akrep yerine oturdu. Şenlik çanı çaldığında meydandaki herkes saatini düzeltti. Kulenin her kandili bir saniye kadar değerli. Tam zamanında geldin, çırak.' },
+  { baslik: 'Bahçıvan Gülizar\'ın mektubu', metin: 'Dut ağacındaki kurdeleler rüzgârda dilekleri fısıldıyor. Havuzdaki kandiller sabaha kadar süzüldü, ateş böcekleri de onlara eşlik etti. Hıdırellez ateşinin üstünden bütün mahalle atladı. Senin dileğin de kabul olsun.' },
+  { baslik: 'Gökbilimci Ayşe\'nin mektubu', metin: 'Rasathanenin kubbesinden gök iki kat parlak görünüyor. Değirmenin ışıklı kanatları yıldızlarla dans ediyor. Gök haritasına senin adını da ekledim: küçük ama parlak bir yıldız. Nevruz ateşi bu yıl en güzel burada yandı.' },
+  { baslik: 'Barutçu Kemal\'in mektubu', metin: 'Bacalardan artık duman değil altın kıvılcım yükseliyor. Depo kapısındaki fenerler, sabrın ışıkla ödüllendiğini hatırlatıyor. Şenlik düdüğü öttüğünde bütün işçiler gökyüzüne baktı. Barut sabır ister; sen sabrettin.' },
+  { baslik: 'Sur Bekçisi Murat\'ın mektubu', metin: 'Surlar yüz yıl sonra yeniden donandı. Burçtaki büyük ateşi uzak köylerden bile görmüşler. Bekçiliğimde ilk kez bütün gece hiç karanlık görmedim. Kıvılcım Usta\'nın sözü yerine geldi, çırak: koy yeniden yandı.' },
+];
+
 /** Günlük görev şablonları (§10.5). {n}: sayı, {renk}: renk adı. */
 export const GOREV_SABLONLARI: readonly string[] = [
   '2 halka çiz',

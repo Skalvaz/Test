@@ -441,6 +441,10 @@ describe('Günün Şenliği, görevler, Fener Nöbeti', () => {
     expect(sandiklar[2]).toBe('parlak');
     expect(sandiklar.slice(0, 2)).toEqual(['normal', 'normal']);
     expect(k.gunluk.ucGorevSandigi).toBe(true);
+    // (Kancalar §D.4 7b) Üç görev günü: +1 günlük kandil, günde bir kez.
+    expect(k.kasaba.gunlukKandil).toBe(1);
+    const r = kazan(k, BUGUN, 3, { tarih: BUGUN, oz: hepsi });
+    expect(r.kayit.kasaba.gunlukKandil).toBe(1);
   });
 
   it('gün değişince görevler yenilenir (gunGiris); Fener Nöbeti oynanınca sayılır', () => {

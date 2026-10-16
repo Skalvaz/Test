@@ -18,7 +18,7 @@ describe('Fişek Defteri', () => {
     expect(f.filter((x) => x.acik).map((x) => x.id)).toEqual(['kenevir']);
     expect(f.find((x) => x.id === 'kenevir')).toMatchObject({ secili: true, tamam: true });
     expect(gokyuzuDurumlari(k).filter((x) => x.acik).map((x) => x.id)).toEqual(['ayIsigi']);
-    expect(defterOzeti(k)).toMatchObject({ desen: { tamam: 2, toplam: 24, parca: 8, parcaToplam: 72 }, fitil: { acik: 1, toplam: 9 }, gokyuzu: { kazanildi: 0, toplam: 8 }, kart: { acik: 0, toplam: 16 }, toz: 0, tozParca: 0 });
+    expect(defterOzeti(k)).toMatchObject({ desen: { tamam: 2, toplam: 24, parca: 8, parcaToplam: 72 }, fitil: { acik: 1, toplam: 9 }, gokyuzu: { kazanildi: 0, toplam: 8 }, kart: { acik: 0, toplam: 24 }, toz: 0, tozParca: 0 });
     expect(toplananDesenSayisi(k)).toBe(0);
   });
 
@@ -56,8 +56,8 @@ describe('Fişek Defteri', () => {
     expect(gokyuzuSec(m, 'ayIsigi').tamam).toBe(true);
   });
 
-  it('kartlar: 8 defter + 8 efsane, her biri ≤ 4 cümle; mahalle tamamlanınca açılır', () => {
-    expect(KARTLAR.length).toBe(16);
+  it('kartlar: 8 defter + 8 efsane + 8 kasaba, her biri ≤ 4 cümle; mahalle tamamlanınca açılır', () => {
+    expect(KARTLAR.length).toBe(24);
     for (const c of KARTLAR) {
       // Cümle sonu: rakam/Roma rakamından sonra gelmeyen nokta + boşluk + büyük harf (ya da metin sonu).
       const cumle = c.metin.split(/(?<![0-9IVX])[.!?](?=\s+[A-ZÇĞİÖŞÜ]|$)/).filter((x) => x.trim().length > 0);

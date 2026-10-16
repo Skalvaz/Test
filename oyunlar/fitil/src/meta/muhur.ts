@@ -223,6 +223,15 @@ export function muhurAnlik(v: Pick<BolumVerisi, 'muhurler'>, oz: MuhurOzeti): Mu
   });
 }
 
+/**
+ * Mühür arayüzü (bölüm öncesi satırları, HUD rozeti, Duraklat) yalnız 6.
+ * bölüm kazanılmışsa görünür (KANCALAR §A.2). 6. bölümün ilk oyununda
+ * değerlendirme sessizce yapılır, kazanınca Kazandın'da tanıtılır.
+ */
+export function muhurlerGorunur(k: { bolumler: Record<string, { yildiz: number } | undefined> }): boolean {
+  return (k.bolumler[String(MUHUR_ACILIS_BOLUMU)]?.yildiz ?? 0) >= 1;
+}
+
 // ─────────────────────────── Kayıt maskesi ───────────────────────────
 
 /** Maske → [Çırak, Kalfa, Usta]. */

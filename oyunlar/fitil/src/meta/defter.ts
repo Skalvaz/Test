@@ -118,7 +118,8 @@ export function motifDurumlari(k: Kayit): { id: Motif; ad: string; kaynak: strin
 
 export interface KartTanimi {
   id: KartId;
-  tur: 'defter' | 'efsane';
+  /** `kasaba`: mahallenin 6 kasaba işi bitince sakinin mektubu (KANCALAR §B.5). */
+  tur: 'defter' | 'efsane' | 'kasaba';
   mahalle: number;
   baslik: string;
   /** En fazla 4 cümle (§10.1). */
@@ -257,6 +258,71 @@ export const KARTLAR: readonly KartTanimi[] = [
     baslik: 'Kıvılcım Usta\'nın Sözü',
     metin:
       'Kıvılcım Usta son gösterisinden sonra kale burcuna çıkıp bir söz vermiş: "Bir çırak bu koyu yeniden tutuşturursa, ben de bir kez daha bakacağım." O gece surlarda tek bir kıvılcım yanık kalmış. Şimdi her büyük şenlikte burçta küçük bir ışık göz kırpar. Kimileri onun ustanın gözü olduğunu söyler.',
+  },
+  // Kasaba kartları: mahallenin 6 işi bitince sakinin mektubu (KANCALAR §B.5).
+  {
+    id: 'kasaba:iskele',
+    tur: 'kasaba',
+    mahalle: 0,
+    baslik: 'Kayıkçı Rıza\'nın mektubu',
+    metin:
+      'Çırak, iskele yeniden ışıl ışıl. Kayıklar artık gece de yolunu buluyor, çocuklar fenerlerin altında oyun kuruyor. Deniz fenerinin döndüğünü gören balıkçılar sabaha kadar türkü söyledi. Babamın feneri sana emanet.',
+  },
+  {
+    id: 'kasaba:carsi',
+    tur: 'kasaba',
+    mahalle: 1,
+    baslik: 'Kandilci Nazlı\'nın mektubu',
+    metin:
+      'Dükkânların kapısında kandiller yandığından beri çarşı gece de kapanmıyor. Mahyadaki ŞENLİK yazısını ta tepeden okuyorlarmış. Kandillerin mırıldandığı ezgiyi sen de duydun mu? Bu ışıklar senin elinden.',
+  },
+  {
+    id: 'kasaba:liman',
+    tur: 'kasaba',
+    mahalle: 2,
+    baslik: 'Kaptan Yakup\'un mektubu',
+    metin:
+      'Gemim donandı, vinç bile bayramlık giydi. Mendirekteki fenerler yanınca uzak limanlardan selam geldi. Tayfalar "Fener Koyu yeniden uyandı" diyor. Bir gün seni de denize çıkarırım, çırak.',
+  },
+  {
+    id: 'kasaba:saatKulesi',
+    tur: 'kasaba',
+    mahalle: 3,
+    baslik: 'Saatçi Hüsnü Usta\'nın mektubu',
+    metin:
+      'Kadran yeniden aydınlandı, akrep yerine oturdu. Şenlik çanı çaldığında meydandaki herkes saatini düzeltti. Kulenin her kandili bir saniye kadar değerli. Tam zamanında geldin, çırak.',
+  },
+  {
+    id: 'kasaba:bahceler',
+    tur: 'kasaba',
+    mahalle: 4,
+    baslik: 'Bahçıvan Gülizar\'ın mektubu',
+    metin:
+      'Dut ağacındaki kurdeleler rüzgârda dilekleri fısıldıyor. Havuzdaki kandiller sabaha kadar süzüldü, ateş böcekleri de onlara eşlik etti. Hıdırellez ateşinin üstünden bütün mahalle atladı. Senin dileğin de kabul olsun.',
+  },
+  {
+    id: 'kasaba:tepe',
+    tur: 'kasaba',
+    mahalle: 5,
+    baslik: 'Gökbilimci Ayşe\'nin mektubu',
+    metin:
+      'Rasathanenin kubbesinden gök iki kat parlak görünüyor. Değirmenin ışıklı kanatları yıldızlarla dans ediyor. Gök haritasına senin adını da ekledim: küçük ama parlak bir yıldız. Nevruz ateşi bu yıl en güzel burada yandı.',
+  },
+  {
+    id: 'kasaba:fabrika',
+    tur: 'kasaba',
+    mahalle: 6,
+    baslik: 'Barutçu Kemal\'in mektubu',
+    metin:
+      'Bacalardan artık duman değil altın kıvılcım yükseliyor. Depo kapısındaki fenerler, sabrın ışıkla ödüllendiğini hatırlatıyor. Şenlik düdüğü öttüğünde bütün işçiler gökyüzüne baktı. Barut sabır ister; sen sabrettin.',
+  },
+  {
+    id: 'kasaba:kale',
+    tur: 'kasaba',
+    mahalle: 7,
+    baslik: 'Sur Bekçisi Murat\'ın mektubu',
+    metin:
+      'Surlar yüz yıl sonra yeniden donandı. Burçtaki büyük ateşi uzak köylerden bile görmüşler. Bekçiliğimde ilk kez bütün gece hiç karanlık görmedim. Kıvılcım Usta\'nın sözü yerine geldi, çırak: koy yeniden yandı.',
   },
 ];
 
