@@ -114,3 +114,150 @@ export const KAPSUL_RENKLERI = [
   { ad: 'Mor', sekil: 'altigen', ana: '#B266FF', acik: '#E3C7FF', koyu: '#4E1F8A', renkKoru: '#8C7CF0' },
   { ad: 'Gül', sekil: 'ucgen', ana: '#FF5FB4', acik: '#FFC2E3', koyu: '#8A1F5A', renkKoru: '#E07BC0' },
 ] as const;
+
+// ─────────────────────── Kasaba İşleri (docs/KANCALAR.md §B) ───────────────────────
+
+/**
+ * Kasaba işinin harita çizim şablonu (çizici bu şablonları mahalle rengiyle
+ * ve `yer` çapasıyla çizer):
+ *  - fenerDizisi   iki nokta arasına sarkık ip + kâğıt fenerler (salınım)
+ *  - flama         sarkık ip + üçgen bayraklar (3 renk, mahalle vurgusu ağırlıklı)
+ *  - kandilDizisi  bir hat ya da kenar boyunca küçük sıcak ışık noktaları
+ *  - kemer         ışıklı kemer/çelenk (yarım daire üstünde ışık noktaları)
+ *  - yapiIsigi     var olan bir yapıyı aydınlatma (fener camı, kadran, vinç, kubbe)
+ *  - tabela        ışıklı yazı ya da tabela (mahya, kapı, şenlik yazısı)
+ *  - ates          ateş, çanak, meşale (titreyen alev)
+ *  - parilti       serbest ışıklar (yüzen kandil, ateş böceği, kıvılcım)
+ */
+export type KasabaCizimi = 'fenerDizisi' | 'flama' | 'kandilDizisi' | 'kemer' | 'yapiIsigi' | 'tabela' | 'ates' | 'parilti';
+
+export interface KasabaIsi {
+  /** Kayıtta saklanır: `<mahalleId>.<isAdi>`. DEĞİŞTİRME, yalnız ekle. */
+  id: string;
+  /** Mahalle indeksi (0..7). */
+  mahalle: number;
+  /** Mahalle içindeki sıra (0..5); 5 = taç iş (öbür beşi bitince açılır). */
+  sira: number;
+  ad: string;
+  /** Kartta tek satır açıklama. */
+  aciklama: string;
+  /** Kandil bedeli (KANCALAR §B.3). */
+  maliyet: number;
+  /** İş yapılınca konuşan sakinin balonu ("Ad: söz"). */
+  sakin: string;
+  cizim: KasabaCizimi;
+  /**
+   * Çizim çapası, mahalle bölgesinin yerel koordinatında (x 0..400, y 0..660,
+   * bölge üstünden). Öneri: çizim paketi ekran görüntüsüyle ayarlar.
+   */
+  yer: { x: number; y: number };
+}
+
+/** Mahalle sakinleri (iş balonlarının sahibi). */
+export const KASABA_SAKINLERI: readonly string[] = [
+  'Kayıkçı Rıza',
+  'Kandilci Nazlı',
+  'Kaptan Yakup',
+  'Saatçi Hüsnü Usta',
+  'Bahçıvan Gülizar',
+  'Gökbilimci Ayşe',
+  'Barutçu Kemal',
+  'Sur Bekçisi Murat',
+];
+
+function kasabaIsi(mahalle: number, sira: number, ad: string, isAdi: string, maliyet: number, cizim: KasabaCizimi, yer: [number, number], aciklama: string, soz: string): KasabaIsi {
+  return {
+    id: `${MAHALLELER[mahalle].id}.${isAdi}`,
+    mahalle,
+    sira,
+    ad,
+    aciklama,
+    maliyet,
+    sakin: `${KASABA_SAKINLERI[mahalle]}: ${soz}`,
+    cizim,
+    yer: { x: yer[0], y: yer[1] },
+  };
+}
+
+/**
+ * 8 mahalle × 6 iş = 48 iş, toplam 186 kandil (KANCALAR §B.3). Mahalle içinde
+ * ilk beş iş serbest sırayla, taç iş (sira 5) en son. Mahalleler sırayla
+ * süslenir: mahallenin işleri, önceki mahallenin 6 işi bitince ve mahallenin
+ * ilk bölümü haritada açıkken açılır.
+ */
+export const KASABA_ISLERI: readonly KasabaIsi[] = [
+  // İskele (14)
+  kasabaIsi(0, 0, 'Kayık fenerleri', 'kayikFenerleri', 1, 'parilti', [300, 560], 'Kıyıdaki kayıkların pruvasına kâğıt fenerler asılır.', 'Fenerler yanınca kayıklar yolunu bulur!'),
+  kasabaIsi(0, 1, 'İskele bayrakları', 'iskeleBayraklari', 2, 'flama', [70, 440], 'İskele babalarına rengârenk flamalar gerilir.', 'Rüzgâr bayrakları görünce şenliği anladı!'),
+  kasabaIsi(0, 2, 'Fener dizisi', 'fenerDizisi', 2, 'fenerDizisi', [330, 320], 'Teraslar arasına ip gerilir, kâğıt fenerler asılır.', 'Merdivenleri artık gözü kapalı çıkarım.'),
+  kasabaIsi(0, 3, 'Kandilli kemer', 'kandilliKemer', 2, 'kemer', [70, 200], 'İskele girişine kandillerle süslü bir kemer kurulur.', 'Koya gelen herkes bu kemerin altından geçecek.'),
+  kasabaIsi(0, 4, 'Deniz feneri', 'denizFeneri', 3, 'yapiIsigi', [330, 90], 'Kayalıktaki eski deniz fenerinin ışığı yeniden döner.', 'Babam o ışığı görmeden denize açılmazdı.'),
+  kasabaIsi(0, 5, 'İskele tabelası', 'tabela', 4, 'tabela', [200, 620], 'İskelenin üstünde "Fener Koyu" yazısı ışıl ışıl yanar.', 'İşte şimdi burası gerçekten Fener Koyu!'),
+  // Çarşı (18)
+  kasabaIsi(1, 0, 'Dükkân kandilleri', 'dukkanKandilleri', 2, 'kandilDizisi', [70, 560], 'Dükkân kapılarına birer bakır kandil asılır.', 'Her kandil bir ezgi mırıldanıyor, duyuyor musun?'),
+  kasabaIsi(1, 1, 'Kemer çelengi', 'kemerCelengi', 2, 'kemer', [330, 440], 'Çarşı kemerlerine ışıklı çelenkler dolanır.', 'Kemerler gelin gibi oldu!'),
+  kasabaIsi(1, 2, 'Lale fenerleri', 'laleFenerleri', 3, 'fenerDizisi', [70, 320], 'Sokak boyunca lale biçimli renkli fenerler yanar.', 'Her lale başka bir renge bürünüyor.'),
+  kasabaIsi(1, 3, 'Kubbe kandilleri', 'kubbeKandilleri', 3, 'yapiIsigi', [200, 420], 'Büyük kubbenin eteğine kandil dizileri sıralanır.', 'Kubbe gökyüzüne ışık serpiyor.'),
+  kasabaIsi(1, 4, 'Mahya yazısı', 'mahyaYazisi', 4, 'tabela', [200, 300], 'Minareler arasına "ŞENLİK" yazan ışıklı mahya gerilir.', 'Yazıyı ta iskeleden okuyorlarmış!'),
+  kasabaIsi(1, 5, 'Çarşı kapısı', 'carsiKapisi', 4, 'kemer', [200, 620], 'Büyük çarşı kapısı baştan aşağı ışıklarla donanır.', 'Çarşı hiç bu kadar kalabalık olmamıştı.'),
+  // Liman (20)
+  kasabaIsi(2, 0, 'Direk fenerleri', 'direkFenerleri', 2, 'parilti', [118, 300], 'Gemi direklerinin tepesine birer fener çekilir.', 'Direkler yıldızlara uzanıyor.'),
+  kasabaIsi(2, 1, 'Halat flamaları', 'halatFlamalari', 3, 'flama', [330, 560], 'Palamar halatlarına işaret flamaları dizilir.', 'Her flama bir selam, okumasını bilene!'),
+  kasabaIsi(2, 2, 'Vinç ışıkları', 'vincIsiklari', 3, 'yapiIsigi', [335, 280], 'Büyük vincin kolu boydan boya ışıklarla çizilir.', 'Vinç bu gece yük değil ışık taşıyor.'),
+  kasabaIsi(2, 3, 'Mendirek fenerleri', 'mendirekFenerleri', 4, 'parilti', [200, 640], 'Liman ağzında kırmızı ve yeşil fenerler yanar.', 'Gemiler artık limanı ıskalamaz.'),
+  kasabaIsi(2, 4, 'Gemi donanması', 'gemiDonanmasi', 4, 'kandilDizisi', [120, 400], 'Rıhtımdaki gemi baştan kıça ışıklarla donanır.', 'Gemim hiç bu kadar yakışıklı olmamıştı!'),
+  kasabaIsi(2, 5, 'Liman kapısı', 'limanKapisi', 4, 'tabela', [70, 200], 'Rıhtım girişine ışıklı bir liman kapısı kurulur.', 'Hoş geldin, demek ki şenliğe geldin!'),
+  // Saat Kulesi (22)
+  kasabaIsi(3, 0, 'Sokak lambaları', 'sokakLambalari', 3, 'kandilDizisi', [330, 560], 'Meydan yolundaki eski lambalar yeniden yakılır.', 'Lambalar tam vaktinde yandı, saniyesi saniyesine.'),
+  kasabaIsi(3, 1, 'Kule çelengi', 'kuleCelengi', 3, 'kemer', [200, 260], 'Kulenin gövdesine ışıklı bir çelenk sarılır.', 'Kule bayramlığını giydi.'),
+  kasabaIsi(3, 2, 'Balkon fenerleri', 'balkonFenerleri', 3, 'fenerDizisi', [330, 320], 'Meydanı çevreleyen balkonlara fenerler asılır.', 'Balkonlardan herkes kuleyi seyrediyor.'),
+  kasabaIsi(3, 3, 'Çeşme ışıkları', 'cesmeIsiklari', 4, 'parilti', [70, 440], 'Meydan çeşmesinin suyu altından aydınlatılır.', 'Su bile ışıl ışıl akıyor.'),
+  kasabaIsi(3, 4, 'Aydınlık kadran', 'aydinlikKadran', 4, 'yapiIsigi', [200, 160], 'Saatin kadranı içten ışıklanır, akrebi parlar.', 'Artık gece de herkes saati görecek.'),
+  kasabaIsi(3, 5, 'Şenlik çanı', 'senlikCani', 5, 'yapiIsigi', [200, 70], 'Kulenin tepesindeki çan ışıklı bir taçla asılır.', 'Çan çaldı: şenlik vakti!'),
+  // Bahçeler (24)
+  kasabaIsi(4, 0, 'Çardak fenerleri', 'cardakFenerleri', 3, 'fenerDizisi', [70, 560], 'Asmalı çardağa yuvarlak fenerler asılır.', 'Çardağın altı ışıktan bir bahçe oldu.'),
+  kasabaIsi(4, 1, 'Dilek ağacı', 'dilekAgaci', 3, 'flama', [330, 440], 'Yaşlı dut ağacına renkli dilek kurdeleleri bağlanır.', 'Senin dileğin de bir kurdelede, biliyorum.'),
+  kasabaIsi(4, 2, 'Ateş böceği kavanozları', 'atesBocegiKavanozlari', 4, 'parilti', [70, 320], 'Patikalara ışıldayan kavanozlar dizilir.', 'Ateş böcekleri bu gece misafirimiz.'),
+  kasabaIsi(4, 3, 'Gül kemeri', 'gulKemeri', 4, 'kemer', [330, 200], 'Bahçe girişine ışıklı bir gül kemeri kurulur.', 'Güller bile gece açtı.'),
+  kasabaIsi(4, 4, 'Yüzen kandiller', 'yuzenKandiller', 5, 'parilti', [200, 600], 'Havuza küçük kandiller bırakılır, suda süzülür.', 'Her kandil bir dilek taşıyor.'),
+  kasabaIsi(4, 5, 'Hıdırellez ateşi', 'hidirellezAtesi', 5, 'ates', [200, 300], 'Bahçenin ortasında Hıdırellez ateşi yakılır.', 'Atla bakalım, bütün dileklerin kabul olsun!'),
+  // Tepe (26)
+  kasabaIsi(5, 0, 'Patika fenerleri', 'patikaFenerleri', 3, 'kandilDizisi', [330, 560], 'Tepeye çıkan patika fenerlerle çizilir.', 'Yolu artık yıldızlar değil fenerler gösteriyor.'),
+  kasabaIsi(5, 1, 'Değirmen kanatları', 'degirmenKanatlari', 4, 'yapiIsigi', [70, 440], 'Yel değirmeninin kanatları ışık dizileriyle döner.', 'Rüzgâr ışığı da çeviriyor!'),
+  kasabaIsi(5, 2, 'Rüzgâr flamaları', 'ruzgarFlamalari', 4, 'flama', [330, 320], 'Tepedeki direklere uzun rüzgâr flamaları çekilir.', 'Flamalar rüzgârın yönünü söylüyor.'),
+  kasabaIsi(5, 3, 'Rasathane kubbesi', 'rasathaneKubbesi', 5, 'yapiIsigi', [70, 200], 'Rasathanenin kubbesi yıldız haritasıyla aydınlanır.', 'Kubbeden bakınca gök iki kat parlak.'),
+  kasabaIsi(5, 4, 'Ateş çanakları', 'atesCanaklari', 5, 'ates', [330, 90], 'Tepeye Nevruz ateş çanakları dizilir.', 'Kışı ateşin üstünden atlayıp uğurladık.'),
+  kasabaIsi(5, 5, 'Gök haritası', 'gokHaritasi', 5, 'tabela', [200, 40], 'Tepenin üstüne ışıktan bir takımyıldız çizilir.', 'Bak, şu yıldızlar senin adını yazıyor!'),
+  // Fabrika (28)
+  kasabaIsi(6, 0, 'Atölye lambaları', 'atolyeLambalari', 4, 'kandilDizisi', [70, 560], 'Atölye pencerelerine sıcak lambalar asılır.', 'Barut sabır ister, ışık da öyle.'),
+  kasabaIsi(6, 1, 'Depo kapısı', 'depoKapisi', 4, 'kemer', [330, 440], 'Barut deposunun kapısı fenerlerle çevrilir.', 'Kapıyı ben açarım, ışığı sen yaktın.'),
+  kasabaIsi(6, 2, 'Ray fenerleri', 'rayFenerleri', 5, 'fenerDizisi', [70, 320], 'Vagon rayları boyunca fenerler dizilir.', 'Vagonlar bu gece fişek taşıyor.'),
+  kasabaIsi(6, 3, 'Baca kıvılcımları', 'bacaKivilcimlari', 5, 'parilti', [140, 300], 'Bacalardan zararsız altın kıvılcımlar yükselir.', 'Duman değil, kıvılcım çıkıyor artık!'),
+  kasabaIsi(6, 4, 'Baca çelengi', 'bacaCelengi', 5, 'kandilDizisi', [338, 330], 'Uzun bacalar tepeden tırnağa ışıklarla sarılır.', 'Bacalar mum gibi yanıyor.'),
+  kasabaIsi(6, 5, 'Şenlik düdüğü', 'senlikDudugu', 5, 'tabela', [200, 90], 'Fabrika düdüğü şenliği haber verir, bacalar taçlanır.', 'Düdük öttü: bu gece iş yok, şenlik var!'),
+  // Kale (34)
+  kasabaIsi(7, 0, 'Sur kandilleri', 'surKandilleri', 4, 'kandilDizisi', [200, 250], 'Sur dişlerinin arasına kandiller dizilir.', 'Surlar yüz yıl sonra yeniden yandı.'),
+  kasabaIsi(7, 1, 'Burç bayrakları', 'burcBayraklari', 5, 'flama', [62, 140], 'Burçların tepesine uzun bayraklar çekilir.', 'Bayraklar şafakla yarışıyor.'),
+  kasabaIsi(7, 2, 'Kapı meşaleleri', 'kapiMesaleleri', 5, 'ates', [200, 560], 'Kale kapısının iki yanında meşaleler yanar.', 'Meşaleler kapıyı bekliyor, ben de.'),
+  kasabaIsi(7, 3, 'Mazgal fenerleri', 'mazgalFenerleri', 6, 'parilti', [352, 300], 'Mazgal deliklerinden fener ışığı süzülür.', 'Kale gözlerini açtı.'),
+  kasabaIsi(7, 4, 'Donanma ışıkları', 'donanmaIsiklari', 6, 'kandilDizisi', [200, 400], 'Surların bütün kenarları ışıkla çizilir: kale donanır.', 'İşte gerçek bir donanma gecesi!'),
+  kasabaIsi(7, 5, 'Büyük burç ateşi', 'burcAtesi', 8, 'ates', [352, 120], 'En yüksek burçta büyük şenlik ateşi yakılır.', 'Kıvılcım Usta bu ateşi görüyordur.'),
+];
+
+/** Mahalle başına iş (son iş taç iştir). */
+export const KASABA_IS_PER_MAHALLE = 6;
+
+/**
+ * Mahalle → mühür ödülü fitil görünümü (KANCALAR §A.6): mahallenin 5., 10.
+ * ve 15. mühüründe bu fitilin sıradaki eksik parçası; üçü de varsa 10 toz.
+ * İskele (1–5 öğretim) mühürsüz.
+ */
+export const MUHUR_FITILLERI: Readonly<Partial<Record<number, FitilId>>> = {
+  1: 'laleDali',
+  2: 'denizKopugu',
+  3: 'altinTel',
+  4: 'atesBocegi',
+  5: 'gokkusagi',
+  6: 'ejderKuyrugu',
+  7: 'simsek',
+};

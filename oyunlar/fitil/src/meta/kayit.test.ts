@@ -166,10 +166,10 @@ describe('göç', () => {
 
   it('GDD §16.7 örneği (sürüm 1) taşınır ve veri korunur', () => {
     const r = kayitCoz(JSON.parse(JSON.stringify(GDD_V1)), 5);
-    expect(r.gocler).toEqual(['1→2']);
+    expect(r.gocler).toEqual(['1→2', '2→3']);
     expect(r.yeni).toBe(false);
     const k = r.kayit;
-    expect(k.surum).toBe(2);
+    expect(k.surum).toBe(KAYIT_SURUMU);
     expect(k.bolumler['1']).toMatchObject({ yildiz: 3, enIyi: 6200, deneme: 2, basarisizSeri: 0, kazanc: 1, nadirlik: 1 });
     expect(k.bolumler['1'].tablo).toBe('AAAAAA==');
     expect(k.guclendiriciler.kibrit).toBe(2);
@@ -202,7 +202,7 @@ describe('göç', () => {
   it('sürümsüz nesne sürüm 1 sayılır; gelecek sürüm en iyi çabayla okunur', () => {
     const { surum: _s, ...surumsuz } = GDD_V1;
     void _s;
-    expect(kayitGoc(surumsuz).gocler).toEqual(['1→2']);
+    expect(kayitGoc(surumsuz).gocler).toEqual(['1→2', '2→3']);
     const gelecek = { ...yeniKayit(3), surum: 99, yeniAlan: { x: 1 } };
     const r = kayitCoz(gelecek);
     expect(r.gelecekSurum).toBe(true);

@@ -20,6 +20,9 @@ import type { Palet } from '../app/sozlesme';
 import { fnv1a, mulberry32Bir } from '../core/rng';
 import type { Motif } from '../core/types';
 import { base64Metin, metinBase64 } from './kodlama';
+import { bosKasaba, kandilDokumu, kasabaOnar, toplamMuhur } from './kasaba';
+import type { KasabaKaydi } from './kasaba';
+import { MUHUR_ACILIS_BOLUMU, MUHUR_MASKE_TAVANI, MUHUR_PARCA_ESIKLERI, MUHUR_SON_BOLUM } from './muhur';
 import {
   GUNLUK_GOREV_SAYISI,
   KAYIT_KODU_ONEKI,
@@ -47,7 +50,7 @@ export type Yildiz = 0 | 1 | 2 | 3;
 export type Nadirlik = 0 | 1 | 2;
 /** Koleksiyon parçası: `d:<desenId>:<0..2>` ya da `f:<fitilId>:<0..2>`. */
 export type ParcaId = string;
-/** Kart: `defter:<mahalleId>` (mahalle tamamlama) ya da `efsane:<mahalleId>` (mahallenin tamamı 3★). */
+/** Kart: `defter:<mahalleId>` (mahalle tamamlama), `efsane:<mahalleId>` (mahallenin tamamı 3★) ya da `kasaba:<mahalleId>` (mahallenin 6 kasaba işi, şema 3). */
 export type KartId = string;
 export type MolaDakika = 0 | 30 | 45 | 60;
 
@@ -65,6 +68,11 @@ export interface BolumKaydi {
   /** Gece Tablosu (base64, §10.3) ve nadirliği. */
   tablo?: string;
   nadirlik?: Nadirlik;
+  /**
+   * Şema 3: basılan mühürler, 3 bitlik maske (bit 0 Çırak, 1 Kalfa, 2 Usta;
+   * KANCALAR §A). Yalnız kazanılmış 6–40. bölümlerde; yoksa 0.
+   */
+  muhur?: number;
 }
 
 export interface GorevDurumu {
@@ -208,6 +216,10 @@ export interface Kayit {
   ipuclari: { gorulen: string[]; ciftDokunus: number };
   /** Kazanılan en yüksek Sonsuz Şenlik bölümü (n). */
   sonsuzEnYuksek: number;
+  /** Şema 3: Kasaba İşleri (KANCALAR §B). Kandil bakiyesi saklanmaz, türetilir (`kandilDokumu`). */
+  kasaba: KasabaKaydi;
+  /** Şema 3: verilmiş mühür parça ödülleri, `<mahalleId>:<5|10|15>` (KANCALAR §A.6). */
+  muhurOdulleri: string[];
 }
 
 // ─────────────────────────── Varsayılan ───────────────────────────
@@ -293,6 +305,8 @@ export function yeniKayit(tohum: number): Kayit {
     ayarlar: { ...VARSAYILAN_AYARLAR },
     ipuclari: { gorulen: [], ciftDokunus: 0 },
     sonsuzEnYuksek: 0,
+    kasaba: bosKasaba(),
+    muhurOdulleri: [],
   };
 }
 
@@ -353,11 +367,15 @@ export function sonsuzAcikMi(k: Kayit, ayar: MetaAyar = VARSAYILAN_META_AYAR): b
 
 /**
  * Bulut ile tarayıcı kaydı arasında "ilerisi kazanır" ölçütü:
- * toplam yıldız·1000 + açık en yüksek bölüm (Sonsuz Şenlik ilerlemesi eklenir).
+ * toplam yıldız·1000 + açık en yüksek bölüm (Sonsuz Şenlik ilerlemesi eklenir)
+ * + 5·mühür + 3·kasaba işi (şema 3; KANCALAR §D.3). Mühür ve iş katkısı en
+ * çok 5·105 + 3·48 = 669 < 1000: bir yıldızı hiçbir zaman geçmez; eski
+ * kayıtlarda (mühür ve iş 0) değer şema 2 ile aynıdır, böylece eski sürümün
+ * zarfındaki puanla karşılaştırma bozulmaz.
  */
 export function progressScore(k: Kayit, ayar: MetaAyar = VARSAYILAN_META_AYAR): number {
   const acik = acikEnYuksek(k, ayar) + (sonsuzAcikMi(k, ayar) ? 1 + k.sonsuzEnYuksek : 0);
-  return toplamYildiz(k, ayar) * 1000 + acik;
+  return toplamYildiz(k, ayar) * 1000 + acik + 5 * toplamMuhur(k, ayar) + 3 * (k.kasaba?.isler.length ?? 0);
 }
 
 /** `new SaveStore<Kayit>(kayitDeposuAyarlari())` için seçenekler. */
@@ -394,7 +412,7 @@ export function parcaGecerli(p: unknown): p is ParcaId {
 
 export function kartGecerli(k: unknown): k is KartId {
   if (typeof k !== 'string') return false;
-  const m = /^(defter|efsane):([A-Za-z]+)$/.exec(k);
+  const m = /^(defter|efsane|kasaba):([A-Za-z]+)$/.exec(k);
   return !!m && MAHALLE_IDLERI.has(m[2]);
 }
 
@@ -481,6 +499,21 @@ export const GOCLER: Record<number, (o: Record<string, unknown>) => Record<strin
       gunluk: { ...g, tarih: 0, gorevler: [], enIyi, enUzunSeri: seri, basamakOdulu: seriBasamakIndeksi(seri), ilkKazanc: 0, ucGorevSandigi: false },
     };
   },
+  /**
+   * 2 → 3 (Bölüm Mühürleri ve Kasaba İşleri, docs/KANCALAR.md §D):
+   *  - `kasaba` boş (iş yok, günlük kandil 0) ve `muhurOdulleri` boş eklenir;
+   *  - bölüm kayıtlarına `muhur` EKLENMEZ: mühürler geriye dönük verilmez;
+   *  - kandil bakiyesi türetildiği için eski oyuncu, kazanılmış her yıldızı
+   *    için 1 kandil (+ tamamlanmış her mahalle için 3) ile başlar; ayrıca
+   *    yazılacak bir bakiye yoktur (KANCALAR §D.2);
+   *  - yıldızlar, rozetler, defter, tablolar, sandık ve günlük aynen kalır.
+   */
+  2: (o) => ({
+    ...o,
+    surum: 3,
+    kasaba: o.kasaba && typeof o.kasaba === 'object' ? o.kasaba : bosKasaba(),
+    muhurOdulleri: Array.isArray(o.muhurOdulleri) ? o.muhurOdulleri : [],
+  }),
 };
 
 /** Seri değerinin basamak indeksi (−1 = basamak yok). */
@@ -574,6 +607,13 @@ export function kayitOnar(ham: unknown, yedekTohum = 0): OnarimSonucu {
       kayit.deneme = kayit.kazanc;
       not(`${yol}.deneme`);
     }
+    if (bk.muhur !== undefined) {
+      // Mühür yalnız kazanılmış 6–40. ana bölümde (şema 3).
+      const muhurlu = id >= MUHUR_ACILIS_BOLUMU && id <= MUHUR_SON_BOLUM && kayit.yildiz >= 1;
+      const m = tamsayi(bk.muhur, 0, MUHUR_MASKE_TAVANI, 0, `${yol}.muhur`, not);
+      if (muhurlu && m > 0) kayit.muhur = m;
+      else if (m > 0 || !muhurlu) not(`${yol}.muhur`);
+    }
     if (bk.tablo !== undefined) {
       if (typeof bk.tablo === 'string' && tabloKoduGecerli(bk.tablo) && kayit.yildiz >= 1) {
         kayit.tablo = bk.tablo;
@@ -648,6 +688,10 @@ export function kayitOnar(ham: unknown, yedekTohum = 0): OnarimSonucu {
   v.ipuclari.ciftDokunus = tamsayi(ip.ciftDokunus, 0, 1000, 0, 'ipuclari.ciftDokunus', not);
 
   v.sonsuzEnYuksek = tamsayi(o.sonsuzEnYuksek, 0, 9_000_000 - SONSUZ_TABANI, 0, 'sonsuzEnYuksek', not);
+
+  // Şema 3: kasaba (bölümler onarıldıktan sonra: bütçe yıldız/mühürden türer) ve mühür ödülleri.
+  v.kasaba = kasabaOnar(o.kasaba, v, not);
+  v.muhurOdulleri = kumeFiltre(o.muhurOdulleri, muhurOdulGecerli, 'muhurOdulleri', not);
 
   // Tutarlılık: en az bir desen takılı kalır (gökyüzü boş kalmasın); boşsa başlangıç takılıları.
   if (v.koleksiyon.takili.length === 0) {
@@ -780,6 +824,13 @@ function kumeFiltre<T>(x: unknown, gecerli: (v: unknown) => v is T, yol: string,
   return out;
 }
 
+/** Mühür parça ödülü kimliği: `<mahalleId>:<5|10|15>` (İskele mühürsüz). */
+export function muhurOdulGecerli(x: unknown): x is string {
+  if (typeof x !== 'string') return false;
+  const m = /^([A-Za-z]+):(\d+)$/.exec(x);
+  return !!m && MAHALLE_IDLERI.has(m[1]) && m[1] !== MAHALLELER[0].id && (MUHUR_PARCA_ESIKLERI as readonly number[]).includes(Number(m[2]));
+}
+
 /** Gece Tablosu kodu biçim denetimi (base64, 4 baytlık kayıtlar, ≤ 250 kayıt). */
 export function tabloKoduGecerli(s: string): boolean {
   if (s.length === 0 || s.length > 1400 || s.length % 4 !== 0) return false;
@@ -889,6 +940,10 @@ export interface KayitOnizleme {
   toz: number;
   seri: number;
   sonsuz: number;
+  /** Şema 3: toplam mühür, yapılan kasaba işi ve kandil bakiyesi. */
+  muhur: number;
+  kasabaIs: number;
+  kandil: number;
   /** Kayıtta onarılan alan sayısı (0 = temiz). */
   onarilan: number;
 }
@@ -947,6 +1002,9 @@ export function kayitOnizleme(k: Kayit, onarilan = 0, ayarK?: Partial<MetaAyar>)
     toz: k.toz,
     seri: k.gunluk.seri,
     sonsuz: k.sonsuzEnYuksek,
+    muhur: toplamMuhur(k, ayar),
+    kasabaIs: k.kasaba.isler.length,
+    kandil: kandilDokumu(k, ayar).bakiye,
     onarilan,
   };
 }

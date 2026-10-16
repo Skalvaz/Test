@@ -7,8 +7,11 @@
  */
 import { ANA_BOLUM_SAYISI, BOLUM_PER_MAHALLE, MAHALLELER, USTA_BOLUM_IDLERI, USTA_YILDIZ_ADIMI } from '../app/katalog';
 
-/** Kayıt şeması sürümü (veri içindeki `surum`). 1 = GDD §16.7 taslağı, 2 = bu paket. */
-export const KAYIT_SURUMU = 2 as const;
+/**
+ * Kayıt şeması sürümü (veri içindeki `surum`). 1 = GDD §16.7 taslağı,
+ * 2 = meta paketi, 3 = Bölüm Mühürleri + Kasaba İşleri (docs/KANCALAR.md §D).
+ */
+export const KAYIT_SURUMU = 3 as const;
 /** Depolama anahtarı ve yedekleri (§16.7). */
 export const KAYIT_ANAHTARI = 'fitil.kayit.v1';
 export const KAYIT_YEDEK_ANAHTARLARI = ['fitil.kayit.v1.yedek1', 'fitil.kayit.v1.yedek2'] as const;

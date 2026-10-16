@@ -26,10 +26,60 @@
  *    verilmezse kırılan kafeslerden).
  */
 import { ROKET_ADIM } from '../core/sabitler';
-import type { Hamle, KomboTuru, Konum, Olay, OyunDurumu } from '../core/types';
+import type { Hamle, KomboTuru, Konum, Olay, OyunDurumu, OzelTur } from '../core/types';
 import { patlamaKaydi } from './galeri';
 import type { TabloHammaddesi, TabloSegmenti } from './galeri';
 import { TABLO_REAKSIYON_SAYISI } from './sabitler';
+
+/** Oyuncu eyleminin türü (`Hamle['tur']`). */
+export type EylemTuru = Hamle['tur'];
+
+/**
+ * Bir oyuncu eyleminin izi (Bölüm Mühürleri, docs/KANCALAR.md §A.3). Her
+ * `ozetHamle` bir iz ekler; final gösterisi iz EKLEMEZ (mühürler finali
+ * saymaz). Sayılar o eylemin olaylarından; atıflar (çapraz roket, barut izi
+ * dev fişeği) özetle aynı kuralla.
+ */
+export interface HamleIzi {
+  eylem: EylemTuru;
+  /** Fitil zincirinin düğüm sayısı (halkada kapanış tekrarı sayılmaz); fitil değilse 0. */
+  zincir: number;
+  /** Fitil zincir rengi (joker zincir −1); fitil değilse −1. */
+  renk: number;
+  halka: boolean;
+  /** Reaksiyon boyutu R (fitil düğümü olmayan kapsül patlamaları). */
+  R: number;
+  /** En yüksek patlama nesli. */
+  nesil: number;
+  /** Kapsül patlaması (fitil düğümleri dahil) ve renge göre dağılımı (0..5). */
+  patlama: number;
+  renkPatlama: number[];
+  isiPatlamasi: number;
+  /** Zincir dönüşümüyle (§4.1, son düğüm) oluşan özel taş; yoksa 'yok'. */
+  olusan: OzelTur;
+  /** Tetiklenen özel taşlar (zincirde, ısıyla, vuruşla). */
+  roket: number;
+  kasimpati: number;
+  yildiz: number;
+  /** ↗/↘ eksenli roket tetiklenmesi. */
+  caprazRoket: number;
+  kombolar: KomboTuru[];
+  kafes: number;
+  /** Tamamen yok edilen kaya. */
+  kaya: number;
+  /** Kaya/kova kat hasarı. */
+  engelHasar: number;
+  doseme: number;
+  desen: number;
+  is: number;
+  fener: number;
+  devFisek: number;
+  izliDevFisek: number;
+  /** Çapraz roketin vurduğu engel (kafes, kaya/kova katı, is, dev fişek dolumu). */
+  caprazEngel: number;
+  /** Kuruyan ıslak barut. */
+  kurutma: number;
+}
 
 export interface OyunOzeti {
   /** Bütün oyuncu eylemleri (hamle, körük, güçlendirici). */
@@ -72,6 +122,8 @@ export interface OyunOzeti {
   finalRoket: number;
   finalPatlama: number;
   tablo: TabloHammaddesi;
+  /** Eylem başına iz (mühürler; final hariç). */
+  hamleIzleri: HamleIzi[];
 }
 
 export function ozetBaslat(): OyunOzeti {
@@ -108,6 +160,7 @@ export function ozetBaslat(): OyunOzeti {
     finalRoket: 0,
     finalPatlama: 0,
     tablo: { reaksiyonlar: [], final: [], finalSure: 0 },
+    hamleIzleri: [],
   };
 }
 
@@ -118,10 +171,10 @@ function kopya(oz: OyunOzeti): OyunOzeti {
     renkPatlama: [...oz.renkPatlama],
     kombolar: [...oz.kombolar],
     tablo: { reaksiyonlar: [...oz.tablo.reaksiyonlar], final: oz.tablo.final, finalSure: oz.tablo.finalSure },
+    // İzler değişmez kayıtlardır: dizi kopyası yeter (Geri Sar eski özeti geri koyar).
+    hamleIzleri: [...(oz.hamleIzleri ?? [])],
   };
 }
-
-type EylemTuru = Hamle['tur'];
 
 /** Tek bir olay listesinin sayaçları (özet nesnesine eklenir). */
 interface ListeSonucu {
@@ -130,6 +183,14 @@ interface ListeSonucu {
   sure: number;
   roket: number;
   patlama: number;
+  /** Eylem izi için: en yüksek nesil, zincir, dönüşüm, çapraz roket, kuruma. */
+  nesil: number;
+  zincir: number;
+  renk: number;
+  halka: boolean;
+  olusan: OzelTur;
+  caprazRoket: number;
+  kurutma: number;
 }
 
 function listeIsle(oz: OyunOzeti, olaylar: readonly Olay[], kafesler: Set<string> | null, final: boolean): ListeSonucu {
@@ -139,6 +200,15 @@ function listeIsle(oz: OyunOzeti, olaylar: readonly Olay[], kafesler: Set<string
   let sure = 0;
   let roket = 0;
   let patlama = 0;
+  let nesil = 0;
+  let zincir = 0;
+  let renk = -1;
+  let halka = false;
+  let olusan: OzelTur = 'yok';
+  let caprazRoket = 0;
+  let kurutma = 0;
+  /** Zincir dönüşümü: son düğümün `dugumYandi` anı (k = |yol|); o anda o hücrede `ozelOlustu`. */
+  let sonDugumT = -1;
   const kayitlar: number[] = [];
   const caprazRoketler: { x: number; y: number; t: number; eksen: 2 | 3 }[] = [];
   const izler: { x: number; y: number; t: number }[] = [];
@@ -151,8 +221,23 @@ function listeIsle(oz: OyunOzeti, olaylar: readonly Olay[], kafesler: Set<string
     switch (o.tur) {
       case 'fitilBasladi':
         yol = o.yol;
+        zincir = o.yol.length;
+        renk = o.renk;
+        halka = o.halka;
         if (o.yol.length > oz.enUzunZincir) oz.enUzunZincir = o.yol.length;
         if (o.halka) oz.halka++;
+        break;
+      case 'dugumYandi':
+        if (yol && !halka && o.k === yol.length) sonDugumT = o.t;
+        break;
+      case 'ozelOlustu':
+        if (yol && !halka && olusan === 'yok' && o.t === sonDugumT) {
+          const son = yol[yol.length - 1];
+          if (son.x === o.hucre.x && son.y === o.hucre.y) olusan = o.ozel;
+        }
+        break;
+      case 'kurudu':
+        kurutma++;
         break;
       case 'patlama':
         patlama++;
@@ -161,6 +246,7 @@ function listeIsle(oz: OyunOzeti, olaylar: readonly Olay[], kafesler: Set<string
         else oz.yildizPatlama++;
         if (o.neden === 'isi') oz.isiPatlamasi++;
         if (o.nesil > oz.enCokNesil) oz.enCokNesil = o.nesil;
+        if (o.nesil > nesil) nesil = o.nesil;
         if (o.k === 0) fitilDisi++;
         kayitlar.push(patlamaKaydi(o, o.t));
         break;
@@ -168,7 +254,10 @@ function listeIsle(oz: OyunOzeti, olaylar: readonly Olay[], kafesler: Set<string
         if (o.ozel === 'roket') {
           oz.roketAtesi++;
           roket++;
-          if (o.eksen === 2 || o.eksen === 3) caprazRoketler.push({ x: o.hucre.x, y: o.hucre.y, t: o.t, eksen: o.eksen });
+          if (o.eksen === 2 || o.eksen === 3) {
+            caprazRoket++;
+            caprazRoketler.push({ x: o.hucre.x, y: o.hucre.y, t: o.t, eksen: o.eksen });
+          }
         } else if (o.ozel === 'kasimpati') oz.kasimpatiAtesi++;
         else if (o.ozel === 'yildiz') oz.yildizAtesi++;
         break;
@@ -252,7 +341,7 @@ function listeIsle(oz: OyunOzeti, olaylar: readonly Olay[], kafesler: Set<string
       }
     }
   }
-  return { R, kayitlar, sure, roket, patlama };
+  return { R, kayitlar, sure, roket, patlama, nesil, zincir, renk, halka, olusan, caprazRoket, kurutma };
 }
 
 function eylemTuru(olaylar: readonly Olay[], hamle?: Hamle): EylemTuru {
@@ -280,8 +369,37 @@ export function ozetHamle(oz0: OyunOzeti, olaylar: readonly Olay[], baglam: { ha
     });
   }
   const tur = eylemTuru(olaylar, baglam.hamle);
+  const once = { ...oz, renkPatlama: [...oz.renkPatlama], kombolar: oz.kombolar.length };
   const s = listeIsle(oz, olaylar, kafesler, false);
   oz.eylem++;
+  oz.hamleIzleri.push({
+    eylem: tur,
+    zincir: s.zincir,
+    renk: s.renk,
+    halka: s.halka,
+    R: s.R,
+    nesil: s.nesil,
+    patlama: s.patlama,
+    renkPatlama: oz.renkPatlama.map((n, i) => n - once.renkPatlama[i]),
+    isiPatlamasi: oz.isiPatlamasi - once.isiPatlamasi,
+    olusan: s.olusan,
+    roket: oz.roketAtesi - once.roketAtesi,
+    kasimpati: oz.kasimpatiAtesi - once.kasimpatiAtesi,
+    yildiz: oz.yildizAtesi - once.yildizAtesi,
+    caprazRoket: s.caprazRoket,
+    kombolar: oz.kombolar.slice(once.kombolar),
+    kafes: oz.kafesKirilan - once.kafesKirilan,
+    kaya: oz.kayaYokEdilen - once.kayaYokEdilen,
+    engelHasar: oz.engelHasar - once.engelHasar,
+    doseme: oz.dosemeAydinlanan - once.dosemeAydinlanan,
+    desen: oz.desenBoyanan - once.desenBoyanan,
+    is: oz.isTemizlenen - once.isTemizlenen,
+    fener: oz.fenerToplanan - once.fenerToplanan,
+    devFisek: oz.devFisekAtesi - once.devFisekAtesi,
+    izliDevFisek: oz.izliDevFisek - once.izliDevFisek,
+    caprazEngel: oz.caprazRoketEngel - once.caprazRoketEngel,
+    kurutma: s.kurutma,
+  });
   if (tur === 'fitil' || tur === 'ciftDokunus') {
     oz.reaksiyonlar.push(s.R);
     oz.oyuncuHamlesi++;

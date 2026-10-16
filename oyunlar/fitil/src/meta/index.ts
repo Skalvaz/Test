@@ -31,6 +31,8 @@
  *  - ozet     çekirdek olaylarından oyun özeti
  *  - rozetler başarım koşulları
  *  - takvim   yyyymmdd aritmetiği (Date'siz)
+ *  - muhur    Bölüm Mühürleri: koşul dili, değerlendirme, maske (KANCALAR §A)
+ *  - kasaba   Kasaba İşleri: türetilmiş kandil, iş durumu, iş yapma (KANCALAR §B)
  */
 export * from './sabitler';
 export * from './takvim';
@@ -46,3 +48,5 @@ export * from './rozetler';
 export * from './ilerleme';
 export * from './harita';
 export * from './mola';
+export * from './muhur';
+export * from './kasaba';

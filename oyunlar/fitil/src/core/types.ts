@@ -274,6 +274,84 @@ export interface HamleSonucu {
   olaylar: Olay[];
 }
 
+
+// ───────────────── Bölüm Mühürleri (docs/KANCALAR.md §A.3) ─────────────────
+// Yalnız veri tipleri: çekirdek mühürleri değerlendirmez (meta/muhur.ts).
+
+/**
+ * Ölçüler. Her ölçünün izin verilen kapsamı `meta/muhur.ts` `OLCU_KAPSAMLARI`.
+ *  - patlama        kapsül patlaması (renk süzgeci: o renkte)
+ *  - isiPatlamasi   ısıyla patlayan kapsül
+ *  - halka          çizilen halka
+ *  - olusum         zincir dönüşümüyle oluşan özel taş (ozel süzgeci)
+ *  - ozelAtes       tetiklenen özel taş (ozel süzgeci; yoksa hepsi)
+ *  - caprazRoket    tetiklenen ↗/↘ roket
+ *  - kombo          kombinasyon (kombo süzgeci)
+ *  - kafes kaya engelHasar doseme desen is fener devFisek izliDevFisek
+ *    caprazEngel kurutma   engel ve çevre sayaçları (HamleIzi alanları)
+ *  - koruk          Körük kullanımı
+ *  - guclendirici   kullanılan güçlendirici (Kibrit, Kalıp, Geri Sar; istatistikten)
+ *  - R              tek eylemin reaksiyon boyutu
+ *  - nesil          tek eylemdeki en yüksek nesil
+ *  - zincir         tek fitilin düğüm sayısı (halka süzgeciyle halka boyu)
+ *  - kisaZincir     ≤ 3 düğümlü fitil sayısı (kısıt: "hiç 3'lük zincir çizmeden")
+ *  - kalanHamle     kazanç anında (final öncesi) kalan hamle
+ */
+export type MuhurOlcusu =
+  | 'patlama'
+  | 'isiPatlamasi'
+  | 'halka'
+  | 'olusum'
+  | 'ozelAtes'
+  | 'caprazRoket'
+  | 'kombo'
+  | 'kafes'
+  | 'kaya'
+  | 'engelHasar'
+  | 'doseme'
+  | 'desen'
+  | 'is'
+  | 'fener'
+  | 'devFisek'
+  | 'izliDevFisek'
+  | 'caprazEngel'
+  | 'kurutma'
+  | 'koruk'
+  | 'guclendirici'
+  | 'R'
+  | 'nesil'
+  | 'zincir'
+  | 'kisaZincir'
+  | 'kalanHamle';
+
+/** oyun: oyun boyunca toplam; hamle: tek eylemde en büyük; son: kazanç anında. */
+export type MuhurKapsami = 'oyun' | 'hamle' | 'son';
+
+/** Süzgeç olarak `eylem` alanında kullanılabilecek eylemler. */
+export type MuhurEylemi = 'fitil' | 'ciftDokunus' | 'koruk';
+
+/**
+ * Bir mühür koşulu (bölüm JSON'unda `muhurler[i]`). `enAz` (≥) ya da
+ * `enCok` (≤) alanlarından TAM OLARAK biri bulunur; `enCok` yalnız
+ * `kapsam: 'oyun'` ile (kısıt: "en çok n kez", 0 = hiç).
+ */
+export interface MuhurKosulu {
+  olcu: MuhurOlcusu;
+  kapsam: MuhurKapsami;
+  enAz?: number;
+  enCok?: number;
+  /** Süzgeçler (yalnız ilgili ölçülerde; `muhurKosuluDogrula` denetler). */
+  renk?: Renk;
+  halka?: boolean;
+  eylem?: MuhurEylemi;
+  ozel?: 'roket' | 'kasimpati' | 'yildiz';
+  kombo?: KomboTuru;
+  /** Tasarımcı işareti: şansa bağlı (dolum/kaskad). Bölüm başına en çok 1. */
+  sans?: boolean;
+  /** Elle metin (yoksa `muhurMetni` üretir). Tek satır, ≤ 34 karakter. */
+  metin?: string;
+}
+
 /** Bölüm verisi (§8.1). Anahtarlar ASCII. */
 export interface BolumVerisi {
   id: number;
@@ -338,6 +416,11 @@ export interface BolumVerisi {
    * Bölümü tasarlayan ajan bu alanı siler.
    */
   taslak?: boolean;
+  /**
+   * Ek (Bölüm Mühürleri, docs/KANCALAR.md §A): [Çırak, Kalfa, Usta]
+   * koşulları; yalnız 6–40. Çekirdek kuralını etkilemez (meta değerlendirir).
+   */
+  muhurler?: readonly MuhurKosulu[];
 }
 
 export interface BolumYukleSecenek {
