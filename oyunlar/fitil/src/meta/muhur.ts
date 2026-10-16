@@ -389,9 +389,14 @@ export function muhurKosuluDogrula(k: unknown, renkSayisi = 6): string[] {
   return h;
 }
 
+/** Şansa bağlı sayılan süzgeçsiz ölçüler (KA5): `sans: true` zorunlu. */
+const SANSA_BAGLI = new Set<MuhurOlcusu>(['R', 'nesil']);
+
 /**
  * Bölümün mühür üçlüsünün denetimi (doğrulayıcı): 6–40'ta tam 3 koşul,
- * öğretimde (1–5) yok, şansa bağlı en çok 1, aynı koşul iki kez yok.
+ * öğretimde (1–5) yok, şansa bağlı en çok 1 ve süzgeçsiz R/nesil şansa
+ * bağlı işaretli, aynı koşul ya da aynı metin iki kez yok, aynı ölçünün
+ * eşiği kademeyle artar (Çırak < Kalfa < Usta).
  */
 export function bolumMuhurDogrula(v: Pick<BolumVerisi, 'id' | 'renkSayisi' | 'muhurler'>): string[] {
   const h: string[] = [];
@@ -400,9 +405,118 @@ export function bolumMuhurDogrula(v: Pick<BolumVerisi, 'id' | 'renkSayisi' | 'mu
   if (m === undefined) return muhurlu ? ['mühür tanımı yok (6–40 için 3 mühür gerekli)'] : [];
   if (!muhurlu) return ['mühür yalnız 6–40. bölümlerde'];
   if (!Array.isArray(m) || m.length !== MUHUR_SAYISI) return ['muhurler tam 3 öğeli dizi olmalı (Çırak, Kalfa, Usta)'];
-  m.forEach((k, i) => muhurKosuluDogrula(k, v.renkSayisi).forEach((x) => h.push(`${MUHUR_KADEME_ADLARI[MUHUR_KADEMELERI[i]]}: ${x}`)));
-  if (m.filter((k) => (k as MuhurKosulu).sans).length > 1) h.push('şansa bağlı mühür bölüm başına en çok 1');
+  const ad = (i: number): string => MUHUR_KADEME_ADLARI[MUHUR_KADEMELERI[i]];
+  m.forEach((k, i) => muhurKosuluDogrula(k, v.renkSayisi).forEach((x) => h.push(`${ad(i)}: ${x}`)));
+  if (h.length) return h;
+  const l = m as MuhurKosulu[];
+  if (l.filter((k) => k.sans).length > 1) h.push('şansa bağlı mühür bölüm başına en çok 1');
+  l.forEach((k, i) => {
+    if (SANSA_BAGLI.has(k.olcu) && k.halka === undefined && k.eylem === undefined && !k.sans) h.push(`${ad(i)}: süzgeçsiz ${k.olcu} şansa bağlıdır ("sans": true)`);
+  });
   const anahtar = (k: MuhurKosulu) => JSON.stringify({ ...k, metin: undefined, sans: undefined });
-  if (new Set(m.map((k) => anahtar(k as MuhurKosulu))).size !== m.length) h.push('aynı koşul iki kez');
+  if (new Set(l.map(anahtar)).size !== l.length) h.push('aynı koşul iki kez');
+  else if (new Set(l.map(muhurMetni)).size !== l.length) h.push('aynı metin iki kez');
+  // Aynı ölçü (aynı süzgeçlerle) birden çok kademede: eşik kademeyle artar.
+  const tur = (k: MuhurKosulu) => JSON.stringify({ ...k, enAz: undefined, enCok: undefined, metin: undefined, sans: undefined });
+  for (let i = 0; i < l.length; i++)
+    for (let j = i + 1; j < l.length; j++) {
+      if (tur(l[i]) !== tur(l[j])) continue;
+      const a = l[i].enAz ?? -(l[i].enCok ?? 0);
+      const b = l[j].enAz ?? -(l[j].enCok ?? 0);
+      if (b <= a) h.push(`${ad(j)} mühürü ${['Çırak\'tan', 'Kalfa\'dan', 'Usta\'dan'][i]} zor olmalı (aynı ölçüde eşik artmalı)`);
+    }
+  return h;
+}
+
+/**
+ * Mühürlerin bölüm içeriğiyle uyumu (statik doğrulayıcı): ölçünün nesnesi
+ * bölümde var (kafes, kaya, döşeme, desen, is, fener, dev fişek, barut izi,
+ * ıslak barut, Körük), özel taş türü açık, çapraz roket mümkün, eşikler
+ * erişilebilir (kalan hamle < hamle, zincir ≤ hücre). Boş = uyumlu.
+ */
+export function bolumMuhurUyumu(v: BolumVerisi): string[] {
+  const m = v.muhurler;
+  if (!m || !Array.isArray(m)) return [];
+  const h: string[] = [];
+  const simgeler = v.duzen.flatMap((r) => r.trim().split(/\s+/));
+  const var_ = (re: RegExp) => simgeler.some((s) => re.test(s));
+  const hucre = simgeler.filter((s) => s !== '#').length;
+  const kafes = var_(/^C$/);
+  const kaya = var_(/^K[123]$/);
+  const kova = var_(/^S[12]?$/);
+  const is = var_(/^I$/);
+  const dev = var_(/^D\d*$/);
+  const islak = var_(/^W$/);
+  const fener = var_(/^F$/) || (v.fenerDogum?.kalan ?? 0) > 0;
+  const koruk = (v.korukKapasitesi ?? 0) > 0;
+  const iz = (v.zemin?.barutIzleri?.length ?? 0) > 0;
+  const sabit = v.sabitKapsuller ?? [];
+  const OZEL_SIRA = { roket: 0, kasimpati: 1, yildiz: 2 } as const;
+  const ozelAcik = (o: keyof typeof OZEL_SIRA) => v.ozelEsikleri[OZEL_SIRA[o]] > 0 || sabit.some((s) => s.ozel === o);
+  const kur = v.kurallar ?? {};
+  const caprazYol = !kur.dortKomsu && kur.caprazSiniri !== 0;
+  const caprazRoket = (v.ozelEsikleri[0] > 0 && caprazYol) || sabit.some((s) => s.ozel === 'roket' && (s.eksen === 2 || s.eksen === 3));
+  m.forEach((k, i) => {
+    const ad = `${MUHUR_KADEME_ADLARI[MUHUR_KADEMELERI[i]] ?? i} "${muhurMetni(k)}"`;
+    const yok = (neden: string) => h.push(`${ad}: ${neden}`);
+    const ozel: keyof typeof OZEL_SIRA | undefined = k.ozel;
+    switch (k.olcu) {
+      case 'kafes':
+        if (!kafes) yok('bölümde kafes yok');
+        break;
+      case 'kaya':
+        if (!kaya) yok('bölümde kaya yok');
+        break;
+      case 'engelHasar':
+        if (!kaya && !kova) yok('bölümde kaya/kova yok');
+        break;
+      case 'doseme':
+        if (!v.zemin?.dosemeler?.length) yok('bölümde döşeme yok');
+        break;
+      case 'desen':
+        if (!v.zemin?.desen?.hucreler.length) yok('bölümde desen yok');
+        break;
+      case 'is':
+        if (!is) yok('bölümde is yok');
+        break;
+      case 'fener':
+        if (!fener) yok('bölümde fener yok');
+        break;
+      case 'devFisek':
+        if (!dev) yok('bölümde dev fişek yok');
+        break;
+      case 'izliDevFisek':
+        if (!dev || !iz) yok('bölümde barut izi ya da dev fişek yok');
+        break;
+      case 'kurutma':
+        if (!islak) yok('bölümde ıslak barut yok');
+        break;
+      case 'koruk':
+        if (!koruk) yok('bölümde Körük yok');
+        break;
+      case 'caprazRoket':
+      case 'caprazEngel':
+        if (!caprazRoket) yok('bölümde çapraz roket oluşamaz');
+        if (k.olcu === 'caprazEngel' && !kafes && !kaya && !kova && !is && !dev) yok('bölümde engel yok');
+        break;
+      case 'olusum':
+        if (ozel ? v.ozelEsikleri[OZEL_SIRA[ozel]] <= 0 : v.ozelEsikleri.every((e) => e <= 0)) yok('bu özel taş zincirle oluşmaz (ozelEsikleri)');
+        break;
+      case 'ozelAtes':
+        if (ozel ? !ozelAcik(ozel) : !(['roket', 'kasimpati', 'yildiz'] as const).some(ozelAcik)) yok('bölümde bu özel taş yok');
+        break;
+      case 'kalanHamle':
+        if ((k.enAz ?? 0) >= v.hamle) yok(`kalan hamle eşiği hamle sayısından (${v.hamle}) küçük olmalı`);
+        break;
+      case 'zincir':
+      case 'R':
+        if ((k.enAz ?? 0) > hucre) yok(`eşik hücre sayısını (${hucre}) aşıyor`);
+        break;
+      default:
+        break;
+    }
+    if (k.eylem === 'koruk' && !koruk) yok('bölümde Körük yok');
+    if (k.renk !== undefined && v.dogumAgirliklari && v.dogumAgirliklari[k.renk] === 0 && !sabit.some((s) => s.renk === k.renk)) yok('bu renk bölümde yok');
+  });
   return h;
 }

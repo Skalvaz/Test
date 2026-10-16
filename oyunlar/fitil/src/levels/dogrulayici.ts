@@ -8,7 +8,8 @@
  * komşuluğu; desen renkleri < renkSayısı; başlangıç tahtası kilitsiz
  * (yükleyici karıştırmadı); `yardim > 0` yalnız id ≤ 20; bant, yıldız
  * eşikleri, ipuçları ve zorunlu ilk hamle tutarlılığı; Bölüm Mühürleri
- * (6–40'ta 3 geçerli koşul, şansa bağlı ≤ 1; docs/KANCALAR.md §A.3).
+ * (6–40'ta 3 geçerli koşul, şansa bağlı ≤ 1, kademe sırası, ölçünün nesnesi
+ * bölümde ve eşik erişilebilir; docs/KANCALAR.md §A.3).
  *
  * P4a yorumları (§ atıflı):
  *  - Eşik 2 yalnız Usta bölümünde (K1); diğerlerinde 3–5.
@@ -23,7 +24,7 @@
  */
 import { bolumuYukle, kilitliMi } from '../core/index';
 import type { BolumVerisi, Hedef, OyunDurumu } from '../core/index';
-import { bolumMuhurDogrula } from '../meta/muhur';
+import { bolumMuhurDogrula, bolumMuhurUyumu } from '../meta/muhur';
 
 const TURLER = ['ogretim', 'tanitim', 'normal', 'zor', 'rahatlama', 'final', 'usta', 'gunluk', 'sonsuz'] as const;
 const MOTIFLER = ['lale', 'kayik', 'mart', 'fener', 'carkifelek', 'burc'] as const;
@@ -60,7 +61,8 @@ export function bolumDogrula(v: BolumVerisi): string[] {
   if (typeof v.ad !== 'string' || v.ad.trim() === '') hata('ad boş');
   if (!aralikta(v.mahalle, 0, 7)) hata(`mahalle 0..7: ${v.mahalle}`);
   // Bölüm Mühürleri (docs/KANCALAR.md §A.3): 6–40'ta tam 3 geçerli koşul.
-  for (const m of bolumMuhurDogrula(v)) hata(`mühür: ${m}`);
+  const muhurHatalari = bolumMuhurDogrula(v);
+  for (const m of muhurHatalari) hata(`mühür: ${m}`);
 
   // Aralıklar (§8.1).
   if (!aralikta(v.w, 5, 8)) hata(`w 5..8: ${v.w}`);
@@ -96,6 +98,8 @@ export function bolumDogrula(v: BolumVerisi): string[] {
     izgara.push(s);
   }
   if (h.length) return h;
+  // Mühürlerin bölüm içeriğiyle uyumu (ölçünün nesnesi tahtada, eşik erişilebilir).
+  if (!muhurHatalari.length) for (const m of bolumMuhurUyumu(v)) hata(`mühür: ${m}`);
   const icinde = (x: number, y: number): boolean => tamsayi(x) && tamsayi(y) && x >= 0 && y >= 0 && x < v.w && y < v.h;
   const simge = (x: number, y: number): string => izgara[y][x];
   const kapsulHucresi = (x: number, y: number): boolean => icinde(x, y) && KAPSUL_SIMGE.has(simge(x, y));
