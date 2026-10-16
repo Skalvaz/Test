@@ -16,7 +16,10 @@ export class Stage {
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'sahne';
     host.appendChild(this.canvas);
-    const ctx = this.canvas.getContext('2d', { alpha: false, desynchronized: true });
+    // `desynchronized` (düşük gecikmeli tuval) KULLANILMAZ: Android Chrome'da tuvali tek
+    // tamponlu ekran katmanı yapar, her karede baştan çizilen sahne tablette yarım
+    // kareler hâlinde titrer (Chrome: "genel amaçlı değil, kalem uygulamaları için").
+    const ctx = this.canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('Tuval 2B bağlamı alınamadı');
     this.ctx = ctx;
     const fit = () => {

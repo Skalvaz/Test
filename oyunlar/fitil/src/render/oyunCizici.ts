@@ -416,6 +416,8 @@ class OyunCiziciSinifi implements OyunCizici {
     s.havuz.oran = dusuk ? 0.5 : 1;
     s.parilti_ = !dusuk;
     this.gok.durgun = dusuk;
+    // Elle seçilen kalite hemen uygulanır; otomatik geçiş `guncelle`de solar.
+    if (k !== 'oto') s.pariltiA = dusuk ? 0 : 1;
   }
 
   /** §13.7 yerleşimi ve offscreen katmanların pişirilmesi. */
@@ -1689,6 +1691,10 @@ class OyunCiziciSinifi implements OyunCizici {
     const k = Math.min(1, gercek / 400);
     this.karanlik += (this.karanlikHedef - this.karanlik) * Math.min(1, k * 3);
     this.sandik.parla += (this.parlaHedef - this.sandik.parla) * Math.min(1, gercek / 600);
+    // Otomatik kalite geçişinde parıltı katmanı solarak girip çıkar.
+    const pHedef = s.parilti_ ? 1 : 0;
+    s.pariltiA += (pHedef - s.pariltiA) * Math.min(1, gercek / 130);
+    if (Math.abs(pHedef - s.pariltiA) < 0.02) s.pariltiA = pHedef;
     const o = this.oynatma;
     if (o && this.tamamMi(o)) this.bitir(o);
   }
@@ -1975,7 +1981,7 @@ class OyunCiziciSinifi implements OyunCizici {
       if (sonum <= 0) continue;
       f.ip.cizYanmis(c, 0, bas, f.kalin, bas, sonum);
       if (sonra <= 0) {
-        f.ip.ciz(c, bas, f.ip.uzunluk, f.kalin, f.renk, s.zaman * -0.006, s.parilti_ ? 1 : 0);
+        f.ip.ciz(c, bas, f.ip.uzunluk, f.kalin, f.renk, s.zaman * -0.006, s.pariltiA);
         // Alev başı
         f.ip.noktaAl(bas, this.nokta);
         c.globalCompositeOperation = 'lighter';

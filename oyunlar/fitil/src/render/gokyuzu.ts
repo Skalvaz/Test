@@ -41,6 +41,7 @@ export class Gokyuzu {
   private ayY = 0;
   /** Deniz durağan mı (otomatik kalite düşük). */
   durgun = false;
+  private denizFaz = 0;
   private serit = '#FFFFFF';
   /** Son pişirmenin girdileri (aynıysa kur() hiçbir şey yapmaz). */
   private anahtar = '';
@@ -221,6 +222,8 @@ export class Gokyuzu {
   }
 
   guncelle(dt: number): void {
+    // Deniz şeritlerinin fazı: düşük kalitede (durgun) olduğu yerde donar, sıçramaz.
+    if (!this.durgun) this.denizFaz = (this.denizFaz + (dt / 1000) * Math.PI * 2 * 0.3) % (Math.PI * 200);
     for (let i = this.yansimalar.length - 1; i >= 0; i--) {
       const y = this.yansimalar[i];
       y.yas += dt;
@@ -273,7 +276,7 @@ export class Gokyuzu {
       for (let k = 0; k < 6; k++) {
         const yy = this.ufuk + 3 + deniz * (0.04 + 0.16 * k * (1 + k * 0.25));
         if (yy > this.h) break;
-        const faz = this.durgun ? k : t * Math.PI * 2 * 0.3 + k * 1.7;
+        const faz = this.denizFaz + k * 1.7;
         const kay = Math.sin(faz) * 18;
         const gen = this.w * (0.35 + 0.1 * Math.sin(faz * 0.7 + k));
         c.globalAlpha = 0.25 * (1 - k * 0.12);

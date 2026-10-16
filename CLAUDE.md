@@ -87,6 +87,9 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
 - Her görsel değişikliği önce/sonra GIF ya da görüntüyle görmek istiyor.
 - Kısa durum bilgisi sever; uzun işlerde ara ara ne yapıldığını söyle.
 - Fark seçilmeyen bir karşılaştırmayı README'ye koyma; kadrajı düzelt.
+- Haftalık kullanım sınırının %85'ini geçme: kullanıcı Pazartesi–Çarşamba işte
+  kullanıyor. Kullanım göstergesi buradan görünmüyor; çok ajanlı iş akışından
+  önce kullanıcıya sor ya da tek başına, kısa adımlarla çalış.
 
 ## Öğrenilenler (deneyerek bulundu)
 

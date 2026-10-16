@@ -42,6 +42,8 @@ export class SuKatmani {
   private W = 0;
   private H = 0;
   private dpr = 1;
+  private sonZaman = -1;
+  private akisS = 0;
   private tekne: Dikdortgen = { x: 0, y: 0, w: 0, h: 0 };
   private hucre = 40;
   private renk: SuRenkleri = { ust: '#0B2B2E', alt: '#0A1E33', parilti: '#1F4D4F' };
@@ -202,7 +204,12 @@ export class SuKatmani {
     if (this.doku) {
       if (!this.desen) this.desen = c.createPattern(this.doku, 'repeat');
       if (this.desen) {
-        const s = akis ? zamanMs / 1000 : 0;
+        // Akış zamanı birikir: kalite düşüp akış durunca doku olduğu yerde donar,
+        // açılınca oradan sürer (eskiden 0 konumuna sıçrıyordu: boşta kıpırtı).
+        const dt = this.sonZaman < 0 ? 0 : Math.max(0, Math.min(100, zamanMs - this.sonZaman));
+        this.sonZaman = zamanMs;
+        if (akis) this.akisS += dt / 1000;
+        const s = this.akisS;
         c.save();
         c.beginPath();
         c.rect(t.x, t.y, t.w, t.h);

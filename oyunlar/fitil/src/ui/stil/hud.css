@@ -244,13 +244,14 @@
 .f-koruk-ikon { width: 30px; height: 30px; margin-top: 4px; }
 .f-koruk-sayi { font-size: 11px; font-weight: 800; line-height: 1; color: var(--krem-2); }
 .f-koruk-parilti { position: absolute; inset: -16px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 190, 80, .7) 0%, rgba(255, 120, 26, .35) 40%, transparent 68%); opacity: 0; pointer-events: none; }
-.f-koruk.f-dolu { animation: f-koruk-nabiz .333s ease-in-out infinite alternate; }
-.f-koruk.f-dolu .f-koruk-parilti { opacity: 1; animation: f-koruk-parilti .333s ease-in-out infinite alternate; }
+/* Dolu körük nabzı yavaş ve dar (eski 0,333 sn'lik nabız boşta, tablette yanıp sönme gibiydi). */
+.f-koruk.f-dolu { animation: f-koruk-nabiz 1s ease-in-out infinite alternate; }
+.f-koruk.f-dolu .f-koruk-parilti { opacity: 1; animation: f-koruk-parilti 1s ease-in-out infinite alternate; }
 .f-koruk.f-dolu .f-koruk-ic { color: #FFF4C2; }
 .f-koruk.f-dolu .f-koruk-sayi { color: #FFE08A; }
 .f-koruk.f-secili { box-shadow: inset 0 2px 0 rgba(255, 220, 160, .3), 0 0 0 2.5px #FFE7A2, 0 0 0 4.5px #E8661A, 0 0 26px rgba(255, 140, 40, .8); }
 @keyframes f-koruk-nabiz { from { transform: scale(1); } to { transform: scale(1.06); } }
-@keyframes f-koruk-parilti { from { opacity: .55; transform: scale(.92); } to { opacity: 1; transform: scale(1.06); } }
+@keyframes f-koruk-parilti { from { opacity: .75; transform: scale(.96); } to { opacity: 1; transform: scale(1.06); } }
 
 /* Hedef seçimi ipucu */
 .f-secim {

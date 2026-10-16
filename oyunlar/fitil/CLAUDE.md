@@ -251,6 +251,14 @@ gibi POSIX sözdizimi kullanma.
   (`env(safe-area-inset-*)`) payları; `touch-action: none`; çift dokunma
   yakınlaştırması ve metin seçimi kapalı; tam ekran isteğe bağlı.
 - 60 fps hedef; DPR en fazla 2; kare başına bellek ayırma yok.
+- Tuvalde `desynchronized: true` KULLANMA: Android Chrome'da tek tamponlu ekran
+  katmanı olur, her karede baştan çizilen sahne tablette boştayken titriyordu
+  (annenin tableti, iki oyunda da). Boşta görünen her geçiş yumuşak olmalı:
+  otomatik kalite parıltıyı `pariltiA` ile soldurur, deniz fazı donar, boşta
+  ipucu dalgası 2,2 sn'de bir (3 geçişten sonra aralıklı), dolu körük nabzı 1 sn.
+  Boşta ölçüm aracı: `node scripts/titreme.mjs <url> <klasör> tablet-dikey
+  --bekle 12` (tuval boyutlanması, RO, kalite geçişi, piksel sıçraması, CSS
+  animasyonları; gerçek donanımdaki ön tampon yırtılmasını ölçemez).
 
 ## Doğrulama
 

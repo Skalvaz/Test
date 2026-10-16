@@ -278,9 +278,11 @@ export class TahtaCizimi {
       const x = this.cx[i];
       const y = this.cy[i];
       if (ic.tur === 'kapsul') {
-        if (s.parilti_) {
+        if (s.pariltiA > 0) {
           const g = ic.renk < 0 ? k.inciParilti : k.parilti[ic.renk];
+          if (s.pariltiA < 1) c.globalAlpha = s.pariltiA;
           tt.sprite(c, g, x, y, 0, this.sx[i], this.sx[i]);
+          c.globalAlpha = 1;
         }
         if (ic.ozel !== 'yok') {
           c.globalAlpha = 0.55 + 0.35 * Math.sin(z * 0.005 + h.faz);

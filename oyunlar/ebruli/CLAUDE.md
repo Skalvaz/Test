@@ -98,6 +98,11 @@ gibi POSIX sözdizimi kullanma. Bot koşularında en fazla 2 işçi (4 çekirdek
 - Sayfa çerçevesinde `alert/confirm/prompt`, indirme, `window.open` YOK; harici
   ağ isteği yok (her şey prosedürel ve gömülü). `touch-action: none`, güvenli
   alan payları, ses ilk dokunuştan sonra, `localStorage` her erişimde try/catch.
+- Tuvalde `desynchronized: true` KULLANMA (Android tablette boşta titreme; FİTİL
+  notu). Otomatik kalite yükselmesi ikiye katlanan bekleme ister, su dokusu akışı
+  durunca olduğu yerde donar, boşta ipucu oku 350 ms'de belirir ve 300 ms'de solar.
+  Ölçüm: `node scripts/titreme.mjs <url> <klasör> t-dikey --sure 12` (çizici
+  kancası yalnız dev sunucusunda bağlanır).
 - İlk dokunuşta donma olmasın: açılış ekranı beklerken ilk bölüm
   `cizici.onIsit` ile önden pişer; yeniden boyutlanmada anahtarlı önbellek.
 

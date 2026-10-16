@@ -40,6 +40,8 @@ import { elSpriteUret } from './el';
 
 /** Son olaydan sonra beklenen pay (oynatma ms). */
 const KUYRUK = 160;
+/** Boşta ipucunun kapanırken solma süresi (ms). */
+const IPUCU_SOLMA = 300;
 const simdiMs = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 export const KADEME_METNI: Record<string, string> = { guzel: 'Güzel', nefis: 'Nefis', harika: 'Harika', saheser: 'Şaheser!' };
@@ -154,7 +156,8 @@ class OyunCiziciSinifi implements OyunCiziciTam {
   /** Kıl payı donması kalan gerçek ms (oynatma ve canlandırma durur). */
   private donma = 0;
   private sur: SurukleDurumu = { kaynak: null, parmak: null, hedefler: [], onizleme: null, kalkis: 0, giris: 0, hedefAnahtar: '' };
-  private vurgu: { hucreler: readonly Konum[]; kip: 'zorunlu' | 'ipucu'; t: number } | null = null;
+  /** `sol`: ipucu kapanırken kalan solma süresi (ms); yoksa tam görünür. */
+  private vurgu: { hucreler: readonly Konum[]; kip: 'zorunlu' | 'ipucu'; t: number; sol?: number } | null = null;
   private el: { yol: Konum[]; t: number } | null = null;
   private elSprite: Sprite | null = null;
   private hayalet: { h: Hamle; t: number } | null = null;
@@ -162,7 +165,7 @@ class OyunCiziciSinifi implements OyunCiziciTam {
   private karartma = { alfa: 0, hedef: 0 };
   private sars = { A: 0, t: 999, dx: 1, dy: 0 };
   private flas = { alfa: 0, z1: -9999, z2: -9999 };
-  private kalite = { dusuk: false, zorla: null as boolean | null, aralik: 0, n: 0, maliyet: 0, m: 0 };
+  private kalite = { dusuk: false, zorla: null as boolean | null, aralik: 0, n: 0, maliyet: 0, m: 0, iyi: 0, gereken: 1 };
   private hedefNoktalari: { x: number; y: number }[] = [];
   private ucusSayisi: number[] = [];
   private bekleyen: Olay[][] = [];
@@ -379,7 +382,20 @@ class OyunCiziciSinifi implements OyunCiziciTam {
   }
 
   vurgula(hucreler: readonly Konum[] | null, kip: 'zorunlu' | 'ipucu'): void {
+    // Boşta ipucu birden kaybolmaz, 300 ms'de solar (aç/kapa boşta yanıp sönme gibiydi).
+    if (!hucreler?.length && this.vurgu?.kip === 'ipucu' && kip === 'ipucu' && !this.sec.hareketiAzalt) {
+      this.vurgu.sol ??= IPUCU_SOLMA;
+      return;
+    }
     this.vurgu = hucreler && hucreler.length ? { hucreler: hucreler.map((k) => ({ ...k })), kip, t: 0 } : null;
+  }
+
+  /** İpucu vurgusunun görünürlüğü (0–1): 350 ms'de belirir, kapanırken solar. */
+  private ipucuZarf(): number {
+    const v = this.vurgu;
+    if (!v || v.kip !== 'ipucu') return 0;
+    const gir = Math.min(1, v.t / 350);
+    return v.sol === undefined ? gir : gir * Math.max(0, v.sol / IPUCU_SOLMA);
   }
 
   elGoster(yol: readonly Konum[] | null): void {
@@ -604,7 +620,10 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     this.yazi.guncelle(dt);
     this.bilgi.guncelle(dt);
     this.kagit.guncelle(dt);
-    if (this.vurgu) this.vurgu.t += dt;
+    if (this.vurgu) {
+      this.vurgu.t += dt;
+      if (this.vurgu.sol !== undefined && (this.vurgu.sol -= dt) <= 0) this.vurgu = null;
+    }
     if (this.el) this.el.t += dt;
     if (this.hayalet) this.hayalet.t += dt;
     // Kararma: 400 ms'de hedefe.
@@ -637,10 +656,18 @@ class OyunCiziciSinifi implements OyunCiziciTam {
       if (q.aralik / q.n > 20) {
         q.dusuk = true;
         q.m = q.maliyet = 0;
+        q.iyi = 0;
       }
       q.n = q.aralik = 0;
     } else if (q.dusuk && q.m >= 120) {
-      if (q.maliyet / q.m < 6 && q.aralik / Math.max(1, q.n) < 18) q.dusuk = false;
+      // Yükselmek için art arda `gereken` iyi pencere; her yükselmede ikiye katlanır
+      // (sınırdaki cihazda, ör. büyük tablet tuvalinde, kalite birkaç saniyede bir gidip gelmesin).
+      q.iyi = q.maliyet / q.m < 6 && q.aralik / Math.max(1, q.n) < 18 ? q.iyi + 1 : 0;
+      if (q.iyi >= q.gereken) {
+        q.dusuk = false;
+        q.iyi = 0;
+        q.gereken = Math.min(16, q.gereken * 2);
+      }
       q.m = q.maliyet = q.n = q.aralik = 0;
     }
   }
@@ -1135,7 +1162,7 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     const zs = this.zaman / 1000;
     // Hedef nabzı (geçerli komşular hafifçe şişer, 1,5 Hz).
     const hedefNabiz = 1 + 0.06 * (0.5 + 0.5 * Math.sin(zs * TAU * 1.5));
-    const ipucuNabiz = this.vurgu?.kip === 'ipucu' ? 1 + 0.07 * (0.5 + 0.5 * Math.sin(this.vurgu.t * 0.001 * TAU * 1.5)) : 1;
+    const ipucuNabiz = this.vurgu?.kip === 'ipucu' ? 1 + 0.07 * this.ipucuZarf() * (0.5 + 0.5 * Math.sin(this.vurgu.t * 0.001 * TAU * 1.5)) : 1;
     this.hedefNabiz = hedefNabiz;
     this.ipucuNabiz = ipucuNabiz;
     const olcekBul = this.olcekBulBagli;
@@ -1661,7 +1688,7 @@ class OyunCiziciSinifi implements OyunCiziciTam {
       const a = v.hucreler[0];
       const b = v.hucreler[1];
       const p = 0.5 + 0.5 * Math.sin(v.t * 0.001 * TAU * 1.5);
-      this.okYayi(c, this.mx(a.x), this.my(a.y), this.mx(b.x), this.my(b.y), 0.35 + 0.35 * p);
+      this.okYayi(c, this.mx(a.x), this.my(a.y), this.mx(b.x), this.my(b.y), (0.35 + 0.35 * p) * this.ipucuZarf());
     }
   }
 

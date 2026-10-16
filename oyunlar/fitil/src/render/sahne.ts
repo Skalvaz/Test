@@ -65,6 +65,11 @@ export class Sahne {
   };
   /** Otomatik kalitede parıltı katmanı açık mı. */
   parilti_ = true;
+  /**
+   * Parıltı katmanının çizim alfası (0–1): otomatik kalite geçişinde `parilti_`'ye
+   * ~0,4 sn'de yumuşakça yaklaşır (anlık aç/kapa boşta titreme gibi görünüyordu).
+   */
+  pariltiA = 1;
 
   // --- Zaman ---
   /** Gerçek zaman (ms; dondurulunca durur). */

@@ -68,6 +68,7 @@ export class YolKatmani {
   /** Klavye imleci (§13.7: 3 px krem odak halkası); null = gizli. */
   imlec: Konum | null = null;
   private ipucuT = 0;
+  private sonIpucu: Konum[] | null = null;
   // Öğretici el
   private el: Konum[] | null = null;
   private elGeri = false;
@@ -245,6 +246,11 @@ export class YolKatmani {
         if (i >= 0) s.havuz.bayrak[i] |= B.UST;
       }
     }
+    // Yeni ipucu dalgası baştan (yoldan önce) başlar: ortadan birden belirmesin.
+    if (this.ipucu !== this.sonIpucu) {
+      this.sonIpucu = this.ipucu;
+      this.ipucuT = 0;
+    }
     this.ipucuT += dt;
     if (this.el) this.elT += dt;
     if (this.hFitil) this.hT += dt;
@@ -272,7 +278,7 @@ export class YolKatmani {
           TMP_Y[1] = this.parmak.y;
           this.sarkan.ornekle(TMP_X, TMP_Y, 2, false, 0, 3);
           c.globalAlpha = 0.75;
-          this.sarkan.ciz(c, 0, this.sarkan.uzunluk, kalin * 0.7, this.renkler, -this.faz, s.parilti_ ? 0.7 : 0);
+          this.sarkan.ciz(c, 0, this.sarkan.uzunluk, kalin * 0.7, this.renkler, -this.faz, 0.7 * s.pariltiA);
           c.globalAlpha = 1;
         }
       }
@@ -286,7 +292,7 @@ export class YolKatmani {
       }
       c.globalAlpha = 1;
       c.globalCompositeOperation = 'source-over';
-      if (n >= 2) this.ip.ciz(c, 0, this.ip.uzunluk, kalin, this.renkler, -this.faz * 0.5, s.parilti_ ? 1 : 0);
+      if (n >= 2) this.ip.ciz(c, 0, this.ip.uzunluk, kalin, this.renkler, -this.faz * 0.5, s.pariltiA);
       // Düğüm başlarında küçük düğümler (ipin kapsüle değdiği yer) + ipte kayan pırıltılar.
       c.globalCompositeOperation = 'lighter';
       const nk = s.parilti.nokta[n >= 7 ? R.BEYAZ_SICAK : this.renk >= 0 ? this.renk : R.BEYAZ];
@@ -458,19 +464,24 @@ export class YolKatmani {
       c.globalCompositeOperation = 'source-over';
     }
     if (this.ipucu && this.ipucu.length) {
-      // Parıltı dalgası: 1200 ms döngü, sırayla hücre hücre.
+      // Parıltı dalgası: 2200 ms'de bir geçiş, sırayla hücre hücre. İlk üç geçiş art
+      // arda, sonra her geçişten sonra bir geçiş boyu ara; giriş 300 ms'de solar.
+      // (Eski 1200 ms'lik bitmeyen beyaz dalga boşta, büyük ekranda yanıp sönme gibiydi.)
       const n = this.ipucu.length;
-      const k = (this.ipucuT % 1200) / 1200;
+      const P = 2200;
+      const t = this.ipucuT;
+      const k = t < 3 * P ? (t % P) / P : ((t - 3 * P) % (2 * P)) / P;
+      const giris = Math.min(1, t / 300);
       c.globalCompositeOperation = 'lighter';
       const g = s.parilti.nokta[R.BEYAZ_SICAK];
-      for (let j = 0; j < n; j++) {
+      for (let j = 0; j < n && k < 1; j++) {
         const p = this.ipucu[j];
         const merkez = k * (n + 2) - 1;
         const d = Math.abs(j - merkez);
         const a = Math.max(0, 1 - d / 1.6);
         if (a <= 0) continue;
         const r = hc * (0.5 + 0.25 * a);
-        c.globalAlpha = 0.7 * a;
+        c.globalAlpha = 0.55 * a * giris;
         c.drawImage(g.t, s.mx(p.x) - r, s.my(p.y) - r, 2 * r, 2 * r);
       }
       c.globalAlpha = 1;
