@@ -422,30 +422,45 @@ export class Uygulama {
    * Kasaba paneli → "Yap": iş kaydedilir, çekmece kapanır (240 ms), harita
    * yeni modelle çizilir ve işin çapasında kutlar (kıvılcımlar, ışıklar,
    * sakin balonu); mahalle 6/6 olduysa Mahalle şenliği ve kasaba kartı.
-   * Panel kendiliğinden yeniden açılmaz.
+   * Kandil sıradaki işe de yetiyorsa panel kutlamadan sonra kendiliğinden
+   * yeniden açılır (göçle 38–71 kandille gelen oyuncu her iş için Kasaba'ya
+   * basmasın); oyuncu kapatınca ya da kandil bitince haritaya dönülür.
    */
   private async kasabaAkisi(): Promise<void> {
-    if (!meta.kasabaAcikMi(this.kayit)) return;
-    this.ekranAdi = 'kasaba';
-    const s = await this.ui.kasaba(kasabaVM(this.kayit));
-    if (s.tur !== 'yap') return;
-    const r = meta.kasabaIsYap(this.kayit, s.id);
-    if (!r.tamam) {
-      this.bildir('Bu iş şimdi yapılamıyor');
-      return;
-    }
-    this.kayitci.degistir(r.kayit, 0);
-    await this.bekle(240);
-    this.ekranAdi = 'kasabaKutlama';
-    this.haritaAcik = true;
-    const p = this.ui.harita(this.haritaModeli());
-    const secim = await Promise.race([p, this.ui.haritaKutlamasi().then(() => null)]);
-    // Kutlama sürerken haritada seçim yapıldıysa kaybolmasın (döngü işler); kart yine gösterilir.
-    if (secim && secim.tur !== 'kapandi') this.bekleyenHaritaSecimi = secim;
-    const senlik = r.oduller.find((o): o is Extract<meta.KasabaOdulu, { tur: 'kasabaSenligi' }> => o.tur === 'kasabaSenligi');
-    if (senlik) {
-      this.ekranAdi = 'defterKarti';
-      await this.ui.defterKarti({ mahalle: senlik.mahalle, oduller: [], tur: 'kasaba' });
+    for (;;) {
+      if (!meta.kasabaAcikMi(this.kayit)) return;
+      this.ekranAdi = 'kasaba';
+      const s = await this.ui.kasaba(kasabaVM(this.kayit));
+      if (s.tur !== 'yap') return;
+      const r = meta.kasabaIsYap(this.kayit, s.id);
+      if (!r.tamam) {
+        this.bildir('Bu iş şimdi yapılamıyor');
+        return;
+      }
+      this.kayitci.degistir(r.kayit, 0);
+      await this.bekle(240);
+      this.ekranAdi = 'kasabaKutlama';
+      this.haritaAcik = true;
+      const p = this.ui.harita(this.haritaModeli());
+      const secim = await Promise.race([p, this.ui.haritaKutlamasi().then(() => null)]);
+      // Kutlama sürerken haritada seçim yapıldıysa kaybolmasın (döngü işler); kart yine gösterilir.
+      if (secim && secim.tur !== 'kapandi') this.bekleyenHaritaSecimi = secim;
+      const senlik = r.oduller.find((o): o is Extract<meta.KasabaOdulu, { tur: 'kasabaSenligi' }> => o.tur === 'kasabaSenligi');
+      if (senlik) {
+        this.ekranAdi = 'defterKarti';
+        await this.ui.defterKarti({ mahalle: senlik.mahalle, oduller: [], tur: 'kasaba' });
+      }
+      // Oyuncu kutlamada başka bir şey seçtiyse ya da kandil yetmiyorsa haritada kal.
+      if (this.bekleyenHaritaSecimi || !this.haritaAcik || this.ui.modalAcik) return;
+      if (meta.siradakiKasabaIsi(this.kayit)?.durum !== 'yapilabilir') return;
+      this.ekranAdi = 'harita';
+      // Kısa ara: oyuncu bu arada haritada bir şeye dokunursa o seçilir, panel açılmaz.
+      const ara = await Promise.race([p, this.bekle(this.hizliKip ? 0 : 350).then(() => null)]);
+      if (ara && ara.tur !== 'kapandi') {
+        this.bekleyenHaritaSecimi = ara;
+        return;
+      }
+      if (this.bekleyenHaritaSecimi || !this.haritaAcik || this.ui.modalAcik) return;
     }
   }
 

@@ -485,8 +485,14 @@ düğmesinden çapaya min(maliyet, 6) kandil kıvılcımı uçar (Bezier 450 ms,
 60 ms arayla) → süs belirir: ölçek 0,6 → 1 (`outBack` 400 ms) + ışık halkası
 600 ms + 12 parıltı → ses `arayuz('kasaba')` (yeni: çan akoru + fener
 tıkırtısı; yoksa `parca`) + titreşim 20 ms → sakin balonu (2,4 sn, çapanın
-üstünde) → kandil hapı aşağı sayar. 6/6 ise ardından Mahalle şenliği ve
-Defter kartı (§B.5). Panel kendiliğinden yeniden açılmaz.
+üstünde; bir bölüm düğümünü örterse çapanın altında) → kandil hapı aşağı
+sayar. 6/6 ise ardından Mahalle şenliği ve Defter kartı (§B.5). Kandil
+sıradaki işe de yetiyorsa panel kutlamadan ~350 ms sonra kendiliğinden
+yeniden açılır (göçle 38–71 kandille gelen oyuncu her iş için Kasaba'ya
+basmasın); oyuncu kutlamada haritada bir şey seçtiyse, paneli kapattıysa ya
+da kandil yetmiyorsa haritada kalınır. Panel yüksekliği görüntü alanından
+(`min(70dvh, 520px)`); 760 px altında kart 54 px, ara 4 px: 390×700'de altı
+kart kaydırmasız.
 
 ### C.2 Bölüm öncesi kartı
 Hedefler bloğundan sonra, hamle çipinden önce **MÜHÜRLER** bloğu (6–40,

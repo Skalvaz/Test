@@ -184,11 +184,22 @@ async function profilKos(browser, p) {
     }
   };
 
-  /** (Kancalar §C.1) Kasaba düğmesi → panel → ilk "Yap" → kutlama (kıvılcım, ışıklar, sakin) ve şenlik/kart. */
+  /**
+   * (Kancalar §C.1) Kasaba düğmesi → panel → ilk "Yap" → kutlama (kıvılcım, ışıklar, sakin) ve şenlik/kart.
+   * Kandil sıradaki işe yetiyorsa panel kutlamadan sonra kendiliğinden yeniden açılır: açık panel
+   * sonraki çağrıda doğrudan kullanılır; işler bitince `kasabaPaneliKapat`.
+   */
+  const kasabaPaneliAcik = () => page.evaluate(() => window.__fitil.ekran() === 'kasaba' && !!document.querySelector('.f-kasaba-modal.f-giris'));
+  const kasabaPaneliKapat = async () => {
+    if (!(await kasabaPaneliAcik())) return;
+    await page.locator('.f-ks-kapat').click();
+    await bekleKosul(page, () => window.__fitil.ekran() === 'harita' && !document.querySelector('.f-kasaba-modal'), null, 8000, 'Kasaba paneli kapandı');
+  };
   const kasabaIsYap = async (etiket, kareler = true) => {
-    await bekleKosul(page, () => window.__fitil.ekran() === 'harita' && !!document.querySelector('.f-harita-kasaba:not([hidden])'), null, 15000, 'Kasaba düğmesi');
+    const acik = await kasabaPaneliAcik();
+    if (!acik) await bekleKosul(page, () => window.__fitil.ekran() === 'harita' && !!document.querySelector('.f-harita-kasaba:not([hidden])'), null, 15000, 'Kasaba düğmesi');
     const once = await page.evaluate(() => window.__fitil.kayit().kasaba.isler.length);
-    await page.locator('.f-harita-kasaba').click();
+    if (!acik) await page.locator('.f-harita-kasaba').click();
     await bekleKosul(page, () => !!document.querySelector('.f-kasaba-modal.f-giris'), null, 8000, 'Kasaba paneli');
     await page.waitForTimeout(450);
     if (kareler) await kare(`${etiket}-panel`);
@@ -220,11 +231,13 @@ async function profilKos(browser, p) {
         await page.waitForTimeout(500);
         continue;
       }
-      if (e === 'harita') break;
+      if (e === 'harita' || e === 'kasaba') break;
       if (i === 12 && (await page.locator('.f-senlik-bant').count())) await kare(`${etiket}-senlik`);
       await page.waitForTimeout(250);
     }
-    await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 20000, 'kutlamadan haritaya');
+    await bekleKosul(page, () => window.__fitil.ekran() === 'harita' || window.__fitil.ekran() === 'kasaba', null, 20000, 'kutlamadan haritaya');
+    // Panel kendiliğinden açıldıysa (kandil sıradaki işe yetiyor) girişi bitsin.
+    await page.waitForTimeout(700);
     return true;
   };
 
@@ -253,6 +266,10 @@ async function profilKos(browser, p) {
     // Kasaba: ilk iş kareli, sonra İskele'nin geri kalanı (6. iş: Mahalle şenliği + kasaba kartı).
     await kasabaIsYap('kasaba1');
     for (let i = 2; i <= 6; i++) await kasabaIsYap(`kasaba${i}`, i === 6);
+    // 6. işten sonra kandil Çarşı'ya yetiyor: panel kendiliğinden yeniden açılmış olmalı (§C.1).
+    if (!(await kasabaPaneliAcik())) hatalar.push(`[${p.ad}] kandil yettiği halde Kasaba paneli kendiliğinden yeniden açılmadı`);
+    else await kare('kasaba-yeniden-acildi');
+    await kasabaPaneliKapat();
     await page.waitForTimeout(800);
     await kare('kasaba-iskele-tamam');
     const kk = await page.evaluate(() => window.__fitil.kayit());
@@ -376,6 +393,7 @@ async function profilKos(browser, p) {
       await kare('kasaba-ilk-balon');
       if ((await ekran(page)) === 'bolumOncesi') hatalar.push(`[${p.ad}] ilk kandil balonunda otomatik kart atlanmadı`);
       await kasabaIsYap('kasaba-ilk');
+      await kasabaPaneliKapat();
       continue;
     }
     if (s === 'kazandin' && n === 5) {

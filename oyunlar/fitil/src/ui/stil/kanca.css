@@ -165,7 +165,9 @@
 
 /* ── Kasaba paneli (§C.1): alttan çekmece, yükseklik min(%70, 520 px) */
 .f-kasaba-modal { padding-bottom: 0; padding-left: calc(var(--guv-sol) + 6px); padding-right: calc(var(--guv-sag) + 6px); }
-.f-kasaba-modal .f-kart { width: min(100%, 480px); height: min(70%, 520px); padding: 5px 5px 0; border-radius: 26px 26px 0 0; transform: translateY(100%); transition: opacity .15s ease, transform .3s cubic-bezier(.2, .9, .3, 1); }
+.f-kasaba-modal .f-kart { width: min(100%, 480px); height: min(70vh, 520px, 100%); padding: 5px 5px 0; border-radius: 26px 26px 0 0; transform: translateY(100%); transition: opacity .15s ease, transform .3s cubic-bezier(.2, .9, .3, 1); }
+/* Yükseklik görüntü alanından (yüzde, modalın 34 px üst dolgulu içeriğine göre 466 px veriyordu; §C.1: 700'de 490). */
+@supports (height: 1dvh) { .f-kasaba-modal .f-kart { height: min(70dvh, 520px, 100%); } }
 .f-kasaba-modal.f-giris .f-kart { transform: none; }
 .f-kasaba-modal.f-cikis .f-kart { transform: translateY(100%); transition: transform .24s ease-in, opacity .24s ease-in; }
 .f-kasaba-modal .f-kart-ic { padding: 0; border-radius: 21px 21px 0 0; overflow: hidden; display: flex; flex-direction: column; }
@@ -220,6 +222,11 @@
 .f-ks-el .f-ikon { width: 34px; height: 34px; }
 @keyframes f-ks-el { 0%, 100% { transform: translate(6px, 8px) rotate(-12deg); } 45% { transform: translate(0, 0) rotate(-12deg) scale(.92); } 60% { transform: translate(0, 0) rotate(-12deg) scale(1); } }
 .f-az .f-ks-el { animation: none; }
+/* Kısa ekran (§C.1: 390×700'de altı kart kaydırmasız): kart 54 px, ara 4 px. */
+@media (max-height: 760px) {
+  .f-ks-liste { gap: 4px; }
+  .f-ks-is { min-height: 54px; padding-top: 5px; padding-bottom: 5px; }
+}
 @media (max-width: 370px) {
   .f-ks-ad { font-size: 16px; }
   .f-ks-metin strong { font-size: 15px; }
