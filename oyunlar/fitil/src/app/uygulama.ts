@@ -464,8 +464,9 @@ export class Uygulama {
       if (this.bekleyenHaritaSecimi || !this.haritaAcik || this.ui.modalAcik) return;
       if (meta.siradakiKasabaIsi(this.kayit)?.durum !== 'yapilabilir') return;
       this.ekranAdi = 'harita';
-      // Kısa ara: oyuncu bu arada haritada bir şeye dokunursa o seçilir, panel açılmaz.
-      const ara = await Promise.race([p, this.bekle(this.hizliKip ? 0 : 350).then(() => null)]);
+      // Ara: sakin balonu (çapada ~3,8 sn) okunsun; oyuncu bu arada haritada bir şeye
+      // dokunursa o seçilir, panel açılmaz.
+      const ara = await Promise.race([p, this.bekle(this.hizliKip ? 0 : 1400).then(() => null)]);
       if (ara && ara.tur !== 'kapandi') {
         this.bekleyenHaritaSecimi = ara;
         return;

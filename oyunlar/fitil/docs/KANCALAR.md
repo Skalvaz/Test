@@ -487,7 +487,7 @@ düğmesinden çapaya min(maliyet, 6) kandil kıvılcımı uçar (Bezier 450 ms,
 tıkırtısı; yoksa `parca`) + titreşim 20 ms → sakin balonu (2,4 sn, çapanın
 üstünde; bir bölüm düğümünü örterse çapanın altında) → kandil hapı aşağı
 sayar. 6/6 ise ardından Mahalle şenliği ve Defter kartı (§B.5). Kandil
-sıradaki işe de yetiyorsa panel kutlamadan ~350 ms sonra kendiliğinden
+sıradaki işe de yetiyorsa panel kutlamadan ~1,4 sn sonra (sakin balonu okunsun) kendiliğinden
 yeniden açılır (göçle 38–71 kandille gelen oyuncu her iş için Kasaba'ya
 basmasın); oyuncu kutlamada haritada bir şey seçtiyse, paneli kapattıysa ya
 da kandil yetmiyorsa haritada kalınır. Panel yüksekliği görüntü alanından
