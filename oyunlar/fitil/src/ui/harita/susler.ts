@@ -149,7 +149,8 @@ export function sancakOgeleri(sancaklar: readonly { id: number; x: number; y: nu
 /** Sancak bayrağı (canlı; direk durağan, cizim.ts). Kale kremi için koyu kontur. */
 export function sancakOgesi(id: number, p: Nokta, m: number): CanliOge {
   const renk = MAHALLELER[m]?.vurgu ?? '#FFB020';
-  const kontur = m === 7 ? '#3A2A20' : 'rgba(0,0,0,.4)';
+  const kale = m === 7;
+  const kontur = kale ? '#2A1A10' : 'rgba(0,0,0,.4)';
   return {
     sahip: `sancak:${id}`,
     tur: 'dalga',
@@ -157,7 +158,8 @@ export function sancakOgesi(id: number, p: Nokta, m: number): CanliOge {
     y: p.y - 17,
     w: 14,
     h: 10,
-    ic: `<path d="M0 .5L13.4 5 0 9.5Z" fill="${renk}" stroke="${kontur}" stroke-width=".8" stroke-linejoin="round"/><path d="M1.2 2.4 7 4.4" stroke="#fff" stroke-width=".8" opacity=".45"/>`,
+    // Üçgen bayrak + kırmızı mum mühür noktası: "Burç bayrakları" gibi iş bayraklarından ayrılır.
+    ic: `<path d="M0 .5L13.4 5 0 9.5Z" fill="${renk}" stroke="${kontur}" stroke-width="${kale ? 1.3 : 0.8}" stroke-linejoin="round"/><path d="M1.2 2.4 7 4.4" stroke="#fff" stroke-width=".8" opacity=".45"/><circle cx="4" cy="5" r="2" fill="#C4261C" stroke="#5E0A0A" stroke-width=".6"/>`,
     koken: '0 50%',
     gecikme: -((id * 0.37) % 1.5),
     sure: 1.5,

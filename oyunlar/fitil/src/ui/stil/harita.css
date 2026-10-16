@@ -438,6 +438,11 @@
 .f-hk-ust { display: flex; align-items: center; gap: 6px; font-size: 24px; font-weight: 800; color: #FFE7C2; }
 .f-hk-kandil { width: 30px; height: 23px; }
 .f-hk-ad { margin-top: 3px; font-size: 14px; font-weight: 800; letter-spacing: .02em; color: var(--krem-2); }
+/* 48/48 iş bitti: kandil sayısı yerine onay, etiket "Fener Koyu". */
+.f-hk-tamam { display: none; }
+.f-hk-tamam .f-ikon { width: 24px; height: 24px; color: #7CFFB2; }
+.f-harita-kasaba.f-tamam .f-hk-ust > .f-sayi { display: none; }
+.f-harita-kasaba.f-tamam .f-hk-tamam { display: inline-flex; }
 .f-hk-nokta { position: absolute; top: 6px; right: 8px; width: 12px; height: 12px; border-radius: 50%; display: none; background: radial-gradient(circle at 35% 30%, #FFF4C2, #FFB020 55%, #C86A10); box-shadow: 0 0 0 1.5px #3A1606, 0 0 8px rgba(255, 176, 32, .9); }
 .f-harita-kasaba.f-hazir .f-hk-nokta { display: block; }
 .f-harita-kasaba.f-hazir::after { content: ''; position: absolute; inset: -3px; border-radius: 22px; box-shadow: 0 0 16px 4px rgba(255, 176, 32, .55); pointer-events: none; animation: f-hk-parilti .67s ease-in-out infinite alternate; }

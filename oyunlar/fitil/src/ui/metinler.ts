@@ -304,6 +304,8 @@ export const MK = {
     kasabaKapali: 'kilitli',
   } as Record<string, string>,
   kasabaDugme: (n: number, hazir: boolean) => `Kasaba: ${n} kandil${hazir ? ', yapılacak iş var' : ''}`,
+  fenerKoyu: 'Fener Koyu',
+  kasabaTamamDugme: 'Fener Koyu: bütün kasaba süslendi',
   kasabaKartlari: 'Kasaba kartları',
   kayitOzeti: (muhur: number, isler: number, kandil: number) => `Mühür ${muhur} · Kasaba ${isler}/48 işi · ${kandil} kandil`,
 } as const;

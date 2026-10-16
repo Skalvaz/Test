@@ -161,7 +161,7 @@ export class HaritaEkrani {
     this.kasabaDg = h(
       'button',
       { s: 'f-dg f-dg-ikincil f-harita-kasaba', type: 'button', hidden: '' },
-      h('span', { s: 'f-hk-ust' }, kandilSvg('f-hk-kandil'), this.kasabaSayi),
+      h('span', { s: 'f-hk-ust' }, kandilSvg('f-hk-kandil'), this.kasabaSayi, h('span', { s: 'f-hk-tamam', 'aria-hidden': 'true' }, ikon('tik'))),
       h('span', { s: 'f-hk-ad', t: MK.kasaba }),
       h('span', { s: 'f-hk-nokta', 'aria-hidden': 'true' }),
     ) as HTMLButtonElement;
@@ -454,8 +454,12 @@ export class HaritaEkrani {
     dg.hidden = !k?.acik;
     dg.parentElement?.classList.toggle('f-kasabali', !!k?.acik);
     if (k?.acik) {
-      dg.classList.toggle('f-hazir', k.yapilabilir);
-      dg.setAttribute('aria-label', MK.kasabaDugme(k.kandil, k.yapilabilir));
+      // 48/48: harcanacak iş kalmadı; düğme "Fener Koyu" olur (panel süslenen mahalleleri gösterir).
+      const tamam = k.isler.length >= KASABA_ISLERI.length;
+      dg.classList.toggle('f-tamam', tamam);
+      dg.querySelector('.f-hk-ad')!.textContent = tamam ? MK.fenerKoyu : MK.kasaba;
+      dg.classList.toggle('f-hazir', k.yapilabilir && !tamam);
+      dg.setAttribute('aria-label', tamam ? MK.kasabaTamamDugme : MK.kasabaDugme(k.kandil, k.yapilabilir));
       // İş yapıldıysa sayaç kıvılcımlarla birlikte aşağı sayar (kutlamalariOynat).
       const bas = this.kutlamaGecikme > 0 && this.oncekiKandil !== null && this.oncekiKandil > k.kandil ? this.oncekiKandil : k.kandil;
       this.kasabaSayi!.textContent = String(bas);
