@@ -121,6 +121,28 @@ yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
   150–300 puan): K24'ün 2★'ı (Acemi p50) bağımsız tohumlarda Acemi
   kazançlarının %38–64'ünü en az 2★ yapar.
 
+## Bölüm Mühürleri (K5 ölçümü; docs/KANCALAR.md §A.5, §A.7, KA13–KA15)
+
+- Mühür yalnız bölüm JSON'unun `muhurler` alanıdır; doğrulayıcı biçimi ve
+  bölüm içeriğiyle uyumu denetler (`bolumMuhurDogrula`, `bolumMuhurUyumu`:
+  ölçünün nesnesi tahtada, süzgeçsiz R/nesil `"sans": true`, aynı ölçüde
+  eşik Çırak < Kalfa < Usta, metin ≤ 34). Bölüm ayarı değişirse mühürleri
+  `npm run bot -- --muhur --bolum N` ile yeniden ölç.
+- Eşiği TEK tohum kümesinde bant kenarında seçme: P0'ın 2000+ kümesinde
+  %23–25 seçilen 16 Usta mühürünün 8'i bağımsız 5000+ kümesinde %27–35
+  çıktı (bant 8–25). İki kümeyi birleştir (`--json` raporundaki `dagilim`'lar
+  toplanabilir; her eşiğin oranı yeniden oynatmadan hesaplanır), iç
+  pencerede seç (Çırak A ≥ 48 / yedek U ≥ 90, Kalfa 36–54, Usta 11–20),
+  üçüncü kümeyle onayla. Tam ölçüm 35 bölüm × 450 oyun ≈ 13 dk (2 işçi).
+- Eşik adımları (Usta kazançlarında): kalan hamle +1 ≈ −10 puan; R +1 ≈
+  −1…−6; "tek hamlede N döşeme/desen/is" Usta için basamak (%100 → %0–20:
+  ilk tahta sabit, açılış hamlesi her tohumda aynı) — yalnız Çırak'ta kullan.
+- Kısıt mühürü (`enCok`) kısıtlı botla ölçülür; doğal oran yanıltır
+  ("Hiç 3'lük zincir" doğal %23, kısıtlı %100; "Körüksüz" kısıtlı %71–100).
+- Acemi uzun oynar: oyun boyu biriken sayaçlarda ("5 roket yap", "N özel taş
+  ateşle") Acemi oranı Usta'nınkinden yüksek; halka sayısı ve zincir boyunda
+  bot amaç körüdür (insan için daha kolay).
+
 Komutlar Windows PowerShell'de de çalışmalı: npm betiklerinde `VAR=1 komut`
 gibi POSIX sözdizimi kullanma.
 

@@ -32,6 +32,9 @@ Bu belgede **U** = Usta bot, **A** = Acemi bot, oranlar o botun
 | KA10 | Mühür ödülü: 3/3 → çatıda mahalle renginde **sancak**; mahallede 5/10/15 mühürde o mahallenin **fitil görünümünün** sıradaki parçası (üçü de varsa 10 toz); her yeni mühür +1 kandil. | Kullanıcı kararı (kozmetik); var olan 7 sandık fitili yeniden kullanılır, yeni çizim gerekmez. |
 | KA11 | `progressScore` + 5·mühür + 3·iş (en çok 669 < 1000 = bir yıldız). Eski kayıtta değer aynen kalır. | Bulut birleşiminde mühür/iş kaybolmasın; eski sürümün zarf puanıyla karşılaştırma bozulmasın. |
 | KA12 | Arayüzde üst banda (HUD plakası, gök şeridi) HİÇBİR şey eklenmez; mühür rozeti Duraklat düğmesinde, Kasaba düğmesi alt bantta. | iPhone görüntüleyicisinde üst bant zaten dar (fişek şikâyeti). |
+| KA13 | (K5) "Özel taş ateşle" patlayan özel taşı sayar: kombinasyona giren iki taş da ateşlenmiştir; "Çapraz roket ateşle" kombinasyona giren çapraz roketi de sayar (§A.4). | Oyuncunun gözüyle: 14. bölüm kombinasyonu öğretirken "Tek hamlede 3 özel taş ateşle" kombinasyonu 0 sayıyordu. |
+| KA14 | (K5) Eşikler iki bağımsız tohum kümesinin birleşiminde (Usta 300 / Acemi 600 oyun) bandın İÇ penceresinde seçilir: Çırak Acemi ≥ 48 (yedek Usta ≥ 90), Kalfa Usta 36–54, Usta Usta 11–20; üçüncü bağımsız kümeyle onaylanır. | Tek kümede kenarda seçilen eşikler (P0: 13 Usta mühürü %23–25) bağımsız kümede 21 mühürü banda taşırdı; 150 oyunda oran ±3–4 puan oynar. |
+| KA15 | (K5) Kısıt mühürü (`enCok`) 6–40'ta yok; koşul dili ve ölçüm aracı destekler. | Kısıtlı botla ölçülünce "Körük kullanmadan kazan" %71–100, "Hiç 3'lük zincir çizmeden kazan" %100: kısıtı bilen oyuncu için hiçbir bantta değil (P0 doğal oranla, kısıtı bilmeyen botla ölçmüştü). Körük'ün zorunlu olduğu bir bölümde yeniden denenebilir. |
 
 ---
 
