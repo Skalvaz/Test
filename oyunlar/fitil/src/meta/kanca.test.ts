@@ -25,6 +25,7 @@ import type { MuhurKosulu, MuhurOzeti } from './muhur';
 import { KANDIL, kandilDokumu, kasabaAcikMi, kasabaIsDurumu, kasabaIsYap, kasabaOnar, kasabaUyarildi, kasabaUyarisi, mahalleIsleri, siradakiKasabaIsi } from './kasaba';
 import { kayitCoz, kayitGoc, kayitKoduCoz, kayitKoduUret, kayitOnar, progressScore, toplamYildiz, acikEnYuksek, yeniKayit } from './kayit';
 import type { Kayit } from './kayit';
+import { haritaVerisi } from './harita';
 import { olaylardanOzet, ozetBaslat, ozetFinal, ozetHamle } from './ozet';
 import type { HamleIzi } from './ozet';
 import { KAYIT_SURUMU } from './sabitler';
@@ -334,6 +335,23 @@ describe('kasaba işleri', () => {
     expect(r.uyarilan).toEqual([]);
     expect(not).toContain('kasaba.isler');
     expect(kasabaOnar(undefined, k, () => undefined)).toEqual({ isler: [], gunlukKandil: 0, uyarilan: [] });
+  });
+});
+
+describe('harita verisi (şema 3 alanları)', () => {
+  it('mühür maskesi, sancak, mahalle mühür sayısı ve kasaba düğmesi', () => {
+    const k = kayit(12, 2, 0b011);
+    k.bolumler['7'].muhur = 7;
+    const h = haritaVerisi(k);
+    const d = (id: number) => h.dugumler.find((x) => x.tur === 'bolum' && x.id === id) as Extract<(typeof h.dugumler)[number], { tur: 'bolum' }>;
+    expect(d(3).muhur).toBeNull();
+    expect(d(6).muhur).toBe(3);
+    expect(d(7).sancak).toBe(true);
+    expect(d(8).sancak).toBe(false);
+    expect(h.mahalleler[0]).toMatchObject({ muhur: 0, muhurToplam: 0 });
+    expect(h.mahalleler[1]).toMatchObject({ muhur: 2 + 3 + 2 + 2 + 2, muhurToplam: 15, kasabaIs: 0, suslendi: false });
+    expect(h.kasaba).toMatchObject({ acik: true, kandil: kandilDokumu(k).bakiye, isler: [], yapilabilir: true });
+    expect(h.kasaba.siradaki?.id).toBe(iskele[0]);
   });
 });
 

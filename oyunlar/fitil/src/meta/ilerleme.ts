@@ -51,7 +51,8 @@ import type { Tablo } from './galeri';
 import { arsivdeMi, gorevIlerlet, gorevMetni, gunlukAcik, gunlukDahaIyi, gunlukTazele_yerinde, izgaraMetni, seriIlerle } from './gunluk';
 import type { SeriSonucu } from './gunluk';
 import { acikEnYuksek, anaYildiz, bolumKazanildi, kayitKopyala, parcaId, sonsuzAcikMi } from './kayit';
-import type { BolumKaydi, GorevDurumu, GunlukSonucKaydi, KartId, Kayit, Nadirlik, Rekorlar, SandikNedeni, Yildiz } from './kayit';
+import type { BolumKaydi, GorevDurumu, GunlukSonucKaydi, KartId, Kayit, Nadirlik, ParcaId, Rekorlar, SandikNedeni, Yildiz } from './kayit';
+import type { MuhurKademe } from './muhur';
 import { ozetBaslat } from './ozet';
 import type { OyunOzeti } from './ozet';
 import { rozetTanimi, yeniRozetler } from './rozetler';
@@ -97,6 +98,13 @@ export interface BolumSonucGirdisi {
   motif?: Motif;
   /** Kimlikten çıkarılamıyorsa bölüm türü. */
   tur?: BolumTuru;
+  /**
+   * Şema 3 (KANCALAR §A.4, §D.4): bu oyunun mühürleri [Çırak, Kalfa, Usta].
+   * Uygulama `muhurleriDegerlendir(v, muhurOzeti(oz, finalOncesiDurum))` ile
+   * hesaplar (meta bölüm verisini görmez). Kayıpta, Usta'nın Eli devamında
+   * ya da 1–5 / 41+ bölümlerde meta yok sayar.
+   */
+  muhurler?: readonly boolean[];
 }
 
 export type RekorAlani = 'bolumPuani' | keyof Rekorlar;
@@ -122,7 +130,22 @@ export type Odul =
   | { tur: 'seri'; sonuc: SeriSonucu }
   | { tur: 'seriBasamagi'; basamak: number; ad: string }
   | { tur: 'fitil'; fitil: FitilId }
-  | { tur: 'ustaEli' };
+  | { tur: 'ustaEli' }
+  /**
+   * Şema 3 (KANCALAR §A, §B; kazandın ekranı sırası §C.3):
+   *  - muhur: bu kazançta YENİ basılan mühürler (`maske` güncel üçlü maske);
+   *    `tanitim`: mühürler bu kazançla tanıtılıyor (6. bölümün ilk kazancı).
+   *  - sancak: bölümün üç mührü tamamlandı (haritada çatıda sancak).
+   *  - muhurParcasi: mahallenin 5/10/15. mührü; fitil parçası ya da (üçü de
+   *    varsa) toz.
+   *  - kandil: kandil bakiyesi değişti (kaynaklara göre dökümüyle).
+   *  - kasabaAcildi: kasaba bu kazançla açıldı (3. bölüm; ilk kandil balonu).
+   */
+  | { tur: 'muhur'; bolumId: number; yeni: MuhurKademe[]; maske: number; tanitim: boolean }
+  | { tur: 'sancak'; bolumId: number; mahalle: number }
+  | { tur: 'muhurParcasi'; mahalle: number; esik: number; fitil: FitilId; parca: ParcaId | null; toz: number }
+  | { tur: 'kandil'; onceki: number; yeni: number; kaynak: { yildiz: number; muhur: number; mahalle: number; gunluk: number } }
+  | { tur: 'kasabaAcildi'; kandil: number };
 
 export type OdulTuru = Odul['tur'];
 

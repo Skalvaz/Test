@@ -16,6 +16,9 @@ import { acikEnYuksek, anaYildiz, bolumKaydi, seriBasamakIndeksi, sonsuzAcikMi, 
 import type { Kayit, Nadirlik, Yildiz } from './kayit';
 import { SERI_BASAMAKLARI, mahalleBolumleri, mahalleSayisi, metaAyar } from './sabitler';
 import type { MetaAyar } from './sabitler';
+import { KASABA_IS_PER_MAHALLE } from '../app/katalog';
+import { kandilDokumu, kasabaAcikMi, mahalleSuslendi, siradakiKasabaIsi } from './kasaba';
+import { MUHUR_ACILIS_BOLUMU, MUHUR_SON_BOLUM, muhurSayisi } from './muhur';
 
 export type DugumDurumu = 'kilitli' | 'acik' | 'kazanildi';
 
@@ -42,6 +45,10 @@ export interface HaritaBolumDugumu {
   nadirlik: Nadirlik | null;
   /** Kasaba silueti için bina tohumu (belirlenimli). */
   tohum: number;
+  /** Şema 3: mühür maskesi (bit 0 Çırak, 1 Kalfa, 2 Usta); mühürsüz bölümde null. */
+  muhur: number | null;
+  /** Üç mühür tamam: çatıda mahalle renginde sancak (KANCALAR §A.6). */
+  sancak: boolean;
 }
 
 export interface HaritaUstaDugumu {
@@ -82,6 +89,12 @@ export interface HaritaMahallesi {
   motifler: Motif[];
   defterKarti: boolean;
   efsaneKarti: boolean;
+  /** Şema 3: mahallenin mühürleri (0..15; İskele mühürsüz → 0/0). */
+  muhur: number;
+  muhurToplam: number;
+  /** Yapılan kasaba işi (0..6) ve 6/6 süslendi mi. */
+  kasabaIs: number;
+  suslendi: boolean;
 }
 
 export interface HaritaVerisi {
@@ -100,6 +113,12 @@ export interface HaritaVerisi {
   gunluk: { acik: boolean; gorevTamam: number; gorevToplam: number; seri: number; basamak: string | null; sonrakiBasamak: { ad: string; yonelme: string; kalan: number } | null };
   sonsuz: { acik: boolean; siradaki: number };
   cosku: { seri: number; aktif: boolean };
+  /**
+   * Şema 3 (KANCALAR §C.1): Kasaba düğmesi. `acik` 3. bölümden sonra;
+   * `siradaki` en ucuz açık iş ve eksik kandil; `isler` yapılan işlerin
+   * kimlikleri (harita süsleri).
+   */
+  kasaba: { acik: boolean; kandil: number; isler: string[]; siradaki: { id: string; ad: string; maliyet: number; eksik: number } | null; yapilabilir: boolean };
 }
 
 /** Usta Bölümleri (§10.2). */
@@ -156,6 +175,8 @@ export function haritaVerisi(k: Kayit, secenek: { ayar?: Partial<MetaAyar>; moti
         tablo: !!b?.tablo,
         nadirlik: b?.tablo ? ((b.nadirlik ?? 0) as Nadirlik) : null,
         tohum: fnv1a(`bina:${id}`),
+        muhur: id >= MUHUR_ACILIS_BOLUMU && id <= MUHUR_SON_BOLUM ? (b?.muhur ?? 0) : null,
+        sancak: id >= MUHUR_ACILIS_BOLUMU && id <= MUHUR_SON_BOLUM && muhurSayisi(b?.muhur) === 3,
       });
     });
     const motifler = (Object.keys(motifBolumleri) as Motif[]).filter((mt) => {
@@ -177,6 +198,10 @@ export function haritaVerisi(k: Kayit, secenek: { ayar?: Partial<MetaAyar>; moti
       motifler,
       defterKarti: k.koleksiyon.kartlar.includes(`defter:${mh.id}`),
       efsaneKarti: k.koleksiyon.kartlar.includes(`efsane:${mh.id}`),
+      muhur: ids.reduce((t, id) => t + (id >= MUHUR_ACILIS_BOLUMU && id <= MUHUR_SON_BOLUM ? muhurSayisi(bolumKaydi(k, id)?.muhur) : 0), 0),
+      muhurToplam: ids.filter((id) => id >= MUHUR_ACILIS_BOLUMU && id <= MUHUR_SON_BOLUM).length * 3,
+      kasabaIs: (k.kasaba?.isler ?? []).filter((x) => x.startsWith(`${mh.id}.`)).length,
+      suslendi: (k.kasaba?.isler ?? []).filter((x) => x.startsWith(`${mh.id}.`)).length >= KASABA_IS_PER_MAHALLE && mahalleSuslendi(k, m),
     });
     const ustaId = ayar.ustaIdleri[m];
     if (ustaId !== undefined) {
@@ -222,5 +247,17 @@ export function haritaVerisi(k: Kayit, secenek: { ayar?: Partial<MetaAyar>; moti
     },
     sonsuz: { acik: sonsuzAcikMi(k, ayar), siradaki: k.sonsuzEnYuksek + 1 },
     cosku: { seri: k.cosku, aktif: coskuAktif(k) },
+    kasaba: kasabaHaritasi(k, ayar),
+  };
+}
+
+function kasabaHaritasi(k: Kayit, ayar: MetaAyar): HaritaVerisi['kasaba'] {
+  const s = siradakiKasabaIsi(k, ayar);
+  return {
+    acik: kasabaAcikMi(k),
+    kandil: kandilDokumu(k, ayar).bakiye,
+    isler: [...(k.kasaba?.isler ?? [])],
+    siradaki: s ? { id: s.is.id, ad: s.is.ad, maliyet: s.is.maliyet, eksik: s.eksik } : null,
+    yapilabilir: s?.durum === 'yapilabilir',
   };
 }

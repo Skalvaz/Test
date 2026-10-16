@@ -484,6 +484,17 @@ function odulKarti(o: Odul): HTMLElement {
       return kart('altin', S.gunes, 'Fitil görünümü: Deniz Feneri');
     case 'ustaEli':
       return kart('mavi', S.el, "Kıvılcım Usta'nın Eli", '+5 hamle ile devam et (en fazla 1★)');
+    // Şema 3 (KANCALAR): mühür, sancak, mühür parçası, kandil, kasaba.
+    case 'muhur':
+      return kart('kirmizi', S.rozet, `Mühür: ${o.yeni.join(', ')}`, `Bölüm ${o.bolumId}${o.tanitim ? ' · mühürler tanıtıldı' : ''}`);
+    case 'sancak':
+      return kart('altin', S.gunes, `Sancak: Bölüm ${o.bolumId}`, `${MAHALLELER[o.mahalle].ad}: üç mühür tamam`);
+    case 'muhurParcasi':
+      return kart('altin', S.gunes, `${o.esik} mühür: ${FITILLER.find((f) => f.id === o.fitil)!.ad}`, o.parca ? `Parça ${o.parca}` : `+${o.toz} toz`);
+    case 'kandil':
+      return kart('altin', S.alev, `Kandil ${o.onceki} → ${o.yeni}`, `yıldız ${o.kaynak.yildiz} · mühür ${o.kaynak.muhur} · mahalle ${o.kaynak.mahalle} · günlük ${o.kaynak.gunluk}`);
+    case 'kasabaAcildi':
+      return kart('altin', S.harita, 'Kasaba açıldı', `${o.kandil} kandil`);
   }
 }
 

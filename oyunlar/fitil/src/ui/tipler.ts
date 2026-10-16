@@ -52,6 +52,60 @@ export type RozetId =
 
 export type SeriBasamagi = 'kivilcim' | 'cira' | 'mesale' | 'fener' | 'denizFeneri';
 
+// ─────────────── Mühürler ve Kasaba (docs/KANCALAR.md §C) ───────────────
+
+export type MuhurKademeVM = 'cirak' | 'kalfa' | 'usta';
+
+/**
+ * Bir mühür satırı (bölüm öncesi kartı, Duraklat, Kazandın).
+ *  - basili: kayıtta basılı (önceki denemelerden)
+ *  - durum: oyun sürerken (HUD/Duraklat) — 'tuttu' koşul sağlandı, kazanınca
+ *    basılır; 'bekliyor'; 'korunuyor' kısıt şimdilik tutuyor; 'bozuldu'
+ *    bu denemede basılamaz; 'sonda' kazanç anında ölçülür (kalan hamle).
+ */
+export interface MuhurVM {
+  kademe: MuhurKademeVM;
+  /** Tek satır koşul metni (≤ 34 karakter). */
+  metin: string;
+  basili: boolean;
+  durum?: 'tuttu' | 'bekliyor' | 'korunuyor' | 'bozuldu' | 'sonda';
+}
+
+/** Kasaba paneli (alt çekmece) iş kartı. */
+export interface KasabaIsVM {
+  id: string;
+  ad: string;
+  aciklama: string;
+  maliyet: number;
+  /** Taç iş (mahallenin 6. işi; öbür beşi bitince açılır). */
+  tac: boolean;
+  durum: 'yapildi' | 'yapilabilir' | 'yetersiz' | 'tacKilitli' | 'sirada' | 'haritaKilitli' | 'kasabaKapali';
+  /** `yetersiz` iken eksik kandil. */
+  eksik: number;
+}
+
+export interface KasabaMahalleVM {
+  indeks: number;
+  /** Haritada açık mı (sisli mahalle kilitli sekme). */
+  acik: boolean;
+  /** Bu mahalleye sıra geldi mi (önceki mahallenin 6 işi bitti). */
+  sirada: boolean;
+  yapilan: number;
+  isler: KasabaIsVM[];
+}
+
+export interface KasabaVM {
+  kandil: number;
+  /** Açılışta seçili mahalle sekmesi (süslenen mahalle). */
+  secili: number;
+  mahalleler: KasabaMahalleVM[];
+  /** İlk kandil öğretimi: ilk işin "Yap" düğmesinde el animasyonu. */
+  ogretim: boolean;
+}
+
+/** Kasaba panelinde seçim: bir işi yap ya da kapat. */
+export type KasabaSecimi = { tur: 'yap'; id: string } | { tur: 'kapat' };
+
 // ───────────────────────────── HUD ─────────────────────────────
 
 export interface GuclendiriciVM {
@@ -84,6 +138,11 @@ export interface HudVM {
   /** 0 = Körük kapalı (gösterge gizlenir). */
   korukKapasite: number;
   guclendiriciler: GuclendiriciVM[];
+  /**
+   * (Kancalar) Duraklat düğmesindeki mühür rozeti (●●○): 6–40'ta 3 öğe,
+   * mühürler tanıtılmadıysa ya da bölüm mühürsüzse yok.
+   */
+  muhurler?: MuhurVM[];
 }
 
 // ─────────────────────────── Harita ───────────────────────────
@@ -93,6 +152,10 @@ export interface BolumDugumuVM {
   yildiz: Yildiz;
   /** 'acik' = kazanılmış; 'simdiki' = oynanacak sıradaki bölüm. */
   durum: 'kilitli' | 'acik' | 'simdiki';
+  /** (Kancalar) Basılı mühür sayısı (0..3); mühürsüz bölümde yok. */
+  muhur?: number;
+  /** (Kancalar) Üç mühür: çatıda mahalle renginde sancak. */
+  sancak?: boolean;
 }
 
 export interface UstaDugumuVM {
@@ -126,6 +189,11 @@ export interface HaritaVM {
   rozetYeni?: boolean;
   /** (P5 ek) Sonsuz Şenlik (§10.7): 40. bölümden sonra açılır; sıradaki n. */
   sonsuz?: { acik: boolean; siradaki: number };
+  /**
+   * (Kancalar §C.1) Kasaba düğmesi ve harita süsleri. `isler`: yapılan işlerin
+   * kimlikleri (çizim); `uyari`: "Kandil yetti" balonu gösterilecek iş adı.
+   */
+  kasaba?: { acik: boolean; kandil: number; isler: string[]; yapilabilir: boolean; uyari?: string | null };
 }
 
 export type HaritaSecimi =
@@ -138,6 +206,8 @@ export type HaritaSecimi =
   | { tur: 'nasil' }
   /** (P5 ek) Sonsuz Şenlik'in sıradaki bölümü. */
   | { tur: 'sonsuz' }
+  /** (Kancalar) Kasaba paneli. */
+  | { tur: 'kasaba' }
   /** Harita başka bir ekranla programlı olarak kapatıldı. */
   | { tur: 'kapandi' };
 
@@ -164,6 +234,8 @@ export interface BolumOncesiVM {
   tablo: { nadirlik: Nadirlik } | null;
   /** Coşku Serisi aktif: hazır roketle başlanır. */
   cosku: boolean;
+  /** (Kancalar §C.2) Üç mühür (6–40, mühürler tanıtıldıysa). */
+  muhurler?: MuhurVM[];
 }
 
 // ───────────────────────── Sonuçlar ─────────────────────────
@@ -205,6 +277,13 @@ export interface KazandinVM {
    * görev, Usta Bölümü…): kartta küçük çipler. `ikon` çizgi ikon adı.
    */
   duyurular?: { ikon: string; metin: string }[];
+  /**
+   * (Kancalar §C.3) Mühürler: yıldızlardan sonra damgalanır; `yeni` olanlar
+   * bu kazançta basıldı. `tanitim`: ilk kez (6. bölüm) "Yeni: Mühürler".
+   */
+  muhurler?: { liste: (MuhurVM & { yeni: boolean })[]; tanitim: boolean; sancak: boolean } | null;
+  /** (Kancalar §C.3) Kandil kazanımı: önceki → yeni bakiye, kazanç şeridinin ilk çipi. */
+  kandil?: { onceki: number; yeni: number; tanitim: boolean } | null;
 }
 
 export interface KaybettinVM {
@@ -228,6 +307,8 @@ export interface DuraklatVM {
   hedefler: HedefVM[];
   /** Yeniden başlamak Coşku Serisi'ni bozar uyarısı. */
   coskuAktif: boolean;
+  /** (Kancalar) Mühürler ve anlık durumları. */
+  muhurler?: MuhurVM[];
 }
 
 export type DuraklatSecimi = 'devam' | 'yeniden' | 'ayarlar' | 'harita';
