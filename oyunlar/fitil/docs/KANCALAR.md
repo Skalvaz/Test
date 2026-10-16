@@ -1,6 +1,7 @@
 # FİTİL — Kancalar: Bölüm Mühürleri ve Kasaba İşleri (şartname)
 
-**Durum:** Uygulamaya hazır (P0: sözleşme kodu ve mühür verisi yazıldı).
+**Durum:** Uygulamaya hazır (P0: sözleşme kodu ve mühür verisi yazıldı; K5:
+ölçüm aracı ve 105 mühürün kalibrasyonu tamam, §A.5).
 **Bağlayıcılık:** GDD'ye ektir; GDD ile çelişen yerde bu belge geçerlidir ve
 § numarasıyla (KANCALAR §A.3 gibi) atıf yapılır.
 **Kullanıcı kararları (2026-10-16):**
@@ -156,75 +157,99 @@ kuralla (çapraz roket: eksende tam T + 25·d; izli dev fişek: önce `izYandi`)
 `BolumSonucGirdisi.muhurler`. Usta'nın Eli devamında özet sıfırlanır ve
 `istatistik.ustaEli` true: mühür yok.
 
-### A.5 105 mühür (bölüm JSON'larında yazılı)
-Ön ölçüm: Usta 150 tohum, Acemi 300 tohum, tohum 2000–2449 (ayar
-tohumlarından bağımsız). "Kazanç U / A" = botların kazanma oranı (%). Hücrede
-mühürün o botun kazançlarındaki oranı (%): Çırak'ta A (Acemi kazancı ≥ 20
-ise) ve U, Kalfa ve Usta'da U. "(şans)" = `sans: true`.
+### A.5 105 mühür (bölüm JSON'larında yazılı; K5 kalibrasyonu)
+**Ölçüm (K5, `npm run bot -- --muhur`):** üç bağımsız tohum kümesi, her biri
+Usta 150 / Acemi 300 oyun: 2000–2449, 5000–5449, 8000–8449 (ayar ve
+kalibre tohumlarından bağımsız); tabloda üçünün **birleşimi** (Usta 450 /
+Acemi 900 oyun). "Kazanç U / A" = botların kazanma oranı (%). Hücrede mühürün
+o botun KAZANÇLARINDAKİ oranı (%): Çırak'ta A ve U (Acemi kazancı < 20 ise
+yalnız U: KA5 yedeği, bant U ≥ 85), Kalfa ve Usta'da U. "(şans)" = `sans:
+true`. Eşikler ilk iki kümenin birleşiminden iç pencereyle seçildi (KA14);
+üçüncü küme onaydır.
+
+| Küme | Bantta | Payda (±5) | Bant dışı |
+|---|---:|---:|---:|
+| 2000+ | 105 | 0 | 0 |
+| 5000+ | 104 | 1 (16 Çırak, Acemi %39) | 0 |
+| 8000+ | 105 | 0 | 0 |
+| **Birleşik** | **105** | 0 | 0 |
 
 | # | Bölüm | Kazanç U / A | Çırak | Kalfa | Usta |
 |---:|---|---|---|---|---|
-| 6 | Kasımpatı | 100 / 55 | Bir kasımpatı yap · A 63 · U 100 | 3 kasımpatı yap · U 54 | 14 hamle kala kazan · U 17 |
-| 7 | Islak Barut | 97 / 46 | Tek hamlede 3 ıslak barutu kurut · A 96 · U 88 | 11+ düğümlü bir zincir çiz · U 41 | Tek hamlede 5 ıslak barutu kurut · U 24 |
-| 8 | Halka | 100 / 40 | Halkayla 4+ reaksiyon yap · A 46 · U 65 | 3 halka çiz · U 47 | Halkayla 14+ reaksiyon yap (şans) · U 23 |
-| 9 | Işıklı Sokak | 100 / 45 | Tek hamlede 5 döşeme aydınlat · A 43 · U 100 | 4 kasımpatı yap · U 35 | 9. nesil bir patlama yap (şans) · U 13 |
-| 10 | Çarşı Gecesi | 78 / 22 | Tek hamlede 6 döşeme aydınlat · A 42 · U 100 | 8 hamle kala kazan · U 54 | Tek hamlede 25+ reaksiyon yap (şans) · U 24 |
-| 11 | Fener Alayı | 99 / 56 | 3 fener indir · A 64 · U 75 | 2 çapraz roket ateşle · U 36 | 12+ düğümlü bir zincir çiz · U 17 |
-| 12 | Yıldız Topu | 100 / 38 | Bir yıldız topu yap · A 75 · U 100 | 2 yıldız topu yap · U 38 | Tek hamlede 4 kafes kır · U 17 |
-| 13 | Kayalık | 100 / 53 | Tek hamlede 3 kaya yok et · A 82 · U 77 | Bir yıldız topu yap · U 43 | 14+ düğümlü bir zincir çiz · U 21 |
-| 14 | Çifte Roket | 100 / 55 | Bir kombinasyon yap · A 85 · U 100 | 5 roket yap · U 50 | Tek hamlede 3 özel taş ateşle · U 15 |
-| 15 | Liman Fırtınası | 91 / 8 | Tek hamlede 4 kez engel vur · A 56 · U 53 | 6 hamle kala kazan · U 58 | Tek hamlede 2 fener indir · U 13 |
-| 16 | Dev Fişek | 100 / 54 | 3 dev fişek ateşle · A 42 · U 66 | 2 kasımpatı yap · U 48 | Tek hamlede 2 dev fişek ateşle · U 21 |
-| 17 | Körük | 100 / 47 | Körük'ü kullan · A 95 · U 100 | Körük'ü 3 kez kullan · U 43 | Körükle 5+ reaksiyon yap (şans) · U 24 |
-| 18 | Su Kovası | 86 / 44 | Tek hamlede 2 kafes kır · A 74 · U 52 | 4 roket yap · U 48 | Körükle 17+ reaksiyon yap (şans) · U 25 |
-| 19 | Kuru Gece | 100 / 84 | Körükle 18+ reaksiyon yap · A 88 · U 52 | 20 hamle kala kazan · U 52 | 5 halka çiz · U 25 |
-| 20 | Gece Yarısı | 85 / 7 | Tek hamlede 2 kafes kır · A 100 · U 75 | Tek hamlede 2 dev fişek ateşle · U 37 | 6 hamle kala kazan · U 24 |
-| 21 | Barut İzi | 100 / 54 | Tek hamlede 11 döşeme aydınlat · A 48 · U 100 | Körükle 20+ reaksiyon yap (şans) · U 57 | 4 halka çiz · U 13 |
-| 22 | Altı Renk | 98 / 32 | 8+ düğümlü bir zincir çiz · A 52 · U 78 | 2 çapraz roket ateşle · U 38 | Tek hamlede 8 gül patlat · U 18 |
-| 23 | Lale Tarhı | 94 / 32 | Tek hamlede 3 kaya yok et · A 56 · U 100 | 2 çapraz roket ateşle · U 52 | 2 kasımpatı yap · U 25 |
-| 24 | Çift Kat | 99 / 36 | Tek hamlede 6 döşeme aydınlat · A 76 · U 97 | 2 halka çiz · U 47 | Bir yıldız topu yap · U 23 |
-| 25 | Bahçe Duvarı | 84 / 8 | Tek hamlede 2 kaya yok et · A 42 · U 53 | 8 hamle kala kazan · U 49 | 3 halka çiz · U 17 |
-| 26 | Lale Deseni | 91 / 50 | Tek hamlede 5 desen karosu boya · A 72 · U 100 | 2 halka çiz · U 53 | Tek hamlede 8 desen karosu boya · U 19 |
-| 27 | Nemli Gece | 79 / 9 | Tek hamlede 2 kafes kır · A 93 · U 53 | 6. nesil bir patlama yap (şans) · U 42 | 5 hamle kala kazan · U 24 |
-| 28 | Kova Bulmacası | 85 / 14 | Çapraz roketle bir engel vur · A 44 · U 43 | Bir kasımpatı ateşle · U 56 | Tek hamlede 3 kafes kır · U 13 |
-| 29 | Meltem | 100 / 30 | Bir kasımpatı yap · A 83 · U 84 | 13+ düğümlü bir zincir çiz · U 50 | Hiç 3'lük zincir çizmeden kazan · U 23 |
-| 30 | Tepe Şenliği | 55 / 1 | Tek hamlede 9 desen karosu boya · U 100 | Körük kullanmadan kazan · U 64 (kısıtlı bot) | 11 hamle kala kazan · U 23 |
-| 31 | İs | 90 / 2 | Tek hamlede 2 is temizle · U 100 | 3 roket yap · U 49 | Tek hamlede 3 is temizle · U 24 |
-| 32 | Bacalar | 71 / 2 | Tek hamlede 6 is temizle · U 100 | 3 çapraz roket ateşle · U 35 | Tek hamlede 2 dev fişek ateşle · U 14 |
-| 33 | Çisenti | 81 / 3 | Tek hamlede 2 kafes kır · U 95 | Tek hamlede 6 döşeme aydınlat · U 33 | 8 hamle kala kazan · U 22 |
-| 34 | Kuru Gece II | 99 / 15 | Halkayla 12+ reaksiyon yap · A 41 · U 92 | 4 halka çiz · U 44 | Tek hamlede 40+ reaksiyon yap (şans) · U 24 |
-| 35 | Fabrika Yangını | 43 / 0 | Tek hamlede 4 is temizle · U 100 | Çapraz roketle bir engel vur · U 54 | 7 hamle kala kazan · U 14 |
-| 36 | Kale Kapısı | 79 / 1 | Tek hamlede 2 kaya yok et · U 100 | Tek hamlede 3 kaya yok et · U 42 | Tek hamlede 2 fener indir · U 25 |
-| 37 | Barut Deposu | 74 / 24 | Barut iziyle dev fişek ateşle · A 45 · U 30 | 5 roket yap · U 38 | 8 hamle kala kazan · U 24 |
-| 38 | Sur Feneri | 69 / 2 | Tek hamlede 2 kafes kır · U 93 | 3 halka çiz · U 37 | Halkayla 10+ reaksiyon yap (şans) · U 22 |
-| 39 | Arife | 97 / 1 | 8+ düğümlü bir zincir çiz · U 88 | 4 halka çiz · U 50 | Halkayla 31+ reaksiyon yap (şans) · U 24 |
-| 40 | Büyük Şenlik | 48 / 0 | Tek hamlede 11 desen karosu boya · U 100 | 2 yıldız topu yap · U 57 | Tek hamlede 30+ reaksiyon yap (şans) · U 18 |
+| 6 | Kasımpatı | 100 / 58 | Bir kasımpatı yap · A 61 · U 100 | 3 kasımpatı yap · U 52 | 14 hamle kala kazan · U 14 |
+| 7 | Islak Barut | 98 / 52 | Tek hamlede 3 ıslak barutu kurut · A 95 · U 87 | 11+ düğümlü bir zincir çiz · U 39 | 13+ düğümlü bir zincir çiz · U 15 |
+| 8 | Halka | 100 / 36 | Halkayla 3+ reaksiyon yap · A 56 · U 68 | 3 halka çiz · U 44 | Halkayla 17+ reaksiyon yap (şans) · U 14 |
+| 9 | Işıklı Sokak | 100 / 47 | Tek hamlede 4 döşeme aydınlat · A 79 · U 100 | 3 kasımpatı ateşle · U 47 | 9. nesil bir patlama yap (şans) · U 14 |
+| 10 | Çarşı Gecesi | 77 / 18 | Tek hamlede 5 döşeme aydınlat · A 73 · U 100 | 9 hamle kala kazan · U 46 | Tek hamlede 27+ reaksiyon yap (şans) · U 18 |
+| 11 | Fener Alayı | 99 / 59 | 3 fener indir · A 65 · U 78 | 4 özel taş ateşle · U 46 | 12+ düğümlü bir zincir çiz · U 18 |
+| 12 | Yıldız Topu | 100 / 37 | Bir yıldız topu yap · A 75 · U 100 | 2 yıldız topu yap · U 42 | Tek hamlede 4 kafes kır · U 19 |
+| 13 | Kayalık | 100 / 53 | Tek hamlede 3 kaya yok et · A 78 · U 80 | Bir yıldız topu yap · U 43 | 14+ düğümlü bir zincir çiz · U 19 |
+| 14 | Çifte Roket | 100 / 52 | Bir kombinasyon yap · A 88 · U 100 | 5 roket yap · U 48 | Tek hamlede 3 özel taş ateşle · U 14 |
+| 15 | Liman Fırtınası | 86 / 9 | Tek hamlede 4 kez engel vur · A 54 · U 54 | 8 hamle kala kazan · U 41 | Tek hamlede 3 kaya yok et · U 15 |
+| 16 | Dev Fişek | 100 / 52 | 3 dev fişek ateşle · A 41 · U 70 | 2 kasımpatı yap · U 45 | Tek hamlede 2 dev fişek ateşle · U 19 |
+| 17 | Körük | 100 / 42 | Körük'ü kullan · A 96 · U 100 | Körük'ü 3 kez kullan · U 42 | Körükle 7+ reaksiyon yap (şans) · U 15 |
+| 18 | Su Kovası | 86 / 45 | Tek hamlede 2 kafes kır · A 72 · U 53 | 4 roket yap · U 48 | Körükle 21+ reaksiyon yap (şans) · U 17 |
+| 19 | Kuru Gece | 100 / 81 | Körükle 18+ reaksiyon yap · A 89 · U 57 | 20 hamle kala kazan · U 48 | 6 halka çiz · U 13 |
+| 20 | Gece Yarısı | 82 / 8 | Tek hamlede 2 kafes kır · A 95 · U 76 | Tek hamlede 2 dev fişek ateşle · U 33 | 7 hamle kala kazan · U 15 |
+| 21 | Barut İzi | 100 / 55 | Tek hamlede 10 döşeme aydınlat · A 88 · U 100 | Körükle 24+ reaksiyon yap (şans) · U 41 | 4 halka çiz · U 14 |
+| 22 | Altı Renk | 98 / 30 | 8+ düğümlü bir zincir çiz · A 51 · U 76 | Tek hamlede 6 mor patlat · U 44 | Tek hamlede 8 gül patlat · U 18 |
+| 23 | Lale Tarhı | 93 / 33 | Tek hamlede 3 kaya yok et · A 57 · U 100 | 2 çapraz roket ateşle · U 52 | 12+ düğümlü bir zincir çiz · U 19 |
+| 24 | Çift Kat | 100 / 36 | Tek hamlede 6 döşeme aydınlat · A 72 · U 96 | Halkayla 7+ reaksiyon yap · U 49 | Bir yıldız topu yap · U 19 |
+| 25 | Bahçe Duvarı | 85 / 9 | Tek hamlede 2 kaya yok et · A 51 · U 53 | 8 hamle kala kazan · U 49 | 3 halka çiz · U 18 |
+| 26 | Lale Deseni | 90 / 49 | Tek hamlede 5 desen karosu boya · A 73 · U 100 | 6 özel taş ateşle · U 43 | Tek hamlede 8 desen karosu boya · U 16 |
+| 27 | Nemli Gece | 77 / 10 | Tek hamlede 2 kafes kır · A 86 · U 53 | 6. nesil bir patlama yap (şans) · U 37 | 6 hamle kala kazan · U 16 |
+| 28 | Kova Bulmacası | 82 / 12 | Tek hamlede 2 kafes kır · A 99 · U 88 | Çapraz roketle bir engel vur · U 43 | Tek hamlede 3 kafes kır · U 13 |
+| 29 | Meltem | 99 / 30 | Bir kasımpatı yap · A 77 · U 83 | 13+ düğümlü bir zincir çiz · U 44 | Tek hamlede 37+ reaksiyon yap (şans) · U 15 |
+| 30 | Tepe Şenliği | 56 / 1 | Tek hamlede 9 desen karosu boya · U 100 | Tek hamlede 2 özel taş ateşle · U 52 | 12 hamle kala kazan · U 20 |
+| 31 | İs | 90 / 3 | Tek hamlede 2 is temizle · A 100 · U 100 | 3 roket yap · U 54 | 11+ düğümlü bir zincir çiz · U 17 |
+| 32 | Bacalar | 71 / 2 | Tek hamlede 6 is temizle · U 100 | Çapraz roketle bir engel vur · U 41 | Tek hamlede 2 dev fişek ateşle · U 17 |
+| 33 | Çisenti | 82 / 3 | Tek hamlede 2 kafes kır · A 100 · U 93 | Halkayla 8+ reaksiyon yap · U 46 | 8 hamle kala kazan · U 17 |
+| 34 | Kuru Gece II | 100 / 14 | Körükle 22+ reaksiyon yap · A 79 · U 61 | 4 halka çiz · U 44 | Tek hamlede 43+ reaksiyon yap (şans) · U 16 |
+| 35 | Fabrika Yangını | 46 / 0 | Tek hamlede 4 is temizle · U 100 | Çapraz roketle bir engel vur · U 51 | 7 hamle kala kazan · U 15 |
+| 36 | Kale Kapısı | 77 / 2 | Tek hamlede 2 kaya yok et · U 100 | Tek hamlede 3 kaya yok et · U 43 | Tek hamlede 6 kez engel vur · U 12 |
+| 37 | Barut Deposu | 76 / 21 | Tek hamlede 2 dev fişek ateşle · A 64 · U 21 | 4 özel taş ateşle · U 43 | 9 hamle kala kazan · U 15 |
+| 38 | Sur Feneri | 74 / 1 | Tek hamlede 2 kafes kır · U 92 | 4 roket yap · U 50 | Halkayla 12+ reaksiyon yap (şans) · U 16 |
+| 39 | Arife | 97 / 3 | 7+ düğümlü bir zincir çiz · A 96 · U 94 | 4 halka çiz · U 44 | Halkayla 32+ reaksiyon yap (şans) · U 15 |
+| 40 | Büyük Şenlik | 51 / 1 | Tek hamlede 11 desen karosu boya · U 100 | Tek hamlede 8 kez engel vur · U 45 | Tek hamlede 32+ reaksiyon yap (şans) · U 14 |
 
-**Tasarım kuralları (bu tabloyu üretirken uygulandı):**
+**Tasarım kuralları:**
 - Her bölümün mühürleri o bölümün öğrettiği öğeye bağlıdır (6 kasımpatı, 7
-  ıslak, 8 halka, 9 döşeme, 11 fener, 12 yıldız topu, 13 kaya, 14
-  kombinasyon, 16 dev fişek, 17 Körük, 18 kafes+kova, 21 barut izi, 22 altı
-  renk, 26 desen, 29 Meltem disiplini, 31 is, 37 barut izi domino…); Kalfa ve
-  Usta bir önceki dersi pekiştirebilir (13'te "Bir yıldız topu yap").
-- "Kalan hamle" (hızlı bitirme) en çok 11 mühürde, çoğunlukla zor bölümlerde.
+  ıslak, 8 halka, 9–10 döşeme, 11 fener, 12 yıldız topu, 13 kaya, 14
+  kombinasyon, 15 kaya/kova vuruşu, 16 dev fişek, 17 Körük, 18 kafes+kova,
+  19 ve 34 bayramda Körük, 21 barut iziyle döşeme, 22 altı renk (mor, gül),
+  26 desen, 28 kova+kafes ve çapraz roket, 31–32 is, 36 ve 40 sur kayaları,
+  37 barut deposu dominosu: tek hamlede iki dev fişek); Kalfa ve Usta bir
+  önceki dersi pekiştirebilir (13'te "Bir yıldız topu yap").
+- Aynı ölçü iki kademedeyse eşik kademeyle artar (7: 11+ → 13+ zincir, 28: 2
+  → 3 kafes, 36: 2 → 3 kaya); doğrulayıcı denetler.
+- "Kalan hamle" (hızlı bitirme) 11 mühürde, çoğunlukla zor bölümlerde.
+- Şansa bağlı (süzgeçsiz R, nesil; Körükle R'de tasarımcı işareti) bölüm
+  başına en çok 1, Çırak'ta hiç.
 - Botun **amaç körü** olduğu niyete bağlı koşullar (halka sayısı, zincir boyu,
-  özel taş yapımı) insan için daha kolaydır: bu yüzden bandın alt yarısından
-  seçildi. Şansa bağlılar (R, nesil) bant içinde.
+  özel taş yapımı, "3 dev fişek ateşle") insan için daha kolaydır.
 - **Tek hamle maksimumu tuzağı:** ilk tahta sabit olduğundan (K15) Usta botun
   ilk hamlesi tohumlar arasında aynıdır; "tek hamlede N desen/döşeme/is"
-  ölçüleri bot için çoğu kez %100 → %0 basamaklıdır (açılış hamlesinin değeri).
-  Bunlar yalnız Çırak'ta kullanıldı ("açılışı bul" bulmacası); Kalfa/Usta'da
-  kullanılmadı (21'de 11 → 12 döşeme basamağı bu yüzden reddedildi).
-- Sınırda kalanlar (kalibrasyonda tekrar ölçülecek): 30 Kalfa "Körük
-  kullanmadan kazan" kısıtlı botla %64 (bant 30–60); 37 Çırak Acemi %45 ama
-  Usta %30 (Usta botu izi aramıyor).
+  ölçüleri Usta için çoğu kez %100 → %0–20 basamaklıdır. Bunlar Çırak'ta
+  ("açılışı bul") kullanılır; tek istisna 26 Usta "Tek hamlede 8 desen
+  karosu boya" (7: %100, 8: %16 — basamak bandın içine düşüyor).
+- **Sınırda (gerekçeli):** 16 Çırak "3 dev fişek ateşle" Acemi %41 (kümeler
+  40 / 39 / 44): hedef 3 dev fişekten 2'si, mühür üçüncüyü ister; Acemi onu
+  hedeflemez, insan hedefleyebilir. 20 Kalfa "Tek hamlede 2 dev fişek
+  ateşle" Usta %33 (37 / 31 / 33): bölümün öğesi, bandın içinde.
 
-**Kısıt mühürleri** (`enCok`): bot kısıtı bilmeden ölçülemez (Usta Körük'ü
-dolar dolmaz kullanır). Ölçüm: kısıtı uygulayan botun kazanma oranı / normal
-kazanma oranı. Körüksüz ön ölçüm (100 tohum): 19 %100, 20 %101, 21 %97, 22
-%92, 24 %95, 25 %75, 26 %92, 29 %95, 30 %64, 31 %95, 33 %83, 34 %94, 35 %85 —
-Körük çoğu bölümde az şey değiştiriyor; bu yüzden Körüksüz yalnız 30'da
-(Kalfa). "Hiç 3'lük zincir" doğal oranla (%23) 29'da Usta.
+**K5'te değişenler (P0 tablosundan):** 42 mühür. P0 eşikleri tek kümede
+(2000+) bant kenarında seçilmişti (16 Usta mühürü %23–25); bağımsız 5000+
+kümesinde 21 mühür bant dışına ya da paya taştı. Eşik kaydırma (ör. 10 Usta
+25+ → 27+ reaksiyon, 15 Kalfa 6 → 8 hamle kala, 18 Usta Körükle 17+ → 21+)
+ve ölçü değiştirme (ör. 11 Kalfa "2 çapraz roket" → "4 özel taş ateşle",
+22 Kalfa → "Tek hamlede 6 mor patlat", 28 Çırak ↔ Kalfa "Çapraz roketle bir
+engel vur" Kalfa'ya). Ayrıntı git geçmişinde (`FİTİL K5:` işlemeleri).
+
+**Kısıt mühürleri** (`enCok`, KA15): 6–40'ta yok. Kısıtlı botla ölçüldü:
+"Körük kullanmadan kazan" 30. bölümde %71 (P0 ön ölçümünde diğer
+bölümlerde %75–101), "Hiç 3'lük zincir çizmeden kazan" 29. bölümde %100
+(doğal oran %23 yanıltıcıydı: kısıtı bilen oyuncu için neredeyse bedava).
+Koşul dili ve ölçüm aracı kısıtı destekler.
 
 ### A.6 Ödüller
 | Olay | Ödül | Görünüş |
@@ -591,7 +616,7 @@ satırı: "Mühür 23 · Kasaba 17/48 işi · 6 kandil".
 | K2 Oturum + HUD | oturum.ts: eylem sonu `muhurAnlik`, uçuş, rozet; kazançta `muhurler`; Duraklat listesi; Geri Sar | Telefon görünümünde uçuş ve rozet ekran görüntüsü (390×700); hareketi azalt |
 | K3 Bölüm öncesi + Kazandın | C.2, C.5, tanıtım balonları | 390×700, 375×600, 360×640 ekran görüntüsü, Başla/Devam görünür |
 | K4 Harita + Kasaba | alt bant düğmesi, panel (C.1), 8 çizim şablonu × 48 iş, sancak, şerit çipi, Mahalle şenliği, kasaba uyarısı ve oto-kart atlaması | Her mahalle 0/6 ve 6/6 ekran görüntüsü; panel 390×700'de kaydırmasız; eski Android kaydırma 60 fps (görünmeyen mahallede canlı öğe durur) |
-| K5 Kalibrasyon | sim-cli `--muhur` (§A.7; `scripts/kanca/` betiklerinin işçili hâli), `dogrula` uyarısı | 105 mühür bantta ya da gerekçeli sapma notu; aile ile 2–3 insan oyunu (halka/zincir mühürleri) |
+| K5 Kalibrasyon | sim-cli `--muhur` (§A.7; `scripts/kanca/` betiklerinin işçili hâli), `dogrula` uyarısı | 105 mühür bantta ya da gerekçeli sapma notu; aile ile 2–3 insan oyunu (halka/zincir mühürleri). **Durum:** araç, statik kurallar ve 105/105 bant (üç bağımsız küme, §A.5) tamam; insan oyunu yapılmadı (aile denemesi bekliyor). |
 | K6 Oynanış | `scripts/oynanis.mjs`'e: 3. bölüm sonrası Kasaba ilk iş, 6. bölüm mühür tanıtımı, bir mühür uçuşu, göçle gelen kayıt (`kayitYama` ile şema 2 kaydı) | pageerror yok; `build:single`; göçle yüklenen kayıtta yıldız/rozet/defter aynen |
 
 Sıra: K1 → (K2, K3, K4 paralel) → K5 → K6.
