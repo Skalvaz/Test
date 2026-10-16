@@ -321,7 +321,7 @@ serbest sırayla, taç iş (6.) en son. Mahallenin 6/6'sı → "Mahalle şenliğ
 
 | Mahalle (sakin) | 1 | 2 | 3 | 4 | 5 | Taç (6) | Toplam |
 |---|---|---|---|---|---|---|---:|
-| İskele (Kayıkçı Rıza) | Kayık fenerleri 1 | İskele bayrakları 2 | Fener dizisi 2 | Kandilli kemer 2 | Deniz feneri 3 | İskele tabelası 4 | 14 |
+| İskele (Kayıkçı Rıza) | Pruva fenerleri 1 | İskele bayrakları 2 | Fener dizisi 2 | Kandilli kemer 2 | Deniz feneri 3 | İskele tabelası 4 | 14 |
 | Çarşı (Kandilci Nazlı) | Dükkân kandilleri 2 | Kemer çelengi 2 | Lale fenerleri 3 | Kubbe kandilleri 3 | Mahya yazısı 4 | Çarşı kapısı 4 | 18 |
 | Liman (Kaptan Yakup) | Direk fenerleri 2 | Halat flamaları 3 | Vinç ışıkları 3 | Mendirek fenerleri 4 | Gemi donanması 4 | Liman kapısı 4 | 20 |
 | Saat Kulesi (Saatçi Hüsnü Usta) | Sokak lambaları 3 | Kule çelengi 3 | Balkon fenerleri 3 | Çeşme ışıkları 4 | Aydınlık kadran 4 | Şenlik çanı 5 | 22 |
@@ -420,7 +420,11 @@ betiğin başında; katalog değişince birlikte güncellenir ve bu tablo yenide
   en çok 6 canlı öğe.
 - Kilitli (sisli) mahallede iş çizilmez (zaten yapılamaz).
 - Sancak (§A.6): 3/3 mühürlü binanın çatısında, mahalle vurgu renginde 10×14
-  px üçgen bayrak (Kale kremi için koyu kontur), CSS ile hafif dalgalanır.
+  px üçgen bayrak (Kale kremi için koyu kontur), CSS ile hafif dalgalanır;
+  dalgalanan sancaklar mahallenin canlı öğe bütçesinden (6) işlerden artanı
+  kullanır, gerisi durağan çizilir (`sancakOgeleri`; tam süslü mahallede
+  sancaklar durağan). Çatı fişekleri, yanık fitil yolunun akışı ve süslü
+  şerit kenarı da görünmeyen mahallede durur (bölge kabı / gözcü).
 - Mahalle şeridi: "★ 12/15" yanına mühür çipi "● 9/15" (İskele'de yok),
   6/6 süslenmiş mahallede şeridin kenarı ışıklı.
 - **Uygulama (süs paketi, `src/ui/harita/susler.ts`):** her mahallede
@@ -540,9 +544,11 @@ Sıra (GDD §14.6'ya ek): yıldızlar → **mühürler** → puan sayımı (eşz
 | `muhur-tanitim` | Mühürlerin tanıtıldığı Kazandın | (C.5 metni) | Kazandın ipucu |
 | `muhur-kart` | Mühürlü ilk bölüm öncesi kartı | "Mühürler bölümü başka bir yolla oynatır. Üçünü ayrı denemelerde toplayabilirsin." | Mühür bloğunun üstü |
 | `muhur-hud` | İlk 'tuttu' uçuşu | "Mühür tuttu! Kazanırsan basılır." | Tahta üst kenarı (bugünkü balon yeri) |
-| `sancak-ilk` | İlk sancaktan sonra harita | "Üç mühür: çatıya sancak!" | Sancağın üstü |
+| `sancak-ilk` | İlk sancaktan sonra harita (aynı dönüşte "Kandil yetti"den önce; o bir sonraki dönüşe kalır) | "Üç mühür: çatıya sancak!" | Sancağın üstü: harita önce sancağa kayar, balon harita içeriğinde durur (kaydırmayla gider), ok ucu bayrağın üstünde |
 
-Kaybettin ekranında mühürden söz edilmez (kayba odaklanmasın).
+Haritadaki balonların ipucu kimliği ancak balon gerçekten gösterilince "görüldü" yazılır (harita kapandıysa ya da pencere açıldıysa harcanmaz).
+
+Kaybettin ekranında mühürden söz edilmez (kayba odaklanmasın); kaybettiren son hamlede mühür uçuşu, sesi ve etiketi de çıkmaz.
 
 ### C.7 Metinler (`src/ui/metinler.ts`'e)
 Kasaba, Fener Koyu Kasabası, Kandil, Yap, Yapıldı, "{n} eksik", "Önce 5 işi
@@ -550,7 +556,7 @@ bitir", "Önce {mahalle} süslensin", "Bölüm {n}'i aç", "Kandil yetti: {iş}
 yapalım mı?", Mühürler, Çırak, Kalfa, Usta, "{Kademe} mührü!", "Sancak!",
 "Mahalle şenliği", "+{n} kandil", "{fitil} parçası ({n} mühür)", C.4 durum
 yazıları, C.6 balonları. Ekran okuyucu: rozet `aria-label="Mühürler: 2/3"`,
-iş kartı "Kayık fenerleri, 1 kandil, yapılabilir".
+iş kartı "Pruva fenerleri, 1 kandil, yapılabilir".
 
 ### C.8 Ses ve titreşim
 Yeni arayüz sesleri: `kasaba` (çan akoru C5-E5-G5 + 3 kısa tıkırtı),

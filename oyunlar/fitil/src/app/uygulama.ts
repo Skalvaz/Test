@@ -463,32 +463,36 @@ export class Uygulama {
     if (!meta.kasabaAcikMi(k)) return false;
     const gorulen = k.ipuclari.gorulen;
     const I = meta.KANCA_IPUCU;
-    const goster = (metin: string, yer: 'kasaba' | { bolumId: number }, sure: number) => {
+    // İpucu "görüldü" ancak balon gerçekten gösterilince yazılır (harita kapandıysa ya da
+    // bir pencere açıldıysa ipucu harcanmaz).
+    const goster = (metin: string, yer: 'kasaba' | { bolumId: number }, sure: number, gorundu: (k: Kayit) => Kayit) => {
       void this.bekle(this.hizliKip ? 0 : 650).then(() => {
-        if (this.haritaAcik && !this.ui.modalAcik) void this.ui.haritaBalonu(metin, yer, sure);
+        if (!this.haritaAcik || this.ui.modalAcik) return;
+        this.kayitci.degistir(gorundu(this.kayit), 1500);
+        void this.ui.haritaBalonu(metin, yer, sure);
       });
     };
     if (k.ayarlar.ipuclari && k.kasaba.isler.length === 0 && !gorulen.includes(I.kasabaIlk) && !gorulen.includes(I.kasabaHosgeldin)) {
       // Kasaba bu kazançla açıldıysa (ya da oyuncu hâlâ İskele'deyse) ilk kandil, değilse göçle gelen oyuncu.
       const ilk = !!oduller?.some((o) => o.tur === 'kasabaAcildi') || !meta.bolumKazanildi(k, 5);
-      let y = meta.ipucuGoruldu(meta.ipucuGoruldu(k, I.kasabaIlk), I.kasabaHosgeldin);
-      const sira = meta.kasabaUyarisi(y);
-      if (sira) y = meta.kasabaUyarildi(y, sira.id);
-      this.kayitci.degistir(y, 1500);
-      goster(ilk ? MK.kasabaIlk : MK.kasabaHosgeldin(meta.kandilBakiyesi(k)), 'kasaba', 4500);
+      const sira = meta.kasabaUyarisi(k);
+      goster(ilk ? MK.kasabaIlk : MK.kasabaHosgeldin(meta.kandilBakiyesi(k)), 'kasaba', 4500, (x) => {
+        const y = meta.ipucuGoruldu(meta.ipucuGoruldu(x, I.kasabaIlk), I.kasabaHosgeldin);
+        return sira ? meta.kasabaUyarildi(y, sira.id) : y;
+      });
       return true;
     }
     if (!oduller) return false;
-    const is = meta.kasabaUyarisi(k);
-    if (is) {
-      this.kayitci.degistir(meta.kasabaUyarildi(k, is.id), 1500);
-      goster(MK.kandilYetti(is.ad), 'kasaba', 3500);
-      return true;
-    }
+    // (KANCALAR §C.6) İlk sancak, yeni kozmetiğin haritadaki tek tanıtımı: aynı dönüşte
+    // "Kandil yetti" de varsa önce sancak (kandil uyarısı bir sonraki dönüşe kalır).
     const sancak = oduller.find((o): o is Extract<meta.Odul, { tur: 'sancak' }> => o.tur === 'sancak');
     if (sancak && k.ayarlar.ipuclari && !gorulen.includes(I.sancakIlk)) {
-      this.kayitci.degistir(meta.ipucuGoruldu(k, I.sancakIlk), 1500);
-      goster(MK.sancakIlk, { bolumId: sancak.bolumId }, 3000);
+      goster(MK.sancakIlk, { bolumId: sancak.bolumId }, 3200, (x) => meta.ipucuGoruldu(x, I.sancakIlk));
+      return true;
+    }
+    const is = meta.kasabaUyarisi(k);
+    if (is) {
+      goster(MK.kandilYetti(is.ad), 'kasaba', 3500, (x) => meta.kasabaUyarildi(x, is.id));
       return true;
     }
     return false;

@@ -189,7 +189,7 @@ function kasabaIsi(mahalle: number, sira: number, ad: string, isAdi: string, mal
  */
 export const KASABA_ISLERI: readonly KasabaIsi[] = [
   // İskele (14)
-  kasabaIsi(0, 0, 'Kayık fenerleri', 'kayikFenerleri', 1, 'parilti', [300, 588], 'Kıyıdaki kayıkların pruvasına kâğıt fenerler asılır.', 'Fenerler yanınca kayıklar yolunu bulur!'),
+  kasabaIsi(0, 0, 'Pruva fenerleri', 'kayikFenerleri', 1, 'parilti', [300, 588], 'Kıyıdaki kayıkların pruvasına kâğıt fenerler asılır.', 'Fenerler yanınca kayıklar yolunu bulur!'),
   kasabaIsi(0, 1, 'İskele bayrakları', 'iskeleBayraklari', 2, 'flama', [278, 324], 'İskele babalarına rengârenk flamalar gerilir.', 'Rüzgâr bayrakları görünce şenliği anladı!'),
   kasabaIsi(0, 2, 'Fener dizisi', 'fenerDizisi', 2, 'fenerDizisi', [129, 449], 'Teraslar arasına ip gerilir, kâğıt fenerler asılır.', 'Merdivenleri artık gözü kapalı çıkarım.'),
   kasabaIsi(0, 3, 'Kandilli kemer', 'kandilliKemer', 2, 'kemer', [200, 578], 'İskele girişine kandillerle süslü bir kemer kurulur.', 'Koya gelen herkes bu kemerin altından geçecek.'),

@@ -38,7 +38,7 @@ import {
   bolgeGeo,
 } from './cizim';
 import type { Nokta } from './cizim';
-import { isCapasi, sancakOgesi } from './susler';
+import { isCapasi, sancakOgeleri } from './susler';
 import type { CanliOge, KutlamaCizimi, SusSecenek } from './susler';
 
 const yuzdeX = (x: number) => `${((x / HARITA_W) * 100).toFixed(3)}%`;
@@ -224,7 +224,7 @@ export class HaritaEkrani {
       const c = bolgeCiz(m, bolumler, motifMahalle.get(m) ?? [], sus);
       catilar.push(...c.catilar);
       for (const x of c.sancaklar) this.sancakYerleri.set(x.id, { x: x.x, y: x.y });
-      canlilar.set(m, [...c.canli, ...c.sancaklar.map((x) => sancakOgesi(x.id, x, m))]);
+      canlilar.set(m, [...c.canli, ...sancakOgeleri(c.sancaklar, m, c.canli.length)]);
       if (c.kutla.length) kutla.set(m, c.kutla);
       // Bu mahallenin alt düğümlerinden çıkan fitil parçaları (k = id; id → id+1).
       let yol = '';
@@ -232,9 +232,12 @@ export class HaritaEkrani {
       const ust = bolgeUst(m);
       const e = svg(`<svg class="f-bolge-svg" viewBox="0 ${ust} ${HARITA_W} ${BOLGE_H}" aria-hidden="true"><g clip-path="url(#hb-yatay)">${c.svg}<g class="f-yol">${yol}</g></g></svg>`);
       icerik.appendChild(e);
+      // Yanık fitil yolunun akışı (SVG yeniden boyar) görünmeyen mahallede durur.
+      this.gozcu?.observe(e);
     }
     const altPay = svg(`<svg class="f-bolge-svg" viewBox="0 ${HARITA_H - ALT_PAY} ${HARITA_W} ${ALT_PAY}" aria-hidden="true">${altPayCiz()}<g class="f-yol">${this.yolParcasi(yollar[0].d, bolumler[0], false)}</g></svg>`);
     icerik.appendChild(altPay);
+    this.gozcu?.observe(altPay);
 
     // Canlı katman
     const ogeler = h('div', { s: 'f-harita-ogeler' });
@@ -267,14 +270,15 @@ export class HaritaEkrani {
       // Mühür çipi "● 9/15" (İskele mühürsüz; mühürler 6. bölüm kazanılınca görünür).
       const muhur = bolumler.slice(m * 5, m * 5 + 5).reduce((a, x) => a + (x.muhur ?? 0), 0);
       const muhurCipi = muhurGorunur && !kilitli && m > 0 ? h('span', { s: 'f-serit-muhur', 'aria-label': `Mühür ${muhur}/15` }, h('i', { 'aria-hidden': 'true' }), h('span', { s: 'f-sayi', t: `${muhur}/15` })) : null;
-      ogeler.appendChild(
-        h(
-          'div',
-          { s: `f-mahalle-serit${kilitli ? ' f-kilitli' : ''}${suslendi ? ' f-suslendi' : ''}`, css: { left: '50%', top: yuzdeY(ust + BOLGE_H - 28), '--vurgu': mh.vurgu } },
-          h('span', { s: 'f-mahalle-ad', t: mh.ad }),
-          kilitli ? h('small', null, ikon('kilit'), h('span', { t: M.kilitliMahalle(m * 5 + 1) })) : h('small', null, kucukYildiz(true), h('span', { s: 'f-sayi', t: `${yildiz}/15` }), muhurCipi),
-        ),
+      const serit = h(
+        'div',
+        { s: `f-mahalle-serit${kilitli ? ' f-kilitli' : ''}${suslendi ? ' f-suslendi' : ''}`, css: { left: '50%', top: yuzdeY(ust + BOLGE_H - 28), '--vurgu': mh.vurgu } },
+        h('span', { s: 'f-mahalle-ad', t: mh.ad }),
+        kilitli ? h('small', null, ikon('kilit'), h('span', { t: M.kilitliMahalle(m * 5 + 1) })) : h('small', null, kucukYildiz(true), h('span', { s: 'f-sayi', t: `${yildiz}/15` }), muhurCipi),
       );
+      ogeler.appendChild(serit);
+      // Süslenmiş şeridin ışıklı kenarı görünmezken durur.
+      if (suslendi) this.gozcu?.observe(serit);
       if (!kilitli) {
         for (const o of canlilar.get(m) ?? []) kap.appendChild(canliOge(o, ust, yeniIsler.has(o.sahip)));
         for (const k of kutla.get(m) ?? []) {
@@ -315,10 +319,14 @@ export class HaritaEkrani {
     ogeler.appendChild(tabela);
     if (tabelaIsikli) this.gozcu?.observe(tabela);
 
-    // Çatı fişekleri (3★)
+    // Çatı fişekleri (3★): mahallenin bölge kabında (görünmeyen mahallede durur, §B.6;
+    // tam ilerlemede 40 fişek × 9 animasyon sürekli dönüyordu).
     for (const c of catilar) {
-      ogeler.appendChild(
-        h('span', { s: 'f-cati-fisek', 'aria-hidden': 'true', css: { left: yuzdeX(c.x), top: yuzdeY(c.y), '--r': ['#FF5FB4', '#FFB020', '#3AA8FF', '#2EE07A', '#B266FF'][c.id % 5] } }, Array.from({ length: 8 }, (_, i) => h('i', { css: { '--a': `${i * 45}deg` } }))),
+      const m = Math.max(0, Math.min(MAHALLE_SAYISI - 1, Math.floor((c.id - 1) / 5)));
+      const kap = this.bolgeKaplari[m] ?? ogeler;
+      const top = kap === ogeler ? yuzdeY(c.y) : `${(((c.y - bolgeUst(m)) / BOLGE_H) * 100).toFixed(3)}%`;
+      kap.appendChild(
+        h('span', { s: 'f-cati-fisek', 'aria-hidden': 'true', css: { left: yuzdeX(c.x), top, '--r': ['#FF5FB4', '#FFB020', '#3AA8FF', '#2EE07A', '#B266FF'][c.id % 5] } }, Array.from({ length: 8 }, (_, i) => h('i', { css: { '--a': `${i * 45}deg` } }))),
       );
     }
 
@@ -522,6 +530,7 @@ export class HaritaEkrani {
       const yer = { left: yuzdeX(k.capa.x), top: `${(((k.capa.y - ust) / BOLGE_H) * 100).toFixed(3)}%` };
       // Kutlama katmanı (fişek, halka, parıltı) — ışıklar yanmaya başlayınca.
       const fisek = h('span', { s: 'f-sus-fisek', 'aria-hidden': 'true', css: yer }, [
+        h('b', { s: 'f-sus-nur' }),
         h('b', { s: 'f-sus-halka' }),
         ...Array.from({ length: 12 }, (_, i) => h('i', { css: { '--a': `${i * 30}deg`, '--r': ['#FFD15C', '#FF5FB4', '#3AA8FF', '#2EE07A', '#FFB020', '#B266FF'][i % 6] } })),
       ]);
@@ -534,20 +543,46 @@ export class HaritaEkrani {
         this.b.duyur(`${is.ad} yapıldı`);
         const soz = h('div', { s: 'f-sus-soz', role: 'status', css: { left: '50%', top: yuzdeY(k.capa.y - 30) } }, h('span', { t: is.sakin }));
         this.icerik?.querySelector('.f-harita-ogeler')?.appendChild(soz);
-        // Balon çapanın üstünde, ama ekrandan taşmasın (genişliği ölçülerek kenara yaslanır).
+        // Balon çapanın üstünde, ama ekrandan taşmasın (genişliği ölçülerek kenara yaslanır;
+        // genişlik `max-content` olduğundan konuma bağlı değil). Bir bölüm düğümünü örterse
+        // çapanın altına iner (düğüm ve yıldızları görünür kalsın).
         const W = this.icerik?.clientWidth ?? 0;
         const yari = soz.offsetWidth / 2;
         if (W > 0) soz.style.left = `${Math.max(yari + 8, Math.min(W - yari - 8, (k.capa.x / HARITA_W) * W)).toFixed(1)}px`;
+        if (this.dugumOrter(soz)) {
+          soz.classList.add('f-alt');
+          soz.style.top = yuzdeY(k.capa.y + 26);
+          if (this.dugumOrter(soz)) {
+            soz.classList.remove('f-alt');
+            soz.style.top = yuzdeY(k.capa.y - 30);
+          }
+        }
         setTimeout(() => soz.remove(), az ? 2400 : 3800);
       }
       await this.bekle(az ? 400 : Math.min(2400, 900 + k.isik * 70));
-      setTimeout(() => fisek.remove(), 1800);
+      setTimeout(() => fisek.remove(), 2400);
       if (k.mahalleTamam) await this.senlik(k.m);
     }
   }
 
   private bekle(ms: number): Promise<void> {
     return new Promise((r) => setTimeout(r, ms));
+  }
+
+  /** Öğe (son konumunda, dönüşüm dahil) bir bölüm düğümüyle kesişiyor mu. */
+  private dugumOrter(el: HTMLElement): boolean {
+    const r = el.getBoundingClientRect();
+    if (!r.width) return false;
+    // Animasyonun ilk karesi ölçek/kaydırma taşır: düzen kutusunu dönüşümsüz hesapla.
+    const ust = el.classList.contains('f-alt') ? el.offsetTop : el.offsetTop - el.offsetHeight;
+    const ic = this.icerik?.getBoundingClientRect();
+    const sol = (ic?.left ?? 0) + el.offsetLeft - el.offsetWidth / 2;
+    const bas = (ic?.top ?? 0) + ust;
+    for (const d of this.icerik?.querySelectorAll<HTMLElement>('.f-dugum') ?? []) {
+      const q = d.getBoundingClientRect();
+      if (q.right > sol + 2 && q.left < sol + el.offsetWidth - 2 && q.bottom > bas + 2 && q.top < bas + el.offsetHeight - 2) return true;
+    }
+    return false;
   }
 
   /** Bir işin çapasının ekrandaki yeri (arayüz köküne göre CSS px). */
@@ -589,19 +624,45 @@ export class HaritaEkrani {
   /**
    * Haritada Kıvılcım Usta balonu (KANCALAR §C.6): Kasaba düğmesinin ya da
    * bir bölümün sancağının üstünde. Dokununca ya da `sure` ms sonra kapanır.
+   * Sancak balonu harita içeriğinde durur (kaydırmayla birlikte gider):
+   * harita önce sancağa kayar, balon kayma bitince belirir; ok ucu bayrağın
+   * birkaç px üstünde kalır (bayrak görünsün).
    */
   balon(metin: string, yer: 'kasaba' | { bolumId: number }, sure = 3500): Promise<void> {
     this.balonKapat();
     const kok = this.kok;
     if (!kok) return Promise.resolve();
     const el = h('div', { s: 'f-harita-balon', role: 'status', tabindex: '0' }, ustaSvg(), h('span', { t: metin }), h('i', { s: 'f-hb-ok', 'aria-hidden': 'true' }));
-    kok.appendChild(el);
     this.balonEl = el;
-    this.b.duyur(metin);
     const kr = kok.getBoundingClientRect();
     const genislik = Math.min(330, kr.width - 24);
     el.style.width = `${genislik}px`;
     let okX = genislik / 2;
+    let giris = 0;
+    const ic = this.icerik;
+    if (yer !== 'kasaba' && ic) {
+      // Sancak direğinin tepesi (bayrak 17 birim yukarıda); sancak yoksa düğüm.
+      const s = this.sancakYerleri.get(yer.bolumId);
+      const p = s ? { x: s.x, y: s.y - 17 } : dugumKonumu(yer.bolumId);
+      ic.appendChild(el);
+      const W = ic.clientWidth;
+      const H = ic.clientHeight;
+      const gen = Math.min(330, W - 24);
+      el.style.width = `${gen}px`;
+      const x = (p.x / HARITA_W) * W;
+      const y = (p.y / HARITA_H) * H;
+      const sol = Math.max(12, Math.min(W - gen - 12, x - gen / 2));
+      el.style.left = `${sol}px`;
+      // Ok 8 px aşağı taşar: ucu direğin tepesinin ~7 px üstünde.
+      el.style.bottom = `${Math.round(H - y + 15)}px`;
+      el.style.setProperty('--ok', `${Math.max(18, Math.min(gen - 18, x - sol)).toFixed(0)}px`);
+      // Balon ve sancak görünür bandın ortasına (balon payı için biraz aşağı).
+      this.kaydirYere({ x: p.x, y: p.y - 30 }, true);
+      giris = this.b.az() ? 0 : 480;
+    } else {
+      kok.appendChild(el);
+    }
+    this.b.duyur(metin);
     if (yer === 'kasaba' && this.kasabaDg && !this.kasabaDg.hidden) {
       const r = this.kasabaDg.getBoundingClientRect();
       const cx = r.left - kr.left + r.width / 2;
@@ -609,30 +670,24 @@ export class HaritaEkrani {
       el.style.left = `${sol}px`;
       el.style.bottom = `${Math.round(kr.bottom - r.top + 12)}px`;
       okX = cx - sol;
-    } else if (yer !== 'kasaba' && this.icerik) {
-      const p = this.sancakYerleri.get(yer.bolumId) ?? dugumKonumu(yer.bolumId);
-      const ic = this.icerik.getBoundingClientRect();
-      const x = ic.left - kr.left + (p.x / HARITA_W) * ic.width;
-      const y = ic.top - kr.top + (p.y / HARITA_H) * ic.height;
-      const sol = Math.max(12, Math.min(kr.width - genislik - 12, x - genislik / 2));
-      el.style.left = `${sol}px`;
-      el.style.bottom = `${Math.round(kr.height - y + 18)}px`;
-      okX = x - sol;
-    } else {
+    } else if (yer === 'kasaba' || !ic) {
       el.style.left = `${(kr.width - genislik) / 2}px`;
       el.style.bottom = '190px';
     }
-    el.style.setProperty('--ok', `${Math.max(18, Math.min(genislik - 18, okX)).toFixed(0)}px`);
+    if (yer === 'kasaba' || !ic) el.style.setProperty('--ok', `${Math.max(18, Math.min(genislik - 18, okX)).toFixed(0)}px`);
     const kapat = () => this.balonKapat();
     el.addEventListener('pointerup', kapat);
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') kapat();
     });
-    requestAnimationFrame(() => el.classList.add('f-giris'));
-    const t = sure > 0 ? setTimeout(kapat, sure) : null;
+    const goster = () => requestAnimationFrame(() => el.isConnected && el.classList.add('f-giris'));
+    const tg = giris > 0 ? setTimeout(goster, giris) : null;
+    if (!tg) goster();
+    const t = sure > 0 ? setTimeout(kapat, sure + giris) : null;
     return new Promise((r) => {
       this.balonCoz = () => {
         if (t) clearTimeout(t);
+        if (tg) clearTimeout(tg);
         r();
       };
     });
@@ -706,7 +761,10 @@ export class HaritaEkrani {
         coz();
       };
       this.senlikIptal = bitir;
-      setTimeout(() => kok.addEventListener('pointerdown', bitir), 150);
+      // Dokunuş 150 ms sonra atlar; şenlik o arada bittiyse dinleyici eklenmez (birikmesin).
+      zamanlar.push(setTimeout(() => {
+        if (!bitti) kok.addEventListener('pointerdown', bitir);
+      }, 150));
       const sure = az ? 1800 : 6000;
       // Salvolar: 2–3 fişek art arda, aralarında kısa sessizlik.
       if (!az)
@@ -820,7 +878,7 @@ function canliOge(o: CanliOge, ust: number, yeni: boolean): HTMLElement {
   if (o.sure !== undefined) css['--s'] = `${o.sure.toFixed(2)}s`;
   if (o.dy !== undefined) css['--dy'] = `${((-o.dy / o.h) * 100).toFixed(0)}%`;
   if (yeni) css['--gec'] = `${(0.55 + (o.sira ?? 0) * 0.07).toFixed(2)}s`;
-  const e = h('span', { s: `f-sus f-sus-${o.tur}${yeni ? ' f-sus-yeni' : ''}`, 'aria-hidden': 'true', css });
+  const e = h('span', { s: `f-sus ${o.durgun ? 'f-sus-durgun' : `f-sus-${o.tur}`}${yeni ? ' f-sus-yeni' : ''}`, 'aria-hidden': 'true', css });
   e.appendChild(svg(`<svg viewBox="0 0 ${o.w.toFixed(2)} ${o.h.toFixed(2)}" overflow="visible">${o.ic}</svg>`));
   return e;
 }

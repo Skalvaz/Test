@@ -124,6 +124,28 @@ export function susTanimlari(): string {
     <linearGradient id="hs-huzme" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#FFF4C2" stop-opacity=".85"/><stop offset=".6" stop-color="#FFE3A0" stop-opacity=".25"/><stop offset="1" stop-color="#FFE3A0" stop-opacity="0"/></linearGradient>`;
 }
 
+/** Mahalle başına en çok canlı (animasyonlu) öğe (KANCALAR §B.6). */
+export const MAHALLE_CANLI_SINIRI = 6;
+
+/**
+ * Mahallenin sancak bayrakları: işlerin canlı öğelerinden artan bütçe kadarı
+ * dalgalanır, gerisi durağan çizilir (mahalle ≤ 6 canlı öğe; tam süslenmiş
+ * mahallede sancaklar durağan). Sıra: düşük bölüm numarası önce dalgalanır.
+ */
+export function sancakOgeleri(sancaklar: readonly { id: number; x: number; y: number }[], m: number, isCanli: number): CanliOge[] {
+  let butce = Math.max(0, MAHALLE_CANLI_SINIRI - isCanli);
+  return [...sancaklar]
+    .sort((a, b) => a.id - b.id)
+    .map((x) => {
+      const o = sancakOgesi(x.id, x, m);
+      if (butce > 0) {
+        butce--;
+        return o;
+      }
+      return { ...o, durgun: true };
+    });
+}
+
 /** Sancak bayrağı (canlı; direk durağan, cizim.ts). Kale kremi için koyu kontur. */
 export function sancakOgesi(id: number, p: Nokta, m: number): CanliOge {
   const renk = MAHALLELER[m]?.vurgu ?? '#FFB020';

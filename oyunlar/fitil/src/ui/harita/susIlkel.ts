@@ -85,6 +85,8 @@ export interface CanliOge {
   dy?: number;
   /** Kutlamada sırayla yanma sırası (işin durağan ışıklarıyla aynı sayaç). */
   sira?: number;
+  /** Canlı öğe bütçesi aşıldı: aynı öğe animasyonsuz (durağan) çizilir. */
+  durgun?: boolean;
 }
 
 // ─────────────────────────── Renkler ───────────────────────────

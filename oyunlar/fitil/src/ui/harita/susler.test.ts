@@ -7,7 +7,7 @@ import { KASABA_ISLERI, MAHALLELER } from '../../app/katalog';
 import type { BolumDugumuVM, Yildiz } from '../tipler';
 import { BOLGE_H, HARITA_H, bolgeCiz, bolgeGeo, bolgeUst } from './cizim';
 import { CIZIMLER } from './isCizimleri';
-import { isCapasi, mahalleSusleri } from './susler';
+import { MAHALLE_CANLI_SINIRI, isCapasi, mahalleSusleri, sancakOgeleri } from './susler';
 
 const HEPSI = new Set(KASABA_ISLERI.map((x) => x.id));
 const bos = new Set<string>();
@@ -45,6 +45,18 @@ describe('kasaba süsleri', () => {
       for (const o of s.canli) isBasina.set(o.sahip, (isBasina.get(o.sahip) ?? 0) + 1);
       for (const [id, n] of isBasina) expect(n, id).toBeLessThanOrEqual(id === 'tepe.degirmenKanatlari' ? 2 : 1);
     }
+  });
+
+  it('sancaklar canlı öğe bütçesinden artanı kullanır: tam süslü mahallede durağan (mahalle ≤ 6)', () => {
+    for (let m = 1; m < MAHALLELER.length; m++) {
+      const c = bolgeCiz(m, bolumler(41, 3, true), [], { yapilan: HEPSI, hayalet: false, yeni: bos });
+      const o = sancakOgeleri(c.sancaklar, m, c.canli.length);
+      expect(o).toHaveLength(5);
+      expect(c.canli.length + o.filter((x) => !x.durgun).length, MAHALLELER[m].id).toBeLessThanOrEqual(MAHALLE_CANLI_SINIRI);
+    }
+    // Süssüz mahallede beş sancak da dalgalanır.
+    const c = bolgeCiz(1, bolumler(41, 3, true), [], { yapilan: bos, hayalet: false, yeni: bos });
+    expect(sancakOgeleri(c.sancaklar, 1, c.canli.length).every((x) => !x.durgun)).toBe(true);
   });
 
   it('hayalet: yapılmamış işler sönük durağan çizilir, canlı öğe yok', () => {

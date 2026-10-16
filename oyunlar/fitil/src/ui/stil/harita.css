@@ -42,7 +42,9 @@
 .f-bolge-svg { display: block; width: 100%; height: auto; overflow: visible; }
 .f-harita-ogeler { position: absolute; inset: 0; pointer-events: none; }
 .f-harita-bolge { position: absolute; left: 0; right: 0; pointer-events: none; }
-.f-harita-bolge:not(.f-gorunur) * { animation-play-state: paused !important; }
+.f-harita-bolge:not(.f-gorunur) *, .f-harita-bolge:not(.f-gorunur) *::before, .f-harita-bolge:not(.f-gorunur) *::after { animation-play-state: paused !important; }
+/* Görünmeyen mahallenin yanık fitil akışı ve süslü şerit kenarı da durur (gözcü, harita.ts). */
+.f-bolge-svg:not(.f-gorunur) .f-yol-kor, .f-mahalle-serit.f-suslendi:not(.f-gorunur)::after { animation-play-state: paused !important; }
 
 /* Fitil yolu */
 .f-yol-yanik .f-yol-kor { stroke-dasharray: .012 .02; animation: f-yol-akis 2.4s linear infinite; }
@@ -339,6 +341,9 @@
 /* Kutlama: ışık halkası, 12 parıltı (küçük fişek). */
 .f-sus-fisek { position: absolute; width: 0; height: 0; pointer-events: none; z-index: 2; }
 .f-sus-halka { position: absolute; left: -30px; top: -30px; width: 60px; height: 60px; border-radius: 50%; border: 2px solid #FFE3A0; box-shadow: 0 0 14px rgba(255, 200, 107, .8), inset 0 0 10px rgba(255, 200, 107, .6); opacity: 0; animation: f-sus-halka .7s ease-out .45s both; }
+/* Yeni işin üstünde ~1,2 sn duran yumuşak ışık: küçük süs de telefonda göze çarpsın. */
+.f-sus-nur { position: absolute; left: -48px; top: -48px; width: 96px; height: 96px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 236, 180, .55) 0, rgba(255, 190, 90, .28) 38%, rgba(255, 170, 60, 0) 70%); opacity: 0; animation: f-sus-nur 1.9s ease-out .4s both; }
+@keyframes f-sus-nur { 0% { opacity: 0; transform: scale(.5); } 18% { opacity: 1; transform: scale(1); } 70% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0; transform: scale(1.15); } }
 @keyframes f-sus-halka { from { transform: scale(.2); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }
 .f-sus-fisek i { position: absolute; left: -2px; top: -2px; width: 4px; height: 4px; border-radius: 50%; background: var(--r); box-shadow: 0 0 6px var(--r), 0 0 2px #fff; opacity: 0; transform: rotate(var(--a)) translateX(4px); animation: f-sus-isin 1s cubic-bezier(.2, .7, .3, 1) .5s both; }
 @keyframes f-sus-isin { 0% { opacity: 1; transform: rotate(var(--a)) translateX(4px); } 70% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(46px) translateY(8px); } }
@@ -347,7 +352,11 @@
 .f-sus-soz {
   position: absolute;
   transform: translate(-50%, -100%);
+  /* Genişlik konumdan bağımsız (sağ kenara yakın çapada dar sütuna kırılmasın):
+     önce içerik kadar, sonra en çok 260 px / %74. */
+  width: max-content;
   max-width: min(260px, 74vw);
+  box-sizing: border-box;
   padding: 7px 12px 8px;
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(36, 22, 13, .96), rgba(20, 12, 7, .96));
@@ -362,6 +371,9 @@
   animation: f-sus-soz 3.2s ease .55s both;
 }
 @keyframes f-sus-soz { 0% { opacity: 0; transform: translate(-50%, -90%) scale(.85); } 10%, 85% { opacity: 1; transform: translate(-50%, -100%); } 100% { opacity: 0; transform: translate(-50%, -106%); } }
+/* Çapanın altında (üstte bölüm düğümü varsa). */
+.f-sus-soz.f-alt { transform: translate(-50%, 0); animation-name: f-sus-soz-alt; }
+@keyframes f-sus-soz-alt { 0% { opacity: 0; transform: translate(-50%, -10%) scale(.85); } 10%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, 6%); } }
 
 /* Mahalle şenliği (6/6): süsler hızlanır, görünür gök şeridinde fişekler. */
 .f-harita-bolge.f-senlik .f-sus-yanip, .f-harita-bolge.f-senlik .f-sus-nabiz { animation-duration: .45s; }

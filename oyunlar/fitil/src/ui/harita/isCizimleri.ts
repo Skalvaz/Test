@@ -114,16 +114,22 @@ function sutun(c: Cizim, x0: number, y0: number, w: number, h: number, renk: str
   return `<rect x="${f(x0)}" y="${f(y0)}" width="${f(w)}" height="${f(h)}" fill="${renk}"/><path d="M${f(x0 + 0.6)} ${f(y0)}v${f(h)}" stroke="${kenar}" stroke-width="1.2" opacity=".7"/><path d="M${f(x0 + w - 0.6)} ${f(y0)}v${f(h)}" stroke="#000" stroke-width="1.2" opacity=".35"/>`;
 }
 
-/** Küçük kayık (su çizgisi y, burnu yön tarafında). */
-function kayik(c: Cizim, k: Katman, x: number, y: number, yon: 1 | -1, renk: number, i: number): void {
-  const govde = `M${f(x - 15)} ${f(y - 5)}h30l-5 6h-20z`;
-  c.ekle(k, sekil(c, govde, '#2A1C34') + `<path d="M${f(x - 15.5)} ${f(y - 5)}h31" stroke="${c.yanik ? '#8A6A8A' : HAYALET_CIZGI}" stroke-width="1.3" stroke-linecap="round"/>`);
-  if (c.yanik) c.ekle(k, `<ellipse cx="${f(x + yon * 9)}" cy="${f(y - 2.5)}" rx="6" ry="2.4" fill="#FFB020" opacity=".35"/><path d="M${f(x - 12)} ${f(y + 3)}h24" stroke="#FFC86B" stroke-width="1" opacity=".25"/>`);
+/**
+ * Kayık (su çizgisi y, burnu yön tarafında); `b` ölçek. Yanıkken pruva
+ * feneri büyük bir hale ve suda uzun bir yansımayla telefonda da seçilir
+ * (yeni oyuncunun ilk kasaba işi, KANCALAR §C.1).
+ */
+function kayik(c: Cizim, k: Katman, x: number, y: number, yon: 1 | -1, renk: number, i: number, b = 1): void {
+  const govde = `M${f(x - 15 * b)} ${f(y - 5 * b)}h${f(30 * b)}l${f(-5 * b)} ${f(6 * b)}h${f(-20 * b)}z`;
+  c.ekle(k, sekil(c, govde, '#2A1C34') + `<path d="M${f(x - 15.5 * b)} ${f(y - 5 * b)}h${f(31 * b)}" stroke="${c.yanik ? '#8A6A8A' : HAYALET_CIZGI}" stroke-width="1.3" stroke-linecap="round"/>`);
+  if (c.yanik) c.ekle(k, `<ellipse cx="${f(x + yon * 9 * b)}" cy="${f(y - 2.5 * b)}" rx="${f(6 * b)}" ry="${f(2.4 * b)}" fill="#FFB020" opacity=".35"/><path d="M${f(x - 12 * b)} ${f(y + 3)}h${f(24 * b)}" stroke="#FFC86B" stroke-width="1" opacity=".25"/>`);
   // Pruva direği ve fener.
-  const dx = x + yon * 12;
-  c.ekle(k, ipCiz(c, `M${f(dx)} ${f(y - 5)}Q${f(dx + yon * 1)} ${f(y - 14)} ${f(dx + yon * 4)} ${f(y - 20)}`, 1.2, '#3A2416'));
-  if (c.yanik) c.ekle(k, yansima(dx + yon * 4, y + 2, '#FFC86B', 7));
-  fener(c, k, { x: dx + yon * 4, y: y - 20 }, renk, 'kagit', i, 0.75);
+  const dx = x + yon * 12 * b;
+  const fx = dx + yon * 4 * b;
+  const fy = y - 20 * b;
+  c.ekle(k, ipCiz(c, `M${f(dx)} ${f(y - 5 * b)}Q${f(dx + yon * b)} ${f(y - 14 * b)} ${f(fx)} ${f(fy)}`, 1.2 * b, '#3A2416'));
+  if (c.yanik) c.ekle(k, hale(c, { x: fx, y: fy + 8 * b }, 16 * b, 0.6) + yansima(fx, y + 2, '#FFC86B', 7 * b));
+  fener(c, k, { x: fx, y: fy }, renk, 'kagit', i, 0.75 * b);
 }
 
 /** Bina saçağından sarkan küçük fenerler. */
@@ -138,9 +144,9 @@ function sacakFenerleri(c: Cizim, g: BolgeGeo, j: number, oranlar: readonly numb
 export const CIZIMLER: Record<string, IsCizici> = {
   // ═════════ İskele ═════════
   'iskele.kayikFenerleri': (c, g) => {
-    kayik(c, 0, 236, g.ust + 600, 1, 1, 0);
-    kayik(c, 0, 344, g.ust + 606, -1, 0, 1);
-    kayik(c, 0, 380, g.ust + 572, -1, 3, 2);
+    kayik(c, 0, 236, g.ust + 600, 1, 1, 0, 1.45);
+    kayik(c, 0, 336, g.ust + 610, -1, 0, 1, 1.45);
+    kayik(c, 0, 376, g.ust + 572, -1, 3, 2, 1.3);
     c.capa = P(g, 300, 588);
   },
   'iskele.iskeleBayraklari': (c, g) => flamaDizisi(c, g, 2, 9, 'ucgen', [vurgu(g), '#FF4D4D', '#FFB020', KREM, '#2EE07A'], 16),
