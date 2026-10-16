@@ -106,7 +106,9 @@ const kutla = p.get('kutla');
 if (kutla) isler = isler.filter((x) => x !== kutla);
 void ui.harita(vm(isler));
 // Açılıştaki süzülüş (900 ms, yavaş makinede daha uzun) bitince de kaydır.
-for (const t of [1200, 2000, 2600, 3200]) setTimeout(() => kaydir(mahalle), t);
+// Kutlama/şenlikte harita kendisi kayar: dev kaydırması yalnız ondan önce.
+const kendiKayar = p.get('kutla') !== null || p.get('senlik') !== null;
+for (const t of kendiKayar ? [1200, 1600] : [1200, 2000, 2600, 3200]) setTimeout(() => kaydir(mahalle), t);
 if (kutla)
   setTimeout(() => {
     isler = [...isler, kutla];

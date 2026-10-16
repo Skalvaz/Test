@@ -296,14 +296,19 @@
 .f-sus > svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .f-sus-salin { animation: f-sus-salin var(--s, 2.6s) ease-in-out var(--g, 0s) infinite alternate; }
 @keyframes f-sus-salin { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+/* Dizi (ip + fenerler/bayraklar tek öğe): skewX ile ortası rüzgârda sallanır, uçlar neredeyse sabit. */
+.f-sus-sallan { animation: f-sus-sallan var(--s, 2.8s) ease-in-out var(--g, 0s) infinite alternate; }
+@keyframes f-sus-sallan { from { transform: skewX(-4deg); } to { transform: skewX(4deg); } }
+.f-sus-dalgalan { animation: f-sus-dalgalan var(--s, 1.8s) ease-in-out var(--g, 0s) infinite; }
+@keyframes f-sus-dalgalan { 0%, 100% { transform: skewX(-5deg) scaleY(1); } 50% { transform: skewX(4deg) scaleY(.96); } }
 .f-sus-dalga { animation: f-sus-dalga var(--s, 1.6s) ease-in-out var(--g, 0s) infinite; }
 @keyframes f-sus-dalga { 0%, 100% { transform: rotate(-7deg) skewX(4deg); } 50% { transform: rotate(6deg) skewX(-6deg) scaleY(.93); } }
 .f-sus-titre { animation: f-sus-titre var(--s, 1s) ease-in-out var(--g, 0s) infinite; }
 @keyframes f-sus-titre {
   0%, 100% { transform: scale(1, 1); opacity: 1; }
-  25% { transform: scale(.9, 1.12) skewX(-4deg); opacity: .88; }
-  50% { transform: scale(1.06, .9); opacity: 1; }
-  75% { transform: scale(.94, 1.07) skewX(4deg); opacity: .84; }
+  25% { transform: scale(.97, 1.12) skewX(-3deg); opacity: .88; }
+  50% { transform: scale(1.02, .9); opacity: 1; }
+  75% { transform: scale(.98, 1.07) skewX(3deg); opacity: .84; }
 }
 .f-sus-yanip { animation: f-sus-yanip var(--s, 2.4s) ease-in-out var(--g, 0s) infinite; }
 @keyframes f-sus-yanip { 0%, 100% { opacity: 1; } 50% { opacity: .22; } }
@@ -360,12 +365,16 @@
 
 /* Mahalle şenliği (6/6): süsler hızlanır, görünür gök şeridinde fişekler. */
 .f-harita-bolge.f-senlik .f-sus-yanip, .f-harita-bolge.f-senlik .f-sus-nabiz { animation-duration: .45s; }
-.f-harita-bolge.f-senlik .f-sus-salin, .f-harita-bolge.f-senlik .f-sus-dalga { animation-duration: .8s; }
+.f-harita-bolge.f-senlik .f-sus-salin, .f-harita-bolge.f-senlik .f-sus-sallan, .f-harita-bolge.f-senlik .f-sus-dalgalan { animation-duration: .8s; }
 .f-senlik-katman { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; transition: opacity .35s ease; }
 .f-senlik-katman.f-cik { opacity: 0; }
 .f-senlik-fisek { position: absolute; width: 0; height: 0; transform: scale(var(--s, 1)); }
-.f-senlik-fisek i { position: absolute; left: -2.5px; top: -2.5px; width: 5px; height: 5px; border-radius: 50%; background: var(--r); box-shadow: 0 0 8px var(--r), 0 0 3px #fff; opacity: 0; animation: f-senlik-isin 1.3s cubic-bezier(.15, .7, .3, 1) both; }
-@keyframes f-senlik-isin { 0% { opacity: 1; transform: rotate(var(--a)) translateX(2px); } 65% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(54px) translateY(14px); } }
+.f-senlik-fisek::before { content: ''; position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; border-radius: 50%; background: radial-gradient(circle, #FFF4C2 0, color-mix(in srgb, var(--r) 60%, transparent) 35%, transparent 70%); opacity: 0; animation: f-senlik-parla .7s ease-out both; }
+@keyframes f-senlik-parla { 0% { opacity: 1; transform: scale(.3); } 100% { opacity: 0; transform: scale(1.6); } }
+.f-senlik-fisek i { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--r); box-shadow: 0 0 9px var(--r), 0 0 3px #fff; opacity: 0; animation: f-senlik-isin 1.4s cubic-bezier(.15, .7, .3, 1) both; }
+.f-senlik-fisek i:nth-child(even) { width: 4px; height: 4px; left: -2px; top: -2px; animation-name: f-senlik-isin2; }
+@keyframes f-senlik-isin { 0% { opacity: 1; transform: rotate(var(--a)) translateX(2px); } 65% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(78px) translateY(22px); } }
+@keyframes f-senlik-isin2 { 0% { opacity: 1; transform: rotate(var(--a)) translateX(2px); } 60% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateX(50px) translateY(16px); } }
 .f-senlik-bant {
   position: absolute;
   left: 50%;
@@ -375,6 +384,7 @@
   flex-direction: column;
   align-items: center;
   padding: 8px 28px 10px;
+  white-space: nowrap;
   border-radius: 12px;
   background: linear-gradient(180deg, #FFE7A8, #D9A441 55%, #9A5A22);
   box-shadow: 0 0 0 2px #4A2208, 0 10px 24px rgba(0, 0, 0, .6), 0 0 40px rgba(255, 190, 90, .45);
@@ -398,8 +408,10 @@
 
 /* "İskele tabelası" işi: FENER KOYU tabelasında ampuller. */
 .f-harita-tabela.f-isikli > span { position: relative; box-shadow: 0 0 0 2px #4A2208, 0 6px 16px rgba(0, 0, 0, .6), 0 0 44px rgba(255, 200, 107, .65); }
-.f-tabela-ampul { position: absolute; inset: -7px; pointer-events: none; }
-.f-tabela-ampul i { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #FFF4C2; box-shadow: 0 0 6px 2px rgba(255, 200, 107, .9); animation: f-sus-yanip 1.2s ease-in-out infinite; animation-delay: calc(var(--i) * -.6s); }
-.f-harita-tabela.f-yeni .f-tabela-ampul i { animation: f-tabela-yan .4s var(--yay) calc(.6s + var(--i) * 60ms) both, f-sus-yanip 1.2s ease-in-out calc(2.2s + var(--i) * -.6s) infinite; }
+/* Ampuller iki takımda (tek/çift) sırayla yanıp söner: iki canlı öğe. */
+.f-tabela-ampul { position: absolute; inset: -7px; pointer-events: none; animation: f-sus-yanip 1.2s ease-in-out infinite; }
+.f-tabela-ampul.f-cift { animation-delay: -.6s; }
+.f-tabela-ampul i { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #FFF4C2; box-shadow: 0 0 6px 2px rgba(255, 200, 107, .9); }
+.f-harita-tabela.f-yeni .f-tabela-ampul i { animation: f-tabela-yan .4s var(--yay) calc(.6s + var(--i) * 60ms) both; }
 @keyframes f-tabela-yan { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: none; } }
-.f-harita-tabela:not(.f-gorunur) i { animation-play-state: paused !important; }
+.f-harita-tabela:not(.f-gorunur) .f-tabela-ampul { animation-play-state: paused !important; }

@@ -51,8 +51,10 @@ export type Katman = 'arka' | 'on' | 0 | 1 | 2 | 3 | 4;
 
 /**
  * Canlı öğe türleri (harita.css `.f-sus-<tur>`):
- *  salin  asılı fener/kandil salınımı (köken üstte)
- *  dalga  bayrak/flama dalgalanması
+ *  salin  asılı tek parça salınımı (köken üstte: çan, kanca)
+ *  sallan fener grubu salınımı (skewX, köken grubun üstü)
+ *  dalga  tek bayrak dalgalanması (sancak)
+ *  dalgalan bayrak/flama grubu dalgalanması
  *  titre  alev titremesi (köken altta)
  *  yanip  yanıp sönme (mahya harfi, işaret ışığı)
  *  nabiz  yumuşak parlama (hale)
@@ -61,7 +63,7 @@ export type Katman = 'arka' | 'on' | 0 | 1 | 2 | 3 | 4;
  *  suz    suda süzülme / kayık yalpası / ateş böceği
  *  yuksel yükselip sönen kıvılcım ya da buhar
  */
-export type CanliTur = 'salin' | 'dalga' | 'titre' | 'yanip' | 'nabiz' | 'don' | 'huzme' | 'suz' | 'yuksel';
+export type CanliTur = 'salin' | 'sallan' | 'dalga' | 'dalgalan' | 'titre' | 'yanip' | 'nabiz' | 'don' | 'huzme' | 'suz' | 'yuksel';
 
 export interface CanliOge {
   /** Sahibi (iş kimliği ya da `sancak:<bölüm>`). */
@@ -121,9 +123,59 @@ export class Cizim {
     return `class="f-sl" style="--i:${this.isik++}"`;
   }
 
-  oge(o: Omit<CanliOge, 'sahip'>): void {
-    if (this.yanik) this.canli.push({ sahip: this.id, sira: Math.max(0, this.isik - 1), ...o });
+  /**
+   * İşin en çok kaç canlı öğesi olur (KANCALAR §B.6: mahalle başına en çok 6
+   * canlı öğe → iş başına 1). İlk istenen grup(lar) canlı olur; sonrakiler
+   * durağan yedeğiyle çizilir (eski Android'de kaydırma akıcı kalsın).
+   */
+  canliSiniri = 1;
+  private readonly canliAnahtarlar: string[] = [];
+  private ogeSayac = 0;
+
+  canliMi(anahtar: string): boolean {
+    if (!this.yanik) return false;
+    if (this.canliAnahtarlar.includes(anahtar)) return true;
+    if (this.canliAnahtarlar.length >= this.canliSiniri) return false;
+    this.canliAnahtarlar.push(anahtar);
+    return true;
   }
+
+  /** Tek canlı öğe (kendi grubunda); canlı olamazsa `yedek` durağan çizilir. */
+  oge(o: Omit<CanliOge, 'sahip'>, yedek?: { k: Katman; svg: string }): void {
+    this.grupla(`oge:${this.ogeSayac++}`, o, yedek);
+  }
+
+  /**
+   * Aynı animasyonu paylaşan parçaları tek canlı öğede toplar (ör. bir ip ve
+   * üstündeki bütün fenerler); `bitir` kutuları birleştirir. Grup canlı
+   * olamazsa (iş sınırı doldu) parça `yedek` ile durağan çizilir.
+   */
+  grupla(anahtar: string, o: Omit<CanliOge, 'sahip'>, yedek?: { k: Katman; svg: string }): void {
+    if (!this.yanik) return;
+    if (!this.canliMi(anahtar)) {
+      if (yedek) this.ekle(yedek.k, yedek.svg);
+      return;
+    }
+    const parca = { x: o.x, y: o.y, w: o.w, h: o.h, ic: o.ic };
+    const g = this.gruplar.get(anahtar);
+    if (g) g.parca.push(parca);
+    else this.gruplar.set(anahtar, { o: { tur: o.tur, koken: o.koken, gecikme: o.gecikme, sure: o.sure, dy: o.dy, sira: Math.max(0, this.isik - 1) }, parca: [parca] });
+  }
+
+  /** Grupları canlı öğelere çevirir (iş çizimi bitince bir kez). */
+  bitir(): void {
+    for (const g of this.gruplar.values()) {
+      const x0 = Math.min(...g.parca.map((p) => p.x));
+      const y0 = Math.min(...g.parca.map((p) => p.y));
+      const x1 = Math.max(...g.parca.map((p) => p.x + p.w));
+      const y1 = Math.max(...g.parca.map((p) => p.y + p.h));
+      const ic = g.parca.map((p) => `<g transform="translate(${f(p.x - x0)} ${f(p.y - y0)})">${p.ic}</g>`).join('');
+      this.canli.push({ sahip: this.id, ...g.o, x: x0, y: y0, w: x1 - x0, h: y1 - y0, ic });
+    }
+    this.gruplar.clear();
+  }
+
+  private readonly gruplar = new Map<string, { o: Omit<CanliOge, 'sahip' | 'x' | 'y' | 'w' | 'h' | 'ic'>; parca: { x: number; y: number; w: number; h: number; ic: string }[] }>();
 }
 
 // ─────────────────────────── Geometri ───────────────────────────
@@ -184,19 +236,15 @@ export function hale(c: Cizim, p: Nokta, r: number, opaklik = 0.55, gradyan = 'f
   return `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(r)}" fill="url(#${gradyan})" opacity="${opaklik}"/>`;
 }
 
-/** Işık noktalarının yumuşak parlaması: iki canlı öğe (tek/çift) sırayla parlar. */
+/** Işık noktalarının yumuşak parlaması (tek canlı öğe; durağan ampullerin üstünde). */
 export function parilti(c: Cizim, ps: readonly Nokta[], r = 6, sure = 2.6): void {
   if (!c.yanik || ps.length === 0) return;
-  for (let k = 0; k < 2; k++) {
-    const q = ps.filter((_, i) => i % 2 === k);
-    if (!q.length) continue;
-    const x0 = Math.min(...q.map((p) => p.x)) - r;
-    const y0 = Math.min(...q.map((p) => p.y)) - r;
-    const x1 = Math.max(...q.map((p) => p.x)) + r;
-    const y1 = Math.max(...q.map((p) => p.y)) + r;
-    const ic = q.map((p) => `<circle cx="${f(p.x - x0)}" cy="${f(p.y - y0)}" r="${f(r)}" fill="url(#hs-parla)"/>`).join('');
-    c.oge({ tur: 'nabiz', x: x0, y: y0, w: x1 - x0, h: y1 - y0, ic, gecikme: -k * (sure / 2), sure });
-  }
+  const x0 = Math.min(...ps.map((p) => p.x)) - r;
+  const y0 = Math.min(...ps.map((p) => p.y)) - r;
+  const x1 = Math.max(...ps.map((p) => p.x)) + r;
+  const y1 = Math.max(...ps.map((p) => p.y)) + r;
+  const ic = ps.map((p, i) => `<circle cx="${f(p.x - x0)}" cy="${f(p.y - y0)}" r="${f(i % 2 ? r * 0.8 : r)}" fill="url(#hs-parla)"/>`).join('');
+  c.grupla('parilti', { tur: 'nabiz', x: x0, y: y0, w: x1 - x0, h: y1 - y0, ic, sure });
 }
 
 export type FenerBicimi = 'kagit' | 'lale' | 'kure' | 'kafes' | 'kavanoz' | 'koni';
@@ -226,7 +274,7 @@ export function fenerIc(renk: number, bicim: FenerBicimi, yanik: boolean): strin
 }
 
 /** Asılı fener: hale durağan, fener canlı (salınır). Hayalet: durağan sönük fener. */
-export function fener(c: Cizim, k: Katman, p: Nokta, renk: number, bicim: FenerBicimi, i: number, olcek = 1): void {
+export function fener(c: Cizim, k: Katman, p: Nokta, renk: number, bicim: FenerBicimi, i: number, olcek = 1, canli = true, grup?: string): void {
   const w = 10 * olcek;
   const h = 17 * olcek;
   if (!c.yanik) {
@@ -236,7 +284,15 @@ export function fener(c: Cizim, k: Katman, p: Nokta, renk: number, bicim: FenerB
   const haleR = bicim === 'koni' ? 0 : 10 * olcek;
   if (haleR) c.ekle(k, `<circle ${c.sira()} cx="${f(p.x)}" cy="${f(p.y + h * 0.58)}" r="${f(haleR)}" fill="url(#${bicim === 'kavanoz' ? 'hs-yesil' : 'ftl-koz'})" opacity=".5"/>`);
   else c.isik++;
-  c.oge({ tur: 'salin', x: p.x - w / 2, y: p.y, w, h, ic: `<g transform="scale(${olcek})">${fenerIc(renk, bicim, true)}</g>`, koken: '50% 0', gecikme: -((i * 0.73) % 2.4), sure: 2.2 + (i % 3) * 0.35 });
+  const ic = `<g transform="scale(${olcek})">${fenerIc(renk, bicim, true)}</g>`;
+  const durgun = `<g class="f-sl" style="--i:${c.isik - 1}" transform="translate(${f(p.x - w / 2)} ${f(p.y)})">${ic}</g>`;
+  // Durağan fener (sokak lambası gibi sabit olanlar).
+  if (!canli) {
+    c.ekle(k, durgun);
+    return;
+  }
+  void i;
+  c.grupla(grup ?? `fener:${k}`, { tur: 'sallan', x: p.x - w / 2, y: p.y, w, h, ic, koken: '50% 0', sure: 2.8 }, { k, svg: durgun });
 }
 
 export type BayrakBicimi = 'ucgen' | 'kare' | 'kurdele' | 'uzun' | 'catal';
@@ -253,13 +309,15 @@ export function bayrakIc(renk: string, bicim: BayrakBicimi, yanik: boolean, w: n
 }
 
 /** Asılı bayrak (canlı; hayalet durağan). */
-export function bayrak(c: Cizim, k: Katman, p: Nokta, renk: string, bicim: BayrakBicimi, i: number, w = 7, h = 9): void {
+export function bayrak(c: Cizim, k: Katman, p: Nokta, renk: string, bicim: BayrakBicimi, i: number, w = 7, h = 9, grup?: string): void {
   if (!c.yanik) {
     c.ekle(k, `<g transform="translate(${f(p.x - w / 2)} ${f(p.y)})">${bayrakIc(renk, bicim, false, w, h)}</g>`);
     return;
   }
   c.isik++;
-  c.oge({ tur: 'dalga', x: p.x - w / 2, y: p.y, w, h, ic: bayrakIc(renk, bicim, true, w, h), koken: '50% 0', gecikme: -((i * 0.41) % 1.6), sure: 1.4 + (i % 3) * 0.25 });
+  void i;
+  const ic = bayrakIc(renk, bicim, true, w, h);
+  c.grupla(grup ?? `bayrak:${k}`, { tur: 'dalgalan', x: p.x - w / 2, y: p.y, w, h, ic, koken: '50% 0', sure: 1.8 }, { k, svg: `<g transform="translate(${f(p.x - w / 2)} ${f(p.y)})">${ic}</g>` });
 }
 
 /** Alev içi (viewBox 0 0 12 20; dip ortası 6,20). */
@@ -268,11 +326,18 @@ export function alevIc(): string {
 }
 
 /** Titreyen alev: dip noktası p, yükseklik h. Hale durağan. Hayalet: çizilmez (söndü). */
-export function alev(c: Cizim, k: Katman, p: Nokta, h: number, i: number, haleOlcek = 1.1): void {
+export function alev(c: Cizim, k: Katman, p: Nokta, h: number, i: number, haleOlcek = 1.1, canli = true): void {
   const w = h * 0.6;
   if (!c.yanik) return;
   c.ekle(k, `<circle ${c.sira()} cx="${f(p.x)}" cy="${f(p.y - h * 0.45)}" r="${f(h * haleOlcek)}" fill="url(#ftl-koz)" opacity=".62"/>`);
-  c.oge({ tur: 'titre', x: p.x - w / 2, y: p.y - h, w, h, ic: `<g transform="scale(${f(w / 12)} ${f(h / 20)})">${alevIc()}</g>`, koken: '50% 100%', gecikme: -((i * 0.37) % 1), sure: 0.9 + (i % 3) * 0.17 });
+  const durgun = `<g class="f-sl" style="--i:${c.isik - 1}" transform="translate(${f(p.x - w / 2)} ${f(p.y - h)}) scale(${f(w / 12)} ${f(h / 20)})">${alevIc()}</g>`;
+  if (!canli) {
+    c.ekle(k, durgun);
+    return;
+  }
+  void i;
+  // Bir işin bütün alevleri tek canlı öğede titrer.
+  c.grupla('alev', { tur: 'titre', x: p.x - w / 2, y: p.y - h, w, h, ic: `<g transform="scale(${f(w / 12)} ${f(h / 20)})">${alevIc()}</g>`, koken: '50% 100%', sure: 1.1 }, { k, svg: durgun });
 }
 
 /** Yükselen kıvılcımlar (alev ya da baca üstü). */
@@ -280,15 +345,15 @@ export function kivilcim(c: Cizim, p: Nokta, n: number, yukseklik: number, renk 
   if (!c.yanik) return;
   for (let i = 0; i < n; i++) {
     const dx = (((i * 37) % 11) / 10 - 0.5) * yayilma;
-    c.oge({
+    // Bir işin bütün kıvılcımları tek canlı öğede yükselir (dikey kaymalı).
+    c.grupla('kivilcim', {
       tur: 'yuksel',
       x: p.x + dx - 1.5,
       y: p.y - 3,
       w: 3,
       h: 3,
-      ic: `<circle cx="1.5" cy="1.5" r="1.5" fill="${renk}" opacity=".35"/><circle cx="1.5" cy="1.5" r=".9" fill="#FFF4C2"/>`,
-      gecikme: -((i * 0.53) % 2.1),
-      sure: 1.5 + (i % 3) * 0.35,
+      ic: `<g transform="translate(0 ${f(((i * 7) % 5) * -yukseklik * 0.12)})"><circle cx="1.5" cy="1.5" r="1.5" fill="${renk}" opacity=".35"/><circle cx="1.5" cy="1.5" r=".9" fill="#FFF4C2"/></g>`,
+      sure: 1.8,
       dy: yukseklik,
     });
   }

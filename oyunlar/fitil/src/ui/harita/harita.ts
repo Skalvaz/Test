@@ -58,6 +58,8 @@ export class HaritaEkrani {
   /** Süren iş kutlaması (+ gerekiyorsa Mahalle şenliği); `kutlamaBitti` bekler. */
   private kutlamaSozu: Promise<void> | null = null;
   private senlikIptal: (() => void) | null = null;
+  /** Açılış süzülüşünün kimliği: yeni kaydırma eskisini durdurur. */
+  private suzulusNo = 0;
 
   constructor(b: Baglam) {
     this.b = b;
@@ -246,7 +248,22 @@ export class HaritaEkrani {
     const tabela = h(
       'div',
       { s: `f-harita-tabela${tabelaIsikli ? ' f-isikli' : ''}${yeniIsler.has('iskele.tabela') ? ' f-yeni' : ''}`, css: { left: '50%', top: yuzdeY(bas.y + 74) } },
-      h('span', { t: M.fenerKoyu }, tabelaIsikli ? h('b', { s: 'f-tabela-ampul', 'aria-hidden': 'true' }, tabelaAmpulleri().map((p, i) => h('i', { css: { left: `${p.x.toFixed(1)}%`, top: `${p.y.toFixed(1)}%`, '--i': String(i) } }))) : null),
+      h(
+        'span',
+        { t: M.fenerKoyu },
+        tabelaIsikli
+          ? [0, 1].map((tek) =>
+              h(
+                'b',
+                { s: `f-tabela-ampul${tek ? ' f-cift' : ''}`, 'aria-hidden': 'true' },
+                tabelaAmpulleri()
+                  .map((p, i) => ({ p, i }))
+                  .filter((x) => x.i % 2 === tek)
+                  .map(({ p, i }) => h('i', { css: { left: `${p.x.toFixed(1)}%`, top: `${p.y.toFixed(1)}%`, '--i': String(i) } })),
+              ),
+            )
+          : null,
+      ),
     );
     ogeler.appendChild(tabela);
     if (tabelaIsikli) this.gozcu?.observe(tabela);
@@ -407,6 +424,7 @@ export class HaritaEkrani {
     const k = this.kaydir;
     const ic = this.icerik;
     if (!k || !ic) return;
+    this.suzulusNo++;
     const olcek = ic.clientWidth / HARITA_W;
     let ust = 64;
     try {
@@ -447,8 +465,12 @@ export class HaritaEkrani {
       this.b.titret(20);
       if (is) {
         this.b.duyur(`${is.ad} yapıldı`);
-        const soz = h('div', { s: 'f-sus-soz', role: 'status', css: { left: `${Math.max(22, Math.min(78, (k.capa.x / HARITA_W) * 100)).toFixed(2)}%`, top: yuzdeY(k.capa.y - 30) } }, h('span', { t: is.sakin }));
+        const soz = h('div', { s: 'f-sus-soz', role: 'status', css: { left: '50%', top: yuzdeY(k.capa.y - 30) } }, h('span', { t: is.sakin }));
         this.icerik?.querySelector('.f-harita-ogeler')?.appendChild(soz);
+        // Balon çapanın üstünde, ama ekrandan taşmasın (genişliği ölçülerek kenara yaslanır).
+        const W = this.icerik?.clientWidth ?? 0;
+        const yari = soz.offsetWidth / 2;
+        if (W > 0) soz.style.left = `${Math.max(yari + 8, Math.min(W - yari - 8, (k.capa.x / HARITA_W) * W)).toFixed(1)}px`;
         setTimeout(() => soz.remove(), az ? 2400 : 3200);
       }
       await this.bekle(az ? 400 : Math.min(2400, 900 + k.isik * 70));
@@ -492,7 +514,7 @@ export class HaritaEkrani {
       const y1 = Math.max(y0 + 40, (alt ? alt.top : kr.bottom - 170) - kr.top - 140);
       const u = (n * 0.618 + 0.11) % 1;
       const w = (n * 0.382 + 0.07) % 1;
-      const p = h('span', { s: 'f-senlik-fisek', css: { left: `${(8 + u * 84).toFixed(1)}%`, top: `${(y0 + w * (y1 - y0)).toFixed(0)}px`, '--r': renk[n % renk.length], '--s': `${(0.8 + ((n * 7) % 5) * 0.12).toFixed(2)}` } }, Array.from({ length: 14 }, (_, i) => h('i', { css: { '--a': `${i * (360 / 14)}deg` } })));
+      const p = h('span', { s: 'f-senlik-fisek', css: { left: `${(8 + u * 84).toFixed(1)}%`, top: `${(y0 + w * (y1 - y0)).toFixed(0)}px`, '--r': renk[n % renk.length], '--s': `${(0.8 + ((n * 7) % 5) * 0.12).toFixed(2)}` } }, Array.from({ length: 20 }, (_, i) => h('i', { css: { '--a': `${i * 18 + (i % 2) * 9}deg` } })));
       katman.appendChild(p);
       setTimeout(() => p.remove(), 1500);
       n++;
@@ -518,7 +540,13 @@ export class HaritaEkrani {
       this.senlikIptal = bitir;
       setTimeout(() => kok.addEventListener('pointerdown', bitir), 150);
       const sure = az ? 1800 : 6000;
-      if (!az) for (let t = 300, k = 0; t < sure - 700; t += 320 + (k % 3) * 140, k++) zamanlar.push(setTimeout(patlat, t));
+      // Salvolar: 2–3 fişek art arda, aralarında kısa sessizlik.
+      if (!az)
+        for (let t = 300, k = 0; t < sure - 900; t += 420 + (k % 3) * 160, k++) {
+          zamanlar.push(setTimeout(patlat, t));
+          zamanlar.push(setTimeout(patlat, t + 110));
+          if (k % 2 === 0) zamanlar.push(setTimeout(patlat, t + 230));
+        }
       zamanlar.push(setTimeout(bitir, sure));
     });
   }
@@ -556,7 +584,10 @@ export class HaritaEkrani {
     const bas = k.scrollTop;
     const t0 = performance.now();
     const sure = 900;
+    const no = ++this.suzulusNo;
     const adim = (t: number) => {
+      // Başka bir kaydırma (iş kutlaması, şenlik) başladıysa süzülüş biter.
+      if (no !== this.suzulusNo) return;
       const u = Math.min(1, (t - t0) / sure);
       const e = 1 - Math.pow(1 - u, 3);
       k.scrollTop = bas + (hedef - bas) * e;

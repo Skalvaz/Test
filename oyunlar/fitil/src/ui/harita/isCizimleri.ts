@@ -19,6 +19,7 @@ import {
   HAYALET_CIZGI,
   ISIK,
   KREM,
+  IP_RENGI,
   SICAK,
   alev,
   aralik,
@@ -64,24 +65,47 @@ function cepIpi(g: BolgeGeo, j: number, sarkma: number) {
   return ip(a, b, sarkma);
 }
 
+/**
+ * Dizinin ipi: canlıyken ip, ampulleri ve üstündeki fener/bayraklar TEK canlı
+ * öğedir ('dizi' grubu; uçlar neredeyse sabit, orta rüzgârda sallanır).
+ */
+function diziIpi(c: Cizim, k: Katman, y: ReturnType<typeof ip>, tur: 'sallan' | 'dalgalan', kalin: number, ampuller: readonly Nokta[] = []): void {
+  if (!c.yanik) {
+    c.ekle(k, ipCiz(c, y.d, kalin) + isiklar(c, ampuller, 1, ISIK, 3.5));
+    return;
+  }
+  const ps = [...Array.from({ length: 21 }, (_, i) => y.nokta(i / 20)), ...ampuller];
+  const x0 = Math.min(...ps.map((p) => p.x)) - 4;
+  const y0 = Math.min(...ps.map((p) => p.y)) - 4;
+  const x1 = Math.max(...ps.map((p) => p.x)) + 4;
+  const y1 = Math.max(...ps.map((p) => p.y)) + 4;
+  const ampulSvg = ampuller.map((p) => `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="3.5" fill="url(#ftl-isik)" opacity=".5"/><circle cx="${f(p.x)}" cy="${f(p.y)}" r="1" fill="${ISIK}"/>`).join('');
+  const ipSvg = `<path d="${y.d}" fill="none" stroke="${IP_RENGI}" stroke-width="${kalin}" stroke-linecap="round"/>${ampulSvg}`;
+  c.grupla('dizi', { tur, x: x0, y: y0, w: x1 - x0, h: y1 - y0, ic: `<g transform="translate(${f(-x0)} ${f(-y0)})">${ipSvg}</g>`, koken: '50% 0', sure: tur === 'sallan' ? 2.8 : 1.8 }, { k, svg: ipSvg });
+}
+
 function fenerDizisi(c: Cizim, g: BolgeGeo, j: number, n: number, bicim: FenerBicimi, renkler: readonly number[], sarkma = 22, olcek = 1): void {
   const y = cepIpi(g, j, sarkma);
   const k = j as Katman;
-  c.ekle(k, ipCiz(c, y.d));
-  aralik(n, 0.04, 0.92).forEach((t, i) => fener(c, k, y.nokta(t), renkler[i % renkler.length], bicim, i, olcek));
+  diziIpi(c, k, y, 'sallan', 1.1);
+  aralik(n, 0.04, 0.92).forEach((t, i) => fener(c, k, y.nokta(t), renkler[i % renkler.length], bicim, i, olcek, true, 'dizi'));
   c.capa = y.nokta(0.42);
 }
 
 function flamaDizisi(c: Cizim, g: BolgeGeo, j: number, n: number, bicim: BayrakBicimi, renkler: readonly string[], sarkma = 16, w = 7, h = 9): void {
   const y = cepIpi(g, j, sarkma);
   const k = j as Katman;
-  c.ekle(k, ipCiz(c, y.d, 0.9));
   const ts = aralik(n, 0.03, 0.95);
-  ts.forEach((t, i) => bayrak(c, k, y.nokta(t), renkler[i % renkler.length], bicim, i, w, h));
-  // Bayrak aralarında küçük ampuller.
+  // Bayrak aralarında küçük ampuller (ipe bağlı, ip ile sallanır).
   const ampul = ts.slice(0, -1).map((t, i) => y.nokta((t + ts[i + 1]) / 2));
-  c.ekle(k, isiklar(c, ampul, 1, ISIK, 3.5));
+  diziIpi(c, k, y, 'dalgalan', 0.9, ampul);
+  ts.forEach((t, i) => bayrak(c, k, y.nokta(t), renkler[i % renkler.length], bicim, i, w, h, 'dizi'));
   c.capa = y.nokta(0.42);
+}
+
+/** Su yansıması: ışığın altında daralan, kesik yatay çizgiler. */
+function yansima(x: number, y: number, renk: string, w: number): string {
+  return `<path d="M${f(x - w / 2)} ${f(y)}h${f(w)}M${f(x - w * 0.36)} ${f(y + 3.6)}h${f(w * 0.72)}M${f(x - w * 0.2)} ${f(y + 7.2)}h${f(w * 0.4)}" stroke="${renk}" stroke-width="1.3" stroke-linecap="round" opacity=".55"/>`;
 }
 
 /** Taş/ahşap sütun. */
@@ -92,12 +116,13 @@ function sutun(c: Cizim, x0: number, y0: number, w: number, h: number, renk: str
 
 /** Küçük kayık (su çizgisi y, burnu yön tarafında). */
 function kayik(c: Cizim, k: Katman, x: number, y: number, yon: 1 | -1, renk: number, i: number): void {
-  const govde = `M${f(x - 15)} ${f(y - 5)}h30l${-yon * 0 - 5} 6h-20z`;
-  c.ekle(k, sekil(c, govde, '#160E22') + `<path d="M${f(x - 15)} ${f(y - 5)}h30" stroke="${c.yanik ? '#4A3A5A' : HAYALET_CIZGI}" stroke-width="1"/>`);
+  const govde = `M${f(x - 15)} ${f(y - 5)}h30l-5 6h-20z`;
+  c.ekle(k, sekil(c, govde, '#2A1C34') + `<path d="M${f(x - 15.5)} ${f(y - 5)}h31" stroke="${c.yanik ? '#8A6A8A' : HAYALET_CIZGI}" stroke-width="1.3" stroke-linecap="round"/>`);
+  if (c.yanik) c.ekle(k, `<ellipse cx="${f(x + yon * 9)}" cy="${f(y - 2.5)}" rx="6" ry="2.4" fill="#FFB020" opacity=".35"/><path d="M${f(x - 12)} ${f(y + 3)}h24" stroke="#FFC86B" stroke-width="1" opacity=".25"/>`);
   // Pruva direği ve fener.
   const dx = x + yon * 12;
   c.ekle(k, ipCiz(c, `M${f(dx)} ${f(y - 5)}Q${f(dx + yon * 1)} ${f(y - 14)} ${f(dx + yon * 4)} ${f(y - 20)}`, 1.2, '#3A2416'));
-  if (c.yanik) c.ekle(k, `<path d="M${f(dx + yon * 4)} ${f(y - 1)}v14" stroke="#FFC86B" stroke-width="3" opacity=".22" stroke-linecap="round"/><path d="M${f(dx + yon * 4 - 3)} ${f(y + 3)}h6M${f(dx + yon * 4 - 2)} ${f(y + 8)}h4" stroke="#FFE3A0" stroke-width=".8" opacity=".45"/>`);
+  if (c.yanik) c.ekle(k, yansima(dx + yon * 4, y + 2, '#FFC86B', 7));
   fener(c, k, { x: dx + yon * 4, y: y - 20 }, renk, 'kagit', i, 0.75);
 }
 
@@ -128,8 +153,8 @@ export const CIZIMLER: Record<string, IsCizici> = {
     c.ekle('on', s);
     const ps = yay({ x: 200, y: y0 - 32 }, 27, 25, 180, 360, 11);
     c.ekle('on', isiklar(c, ps, 1.7, '#FFD15C', 5.5));
-    parilti(c, ps, 6, 2.2);
     fener(c, 'on', { x: 200, y: y0 - 54 }, 0, 'kagit', 0, 0.8);
+    parilti(c, ps, 6, 2.2);
     c.capa = P(g, 200, GIRIS_Y - 34);
   },
   'iskele.denizFeneri': (c, g) => {
@@ -143,7 +168,7 @@ export const CIZIMLER: Record<string, IsCizici> = {
     s += hale(c, { x: 380, y: t - 94 }, 30, 0.7);
     c.ekle(0, s);
     if (c.yanik) {
-      c.ekle(0, `<path d="M380 ${f(t - 2)}v18" stroke="#FFE3A0" stroke-width="5" opacity=".2" stroke-linecap="round"/>`);
+      c.ekle(0, yansima(380, t + 12, '#FFE3A0', 12));
       c.oge({ tur: 'huzme', x: 380 - 150, y: t - 108, w: 150, h: 28, ic: `<path d="M150 14L0 0V28Z" fill="url(#hs-huzme)"/>`, koken: '100% 50%', sure: 7 });
       c.oge({ tur: 'nabiz', x: 362, y: t - 112, w: 36, h: 36, ic: `<circle cx="18" cy="18" r="18" fill="url(#hs-parla)"/>`, sure: 1.8 });
     }
@@ -152,6 +177,8 @@ export const CIZIMLER: Record<string, IsCizici> = {
   // Taç: alt paydaki "FENER KOYU" tabelası (HTML; ampulleri harita.ts takar).
   'iskele.tabela': (c, g) => {
     if (g.tabela) c.capa = g.tabela;
+    // 22 ampul sırayla yanar (harita.ts); kutlama süresi buna göre.
+    c.isik = 22;
   },
 
   // ═════════ Çarşı ═════════
@@ -223,16 +250,9 @@ export const CIZIMLER: Record<string, IsCizici> = {
         return;
       }
       s += `<circle ${c.sira()} cx="${f(x)}" cy="${f(p.y + 11)}" r="11" fill="url(#ftl-koz)" opacity=".45"/>`;
-      c.oge({
-        tur: 'yanip',
-        x: x - 8,
-        y: p.y + 2,
-        w: 16,
-        h: 18,
-        ic: yazi(h, 8, 15, 15, '#FFF0C0', 'stroke="#FFB020" stroke-width="3" stroke-opacity=".55" paint-order="stroke"'),
-        gecikme: i * 0.28,
-        sure: 2.6,
-      });
+      // Harfler tek canlı öğede birlikte yanıp söner (mahya ampulleri gibi).
+      const harf = yazi(h, 8, 15, 15, '#FFF0C0', 'stroke="#FFB020" stroke-width="3" stroke-opacity=".55" paint-order="stroke"');
+      c.grupla('harf', { tur: 'yanip', x: x - 8, y: p.y + 2, w: 16, h: 18, ic: harf, sure: 2.4 }, { k: 3, svg: `<g transform="translate(${f(x - 8)} ${f(p.y + 2)})">${harf}</g>` });
     });
     c.ekle(3, s);
     c.capa = P(g, 152, 318);
@@ -261,8 +281,8 @@ export const CIZIMLER: Record<string, IsCizici> = {
     }
     const sutunlar = [...dogru({ x: 168, y: y0 - 36 }, { x: 168, y: y0 - 6 }, 4), ...dogru({ x: 232, y: y0 - 36 }, { x: 232, y: y0 - 6 }, 4)];
     c.ekle('on', isiklar(c, kemer, 1.5, '#FFE3A0', 5) + isiklar(c, sutunlar, 1.2, '#FFC86B', 4));
-    parilti(c, [...kemer, ...sutunlar], 5.5, 2);
     fener(c, 'on', { x: 200, y: y0 - 66 }, 1, 'kafes', 0, 0.9);
+    parilti(c, [...kemer, ...sutunlar], 5.5, 2);
     c.capa = P(g, 200, GIRIS_Y - 40);
   },
 
@@ -273,7 +293,7 @@ export const CIZIMLER: Record<string, IsCizici> = {
     fener(c, 0, { x: 300, y: t - 76 }, 1, 'kafes', 0, 0.8);
     fener(c, 0, { x: 352, y: t - 68 }, 0, 'kafes', 1, 0.8);
     fener(c, 0, { x: 266, y: t - 13 }, 2, 'kafes', 2, 0.6);
-    if (c.yanik) c.ekle(0, `<path d="M300 ${f(t + 2)}v12M352 ${f(t + 2)}v10" stroke="#FFC86B" stroke-width="3" opacity=".22" stroke-linecap="round"/>`);
+    if (c.yanik) c.ekle(0, yansima(300, t + 9, '#FFC86B', 8) + yansima(352, t + 9, '#FFC86B', 8));
     c.capa = P(g, 326, 545);
   },
   'liman.halatFlamalari': (c, g) => flamaDizisi(c, g, 4, 8, 'kare', ['#3AA8FF', '#FFB020', '#FF4D4D', '#2EE07A', '#B266FF', '#FFF3D6'], 14, 7, 7),
@@ -301,11 +321,12 @@ export const CIZIMLER: Record<string, IsCizici> = {
         continue;
       }
       c.ekle(1, `<circle ${c.sira()} cx="${x}" cy="${f(y)}" r="1.8" fill="#FF4D4D"/>`);
-      c.oge({ tur: 'yanip', x: x - 6, y: y - 6, w: 12, h: 12, ic: `<circle cx="6" cy="6" r="6" fill="url(#hs-kirmizi)"/><circle cx="6" cy="6" r="2" fill="#FFB3A8"/>`, gecikme: i * 0.6, sure: 1.2 });
+      void i;
+      c.grupla('isaret', { tur: 'yanip', x: x - 6, y: y - 6, w: 12, h: 12, ic: `<circle cx="6" cy="6" r="6" fill="url(#hs-kirmizi)"/><circle cx="6" cy="6" r="2" fill="#FFB3A8"/>`, sure: 1.4 });
     }
     // Kanca ve sandık (salınır).
     const kanca = `<path d="M8 0V26" stroke="#3A5A66" stroke-width=".8"/><path d="M5 26q3 4 6 0" fill="none" stroke="#5A7A86" stroke-width="1.2"/><rect x="0" y="30" width="16" height="11" fill="#5A3A22" stroke="#2A1A10" stroke-width=".8"/><path d="M0 35.5h16M5 30v11M11 30v11" stroke="#3A2416" stroke-width=".7"/>${c.yanik ? '<circle cx="8" cy="30" r="1.2" fill="#FFE9B0"/>' : ''}`;
-    if (c.yanik) c.oge({ tur: 'salin', x: 282, y: kol + 4, w: 16, h: 41, ic: kanca, koken: '50% 0', sure: 3.4 });
+    if (c.yanik) c.oge({ tur: 'salin', x: 282, y: kol + 4, w: 16, h: 41, ic: kanca, koken: '50% 0', sure: 3.4 }, { k: 1, svg: `<g transform="translate(282 ${f(kol + 4)})">${kanca}</g>` });
     else c.ekle(1, `<g transform="translate(282 ${f(kol + 4)})" opacity=".8">${kanca}</g>`);
     c.capa = P(g, 330, 345);
   },
@@ -317,8 +338,8 @@ export const CIZIMLER: Record<string, IsCizici> = {
       s += sekil(c, `M${x - 4} ${f(y - 2)}L${x - 3} ${f(y - 22)}H${x + 3}L${x + 4} ${f(y - 2)}z`, i === 0 ? '#C8C0D0' : '#C8C0D0');
       if (c.yanik) s += `<path d="M${x - 3.6} ${f(y - 9)}h7.2M${x - 3.3} ${f(y - 16)}h6.6" stroke="${renk}" stroke-width="3"/>`;
       s += sekil(c, `M${x - 5} ${f(y - 24)}h10v2h-10z`, '#2A2232');
-      s += c.yanik ? `<circle ${c.sira()} cx="${x}" cy="${f(y - 27)}" r="2.6" fill="${renk}"/><path d="M${x} ${f(y + 6)}v14" stroke="${renk}" stroke-width="3" opacity=".25" stroke-linecap="round"/>` : isik(c, { x, y: y - 27 }, 2.2);
-      if (c.yanik) c.oge({ tur: 'yanip', x: x - 10, y: y - 37, w: 20, h: 20, ic: `<circle cx="10" cy="10" r="10" fill="url(#hs-${i === 0 ? 'kirmizi' : 'yesil'})"/><circle cx="10" cy="10" r="2.8" fill="#fff" opacity=".85"/>`, gecikme: i * 1.1, sure: 2.2 });
+      s += c.yanik ? `<circle ${c.sira()} cx="${x}" cy="${f(y - 27)}" r="2.6" fill="${renk}"/>${yansima(x, y + 8, renk, 7)}` : isik(c, { x, y: y - 27 }, 2.2);
+      if (c.yanik) c.grupla('isaret', { tur: 'yanip', x: x - 10, y: y - 37, w: 20, h: 20, ic: `<circle cx="10" cy="10" r="10" fill="url(#hs-${i === 0 ? 'kirmizi' : 'yesil'})"/><circle cx="10" cy="10" r="2.8" fill="#fff" opacity=".85"/>`, sure: 2.2 });
     }
     c.ekle('arka', s);
     c.capa = P(g, 70, 480);
@@ -376,7 +397,7 @@ export const CIZIMLER: Record<string, IsCizici> = {
       s += `<path d="M${x} ${f(z)}v-34M${x - 7} ${f(z - 30)}h14" stroke="${c.yanik ? '#1A1220' : HAYALET_CIZGI}" stroke-width="2.2"/><path d="M${x - 3} ${f(z)}h6" stroke="${c.yanik ? '#1A1220' : HAYALET_CIZGI}" stroke-width="3"/>`;
       c.ekle(j as Katman, s);
       for (const dx of [-7, 7]) {
-        fener(c, j as Katman, { x: x + dx, y: z - 30 }, 1, 'kafes', j * 2 + (dx > 0 ? 1 : 0), 0.65);
+        fener(c, j as Katman, { x: x + dx, y: z - 30 }, 1, 'kafes', j * 2 + (dx > 0 ? 1 : 0), 0.65, false);
         basl.push({ x: x + dx, y: z - 23 });
       }
     });
@@ -414,8 +435,8 @@ export const CIZIMLER: Record<string, IsCizici> = {
     const yayIsik = yay({ x: 200, y: y0 - 18 }, 15, 15, 195, 345, 7);
     c.ekle('on', isiklar(c, yayIsik, 1.1, '#BFF4FF', 3.5) + isiklar(c, [{ x: 178, y: y0 - 40 }, { x: 222, y: y0 - 40 }], 1.8, '#FFE3A0', 6));
     if (c.yanik) {
-      c.oge({ tur: 'nabiz', x: 180, y: y0 - 16, w: 40, h: 16, ic: '<ellipse cx="20" cy="10" rx="20" ry="6" fill="url(#hs-su)"/>', sure: 1.6 });
-      c.oge({ tur: 'nabiz', x: 194, y: y0 - 20, w: 12, h: 16, ic: '<path d="M6 0q4 6 1 14" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>', sure: 0.8 });
+      c.grupla('su', { tur: 'nabiz', x: 180, y: y0 - 16, w: 40, h: 16, ic: '<ellipse cx="20" cy="10" rx="20" ry="6" fill="url(#hs-su)"/>', sure: 1.2 });
+      c.grupla('su', { tur: 'nabiz', x: 194, y: y0 - 20, w: 12, h: 16, ic: '<path d="M6 0q4 6 1 14" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>', sure: 1.2 });
     }
     parilti(c, yayIsik, 4.5, 2.4);
     c.capa = P(g, 200, GIRIS_Y - 20);
@@ -431,7 +452,8 @@ export const CIZIMLER: Record<string, IsCizici> = {
     s += `<path d="M${f(m.x)} ${f(m.y)}l-8 -5" stroke="${c.yanik ? '#3A2416' : HAYALET_CIZGI}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${f(m.x)}" cy="${f(m.y)}" r="2" fill="${c.yanik ? '#3A2416' : HAYALET_CIZGI}"/>`;
     c.ekle(4, s);
     if (c.yanik) {
-      c.oge({ tur: 'don', x: m.x - 18, y: m.y - 18, w: 36, h: 36, ic: '<path d="M18 18V3.5" stroke="#3A2416" stroke-width="1.8" stroke-linecap="round"/><circle cx="18" cy="4.5" r="1.4" fill="#FFD15C"/><circle cx="18" cy="18" r="1.4" fill="#D9A441"/>', koken: '50% 50%', sure: 24 });
+      const yelkovan = '<path d="M18 18V3.5" stroke="#3A2416" stroke-width="1.8" stroke-linecap="round"/><circle cx="18" cy="4.5" r="1.4" fill="#FFD15C"/><circle cx="18" cy="18" r="1.4" fill="#D9A441"/>';
+      c.oge({ tur: 'don', x: m.x - 18, y: m.y - 18, w: 36, h: 36, ic: yelkovan, koken: '50% 50%', sure: 24 }, { k: 4, svg: `<g transform="translate(${f(m.x - 18)} ${f(m.y - 18)})">${yelkovan}</g>` });
       c.oge({ tur: 'nabiz', x: m.x - 30, y: m.y - 30, w: 60, h: 60, ic: '<circle cx="30" cy="30" r="30" fill="url(#hs-parla)" opacity=".7"/>', sure: 3.2 });
     }
     c.capa = m;
@@ -445,10 +467,10 @@ export const CIZIMLER: Record<string, IsCizici> = {
     c.ekle(4, s);
     const tac = yay(P(g, 200, 16), 17, 13, 190, 350, 7);
     c.ekle(4, isiklar(c, tac, 1.3, '#FFE3A0', 4.5));
-    parilti(c, tac, 6, 1.8);
     const can = `<path d="M7 0v3" stroke="#3A2416" stroke-width="1"/><path d="M2 14Q2 4 7 3Q12 4 12 14L13.4 16H.6Z" fill="url(#ftl-pirinc)" stroke="#8A4E1C" stroke-width=".6"/><circle cx="7" cy="17" r="1.6" fill="#8A4E1C"/>`;
-    if (c.yanik) c.oge({ tur: 'salin', x: 193, y: y(17), w: 14, h: 19, ic: can, koken: '50% 0', sure: 1.6 });
+    if (c.yanik) c.oge({ tur: 'salin', x: 193, y: y(17), w: 14, h: 19, ic: can, koken: '50% 0', sure: 1.6 }, { k: 4, svg: `<g transform="translate(193 ${f(y(17))})">${can}</g>` });
     else c.ekle(4, `<g transform="translate(193 ${f(y(17))})" opacity=".6">${can.replace('url(#ftl-pirinc)', HAYALET)}</g>`);
+    parilti(c, tac, 6, 1.8);
     c.capa = P(g, 200, 26);
   },
 
@@ -467,7 +489,7 @@ export const CIZIMLER: Record<string, IsCizici> = {
         { x: a.x + 15, y: a.y + 12 },
         { x: a.x - 1, y: a.y + 4 },
       ];
-      ps.forEach((p) => bayrak(c, j as Katman, p, renk[i % renk.length], 'kurdele', i++, 3.6, 13));
+      ps.forEach((p) => bayrak(c, j as Katman, p, renk[i % renk.length], 'kurdele', i++, 3.6, 13, `agac:${j}`));
       const ampul = [{ x: a.x - 8, y: a.y - 6 }, { x: a.x + 6, y: a.y - 10 }, { x: a.x + 12, y: a.y + 2 }, { x: a.x - 14, y: a.y + 4 }, { x: a.x, y: a.y + 8 }];
       c.ekle(j as Katman, isiklar(c, ampul, 1.1, '#FFF4C2', 4));
       parilti(c, ampul, 5, 2.6);
@@ -479,9 +501,9 @@ export const CIZIMLER: Record<string, IsCizici> = {
     fenerDizisi(c, g, 3, 7, 'kavanoz', [2], 20, 0.85);
     if (c.yanik) {
       const y = cepIpi(g, 3, 20);
-      for (let i = 0; i < 5; i++) {
-        const p = y.nokta(0.12 + i * 0.18);
-        c.oge({ tur: 'suz', x: p.x - 2 + ((i * 7) % 9) - 4, y: p.y + 18 + ((i * 5) % 7), w: 4, h: 4, ic: '<circle cx="2" cy="2" r="2" fill="#E8FF8A" opacity=".4"/><circle cx="2" cy="2" r="1" fill="#F4FFC0"/>', gecikme: -i * 0.9, sure: 3.4 + (i % 2) });
+      for (let i = 0; i < 6; i++) {
+        const p = y.nokta(0.1 + i * 0.15);
+        c.grupla(`bocek:${i % 2}`, { tur: 'suz', x: p.x - 2 + ((i * 7) % 9) - 4, y: p.y + 16 + ((i * 5) % 9), w: 4, h: 4, ic: '<circle cx="2" cy="2" r="2" fill="#E8FF8A" opacity=".4"/><circle cx="2" cy="2" r="1" fill="#F4FFC0"/>', gecikme: -(i % 2) * 1.7, sure: 3.4 });
       }
     }
   },
@@ -516,7 +538,7 @@ export const CIZIMLER: Record<string, IsCizici> = {
     const y = (v: number) => g.ust + v;
     let s = '';
     // Küçük bahçe adacığı (teras gibi aşağı kararır) ve havuz.
-    s += `<path d="M152 ${f(y(58))}Q200 ${f(y(46))} 248 ${f(y(58))}L240 ${f(y(98))}H160Z" fill="url(#hb-yuz-sol)"/>`;
+    s += `<path d="M152 ${f(y(58))}Q200 ${f(y(46))} 248 ${f(y(58))}L238 ${f(y(84))}H162Z" fill="url(#hb-yuz-sol)"/>`;
     s += sekil(c, `M152 ${f(y(58))}Q200 ${f(y(44))} 248 ${f(y(58))}Q200 ${f(y(70))} 152 ${f(y(58))}z`, '#1E3A22');
     s += c.yanik ? `<ellipse cx="200" cy="${f(y(58))}" rx="36" ry="7" fill="#0A1A2A" stroke="#4A7A6A" stroke-width="1.4"/><ellipse cx="200" cy="${f(y(58))}" rx="30" ry="4.5" fill="#FFC86B" opacity=".14"/>` : `<ellipse cx="200" cy="${f(y(58))}" rx="36" ry="7" fill="${HAYALET}" stroke="${HAYALET_CIZGI}"/>`;
     if (c.yanik) s += `<ellipse cx="172" cy="${f(y(60))}" rx="4" ry="1.6" fill="#2E6A36"/><ellipse cx="229" cy="${f(y(57))}" rx="3.6" ry="1.4" fill="#2E6A36"/>`;
@@ -530,7 +552,7 @@ export const CIZIMLER: Record<string, IsCizici> = {
         return;
       }
       c.ekle('on', `<circle ${c.sira()} cx="${x}" cy="${f(yy + 1)}" r="7" fill="url(#ftl-isik)" opacity=".45"/><path d="M${x} ${f(yy + 4)}v5" stroke="#FFC86B" stroke-width="2" opacity=".3"/>`);
-      c.oge({ tur: 'suz', x: x - 4.5, y: yy - 5, w: 9, h: 8.4, ic: kandil, gecikme: -i * 0.7, sure: 3 + (i % 3) * 0.4 });
+      c.grupla('kandil', { tur: 'suz', x: x - 4.5, y: yy - 5, w: 9, h: 8.4, ic: kandil, sure: 3 }, { k: 'on', svg: `<g transform="translate(${x - 4.5} ${f(yy - 5)})">${kandil}</g>` });
     });
     c.capa = P(g, 200, 54);
   },
@@ -570,6 +592,8 @@ export const CIZIMLER: Record<string, IsCizici> = {
     c.capa = P(g, 200, 340);
   },
   'tepe.degirmenKanatlari': (c, g) => {
+    // İki değirmen de döner: bu iş iki canlı öğe kullanır (Gök haritası durağan, mahalle ≤ 6).
+    c.canliSiniri = 2;
     for (const j of [1, 3]) {
       const b = g.binalar[j];
       if (!b.gobek) continue;
@@ -585,7 +609,7 @@ export const CIZIMLER: Record<string, IsCizici> = {
         for (let k = 1; k <= 5; k++) ic += `<circle cx="${f(50 + ux * (6 + k * 8))}" cy="${f(50 + uy * (6 + k * 8))}" r="1.3" fill="#FFE9B0"/><circle cx="${f(50 + ux * (6 + k * 8))}" cy="${f(50 + uy * (6 + k * 8))}" r="3" fill="#FFC86B" opacity=".35"/>`;
       }
       ic += '<circle cx="50" cy="50" r="3.5" fill="#D9A441"/><circle cx="50" cy="50" r="1.4" fill="#FFF4C2"/>';
-      c.oge({ tur: 'don', x: h0.x - 50, y: h0.y - 50, w: 100, h: 100, ic, koken: '50% 50%', sure: j === 1 ? 16 : 19 });
+      c.oge({ tur: 'don', x: h0.x - 50, y: h0.y - 50, w: 100, h: 100, ic, koken: '50% 50%', sure: j === 1 ? 16 : 19 }, { k: j as Katman, svg: `<g transform="translate(${f(h0.x - 50)} ${f(h0.y - 50)})">${ic}</g>` });
     }
     const b = g.binalar[1];
     c.capa = b.gobek ?? { x: b.x, y: b.ust };
@@ -628,6 +652,8 @@ export const CIZIMLER: Record<string, IsCizici> = {
     c.capa = P(g, 200, GIRIS_Y - 26);
   },
   'tepe.gokHaritasi': (c, g) => {
+    // Durağan (Tepe'nin canlı öğe payını değirmenler kullanır).
+    c.canliSiniri = 0;
     const m = P(g, 140, 56);
     const yildiz: [number, number, number][] = [
       // Lale takımyıldızı: çanak, sap ve yapraklar.
@@ -721,17 +747,21 @@ export const CIZIMLER: Record<string, IsCizici> = {
   },
   'fabrika.senlikDudugu': (c, g) => {
     const y = (v: number) => g.ust + v;
-    let s = hale(c, P(g, 200, 44), 34, 0.45);
-    s += sekil(c, `M197 ${f(y(98))}V${f(y(60))}H203V${f(y(98))}z`, '#4A4250');
-    s += sekil(c, `M188 ${f(y(98))}h24v4h-24z`, '#3A3440');
-    s += c.yanik ? `<path d="M192 ${f(y(60))}V${f(y(42))}H208V${f(y(60))}z" fill="url(#ftl-pirinc)"/><path d="M190 ${f(y(42))}h20l-2-6h-16z" fill="url(#ftl-pirinc)"/><path d="M194 ${f(y(46))}h12" stroke="#8A4E1C" stroke-width="1"/>` : sekil(c, `M192 ${f(y(60))}V${f(y(42))}H208V${f(y(60))}z`, '#4A4250');
+    let s = hale(c, P(g, 200, 48), 34, 0.45);
+    // Buhar borusu, vana çarkı, pirinç düdük (silindir + bilezikler + kubbe).
+    s += sekil(c, `M197.5 ${f(y(100))}V${f(y(66))}H202.5V${f(y(100))}z`, '#4A4250');
+    s += sekil(c, `M188 ${f(y(100))}h24v4h-24z`, '#3A3440');
+    s += c.yanik ? `<circle cx="207" cy="${f(y(80))}" r="4.4" fill="none" stroke="#B8381C" stroke-width="1.6"/><path d="M202.5 ${f(y(80))}h4.5M207 ${f(y(75.6))}v8.8M202.6 ${f(y(80))}h8.8" stroke="#B8381C" stroke-width=".9"/>` : '';
+    s += c.yanik
+      ? `<path d="M194 ${f(y(66))}V${f(y(40))}H206V${f(y(66))}z" fill="url(#ftl-pirinc)"/><path d="M193 ${f(y(62))}h14M193 ${f(y(50))}h14M193 ${f(y(44))}h14" stroke="#8A4E1C" stroke-width="1.4"/><path d="M192 ${f(y(40))}Q200 ${f(y(30))} 208 ${f(y(40))}z" fill="url(#ftl-pirinc)"/><path d="M200 ${f(y(33))}v-4" stroke="#8A4E1C" stroke-width="1.4"/><path d="M196 ${f(y(56))}h8" stroke="#FFF4C2" stroke-width="1" opacity=".6"/>`
+      : sekil(c, `M194 ${f(y(66))}V${f(y(40))}H206V${f(y(66))}zM192 ${f(y(40))}Q200 ${f(y(30))} 208 ${f(y(40))}z`, '#4A4250');
     c.ekle('on', s);
-    const halka = yay(P(g, 200, 50), 15, 15, 0, 330, 12);
+    const halka = yay(P(g, 200, 52), 16, 18, 0, 330, 12);
     c.ekle('on', isiklar(c, halka, 1.2, '#FFE9B0', 4));
-    parilti(c, halka, 5, 1.6);
     if (c.yanik)
       for (let i = 0; i < 4; i++)
-        c.oge({ tur: 'yuksel', x: 194 + ((i * 5) % 9), y: y(30), w: 9, h: 9, ic: '<circle cx="4.5" cy="4.5" r="4.5" fill="#E8E0F0" opacity=".5"/>', gecikme: -i * 0.6, sure: 2.4, dy: 34 });
+        c.grupla('buhar', { tur: 'yuksel', x: 192 + ((i * 5) % 9), y: y(26) - i * 8, w: 10, h: 10, ic: `<circle cx="5" cy="5" r="${5 - i * 0.6}" fill="#EEE6F6" opacity="${(0.6 - i * 0.1).toFixed(2)}"/>`, sure: 2.4, dy: 30 });
+    parilti(c, halka, 5, 1.6);
     // Bacaların tacı.
     for (const b of g.binalar) {
       if (!b.baca) continue;
@@ -744,27 +774,32 @@ export const CIZIMLER: Record<string, IsCizici> = {
   // ═════════ Kale ═════════
   'kale.surKandilleri': (c, g) => {
     let i = 0;
+    const kandiller: Nokta[] = [];
     for (const b of g.binalar) {
       const x0 = b.x - b.w / 2 - 3;
       const dis = (b.w + 6) / 5;
       for (const k of [1, 3]) {
         const p = { x: x0 + (k + 0.5) * dis, y: b.ust - 2 };
         c.ekle(b.j as Katman, sekil(c, `M${f(p.x - 3)} ${f(p.y)}h6l-1 2h-4z`, '#B8642E'));
-        if (c.yanik) alev(c, b.j as Katman, { x: p.x, y: p.y }, 6, i++, 1.6);
+        if (c.yanik) alev(c, b.j as Katman, { x: p.x, y: p.y }, 6, i++, 1.6, false);
         else c.ekle(b.j as Katman, isik(c, { x: p.x, y: p.y - 2 }, 1.2));
+        kandiller.push({ x: p.x, y: p.y - 3 });
       }
     }
+    parilti(c, kandiller, 7, 1.4);
     const b = g.binalar[2];
     c.capa = { x: b.x, y: b.ust - 6 };
   },
   'kale.burcBayraklari': (c, g) => {
+    // Ağır sancak kumaşı durağan asılır (Kale'nin canlı payı alevlerde).
+    c.canliSiniri = 0;
     let i = 0;
     for (const j of [0, 1, 2, 3]) {
       const b = g.binalar[j];
       for (const dx of [-b.w / 2 + 6, b.w / 2 - 6]) {
         const p = { x: b.x + dx, y: b.ust + 5 };
         c.ekle(j as Katman, `<path d="M${f(p.x - 4.5)} ${f(p.y)}h9" stroke="${c.yanik ? '#D9A441' : HAYALET_CIZGI}" stroke-width="1.4" stroke-linecap="round"/>`);
-        bayrak(c, j as Katman, p, i % 2 === 0 ? '#B8381C' : KREM, 'catal', i, 7, 24);
+        bayrak(c, j as Katman, p, i % 2 === 0 ? '#B8381C' : KREM, 'catal', i, 7, 24, `burc:${j}`);
         i++;
       }
     }

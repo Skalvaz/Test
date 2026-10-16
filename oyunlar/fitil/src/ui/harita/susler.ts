@@ -66,6 +66,7 @@ function isCiz(is: KasabaIsi, g: BolgeGeo, yanik: boolean, b: CizimBaglami): Ciz
   const ciz = CIZIMLER[is.id];
   if (ciz) ciz(c, g, b, is);
   else yedekCizim(c, g, is);
+  c.bitir();
   return c;
 }
 
