@@ -247,7 +247,7 @@
   },
   "muhurler": [
     {"olcu": "desen", "kapsam": "hamle", "enAz": 5},
-    {"olcu": "halka", "kapsam": "oyun", "enAz": 2},
+    {"olcu": "ozelAtes", "kapsam": "oyun", "enAz": 6},
     {"olcu": "desen", "kapsam": "hamle", "enAz": 8}
   ]
 }

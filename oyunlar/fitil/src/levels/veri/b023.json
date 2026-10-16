@@ -32,6 +32,6 @@
   "muhurler": [
     {"olcu": "kaya", "kapsam": "hamle", "enAz": 3},
     {"olcu": "caprazRoket", "kapsam": "oyun", "enAz": 2},
-    {"olcu": "olusum", "kapsam": "oyun", "enAz": 2, "ozel": "kasimpati"}
+    {"olcu": "zincir", "kapsam": "hamle", "enAz": 12}
   ]
 }

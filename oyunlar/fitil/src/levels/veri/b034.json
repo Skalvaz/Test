@@ -47,8 +47,8 @@
  "yildizEsikleri": [23100, 25700],
  "sonrakiTanitim": "Sıradaki: Fabrika Yangını!",
   "muhurler": [
-    {"olcu": "R", "kapsam": "hamle", "enAz": 12, "halka": true},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 22, "eylem": "koruk"},
     {"olcu": "halka", "kapsam": "oyun", "enAz": 4},
-    {"olcu": "R", "kapsam": "hamle", "enAz": 40, "sans": true}
+    {"olcu": "R", "kapsam": "hamle", "enAz": 43, "sans": true}
   ]
 }

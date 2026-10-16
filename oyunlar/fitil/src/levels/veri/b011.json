@@ -35,7 +35,7 @@
   "sonrakiTanitim": "Sıradaki: Yıldız Topu!",
   "muhurler": [
     {"olcu": "fener", "kapsam": "oyun", "enAz": 3},
-    {"olcu": "caprazRoket", "kapsam": "oyun", "enAz": 2},
+    {"olcu": "ozelAtes", "kapsam": "oyun", "enAz": 4},
     {"olcu": "zincir", "kapsam": "hamle", "enAz": 12}
   ]
 }

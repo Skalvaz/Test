@@ -35,8 +35,8 @@
   "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Işıklı Sokak!",
   "muhurler": [
-    {"olcu": "R", "kapsam": "hamle", "enAz": 4, "halka": true},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 3, "halka": true},
     {"olcu": "halka", "kapsam": "oyun", "enAz": 3},
-    {"olcu": "R", "kapsam": "hamle", "enAz": 14, "halka": true, "sans": true}
+    {"olcu": "R", "kapsam": "hamle", "enAz": 17, "halka": true, "sans": true}
   ]
 }

@@ -43,7 +43,7 @@
   "sonrakiTanitim": "Sıradaki: Bahçe Duvarı!",
   "muhurler": [
     {"olcu": "doseme", "kapsam": "hamle", "enAz": 6},
-    {"olcu": "halka", "kapsam": "oyun", "enAz": 2},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 7, "halka": true},
     {"olcu": "olusum", "kapsam": "oyun", "enAz": 1, "ozel": "yildiz"}
   ]
 }

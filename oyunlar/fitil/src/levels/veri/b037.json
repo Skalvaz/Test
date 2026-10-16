@@ -101,8 +101,8 @@
  },
  "devFisekKapasite": 6,
   "muhurler": [
-    {"olcu": "izliDevFisek", "kapsam": "oyun", "enAz": 1},
+    {"olcu": "devFisek", "kapsam": "hamle", "enAz": 2},
     {"olcu": "olusum", "kapsam": "oyun", "enAz": 5, "ozel": "roket"},
-    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 8}
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 9}
   ]
 }

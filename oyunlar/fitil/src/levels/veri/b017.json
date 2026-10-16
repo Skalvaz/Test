@@ -42,6 +42,6 @@
   "muhurler": [
     {"olcu": "koruk", "kapsam": "oyun", "enAz": 1},
     {"olcu": "koruk", "kapsam": "oyun", "enAz": 3},
-    {"olcu": "R", "kapsam": "hamle", "enAz": 5, "eylem": "koruk", "sans": true}
+    {"olcu": "R", "kapsam": "hamle", "enAz": 7, "eylem": "koruk", "sans": true}
   ]
 }

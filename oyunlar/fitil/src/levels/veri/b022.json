@@ -47,7 +47,7 @@
   "sonrakiTanitim": "Sıradaki: Lale Tarhı!",
   "muhurler": [
     {"olcu": "zincir", "kapsam": "hamle", "enAz": 8},
-    {"olcu": "caprazRoket", "kapsam": "oyun", "enAz": 2},
+    {"olcu": "patlama", "kapsam": "hamle", "enAz": 6, "renk": 4},
     {"olcu": "patlama", "kapsam": "hamle", "enAz": 8, "renk": 5}
   ]
 }

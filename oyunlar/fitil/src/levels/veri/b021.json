@@ -48,8 +48,8 @@
   "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Altı Renk!",
   "muhurler": [
-    {"olcu": "doseme", "kapsam": "hamle", "enAz": 11},
-    {"olcu": "R", "kapsam": "hamle", "enAz": 20, "eylem": "koruk", "sans": true},
+    {"olcu": "doseme", "kapsam": "hamle", "enAz": 10},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 24, "eylem": "koruk", "sans": true},
     {"olcu": "halka", "kapsam": "oyun", "enAz": 4}
   ]
 }

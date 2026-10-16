@@ -41,7 +41,7 @@
   "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Çarşı Gecesi!",
   "muhurler": [
-    {"olcu": "doseme", "kapsam": "hamle", "enAz": 5},
+    {"olcu": "doseme", "kapsam": "hamle", "enAz": 4},
     {"olcu": "olusum", "kapsam": "oyun", "enAz": 4, "ozel": "kasimpati"},
     {"olcu": "nesil", "kapsam": "hamle", "enAz": 9, "sans": true}
   ]

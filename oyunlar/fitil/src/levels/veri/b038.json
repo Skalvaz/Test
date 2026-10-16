@@ -274,7 +274,7 @@
  "sonrakiTanitim": "Sıradaki: Arife!",
   "muhurler": [
     {"olcu": "kafes", "kapsam": "hamle", "enAz": 2},
-    {"olcu": "halka", "kapsam": "oyun", "enAz": 3},
-    {"olcu": "R", "kapsam": "hamle", "enAz": 10, "halka": true, "sans": true}
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 4, "ozel": "roket"},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 12, "halka": true, "sans": true}
   ]
 }

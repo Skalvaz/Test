@@ -166,7 +166,7 @@
  "sonrakiTanitim": "Sıradaki: Kuru Gece II!",
   "muhurler": [
     {"olcu": "kafes", "kapsam": "hamle", "enAz": 2},
-    {"olcu": "doseme", "kapsam": "hamle", "enAz": 6},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 8, "halka": true},
     {"olcu": "kalanHamle", "kapsam": "son", "enAz": 8}
   ]
 }

@@ -51,8 +51,8 @@
  "yildizEsikleri": [18000, 23400],
  "sonrakiTanitim": "Sıradaki: Büyük Şenlik!",
   "muhurler": [
-    {"olcu": "zincir", "kapsam": "hamle", "enAz": 8},
+    {"olcu": "zincir", "kapsam": "hamle", "enAz": 7},
     {"olcu": "halka", "kapsam": "oyun", "enAz": 4},
-    {"olcu": "R", "kapsam": "hamle", "enAz": 31, "halka": true, "sans": true}
+    {"olcu": "R", "kapsam": "hamle", "enAz": 32, "halka": true, "sans": true}
   ]
 }

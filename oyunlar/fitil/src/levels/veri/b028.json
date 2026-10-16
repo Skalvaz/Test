@@ -81,8 +81,8 @@
     ]
   ],
   "muhurler": [
+    {"olcu": "kafes", "kapsam": "hamle", "enAz": 2},
     {"olcu": "caprazEngel", "kapsam": "oyun", "enAz": 1},
-    {"olcu": "ozelAtes", "kapsam": "oyun", "enAz": 1, "ozel": "kasimpati"},
     {"olcu": "kafes", "kapsam": "hamle", "enAz": 3}
   ]
 }

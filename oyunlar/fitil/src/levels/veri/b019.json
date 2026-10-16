@@ -34,6 +34,6 @@
   "muhurler": [
     {"olcu": "R", "kapsam": "hamle", "enAz": 18, "eylem": "koruk"},
     {"olcu": "kalanHamle", "kapsam": "son", "enAz": 20},
-    {"olcu": "halka", "kapsam": "oyun", "enAz": 5}
+    {"olcu": "halka", "kapsam": "oyun", "enAz": 6}
   ]
 }
