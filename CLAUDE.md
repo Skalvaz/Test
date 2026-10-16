@@ -13,6 +13,14 @@ M1…), varlık kaynakları `ASSETS.md`'de.
 https://claude.ai/artifact/1RuRyPm6B9mDRPsYE5CKRC (`npm run build:single` →
 `dist-single/artifact.html` aynı yolla yeniden yayınlanır; yetenekler db + user).
 
+## Ayrı proje: EBRULİ (oyunlar/ebruli)
+
+`oyunlar/ebruli/` FİTİL ekibinin deneme oyunu (renk karıştırma + ebru tablosu;
+kendi package.json'ı, altyapı FİTİL'den kopya). Notlar `oyunlar/ebruli/CLAUDE.md`,
+tasarım `oyunlar/ebruli/docs/GDD.md`. Asıl ürün FİTİL. Yayın:
+https://claude.ai/artifact/6MV9JE4wa3u1ChCCkS7wma (`npm run build:single` →
+`dist-single/artifact.html` aynı yolla; yetenekler db + user).
+
 ## Kurallar
 
 - Kullanıcıyla Türkçe konuş. Kod yorumları ve commit mesajları da Türkçe.
