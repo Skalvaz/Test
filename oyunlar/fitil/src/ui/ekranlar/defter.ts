@@ -7,7 +7,7 @@ import { h } from '../dom';
 import { ikon, desenSvg, fitilSvg, motifIsaretleme } from '../ikonlar';
 import { M, MOTIF_ADLARI, DEFTER_KARTLARI, NADIRLIK_ADLARI, sayi } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
-import { tabloCercevesi } from './ortak';
+import { tabloCercevesi, kasabaKartSatirlari } from './ortak';
 import { svg } from '../dom';
 import { DESENLER, FITILLER, GOKYUZU, MAHALLELER, DESEN_PARCA, EN_FAZLA_TAKILI_DESEN } from '../../app/katalog';
 import type { DefterSekmesi, DefterVM, TozHedefi } from '../tipler';
@@ -16,7 +16,7 @@ import type { Motif } from '../../core/types';
 const SEKMELER: DefterSekmesi[] = ['desenler', 'fitiller', 'gokyuzu', 'tablolar', 'motifler', 'defter'];
 const TOZ_BEDEL = 10;
 
-export function defterEkrani(b: Baglam, ilkVm: DefterVM, ek: { defterKartiAc?: (m: number) => void } = {}): { soz: Promise<void>; kapat: () => void } {
+export function defterEkrani(b: Baglam, ilkVm: DefterVM, ek: { defterKartiAc?: (m: number, tur?: 'defter' | 'kasaba') => void } = {}): { soz: Promise<void>; kapat: () => void } {
   const { soz, sec } = secimSozu<void>();
   let vm = ilkVm;
   let sekme: DefterSekmesi = vm.sekme ?? 'desenler';
@@ -197,6 +197,8 @@ export function defterEkrani(b: Baglam, ilkVm: DefterVM, ek: { defterKartiAc?: (
             dg.addEventListener('click', () => (acik ? ek.defterKartiAc?.(i) : b.toast(M.defterKilitli)));
             return dg;
           }),
+          // (Kancalar §B.5) Süslenen mahallelerin kasaba kartları (sakinin mektubu).
+          kasabaKartSatirlari(vm.kasabaKartlari, (i) => ek.defterKartiAc?.(i, 'kasaba')),
         );
     }
   };

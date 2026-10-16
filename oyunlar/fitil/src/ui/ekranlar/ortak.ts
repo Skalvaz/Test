@@ -5,7 +5,8 @@
  */
 import { h, svg, tekilKimlik } from '../dom';
 import { kapsulIsaretleme, hedefIkonu, odulIkonu, yildizSvg, kucukYildiz, motifIsaretleme, guclendiriciIsaretleme, ustaSvg } from '../ikonlar';
-import { hedefMetni, NADIRLIK_ADLARI, GUCLENDIRICI_ADLARI, YENI_OGE } from '../metinler';
+import { hedefMetni, NADIRLIK_ADLARI, GUCLENDIRICI_ADLARI, YENI_OGE, KASABA_KARTLARI } from '../metinler';
+import { kandilSvg, ikon } from '../ikonlar';
 import { DESENLER, FITILLER, MAHALLELER } from '../../app/katalog';
 import type { HedefVM, Nadirlik, OdulVM, Palet, YeniOge, Yildiz } from '../tipler';
 
@@ -98,6 +99,26 @@ function tabloYerTutucu(): SVGSVGElement {
     <defs><linearGradient id="f-tb-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B1030"/><stop offset="1" stop-color="#2A1450"/></linearGradient></defs>
     <rect width="100" height="150" fill="url(#f-tb-g)"/>${s}
     <path d="M0 128h12v-14h8v10h10v-20h6v-6h4v6h6v20h10v-12h8v16h12v-22l6-6 6 6v22h12v22H0z" fill="#120A1E"/></svg>`, ['f-tb-g']));
+}
+
+/**
+ * (Kancalar §B.5) Açık kasaba kartlarının satırları (Defter > Defter ve
+ * Ayarlar > Defter kartları): kandil ikonu + sakinin mektubu başlığı.
+ */
+export function kasabaKartSatirlari(acik: readonly boolean[] | undefined, ac: (m: number) => void): HTMLElement[] {
+  if (!acik) return [];
+  return MAHALLELER.flatMap((m, i) => {
+    if (!acik[i]) return [];
+    const dg = h(
+      'button',
+      { s: 'f-kart-satir f-kasaba-satir', type: 'button', css: { '--vurgu': m.vurgu } },
+      kandilSvg('f-ks-satir-ikon'),
+      h('span', null, h('strong', { t: KASABA_KARTLARI[i]?.baslik ?? m.ad }), h('small', { t: m.ad })),
+      ikon('ileri'),
+    );
+    dg.addEventListener('click', () => ac(i));
+    return [dg];
+  });
 }
 
 /** Kıvılcım Usta ipucu satırı (kart içinde). */

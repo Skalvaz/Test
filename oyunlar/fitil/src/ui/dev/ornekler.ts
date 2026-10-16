@@ -19,10 +19,11 @@ import type {
   KazandinVM,
   Yildiz,
 } from '../tipler';
-import { DESENLER, FITILLER, MAHALLELER } from '../../app/katalog';
+import { DESENLER, FITILLER, KASABA_ISLERI, MAHALLELER } from '../../app/katalog';
+import type { KasabaIsVM, KasabaVM } from '../tipler';
 import { ROZET_SIRASI, gorevMetni } from '../metinler';
 
-export function haritaVm(simdiki = 14): HaritaVM {
+export function haritaVm(simdiki = 14, kasaba: { isler: string[]; kandil: number; yapilabilir: boolean } | null = null): HaritaVM {
   const yildizlar: Yildiz[] = [3, 3, 2, 3, 1, 2, 3, 3, 2, 1, 3, 2, 3, 3, 2, 3, 2, 1, 3, 3, 2, 3, 3, 2, 1, 3, 3, 2, 3, 3, 2, 3, 3, 3, 2, 3, 2, 3, 3, 3];
   const bolumler: BolumDugumuVM[] = Array.from({ length: 40 }, (_, i) => {
     const id = i + 1;
@@ -39,10 +40,31 @@ export function haritaVm(simdiki = 14): HaritaVM {
     seri: { gun: 5, basamak: 'cira' },
     gunluk: { acik: simdiki > 10, tamam: 1, toplam: 3 },
     defterYeni: true,
+    ...(kasaba ? { kasaba: { acik: true, kandil: kasaba.kandil, isler: kasaba.isler, yapilabilir: kasaba.yapilabilir } } : {}),
   };
 }
 
 const hedef = (o: Partial<HedefVM>): HedefVM => ({ tur: 'topla', gerekli: 10, ilerleme: 0, tamam: false, ...o });
+
+/** (Kancalar §C.1) Örnek kasaba paneli: İskele bitti, Çarşı'da 2 iş, Liman açık değil. */
+export function kasabaVm(ogretim = false): KasabaVM {
+  const durumlar: KasabaIsVM['durum'][][] = [
+    ogretim ? ['yapilabilir', 'yapilabilir', 'yapilabilir', 'yapilabilir', 'yetersiz', 'tacKilitli'] : ['yapildi', 'yapildi', 'yapildi', 'yapildi', 'yapildi', 'yapildi'],
+    ['yapildi', 'yapildi', 'yapilabilir', 'yetersiz', 'yetersiz', 'tacKilitli'],
+  ];
+  return {
+    kandil: ogretim ? 7 : 3,
+    secili: ogretim ? 0 : 1,
+    ogretim,
+    mahalleler: MAHALLELER.map((_, m) => {
+      const isler = KASABA_ISLERI.filter((x) => x.mahalle === m).map((x, i) => {
+        const d = durumlar[m]?.[i] ?? (m === 2 ? 'haritaKilitli' : 'sirada');
+        return { id: x.id, ad: x.ad, aciklama: x.aciklama, maliyet: x.maliyet, tac: x.sira === 5, durum: d, eksik: d === 'yetersiz' ? x.maliyet - (ogretim ? 7 : 3) : 0 };
+      });
+      return { indeks: m, acik: m <= 1, sirada: m <= (ogretim ? 0 : 1), yapilan: isler.filter((x) => x.durum === 'yapildi').length, isler };
+    }),
+  };
+}
 
 /** (Kancalar) Örnek mühür satırları. */
 export function muhurlerVm(durumlu = false): MuhurVM[] {

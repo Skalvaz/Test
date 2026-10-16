@@ -154,20 +154,20 @@ export function kandilHapi(n: number, sinif = ''): { el: HTMLElement; sayi: HTML
  * Küçük kandiller kaynaklardan hedefe uçar (Kazandın: yıldız/mühür başına
  * bir kandil). Her kandil vardığında `vardi(i)` çağrılır (sayaç artar).
  */
-export function kandilUcur(b: Baglam, kaynaklar: readonly Nokta[], hedef: Nokta, vardi: (i: number) => void, ara = 90): Promise<void> {
+export function kandilUcur(b: Baglam, kaynaklar: readonly Nokta[], hedef: Nokta, vardi: (i: number) => void, ara = 90, kivilcim = false): Promise<void> {
   if (b.az() || kaynaklar.length === 0) {
     kaynaklar.forEach((_, i) => vardi(i));
     return Promise.resolve();
   }
-  const sure = 520;
+  const sure = kivilcim ? 450 : 520;
   return new Promise((coz) => {
     let kalan = kaynaklar.length;
     kaynaklar.forEach((k, i) => {
       setTimeout(() => {
-        const el = h('span', { s: 'f-kandil-ucan', 'aria-hidden': 'true' }, kandilSvg());
+        const el = kivilcim ? h('span', { s: 'f-kivilcim-ucan', 'aria-hidden': 'true' }) : h('span', { s: 'f-kandil-ucan', 'aria-hidden': 'true' }, kandilSvg());
         b.ustKatman.appendChild(el);
-        const kx = (k.x + hedef.x) / 2 + ((i % 2) * 2 - 1) * 30;
-        const ky = Math.min(k.y, hedef.y) - 50;
+        const kx = (k.x + hedef.x) / 2 + ((i % 2) * 2 - 1) * (kivilcim ? 18 + (i % 3) * 14 : 30);
+        const ky = Math.min(k.y, hedef.y) - (kivilcim ? 70 : 50);
         const t0 = performance.now();
         const adim = (t: number) => {
           const u = Math.min(1, (t - t0) / sure);

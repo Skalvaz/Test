@@ -329,11 +329,11 @@
 @keyframes f-sus-yuksel { 0% { transform: translateY(0) scale(1); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(var(--dy, -900%)) scale(.4); opacity: 0; } }
 
 /* Yeni yapılan iş: durağan parçalar kutlama katmanında belirir, ışıklar sırayla yanar. */
-.f-sus-kutla { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; animation: f-sus-belir .45s .25s both; }
-.f-sus-kutla .f-sl { transform-box: fill-box; transform-origin: center; animation: f-sus-yan .5s var(--yay) calc(.55s + var(--i, 0) * 70ms) both; }
+.f-sus-kutla { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; animation: f-sus-belir .45s calc(.25s + var(--kd, 0s)) both; }
+.f-sus-kutla .f-sl { transform-box: fill-box; transform-origin: center; animation: f-sus-yan .5s var(--yay) calc(.55s + var(--kd, 0s) + var(--i, 0) * 70ms) both; }
 @keyframes f-sus-belir { from { opacity: 0; } to { opacity: 1; } }
 @keyframes f-sus-yan { from { opacity: 0; transform: scale(.2); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
-.f-sus-yeni > svg { transform-origin: 50% 0; animation: f-sus-yeni-oge .5s var(--yay) var(--gec, .6s) both; }
+.f-sus-yeni > svg { transform-origin: 50% 0; animation: f-sus-yeni-oge .5s var(--yay) calc(var(--gec, .6s) + var(--kd, 0s)) both; }
 @keyframes f-sus-yeni-oge { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
 
 /* Kutlama: ışık halkası, 12 parıltı (küçük fişek). */
@@ -412,6 +412,43 @@
 .f-tabela-ampul { position: absolute; inset: -7px; pointer-events: none; animation: f-sus-yanip 1.2s ease-in-out infinite; }
 .f-tabela-ampul.f-cift { animation-delay: -.6s; }
 .f-tabela-ampul i { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #FFF4C2; box-shadow: 0 0 6px 2px rgba(255, 200, 107, .9); }
-.f-harita-tabela.f-yeni .f-tabela-ampul i { animation: f-tabela-yan .4s var(--yay) calc(.6s + var(--i) * 60ms) both; }
+.f-harita-tabela.f-yeni .f-tabela-ampul i { animation: f-tabela-yan .4s var(--yay) calc(.6s + var(--kd, 0s) + var(--i) * 60ms) both; }
 @keyframes f-tabela-yan { from { opacity: 0; transform: scale(.2); } to { opacity: 1; transform: none; } }
 .f-harita-tabela:not(.f-gorunur) .f-tabela-ampul { animation-play-state: paused !important; }
+
+/* ─────────────── Kasaba düğmesi (KANCALAR §C.1) ───────────────
+   Alt bantta [Kasaba] + [▶ Bölüm N] aynı sırada; kasaba kapalıyken Bölüm ortalı. */
+.f-harita-oyna-sira { display: flex; justify-content: center; align-items: stretch; gap: 8px; width: 100%; pointer-events: none; }
+.f-harita-oyna-sira.f-kasabali { width: min(100%, 350px); }
+.f-harita-oyna-sira.f-kasabali .f-harita-oyna { flex: 1 1 206px; min-width: 0; padding-left: 14px; padding-right: 14px; }
+.f-harita-kasaba { position: relative; flex: 0 0 136px; min-height: 64px; flex-direction: column; gap: 0; padding: 4px 8px 6px; border-radius: 20px; pointer-events: auto; line-height: 1; }
+.f-harita-kasaba[hidden] { display: none; }
+.f-hk-ust { display: flex; align-items: center; gap: 6px; font-size: 24px; font-weight: 800; color: #FFE7C2; }
+.f-hk-kandil { width: 30px; height: 23px; }
+.f-hk-ad { margin-top: 3px; font-size: 14px; font-weight: 800; letter-spacing: .02em; color: var(--krem-2); }
+.f-hk-nokta { position: absolute; top: 6px; right: 8px; width: 12px; height: 12px; border-radius: 50%; display: none; background: radial-gradient(circle at 35% 30%, #FFF4C2, #FFB020 55%, #C86A10); box-shadow: 0 0 0 1.5px #3A1606, 0 0 8px rgba(255, 176, 32, .9); }
+.f-harita-kasaba.f-hazir .f-hk-nokta { display: block; }
+.f-harita-kasaba.f-hazir::after { content: ''; position: absolute; inset: -3px; border-radius: 22px; box-shadow: 0 0 16px 4px rgba(255, 176, 32, .55); pointer-events: none; animation: f-hk-parilti .67s ease-in-out infinite alternate; }
+@keyframes f-hk-parilti { from { opacity: .25; } to { opacity: 1; } }
+.f-az .f-harita-kasaba.f-hazir::after { animation: none; opacity: .7; }
+@media (max-width: 375px) {
+  .f-harita-oyna-sira.f-kasabali { width: min(100%, 328px); }
+  .f-harita-kasaba { flex-basis: 124px; }
+  .f-harita-oyna-sira.f-kasabali .f-harita-oyna { flex-basis: 196px; font-size: 20px; }
+}
+@media (max-height: 700px) { .f-harita-kasaba { min-height: 56px; } .f-hk-ust { font-size: 21px; } }
+
+/* Kandil kıvılcımı (Kasaba düğmesi → işin çapası) */
+.f-kivilcim-ucan { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; pointer-events: none; will-change: transform; background: radial-gradient(circle, #FFF8DC 0 22%, #FFC24A 45%, rgba(255, 140, 30, 0) 72%); }
+
+/* Haritada Kıvılcım Usta balonu (KANCALAR §C.6) */
+.f-harita-balon {
+  position: absolute; z-index: 6; display: flex; align-items: center; gap: 10px; padding: 6px 14px 6px 6px; border-radius: 22px;
+  background: linear-gradient(180deg, #FFFBEF, #FFF3D6 55%, #F2DDB0); color: #3A1606; font-size: 15px; font-weight: 800; line-height: 1.2;
+  box-shadow: 0 0 0 2px #B8742E, 0 8px 18px rgba(0, 0, 0, .45); pointer-events: auto; cursor: pointer;
+  opacity: 0; transform: translateY(8px) scale(.94); transform-origin: var(--ok, 50%) 100%; transition: opacity .2s ease, transform .35s var(--yay);
+}
+.f-harita-balon.f-giris { opacity: 1; transform: none; }
+.f-harita-balon.f-cikis { opacity: 0; transform: translateY(6px); transition-duration: .18s; }
+.f-harita-balon .f-usta { width: 42px; height: 42px; flex: none; }
+.f-hb-ok { position: absolute; left: var(--ok, 50%); bottom: -8px; width: 16px; height: 16px; margin-left: -8px; background: #F2DDB0; transform: rotate(45deg); box-shadow: 2px 2px 0 #B8742E; }

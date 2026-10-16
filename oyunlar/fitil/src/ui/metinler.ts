@@ -290,6 +290,7 @@ export const MK = {
   isHazir: 'Kasabada yapılacak iş hazır!',
   sakinIsleri: (m: number) => `${SAKIN_IYELIK[m] ?? ''} işleri`,
   mahalleSenligi: 'Mahalle şenliği',
+  mahalleSuslendi: (ad: string) => `${ad} süslendi!`,
   isEtiketi: (ad: string, maliyet: number, durum: string) => `${ad}, ${maliyet} kandil, ${durum}`,
   isDurumAdi: {
     yapildi: 'yapıldı',

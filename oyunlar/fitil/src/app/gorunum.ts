@@ -14,6 +14,7 @@ import type {
   HedefVM,
   HudVM,
   IstatistikVM,
+  KasabaVM,
   KaybettinVM,
   KazandinVM,
   MuhurVM,
@@ -287,6 +288,7 @@ export function ayarlarVM(k: Kayit, depo: StorageBackend, hareketiAzaltSistem: b
     ipuclari: a.ipuclari,
     mola: a.mola,
     defterKartlari: MAHALLELER.map((m) => k.koleksiyon.kartlar.includes(`defter:${m.id}`)),
+    kasabaKartlari: kasabaKartlari(k),
     depolama: depo,
     surum,
   };
@@ -301,8 +303,36 @@ export function defterVM(k: Kayit, sekme?: DefterVM['sekme']): DefterVM {
     tablolar: meta.tabloListesi(k).map((t) => ({ bolumId: t.bolumId, ad: bolumGetir(t.bolumId)?.ad ?? `Bölüm ${t.bolumId}`, nadirlik: NADIRLIK[t.nadirlik] })),
     motifler: meta.motifDurumlari(k).map((m) => ({ motif: m.id, acik: m.asili })),
     kartlar: MAHALLELER.map((m) => k.koleksiyon.kartlar.includes(`defter:${m.id}`)),
+    kasabaKartlari: kasabaKartlari(k),
     sekme,
   };
+}
+
+/** (Kancalar §B.5) Mahalle başına kasaba kartı (`kasaba:<mahalleId>`) açık mı. */
+export function kasabaKartlari(k: Kayit): boolean[] {
+  return MAHALLELER.map((m) => k.koleksiyon.kartlar.includes(`${meta.KASABA_KART_ONEKI}${m.id}`));
+}
+
+// ─────────────────────────── Kasaba (Kancalar §C.1) ───────────────────────────
+
+/**
+ * Kasaba paneli: 8 mahalle sekmesi, işlerin durumu (`kasabaIsDurumu`),
+ * kandil bakiyesi. Açılışta süslenen mahalle seçili. `ogretim`: hiç iş
+ * yapılmadıysa ilk "Yap"ta el animasyonu (§C.6 kasaba-ilk).
+ */
+export function kasabaVM(k: Kayit): KasabaVM {
+  const acikEn = meta.acikEnYuksek(k);
+  const suslenen = meta.suslenenMahalle(k);
+  const mahalleler = MAHALLELER.map((_, m) => {
+    const isler = meta.mahalleIsleri(m).map((is) => {
+      const d = meta.kasabaIsDurumu(k, is.id);
+      return { id: is.id, ad: is.ad, aciklama: is.aciklama, maliyet: is.maliyet, tac: is.sira === meta.mahalleIsleri(m).length - 1, durum: d.durum, eksik: d.eksik };
+    });
+    let sirada = true;
+    for (let o = 0; o < m; o++) if (!meta.mahalleSuslendi(k, o)) sirada = false;
+    return { indeks: m, acik: acikEn >= m * 5 + 1, sirada, yapilan: isler.filter((x) => x.durum === 'yapildi').length, isler };
+  });
+  return { kandil: meta.kandilBakiyesi(k), secili: suslenen >= 0 ? suslenen : MAHALLELER.length - 1, mahalleler, ogretim: (k.kasaba?.isler.length ?? 0) === 0 };
 }
 
 /**

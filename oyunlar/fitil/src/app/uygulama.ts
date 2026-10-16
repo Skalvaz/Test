@@ -46,6 +46,7 @@ import {
   gunlukVM,
   haritaVM,
   istatistikVM,
+  kasabaVM,
   mahalleOdulleri,
   nasilVM,
   takiliDesenler,
@@ -97,6 +98,10 @@ export class Uygulama {
   private bekleyenBulut: Kayit | null = null;
   /** Bellek kaydı uyarısı bu açılışta gösterildi mi. */
   private bellekUyarildi = false;
+  /** (Kancalar) Son kazancın ödülleri: haritaya dönüşte balonlar (kasaba açılışı, kandil yetti, sancak). */
+  private sonKazanc: meta.Odul[] | null = null;
+  /** Kasaba kutlaması sürerken haritada yapılan seçim (kaybolmasın). */
+  private bekleyenHaritaSecimi: HaritaSecimi | null = null;
 
   constructor(private host: HTMLElement) {
     this.stage = new Stage(host, 2);
@@ -339,10 +344,16 @@ export class Uygulama {
       const p = this.ui.harita(this.haritaModeli());
       this.molaGosterBekliyorsa();
       this.bellekUyarisi();
+      // (Kancalar §C.1, §C.6) Kıvılcım Usta balonu: kasabanın açılışı, "Kandil yetti", ilk sancak.
+      // Balon çıkan dönüşte otomatik bölüm kartı bir kez atlanır.
+      if (this.haritaBalonu()) this.otomatikKart = null;
       let secim: HaritaSecimi;
       const oto = this.otomatikKart;
       this.otomatikKart = null;
-      if (oto !== null) {
+      if (this.bekleyenHaritaSecimi) {
+        secim = this.bekleyenHaritaSecimi;
+        this.bekleyenHaritaSecimi = null;
+      } else if (oto !== null) {
         secim = await this.otomatikKartAc(p, oto);
       } else secim = await p;
       this.haritaAcik = false;
@@ -397,9 +408,91 @@ export class Uygulama {
         this.ekranAdi = 'nasil';
         await this.ui.nasilOynanir(nasilVM(this.kayit));
         return;
+      case 'kasaba':
+        await this.kasabaAkisi();
+        return;
       default:
         return;
     }
+  }
+
+  // ─────────────────────────── Kasaba (Kancalar §C.1) ───────────────────────────
+
+  /**
+   * Kasaba paneli → "Yap": iş kaydedilir, çekmece kapanır (240 ms), harita
+   * yeni modelle çizilir ve işin çapasında kutlar (kıvılcımlar, ışıklar,
+   * sakin balonu); mahalle 6/6 olduysa Mahalle şenliği ve kasaba kartı.
+   * Panel kendiliğinden yeniden açılmaz.
+   */
+  private async kasabaAkisi(): Promise<void> {
+    if (!meta.kasabaAcikMi(this.kayit)) return;
+    this.ekranAdi = 'kasaba';
+    const s = await this.ui.kasaba(kasabaVM(this.kayit));
+    if (s.tur !== 'yap') return;
+    const r = meta.kasabaIsYap(this.kayit, s.id);
+    if (!r.tamam) {
+      this.bildir('Bu iş şimdi yapılamıyor');
+      return;
+    }
+    this.kayitci.degistir(r.kayit, 0);
+    await this.bekle(240);
+    this.ekranAdi = 'kasabaKutlama';
+    this.haritaAcik = true;
+    const p = this.ui.harita(this.haritaModeli());
+    const secim = await Promise.race([p, this.ui.haritaKutlamasi().then(() => null)]);
+    if (secim && secim.tur !== 'kapandi') {
+      this.bekleyenHaritaSecimi = secim;
+      return;
+    }
+    const senlik = r.oduller.find((o): o is Extract<meta.KasabaOdulu, { tur: 'kasabaSenligi' }> => o.tur === 'kasabaSenligi');
+    if (senlik) {
+      this.ekranAdi = 'defterKarti';
+      await this.ui.defterKarti({ mahalle: senlik.mahalle, oduller: [], tur: 'kasaba' });
+    }
+  }
+
+  /**
+   * Haritada bir Kıvılcım Usta balonu gerekiyorsa gösterir (true döner):
+   *  - kasaba-ilk / kasaba-hosgeldin: kasaba açık, hiç iş yok (3. bölümün ilk
+   *    kazancı ya da göçle gelen eski oyuncu; KANCALAR §C.6);
+   *  - "Kandil yetti: {iş} yapalım mı?" (kazançtan sonra, iş başına bir kez; §C.1);
+   *  - sancak-ilk: ilk 3/3 mühürden sonra sancağın üstünde.
+   */
+  private haritaBalonu(): boolean {
+    const k = this.kayit;
+    const oduller = this.sonKazanc;
+    this.sonKazanc = null;
+    if (!meta.kasabaAcikMi(k)) return false;
+    const gorulen = k.ipuclari.gorulen;
+    const I = meta.KANCA_IPUCU;
+    const goster = (metin: string, yer: 'kasaba' | { bolumId: number }, sure: number) => {
+      void this.bekle(this.hizliKip ? 0 : 650).then(() => {
+        if (this.haritaAcik && !this.ui.modalAcik) void this.ui.haritaBalonu(metin, yer, sure);
+      });
+    };
+    if (k.ayarlar.ipuclari && k.kasaba.isler.length === 0 && !gorulen.includes(I.kasabaIlk) && !gorulen.includes(I.kasabaHosgeldin)) {
+      const ilk = !!oduller?.some((o) => o.tur === 'kasabaAcildi');
+      let y = meta.ipucuGoruldu(meta.ipucuGoruldu(k, I.kasabaIlk), I.kasabaHosgeldin);
+      const sira = meta.kasabaUyarisi(y);
+      if (sira) y = meta.kasabaUyarildi(y, sira.id);
+      this.kayitci.degistir(y, 1500);
+      goster(ilk ? MK.kasabaIlk : MK.kasabaHosgeldin(meta.kandilBakiyesi(k)), 'kasaba', 4500);
+      return true;
+    }
+    if (!oduller) return false;
+    const is = meta.kasabaUyarisi(k);
+    if (is) {
+      this.kayitci.degistir(meta.kasabaUyarildi(k, is.id), 1500);
+      goster(MK.kandilYetti(is.ad), 'kasaba', 3500);
+      return true;
+    }
+    const sancak = oduller.find((o): o is Extract<meta.Odul, { tur: 'sancak' }> => o.tur === 'sancak');
+    if (sancak && k.ayarlar.ipuclari && !gorulen.includes(I.sancakIlk)) {
+      this.kayitci.degistir(meta.ipucuGoruldu(k, I.sancakIlk), 1500);
+      goster(MK.sancakIlk, { bolumId: sancak.bolumId }, 3000);
+      return true;
+    }
+    return false;
   }
 
   private sonrakiniAyarla(v: BolumVerisi): void {
@@ -456,6 +549,7 @@ export class Uygulama {
       this.ui.hudGizle();
       if (r.tur === 'harita') return 'harita';
       await this.odulleriGoster(r.sonuc, v);
+      this.sonKazanc = r.sonuc.oduller;
       return 'sonraki';
     }
   }
@@ -613,7 +707,7 @@ export class Uygulama {
     this.ekranAdi = 'ayarlar';
     await this.ui.ayarlar(ayarlarVM(this.kayit, this.kayitci.depo.backend, sistemAzHareket(), SURUM), {
       nasilAc: () => void this.ui.nasilOynanir(nasilVM(this.kayit)),
-      defterKartiAc: (m) => void this.ui.defterKarti({ mahalle: m, oduller: [] }),
+      defterKartiAc: (m, tur) => void this.ui.defterKarti({ mahalle: m, oduller: [], tur }),
     });
     this.ekranAdi = onceki;
   }
@@ -884,6 +978,14 @@ export class Uygulama {
       kaydet: () => this.kayitci.hemenYaz(),
       /** Test: kayda üst düzey alan yaması (iç içe nesneler bir düzey birleşir), ör. stok ya da açık bölüm. */
       kayitYama: (y: Record<string, unknown>) => {
+        // Eski şemalı tam kayıt (ör. yayındaki şema 2): gerçek yükleme yolundan (göç + onarım) geçer.
+        if (typeof y.surum === 'number' && y.surum < meta.KAYIT_SURUMU) {
+          const r = meta.kayitCoz(y);
+          this.kayitci.degistir(r.kayit, 0);
+          this.tabloOnbellek.clear();
+          this.ayarlariUygula();
+          return { gocler: r.gocler, onarilan: r.onarilan };
+        }
         const k = meta.kayitKopyala(this.kayit) as unknown as Record<string, unknown>;
         for (const [a, d] of Object.entries(y)) {
           const o = k[a];

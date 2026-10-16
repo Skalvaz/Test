@@ -11,8 +11,9 @@
  * düğümden yenisine yanarak ilerler.
  */
 import { h, svg } from '../dom';
-import { ikon, alevSvg, kucukYildiz, ustaSvg } from '../ikonlar';
-import { M, sayi } from '../metinler';
+import { ikon, alevSvg, kucukYildiz, ustaSvg, kandilSvg } from '../ikonlar';
+import { M, MK, sayi } from '../metinler';
+import { kandilUcur, merkez } from '../kanca';
 import { yildizAlani } from '../sahne';
 import type { Baglam } from '../cekirdek';
 import type { HaritaSecimi, HaritaVM, BolumDugumuVM } from '../tipler';
@@ -53,6 +54,15 @@ export class HaritaEkrani {
   private gozcu: IntersectionObserver | null = null;
   private ustBar: HTMLElement | null = null;
   private oynaDg: HTMLButtonElement | null = null;
+  /** (Kancalar §C.1) Alt bantta Kasaba düğmesi (kandil + sayı); kasaba kapalıyken gizli. */
+  private kasabaDg: HTMLButtonElement | null = null;
+  private kasabaSayi: HTMLElement | null = null;
+  /** Bir önceki modeldeki kandil (iş yapılınca sayaç aşağı sayar). */
+  private oncekiKandil: number | null = null;
+  /** 3/3 mühürlü binaların sancak konumları (harita koordinatı): "sancak-ilk" balonu. */
+  private sancakYerleri = new Map<number, Nokta>();
+  private balonEl: HTMLElement | null = null;
+  private balonCoz: (() => void) | null = null;
   /** Mahalle bölge kapları (canlı süsler ve kutlama katmanı bunların içinde). */
   private bolgeKaplari: HTMLElement[] = [];
   /** Süren iş kutlaması (+ gerekiyorsa Mahalle şenliği); `kutlamaBitti` bekler. */
@@ -60,6 +70,8 @@ export class HaritaEkrani {
   private senlikIptal: (() => void) | null = null;
   /** Açılış süzülüşünün kimliği: yeni kaydırma eskisini durdurur. */
   private suzulusNo = 0;
+  /** Yeni işin ışıklarının yanma gecikmesi (s): kıvılcımlar önce uçar. */
+  private kutlamaGecikme = 0;
 
   constructor(b: Baglam) {
     this.b = b;
@@ -84,6 +96,10 @@ export class HaritaEkrani {
     // Toplu değişiklikte (bulut kaydı, kayıt kodu) kutlama yok: yalnız "Yap" ile gelen 1–2 iş kutlanır.
     const fark = oncekiIsler ? (vm.kasaba?.isler ?? []).filter((x) => !oncekiIsler.has(x)) : [];
     const yeniIsler = new Set(fark.length <= 2 ? fark : []);
+    this.oncekiKandil = onceki?.kasaba ? onceki.kasaba.kandil : null;
+    // "Yap" ile gelen iş: önce kandil kıvılcımları Kasaba düğmesinden çapaya uçar,
+    // süs onlar varınca belirir (KANCALAR §C.1); hareketi azaltta gecikme yok.
+    this.kutlamaGecikme = yeniIsler.size > 0 && !this.b.az() && !!vm.kasaba?.acik ? KIVILCIM_GECIKME : 0;
     const kutlamalar = this.ciz(vm, yeniAcilan, yeniIsler);
     this.kok!.classList.remove('f-gizli-ekran');
     if (kutlamalar.length) this.kutlamaSozu = this.kutlamalariOynat(kutlamalar, vm);
@@ -99,6 +115,7 @@ export class HaritaEkrani {
   gizle(): void {
     this.coz?.({ tur: 'kapandi' });
     this.senlikIptal?.();
+    this.balonKapat();
     if (!this.kok) return;
     this.kok.classList.add('f-gizli-ekran');
   }
@@ -129,6 +146,19 @@ export class HaritaEkrani {
       if (sonsuzSirada(v)) this.sec({ tur: 'sonsuz' });
       else this.sec({ tur: 'bolum', id: simdikiBolum(v) });
     });
+    this.kasabaSayi = h('span', { s: 'f-sayi', t: '0' });
+    this.kasabaDg = h(
+      'button',
+      { s: 'f-dg f-dg-ikincil f-harita-kasaba', type: 'button', hidden: '' },
+      h('span', { s: 'f-hk-ust' }, kandilSvg('f-hk-kandil'), this.kasabaSayi),
+      h('span', { s: 'f-hk-ad', t: MK.kasaba }),
+      h('span', { s: 'f-hk-nokta', 'aria-hidden': 'true' }),
+    ) as HTMLButtonElement;
+    this.kasabaDg.addEventListener('click', () => {
+      this.balonKapat();
+      this.sec({ tur: 'kasaba' });
+    });
+    const oynaSira = h('div', { s: 'f-harita-oyna-sira' }, this.kasabaDg, this.oynaDg);
     const alt = h('nav', { s: 'f-harita-alt', 'aria-label': 'Menü' });
     const kok = h(
       'div',
@@ -136,7 +166,7 @@ export class HaritaEkrani {
       h('div', { s: 'f-harita-arka', 'aria-hidden': 'true' }, yildizAlani('harita-arka', 140, 0)),
       kaydir,
       this.ustBar,
-      h('div', { s: 'f-harita-alt-kap' }, this.oynaDg, alt),
+      h('div', { s: 'f-harita-alt-kap' }, oynaSira, alt),
     );
     this.b.ekranKatmani.appendChild(kok);
     this.kok = kok;
@@ -158,6 +188,9 @@ export class HaritaEkrani {
     const icerik = this.icerik!;
     this.gozcu?.disconnect();
     icerik.replaceChildren();
+    this.sancakYerleri.clear();
+    // Yeni işin ışıkları kıvılcımlar varınca yansın (CSS gecikmesi).
+    icerik.style.setProperty('--kd', `${this.kutlamaGecikme.toFixed(2)}s`);
     const bolumler: BolumDugumuVM[] = Array.from({ length: 40 }, (_, i) => vm.bolumler.find((x) => x.id === i + 1) ?? { id: i + 1, yildiz: 0, durum: 'kilitli' as const });
     const simdiki = simdikiBolum(vm);
 
@@ -179,6 +212,7 @@ export class HaritaEkrani {
       const sus: SusSecenek | undefined = kasabaAcik ? { yapilan, hayalet: m === suslenen, yeni: yeniIsler } : undefined;
       const c = bolgeCiz(m, bolumler, motifMahalle.get(m) ?? [], sus);
       catilar.push(...c.catilar);
+      for (const x of c.sancaklar) this.sancakYerleri.set(x.id, { x: x.x, y: x.y });
       canlilar.set(m, [...c.canli, ...c.sancaklar.map((x) => sancakOgesi(x.id, x, m))]);
       if (c.kutla.length) kutla.set(m, c.kutla);
       // Bu mahallenin alt düğümlerinden çıkan fitil parçaları (k = id; id → id+1).
@@ -395,6 +429,18 @@ export class HaritaEkrani {
       this.sekme(M.istatistik, 'kupa', { tur: 'istatistik' }, !!vm.rozetYeni),
       this.sekme(M.ayarlar, 'ayar', { tur: 'ayarlar' }),
     );
+    // (Kancalar §C.1) Kasaba düğmesi: kandil ikonu + sayı + "Kasaba"; yapılabilir iş varsa amber nokta.
+    const k = vm.kasaba;
+    const dg = this.kasabaDg!;
+    dg.hidden = !k?.acik;
+    dg.parentElement?.classList.toggle('f-kasabali', !!k?.acik);
+    if (k?.acik) {
+      dg.classList.toggle('f-hazir', k.yapilabilir);
+      dg.setAttribute('aria-label', MK.kasabaDugme(k.kandil, k.yapilabilir));
+      // İş yapıldıysa sayaç kıvılcımlarla birlikte aşağı sayar (kutlamalariOynat).
+      const bas = this.kutlamaGecikme > 0 && this.oncekiKandil !== null && this.oncekiKandil > k.kandil ? this.oncekiKandil : k.kandil;
+      this.kasabaSayi!.textContent = String(bas);
+    }
     const hepsiBitti = vm.bolumler.length >= 40 && vm.bolumler.every((x) => x.durum === 'acik');
     const etiket = sonsuzSirada(vm) ? `${M.sonsuzSenlik} ${vm.sonsuz!.siradaki}` : hepsiBitti ? `${M.bolum} 40` : `${M.bolum} ${simdiki}`;
     this.oynaDg!.replaceChildren(ikon('oynat'), h('span', { t: etiket }));
@@ -448,11 +494,19 @@ export class HaritaEkrani {
    */
   private async kutlamalariOynat(liste: KutlamaBilgisi[], vm: HaritaVM): Promise<void> {
     const az = this.b.az();
+    let ilk = true;
     for (const k of liste) {
       if (this.vm !== vm) return;
       this.kaydirYere(k.capa, true);
       const kap = this.bolgeKaplari[k.m];
       if (!kap) continue;
+      // Kandil kıvılcımları: harita çapaya kaydıktan sonra Kasaba düğmesinden uçar (§C.1).
+      if (ilk && this.kutlamaGecikme > 0) {
+        ilk = false;
+        await this.bekle(480);
+        if (this.vm !== vm) return;
+        await this.kivilcimUcur(k, vm);
+      }
       const ust = bolgeUst(k.m);
       const yer = { left: yuzdeX(k.capa.x), top: `${(((k.capa.y - ust) / BOLGE_H) * 100).toFixed(3)}%` };
       // Kutlama katmanı (fişek, halka, parıltı) — ışıklar yanmaya başlayınca.
@@ -462,8 +516,8 @@ export class HaritaEkrani {
       ]);
       kap.appendChild(fisek);
       const is = KASABA_ISLERI.find((x) => x.id === k.id);
-      await this.bekle(az ? 0 : 520);
-      this.b.ses('parca');
+      await this.bekle(az || this.kutlamaGecikme > 0 ? 0 : 520);
+      this.b.ses('kasaba');
       this.b.titret(20);
       if (is) {
         this.b.duyur(`${is.ad} yapıldı`);
@@ -483,6 +537,107 @@ export class HaritaEkrani {
 
   private bekle(ms: number): Promise<void> {
     return new Promise((r) => setTimeout(r, ms));
+  }
+
+  /** Bir işin çapasının ekrandaki yeri (arayüz köküne göre CSS px). */
+  private capaEkranda(m: number, capa: Nokta): Nokta | null {
+    const kap = this.bolgeKaplari[m];
+    if (!kap) return null;
+    const r = kap.getBoundingClientRect();
+    const kr = this.b.kok.getBoundingClientRect();
+    return { x: r.left - kr.left + (capa.x / HARITA_W) * r.width, y: r.top - kr.top + ((capa.y - bolgeUst(m)) / BOLGE_H) * r.height };
+  }
+
+  /**
+   * Kasaba düğmesinden çapaya min(maliyet, 6) kandil kıvılcımı (450 ms,
+   * 60 ms arayla); her biri varınca düğmedeki sayaç aşağı sayar.
+   */
+  private async kivilcimUcur(k: KutlamaBilgisi, vm: HaritaVM): Promise<void> {
+    const dg = this.kasabaDg;
+    const sy = this.kasabaSayi;
+    const hedef = this.capaEkranda(k.m, k.capa);
+    const is = KASABA_ISLERI.find((x) => x.id === k.id);
+    const son = vm.kasaba?.kandil ?? 0;
+    if (!dg || dg.hidden || !hedef || !sy || !is) {
+      if (sy) sy.textContent = String(son);
+      return;
+    }
+    const kaynak = merkez(dg.querySelector('.f-hk-kandil') ?? dg, this.b.kok);
+    const n = Math.max(1, Math.min(6, is.maliyet));
+    const bas = Number(sy.textContent) || son;
+    let i = 0;
+    await kandilUcur(this.b, Array.from({ length: n }, () => kaynak), hedef, () => {
+      i++;
+      sy.textContent = String(Math.max(son, Math.round(bas - ((bas - son) * i) / n)));
+    }, 60, true);
+    sy.textContent = String(son);
+  }
+
+  // ─────────────────────── Balon (Kıvılcım Usta) ───────────────────────
+
+  /**
+   * Haritada Kıvılcım Usta balonu (KANCALAR §C.6): Kasaba düğmesinin ya da
+   * bir bölümün sancağının üstünde. Dokununca ya da `sure` ms sonra kapanır.
+   */
+  balon(metin: string, yer: 'kasaba' | { bolumId: number }, sure = 3500): Promise<void> {
+    this.balonKapat();
+    const kok = this.kok;
+    if (!kok) return Promise.resolve();
+    const el = h('div', { s: 'f-harita-balon', role: 'status', tabindex: '0' }, ustaSvg(), h('span', { t: metin }), h('i', { s: 'f-hb-ok', 'aria-hidden': 'true' }));
+    kok.appendChild(el);
+    this.balonEl = el;
+    this.b.duyur(metin);
+    const kr = kok.getBoundingClientRect();
+    const genislik = Math.min(330, kr.width - 24);
+    el.style.width = `${genislik}px`;
+    let okX = genislik / 2;
+    if (yer === 'kasaba' && this.kasabaDg && !this.kasabaDg.hidden) {
+      const r = this.kasabaDg.getBoundingClientRect();
+      const cx = r.left - kr.left + r.width / 2;
+      const sol = Math.max(12, Math.min(kr.width - genislik - 12, cx - 40));
+      el.style.left = `${sol}px`;
+      el.style.bottom = `${Math.round(kr.bottom - r.top + 12)}px`;
+      okX = cx - sol;
+    } else if (yer !== 'kasaba' && this.icerik) {
+      const p = this.sancakYerleri.get(yer.bolumId) ?? dugumKonumu(yer.bolumId);
+      const ic = this.icerik.getBoundingClientRect();
+      const x = ic.left - kr.left + (p.x / HARITA_W) * ic.width;
+      const y = ic.top - kr.top + (p.y / HARITA_H) * ic.height;
+      const sol = Math.max(12, Math.min(kr.width - genislik - 12, x - genislik / 2));
+      el.style.left = `${sol}px`;
+      el.style.bottom = `${Math.round(kr.height - y + 18)}px`;
+      okX = x - sol;
+    } else {
+      el.style.left = `${(kr.width - genislik) / 2}px`;
+      el.style.bottom = '190px';
+    }
+    el.style.setProperty('--ok', `${Math.max(18, Math.min(genislik - 18, okX)).toFixed(0)}px`);
+    const kapat = () => this.balonKapat();
+    el.addEventListener('pointerup', kapat);
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') kapat();
+    });
+    requestAnimationFrame(() => el.classList.add('f-giris'));
+    const t = sure > 0 ? setTimeout(kapat, sure) : null;
+    return new Promise((r) => {
+      this.balonCoz = () => {
+        if (t) clearTimeout(t);
+        r();
+      };
+    });
+  }
+
+  balonKapat(): void {
+    const el = this.balonEl;
+    this.balonEl = null;
+    if (el) {
+      el.classList.remove('f-giris');
+      el.classList.add('f-cikis');
+      setTimeout(() => el.remove(), 220);
+    }
+    const c = this.balonCoz;
+    this.balonCoz = null;
+    c?.();
   }
 
   /**
@@ -613,6 +768,9 @@ export function simdikiBolum(vm: HaritaVM): number {
   return Math.min(40, son + 1);
 }
 
+
+/** Yeni işin ışıkları, kıvılcımlar çapaya varınca yansın (s): kaydırma 0,48 + uçuş ~0,75. */
+const KIVILCIM_GECIKME = 1.25;
 
 interface KutlamaBilgisi extends KutlamaCizimi {
   m: number;

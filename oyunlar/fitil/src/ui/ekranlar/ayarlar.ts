@@ -7,13 +7,13 @@ import { h, panoyaKopyala, metniSec, sistemAzHareket } from '../dom';
 import { ikon, kapsulSvg, tanimlariKur } from '../ikonlar';
 import { M, DEFTER_KARTLARI } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
-import { satir } from './ortak';
+import { satir, kasabaKartSatirlari } from './ortak';
 import { MAHALLELER } from '../../app/katalog';
 import type { AyarDegisikligi, AyarlarVM, MolaDakika, Palet } from '../tipler';
 
 export interface AyarlarEk {
   nasilAc?: () => void;
-  defterKartiAc?: (mahalle: number) => void;
+  defterKartiAc?: (mahalle: number, tur?: 'defter' | 'kasaba') => void;
   /** Palet/hareket önizlemesini Arayuz'a anında uygula. */
   yerelUygula?: (d: AyarDegisikligi) => void;
 }
@@ -179,6 +179,7 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
         });
         return dg;
       }),
+      kasabaKartSatirlari(d.kasabaKartlari, (i) => ek.defterKartiAc?.(i, 'kasaba')),
     ),
   );
 

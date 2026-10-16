@@ -344,6 +344,8 @@ export interface AyarlarVM {
   mola: MolaDakika;
   /** Mahalle başına Fener Koyu Defteri kartı açık mı (8). */
   defterKartlari: boolean[];
+  /** (Kancalar §B.5) Mahalle başına kasaba kartı açık mı (8). */
+  kasabaKartlari?: boolean[];
   depolama: 'bulut' | 'tarayici' | 'bellek';
   surum: string;
 }
@@ -373,6 +375,8 @@ export interface DefterVM {
   motifler: { motif: Motif; acik: boolean }[];
   /** Mahalle başına defter kartı açık mı (8). */
   kartlar: boolean[];
+  /** (Kancalar §B.5) Mahalle başına kasaba kartı (sakinin mektubu) açık mı (8). */
+  kasabaKartlari?: boolean[];
   /** Açılışta seçili sekme. */
   sekme?: DefterSekmesi;
 }
@@ -433,6 +437,8 @@ export interface DefterKartiVM {
   mahalle: number;
   /** Mahalle ödülleri (her türden 1 güçlendirici). */
   oduller: OdulVM[];
+  /** (Kancalar §B.5) `kasaba`: mahallenin 6 işi bitince sakinin mektubu. Varsayılan `defter`. */
+  tur?: 'defter' | 'kasaba';
 }
 
 export type MolaSecimi = 'mola' | 'devam';

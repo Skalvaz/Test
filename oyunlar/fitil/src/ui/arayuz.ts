@@ -39,6 +39,7 @@ import { defterEkrani } from './ekranlar/defter';
 import { gunlukEkrani } from './ekranlar/gunluk';
 import { istatistikEkrani } from './ekranlar/istatistik';
 import { molaEkrani, defterKartiEkrani, sandikEkrani } from './ekranlar/kucukler';
+import { kasabaEkrani } from './ekranlar/kasaba';
 import { beklemeEkrani, eksenSecici, type BeklemeTutamak } from './ekranlar/ek';
 import type { Eksen } from '../core/types';
 import { muhurUcur, muhurEtiketi } from './kanca';
@@ -60,6 +61,8 @@ import type {
   HaritaVM,
   HudVM,
   IstatistikVM,
+  KasabaSecimi,
+  KasabaVM,
   KaybettinSecimi,
   KaybettinVM,
   KazandinVM,
@@ -308,6 +311,19 @@ export class Arayuz {
     return this.haritaEkrani.kutlamaBitti();
   }
 
+  /**
+   * (Kancalar §C.1) Kasaba paneli: alttan çekmece. "Yap" seçilince çekmece
+   * kapanır (240 ms); uygulama işi kaydedip `harita(yeniVm)` ile kutlar.
+   */
+  kasaba(vm: KasabaVM): Promise<KasabaSecimi> {
+    return this.ac(kasabaEkrani(this.b, vm));
+  }
+
+  /** (Kancalar §C.6) Haritada Kıvılcım Usta balonu: Kasaba düğmesinin ya da bir sancağın üstünde. */
+  haritaBalonu(metin: string, yer: 'kasaba' | { bolumId: number }, sure = 3500): Promise<void> {
+    return this.haritaEkrani.balon(metin, yer, sure);
+  }
+
   /** (Kancalar §B.5) Haritada Mahalle şenliği (6 sn, dokunuş atlar). */
   haritaSenligi(mahalle: number): Promise<void> {
     return this.haritaEkrani.senlik(mahalle);
@@ -337,7 +353,7 @@ export class Arayuz {
     return this.ac(
       ayarlarEkrani(this.b, vm, {
         nasilAc: ek.nasilAc,
-        defterKartiAc: ek.defterKartiAc ?? ((m) => void this.defterKarti({ mahalle: m, oduller: [] })),
+        defterKartiAc: ek.defterKartiAc ?? ((m, tur) => void this.defterKarti({ mahalle: m, oduller: [], tur })),
         yerelUygula,
       }),
     );
@@ -348,7 +364,7 @@ export class Arayuz {
   }
 
   defter(vm: DefterVM): Promise<void> {
-    return this.ac(defterEkrani(this.b, vm, { defterKartiAc: (m) => void this.defterKarti({ mahalle: m, oduller: [] }) }));
+    return this.ac(defterEkrani(this.b, vm, { defterKartiAc: (m, tur) => void this.defterKarti({ mahalle: m, oduller: [], tur }) }));
   }
 
   /** Mahalle tamamlanınca Fener Koyu Defteri kartı (ve ödülleri). */

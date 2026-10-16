@@ -158,3 +158,69 @@
   .f-kz.f-kancali .f-kz-yildiz { width: 52px; height: 52px; }
   .f-kz.f-kancali .f-kz-yildiz.f-y1 { width: 64px; height: 64px; }
 }
+
+/* ── Kasaba paneli (§C.1): alttan çekmece, yükseklik min(%70, 520 px) */
+.f-kasaba-modal { padding-bottom: 0; padding-left: calc(var(--guv-sol) + 6px); padding-right: calc(var(--guv-sag) + 6px); }
+.f-kasaba-modal .f-kart { width: min(100%, 480px); height: min(70%, 520px); padding: 5px 5px 0; border-radius: 26px 26px 0 0; transform: translateY(100%); transition: opacity .15s ease, transform .3s cubic-bezier(.2, .9, .3, 1); }
+.f-kasaba-modal.f-giris .f-kart { transform: none; }
+.f-kasaba-modal.f-cikis .f-kart { transform: translateY(100%); transition: transform .24s ease-in, opacity .24s ease-in; }
+.f-kasaba-modal .f-kart-ic { padding: 0; border-radius: 21px 21px 0 0; overflow: hidden; display: flex; flex-direction: column; }
+.f-ks { display: flex; flex-direction: column; min-height: 0; height: 100%; padding-bottom: var(--guv-alt); }
+.f-ks-baslik { flex: none; height: 48px; display: flex; align-items: center; gap: 8px; padding: 2px 6px 0 14px; }
+.f-ks-ad { flex: 1; min-width: 0; font-size: 18px; font-weight: 800; color: var(--krem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-ks-kandil { min-height: 30px; font-size: 17px; }
+.f-ks-kapat { width: 44px; height: 44px; flex: none; }
+.f-ks-kapat .f-ikon { width: 20px; height: 20px; }
+.f-ks-sekmeler { flex: none; height: 40px; display: flex; gap: 6px; padding: 2px 12px 4px; overflow: auto hidden; scrollbar-width: none; touch-action: pan-x; overscroll-behavior: contain; }
+.f-ks-sekmeler::-webkit-scrollbar { display: none; }
+.f-ks-sekme {
+  flex: none; display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 11px 1px 9px; border: 0; border-radius: 999px;
+  font: inherit; font-size: 14px; font-weight: 800; color: var(--krem-2); background: rgba(0, 0, 0, .28); box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, .3); cursor: pointer;
+}
+.f-ks-sekme small { font-size: 12px; opacity: .85; }
+.f-ks-sekme .f-ikon { width: 14px; height: 14px; }
+.f-ks-nokta { width: 9px; height: 9px; border-radius: 50%; background: var(--vurgu); box-shadow: 0 0 6px var(--vurgu); }
+.f-ks-sekme.f-secili { color: #3A1606; background: linear-gradient(#FFE7A2, #F2C66D 55%, #D9A441); box-shadow: 0 0 0 1.5px #7A3E1C; }
+.f-ks-sekme.f-secili .f-ks-nokta { box-shadow: 0 0 0 1.5px #3A1606; }
+.f-ks-sekme.f-kilitli { opacity: .55; }
+.f-ks-sekme.f-tamam:not(.f-secili) { box-shadow: inset 0 0 0 1.5px #FFD15C; color: #FFE3A0; }
+.f-ks-sakin { flex: none; height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 16px; font-size: 14px; font-weight: 800; color: var(--pirinc-acik); }
+.f-ks-sakin > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.f-ks-ilerleme { flex: none; display: flex; gap: 3px; }
+.f-ks-ilerleme i { width: 14px; height: 8px; border-radius: 3px; background: rgba(0, 0, 0, .4); box-shadow: inset 0 0 0 1px rgba(217, 164, 65, .35); }
+.f-ks-ilerleme i.f-dolu { background: linear-gradient(#FFE3A0, var(--vurgu)); box-shadow: 0 0 6px rgba(255, 200, 107, .5); }
+.f-ks-liste { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 5px; padding: 2px 10px 6px; overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; }
+.f-ks-is { position: relative; flex: none; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 8px 6px 7px; border-radius: 16px; background: rgba(0, 0, 0, .24); box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, .22); }
+.f-ks-is.f-tac { box-shadow: inset 0 0 0 1.5px rgba(255, 209, 92, .55); background: linear-gradient(90deg, rgba(255, 190, 90, .12), rgba(0, 0, 0, .22)); }
+.f-ks-is.f-d-yapildi { background: rgba(40, 90, 50, .18); box-shadow: inset 0 0 0 1.5px rgba(124, 255, 178, .3); }
+.f-ks-is.f-d-tacKilitli, .f-ks-is.f-d-sirada, .f-ks-is.f-d-haritaKilitli, .f-ks-is.f-d-kasabaKapali { opacity: .72; }
+.f-ks-ikon { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #2E2040, #140C1E 80%); box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, .4); }
+.f-ks-resim { width: 36px; height: 36px; display: block; overflow: visible; }
+.f-ks-metin { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.f-ks-metin strong { font-size: 16px; font-weight: 800; line-height: 1.1; color: var(--krem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-ks-metin small { font-size: 13px; font-weight: 700; line-height: 1.2; color: var(--krem-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-ks-durum { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; max-width: 108px; text-align: right; font-size: 13px; font-weight: 800; }
+.f-ks-durum small { font-size: 12px; font-weight: 800; line-height: 1.15; color: var(--krem-2); }
+.f-ks-yapildi { flex-direction: row; align-items: center; gap: 3px; color: #7CFFB2; }
+.f-ks-yapildi .f-ikon { width: 18px; height: 18px; }
+.f-ks-kilit { color: var(--krem-2); }
+.f-ks-kilit .f-ikon { width: 16px; height: 16px; }
+.f-ks-yetersiz small { color: #FF9A84; }
+.f-ks-bedel { display: inline-flex; align-items: center; gap: 3px; }
+.f-ks-bedel .f-kandil-svg { width: 22px; height: 17px; }
+.f-ks-bedel.f-sonuk { opacity: .6; filter: grayscale(.4); }
+.f-ks-yap { position: relative; flex: none; min-height: 44px; min-width: 88px; padding: 2px 12px 4px; border-radius: 14px; font-size: 16px; gap: 6px; }
+.f-ks-yap .f-ks-bedel { font-size: 15px; }
+.f-ks-yap .f-kandil-svg { width: 20px; height: 15px; }
+.f-ks-el { position: absolute; right: -6px; bottom: -16px; width: 34px; height: 34px; color: #FFF3D6; pointer-events: none; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .6)); animation: f-ks-el 1.1s ease-in-out infinite; }
+.f-ks-el .f-ikon { width: 34px; height: 34px; }
+@keyframes f-ks-el { 0%, 100% { transform: translate(6px, 8px) rotate(-12deg); } 45% { transform: translate(0, 0) rotate(-12deg) scale(.92); } 60% { transform: translate(0, 0) rotate(-12deg) scale(1); } }
+.f-az .f-ks-el { animation: none; }
+@media (max-width: 370px) {
+  .f-ks-ad { font-size: 16px; }
+  .f-ks-metin strong { font-size: 15px; }
+  .f-ks-yap { min-width: 80px; padding: 2px 10px 4px; }
+}
+
+/* Defter / Ayarlar: kasaba kartı satırı (kandil ikonu) */
+.f-kasaba-satir .f-ks-satir-ikon { width: 26px; height: 20px; flex: none; }

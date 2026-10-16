@@ -4,7 +4,7 @@
  */
 import { h, svg, bekle as bekleme } from '../dom';
 import { ustaSvg, sandikSvg } from '../ikonlar';
-import { M, DEFTER_KARTLARI } from '../metinler';
+import { M, MK, DEFTER_KARTLARI, KASABA_KARTLARI } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { odulOgesi } from './ortak';
 import { GOKYUZU, MAHALLELER } from '../../app/katalog';
@@ -29,7 +29,8 @@ export function defterKartiEkrani(b: Baglam, vm: DefterKartiVM): { soz: Promise<
   const { soz, sec } = secimSozu<void>();
   const m = MAHALLELER[vm.mahalle] ?? MAHALLELER[0];
   const g = GOKYUZU[m.gokyuzu];
-  const kart = DEFTER_KARTLARI[vm.mahalle] ?? DEFTER_KARTLARI[0];
+  const kasaba = vm.tur === 'kasaba';
+  const kart = (kasaba ? KASABA_KARTLARI[vm.mahalle] : DEFTER_KARTLARI[vm.mahalle]) ?? DEFTER_KARTLARI[0];
   const kapak = h(
     'div',
     { s: 'f-dk-kapak', css: { '--ust': g.ust, '--alt': g.alt, '--vurgu': m.vurgu } },
@@ -44,7 +45,7 @@ export function defterKartiEkrani(b: Baglam, vm: DefterKartiVM): { soz: Promise<
     'div',
     { s: 'f-dk' },
     kapak,
-    h('span', { s: 'f-etiket', t: M.defterBaslik }),
+    h('span', { s: 'f-etiket', t: kasaba ? MK.kasabaBaslik : M.defterBaslik }),
     h('h2', { s: 'f-baslik', t: kart.baslik }),
     h('p', { s: 'f-govde f-dk-metin', t: kart.metin }),
     vm.oduller.length ? h('div', { s: 'f-dk-oduller' }, vm.oduller.map((o, i) => odulOgesi(o, 200 + i * 120))) : null,
@@ -53,7 +54,7 @@ export function defterKartiEkrani(b: Baglam, vm: DefterKartiVM): { soz: Promise<
   const kapat = () => {
     if (sec()) t.kapat(true);
   };
-  const t = b.modalAc({ icerik, serit: M.mahalleTamam(m.ad), seritTur: 'altin', onIptal: kapat, sinif: 'f-defter-karti', ses: 'parca' });
+  const t = b.modalAc({ icerik, serit: kasaba ? MK.mahalleSuslendi(m.ad) : M.mahalleTamam(m.ad), seritTur: 'altin', onIptal: kapat, sinif: `f-defter-karti${kasaba ? ' f-kasaba-karti' : ''}`, ses: 'parca' });
   return { soz, kapat };
 }
 

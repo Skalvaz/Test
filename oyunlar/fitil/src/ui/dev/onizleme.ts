@@ -14,6 +14,7 @@ import { Arayuz } from '../arayuz';
 import { kapsulYolu, kapsulRenkleri } from '../ikonlar';
 import { Rng } from '../../platform/rng';
 import * as O from './ornekler';
+import { KASABA_ISLERI } from '../../app/katalog';
 import type { Kenarlar, Yerlesim } from '../yerlesim';
 import type { HaritaSecimi, Palet } from '../tipler';
 
@@ -213,7 +214,8 @@ async function oyunSahnesi(varyant = ''): Promise<void> {
 async function haritaSahnesi(): Promise<void> {
   tahtaGoster = false;
   sahneCiz(ui.yerlesim());
-  const s: HaritaSecimi = await ui.harita(O.haritaVm(Number(p.get('simdiki') ?? 14)));
+  const kasaba = p.get('kasaba');
+  const s: HaritaSecimi = await ui.harita(O.haritaVm(Number(p.get('simdiki') ?? 14), kasaba ? { kandil: 7, isler: kasaba === 'bos' ? [] : KASABA_ISLERI.filter((x) => x.mahalle === 0 || x.id === 'carsi.dukkanKandilleri').map((x) => x.id), yapilabilir: kasaba !== 'yok' } : null));
   log('harita seçimi', s);
 }
 
@@ -257,6 +259,18 @@ async function calistir(): Promise<void> {
       setTimeout(() => void ui.muhurTuttu(1, 'kalfa', { x: y.tahta.x + y.tahta.w * 0.6, y: y.tahta.y + y.tahta.h * 0.4 }), bekle);
       break;
     }
+    case 'kasaba':
+      void haritaSahnesi();
+      log('kasaba', await ui.kasaba(O.kasabaVm(p.get('ogretim') === '1')));
+      break;
+    case 'haritaBalon':
+      void haritaSahnesi();
+      setTimeout(() => void ui.haritaBalonu(p.get('m') ?? 'Kandil yetti: Kemer çelengi yapalım mı?', 'kasaba', 0), 900);
+      break;
+    case 'kasabaKarti':
+      void haritaSahnesi();
+      await ui.defterKarti({ mahalle: Number(p.get('m') ?? 0), oduller: [], tur: 'kasaba' });
+      break;
     case 'secim':
       await oyunSahnesi('koruk');
       ui.secimKipi('Isıtılacak merkezi seç', 'koruk');
