@@ -46,5 +46,10 @@
   "botBandi": [92, 100],
   "yildizEsikleri": [12800, 17400],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Altı Renk!"
+  "sonrakiTanitim": "Sıradaki: Altı Renk!",
+  "muhurler": [
+    {"olcu": "doseme", "kapsam": "hamle", "enAz": 11},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 20, "eylem": "koruk", "sans": true},
+    {"olcu": "halka", "kapsam": "oyun", "enAz": 4}
+  ]
 }

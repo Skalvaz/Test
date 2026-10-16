@@ -43,5 +43,10 @@
   90
  ],
  "yildizEsikleri": [6300, 8000],
- "sonrakiTanitim": "Sıradaki: Bacalar!"
+ "sonrakiTanitim": "Sıradaki: Bacalar!",
+  "muhurler": [
+    {"olcu": "is", "kapsam": "hamle", "enAz": 2},
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 3, "ozel": "roket"},
+    {"olcu": "is", "kapsam": "hamle", "enAz": 3}
+  ]
 }

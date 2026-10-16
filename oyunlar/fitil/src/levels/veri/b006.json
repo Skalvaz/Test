@@ -38,5 +38,10 @@
   "botBandi": [92, 100],
   "yildizEsikleri": [6400, 9500],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Islak Barut!"
+  "sonrakiTanitim": "Sıradaki: Islak Barut!",
+  "muhurler": [
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 1, "ozel": "kasimpati"},
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 3, "ozel": "kasimpati"},
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 14}
+  ]
 }

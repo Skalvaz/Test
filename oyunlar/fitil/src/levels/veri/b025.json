@@ -36,5 +36,10 @@
   "botBandi": [65, 85],
   "yildizEsikleri": [9100, 11200],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Lale Deseni!"
+  "sonrakiTanitim": "Sıradaki: Lale Deseni!",
+  "muhurler": [
+    {"olcu": "kaya", "kapsam": "hamle", "enAz": 2},
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 8},
+    {"olcu": "halka", "kapsam": "oyun", "enAz": 3}
+  ]
 }

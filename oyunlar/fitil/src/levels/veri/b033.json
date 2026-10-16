@@ -163,5 +163,10 @@
   90
  ],
  "yildizEsikleri": [8400, 10100],
- "sonrakiTanitim": "Sıradaki: Kuru Gece II!"
+ "sonrakiTanitim": "Sıradaki: Kuru Gece II!",
+  "muhurler": [
+    {"olcu": "kafes", "kapsam": "hamle", "enAz": 2},
+    {"olcu": "doseme", "kapsam": "hamle", "enAz": 6},
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 8}
+  ]
 }

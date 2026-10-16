@@ -34,5 +34,10 @@
   "botBandi": [92, 100],
   "yildizEsikleri": [6600, 9900],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Liman Fırtınası!"
+  "sonrakiTanitim": "Sıradaki: Liman Fırtınası!",
+  "muhurler": [
+    {"olcu": "kombo", "kapsam": "oyun", "enAz": 1},
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 5, "ozel": "roket"},
+    {"olcu": "ozelAtes", "kapsam": "hamle", "enAz": 3}
+  ]
 }

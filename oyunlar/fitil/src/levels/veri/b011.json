@@ -32,5 +32,10 @@
   "botBandi": [92, 100],
   "yildizEsikleri": [8100, 11700],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Yıldız Topu!"
+  "sonrakiTanitim": "Sıradaki: Yıldız Topu!",
+  "muhurler": [
+    {"olcu": "fener", "kapsam": "oyun", "enAz": 3},
+    {"olcu": "caprazRoket", "kapsam": "oyun", "enAz": 2},
+    {"olcu": "zincir", "kapsam": "hamle", "enAz": 12}
+  ]
 }

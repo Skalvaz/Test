@@ -119,5 +119,10 @@
     3,
     4,
     3
+  ],
+  "muhurler": [
+    {"olcu": "kafes", "kapsam": "hamle", "enAz": 2},
+    {"olcu": "nesil", "kapsam": "hamle", "enAz": 6, "sans": true},
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 5}
   ]
 }

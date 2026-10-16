@@ -38,5 +38,10 @@
   "botBandi": [92, 100],
   "yildizEsikleri": [6500, 10500],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Su Kovası!"
+  "sonrakiTanitim": "Sıradaki: Su Kovası!",
+  "muhurler": [
+    {"olcu": "koruk", "kapsam": "oyun", "enAz": 1},
+    {"olcu": "koruk", "kapsam": "oyun", "enAz": 3},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 5, "eylem": "koruk", "sans": true}
+  ]
 }

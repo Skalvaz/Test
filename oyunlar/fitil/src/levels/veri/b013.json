@@ -28,5 +28,10 @@
   "botBandi": [92, 100],
   "yildizEsikleri": [6900, 10800],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Çifte Roket!"
+  "sonrakiTanitim": "Sıradaki: Çifte Roket!",
+  "muhurler": [
+    {"olcu": "kaya", "kapsam": "hamle", "enAz": 3},
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 1, "ozel": "yildiz"},
+    {"olcu": "zincir", "kapsam": "hamle", "enAz": 14}
+  ]
 }

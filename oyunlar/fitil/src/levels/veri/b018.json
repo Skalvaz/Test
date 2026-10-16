@@ -28,5 +28,10 @@
   "botBandi": [80, 90],
   "yildizEsikleri": [7700, 11200],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Kuru Gece!"
+  "sonrakiTanitim": "Sıradaki: Kuru Gece!",
+  "muhurler": [
+    {"olcu": "kafes", "kapsam": "hamle", "enAz": 2},
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 4, "ozel": "roket"},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 17, "eylem": "koruk", "sans": true}
+  ]
 }

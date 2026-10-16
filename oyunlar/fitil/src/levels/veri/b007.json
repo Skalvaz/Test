@@ -27,5 +27,10 @@
   "botBandi": [92, 100],
   "yildizEsikleri": [8100, 11000],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Halka!"
+  "sonrakiTanitim": "Sıradaki: Halka!",
+  "muhurler": [
+    {"olcu": "kurutma", "kapsam": "hamle", "enAz": 3},
+    {"olcu": "zincir", "kapsam": "hamle", "enAz": 11},
+    {"olcu": "kurutma", "kapsam": "hamle", "enAz": 5}
+  ]
 }

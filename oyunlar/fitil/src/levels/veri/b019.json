@@ -30,5 +30,10 @@
   "botBandi": [90, 100],
   "yildizEsikleri": [18900, 22000],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Gece Yarısı!"
+  "sonrakiTanitim": "Sıradaki: Gece Yarısı!",
+  "muhurler": [
+    {"olcu": "R", "kapsam": "hamle", "enAz": 18, "eylem": "koruk"},
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 20},
+    {"olcu": "halka", "kapsam": "oyun", "enAz": 5}
+  ]
 }

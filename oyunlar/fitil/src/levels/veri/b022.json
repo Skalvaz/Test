@@ -44,5 +44,10 @@
   "botBandi": [85, 100],
   "yildizEsikleri": [9400, 12500],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Lale Tarhı!"
+  "sonrakiTanitim": "Sıradaki: Lale Tarhı!",
+  "muhurler": [
+    {"olcu": "zincir", "kapsam": "hamle", "enAz": 8},
+    {"olcu": "caprazRoket", "kapsam": "oyun", "enAz": 2},
+    {"olcu": "patlama", "kapsam": "hamle", "enAz": 8, "renk": 5}
+  ]
 }

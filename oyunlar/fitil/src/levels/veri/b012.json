@@ -41,5 +41,10 @@
   "botBandi": [92, 100],
   "yildizEsikleri": [6600, 10600],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Kayalık!"
+  "sonrakiTanitim": "Sıradaki: Kayalık!",
+  "muhurler": [
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 1, "ozel": "yildiz"},
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 2, "ozel": "yildiz"},
+    {"olcu": "kafes", "kapsam": "hamle", "enAz": 4}
+  ]
 }

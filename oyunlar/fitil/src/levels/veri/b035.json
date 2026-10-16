@@ -54,5 +54,10 @@
   55
  ],
  "yildizEsikleri": [8100, 10200],
- "sonrakiTanitim": "Sıradaki: Kale Kapısı!"
+ "sonrakiTanitim": "Sıradaki: Kale Kapısı!",
+  "muhurler": [
+    {"olcu": "is", "kapsam": "hamle", "enAz": 4},
+    {"olcu": "caprazEngel", "kapsam": "oyun", "enAz": 1},
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 7}
+  ]
 }

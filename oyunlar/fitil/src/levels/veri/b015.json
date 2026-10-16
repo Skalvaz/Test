@@ -33,5 +33,10 @@
   "botBandi": [60, 85],
   "yildizEsikleri": [7600, 10000],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Dev Fişek!"
+  "sonrakiTanitim": "Sıradaki: Dev Fişek!",
+  "muhurler": [
+    {"olcu": "engelHasar", "kapsam": "hamle", "enAz": 4},
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 6},
+    {"olcu": "fener", "kapsam": "hamle", "enAz": 2}
+  ]
 }

@@ -99,5 +99,10 @@
  "kurallar": {
   "caprazSiniri": 2
  },
- "devFisekKapasite": 6
+ "devFisekKapasite": 6,
+  "muhurler": [
+    {"olcu": "izliDevFisek", "kapsam": "oyun", "enAz": 1},
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 5, "ozel": "roket"},
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 8}
+  ]
 }

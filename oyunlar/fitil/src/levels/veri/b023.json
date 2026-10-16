@@ -28,5 +28,10 @@
   "botBandi": [85, 100],
   "yildizEsikleri": [8600, 11900],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Çift Kat!"
+  "sonrakiTanitim": "Sıradaki: Çift Kat!",
+  "muhurler": [
+    {"olcu": "kaya", "kapsam": "hamle", "enAz": 3},
+    {"olcu": "caprazRoket", "kapsam": "oyun", "enAz": 2},
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 2, "ozel": "kasimpati"}
+  ]
 }

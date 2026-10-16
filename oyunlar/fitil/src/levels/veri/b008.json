@@ -33,5 +33,10 @@
   "botBandi": [92, 100],
   "yildizEsikleri": [6200, 10400],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Işıklı Sokak!"
+  "sonrakiTanitim": "Sıradaki: Işıklı Sokak!",
+  "muhurler": [
+    {"olcu": "R", "kapsam": "hamle", "enAz": 4, "halka": true},
+    {"olcu": "halka", "kapsam": "oyun", "enAz": 3},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 14, "halka": true, "sans": true}
+  ]
 }

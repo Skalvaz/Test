@@ -41,5 +41,10 @@
   80
  ],
  "yildizEsikleri": [12700, 15400],
- "sonrakiTanitim": "Sıradaki: Çisenti!"
+ "sonrakiTanitim": "Sıradaki: Çisenti!",
+  "muhurler": [
+    {"olcu": "is", "kapsam": "hamle", "enAz": 6},
+    {"olcu": "caprazRoket", "kapsam": "oyun", "enAz": 3},
+    {"olcu": "devFisek", "kapsam": "hamle", "enAz": 2}
+  ]
 }

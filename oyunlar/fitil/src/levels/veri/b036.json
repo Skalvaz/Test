@@ -46,5 +46,10 @@
   80
  ],
  "yildizEsikleri": [11900, 14100],
- "sonrakiTanitim": "Sıradaki: Barut Deposu!"
+ "sonrakiTanitim": "Sıradaki: Barut Deposu!",
+  "muhurler": [
+    {"olcu": "kaya", "kapsam": "hamle", "enAz": 2},
+    {"olcu": "kaya", "kapsam": "hamle", "enAz": 3},
+    {"olcu": "fener", "kapsam": "hamle", "enAz": 2}
+  ]
 }

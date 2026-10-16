@@ -37,5 +37,10 @@
   "botBandi": [70, 85],
   "yildizEsikleri": [7500, 10800],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Fener Alayı!"
+  "sonrakiTanitim": "Sıradaki: Fener Alayı!",
+  "muhurler": [
+    {"olcu": "doseme", "kapsam": "hamle", "enAz": 6},
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 8},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 25, "sans": true}
+  ]
 }

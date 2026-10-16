@@ -28,5 +28,10 @@
   "botBandi": [65, 85],
   "yildizEsikleri": [7100, 9700],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Barut İzi!"
+  "sonrakiTanitim": "Sıradaki: Barut İzi!",
+  "muhurler": [
+    {"olcu": "kafes", "kapsam": "hamle", "enAz": 2},
+    {"olcu": "devFisek", "kapsam": "hamle", "enAz": 2},
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 6}
+  ]
 }

@@ -271,5 +271,10 @@
   75
  ],
  "yildizEsikleri": [11700, 14200],
- "sonrakiTanitim": "Sıradaki: Arife!"
+ "sonrakiTanitim": "Sıradaki: Arife!",
+  "muhurler": [
+    {"olcu": "kafes", "kapsam": "hamle", "enAz": 2},
+    {"olcu": "halka", "kapsam": "oyun", "enAz": 3},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 10, "halka": true, "sans": true}
+  ]
 }

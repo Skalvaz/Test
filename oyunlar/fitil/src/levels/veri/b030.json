@@ -255,5 +255,10 @@
   ],
   "kurallar": {
     "caprazSiniri": 2
-  }
+  },
+  "muhurler": [
+    {"olcu": "desen", "kapsam": "hamle", "enAz": 9},
+    {"olcu": "koruk", "kapsam": "oyun", "enCok": 0},
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 11}
+  ]
 }

@@ -301,11 +301,11 @@ export function muhurMetni(k: MuhurKosulu): string {
     case 'patlama':
       return k.renk !== undefined ? `${th}${n} ${RENK_ADI[k.renk]} patlat` : `${th}${n} kapsül patlat`;
     case 'isiPatlamasi':
-      return `${th}${n} kapsülü ısıyla patlat`;
+      return tek ? `Tek hamlede ${n} ısı patlaması yap` : `${n} kapsülü ısıyla patlat`;
     case 'olusum':
-      return `${n} ${k.ozel ? OZEL_ADI[k.ozel] : 'özel taş'} yap`;
+      return `${n === 1 ? 'Bir' : n} ${k.ozel ? OZEL_ADI[k.ozel] : 'özel taş'} yap`;
     case 'ozelAtes':
-      return `${th}${n} ${k.ozel ? OZEL_ADI[k.ozel] : 'özel taş'} ateşle`;
+      return `${th}${n === 1 && !tek ? 'Bir' : n} ${k.ozel ? OZEL_ADI[k.ozel] : 'özel taş'} ateşle`;
     case 'caprazRoket':
       return `${th}${n} çapraz roket ateşle`;
     case 'kombo':
@@ -328,9 +328,9 @@ export function muhurMetni(k: MuhurKosulu): string {
     case 'devFisek':
       return `${th}${n} dev fişek ateşle`;
     case 'izliDevFisek':
-      return `Barut iziyle ${n} dev fişek ateşle`;
+      return n === 1 ? 'Barut iziyle dev fişek ateşle' : `Barut iziyle ${n} dev fişek ateşle`;
     case 'caprazEngel':
-      return `Çapraz roketle ${n} engel vur`;
+      return n === 1 ? 'Çapraz roketle bir engel vur' : `Çapraz roketle ${n} engel vur`;
     case 'kurutma':
       return `${th}${n} ıslak barutu kurut`;
     case 'koruk':

@@ -39,5 +39,10 @@
   "botBandi": [92, 100],
   "yildizEsikleri": [7100, 10600],
   "esikKurali": "k24",
-  "sonrakiTanitim": "Sıradaki: Körük!"
+  "sonrakiTanitim": "Sıradaki: Körük!",
+  "muhurler": [
+    {"olcu": "devFisek", "kapsam": "oyun", "enAz": 3},
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 2, "ozel": "kasimpati"},
+    {"olcu": "devFisek", "kapsam": "hamle", "enAz": 2}
+  ]
 }
