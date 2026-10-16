@@ -209,8 +209,8 @@ export interface SesMotoru {
   ozelEsigi(tur: 'roket' | 'kasimpati' | 'yildiz'): void;
   iptal(): void;
   tutusma(): void;
-  /** Arayüz sesleri. */
-  arayuz(tur: 'dugme' | 'ac' | 'kapa' | 'yildiz1' | 'yildiz2' | 'yildiz3' | 'kazandin' | 'kaybettin' | 'sandik' | 'parca' | 'sonHamle' | 'hedefTamam' | 'korukDoldu'): void;
+  /** Arayüz sesleri. (Kancalar §C.8) `muhur`: mühür damgası; `kasaba`: kasaba işi tamam. */
+  arayuz(tur: 'dugme' | 'ac' | 'kapa' | 'yildiz1' | 'yildiz2' | 'yildiz3' | 'kazandin' | 'kaybettin' | 'sandik' | 'parca' | 'sonHamle' | 'hedefTamam' | 'korukDoldu' | 'muhur' | 'kasaba'): void;
   /** Yönetmen kamerası: ana yolu alçak geçirenden geçir. */
   yavasCekim(acik: boolean): void;
   /** Ortam (kalabalık + deniz) ve üretken müzik. */

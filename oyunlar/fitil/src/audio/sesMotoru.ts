@@ -1280,6 +1280,23 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
       case 'korukDoldu':
         korukDolu();
         return;
+      case 'muhur': {
+        // (Kancalar §C.8) Mühür damgası: 90 Hz güm + tok mum vuruşu + çan G5.
+        gum(90, 1);
+        const s = sesAc('muhur', 1, { kazanc: 0.28, yanki: 0.22 });
+        if (!s) return;
+        gur(s, { renk: 'kahve', filtre: 'lowpass', f: 600, a: 0.002, d: 0.06, g: 0.6 });
+        can(s, nota(3), 0.02, 0.9, 0.8);
+        return;
+      }
+      case 'kasaba': {
+        // (Kancalar §C.8) Kasaba işi: çan akoru C5-E5-G5 + 3 kısa fener tıkırtısı.
+        const s = sesAc('kasaba', 1.6, { kazanc: 0.28, yanki: 0.3 });
+        if (!s) return;
+        [0, 2, 3].forEach((i, n) => can(s, nota(i), n * 0.06, 0.75, 1.1));
+        for (let n = 0; n < 3; n++) gur(s, { renk: 'beyaz', filtre: 'bandpass', f: 3200 + n * 400, q: 2, a: 0.0005, d: 0.02, g: 0.45, gec: 0.32 + n * 0.11 });
+        return;
+      }
       default: {
         const yok: never = tur;
         void yok;

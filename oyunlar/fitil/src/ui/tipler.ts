@@ -236,6 +236,8 @@ export interface BolumOncesiVM {
   cosku: boolean;
   /** (Kancalar §C.2) Üç mühür (6–40, mühürler tanıtıldıysa). */
   muhurler?: MuhurVM[];
+  /** (Kancalar §C.6 `muhur-kart`) Mühür bloğunun üstünde Kıvılcım Usta ipucu (bir kez). */
+  muhurIpucu?: string | null;
 }
 
 // ───────────────────────── Sonuçlar ─────────────────────────
@@ -282,8 +284,14 @@ export interface KazandinVM {
    * bu kazançta basıldı. `tanitim`: ilk kez (6. bölüm) "Yeni: Mühürler".
    */
   muhurler?: { liste: (MuhurVM & { yeni: boolean })[]; tanitim: boolean; sancak: boolean } | null;
-  /** (Kancalar §C.3) Kandil kazanımı: önceki → yeni bakiye, kazanç şeridinin ilk çipi. */
-  kandil?: { onceki: number; yeni: number; tanitim: boolean } | null;
+  /**
+   * (Kancalar §C.5) Kandil kazanımı: önceki → yeni bakiye, kazanç şeridinin
+   * ilk çipi. `yildiz`/`muhur`: bu kazancın yeni yıldız/mühür kandilleri
+   * (her biri için bir kandil çipe uçar); gerisi (mahalle, günlük) sayaca eklenir.
+   */
+  kandil?: { onceki: number; yeni: number; tanitim: boolean; yildiz?: number; muhur?: number } | null;
+  /** (Kancalar §C.5) Kasabada yapılabilir iş var: "Kasabada yapılacak iş hazır!". */
+  kasabaHazir?: boolean;
 }
 
 export interface KaybettinVM {
@@ -309,6 +317,8 @@ export interface DuraklatVM {
   coskuAktif: boolean;
   /** (Kancalar) Mühürler ve anlık durumları. */
   muhurler?: MuhurVM[];
+  /** (Kancalar §C.3) Usta'nın Eli devamı: "Usta'nın Eli ile mühür basılmaz". */
+  ustaEli?: boolean;
 }
 
 export type DuraklatSecimi = 'devam' | 'yeniden' | 'ayarlar' | 'harita';

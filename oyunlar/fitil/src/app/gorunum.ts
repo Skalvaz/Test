@@ -15,6 +15,8 @@ import type {
   HudVM,
   IstatistikVM,
   KaybettinVM,
+  KazandinVM,
+  MuhurVM,
   Nadirlik as UiNadirlik,
   NasilVM,
   OdulVM,
@@ -27,6 +29,7 @@ import * as meta from '../meta';
 import type { Kayit } from '../meta';
 import { DESENLER, FITILLER, GUCLENDIRICILER, MAHALLELER } from './katalog';
 import { BOLUMLER, bolumGetir } from '../levels';
+import { MK } from '../ui/metinler';
 import type { StorageBackend } from '../platform/storage';
 
 export const NADIRLIK: readonly UiNadirlik[] = ['sade', 'parlak', 'saheser'];
@@ -101,10 +104,33 @@ export function hedefler(d: OyunDurumu): HedefVM[] {
   return d.hedefler.map(hedefVM);
 }
 
+// ─────────────────────────── Mühürler (Kancalar §C.2–§C.4) ───────────────────────────
+
+/**
+ * Bölümün üç mühür satırı: yalnız mühürlü ana bölümde (6–40) ve mühürler
+ * tanıtıldıysa (6. bölüm kazanıldı; KANCALAR §A.2). `oz` verilirse (oyun
+ * sürerken) anlık durumlar `muhurAnlik` ile eklenir.
+ */
+export function muhurVMleri(v: BolumVerisi, k: Kayit, oz?: { oz: meta.OyunOzeti; d: OyunDurumu }): MuhurVM[] | undefined {
+  if (!v.muhurler || v.muhurler.length !== meta.MUHUR_SAYISI) return undefined;
+  if (v.tur === 'gunluk' || v.tur === 'sonsuz' || v.tur === 'usta') return undefined;
+  if (!meta.muhurlerGorunur(k)) return undefined;
+  const basili = meta.muhurMaskeCoz(meta.bolumKaydi(k, v.id)?.muhur);
+  const anlik = oz ? meta.muhurAnlik(v, meta.muhurOzeti(oz.oz, oz.d)) : null;
+  return v.muhurler.map((m, i) => ({
+    kademe: meta.MUHUR_KADEMELERI[i],
+    metin: meta.muhurMetni(m),
+    basili: basili[i],
+    ...(anlik ? { durum: anlik[i] } : {}),
+  }));
+}
+
 export interface HudBaglam {
   v: BolumVerisi;
   d: OyunDurumu;
   kayit: Kayit;
+  /** (Kancalar §C.3) Bu denemenin olay özeti: rozetin anlık durumları. */
+  oz?: meta.OyunOzeti;
   /** Girdi açık mı (güçlendirici basılabilirliği). */
   girdiAcik: boolean;
   /** Geri Sar için son eylem bir hamle mi. */
@@ -133,6 +159,7 @@ export function hudVM(b: HudBaglam): HudVM {
       const uygun = g.id === 'geriSar' ? b.geriSarHazir : true;
       return { id: g.id, adet, acik, kullanilabilir: acik && adet > 0 && !kullanildi && b.girdiAcik && uygun };
     }),
+    muhurler: muhurVMleri(v, kayit, { oz: b.oz ?? meta.ozetBaslat(), d }),
   };
 }
 
@@ -173,7 +200,8 @@ export function haritaVM(k: Kayit, gorulen: { parca: number; rozet: number }): H
 
 // ─────────────────────────── Bölüm öncesi ───────────────────────────
 
-export function bolumOncesiVM(v: BolumVerisi, d0: OyunDurumu, k: Kayit, cosku: boolean): BolumOncesiVM {
+export function bolumOncesiVM(v: BolumVerisi, d0: OyunDurumu, k: Kayit, cosku: boolean, muhurIpucu: string | null = null): BolumOncesiVM {
+  const muhurler = muhurVMleri(v, k);
   const b = meta.bolumKaydi(k, v.id);
   const usta = v.tur === 'usta' ? meta.USTA_BOLUMLERI[v.id - 101] : null;
   return {
@@ -190,11 +218,13 @@ export function bolumOncesiVM(v: BolumVerisi, d0: OyunDurumu, k: Kayit, cosku: b
     yildiz: (b?.yildiz ?? 0) as Yildiz,
     tablo: b?.tablo ? { nadirlik: NADIRLIK[b.nadirlik ?? 0] } : null,
     cosku,
+    ...(muhurler ? { muhurler, muhurIpucu } : {}),
   };
 }
 
-export function duraklatVM(v: BolumVerisi, d: OyunDurumu, coskuAktif: boolean): DuraklatVM {
-  return { bolumId: v.id, bolumAdi: v.ad, hedefler: hedefler(d), coskuAktif };
+export function duraklatVM(v: BolumVerisi, d: OyunDurumu, coskuAktif: boolean, k?: Kayit, oz?: meta.OyunOzeti): DuraklatVM {
+  const muhurler = k ? muhurVMleri(v, k, { oz: oz ?? meta.ozetBaslat(), d }) : undefined;
+  return { bolumId: v.id, bolumAdi: v.ad, hedefler: hedefler(d), coskuAktif, ...(muhurler ? { muhurler, ustaEli: d.istatistik.ustaEli === true } : {}) };
 }
 
 // ─────────────────────────── Sonuçlar ───────────────────────────
@@ -275,6 +305,31 @@ export function defterVM(k: Kayit, sekme?: DefterVM['sekme']): DefterVM {
   };
 }
 
+/**
+ * (Kancalar §C.5) Kazandın ekranının mühür satırı, kandil çipi ve "iş hazır"
+ * ipucu. `gorulen`: kaydın görülen ipuçları (tanıtım bir kez).
+ */
+export function kazandinKancalari(v: BolumVerisi, sonuc: meta.BolumSonucCiktisi, gorulen: readonly string[]): Pick<KazandinVM, 'muhurler' | 'kandil' | 'kasabaHazir'> {
+  const k = sonuc.kayit;
+  const o = sonuc.oduller;
+  let muhurler: KazandinVM['muhurler'] = null;
+  const satir = muhurVMleri(v, k);
+  if (satir) {
+    const mo = o.find((x): x is Extract<meta.Odul, { tur: 'muhur' }> => x.tur === 'muhur');
+    const yeni = new Set(mo?.yeni ?? []);
+    muhurler = {
+      liste: satir.map((m) => ({ ...m, yeni: yeni.has(m.kademe) })),
+      tanitim: !!mo?.tanitim && !gorulen.includes(meta.KANCA_IPUCU.muhurTanitim),
+      sancak: o.some((x) => x.tur === 'sancak'),
+    };
+  }
+  const ko = o.find((x): x is Extract<meta.Odul, { tur: 'kandil' }> => x.tur === 'kandil');
+  const acildi = o.some((x) => x.tur === 'kasabaAcildi');
+  const kandil: KazandinVM['kandil'] = ko ? { onceki: acildi ? 0 : ko.onceki, yeni: ko.yeni, tanitim: acildi, yildiz: ko.kaynak.yildiz, muhur: ko.kaynak.muhur } : null;
+  const sira = meta.kasabaAcikMi(k) ? meta.siradakiKasabaIsi(k) : null;
+  return { muhurler, kandil, kasabaHazir: !!ko && !acildi && sira?.durum === 'yapilabilir' };
+}
+
 /** Paylaşım ızgarası simgelerinden temsilî R değerleri (● 0, ▲ 8, ■ 15). */
 function izgaradanReaksiyon(izgara: string): number[] {
   return Array.from(izgara).map((c) => (c === '■' ? 15 : c === '▲' ? 8 : 0));
@@ -335,6 +390,7 @@ const GUC_ADI: Record<'kibrit' | 'kalip' | 'geriSar', string> = { kibrit: 'Kibri
  */
 const DUYURU_ONEMI: Partial<Record<meta.Odul['tur'], number>> = {
   mahalleTamam: 0,
+  muhurParcasi: 0,
   guclendiriciAcildi: 1,
   gunlukAcildi: 1,
   sonsuzAcildi: 1,
@@ -409,6 +465,12 @@ export function odulDuyurulari(oduller: readonly meta.Odul[], s: { sonrakiBolum?
       case 'cosku':
         if (o.aktif && !o.bozuldu && !sonrakiOgretim) r.push({ ikon: 'roket', metin: 'Coşku: sıradaki bölüm roketle başlar' });
         break;
+      case 'muhurParcasi': {
+        // (Kancalar §A.6) Mahallenin 5/10/15. mührü: fitil parçası (ya da üçü varsa toz).
+        const ad = FITILLER.find((f) => f.id === o.fitil)?.ad ?? 'Fitil';
+        r.push({ ikon: 'alev', metin: o.parca ? MK.parcaDuyuru(ad, o.esik) : MK.tozDuyuru(o.toz, o.esik) });
+        break;
+      }
       default:
         break;
     }

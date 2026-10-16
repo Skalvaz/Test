@@ -3,6 +3,7 @@
  * görünüm modelleri. Oyun bunları kullanmaz; entegratör gerçek modelleri
  * meta/kayıttan eşler.
  */
+import type { MuhurVM } from '../tipler';
 import type {
   AyarlarVM,
   BolumDugumuVM,
@@ -43,8 +44,18 @@ export function haritaVm(simdiki = 14): HaritaVM {
 
 const hedef = (o: Partial<HedefVM>): HedefVM => ({ tur: 'topla', gerekli: 10, ilerleme: 0, tamam: false, ...o });
 
+/** (Kancalar) Örnek mühür satırları. */
+export function muhurlerVm(durumlu = false): MuhurVM[] {
+  return [
+    { kademe: 'cirak', metin: '2 kasımpatı yap', basili: true, ...(durumlu ? { durum: 'tuttu' as const } : {}) },
+    { kademe: 'kalfa', metin: 'Tek hamlede 3 özel taş ateşle', basili: false, ...(durumlu ? { durum: 'tuttu' as const } : {}) },
+    { kademe: 'usta', metin: '8 hamle kala kazan', basili: false, ...(durumlu ? { durum: 'sonda' as const } : {}) },
+  ];
+}
+
 export function hudVm(w = 7, h = 9, varyant = ''): HudVM {
   return {
+    ...(varyant === 'muhur' ? { muhurler: muhurlerVm(true) } : {}),
     bolumId: 12,
     bolumAdi: 'Yıldız Topu',
     tahtaW: w,
@@ -69,6 +80,23 @@ export function hudVm(w = 7, h = 9, varyant = ''): HudVM {
 }
 
 export function bolumOncesiVm(v = '1'): BolumOncesiVM {
+  if (v === 'm' || v === 'mi')
+    return {
+      id: 14,
+      ad: 'Kombinasyon',
+      mahalle: 2,
+      tur: 'tanitim',
+      hedefler: [hedef({ renk: 0, gerekli: 30 }), hedef({ tur: 'kafes', gerekli: 6 })],
+      hamle: 22,
+      esik: 4,
+      yeniOge: 'kombo',
+      enIyi: 6200,
+      yildiz: 2,
+      tablo: { nadirlik: 'parlak' },
+      cosku: true,
+      muhurler: muhurlerVm(),
+      muhurIpucu: v === 'mi' ? 'Mühürler bölümü başka bir yolla oynatır. Üçünü ayrı denemelerde toplayabilirsin.' : null,
+    };
   if (v === '2')
     return {
       id: 19,
@@ -115,8 +143,10 @@ export function bolumOncesiVm(v = '1'): BolumOncesiVM {
   };
 }
 
-export function duraklatVm(): DuraklatVM {
-  return { bolumId: 12, bolumAdi: 'Yıldız Topu', hedefler: hudVm().hedefler, coskuAktif: true };
+export function duraklatVm(v = '1'): DuraklatVM {
+  const m = muhurlerVm(true);
+  if (v === 'm') m[2] = { ...m[2], durum: 'bekliyor' };
+  return { bolumId: 12, bolumAdi: 'Yıldız Topu', hedefler: hudVm().hedefler, coskuAktif: true, ...(v === 'm' ? { muhurler: m } : {}) };
 }
 
 export function kazandinVm(v = '1'): KazandinVM {
@@ -138,6 +168,18 @@ export function kazandinVm(v = '1'): KazandinVM {
     sonrakiTanitim: 'Sıradaki: Fener Alayı!',
     sonrakiOge: 'fener',
     ipucu: v === '2' ? 'Yıldızlar puanından gelir.' : null,
+    ...(v === 'm' || v === 'mt'
+      ? {
+          muhurler: {
+            liste: muhurlerVm().map((m, i) => ({ ...m, basili: v === 'm' ? true : i < 2, yeni: i > 0 && (v === 'm' || i < 2) })),
+            tanitim: v === 'mt',
+            sancak: v === 'm',
+          },
+          kandil: v === 'mt' ? { onceki: 0, yeni: 8, tanitim: true, yildiz: 3, muhur: 0 } : { onceki: 14, yeni: 21, tanitim: false, yildiz: 2, muhur: 2 },
+          kasabaHazir: v === 'm',
+          duyurular: v === 'm' ? [{ ikon: 'alev', metin: 'Lale Dalı parçası (5 mühür)' }, { ikon: 'rozet', metin: 'Rozet: Halkacı' }] : [],
+        }
+      : {}),
   };
 }
 

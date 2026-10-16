@@ -161,7 +161,7 @@ export function varsayilanSenaryolar(): OlcumSenaryosu[] {
   for (const o of SESSIZ_OLAYLAR) if (o.tur !== 'isiDegisti') s.push(tek(`olay · ${o.tur} (sessiz)`, 1, (m) => m.olay(o), true));
   for (const c of OLAY_CESITLERI) s.push(tek(`olay · ${c.ad}`, 2.6, (m) => m.olay(c.olay)));
   // Arayüz
-  for (const a of ['dugme', 'ac', 'kapa', 'yildiz1', 'yildiz2', 'yildiz3', 'kazandin', 'kaybettin', 'sandik', 'parca', 'sonHamle', 'hedefTamam', 'korukDoldu'] as const) {
+  for (const a of ['dugme', 'ac', 'kapa', 'yildiz1', 'yildiz2', 'yildiz3', 'kazandin', 'kaybettin', 'sandik', 'parca', 'sonHamle', 'hedefTamam', 'korukDoldu', 'muhur', 'kasaba'] as const) {
     s.push(tek(`arayüz · ${a}`, 2.2, (m) => m.arayuz(a)));
   }
   // Diziler ve zorlama

@@ -5,6 +5,7 @@ import { M, bolumBasligi, hedefKalan, hedefEtiketi, sayi } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import type { DuraklatSecimi, DuraklatVM } from '../tipler';
 import { ikon } from '../ikonlar';
+import { muhurListesi } from '../kanca';
 
 export function duraklatEkrani(b: Baglam, vm: DuraklatVM): { soz: Promise<DuraklatSecimi>; kapat: () => void } {
   const { soz, sec } = secimSozu<DuraklatSecimi>();
@@ -30,6 +31,8 @@ export function duraklatEkrani(b: Baglam, vm: DuraklatVM): { soz: Promise<Durakl
     { s: 'f-dr' },
     h('div', { s: 'f-dr-bolum' }, h('span', { s: 'f-etiket', t: bolumBasligi(vm.bolumId) }), h('h2', { s: 'f-baslik', t: vm.bolumAdi })),
     hedefler,
+    // (Kancalar §C.4) Hedeflerin altında üç mühür ve anlık durumları.
+    vm.muhurler && vm.muhurler.length ? muhurListesi(vm.muhurler, { durumlu: true, ustaEli: !!vm.ustaEli, sinif: 'f-dr-muhurler' }) : null,
     h(
       'div',
       { s: 'f-dg-sutun' },

@@ -21,6 +21,7 @@ import './stil/temel.css';
 import './stil/hud.css';
 import './stil/ekranlar.css';
 import './stil/harita.css';
+import './stil/kanca.css';
 import { h, kare } from './dom';
 import { tanimlariKur, ustaSvg } from './ikonlar';
 import { Baglam } from './cekirdek';
@@ -40,6 +41,8 @@ import { istatistikEkrani } from './ekranlar/istatistik';
 import { molaEkrani, defterKartiEkrani, sandikEkrani } from './ekranlar/kucukler';
 import { beklemeEkrani, eksenSecici, type BeklemeTutamak } from './ekranlar/ek';
 import type { Eksen } from '../core/types';
+import { muhurUcur, muhurEtiketi } from './kanca';
+import { MK } from './metinler';
 import type { Dikdortgen, SesMotoru } from '../app/sozlesme';
 import type { GuclendiriciId } from '../app/katalog';
 import type {
@@ -438,6 +441,29 @@ export class Arayuz {
 
   korukGostergesi(dolum: number, kapasite: number): void {
     this.hud.korukGuncelle(dolum, kapasite, true);
+  }
+
+  /**
+   * (Kancalar §C.3) Mühür bu denemede tuttu: `kaynak`ta (reaksiyon merkezi,
+   * kök öğeye göre CSS px) 28 px mum mühür belirir, rozetin noktasına uçar,
+   * nokta damgalanır, ses + titreşim + "Kalfa mührü!" etiketi. Hareketi
+   * azaltta uçuş yok, nokta anında dolar.
+   */
+  async muhurTuttu(indeks: number, kademe: 'cirak' | 'kalfa' | 'usta', kaynak: { x: number; y: number }): Promise<void> {
+    const hedef = this.hud.muhurNoktasi(indeks);
+    this.hud.muhurUcusBasla(indeks);
+    if (hedef) await muhurUcur(this.b, kademe, kaynak, hedef);
+    this.hud.muhurDamgala(indeks);
+    this.b.ses('muhur');
+    this.b.titret(15);
+    const p = hedef ?? this.hud.muhurNoktasi(indeks);
+    if (p) muhurEtiketi(this.b, MK.muhurTuttu(MK.kademe[kademe]), { x: Math.max(64, Math.min(this.yer.ekranW - 64, p.x)), y: p.y - 14 });
+    else this.b.duyur(MK.muhurTuttu(MK.kademe[kademe]));
+  }
+
+  /** Hareketi azalt açık mı (ayar ya da sistem). */
+  hareketiAzaltik(): boolean {
+    return this.b.az();
   }
 
   /** Hedef seçimi ipucu (null = kapat). kaynak: vurgulanacak düğme. */

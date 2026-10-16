@@ -1,0 +1,160 @@
+/* ───────────── Kancalar: Bölüm Mühürleri ve Kasaba İşleri (KANCALAR §C) ─────────────
+   Yalnız transform/opacity canlandırılır; parıltılar box-shadow ya da gradyan. */
+
+/* ── Mühür satırları (bölüm öncesi §C.2, Duraklat §C.4) */
+.f-muhur-svg { display: block; width: 22px; height: 22px; overflow: visible; }
+.f-muhur-liste { display: flex; flex-direction: column; gap: 2px; }
+.f-muhur-satir { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.f-muhur-yuva { position: relative; flex: none; width: 24px; height: 24px; display: grid; place-items: center; }
+.f-muhur-yuva .f-muhur-svg { width: 24px; height: 24px; position: relative; }
+.f-muhur-kademe { flex: none; width: 46px; font-size: 12px; font-weight: 800; letter-spacing: .06em; color: var(--pirinc-acik); }
+.f-muhur-metin { min-width: 0; flex: 1; display: flex; flex-direction: column; line-height: 1.15; }
+.f-muhur-metin > span { font-size: 14px; font-weight: 700; color: var(--krem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-muhur-satir.f-basili .f-muhur-metin > span { color: var(--krem-2); }
+.f-muhur-durum { font-size: 12px; font-weight: 700; color: var(--krem-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-muhur-satir.f-basili .f-muhur-durum { color: var(--pirinc-acik); }
+.f-d-tuttu .f-muhur-durum, .f-d-korunuyor .f-muhur-durum { color: #7CFFB2; }
+.f-d-bozuldu .f-muhur-durum { color: #FF9A84; opacity: .85; }
+.f-d-tuttu:not(.f-basili) .f-muhur-yuva::before {
+  content: ''; position: absolute; inset: -5px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 130, 90, .6) 0%, rgba(255, 130, 90, 0) 70%);
+}
+.f-d-bozuldu:not(.f-basili) .f-muhur-yuva { opacity: .5; }
+.f-durumlu .f-muhur-satir { min-height: 38px; }
+
+/* Bölüm öncesi bloğu */
+.f-bo-muhurler { display: flex; flex-direction: column; gap: 4px; padding: 7px 10px 6px; border-radius: 16px; background: rgba(0, 0, 0, .2); box-shadow: inset 0 0 0 1.5px rgba(255, 200, 120, .18); }
+.f-bo-muhurler .f-usta-ipucu { font-size: 13px; padding: 3px 12px 3px 3px; margin-bottom: 4px; line-height: 1.2; }
+.f-bo-muhurler .f-usta-ipucu .f-usta { width: 30px; height: 30px; flex: none; }
+/* Mühür bloğu varken kısa ekranda "Yeni öğe" kutusu tek satırlık çipe küçülür, "En iyi"
+   yıldız satırına taşınır, hedef kutuları küçülür (§C.2: 390×700'de kaydırmasız). */
+@media (max-height: 760px) {
+  .f-bo.f-muhurlu { gap: 8px; }
+  .f-bo.f-muhurlu .f-bo-ad { font-size: 24px; margin-top: -6px; }
+  .f-bo.f-muhurlu .f-bo-rekor { gap: 10px; }
+  .f-bo.f-muhurlu .f-bo-rekor-sol { flex-direction: row; gap: 10px; }
+  .f-bo.f-muhurlu .f-bo-rekor .f-kyildiz { width: 24px; height: 24px; }
+  .f-bo.f-muhurlu .f-bo-tablo { width: 26px; }
+  .f-bo.f-muhurlu .f-bo-tablo .f-tablo { padding: 2px; }
+  .f-bo.f-muhurlu .f-bo-hedefler { gap: 6px; padding: 8px 10px 10px; }
+  .f-bo.f-muhurlu .f-hedef-kutu { flex-direction: row; max-width: 160px; gap: 8px; text-align: left; }
+  .f-bo.f-muhurlu .f-hedef-kutu-ikon { width: 46px; height: 46px; flex: none; border-radius: 14px; }
+  .f-bo.f-muhurlu .f-hedef-kutu-ikon .f-resim { width: 36px; height: 36px; }
+  .f-bo.f-muhurlu .f-hedef-kutu-metin { font-size: 14px; }
+  .f-bo.f-muhurlu .f-bo-cosku { padding: 4px 10px; }
+  .f-bo.f-muhurlu .f-bo-cosku .f-resim { width: 30px; height: 30px; }
+  .f-bo.f-muhurlu .f-bo-yeni { padding: 4px 10px 4px 4px; gap: 8px; border-radius: 999px; }
+  .f-bo.f-muhurlu .f-bo-yeni .f-yeni-oge { width: 28px; height: 28px; }
+  .f-bo.f-muhurlu .f-bo-yeni .f-yo-svg { width: 28px; height: 28px; }
+  .f-bo.f-muhurlu .f-bo-yeni-metin { flex-direction: row; align-items: center; gap: 8px; }
+  .f-bo.f-muhurlu .f-bo-yeni-metin strong { font-size: 15px; }
+  .f-bo.f-muhurlu .f-bo-yeni-metin span:last-child { display: none; }
+  .f-bo.f-muhurlu .f-yeni-rozet { align-self: center; }
+}
+
+/* Duraklat */
+.f-dr-muhurler { width: 100%; padding: 6px 10px; border-radius: 16px; background: rgba(0, 0, 0, .2); box-shadow: inset 0 0 0 1.5px rgba(255, 200, 120, .16); }
+
+/* ── HUD rozeti (§C.3): Duraklat düğmesinin sağ üst köşesinde 38×16 px hap */
+.f-duraklat-kap { position: relative; display: inline-flex; }
+.f-muhur-rozet {
+  position: absolute; left: 27px; top: -9px; width: 38px; height: 16px; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: space-evenly; padding: 0 2px; border-radius: 999px;
+  background: linear-gradient(180deg, #43291A, #24160D);
+  box-shadow: 0 0 0 1.5px #D9A441, 0 0 0 2.5px #3A1E08, 0 2px 4px rgba(0, 0, 0, .5);
+  pointer-events: none;
+}
+.f-panel .f-muhur-rozet { left: 33px; }
+.f-mr-nokta { display: block; width: 8px; height: 8px; border-radius: 50%; box-sizing: border-box; }
+.f-mr-nokta.f-mr-bekliyor, .f-mr-nokta.f-mr-sonda { border: 1.5px solid rgba(255, 232, 205, .7); }
+.f-mr-nokta.f-mr-korunuyor { border: 1.2px solid #FFD15C; box-shadow: inset 0 0 0 1px rgba(255, 209, 92, .35); }
+.f-mr-nokta.f-mr-bozuldu { border: 1.5px solid rgba(170, 160, 160, .55); background: linear-gradient(135deg, transparent 40%, rgba(185, 175, 175, .95) 40% 60%, transparent 60%); }
+.f-mr-nokta.f-mr-basili, .f-mr-nokta.f-mr-tuttu { background: radial-gradient(circle at 35% 30%, #F0614A, #C4261C 55%, #6E0B0B); }
+.f-mr-nokta.f-mr-tuttu { box-shadow: 0 0 5px 2px rgba(255, 140, 90, .8); }
+.f-mr-nokta.f-mr-damga { animation: f-mr-damga .45s var(--yay); }
+@keyframes f-mr-damga { 0% { transform: scale(1); } 40% { transform: scale(1.4); } 100% { transform: scale(1); } }
+
+/* Uçan mühür ve etiket (üst katman) */
+.f-muhur-ucan { position: absolute; left: -14px; top: -14px; width: 28px; height: 28px; pointer-events: none; will-change: transform; }
+.f-muhur-ucan .f-muhur-svg { width: 28px; height: 28px; }
+.f-muhur-etiket {
+  position: absolute; transform: translate(-50%, -100%); padding: 2px 10px 3px; border-radius: 999px;
+  font-size: 14px; font-weight: 800; color: #3A1606; white-space: nowrap; pointer-events: none;
+  background: linear-gradient(#FFE7A2, #FFB020); box-shadow: 0 0 0 1.5px #8A3E18, 0 4px 10px rgba(0, 0, 0, .4);
+  animation: f-muhur-etiket 1.1s ease-out both;
+}
+@keyframes f-muhur-etiket {
+  0% { opacity: 0; transform: translate(-50%, -60%) scale(.8); }
+  15% { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+  80% { opacity: 1; transform: translate(-50%, -110%); }
+  100% { opacity: 0; transform: translate(-50%, -150%); }
+}
+.f-az .f-muhur-etiket { animation: none; }
+
+/* ── Kazandın mühür satırı (§C.5) */
+.f-kz-muhurler { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 36px; margin-top: -4px; }
+.f-kz-muhur { position: relative; width: 32px; height: 32px; }
+.f-kz-muhur .f-muhur-svg { position: absolute; inset: 0; width: 32px; height: 32px; }
+.f-kz-muhur .f-kz-mum { opacity: 0; transform: scale(2.2); }
+.f-kz-muhur.f-once .f-kz-mum { opacity: .72; transform: none; filter: saturate(.75) brightness(.9); }
+.f-kz-muhur.f-bas .f-kz-mum { opacity: 1; transform: none; transition: transform .25s cubic-bezier(.34, 1.56, .64, 1), opacity .12s linear; }
+.f-kz-muhur .f-kz-toz { position: absolute; inset: -8px; border-radius: 50%; border: 2px solid rgba(255, 210, 160, .9); opacity: 0; transform: scale(.6); pointer-events: none; }
+.f-kz-muhur.f-bas .f-kz-toz { animation: f-kz-toz .5s ease-out .12s both; }
+@keyframes f-kz-toz { 0% { opacity: .9; transform: scale(.6); } 100% { opacity: 0; transform: scale(1.5); } }
+.f-kz-muhur .f-kz-yeni {
+  position: absolute; left: 50%; top: -9px; transform: translateX(-50%) scale(.6); opacity: 0;
+  font-size: 9px; font-weight: 800; letter-spacing: .08em; color: #3A1606; padding: 0 5px; border-radius: 999px;
+  background: linear-gradient(#FFE7A2, #FFB020); box-shadow: 0 0 0 1px #8A3E18; white-space: nowrap;
+}
+.f-kz-muhur.f-bas .f-kz-yeni { opacity: 1; transform: translateX(-50%); transition: opacity .2s .2s, transform .3s .2s var(--yay); }
+.f-kz-sancak { font-size: 13px; font-weight: 800; color: #3A1606; padding: 2px 10px; border-radius: 999px; background: linear-gradient(#FFE7A2, #FFB020); box-shadow: 0 0 0 1.5px #8A3E18; opacity: 0; transform: scale(.6); }
+.f-kz-sancak.f-goster { opacity: 1; transform: none; transition: opacity .2s, transform .35s var(--yay); }
+.f-az .f-kz-muhur .f-kz-mum, .f-az .f-kz-yeni, .f-az .f-kz-sancak { transition: none !important; }
+
+/* ── Kandil */
+.f-kandil-svg { display: block; width: 26px; height: 20px; overflow: visible; }
+.f-kandil-hap {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 2px 12px 2px 8px; border-radius: 999px;
+  font-size: 16px; font-weight: 800; color: var(--krem);
+  background: linear-gradient(180deg, rgba(232, 149, 90, .24), rgba(106, 46, 20, .3));
+  box-shadow: inset 0 0 0 1.5px rgba(232, 149, 90, .65);
+}
+.f-kandil-ucan { position: absolute; left: -12px; top: -9px; width: 24px; height: 18px; pointer-events: none; will-change: transform; }
+.f-kandil-ucan .f-kandil-svg { width: 24px; height: 18px; }
+
+/* Kazandın kazanç şeridi: ilk çip her zaman kandil (§C.5) */
+.f-kz-kandil { background: linear-gradient(180deg, rgba(232, 149, 90, .26), rgba(106, 46, 20, .3)); box-shadow: inset 0 0 0 1.5px rgba(232, 149, 90, .7); }
+.f-kz-kandil .f-kandil-svg { width: 24px; height: 18px; flex: none; }
+.f-kz-kandil > .f-sayi { font-size: 17px; min-width: 1.2em; text-align: center; color: #FFE7C2; }
+.f-kz-kandil-not { font-size: 13px; font-weight: 800; color: #F2B07A; }
+.f-kz-kandil.f-zipla { animation: f-kz-zipla .3s var(--yay); }
+@keyframes f-kz-zipla { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+.f-kz-hazir { box-shadow: inset 0 0 0 1.5px rgba(255, 209, 92, .8); background: linear-gradient(90deg, rgba(255, 180, 60, .24), rgba(255, 180, 60, .05)); }
+
+/* Yatay / kısa ekran: mühür bloğu bölüm öncesinde sağ sütunda. */
+@media (max-height: 480px) and (min-width: 560px) {
+  .f-bo > .f-bo-muhurler { grid-column: 2; }
+}
+
+/* Kazandın kancalı (mühür satırı ve kandil çipi) kısa ekranda sığsın (§C.5: 390×700, 375×600):
+   puan ve YENİ REKOR yan yana, sandık/tablo satırı ~%85. */
+@media (max-height: 760px) {
+  .f-kz.f-kancali { gap: 6px; }
+  .f-kz.f-kancali .f-kz-orta { flex-direction: row; gap: 12px; }
+  .f-kz.f-kancali .f-kz-puan .f-etiket { display: none; }
+  .f-kz.f-kancali .f-kz-puan-sayi { font-size: 34px; }
+  .f-kz.f-kancali .f-kz-rekor span { font-size: 14px; padding: 2px 10px 3px; }
+  .f-kz.f-kancali .f-kz-tablo .f-tablo { width: 54px; max-width: 54px; }
+  .f-kz.f-kancali .f-sandik { width: 92px; height: 80px; }
+  .f-kz.f-kancali .f-sandik-svg { width: 78px; }
+  .f-kz.f-kancali .f-kz-sandik-kutu, .f-kz.f-kancali .f-kz-tablo { padding: 6px 6px 8px; gap: 4px; }
+  .f-kz.f-kancali .f-kz-tablo-sec button { min-height: 30px; }
+  .f-kz.f-kancali .f-kz-sonraki { font-size: 14px; padding: 3px 12px 3px 3px; }
+  .f-kz.f-kancali .f-kz-sonraki .f-yeni-oge { width: 30px; height: 30px; }
+  .f-kz.f-kancali .f-kz-sonraki .f-yo-svg { width: 28px; height: 28px; }
+}
+@media (max-height: 620px) {
+  .f-kz.f-kancali .f-kz-yildizlar { height: 66px; }
+  .f-kz.f-kancali .f-kz-yildiz { width: 52px; height: 52px; }
+  .f-kz.f-kancali .f-kz-yildiz.f-y1 { width: 64px; height: 64px; }
+}

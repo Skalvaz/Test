@@ -5,14 +5,18 @@
  * Düğmeler: [Devam] (büyük) ve [Tekrar oyna].
  */
 import { h, say, bekle } from '../dom';
-import { yildizSvg, sandikSvg, ikon, type IkonAdi } from '../ikonlar';
-import { M, NADIRLIK_ADLARI, bolumBasligi, sayi } from '../metinler';
+import { yildizSvg, sandikSvg, ikon, muhurSvg, kandilSvg, type IkonAdi } from '../ikonlar';
+import { M, MK, NADIRLIK_ADLARI, bolumBasligi, sayi } from '../metinler';
+import { kandilUcur, merkez } from '../kanca';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { odulOgesi, tabloCercevesi, yeniOgeOnizleme, ustaIpucu, nadirlikSirasi } from './ortak';
 import type { KazandinVM, SandikVM } from '../tipler';
 
 const YILDIZ_ILK = 520;
 const YILDIZ_ARA = 300;
+/** (Kancalar §C.5) Yeni mühürler yıldız sonu + 200 ms'de, 250 ms arayla damgalanır. */
+const MUHUR_GECIKME = 200;
+const MUHUR_ARA = 250;
 
 export function kazandinEkrani(
   b: Baglam,
@@ -24,6 +28,7 @@ export function kazandinEkrani(
   const zamanlayicilar: ReturnType<typeof setTimeout>[] = [];
   const sonra = (ms: number, fn: () => void) => zamanlayicilar.push(setTimeout(fn, az ? 0 : ms));
   let sayimIptal: (() => void) | null = null;
+  let kandilIptal: (() => void) | null = null;
 
   // ── Yıldızlar
   const yildizlar = [0, 1, 2].map((i) => {
@@ -36,16 +41,35 @@ export function kazandinEkrani(
   const puanSayi = h('span', { s: 'f-kz-puan-sayi f-sayi', t: '0' });
   const puan = h('div', { s: 'f-kz-puan' }, h('span', { s: 'f-etiket', t: M.puan }), puanSayi);
 
+  // ── (Kancalar §C.5) Mühürler: yıldızların hemen altında 3 mum mühür (32 px).
+  const mv = vm.muhurler && vm.muhurler.liste.length ? vm.muhurler : null;
+  const muhurKutulari = mv
+    ? mv.liste.map((m) =>
+        h(
+          'span',
+          { s: `f-kz-muhur${m.basili && !m.yeni ? ' f-once' : ''}`, role: 'img', 'aria-label': `${MK.kademe[m.kademe]} mührü${m.basili ? '' : ': yok'}${m.yeni ? `, ${MK.yeni}` : ''}` },
+          muhurSvg(m.kademe, false),
+          muhurSvg(m.kademe, true, 'f-kz-mum'),
+          h('span', { s: 'f-kz-toz', 'aria-hidden': 'true' }),
+          m.yeni ? h('span', { s: 'f-kz-yeni', t: MK.yeni }) : null,
+        ),
+      )
+    : [];
+  const sancakCip = mv?.sancak ? h('span', { s: 'f-kz-sancak', t: MK.sancak }) : null;
+  const muhurSira = mv ? h('div', { s: 'f-kz-muhurler', 'aria-label': MK.muhurler }, muhurKutulari, sancakCip) : null;
+
   const icerik = h(
     'div',
     { s: 'f-kz' },
     h('div', { s: 'f-kz-bolum' }, h('span', { s: 'f-etiket', t: bolumBasligi(vm.bolumId, vm.tur) }), h('span', { s: 'f-kz-ad', t: vm.bolumAdi })),
     yildizSira,
+    muhurSira,
     h('div', { s: 'f-kz-orta' }, puan, rekor),
   );
   // Öğretim balonu (§15 Bölüm 5: "Yıldızlar puanından gelir.") yıldızların hemen altında:
-  // düğmelerin arkasında kalmasın, anlattığı şeyin yanında dursun.
-  if (vm.ipucu) icerik.appendChild(ustaIpucu(vm.ipucu));
+  // düğmelerin arkasında kalmasın, anlattığı şeyin yanında dursun. Mühür tanıtımı da burada (§C.5).
+  const ipucu = [vm.ipucu, mv?.tanitim ? MK.muhurTanitim : null].filter(Boolean).join(' ');
+  if (ipucu) icerik.appendChild(ustaIpucu(ipucu));
 
   // ── Ödüller: sandık + tablo
   const oduller = h('div', { s: 'f-kz-oduller' });
@@ -77,9 +101,11 @@ export function kazandinEkrani(
     }
     oduller.appendChild(kutu);
   }
+  let odullerEl: HTMLElement | null = null;
   if (oduller.childElementCount > 0) {
     oduller.classList.add(`f-n${oduller.childElementCount}`);
     icerik.appendChild(oduller);
+    odullerEl = oduller;
   }
 
   // "Sıradaki: X!" duyurulardan önce: bir bölüm daha hissi düğmelerin üstünde görünsün.
@@ -88,12 +114,27 @@ export function kazandinEkrani(
       h('div', { s: 'f-kz-sonraki' }, vm.sonrakiOge ? yeniOgeOnizleme(vm.sonrakiOge, b.palet) : null, h('span', { t: vm.sonrakiTanitim })),
     );
   }
-  if (vm.duyurular && vm.duyurular.length) {
+  // ── Kazanç şeridi: ilk çip her zaman kandil (§C.5; "+N daha"ya gömülmez).
+  const kv = vm.kandil && vm.kandil.yeni !== vm.kandil.onceki ? vm.kandil : null;
+  let kandilCip: HTMLElement | null = null;
+  let kandilSayi: HTMLElement | null = null;
+  if (kv) {
+    kandilSayi = h('span', { s: 'f-sayi', t: String(kv.onceki) });
+    kandilCip = h(
+      'li',
+      { s: 'f-kz-duyuru f-kz-kandil', 'aria-label': `${MK.kandilArti(kv.yeni - kv.onceki)}: ${kv.yeni}` },
+      kandilSvg(),
+      kandilSayi,
+      h('span', { s: 'f-kz-kandil-not', t: kv.tanitim ? MK.kandilTanitim : MK.kandilArti(kv.yeni - kv.onceki) }),
+    );
+  }
+  const duyurular = [...(vm.kasabaHazir ? [{ ikon: 'harita', metin: MK.isHazir, hazir: true }] : []), ...(vm.duyurular ?? []).map((d) => ({ ...d, hazir: false }))];
+  if (duyurular.length || kandilCip) {
     // Çok duyuru kartı taşırır (küçük ekranda düğmelerin altında kalır): ilk birkaçı, gerisi "+N" çipinde.
     const sinir = window.innerHeight <= 700 || window.innerWidth > window.innerHeight ? 1 : 3;
-    const liste = vm.duyurular;
-    const ogeler = liste.map((d) => h('li', { s: 'f-kz-duyuru' }, ikon(d.ikon as IkonAdi), h('span', { t: d.metin })));
-    const ul = h('ul', { s: 'f-kz-duyurular', 'aria-label': 'Kazanılanlar' }, liste.length > sinir + 1 ? ogeler.slice(0, sinir) : ogeler);
+    const liste = duyurular;
+    const ogeler = liste.map((d) => h('li', { s: `f-kz-duyuru${d.hazir ? ' f-kz-hazir' : ''}` }, d.hazir ? kandilSvg() : ikon(d.ikon as IkonAdi), h('span', { t: d.metin })));
+    const ul = h('ul', { s: 'f-kz-duyurular', 'aria-label': 'Kazanılanlar' }, kandilCip, liste.length > sinir + 1 ? ogeler.slice(0, sinir) : ogeler);
     if (liste.length > sinir + 1) {
       const fazla = ogeler.slice(sinir);
       const dg = h('button', { s: 'f-kz-duyuru f-kz-daha', type: 'button', 'aria-label': `${fazla.length} kazanım daha` }, h('span', { t: `+${fazla.length} daha` }));
@@ -103,13 +144,18 @@ export function kazandinEkrani(
       });
       ul.appendChild(li);
     }
-    icerik.appendChild(ul);
+    // (Kancalar §C.5) Kandil varsa kazanç şeridi puanın hemen altında, sandık/tablodan önce:
+    // kısa ekranda düğmelerin arkasında kalmasın.
+    if (kandilCip) icerik.insertBefore(ul, odullerEl ?? icerik.querySelector('.f-kz-sonraki'));
+    else icerik.appendChild(ul);
   }
+  if (mv || kv) icerik.classList.add('f-kancali');
 
   const bitir = (s: 'devam' | 'tekrar') => {
     if (!sec(s)) return;
     zamanlayicilar.forEach(clearTimeout);
     sayimIptal?.();
+    kandilIptal?.();
     if (vm.tablo?.eskiVar && tabloKarari !== null) b.geri.tabloKarari?.(vm.bolumId, tabloKarari);
     t.kapat();
   };
@@ -154,7 +200,51 @@ export function kazandinEkrani(
       b.duyur(M.yeniRekor);
     });
   }
-  sonra(Math.max(yildizSonu, 1500) + 260, () => icerik.classList.add('f-sonraki-goster'));
+  // Mühürler: önceden basılılar baştan sönük; yeniler yıldız sonu + 200 ms'de, 250 ms arayla.
+  let muhurSonu = yildizSonu;
+  if (mv) {
+    let n = 0;
+    mv.liste.forEach((m, i) => {
+      if (!m.yeni) return;
+      const t = yildizSonu + MUHUR_GECIKME + n * MUHUR_ARA;
+      n++;
+      muhurSonu = t + 250;
+      sonra(t, () => {
+        muhurKutulari[i].classList.add('f-bas');
+        b.ses('muhur');
+        b.titret(20);
+        b.duyur(`${MK.kademe[m.kademe]} mührü`);
+      });
+    });
+    if (sancakCip) sonra(muhurSonu + 120, () => sancakCip.classList.add('f-goster'));
+  }
+  const gosterT = Math.max(muhurSonu, 1500) + 260;
+  sonra(gosterT, () => icerik.classList.add('f-sonraki-goster'));
+  // Kandil: yeni yıldız ve mühür başına bir kandil çipe uçar; sayaç önceki → yeni.
+  if (kv && kandilCip && kandilSayi) {
+    const cip = kandilCip;
+    const sy = kandilSayi;
+    sonra(gosterT + 380, () => {
+      if (!cip.isConnected) return;
+      const kok = b.kok;
+      const kaynaklar: { x: number; y: number }[] = [];
+      const yildizKandil = Math.max(0, Math.min(kv.yildiz ?? 0, 3));
+      for (let i = vm.yildiz - yildizKandil; i < vm.yildiz; i++) if (yildizlar[i]) kaynaklar.push(merkez(yildizlar[i], kok));
+      if (mv) mv.liste.forEach((m, i) => m.yeni && kaynaklar.length < 8 && kaynaklar.push(merkez(muhurKutulari[i], kok)));
+      const hedef = merkez(cip.querySelector('.f-kandil-svg') ?? cip, kok);
+      let sayac = kv.onceki;
+      void kandilUcur(b, kaynaklar, hedef, () => {
+        sayac = Math.min(kv.yeni, sayac + 1);
+        sy.textContent = String(sayac);
+        cip.classList.remove('f-zipla');
+        void cip.offsetWidth;
+        cip.classList.add('f-zipla');
+        b.ses('dugme');
+      }).then(() => {
+        kandilIptal = say(sy, sayac, kv.yeni, az ? 0 : 500, (x) => String(Math.round(x)));
+      });
+    });
+  }
   return { soz, kapat: () => bitir('devam') };
 }
 

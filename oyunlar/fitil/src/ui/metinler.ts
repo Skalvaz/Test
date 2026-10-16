@@ -220,6 +220,90 @@ export const M = {
   mahalleTamam: (ad: string) => `${ad} tamamlandı!`,
 } as const;
 
+/**
+ * Sayının belirtme hâli eki ("Bölüm 6'yı", "Bölüm 11'i"): sayının okunuşunun
+ * son sözcüğüne göre (bir, iki, üç, dört, beş, altı, yedi, sekiz, dokuz; on,
+ * yirmi, otuz, kırk, elli…).
+ */
+export function belirtmeEki(n: number): string {
+  const birler = ["'ı", "'i", "'yi", "'ü", "'ü", "'i", "'yı", "'yi", "'i", "'u"];
+  const onlar = ["'ı", "'u", "'yi", "'u", "'ı", "'yi", "'ı", "'i", "'i", "'ı"];
+  const b = Math.abs(n) % 10;
+  if (b !== 0) return birler[b];
+  const o = Math.floor(Math.abs(n) / 10) % 10;
+  return o === 0 ? (n === 0 ? "'ı" : "'ü") : onlar[o];
+}
+
+/** Sakinlerin iyelik hâli (panelde "Kayıkçı Rıza'nın işleri"; KASABA_SAKINLERI sırası). */
+export const SAKIN_IYELIK: readonly string[] = [
+  "Kayıkçı Rıza'nın",
+  "Kandilci Nazlı'nın",
+  "Kaptan Yakup'un",
+  "Saatçi Hüsnü Usta'nın",
+  "Bahçıvan Gülizar'ın",
+  "Gökbilimci Ayşe'nin",
+  "Barutçu Kemal'in",
+  "Sur Bekçisi Murat'ın",
+];
+
+/** (Kancalar §C.7) Bölüm Mühürleri ve Kasaba İşleri metinleri. */
+export const MK = {
+  muhurler: 'Mühürler',
+  kademe: { cirak: 'Çırak', kalfa: 'Kalfa', usta: 'Usta' } as Record<'cirak' | 'kalfa' | 'usta', string>,
+  kademeBuyuk: { cirak: 'ÇIRAK', kalfa: 'KALFA', usta: 'USTA' } as Record<'cirak' | 'kalfa' | 'usta', string>,
+  muhurTuttu: (kademe: string) => `${kademe} mührü!`,
+  sancak: 'Sancak!',
+  durum: {
+    tuttu: 'Tuttu: kazanırsan basılır',
+    bekliyor: 'Henüz değil',
+    korunuyor: 'Şimdilik tutuyor',
+    bozuldu: 'Bu denemede bozuldu',
+    sonda: 'Kazanınca ölçülür',
+    basili: 'Basılı',
+  } as Record<'tuttu' | 'bekliyor' | 'korunuyor' | 'bozuldu' | 'sonda' | 'basili', string>,
+  ustaEliMuhur: "Usta'nın Eli ile mühür basılmaz",
+  rozetEtiket: (n: number) => `Mühürler: ${n}/3`,
+  yeni: 'YENİ',
+  muhurTanitim: 'Yeni: Mühürler! Her bölümde üç görev var; kazandığın oyunda tutanlar basılır.',
+  muhurKart: 'Mühürler bölümü başka bir yolla oynatır. Üçünü ayrı denemelerde toplayabilirsin.',
+  muhurHud: 'Mühür tuttu! Kazanırsan basılır.',
+  sancakIlk: 'Üç mühür: çatıya sancak!',
+  parcaDuyuru: (fitil: string, n: number) => `${fitil} parçası (${n} mühür)`,
+  tozDuyuru: (toz: number, n: number) => `+${toz} toz (${n} mühür)`,
+
+  kasaba: 'Kasaba',
+  kasabaBaslik: 'Fener Koyu Kasabası',
+  kandil: 'Kandil',
+  kandilSayisi: (n: number) => `${n} kandil`,
+  kandilArti: (n: number) => `+${n} kandil`,
+  kandilTanitim: 'Yıldızların kandile döndü!',
+  yap: 'Yap',
+  yapildi: 'Yapıldı',
+  eksik: (n: number) => `${n} eksik`,
+  tacKilitli: 'Önce 5 işi bitir',
+  sirada: (mahalle: string) => `Önce ${mahalle} süslensin`,
+  haritaKilitli: (n: number) => `Bölüm ${n}${belirtmeEki(n)} aç`,
+  kasabaKapali: '3. bölümü kazanınca açılır',
+  kandilYetti: (is: string) => `Kandil yetti: ${is} yapalım mı?`,
+  kasabaIlk: 'Yıldızların kandile döndü! Kasabayı süsleyelim.',
+  kasabaHosgeldin: (n: number) => `Fener Koyu seni bekliyordu: ${n} kandilin var!`,
+  isHazir: 'Kasabada yapılacak iş hazır!',
+  sakinIsleri: (m: number) => `${SAKIN_IYELIK[m] ?? ''} işleri`,
+  mahalleSenligi: 'Mahalle şenliği',
+  isEtiketi: (ad: string, maliyet: number, durum: string) => `${ad}, ${maliyet} kandil, ${durum}`,
+  isDurumAdi: {
+    yapildi: 'yapıldı',
+    yapilabilir: 'yapılabilir',
+    yetersiz: 'kandil yetmiyor',
+    tacKilitli: 'kilitli',
+    sirada: 'kilitli',
+    haritaKilitli: 'kilitli',
+    kasabaKapali: 'kilitli',
+  } as Record<string, string>,
+  kasabaDugme: (n: number, hazir: boolean) => `Kasaba: ${n} kandil${hazir ? ', yapılacak iş var' : ''}`,
+  kasabaKartlari: 'Kasaba kartları',
+} as const;
+
 /** Kapsül renk adları (§2.3); küçük harfli, sayılarla kullanılır. */
 export const RENK_ADLARI = ['kızıl', 'kehribar', 'zümrüt', 'gök', 'mor', 'gül'] as const;
 export const RENK_ADLARI_BUYUK = ['Kızıl', 'Kehribar', 'Zümrüt', 'Gök', 'Mor', 'Gül'] as const;

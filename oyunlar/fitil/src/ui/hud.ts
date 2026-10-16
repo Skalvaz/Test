@@ -18,6 +18,7 @@ import type { HudVM, HedefVM, GuclendiriciVM } from './tipler';
 import { HUD_PLAKA, type Yerlesim } from './yerlesim';
 import type { GuclendiriciId } from '../app/katalog';
 import { puanOrani, yildizKonumlari } from './puanCubugu';
+import { MuhurRozeti } from './kanca';
 
 interface HedefEl {
   kart: HTMLElement;
@@ -50,6 +51,10 @@ export class Hud {
   private puanSayimIptal: (() => void) | null = null;
   private oncekiKorukDolu = false;
   private vurgulu: GuclendiriciId | 'koruk' | null = null;
+  /** (Kancalar §C.3) Duraklat düğmesindeki mühür rozeti; mühürsüz bölümde yok. */
+  private rozet: MuhurRozeti | null = null;
+  /** Uçuşu süren mühürler: nokta damgaya kadar boş kalır. */
+  private ucusta = new Set<number>();
   /** "Son hamle!" bandı (Arayuz bağlar). */
   bantGoster: (metin: string) => void = () => {};
 
@@ -140,8 +145,13 @@ export class Hud {
     if (vm.hedefler.length === 0) hedefKutusu.classList.add('f-bos');
     const hamle = this.hamleMadalyonu(vm);
     const puan = this.puanCubugu(vm);
-    const duraklat = h('button', { s: 'f-yuvarlak f-duraklat-dg', type: 'button', 'aria-label': M.duraklat }, ikon('duraklat'));
-    duraklat.addEventListener('click', () => this.b.geri.duraklatIstendi?.());
+    const duraklatDg = h('button', { s: 'f-yuvarlak f-duraklat-dg', type: 'button', 'aria-label': M.duraklat }, ikon('duraklat'));
+    duraklatDg.addEventListener('click', () => this.b.geri.duraklatIstendi?.());
+    // Mühür rozeti Duraklat'a yapışık (üst banda hiçbir şey eklenmez, KA12).
+    this.rozet = vm.muhurler && vm.muhurler.length ? new MuhurRozeti() : null;
+    this.ucusta.clear();
+    if (this.rozet && vm.muhurler) this.rozet.guncelle(vm.muhurler);
+    const duraklat = this.rozet ? h('span', { s: 'f-duraklat-kap' }, duraklatDg, this.rozet.el) : duraklatDg;
     const guclendiriciler = h('div', { s: 'f-gucler' });
     for (const g of vm.guclendiriciler) guclendiriciler.appendChild(this.guclendiriciDugmesi(g));
     const koruk = this.korukDugmesi(vm);
@@ -329,7 +339,8 @@ export class Hud {
       eski.yildizSiniri !== vm.yildizSiniri ||
       (eski.korukKapasite > 0) !== (vm.korukKapasite > 0) ||
       eski.tahtaW !== vm.tahtaW ||
-      eski.tahtaH !== vm.tahtaH;
+      eski.tahtaH !== vm.tahtaH ||
+      !!eski.muhurler?.length !== !!vm.muhurler?.length;
     if (yapiDegisti) {
       this.ciz();
       return;
@@ -343,6 +354,29 @@ export class Hud {
       if (!k) continue;
       k.vm = g;
       this.guclendiriciBoya(g.id);
+    }
+    if (this.rozet && vm.muhurler) this.rozet.guncelle(vm.muhurler, this.ucusta);
+  }
+
+  // ───────────────────── Mühür rozeti (Kancalar §C.3) ─────────────────────
+
+  /** Rozet noktasının merkezi (kök öğeye göre CSS px); rozet yoksa null. */
+  muhurNoktasi(i: number): { x: number; y: number } | null {
+    return this.rozet?.noktaKonumu(i, this.b.kok) ?? null;
+  }
+
+  /** Uçuş başlar: nokta damgaya kadar boş görünür. */
+  muhurUcusBasla(i: number): void {
+    this.ucusta.add(i);
+    if (this.rozet && this.vm?.muhurler) this.rozet.guncelle(this.vm.muhurler, this.ucusta);
+  }
+
+  /** Uçuş indi: nokta damgalanır (ölçek 1 → 1,4 → 1). */
+  muhurDamgala(i: number): void {
+    this.ucusta.delete(i);
+    if (this.rozet && this.vm?.muhurler) {
+      this.rozet.guncelle(this.vm.muhurler, this.ucusta);
+      if (!this.b.az()) this.rozet.damgala(i);
     }
   }
 

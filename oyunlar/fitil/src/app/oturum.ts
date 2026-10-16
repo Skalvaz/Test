@@ -38,8 +38,9 @@ import type { SesMotoruAyrintili } from '../audio/sesMotoru';
 import type { Arayuz, KazandinVM, KaybettinVM } from '../ui/arayuz';
 import type { YolCizici, YolDegisimi } from './sozlesme';
 import type { Kayitci } from './kayitci';
-import { NADIRLIK, duraklatVM, hudVM, kaybettinVM, odulDuyurulari, sandiklarVM, yeniOge } from './gorunum';
+import { NADIRLIK, duraklatVM, hudVM, kaybettinVM, kazandinKancalari, odulDuyurulari, sandiklarVM, yeniOge } from './gorunum';
 import { kareBekle, simdi } from './zaman';
+import { MK } from '../ui/metinler';
 import { USTA_ELI_HAMLE } from '../core/sabitler';
 
 export type OturumSonucu =
@@ -135,6 +136,8 @@ export class Oturum {
   private tereddutSure: ReturnType<typeof setTimeout> | null = null;
   /** Ekranda açık başlangıç balonunun metni (Duraklat kapatır, Devam geri getirir). */
   private acikBaslangic: string | null = null;
+  /** (Kancalar §C.3) Son eylemden önceki mühür durumları: yeni 'tuttu' uçuşu için. */
+  private muhurOnceki: meta.MuhurAnlikDurumu[] = [];
 
   constructor(private o: OturumOrtami) {}
 
@@ -191,6 +194,7 @@ export class Oturum {
     this.sonucYazildi = false;
     this.baslangicBekliyor = false;
     this.acikBaslangic = null;
+    this.muhurOnceki = this.muhurDurumlari();
     ses.tahtaBoyutu(d0.w, d0.h);
     ui.hudKur(this.hudModeli());
     const alan = ui.tahtaAlani();
@@ -317,6 +321,7 @@ export class Oturum {
       v: this.v!,
       d,
       kayit: this.kayit,
+      oz: this.oz,
       girdiAcik: this.durum === 'bekliyor' || this.durum === 'secim',
       geriSarHazir: !!this.geriSarAnlik && this.d!.istatistik.guclendirici === 0,
     });
@@ -685,6 +690,8 @@ export class Oturum {
     d.istatistik.guclendirici += 1;
     this.d = d;
     this.oz = a.oz;
+    // Geri Sar özeti de geri alır: tutmuş görünen mühür geri dönebilir (rozet söner, ters uçuş yok).
+    this.muhurOnceki = this.muhurDurumlari();
     this.geriSarAnlik = null;
     this.sonHamleOncesi = null;
     this.o.cizici.durumGoster(d);
@@ -749,6 +756,7 @@ export class Oturum {
     }
     this.d = sonuc.durum;
     this.gPuan = this.d.puan;
+    this.muhurUcuslari(sonuc.olaylar);
     if (this.d.bitti === 'kazanc') {
       await this.kazanc(jeton);
       return;
@@ -787,7 +795,7 @@ export class Oturum {
       // Coşku Serisi Günün Şenliği'nden etkilenmez (meta: günlük nötr).
       const cosku = this.v.tur !== 'gunluk' && this.v.tur !== 'ogretim' && (meta.coskuAktif(this.kayit) || this.kayit.cosku > 0);
       // Oynatma sürerken HUD olaylarla ilerlemiştir: kart hamle SONRASI durumu göstersin.
-      secim = await ui.duraklat(duraklatVM(this.v, this.oynatilanSonraki ?? this.d, cosku));
+      secim = await ui.duraklat(duraklatVM(this.v, this.oynatilanSonraki ?? this.d, cosku, this.kayit, this.oz));
       if (jeton !== this.jeton) return;
       if (secim !== 'ayarlar') break;
       await this.o.ayarlarAc();
@@ -815,7 +823,7 @@ export class Oturum {
 
   // ─────────────────────────── Sonuç ───────────────────────────
 
-  private sonucGirdisi(kazandi: boolean, kalanHamle: number): meta.BolumSonucGirdisi {
+  private sonucGirdisi(kazandi: boolean, kalanHamle: number, muhurler?: readonly boolean[]): meta.BolumSonucGirdisi {
     const v = this.v!;
     const d = this.d!;
     const motifHedef = v.hedefler.find((x) => x.tur === 'desen');
@@ -832,12 +840,13 @@ export class Oturum {
       toplamHamle: d.toplamHamle + (d.istatistik.ustaEli ? USTA_ELI_HAMLE : 0),
       motif: kazandi && motifHedef?.tur === 'desen' ? motifHedef.motif : undefined,
       tur: v.tur === 'gunluk' ? 'gunluk' : v.tur === 'sonsuz' ? 'sonsuz' : undefined,
+      ...(muhurler ? { muhurler } : {}),
     };
   }
 
-  private sonucKaydet(kazandi: boolean, kalanHamle = this.d?.kalanHamle ?? 0): { sonuc: meta.BolumSonucCiktisi; onceki: Kayit } {
+  private sonucKaydet(kazandi: boolean, kalanHamle = this.d?.kalanHamle ?? 0, muhurler?: readonly boolean[]): { sonuc: meta.BolumSonucCiktisi; onceki: Kayit } {
     const onceki = this.kayit;
-    const sonuc = meta.bolumSonucu(onceki, this.sonucGirdisi(kazandi, kalanHamle));
+    const sonuc = meta.bolumSonucu(onceki, this.sonucGirdisi(kazandi, kalanHamle, muhurler));
     this.o.kayitci.degistir(sonuc.kayit, 500);
     this.sonucYazildi = true;
     return { sonuc, onceki };
@@ -856,6 +865,8 @@ export class Oturum {
     // Final Gösterisi (§7.3) saf bir hesaptır: sonuç (puan, yıldız, tablo) gösteriden ÖNCE
     // hesaplanıp kaydedilir — oyuncu final sırasında sayfayı kapatsa da kazanç kaybolmaz.
     const finalOncesi = this.d!;
+    // (Kancalar §A.4) Mühürler final ÖNCESİ durumla ve finalsiz özetle değerlendirilir.
+    const muhurler = v.muhurler ? meta.muhurleriDegerlendir(v, meta.muhurOzeti(this.oz, finalOncesi)) : undefined;
     let final: ReturnType<typeof finalGosterisi> | null = null;
     try {
       final = finalGosterisi(finalOncesi);
@@ -866,7 +877,7 @@ export class Oturum {
       this.oz = meta.ozetFinal(this.oz, final.olaylar);
       this.d = final.durum;
     }
-    const { sonuc, onceki } = this.sonucKaydet(true, kazancKalan);
+    const { sonuc, onceki } = this.sonucKaydet(true, kazancKalan, muhurler);
     await this.o.bekle(420);
     if (jeton !== this.jeton) return;
     if (final && final.olaylar.length > 2) {
@@ -889,6 +900,8 @@ export class Oturum {
     await this.o.bekle(650);
     if (jeton !== this.jeton) return;
     const vm = this.kazandinModeli(sonuc, onceki, ekranIpuclari.map((t) => t.metin).join(' ') || null);
+    // (Kancalar §C.6) Mühür tanıtımı Kazandın'da bir kez.
+    if (vm.muhurler?.tanitim) this.o.kayitci.degistir(meta.ipucuGoruldu(this.kayit, meta.KANCA_IPUCU.muhurTanitim), 1500);
     const tablo = sonuc.oduller.find((x): x is Extract<meta.Odul, { tur: 'tablo' }> => x.tur === 'tablo');
     const tuval = tablo ? this.o.tabloTuvali(tablo.tablo.kod, v.mahalle, tablo.tablo.nadirlik, v.id, v.tur === 'gunluk' ? v.id : undefined) : null;
     if (tablo) {
@@ -934,6 +947,7 @@ export class Oturum {
       sonrakiOge: ana ? yeniOge(v.id + 1) : null,
       ipucu,
       duyurular: odulDuyurulari(sonuc.oduller, { sonrakiBolum: ana ? v.id + 1 : undefined }),
+      ...kazandinKancalari(v, sonuc, this.kayit.ipuclari.gorulen),
     };
   }
 
@@ -1051,6 +1065,7 @@ export class Oturum {
     this.geriSarAnlik = null;
     // Kayıp ve o ana kadarki olaylar meta'ya işlendi: devam sonucu yalnız Eli sonrasını taşır.
     this.oz = meta.ozetBaslat();
+    this.muhurOnceki = this.muhurDurumlari();
     this.sonucYazildi = false;
     this.o.ekran('oyun');
     ui.hudGuncelle(this.hudModeli());
@@ -1058,6 +1073,67 @@ export class Oturum {
     this.durumAyarla('bekliyor');
     this.hudTazele();
     void ui.balon('Kıvılcım Usta yanında: 5 hamle daha!', 2400);
+  }
+
+  // ─────────────────────────── Mühürler (Kancalar §C.3) ───────────────────────────
+
+  /** Rozetteki anlık durumlar (mühürler görünmüyorsa boş). */
+  private muhurDurumlari(): meta.MuhurAnlikDurumu[] {
+    const v = this.v;
+    const d = this.d;
+    if (!v || !d || !v.muhurler || !meta.muhurlerGorunur(this.kayit) || v.tur === 'gunluk' || v.tur === 'sonsuz' || v.tur === 'usta') return [];
+    return meta.muhurAnlik(v, meta.muhurOzeti(this.oz, d));
+  }
+
+  /**
+   * Eylemin oynatması bitti: durumu yeni 'tuttu' olan ve kayıtta basılı
+   * OLMAYAN her mühür reaksiyon merkezinden (yoksa tahta ortasından) rozete
+   * uçar. İlk uçuşta Kıvılcım Usta balonu (bir kez). HUD bu çağrıdan sonra
+   * eşitlenir; nokta damgaya kadar boş kalır.
+   */
+  private muhurUcuslari(olaylar: readonly Olay[]): void {
+    const v = this.v;
+    if (!v) return;
+    const yeni = this.muhurDurumlari();
+    const once = this.muhurOnceki;
+    this.muhurOnceki = yeni;
+    if (!yeni.length) return;
+    const basili = meta.muhurMaskeCoz(meta.bolumKaydi(this.kayit, v.id)?.muhur);
+    const ucan: number[] = [];
+    yeni.forEach((d, i) => {
+      if (d === 'tuttu' && once[i] !== 'tuttu' && !basili[i]) ucan.push(i);
+    });
+    if (!ucan.length) return;
+    const kaynak = this.reaksiyonMerkezi(olaylar);
+    const jeton = this.jeton;
+    ucan.forEach((i, n) => {
+      const bas = () => {
+        if (jeton !== this.jeton) return;
+        void this.o.ui.muhurTuttu(i, meta.MUHUR_KADEMELERI[i], kaynak);
+      };
+      if (n === 0) bas();
+      else setTimeout(bas, n * 160);
+    });
+    this.hudTazele();
+    if (this.d?.bitti || !this.ayar.ipuclari || this.kayit.ipuclari.gorulen.includes(meta.KANCA_IPUCU.muhurHud)) return;
+    this.o.kayitci.degistir(meta.ipucuGoruldu(this.kayit, meta.KANCA_IPUCU.muhurHud), 1500);
+    void this.o.bekle(this.o.ui.hareketiAzaltik() ? 0 : 760).then(() => {
+      if (jeton === this.jeton && this.durum === 'bekliyor') void this.balonGoster(MK.muhurHud, 2400);
+    });
+  }
+
+  /** En büyük reaksiyonun merkezi (kök öğeye göre CSS px); yoksa tahta ortası. */
+  private reaksiyonMerkezi(olaylar: readonly Olay[]): { x: number; y: number } {
+    const g = this.o.cizici.geometri();
+    let en: Konum | null = null;
+    let boyut = -1;
+    for (const e of olaylar) if (e.tur === 'reaksiyon' && e.boyut > boyut) {
+      boyut = e.boyut;
+      en = e.merkez;
+    }
+    const d = this.d!;
+    const p = en ?? { x: (d.w - 1) / 2, y: (d.h - 1) / 2 };
+    return { x: g.x + (p.x + 0.5) * g.hucre, y: g.y + (p.y + 0.5) * g.hucre };
   }
 
   // ─────────────────────────── Öğretim (§15) ───────────────────────────

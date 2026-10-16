@@ -30,7 +30,7 @@ import * as meta from '../meta';
 import type { Kayit } from '../meta';
 import { bolumGetir } from '../levels/index';
 import { acemiSec, ustaSec } from '../bot/index';
-import { tarihUzun } from '../ui/metinler';
+import { MK, tarihUzun } from '../ui/metinler';
 import { KAPSUL_RENKLERI, MAHALLELER } from './katalog';
 import type { YolCizici } from './sozlesme';
 import { Kayitci } from './kayitci';
@@ -438,7 +438,11 @@ export class Uygulama {
       }
       if (kart) {
         this.ekranAdi = 'bolumOncesi';
-        const c = await this.ui.bolumOncesi(bolumOncesiVM(v, d0, this.kayit, cosku));
+        // (Kancalar §C.6 muhur-kart) Mühürlü ilk bölüm öncesi kartında bir kez.
+        const k0 = this.kayit;
+        const muhurIpucu = k0.ayarlar.ipuclari && v.muhurler && meta.muhurlerGorunur(k0) && !k0.ipuclari.gorulen.includes(meta.KANCA_IPUCU.muhurKart) ? MK.muhurKart : null;
+        if (muhurIpucu) this.kayitci.degistir(meta.ipucuGoruldu(k0, meta.KANCA_IPUCU.muhurKart), 1500);
+        const c = await this.ui.bolumOncesi(bolumOncesiVM(v, d0, this.kayit, cosku, muhurIpucu));
         if (c === 'geri' || this.istek) return 'harita';
         kart = false;
       }

@@ -142,6 +142,8 @@ export function tanimlariKur(palet: Palet): void {
       <linearGradient id="ftl-ahsap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6A4428"/><stop offset="1" stop-color="#3A2416"/></linearGradient>
       <radialGradient id="ftl-yuva" cx=".5" cy=".42" r=".6"><stop offset="0" stop-color="#160E08"/><stop offset="1" stop-color="#2E1E12"/></radialGradient>
       <pattern id="ftl-ip" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(52)"><rect width="5" height="5" fill="#9A6A36"/><rect width="2.2" height="5" fill="#D9A86A"/></pattern>
+      <radialGradient id="ftl-mum" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#F0614A"/><stop offset=".45" stop-color="#C4261C"/><stop offset="1" stop-color="#6E0B0B"/></radialGradient>
+      <linearGradient id="ftl-kil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8955A"/><stop offset=".55" stop-color="#B85A2A"/><stop offset="1" stop-color="#6A2E14"/></linearGradient>
     </defs></svg>`);
     document.body.appendChild(e);
     kok = e;
@@ -719,4 +721,60 @@ export function alevSvg(sinif = ''): SVGSVGElement {
   return svg(`<svg class="f-alev ${sinif}" viewBox="-12 -14 24 28" aria-hidden="true">
     <path d="M0 13c-6 0-9.5-4-9.5-9 0-6 5-8.5 6-15 3.6 2 5.2 5 5.4 8 1.4-1 2.2-2.8 2.4-5 4 3 5.7 7 5.7 11.8 0 5.2-4 9.2-10 9.2z" fill="url(#ftl-altin)" stroke="#B8381C" stroke-width="1.2"/>
     <path d="M0 13c-2.6 0-4.4-1.8-4.4-4.2 0-2.6 2.2-3.8 3.2-6.4 3 1.6 5.4 3.6 5.4 6.4 0 2.4-1.8 4.2-4.2 4.2z" fill="#FFF4C2"/></svg>`);
+}
+
+// ─────────────────────── Kancalar: mühür ve kandil ───────────────────────
+
+/** Mum mühürün dalgalı kenarı (merkez 0,0; r ≈ 13). */
+const MUM_YOLU = (() => {
+  const p: string[] = [];
+  const n = 48;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const r = 13 + 0.9 * Math.sin(a * 7 + 0.6) + 0.5 * Math.sin(a * 11 + 2.1);
+    p.push(`${f(r * Math.cos(a))} ${f(r * Math.sin(a))}`);
+  }
+  return `M${p.join('L')}Z`;
+})();
+
+const KADEME_HARFI: Record<string, string> = { cirak: 'Ç', kalfa: 'K', usta: 'U' };
+
+/**
+ * Mum mühür (KANCALAR §C.2): basılı = kırmızı mum + kabartma kademe harfi
+ * (Ç/K/U); basılmamış = kesik çerçeve ve sönük harf. viewBox −16..16.
+ */
+export function muhurIsaretleme(kademe: string, basili: boolean): string {
+  const harf = KADEME_HARFI[kademe] ?? '?';
+  if (!basili)
+    return `<circle r="12.4" fill="rgba(0,0,0,.28)" stroke="#E8CFA8" stroke-opacity=".55" stroke-width="1.6" stroke-dasharray="3.2 2.6"/>
+      <text y="5" text-anchor="middle" font-size="14" font-weight="800" fill="#E8CFA8" fill-opacity=".38" font-family="'Baloo 2',system-ui,sans-serif">${harf}</text>`;
+  return `<path d="${MUM_YOLU}" fill="#3A0606" transform="translate(.6 1.4)"/>
+    <path d="${MUM_YOLU}" fill="url(#ftl-mum)"/>
+    <circle r="9.4" fill="none" stroke="#7A0E0E" stroke-width="1.4" opacity=".75"/>
+    <circle r="9.4" fill="none" stroke="#FF9A84" stroke-width=".7" opacity=".45" transform="translate(-.5 -.6)"/>
+    <text y="5.6" text-anchor="middle" font-size="13.5" font-weight="800" fill="#FF9A84" fill-opacity=".55" font-family="'Baloo 2',system-ui,sans-serif" transform="translate(-.6 -.7)">${harf}</text>
+    <text y="5.6" text-anchor="middle" font-size="13.5" font-weight="800" fill="#5A0808" font-family="'Baloo 2',system-ui,sans-serif">${harf}</text>
+    <ellipse cx="-5" cy="-7" rx="3.4" ry="1.6" fill="#FFD2C4" opacity=".45" transform="rotate(-30 -5 -7)"/>`;
+}
+
+export function muhurSvg(kademe: string, basili: boolean, sinif = ''): SVGSVGElement {
+  return svg(`<svg class="f-muhur-svg${basili ? ' f-basili' : ''} ${sinif}" viewBox="-16 -16 32 32" aria-hidden="true">${muhurIsaretleme(kademe, basili)}</svg>`);
+}
+
+/**
+ * Pişmiş toprak kandil (KANCALAR §B.1): kayık biçimli gövde, solda emzikte
+ * küçük alev; yıldız ve tozdan ayrı siluet. viewBox −16..16 × −16..12.
+ */
+export function kandilIsaretleme(yanik = true): string {
+  return `${yanik ? '<circle cx="-11" cy="-6" r="9" fill="url(#ftl-koz)" opacity=".85"/>' : ''}
+    <path d="M-14.5-1.6C-12-3.4-8.8-4-4.6-4.2 1.4-4.6 8.4-4.2 11.6-1.8c1.4 1 1.6 2.6.6 4C9.6 5.8 4.2 7.4-1 7.4-6.6 7.4-10.4 5.2-12.6 2.2c-.6-.9-1.2-2-1.9-3.8z" fill="#3A1A08" transform="translate(0 1.2)"/>
+    <path d="M-14.5-1.6C-12-3.4-8.8-4-4.6-4.2 1.4-4.6 8.4-4.2 11.6-1.8c1.4 1 1.6 2.6.6 4C9.6 5.8 4.2 7.4-1 7.4-6.6 7.4-10.4 5.2-12.6 2.2c-.6-.9-1.2-2-1.9-3.8z" fill="url(#ftl-kil)" stroke="#5A260E" stroke-width="1"/>
+    <ellipse cx="1.4" cy="-2.6" rx="4.2" ry="1.5" fill="#4A1E0A"/>
+    <path d="M11.4-1.2c2.8-.6 4.4 1.2 3.4 3.2-.7 1.4-2.2 1.6-3.4 1.2" fill="none" stroke="#8A3E18" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M-9 2.6c3 1.8 8 2.2 13 .6" fill="none" stroke="#F2B07A" stroke-width=".9" stroke-linecap="round" opacity=".55"/>
+    ${yanik ? '<path d="M-12.6-4.2c-2.2-1.4-2.4-4.6.2-8.8.6 2.4 2.6 3.4 2.4 5.6-.1 1.8-1.2 3.2-2.6 3.2z" fill="url(#ftl-altin)" stroke="#B8381C" stroke-width=".7"/><path d="M-12.4-5c-.8-.6-.8-2 .2-3.4.4 1 1 1.6.9 2.4-.1.6-.5 1-1.1 1z" fill="#FFF4C2"/>' : ''}`;
+}
+
+export function kandilSvg(sinif = '', yanik = true): SVGSVGElement {
+  return svg(`<svg class="f-kandil-svg ${sinif}" viewBox="-16 -15 32 24" aria-hidden="true">${kandilIsaretleme(yanik)}</svg>`);
 }

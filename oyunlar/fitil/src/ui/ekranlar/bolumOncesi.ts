@@ -10,6 +10,9 @@ import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { hedefKutusu, mahalleCipi, tabloCercevesi, yeniOgeOnizleme, kucukYildizlar } from './ortak';
 import { svg } from '../dom';
 import type { BolumOncesiVM } from '../tipler';
+import { muhurListesi } from '../kanca';
+import { MK } from '../metinler';
+import { ustaIpucu } from './ortak';
 
 export function bolumOncesiEkrani(b: Baglam, vm: BolumOncesiVM): { soz: Promise<'basla' | 'geri'>; kapat: () => void } {
   const { soz, sec } = secimSozu<'basla' | 'geri'>();
@@ -40,7 +43,18 @@ export function bolumOncesiEkrani(b: Baglam, vm: BolumOncesiVM): { soz: Promise<
   if (esik) bilgiler.appendChild(h('span', { s: 'f-cip f-cip-sicak' }, ikon('alev'), h('span', { t: esik })));
   if (vm.ustaKurali) bilgiler.appendChild(h('span', { s: 'f-cip f-cip-usta' }, ikon('sapka'), h('span', { t: vm.ustaKurali })));
 
-  const icerik = h('div', { s: 'f-bo' }, ust, ad, rekor, hedefler, bilgiler);
+  // (Kancalar §C.2) Hedeflerden sonra, hamle çipinden önce MÜHÜRLER bloğu.
+  const muhurlu = !!vm.muhurler && vm.muhurler.length > 0;
+  const muhurler = muhurlu
+    ? h(
+        'div',
+        { s: 'f-bo-muhurler' },
+        vm.muhurIpucu ? ustaIpucu(vm.muhurIpucu) : null,
+        h('div', { s: 'f-etiket', t: MK.muhurler }),
+        muhurListesi(vm.muhurler!),
+      )
+    : null;
+  const icerik = h('div', { s: `f-bo${muhurlu ? ' f-muhurlu' : ''}` }, ust, ad, rekor, hedefler, muhurler, bilgiler);
 
   if (vm.yeniOge) {
     const yo = YENI_OGE[vm.yeniOge];
