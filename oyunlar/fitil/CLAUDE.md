@@ -6,6 +6,13 @@ three.js, kayıt sahneleri, M5a) burada geçerli DEĞİL; dil ve commit kurallar
 geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
 
 - Tasarım belgesi: `docs/GDD.md` (bağlayıcı; § numaralarıyla atıf yap).
+- Kancalar (Bölüm Mühürleri + Kasaba İşleri, kandil, kayıt şeması 3):
+  `docs/KANCALAR.md` (GDD eki; §A–§F). Kod: `src/meta/muhur.ts` (koşul dili,
+  değerlendirme), `src/meta/kasaba.ts` (türetilmiş kandil, işler),
+  `KASABA_ISLERI` (`src/app/katalog.ts`), mühür verisi `bNNN.json`
+  `"muhurler"`. Ölçüm: `scripts/kanca/` (`muhur-olc.ts`, `kisit-olc.ts`,
+  `kasaba-ekonomi.py`). Kandil bakiyesi SAKLANMAZ, türetilir; mühür
+  koşulları final gösterisini saymaz.
 - Sözleşmeler: `src/core/types.ts` (durum, olaylar, bölüm verisi),
   `src/core/index.ts` (çekirdek API), `src/app/sozlesme.ts` (çizici, girdi, ses).
   Sözleşmede var olan bir alanın anlamını değiştirme; alan eklemek serbest.

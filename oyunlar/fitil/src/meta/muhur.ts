@@ -110,7 +110,13 @@ export function muhurOzeti(oz: Pick<OyunOzeti, 'hamleIzleri'>, d: Pick<OyunDurum
 
 // ─────────────────────────── Değerlendirme ───────────────────────────
 
+/**
+ * "Tek hamle" (kapsam `hamle`) = tek oyuncu eylemi: fitil, çift dokunuş ya da
+ * Körük. Güçlendirici eylemleri (Kibrit, Kalıp) tek hamle sayılmaz; oyun
+ * toplamına (kapsam `oyun`) girer.
+ */
 function izSuzgeci(k: MuhurKosulu, iz: HamleIzi): boolean {
+  if (k.kapsam === 'hamle' && (iz.eylem === 'kibrit' || iz.eylem === 'kalip')) return false;
   if (k.halka !== undefined && iz.halka !== k.halka) return false;
   if (k.eylem !== undefined && iz.eylem !== k.eylem) return false;
   if (k.olcu === 'zincir' && k.renk !== undefined && iz.renk !== k.renk) return false;
@@ -149,7 +155,7 @@ function izDegeri(k: MuhurKosulu, iz: HamleIzi): number {
     case 'koruk':
       return iz.eylem === 'koruk' ? 1 : 0;
     case 'R':
-      return iz.eylem === 'kibrit' || iz.eylem === 'kalip' ? 0 : iz.R;
+      return iz.R;
     case 'nesil':
       return iz.nesil;
     case 'zincir':

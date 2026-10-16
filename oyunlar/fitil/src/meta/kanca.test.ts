@@ -165,6 +165,13 @@ describe('mühür koşulları', () => {
     expect(muhurDegeri({ olcu: 'kalanHamle', kapsam: 'son', enAz: 5 }, oz)).toBe(7);
   });
 
+  it('güçlendirici eylemi tek hamle sayılmaz, oyun toplamına girer; Körük tek hamledir', () => {
+    const g = mo([iz({ eylem: 'kibrit', zincir: 0, renk: -1, kafes: 3, R: 9 }), iz({ eylem: 'koruk', zincir: 0, renk: -1, kafes: 2, R: 5 })]);
+    expect(muhurDegeri({ olcu: 'kafes', kapsam: 'hamle', enAz: 1 }, g)).toBe(2);
+    expect(muhurDegeri({ olcu: 'kafes', kapsam: 'oyun', enAz: 1 }, g)).toBe(5);
+    expect(muhurDegeri({ olcu: 'R', kapsam: 'hamle', enAz: 1 }, g)).toBe(5);
+  });
+
   it('yalnız kazançta ve Usta\'nın Eli olmadan basılır; enAz/enCok', () => {
     const m: MuhurKosulu[] = [
       { olcu: 'halka', kapsam: 'oyun', enAz: 1 },
