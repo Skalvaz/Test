@@ -126,10 +126,27 @@ muhurBirlestir(eskiMaske, bu) → { maske, yeni }        // kayıt
 muhurMetni(kosul) → "Halkayla 14+ reaksiyon yap"
 ```
 `HamleIzi` (eylem başına): eylem türü, zincir/renk/halka, R, en yüksek nesil,
-patlama ve renk dağılımı, ısı patlaması, zincir dönüşümü (`olusan`), tetiklenen
+patlama ve renk dağılımı, ısı patlaması, zincir dönüşümü (`olusan`), patlayan
 özel taşlar, çapraz roket, kombinasyonlar, kafes/kaya/engel/döşeme/desen/is/
 fener/dev fişek/izli dev fişek/çapraz engel/kurutma. Atıflar özetle aynı
 kuralla (çapraz roket: eksende tam T + 25·d; izli dev fişek: önce `izYandi`).
+
+**Oyuncunun gözüyle sayım (K5 kararları):**
+- "Özel taş ateşle" (`ozelAtes`) **patlayan** özel taşı sayar
+  (`patlama.ozel`): kombinasyona giren iki taş da ateşlenmiş sayılır
+  (yüklenen S1 ve S2 kendi `ozelTetiklendi` olayını yazmaz; eski sayım
+  kombinasyonu 0 sayıyordu, 14. bölüm "Tek hamlede 3 özel taş ateşle"
+  kombinasyonu öğretirken onu saymazdı).
+- "Çapraz roket ateşle" (`caprazRoket`) kendi etkisiyle tetiklenen ↗/↘
+  roketi ve kombinasyona giren çapraz roketi sayar (eksen eylem öncesi
+  durumdan; `ozetHamle`'ye `onceki` verilmezse kombinasyondaki sayılmaz).
+  "Çapraz roketle engel vur" yalnız kendi etkisiyle uçan çapraz roketi atar
+  (kalın roket/yıldız hattı şeritleri sayılmaz).
+- Doğrulama: `src/bot/muhurOlcum.test.ts` 18 bölümün Usta/Acemi oyunlarında
+  ve 60 rastgele bölümde (Kibrit, Kalıp, Körük dahil) her izi çekirdeğin
+  durum/istatistik farkından bağımsız hesaplananla karşılaştırır; koşul
+  dilinin her ölçü × kapsam çifti bu bağımsız değerlerden yeniden toplanır;
+  atıflı ölçüler hedefli tahtalarla sınanır.
 
 **Oturumda (src/app/oturum.ts) yapılacak:** her eylemin oynatması bitince
 `muhurAnlik` → HUD; kazançta final ÖNCESİ durumla `muhurleriDegerlendir` →
@@ -218,18 +235,32 @@ Saat Kulesi Altın Tel · Bahçeler Ateş Böceği · Tepe Gökkuşağı · Fabr
 Kuyruğu · Kale Şimşek. Verilen basamaklar kayıtta `muhurOdulleri`
 (`"carsi:5"`), ikinci kez verilmez. 15/15 mühürlü mahalle o fitili TAM verir.
 
-### A.7 Kalibrasyon aracı (uygulama paketi)
-`npm run bot -- --muhur --bolum 6-40 --tohum 150 --acemi-tohum 300 --bas 2000`
-(sim-cli): her oyunda `ozetHamle` ile iz toplar, kazançlarda
-`muhurleriDegerlendir` uygular; mühür başına U/A oranını ve bandı yazar.
-Kısıt mühürlerinde kısıtlı botu da oynatır (Körük kapalı: `korukKapasitesi`
-0; kısa zincir: bot adaylarından < 4 düğüm elenir). `npm run dogrula` bant
-dışı mühürde (±5 puan pay) **uyarı** verir (başarısızlık değil). Bölüm
-ayarı (hamle, eşik) değişirse o bölümün mühürleri yeniden ölçülür.
-Ön ölçüm betikleri: `npx tsx scripts/kanca/muhur-olc.ts 6 40 150 300 2000`
-(bölüm JSON'undaki mühürlerin U/A oranları; tek iş parçacığı, ~40 dk,
-aralığı bölüp paralel koşun) ve `npx tsx scripts/kanca/kisit-olc.ts 30,25 100`
-(Körüksüz oranı).
+### A.7 Kalibrasyon aracı (K5, `src/bot/muhurOlcum.ts` + sim-cli)
+```powershell
+npm run bot -- --muhur --bolum 6-40 --tohum 150 --acemi-tohum 300 --bas 2000 --json olcum.json
+npm run bot -- --muhur --bolum 22 --katalog              # bölüme uyan aday mühürlerin eşik tablosu
+npm run bot -- --muhur --bolum 22 --aday adaylar.json    # ek koşulların oranları (dizi ya da {"22": [...]})
+npm run dogrula -- --bolum 6-40 --acemi                  # bant dışı mühürde UYARI (±5 puan)
+```
+- Her oyunda uygulamanın yaptığı gibi `ozetHamle(oz, olaylar, { hamle,
+  onceki })` çağrılır; kazançlarda koşul DEĞERİ (`muhurDegeri`, eşikten
+  bağımsız) toplanır, oran = koşulu tutan kazanç / kazanç.
+- Kalıcı işçi havuzu, varsayılan **2 işçi** (`--isci`), bölüm bölüm (izler
+  bölüm yazdırılınca atılır); 35 bölüm × (150 U + 300 A) ≈ 40 dk.
+- Satır: `Ç metin  U x  A y  → oran (bant …) bantta|PAYDA (±5)|BANT DIŞI`;
+  bant dışında `öneri: enAz N → U a A b` (Çırak: alt sınıra 5 puan pay
+  bırakan en zor eşik; Kalfa ~%45, Usta ~%16 hedefli).
+- **Kısıt mühürleri** (`enCok`): aynı tohumlarla kısıtlı bot da oynar
+  (`OyunSecenek.kisit`: Körük sınırı → `BotSecenek.korukYok`; 3'lük zincir
+  sınırı → `enKisaZincir: 4`, uygun aday yoksa süzgeç kalkar); oran =
+  kısıtlı botun koşulu TUTAN kazancı / normal botun kazancı.
+- `--katalog`: bölüm öğelerinden aday koşullar (`adayKatalogu`) ve her
+  kademe için banda giren eşik (Usta/Acemi oranlarıyla); yeni bölüme mühür
+  seçerken başlangıç noktası.
+- `--dogrula` mühürlü bölümde işçiden mühür değerlerini de alır; Çırak
+  yalnız Acemi ölçüldüyse (öğretim/tanıtım ya da `--acemi`), kısıt
+  mühürleri yalnız `--muhur` ile denetlenir. Bölüm ayarı (hamle, eşik,
+  düzen) değişirse o bölümün mühürleri yeniden ölçülür.
 
 ---
 
@@ -581,7 +612,7 @@ Sıra: K1 → (K2, K3, K4 paralel) → K5 → K6.
   `MUHUR_FITILLERI`.
 - `src/levels/veri/b006–b040.json`: `muhurler`; `dogrulayici.ts` denetler.
 - Testler: `src/meta/kanca.test.ts`.
-- Ölçüm: `scripts/kanca/muhur-olc.ts`, `kisit-olc.ts`, `kasaba-ekonomi.py`.
+- Ölçüm: `npm run bot -- --muhur` (K5; ön ölçüm betikleri bununla değişti), `scripts/kanca/kasaba-ekonomi.py`.
 
 ---
 

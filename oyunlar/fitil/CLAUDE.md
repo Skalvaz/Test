@@ -10,9 +10,9 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   `docs/KANCALAR.md` (GDD eki; §A–§F). Kod: `src/meta/muhur.ts` (koşul dili,
   değerlendirme), `src/meta/kasaba.ts` (türetilmiş kandil, işler),
   `KASABA_ISLERI` (`src/app/katalog.ts`), mühür verisi `bNNN.json`
-  `"muhurler"`. Ölçüm: `scripts/kanca/` (`muhur-olc.ts`, `kisit-olc.ts`,
-  `kasaba-ekonomi.py`). Kandil bakiyesi SAKLANMAZ, türetilir; mühür
-  koşulları final gösterisini saymaz.
+  `"muhurler"`. Mühür ölçümü: `npm run bot -- --muhur` (`src/bot/muhurOlcum.ts`;
+  aşağıda), ekonomi: `scripts/kanca/kasaba-ekonomi.py`. Kandil bakiyesi
+  SAKLANMAZ, türetilir; mühür koşulları final gösterisini saymaz.
 - Sözleşmeler: `src/core/types.ts` (durum, olaylar, bölüm verisi),
   `src/core/index.ts` (çekirdek API), `src/app/sozlesme.ts` (çizici, girdi, ses).
   Sözleşmede var olan bir alanın anlamını değiştirme; alan eklemek serbest.
@@ -32,6 +32,8 @@ npm run dogrula -- --dosya deneme/ --tohum 30        # varyant JSON'ları (klas�
 npm run kalibre -- --bolum 12                        # 500 tohum, yildizEsikleri yazar, hamle önerir
 npm run kalibre -- --bolum 6-25 --kural k24          # K24 eşikleri (+500 Acemi), "esikKurali": "k24" yazar
 npm run bot -- --dagilim --bolum 1-12 --tohum 100 --acemi-tohum 60   # Usta+Acemi kazanma, 1/2/3★, puan yüzdelikleri, K22 önerisi
+npm run bot -- --muhur --bolum 6-40 --tohum 150 --acemi-tohum 300 --bas 2000   # mühür oranları, bant, eşik önerisi (2 işçi)
+npm run bot -- --muhur --bolum 22 --katalog          # + bölüme uyan aday mühürlerin eşik tablosu (--aday DOSYA: ek koşullar)
 node scripts/shot.mjs <url> <png> [w] [h] [bekleme-ms] [js]   # telefon görünümü (390×844)
 npm run oynanis -- http://127.0.0.1:5185/ playtest-output [telefon|masaustu|kucuk]   # tam akış duman testi
 ```
