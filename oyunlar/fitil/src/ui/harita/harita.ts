@@ -81,7 +81,9 @@ export class HaritaEkrani {
     const yeniAcilan = oncekiSimdiki !== null && simdiki > oncekiSimdiki && simdiki - oncekiSimdiki <= 1 ? oncekiSimdiki : null;
     // (Kancalar §C.1) Önceki çizimde olmayıp şimdi yapılmış işler: kutlanır.
     const oncekiIsler = onceki?.kasaba ? new Set(onceki.kasaba.isler) : null;
-    const yeniIsler = new Set(oncekiIsler ? (vm.kasaba?.isler ?? []).filter((x) => !oncekiIsler.has(x)) : []);
+    // Toplu değişiklikte (bulut kaydı, kayıt kodu) kutlama yok: yalnız "Yap" ile gelen 1–2 iş kutlanır.
+    const fark = oncekiIsler ? (vm.kasaba?.isler ?? []).filter((x) => !oncekiIsler.has(x)) : [];
+    const yeniIsler = new Set(fark.length <= 2 ? fark : []);
     const kutlamalar = this.ciz(vm, yeniAcilan, yeniIsler);
     this.kok!.classList.remove('f-gizli-ekran');
     if (kutlamalar.length) this.kutlamaSozu = this.kutlamalariOynat(kutlamalar, vm);

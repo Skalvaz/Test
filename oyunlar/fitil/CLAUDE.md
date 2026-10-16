@@ -13,6 +13,25 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   `"muhurler"`. Ölçüm: `scripts/kanca/` (`muhur-olc.ts`, `kisit-olc.ts`,
   `kasaba-ekonomi.py`). Kandil bakiyesi SAKLANMAZ, türetilir; mühür
   koşulları final gösterisini saymaz.
+- Kasaba ekonomisi ve kayıt: `kandilKazanimi` (önceki → yeni döküm farkı,
+  `Odul kandil` için), `kancaBirlestir` (bulut + tarayıcı: seçilen kayda
+  öbüründen mühür maskeleri VEYA, eksik işler kurallar/bütçeyle, günlük
+  kandil büyük olan); `SaveStore` `merge` seçeneği + `pickMerged`,
+  `Kayitci.bulutUygula` iki yönde birleştirir. Gerçek şema 2 kayıt örnekleri
+  `src/meta/_test/kayitlar/` (yayındaki `fitil.html` @5c88078 botla oynanıp
+  localStorage'dan alındı); göç testleri `kayitOrnekleri.test.ts`.
+- Harita süsleri: `src/ui/harita/susler.ts` (dışa açık), `susIlkel.ts`
+  (fener, bayrak, alev, ışık; `Cizim` toplayıcı), `isCizimleri.ts` (48 iş).
+  Yerleşim: mahalle şeridinin üstü "giriş yuvası" (kemer/kapı/çeşme), düğüm
+  lambasından karşı kenara "cep ipi" (fener/flama dizisi), binalar ve arka
+  plan simgeleri, mahallenin üst ortası (taç işler). Katalog `yer` =
+  `isCapasi` (test). İş başına en çok 1 canlı öğe (`Cizim.canliSiniri`;
+  mahalle ≤ 6, ip + fenerler tek öğe skewX ile sallanır); fazlası durağan
+  yedekle çizilir. Yeni iş `harita(vm)` önceki modelde yoksa kutlanır (1–2
+  iş; toplu değişiklikte yok), mahalle 6/6 olduysa `senlik(m)`;
+  `Arayuz.haritaKutlamasi()` bitince Defter kartı. Önizleme:
+  `dev/kasaba.html?mahalle=0..7&isler=bos|yarim|tam|<n>|<id,…>&kutla=<id>&senlik=<m>&temiz=1&sancak=1|yarim&az=1`.
+  Süssüz `bolgeCiz` çıktısı eskisiyle birebir (test).
 - Sözleşmeler: `src/core/types.ts` (durum, olaylar, bölüm verisi),
   `src/core/index.ts` (çekirdek API), `src/app/sozlesme.ts` (çizici, girdi, ses).
   Sözleşmede var olan bir alanın anlamını değiştirme; alan eklemek serbest.
