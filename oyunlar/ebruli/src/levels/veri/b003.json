@@ -1,0 +1,35 @@
+{
+  "id": 3,
+  "ad": "Tarak",
+  "atolye": "uskudar",
+  "tur": "ogretim",
+  "w": 6,
+  "h": 8,
+  "hamle": 17,
+  "tohum": 1003,
+  "dogum": [20, 20, 20, 11, 11, 11],
+  "garanti": 3,
+  "murekkep": false,
+  "hedefler": [{ "tur": "topla", "renk": 5, "adet": 11 }],
+  "duzen": [
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . . . . .",
+    ". . 2 . . .",
+    "2 4 1 2 . .",
+    "5 5 4 5 6 ."
+  ],
+  "zorunluIlkHamle": { "kaynak": [2, 6], "hedef": [2, 7] },
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Dört damla: TARAK doğar.", "el": [[2, 6], [2, 7]] },
+    { "tetik": "ilkHamleSonrasi", "metin": "Boşalan yere üstteki kayar." },
+    { "tetik": "ozelOlusunca", "metin": "Tarağı bir komşuya sürükle.", "el": [[2, 7], [3, 7]] }
+  ],
+  "sonrakiTanitim": "Sıradaki: Kâğıt!",
+  "botBandi": [98, 100],
+  "acemiAlt": 95,
+  "yildizEsikleri": [1200, 1800],
+  "elleEsik": true
+}

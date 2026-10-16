@@ -1,0 +1,32 @@
+{
+  "id": 16,
+  "ad": "Sarı Yağmıyor",
+  "atolye": "bursa",
+  "tur": "rahatlama",
+  "w": 7,
+  "h": 9,
+  "hamle": 26,
+  "tohum": 1016,
+  "dogum": [28, 4, 28, 8, 18, 8],
+  "garanti": 2,
+  "murekkep": true,
+  "hedefler": [{ "tur": "topla", "renk": 5, "adet": 40 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". 2 . . . 2 ."
+  ],
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Sarı yağmıyor. Elindekini iyi kullan." }
+  ],
+  "sonrakiTanitim": "Sıradaki: Karanfil deseni!",
+  "botBandi": [95, 100],
+  "acemiAlt": 60,
+  "yildizEsikleri": [2000, 3000]
+}

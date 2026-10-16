@@ -1,0 +1,44 @@
+{
+  "id": 13,
+  "ad": "Yağ Lekesi",
+  "atolye": "bursa",
+  "tur": "tanitim",
+  "w": 7,
+  "h": 9,
+  "hamle": 25,
+  "tohum": 1013,
+  "dogum": [16, 24, 24, 9, 9, 14],
+  "garanti": 2,
+  "murekkep": true,
+  "hedefler": [{ "tur": "topla", "renk": 6, "adet": 28 }],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    "1 . . . . . .",
+    "4 . . . . . .",
+    "2 6 6 1 . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "zemin": {
+    "yag": [
+      [3, 3],
+      [2, 4],
+      [3, 4],
+      [4, 4],
+      [2, 5],
+      [3, 5],
+      [4, 5],
+      [3, 6]
+    ]
+  },
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Yağlı damla karışmaz. Üstünü temizle.", "el": [[0, 4], [0, 5]] }
+  ],
+  "sonrakiTanitim": "Sıradaki: Sabun Hanı",
+  "botBandi": [92, 100],
+  "acemiAlt": 40,
+  "yildizEsikleri": [2000, 3000]
+}

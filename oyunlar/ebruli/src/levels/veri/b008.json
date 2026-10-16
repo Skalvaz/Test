@@ -1,0 +1,40 @@
+{
+  "id": 8,
+  "ad": "Mermer",
+  "atolye": "uskudar",
+  "tur": "tanitim",
+  "w": 7,
+  "h": 9,
+  "hamle": 26,
+  "tohum": 1008,
+  "dogum": [20, 20, 19, 13, 13, 15],
+  "garanti": 2,
+  "murekkep": false,
+  "hedefler": [
+    { "tur": "kagit" },
+    { "tur": "topla", "renk": 6, "adet": 28 }
+  ],
+  "duzen": [
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . . . .",
+    ". . . . 4 . .",
+    ". . 6 6 2 1 .",
+    "X1 X1 X1 X1 X1 X1 X1",
+    ". . . . . . .",
+    ". . . . . . ."
+  ],
+  "zemin": {
+    "kagit": [
+      [2, 2, 1], [3, 2, 1], [4, 2, 1], [2, 3, 1], [3, 3, 1], [4, 3, 1]
+    ]
+  },
+  "ipuclari": [
+    { "tetik": "baslangic", "metin": "Mermer yanındaki eşleşmeyle çatlar.", "el": [[4, 4], [4, 5]] }
+  ],
+  "sonrakiTanitim": "Sıradaki: Lale deseni!",
+  "botBandi": [92, 100],
+  "acemiAlt": 40,
+  "yildizEsikleri": [2000, 3000]
+}

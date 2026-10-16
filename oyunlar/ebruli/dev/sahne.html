@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ebruli · Sahne denemesi</title>
+<link rel="icon" href="data:,">
+<meta name="color-scheme" content="dark">
+<style>
+  .arac { position: fixed; z-index: 5; left: 0; right: 0; top: 0; display: flex; flex-wrap: wrap; gap: 4px; padding: calc(env(safe-area-inset-top) + 6px) 8px 6px; background: linear-gradient(#0B2B2Ef0, #0B2B2E00); pointer-events: none; }
+  .arac button, .arac select { pointer-events: auto; font: 800 12px/1 "Alegreya Sans", system-ui, sans-serif; color: #1E1A16; background: #F3E9D2; border: 1.5px solid #C9A227; border-radius: 7px; padding: 6px 8px; min-height: 30px; }
+  .arac button:active { background: #E8CD6A; }
+  .hud { position: fixed; z-index: 4; left: 0; right: 0; top: 44px; display: flex; justify-content: center; gap: 10px; pointer-events: none; }
+  .kart { width: 64px; height: 52px; background: #F3E9D2; border: 2px solid #C9A227; border-radius: 9px; box-shadow: 0 0 0 4px #3B2416; display: grid; place-items: center; color: #1E1A16; font: 800 18px/1 "Alegreya Sans", system-ui, sans-serif; transition: transform .12s; }
+  .kart i { display: block; width: 18px; height: 18px; border-radius: 50%; margin: 0 auto 2px; }
+  .kart.zipla { transform: scale(1.2); }
+  .puan { align-self: center; min-width: 80px; text-align: center; color: #F3E9D2; font: 800 18px/1 "Alegreya Sans", system-ui, sans-serif; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="arac" id="arac"></div>
+<div class="hud" id="hud"></div>
+<script type="module" src="../src/render/dev/sahne.ts"></script>
+</body>
+</html>

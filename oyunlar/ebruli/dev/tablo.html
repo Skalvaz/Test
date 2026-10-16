@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ebruli · Tablo denemesi</title>
+<link rel="icon" href="data:,">
+<meta name="color-scheme" content="dark">
+<style>
+  html, body { margin: 0; background: #0B2B2E; color: #F3E9D2; font: 500 14px/1.35 "Alegreya Sans", system-ui, sans-serif; }
+  body { padding: calc(env(safe-area-inset-top) + 12px) 16px 28px; }
+  h1 { margin: 0 0 4px; font: 700 30px/1.1 "Cormorant Garamond", Georgia, serif; color: #E8CD6A; }
+  p.alt { margin: 0 0 12px; color: #CDB892; font-size: 13px; }
+  .izgara { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  @media (min-width: 900px) { .izgara { grid-template-columns: repeat(4, 1fr); } }
+  .kart { background: #3B2416; border-radius: 8px; padding: 6px 6px 8px; box-shadow: 0 6px 18px #0008; cursor: zoom-in; }
+  .kart canvas { width: 100%; height: auto; display: block; border-radius: 3px; }
+  .kart b { display: block; margin-top: 5px; font-weight: 800; color: #E8CD6A; font-size: 13px; }
+  .kart span { display: block; color: #CDB892; font-size: 12px; }
+  .buyuk { position: fixed; inset: 0; background: #0B2B2Ef4; display: none; place-items: center; z-index: 9; cursor: zoom-out; }
+  .buyuk.acik { display: grid; }
+  .buyuk canvas { max-width: 92vw; max-height: 92vh; width: auto; height: auto; box-shadow: 0 10px 40px #000a; }
+</style>
+</head>
+<body>
+<h1>Ebru tabloları</h1>
+<p class="alt" id="bilgi">Günlükten belirlenimli ebru — çiziliyor…</p>
+<div class="izgara" id="izgara"></div>
+<div class="buyuk" id="buyuk"></div>
+<script type="module" src="../src/render/dev/tablo.ts"></script>
+</body>
+</html>
