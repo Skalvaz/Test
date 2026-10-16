@@ -534,13 +534,22 @@ Sıra (GDD §14.6'ya ek): yıldızlar → **mühürler** → puan sayımı (eşz
   arayla damgalanır (ölçek 2,2 → 1 `outBack`, toz halkası, ses `yildiz2`
   perdesi düşük, titreşim 20 ms). 3/3 tamamlandıysa yanında "Sancak!" çipi.
 - Kazanç şeridi = duyuru satırı; **ilk çip her zaman kandil**: "+N kandil"
-  (onceki → yeni sayar), "+N daha"ya gömülmez. Sonra mühür parçası, sancak,
-  diğer duyurular (700 ve altında 1 + kandil).
+  (onceki → yeni sayar), "+N daha"ya gömülmez. Sonra mühür parçası
+  (öncelikli: o da gömülmez), "Kasabada yapılacak iş hazır!", diğer
+  duyurular (700 ve altında kandil + öncelikliler + 1; öncelikli varsa o 1
+  hakkı kullanır, gerisi "+N daha").
 - Tanıtım (`muhurler.tanitim`): Kıvılcım Usta ipucu yıldızların altında:
   "Yeni: Mühürler! Her bölümde üç görev var; kazandığın oyunda tutanlar
-  basılır." Kasaba tanıtımı (`kandil.tanitim`): "Yıldızların kandile döndü!".
+  basılır." İpuçları kapalıysa ve bölüm öncesi `muhur-kart` görüldüyse (göçle
+  gelen oyuncu) çıkmaz. Kasaba tanıtımı (`kandil.tanitim`): "Yıldızların
+  kandile döndü!".
+- Usta'nın Eli ile kazançta boş halkaların altında "Usta'nın Eli ile mühür
+  basılmaz".
 - 700'de sığması için sandık/tablo satırı %85 ölçeklenir (230 → 196 px);
-  390×700 ve 375×600'de ekran görüntüsü.
+  660 ve altında yıldızlar, tanıtım ipucu, sandık/tablo ve çipler bir kademe
+  daha küçülür (360×640'ta tanıtım + kandil + iş hazır + sandık + tablo +
+  "Sıradaki" kaydırmasız); 390×700, 375×600 ve 360×640'ta ekran görüntüsü.
+  Ekran kapanınca uçan kandiller kalkar (sayaç sesi susar).
 
 ### C.6 Öğretim balonları (Kıvılcım Usta; `ipuclari.gorulen` kimlikleriyle bir kez)
 | Kimlik | Ne zaman | Metin | Yer |

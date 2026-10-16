@@ -72,6 +72,8 @@ export class HaritaEkrani {
   private suzulusNo = 0;
   /** Yeni işin ışıklarının yanma gecikmesi (s): kıvılcımlar önce uçar. */
   private kutlamaGecikme = 0;
+  /** Harita gizlenince (bölüme geçiş) uçan kandil kıvılcımları kalkar, sesleri susar. */
+  private ucusIptal = new AbortController();
 
   constructor(b: Baglam) {
     this.b = b;
@@ -123,9 +125,20 @@ export class HaritaEkrani {
     });
   }
 
+  /** Görünür mü (gizli ekran değil); kutlama gizlenince sesini kısar. */
+  private get gorunur(): boolean {
+    return !!this.kok && !this.kok.classList.contains('f-gizli-ekran');
+  }
+
+  private ucuslariIptal(): void {
+    this.ucusIptal.abort();
+    this.ucusIptal = new AbortController();
+  }
+
   gizle(): void {
     this.coz?.({ tur: 'kapandi' });
     this.senlikIptal?.();
+    this.ucuslariIptal();
     this.balonKapat();
     if (!this.kok) return;
     this.kok.classList.add('f-gizli-ekran');
@@ -134,6 +147,7 @@ export class HaritaEkrani {
   yokEt(): void {
     this.coz?.({ tur: 'kapandi' });
     this.senlikIptal?.();
+    this.ucuslariIptal();
     this.gozcu?.disconnect();
     this.kok?.remove();
     this.kok = null;
@@ -527,9 +541,10 @@ export class HaritaEkrani {
       if (ilk && this.kutlamaGecikme > 0) {
         ilk = false;
         await this.bekle(480);
-        if (this.vm !== vm) return;
+        if (this.vm !== vm || !this.gorunur) return;
         await this.kivilcimUcur(k, vm);
       }
+      if (this.vm !== vm || !this.gorunur) return;
       const ust = bolgeUst(k.m);
       const yer = { left: yuzdeX(k.capa.x), top: `${(((k.capa.y - ust) / BOLGE_H) * 100).toFixed(3)}%` };
       // Kutlama katmanı (fişek, halka, parıltı) — ışıklar yanmaya başlayınca.
@@ -541,6 +556,8 @@ export class HaritaEkrani {
       kap.appendChild(fisek);
       const is = KASABA_ISLERI.find((x) => x.id === k.id);
       await this.bekle(az || this.kutlamaGecikme > 0 ? 0 : 520);
+      // Oyuncu bu arada bölüme geçtiyse (harita gizlendi) ses ve balon yok.
+      if (!this.gorunur) return;
       this.b.ses('kasaba');
       this.b.titret(20);
       if (is) {
@@ -565,7 +582,7 @@ export class HaritaEkrani {
       }
       await this.bekle(az ? 400 : Math.min(2400, 900 + k.isik * 70));
       setTimeout(() => fisek.remove(), 2400);
-      if (k.mahalleTamam) await this.senlik(k.m);
+      if (k.mahalleTamam && this.gorunur) await this.senlik(k.m);
     }
   }
 
@@ -616,10 +633,18 @@ export class HaritaEkrani {
     const n = Math.max(1, Math.min(6, is.maliyet));
     const bas = Number(sy.textContent) || son;
     let i = 0;
-    await kandilUcur(this.b, Array.from({ length: n }, () => kaynak), hedef, () => {
-      i++;
-      sy.textContent = String(Math.max(son, Math.round(bas - ((bas - son) * i) / n)));
-    }, 60, true);
+    await kandilUcur(
+      this.b,
+      Array.from({ length: n }, () => kaynak),
+      hedef,
+      () => {
+        i++;
+        sy.textContent = String(Math.max(son, Math.round(bas - ((bas - son) * i) / n)));
+      },
+      60,
+      true,
+      this.ucusIptal.signal,
+    );
     sy.textContent = String(son);
   }
 

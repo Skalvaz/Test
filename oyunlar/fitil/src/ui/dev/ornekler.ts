@@ -199,8 +199,28 @@ export function kazandinVm(v = '1'): KazandinVM {
           },
           kandil: v === 'mt' ? { onceki: 0, yeni: 8, tanitim: true, yildiz: 3, muhur: 0 } : { onceki: 14, yeni: 21, tanitim: false, yildiz: 2, muhur: 2 },
           kasabaHazir: v === 'm',
-          duyurular: v === 'm' ? [{ ikon: 'alev', metin: 'Lale Dalı parçası (5 mühür)' }, { ikon: 'rozet', metin: 'Rozet: Halkacı' }] : [],
+          duyurular: v === 'm' ? [{ ikon: 'alev', metin: 'Lale Dalı parçası (5 mühür)', oncelikli: true }, { ikon: 'rozet', metin: 'Rozet: Halkacı' }] : [],
         }
+      : {}),
+    // (QA) Kalabalık ilk mühürlü kazanç (360×640): tanıtım + kandil + iş hazır + 3 duyuru + sandık + tablo.
+    ...(v === 'mk'
+      ? {
+          sandiklar: [{ tur: 'normal' as const, oduller: [{ tur: 'fitilParcasi' as const, id: 'altinTel' as const, parca: 1 }] }],
+          tablo: { nadirlik: 'parlak' as const, eskiVar: false },
+          sonrakiTanitim: 'Sıradaki: Dev Fişek!',
+          muhurler: { liste: muhurlerVm().map((m, i) => ({ ...m, basili: i === 0, yeni: i === 0 })), tanitim: true, sancak: false },
+          kandil: { onceki: 31, yeni: 35, tanitim: false, yildiz: 3, muhur: 1 },
+          kasabaHazir: true,
+          duyurular: [
+            { ikon: 'rozet', metin: 'Rozet: Halkacı' },
+            { ikon: 'tik', metin: 'Görev: 3 bölüm kazan' },
+            { ikon: 'alev', metin: 'Fener Nöbeti: Çıra' },
+          ],
+        }
+      : {}),
+    // (QA) Usta'nın Eli ile kazanç: boş halkalar ve açıklama.
+    ...(v === 'me'
+      ? { muhurler: { liste: muhurlerVm().map((m) => ({ ...m, basili: false, yeni: false })), tanitim: false, sancak: false, ustaEli: true }, yildiz: 1 as const }
       : {}),
   };
 }

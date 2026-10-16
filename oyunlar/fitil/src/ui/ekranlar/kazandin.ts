@@ -144,9 +144,12 @@ export function kazandinEkrani(
     const cip = (d: { ikon: string; metin: string; hazir: boolean }) =>
       h('li', { s: `f-kz-duyuru${d.hazir ? ' f-kz-hazir' : ''}` }, d.hazir ? kandilSvg() : ikon(d.ikon as IkonAdi), h('span', { t: d.metin }));
     const ogeler = liste.map(cip);
-    const ul = h('ul', { s: 'f-kz-duyurular', 'aria-label': 'Kazanılanlar' }, kandilCip, oncelikli.map(cip), liste.length > sinir + 1 ? ogeler.slice(0, sinir) : ogeler);
-    if (liste.length > sinir + 1) {
-      const fazla = ogeler.slice(sinir);
+    // Öncelikliler sınırdan muaf ama yer kaplar: kalan sınır onlardan sonra (kısa ekranda taşmasın).
+    const kalan = Math.max(0, sinir - oncelikli.length);
+    const sigar = liste.length <= kalan + 1;
+    const ul = h('ul', { s: 'f-kz-duyurular', 'aria-label': 'Kazanılanlar' }, kandilCip, oncelikli.map(cip), sigar ? ogeler : ogeler.slice(0, kalan));
+    if (!sigar) {
+      const fazla = ogeler.slice(kalan);
       const dg = h('button', { s: 'f-kz-duyuru f-kz-daha', type: 'button', 'aria-label': `${fazla.length} kazanım daha` }, h('span', { t: `+${fazla.length} daha` }));
       const li = h('li', { s: 'f-kz-daha-li' }, dg);
       dg.addEventListener('click', () => {

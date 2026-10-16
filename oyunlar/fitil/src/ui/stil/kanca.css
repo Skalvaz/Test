@@ -157,10 +157,20 @@
   .f-kz.f-kancali .f-kz-sonraki .f-yeni-oge { width: 30px; height: 30px; }
   .f-kz.f-kancali .f-kz-sonraki .f-yo-svg { width: 28px; height: 28px; }
 }
-@media (max-height: 620px) {
+/* 640 px ve altı (360×640, 375×600): tanıtım + kandil + iş hazır + sandık + tablo
+   birlikte geldiğinde tablo etiketi ve "Sıradaki" düğmelerin altında kalmasın (QA). */
+@media (max-height: 660px) {
   .f-kz.f-kancali .f-kz-yildizlar { height: 66px; }
   .f-kz.f-kancali .f-kz-yildiz { width: 52px; height: 52px; }
   .f-kz.f-kancali .f-kz-yildiz.f-y1 { width: 64px; height: 64px; }
+  .f-kz.f-kancali > .f-usta-ipucu { font-size: 13px; line-height: 1.2; padding: 3px 12px 3px 3px; gap: 8px; }
+  .f-kz.f-kancali > .f-usta-ipucu .f-usta { width: 32px; height: 32px; flex: none; }
+  .f-kz.f-kancali .f-sandik { width: 80px; height: 68px; }
+  .f-kz.f-kancali .f-sandik-svg { width: 64px; }
+  .f-kz.f-kancali .f-kz-tablo .f-tablo { width: 46px; max-width: 46px; }
+  .f-kz.f-kancali .f-kz-sandik-kutu, .f-kz.f-kancali .f-kz-tablo { padding: 4px 6px 6px; }
+  .f-kz.f-kancali .f-kz-duyurular { gap: 4px; }
+  .f-kz.f-kancali .f-kz-duyuru { padding: 3px 10px 3px 7px; font-size: 13px; }
 }
 
 /* ── Kasaba paneli (§C.1): alttan çekmece, yükseklik min(%70, 520 px) */
