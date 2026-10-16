@@ -752,13 +752,25 @@ function adaylariOku(dosya: string): (id: number) => MuhurKosulu[] {
   return (id) => j[String(id)] ?? [];
 }
 
+/** Değer → kazanç sayısı (JSON raporunda eşik keşfi için; kümeler toplanabilir). */
+type Dagilim = Record<string, number>;
+
+function degerDagilimi(degerler: readonly number[]): Dagilim {
+  const d: Dagilim = {};
+  for (const x of degerler) d[x] = (d[x] ?? 0) + 1;
+  return d;
+}
+
 interface MuhurBolumRaporu {
   bolumId: number;
   ad: string;
   usta: { oyun: number; kazanc: number };
   acemi: { oyun: number; kazanc: number };
-  muhurler: (MuhurOlcumu & { oneri: ReturnType<typeof esikOnerisi> })[];
+  /** Mühürler; `dagilim`: kazançlarda koşul değerinin dağılımı (kısıtta kısıtlı botun). */
+  muhurler: (MuhurOlcumu & { oneri: ReturnType<typeof esikOnerisi>; dagilim: { usta: Dagilim; acemi: Dagilim } })[];
   adaylar: { kosul: MuhurKosulu; metin: string; usta: number | null; acemi: number | null }[];
+  /** --katalog: aday koşulların kazanç değer dağılımları. */
+  katalog: { kosul: MuhurKosulu; usta: Dagilim; acemi: Dagilim }[];
 }
 
 async function muhurKip(a: Argumanlar): Promise<number> {
@@ -807,12 +819,14 @@ async function muhurKip(a: Argumanlar): Promise<number> {
       const kU = oU.filter((o) => o.kazandi).length;
       const kA = oA.filter((o) => o.kazandi).length;
       console.log(`\nBölüm ${v.id} "${v.ad}" (${v.tur}): kazanç Usta %${oranMetni((100 * kU) / Math.max(1, oU.length)).trim()} (${kU}/${oU.length}), Acemi %${oranMetni((100 * kA) / Math.max(1, oA.length)).trim()} (${kA}/${oA.length})`);
-      const rapor: MuhurBolumRaporu = { bolumId: v.id, ad: v.ad, usta: { oyun: oU.length, kazanc: kU }, acemi: { oyun: oA.length, kazanc: kA }, muhurler: [], adaylar: [] };
+      const rapor: MuhurBolumRaporu = { bolumId: v.id, ad: v.ad, usta: { oyun: oU.length, kazanc: kU }, acemi: { oyun: oA.length, kazanc: kA }, muhurler: [], adaylar: [], katalog: [] };
       olcumler.forEach((o, i) => {
         sayac[o.durum]++;
         const k = m[i];
         const oneri = o.durum !== 'bantta' && k.enAz !== undefined ? esikOnerisi(o.kademe, kazancDegerleri(k, oU), kazancDegerleri(k, oA)) : null;
-        rapor.muhurler.push({ ...o, oneri });
+        const kU2 = gK[i] ? oyunlar(gK[i]!.usta) : oU;
+        const kA2 = gK[i]?.acemi ? oyunlar(gK[i]!.acemi) : oA;
+        rapor.muhurler.push({ ...o, oneri, dagilim: { usta: degerDagilimi(kazancDegerleri(k, kU2)), acemi: degerDagilimi(kazancDegerleri(k, kA2)) } });
         const ks = o.kisitli ? ` kısıtlı U ${oranMetni(o.kisitli.usta?.oran ?? null)}${o.kisitli.acemi ? ` A ${oranMetni(o.kisitli.acemi.oran)}` : ''}` : '';
         const isaret = { bantta: 'bantta', payda: 'PAYDA (±5)', disinda: 'BANT DIŞI', olculemedi: 'ölçülemedi' }[o.durum];
         console.log(
@@ -836,6 +850,7 @@ async function muhurKip(a: Argumanlar): Promise<number> {
           const k = { ...b, enAz: 1 } as MuhurKosulu;
           const dU = kazancDegerleri(k, oU);
           const dA = kazancDegerleri(k, oA);
+          rapor.katalog.push({ kosul: { ...b, enAz: 1 } as MuhurKosulu, usta: degerDagilimi(dU), acemi: degerDagilimi(dA) });
           const parca = MUHUR_KADEMELERI.map((kd) => {
             const e = esikOnerisi(kd, dU, dA.length ? dA : null);
             return `${KADEME_HARFI[kd]} ${e ? `${String(e.enAz).padStart(2)}: U ${oranMetni(e.usta)} A ${oranMetni(e.acemi)}` : '        —        '}`;
