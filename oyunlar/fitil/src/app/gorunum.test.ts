@@ -7,7 +7,7 @@ import { bolumuYukle } from '../core/index';
 import { bolumGetir } from '../levels/index';
 import * as meta from '../meta';
 import { ilerlet, kazan } from '../meta/_test/yardimci';
-import { bolumOncesiVM, coskuRoketi, gunlukVM, haritaVM, hedefVM, hudVM, kaybettinVM, mahalleOdulleri, nasilVM, odulDuyurulari, sandiklarVM, yeniOge } from './gorunum';
+import { bolumOncesiVM, coskuRoketi, gunlukVM, haritaVM, hedefVM, hudVM, kasabaVM, kaybettinVM, kazandinKancalari, mahalleOdulleri, muhurVMleri, nasilVM, odulDuyurulari, sandiklarVM, yeniOge } from './gorunum';
 
 describe('harita eşlemesi', () => {
   it('kazanılan → acik, sıradaki → simdiki, gerisi kilitli; 40 düğüm ve 8 Usta', () => {
@@ -159,5 +159,80 @@ describe('mahalle ödülleri (Fener Koyu Defteri kartı)', () => {
     for (const g of gucler) if (g.tur === 'guclendirici') expect(r.kayit.guclendiriciler[g.id]).toBeGreaterThanOrEqual(g.adet);
     expect(gucler.length).toBe(0);
     expect(toz).toBeDefined();
+  });
+});
+
+describe('(Kancalar) mühür, kasaba ve Kazandın eşlemeleri', () => {
+  it('mühür satırları yalnız 6. bölüm kazanılınca ve mühürlü ana bölümde; anlık durum özetten', () => {
+    const v7 = bolumGetir(7)!;
+    const once = ilerlet(5, 2);
+    expect(muhurVMleri(v7, once)).toBeUndefined();
+    const k = ilerlet(7, 2);
+    k.bolumler['7'].muhur = 0b001;
+    const m = muhurVMleri(v7, k)!;
+    expect(m.map((x) => [x.kademe, x.basili])).toEqual([['cirak', true], ['kalfa', false], ['usta', false]]);
+    expect(m.every((x) => x.metin.length > 0 && x.durum === undefined)).toBe(true);
+    const d0 = bolumuYukle(v7, 0);
+    const anlik = muhurVMleri(v7, k, { oz: meta.ozetBaslat(), d: d0 })!;
+    expect(anlik.every((x) => x.durum !== undefined)).toBe(true);
+    expect(muhurVMleri(bolumGetir(3)!, k)).toBeUndefined();
+    // HUD ve bölüm öncesi aynı satırları taşır.
+    expect(bolumOncesiVM(v7, d0, k, false, 'ipucu').muhurler).toHaveLength(3);
+    expect(bolumOncesiVM(v7, d0, k, false, 'ipucu').muhurIpucu).toBe('ipucu');
+    expect(hudVM({ v: v7, d: d0, kayit: k, girdiAcik: true, geriSarHazir: false }).muhurler).toHaveLength(3);
+    expect(hudVM({ v: v7, d: d0, kayit: once, girdiAcik: true, geriSarHazir: false }).muhurler).toBeUndefined();
+  });
+
+  it('Kazandın: yeni mühürler, tanıtım bir kez, sancak, kandil çipi', () => {
+    const v6 = bolumGetir(6)!;
+    const k = ilerlet(5, 3);
+    const r = kazan(k, 6, 3, { muhurler: [true, false, false] });
+    const vm = kazandinKancalari(v6, r, []);
+    expect(vm.muhurler?.liste.map((x) => [x.basili, x.yeni])).toEqual([[true, true], [false, false], [false, false]]);
+    expect(vm.muhurler?.tanitim).toBe(true);
+    expect(kazandinKancalari(v6, r, [meta.KANCA_IPUCU.muhurTanitim]).muhurler?.tanitim).toBe(false);
+    expect(vm.kandil).toMatchObject({ yeni: meta.kandilBakiyesi(r.kayit), tanitim: false, muhur: 1 });
+    // 3. bölüm: kasaba açılır, tanıtım 0'dan sayar.
+    const r3 = kazan(ilerlet(2, 2), 3, 3);
+    const k3 = kazandinKancalari(bolumGetir(3)!, r3, []);
+    expect(k3.kandil).toMatchObject({ onceki: 0, yeni: 7, tanitim: true });
+    expect(k3.muhurler).toBeNull();
+    expect(k3.kasabaHazir).toBe(false);
+    // Sancak (3/3)
+    const k7 = ilerlet(7, 2);
+    k7.bolumler['7'].muhur = 0b011;
+    const r7 = kazan(k7, 7, 2, { muhurler: [true, true, true] });
+    expect(kazandinKancalari(bolumGetir(7)!, r7, []).muhurler?.sancak).toBe(true);
+  });
+
+  it('kasaba paneli: süslenen mahalle seçili, durumlar meta ile aynı, sıra ve harita kilidi', () => {
+    let k = ilerlet(7, 3);
+    let vm = kasabaVM(k);
+    expect(vm.secili).toBe(0);
+    expect(vm.ogretim).toBe(true);
+    expect(vm.kandil).toBe(meta.kandilBakiyesi(k));
+    expect(vm.mahalleler).toHaveLength(8);
+    expect(vm.mahalleler[0].isler.map((x) => x.durum)).toEqual(['yapilabilir', 'yapilabilir', 'yapilabilir', 'yapilabilir', 'yapilabilir', 'tacKilitli']);
+    expect(vm.mahalleler[0].isler[5].tac).toBe(true);
+    expect(vm.mahalleler[1]).toMatchObject({ acik: true, sirada: false });
+    expect(vm.mahalleler[2].acik).toBe(false);
+    for (const is of meta.mahalleIsleri(0)) {
+      const r = meta.kasabaIsYap(k, is.id);
+      if (!r.tamam) throw new Error(r.hata);
+      k = r.kayit;
+    }
+    vm = kasabaVM(k);
+    expect(vm.secili).toBe(1);
+    expect(vm.ogretim).toBe(false);
+    expect(vm.mahalleler[0].yapilan).toBe(6);
+    expect(vm.mahalleler[1].sirada).toBe(true);
+  });
+
+  it('mühür parçası Kazandın duyurusunda ilk sırada', () => {
+    const d = odulDuyurulari([
+      { tur: 'rozet', rozet: 'halkaci', ad: 'Halkacı' },
+      { tur: 'muhurParcasi', mahalle: 1, esik: 5, fitil: 'laleDali', parca: 'f:laleDali:0', toz: 0 },
+    ]);
+    expect(d[0].metin).toBe('Lale Dalı parçası (5 mühür)');
   });
 });

@@ -55,15 +55,25 @@ npm run bot -- --muhur --bolum 6-40 --tohum 150 --acemi-tohum 300 --bas 2000   #
 npm run bot -- --muhur --bolum 22 --katalog          # + bölüme uyan aday mühürlerin eşik tablosu (--aday DOSYA: ek koşullar)
 node scripts/shot.mjs <url> <png> [w] [h] [bekleme-ms] [js]   # telefon görünümü (390×844)
 npm run oynanis -- http://127.0.0.1:5185/ playtest-output [telefon|masaustu|kucuk]   # tam akış duman testi
+npm run oynanis -- http://127.0.0.1:5185/ playtest-output goc,goc600   # şema 2 kaydının göçü + kasaba + mühür (390×700, 375×600)
 ```
 
 Oynanış testi (`scripts/oynanis.mjs`) dev sunucusuna ya da `file://…/fitil.html`'e
 karşı koşar: açılış → bölüm 1 (zorunlu ilk hamle gerçek dokunmatik sürüklemeyle)
 → bot ile 1–6 ve 10 → kazandın/kaybettin (Tekrar dene < 1 sn ölçülür) → harita →
 ayarlar → defter → Günün Şenliği; pageerror/console.error başarısızlıktır.
+Kanca adımları: 3. bölümden sonra ilk kandil balonu → Kasaba paneli → ilk iş
+(kıvılcım, ışıklar, sakin); 6. bölüm Kazandın'da mühür tanıtımı; 7. bölüm
+kartında mühür bloğu, oyunda rozet ve "tuttu" uçuşu. `goc`/`goc600` profilleri
+(yalnız adıyla seçilince koşar) yayındaki şema 2 sürümünün localStorage'ını
+(`src/meta/_test/kayitlar/`) sayfa açılmadan kurar: göç denetimi (yıldız,
+rozet, koleksiyon, istatistik aynen; mühür geriye dönük yok) → "Fener Koyu seni
+bekliyordu" → İskele'nin 6 işi (şenlik + kasaba kartı) → mühürlü sıradaki bölüm
+→ `kayitYama` ile şema 2 kaydı.
 Test kancası `window.__fitil`: `durum()`, `bolum()`, `ekran()`, `bolumAc(id)`,
-`botHamle('usta'|'acemi')`, `hizli(on)`, `kayit()`, `kayitYama({...})`,
-`ac('gunluk'|'defter'|'ayarlar'|'istatistik'|'nasil'|'sonsuz')`, `geometri()`, `ogretim()`,
+`botHamle('usta'|'acemi')`, `hizli(on)`, `kayit()`, `kayitYama({...})` (eski
+şemalı tam kayıt `{ surum: 2, … }` verilirse gerçek göç + onarım yolundan geçer),
+`ac('gunluk'|'defter'|'ayarlar'|'istatistik'|'nasil'|'sonsuz'|'kasaba')`, `geometri()`, `ogretim()`,
 `cizici()` (çizici: `dev.dondur(true)` + `dev.ilerle(ms)` ile kare dondurulur; özel
 yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
 `devFisekFirlat({x, y})` — fişek ekran görüntüleri için).
@@ -139,6 +149,28 @@ yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
   13–15 (sınır 14). Acemi kazanç puanları dar dağılır (p40–p50 arası
   150–300 puan): K24'ün 2★'ı (Acemi p50) bağımsız tohumlarda Acemi
   kazançlarının %38–64'ünü en az 2★ yapar.
+
+## Kanca arayüzü (Mühürler + Kasaba; docs/KANCALAR.md §C)
+
+- Ortak bileşenler `src/ui/kanca.ts` (mühür satırları, HUD rozeti `MuhurRozeti`,
+  `muhurUcur`, kandil hapı, `kandilUcur`), stil `src/ui/stil/kanca.css`, ikonlar
+  `muhurSvg`/`kandilSvg` (`ikonlar.ts`, gradyanlar `ftl-mum`, `ftl-kil`),
+  metinler `MK` (`metinler.ts`). Panel `src/ui/ekranlar/kasaba.ts`
+  (`ui.kasaba(vm)`); harita: Kasaba düğmesi, kıvılcımlar, `haritaBalonu`.
+- Görünüm modelleri `app/gorunum.ts`: `muhurVMleri` (yalnız 6. bölüm kazanıldıysa
+  ve mühürlü ana bölümde; `oz` verilirse anlık durum), `kazandinKancalari`,
+  `kasabaVM`, `kasabaKartlari`. Oturum: eylem sonu `muhurUcuslari` (yeni 'tuttu' +
+  kayıtta basılı değil → uçuş); kazançta mühürler final ÖNCESİ durum ve finalsiz
+  özetle değerlendirilir. Uygulama: `kasabaAkisi` (Yap → kayıt → harita kutlaması
+  → 6/6 ise kasaba kartı), `haritaBalonu` (kasaba-ilk / hoşgeldin / Kandil yetti /
+  sancak-ilk; balon çıkan dönüşte oto-kart atlanır).
+- Dikkat: `.f-sonda` (güvenli alan ölçüm sondası) global sınıf: durum sınıflarını
+  önekle (`f-mr-*`). Harita aynı modelle yeniden çağrılırsa yeniden çizilmez
+  (kutlama/sakin balonu kesilmesin). Yeni işin ışıkları `--kd` gecikmesiyle
+  kıvılcımlar varınca yanar.
+- Önizleme: `dev/arayuz.html?ekran=bolumOncesi&v=m|mi`, `hud&v=muhur`, `ucus`,
+  `duraklat&v=m`, `kazandin&v=m|mt`, `kasaba[&ogretim=1]`, `haritaBalon`,
+  `kasabaKarti&m=0`, `harita&kasaba=1|bos|yok`.
 
 ## Bölüm Mühürleri (K5 ölçümü; docs/KANCALAR.md §A.5, §A.7, KA13–KA15)
 

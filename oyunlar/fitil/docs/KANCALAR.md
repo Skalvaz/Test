@@ -634,6 +634,40 @@ satırı: "Mühür 23 · Kasaba 17/48 işi · 6 kandil".
 
 Sıra: K1 → (K2, K3, K4 paralel) → K5 → K6.
 
+**Durum (arayüz ve entegrasyon paketi):**
+- K1 tamam: `bolumSonucu` 2b/2c/7b/11 (`ilerleme.ts`), `defter.ts` 8 kasaba
+  kartı, `KANCA_IPUCU`, `muhurlerGorunur`; testler `kancaSonuc.test.ts`
+  (mühür birleşimi ve tanıtımı, sancak bir kez, Usta'nın Eli/kayıp/öğretim/Usta
+  Bölümü mühürsüz, ödül sırası, 5/10/15 parça ve toz yedeği, birleştirmeyle
+  gelen mühürler sonraki kazançta, kandil ve kasaba açılışı) + günlük kandil
+  (`ilerleme.test.ts`). Karar: kasaba açılmadan (1–2. bölüm) `kandil` ödülü
+  çıkmaz; bakiye yine türetilir, 3. bölümde "Yıldızların kandile döndü!" 0'dan
+  sayar.
+- K2 tamam: Duraklat'a yapışık rozet (`MuhurRozeti`), eylem sonu uçuş (reaksiyon
+  merkezi → nokta, damga, `muhur` sesi, 15 ms, "Kalfa mührü!"), ilk uçuşta
+  `muhur-hud` balonu, Geri Sar rozeti geri alır, Usta'nın Eli'nde hepsi
+  bozuldu; Duraklat'ta durum yazıları; kazançta final öncesi değerlendirme.
+- K3 tamam: bölüm öncesi mühür bloğu (`muhur-kart` ipucu bir kez; ≤ 760 px'te
+  "Yeni öğe" çipe küçülür, "En iyi" yıldız satırına taşınır, hedef kutuları
+  yatay); Kazandın mühür satırı (önceden basılı sönük, yeniler 250 ms arayla
+  damga + "YENİ", 3/3 "Sancak!"), tanıtım ipucu, kazanç şeridinin ilk çipi
+  kandil (yıldız/mühür başına uçan kandil, sayaç önceki → yeni), "Kasabada
+  yapılacak iş hazır!", mühür parçası duyurusu. Kandil varken şerit sandık ve
+  tablodan önce (kısa ekranda düğmelerin arkasında kalmasın). 390×700 ve
+  375×600 ekran görüntüleriyle denetlendi.
+- K4 tamam: alt bantta Kasaba düğmesi (136/124 px, amber nokta + 1,5 Hz
+  parıltı), alttan çekmece panel (sekmeler, sakin satırı, 6 iş kartı, durumlar,
+  ilk işte el animasyonu), Yap akışı (kayıt → 240 ms → çapaya kayış →
+  min(maliyet, 6) kıvılcım, sayaç aşağı sayar → ışıklar `--kd` gecikmesiyle →
+  halka + parıltı + `kasaba` sesi + 20 ms → sakin balonu; 6/6'da şenlik ve
+  kasaba kartı), haritada Kıvılcım Usta balonu (kasaba-ilk, kasaba-hosgeldin,
+  "Kandil yetti", sancak-ilk; balonlu dönüşte oto-kart atlanır), Defter ve
+  Ayarlar'da kasaba kartları.
+- K6 tamam: `oynanis.mjs` telefon/masaüstü akışına ilk kandil, mühür
+  tanıtımı ve mühür uçuşu; `goc` (390×700) ve `goc600` (375×600) profilleri
+  yayındaki şema 2 sürümünün localStorage'ını kurup göçü, kasabayı, şenliği ve
+  mühürlü bölümü dener; `kayitYama` eski şemalı kaydı göçle yükler.
+
 ### Sözleşme kodu (P0, bu paket)
 - `src/core/types.ts`: `MuhurKosulu`, `MuhurOlcusu`, `MuhurKapsami`,
   `MuhurEylemi`; `BolumVerisi.muhurler`.
