@@ -12,6 +12,19 @@
  *  - telefon  390×844, dokunmatik (CDP Input.dispatchTouchEvent ile gerçek sürükleme)
  *  - masaustu 1280×800, fare
  *  - kucuk    360×640, dokunmatik (yalnız açılış, bölüm 1, harita, ayarlar)
+ *  - goc      390×700, dokunmatik: yayındaki şema 2 sürümünün gerçek kaydı
+ *             (src/meta/_test/kayitlar/sema2-bolum14.json, localStorage olduğu
+ *             gibi) yüklenir → göç denetimi (yıldız/rozet/defter aynen) →
+ *             "Fener Koyu seni bekliyordu" balonu → Kasaba paneli → İskele'nin
+ *             6 işi (son iş Mahalle şenliği + kasaba kartı) → 15. bölüm kazancı
+ *             (mühür satırı, kandil çipi) → `kayitYama` ile şema 2 kaydı (27).
+ *  - goc600   375×600: aynı denetim 27. bölüme kadar oynanmış kayıtla (panel,
+ *             Kazandın kısa ekranda).
+ *
+ * Kanca adımları (telefon/masaüstü): 3. bölüm kazancından sonra ilk kandil
+ * balonu → Kasaba paneli → ilk iş (kıvılcımlar, ışıklar, sakin balonu); 6.
+ * bölüm Kazandın'da mühür tanıtımı; 7. bölüm kartında mühür bloğu ve oyunda
+ * mühür rozeti/uçuşu.
  *
  * Akış: açılış → Bölüm 1 (öğretim; zorunlu ilk hamle GERÇEK sürüklemeyle)
  * → bot ile 1, 2, 5, 6, 10 (kazanç ya da kayıp) → Kazandın / Kaybettin
@@ -21,7 +34,7 @@
  *
  * Test kancası: window.__fitil (src/app/uygulama.ts testKancasi).
  */
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 
@@ -35,7 +48,12 @@ const PROFILLER = [
   { ad: 'telefon', w: 390, h: 844, dokunmatik: true, tam: true },
   { ad: 'masaustu', w: 1280, h: 800, dokunmatik: false, tam: true },
   { ad: 'kucuk', w: 360, h: 640, dokunmatik: true, tam: false },
-].filter((p) => !SADECE || p.ad === SADECE);
+  { ad: 'goc', w: 390, h: 700, dokunmatik: true, tam: false, goc: 'sema2-bolum14.json' },
+  { ad: 'goc600', w: 375, h: 600, dokunmatik: true, tam: false, goc: 'sema2-bolum27.json' },
+].filter((p) => (SADECE ? SADECE.split(',').includes(p.ad) : !p.goc));
+
+const KAYIT_KLASORU = new globalThis.URL('../src/meta/_test/kayitlar/', import.meta.url);
+const eskiKayit = (ad) => JSON.parse(readFileSync(new globalThis.URL(ad, KAYIT_KLASORU), 'utf-8'));
 
 const hatalar = [];
 const notlar = [];
@@ -64,6 +82,17 @@ async function profilKos(browser, p) {
     isMobile: p.dokunmatik,
     hasTouch: p.dokunmatik,
   });
+  // Göç profili: yayındaki şema 2 sürümünün localStorage'ı sayfa açılmadan kurulur (yalnız ilk açılışta).
+  if (p.goc) {
+    const ls = eskiKayit(p.goc).localStorage;
+    await ctx.addInitScript((veri) => {
+      try {
+        if (!localStorage.getItem('fitil.kayit.v1')) for (const [a, d] of Object.entries(veri)) localStorage.setItem(a, d);
+      } catch {
+        /* yok */
+      }
+    }, ls);
+  }
   const page = await ctx.newPage();
   const dir = join(OUT, p.ad);
   mkdirSync(dir, { recursive: true });
@@ -155,6 +184,108 @@ async function profilKos(browser, p) {
     }
   };
 
+  /** (Kancalar §C.1) Kasaba düğmesi → panel → ilk "Yap" → kutlama (kıvılcım, ışıklar, sakin) ve şenlik/kart. */
+  const kasabaIsYap = async (etiket, kareler = true) => {
+    await bekleKosul(page, () => window.__fitil.ekran() === 'harita' && !!document.querySelector('.f-harita-kasaba:not([hidden])'), null, 15000, 'Kasaba düğmesi');
+    const once = await page.evaluate(() => window.__fitil.kayit().kasaba.isler.length);
+    await page.locator('.f-harita-kasaba').click();
+    await bekleKosul(page, () => !!document.querySelector('.f-kasaba-modal.f-giris'), null, 8000, 'Kasaba paneli');
+    await page.waitForTimeout(450);
+    if (kareler) await kare(`${etiket}-panel`);
+    const yap = page.locator('.f-ks-yap').first();
+    if (!(await yap.count())) {
+      hatalar.push(`[${p.ad}] ${etiket}: yapılabilir iş yok`);
+      await page.keyboard.press('Escape');
+      return false;
+    }
+    await yap.click();
+    await bekleKosul(page, () => window.__fitil.ekran() === 'kasabaKutlama', null, 8000, 'kasaba kutlaması');
+    if (kareler) {
+      await page.waitForTimeout(900);
+      await kare(`${etiket}-kiviclim`);
+      await page.waitForTimeout(800);
+      await kare(`${etiket}-isiklar`);
+      await page.waitForTimeout(900);
+      await kare(`${etiket}-sakin`);
+    }
+    const sonra = await page.evaluate(() => window.__fitil.kayit().kasaba.isler.length);
+    if (sonra !== once + 1) hatalar.push(`[${p.ad}] ${etiket}: iş kayda geçmedi (${once} → ${sonra})`);
+    // Kutlama (ve gerekiyorsa şenlik + kasaba kartı) bitene kadar.
+    for (let i = 0; i < 80; i++) {
+      const e = await ekran(page);
+      if (e === 'defterKarti') {
+        await page.waitForTimeout(500);
+        await kare(`${etiket}-kasaba-karti`);
+        await dugme('Devam').click();
+        await page.waitForTimeout(500);
+        continue;
+      }
+      if (e === 'harita') break;
+      if (i === 12 && (await page.locator('.f-senlik-bant').count())) await kare(`${etiket}-senlik`);
+      await page.waitForTimeout(250);
+    }
+    await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 20000, 'kutlamadan haritaya');
+    return true;
+  };
+
+  // ── 0. Göç profili (yayındaki şema 2 kaydı)
+  if (p.goc) {
+    const eski = JSON.parse(eskiKayit(p.goc).localStorage['fitil.kayit.v1']).data;
+    await page.goto(URL);
+    await page.waitForSelector('.f-acilis', { timeout: 20000 });
+    await page.waitForTimeout(1500);
+    await dokun(p.w / 2, p.h * 0.72);
+    await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 20000, 'göç: harita');
+    const k = await page.evaluate(() => window.__fitil.kayit());
+    const yildiz = (x) => Object.values(x.bolumler).reduce((a, b) => a + b.yildiz, 0);
+    if (k.surum !== 3) hatalar.push(`[${p.ad}] göç: şema ${k.surum}`);
+    if (yildiz(k) !== yildiz(eski)) hatalar.push(`[${p.ad}] göç: yıldız ${yildiz(eski)} → ${yildiz(k)}`);
+    if (JSON.stringify(k.rozetler) !== JSON.stringify(eski.rozetler)) hatalar.push(`[${p.ad}] göç: rozetler değişti`);
+    if (JSON.stringify(k.koleksiyon) !== JSON.stringify(eski.koleksiyon)) hatalar.push(`[${p.ad}] göç: koleksiyon/defter değişti`);
+    if (JSON.stringify(k.istatistik) !== JSON.stringify(eski.istatistik)) hatalar.push(`[${p.ad}] göç: istatistik değişti`);
+    if (Object.values(k.bolumler).some((b) => b.muhur)) hatalar.push(`[${p.ad}] göç: mühür geriye dönük verildi`);
+    not(`[${p.ad}] göç: şema ${eski.surum} → ${k.surum}, ${yildiz(k)}★, ${k.rozetler.length} rozet, kartlar ${k.koleksiyon.kartlar.join(',')}`);
+    await page.waitForTimeout(900);
+    const balon = await page.locator('.f-harita-balon').count();
+    if (!balon) hatalar.push(`[${p.ad}] göç: "Fener Koyu seni bekliyordu" balonu yok`);
+    await kare('goc-harita-balon');
+    await page.waitForTimeout(3800);
+    // Kasaba: ilk iş kareli, sonra İskele'nin geri kalanı (6. iş: Mahalle şenliği + kasaba kartı).
+    await kasabaIsYap('kasaba1');
+    for (let i = 2; i <= 6; i++) await kasabaIsYap(`kasaba${i}`, i === 6);
+    await page.waitForTimeout(800);
+    await kare('kasaba-iskele-tamam');
+    const kk = await page.evaluate(() => window.__fitil.kayit());
+    if (!kk.koleksiyon.kartlar.includes('kasaba:iskele')) hatalar.push(`[${p.ad}] kasaba:iskele kartı verilmedi`);
+    // Sıradaki bölüm: mühür bloğu (bölüm öncesi), oyunda rozet, Kazandın'da mühür satırı + kandil çipi.
+    const sira = Object.keys(kk.bolumler).map(Number).filter((x) => x <= 40).reduce((a, b) => Math.max(a, b), 0) + 1;
+    await page.locator(`.f-dugum[data-id="${sira}"]`).click();
+    await bekleKosul(page, () => window.__fitil.ekran() === 'bolumOncesi', null, 10000, 'bölüm öncesi');
+    await page.waitForTimeout(800);
+    if (!(await page.locator('.f-bo-muhurler').count())) hatalar.push(`[${p.ad}] b${sira} kartında mühür bloğu yok`);
+    await kare(`b${sira}-karti-muhur`);
+    await dugme('Başla').click();
+    await bekleKosul(page, () => window.__fitil.ekran() === 'oyun', null, 10000, 'oyun');
+    await page.waitForTimeout(800);
+    if (!(await page.locator('.f-muhur-rozet').count())) hatalar.push(`[${p.ad}] HUD'da mühür rozeti yok`);
+    await kare(`b${sira}-hud-rozet`);
+    await page.evaluate(() => window.__fitil.hizli(true));
+    const s = await botlaBitir(`b${sira}-usta`);
+    if (s === 'kazandin') {
+      await page.waitForTimeout(1800);
+      if (!(await page.locator('.f-kz-muhurler').count())) hatalar.push(`[${p.ad}] Kazandın'da mühür satırı yok`);
+      await kare(`b${sira}-kazandin-muhur-kandil`);
+    }
+    // `kayitYama` ile şema 2 kaydı: gerçek göç yolundan geçer.
+    const eski27 = JSON.parse(eskiKayit('sema2-bolum27.json').localStorage['fitil.kayit.v1']).data;
+    const r = await page.evaluate((y) => window.__fitil.kayitYama(y), eski27);
+    const k27 = await page.evaluate(() => window.__fitil.kayit());
+    if (k27.surum !== 3 || yildiz(k27) !== yildiz(eski27) || JSON.stringify(k27.koleksiyon) !== JSON.stringify(eski27.koleksiyon)) hatalar.push(`[${p.ad}] kayitYama göçü bozuk`);
+    not(`[${p.ad}] kayitYama şema 2 → 3: göçler ${JSON.stringify(r?.gocler)}, onarılan ${JSON.stringify(r?.onarilan)}`);
+    await ctx.close();
+    return;
+  }
+
   // ── 1. Açılış
   await page.goto(URL);
   await page.waitForSelector('.f-acilis', { timeout: 20000 });
@@ -229,6 +360,24 @@ async function profilKos(browser, p) {
       await kare(`b${n}-tekrar`);
       continue;
     }
+    if (s === 'kazandin' && n === 6) {
+      // (Kancalar §C.5) Mühürlerin tanıtımı: yıldızlardan sonra mühür satırı + Kıvılcım Usta ipucu.
+      await page.waitForTimeout(1500);
+      if (!(await page.locator('.f-kz-muhurler').count())) hatalar.push(`[${p.ad}] b6 Kazandın'da mühür satırı yok`);
+      if (!(await page.getByText('Yeni: Mühürler!').count())) hatalar.push(`[${p.ad}] b6 Kazandın'da mühür tanıtımı yok`);
+      await kare('b6-muhur-tanitim');
+    }
+    if (s === 'kazandin' && n === 3) {
+      // (Kancalar §C.6) İlk kandil: haritada balon, Kasaba paneli, ilk iş kutlaması.
+      await dugme('Devam').click();
+      await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 20000, 'b3 sonrası harita');
+      await bekleKosul(page, () => !!document.querySelector('.f-harita-balon.f-giris'), null, 6000, 'ilk kandil balonu').catch(() => hatalar.push(`[${p.ad}] ilk kandil balonu yok`));
+      await page.waitForTimeout(300);
+      await kare('kasaba-ilk-balon');
+      if ((await ekran(page)) === 'bolumOncesi') hatalar.push(`[${p.ad}] ilk kandil balonunda otomatik kart atlanmadı`);
+      await kasabaIsYap('kasaba-ilk');
+      continue;
+    }
     if (s === 'kazandin' && n === 5) {
       // Sandık dokun-aç
       const sandik = page.locator('.f-sandik').first();
@@ -237,6 +386,43 @@ async function profilKos(browser, p) {
         await page.waitForTimeout(900);
         await kare('b5-sandik-acildi');
       }
+    }
+    await haritayaDon();
+  }
+
+  // ── 4a. (Kancalar §C.2–§C.3) 7. bölüm: kartta mühür bloğu, oyunda rozet ve "tuttu" uçuşu.
+  {
+    await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 20000, 'harita (b7)');
+    await page.locator('.f-dugum[data-id="7"]').click();
+    await bekleKosul(page, () => window.__fitil.ekran() === 'bolumOncesi', null, 10000, 'b7 kartı');
+    await page.waitForTimeout(800);
+    if (!(await page.locator('.f-bo-muhurler').count())) hatalar.push(`[${p.ad}] b7 kartında mühür bloğu yok`);
+    await kare('b7-karti-muhur');
+    await dugme('Başla').click();
+    await bekleKosul(page, () => window.__fitil.ekran() === 'oyun', null, 10000, 'b7 oyun');
+    await page.waitForTimeout(700);
+    if (!(await page.locator('.f-muhur-rozet').count())) hatalar.push(`[${p.ad}] b7 HUD'da mühür rozeti yok`);
+    let ucusKaresi = false;
+    for (let i = 0; i < 60; i++) {
+      const e = await ekran(page);
+      if (e === 'kazandin' || e === 'kaybettin') break;
+      if (e !== 'oyun') {
+        await page.waitForTimeout(150);
+        continue;
+      }
+      await page.evaluate(() => window.__fitil.botHamle('usta'));
+      if (!ucusKaresi && (await page.locator('.f-muhur-ucan, .f-muhur-etiket').count())) {
+        ucusKaresi = true;
+        await kare('b7-muhur-ucusu');
+        await page.waitForTimeout(900);
+        await kare('b7-muhur-rozet');
+      }
+    }
+    if (!ucusKaresi) not(`[${p.ad}] b7: oyunda mühür tutmadı (uçuş karesi yok)`);
+    const s7 = await botlaBitir('b7-usta');
+    if (s7 === 'kazandin') {
+      await page.waitForTimeout(1500);
+      await kare('b7-kazandin-muhur');
     }
     await haritayaDon();
   }

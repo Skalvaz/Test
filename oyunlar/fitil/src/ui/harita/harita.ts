@@ -85,8 +85,19 @@ export class HaritaEkrani {
     // Önceki bekleyen seçim varsa kapandı say.
     this.coz?.({ tur: 'kapandi' });
     const onceki = this.vm;
-    this.vm = vm;
     const ilk = !this.kok;
+    // Aynı model (ör. kasaba kutlamasından sonra döngünün yeniden çağırması): yeniden
+    // çizilmez; süren kutlama, sakin balonu ve kaydırma konumu bozulmasın.
+    if (!ilk && onceki && JSON.stringify(onceki) === JSON.stringify(vm)) {
+      this.kok!.classList.remove('f-gizli-ekran');
+      return new Promise((r) => {
+        this.coz = (s) => {
+          this.coz = null;
+          r(s);
+        };
+      });
+    }
+    this.vm = vm;
     if (ilk) this.iskelet();
     const simdiki = simdikiBolum(vm);
     const oncekiSimdiki = onceki ? simdikiBolum(onceki) : null;
@@ -527,7 +538,7 @@ export class HaritaEkrani {
         const W = this.icerik?.clientWidth ?? 0;
         const yari = soz.offsetWidth / 2;
         if (W > 0) soz.style.left = `${Math.max(yari + 8, Math.min(W - yari - 8, (k.capa.x / HARITA_W) * W)).toFixed(1)}px`;
-        setTimeout(() => soz.remove(), az ? 2400 : 3200);
+        setTimeout(() => soz.remove(), az ? 2400 : 3800);
       }
       await this.bekle(az ? 400 : Math.min(2400, 900 + k.isik * 70));
       setTimeout(() => fisek.remove(), 1800);
