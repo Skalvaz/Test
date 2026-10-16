@@ -10,7 +10,7 @@
   "dogum": [20, 20, 20, 11, 11, 11],
   "garanti": 3,
   "murekkep": false,
-  "hedefler": [{ "tur": "topla", "renk": 5, "adet": 11 }],
+  "hedefler": [{ "tur": "topla", "renk": 5, "adet": 10 }],
   "duzen": [
     ". . . . . .",
     ". . . . . .",
@@ -30,6 +30,6 @@
   "sonrakiTanitim": "Sıradaki: Kâğıt!",
   "botBandi": [98, 100],
   "acemiAlt": 95,
-  "yildizEsikleri": [1200, 1800],
+  "yildizEsikleri": [2900, 4000],
   "elleEsik": true
 }

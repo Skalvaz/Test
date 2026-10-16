@@ -145,10 +145,12 @@ describe('bolumuYukle (P0 başvuru, §15.1)', () => {
   it('yıldız: hedef + eşikler; Usta Eli en fazla 1★', () => {
     const d = bolumuYukle(b1, 0);
     expect(yildizHesapla(d, b1)).toBe(0);
-    const k: OyunDurumu = { ...d, bitti: 'kazanc', puan: 1800 };
+    // Eşikler bölüm verisinden (P2 kalibrasyonu değiştirebilir).
+    const [y2, y3] = b1.yildizEsikleri;
+    const k: OyunDurumu = { ...d, bitti: 'kazanc', puan: y3 };
     expect(yildizHesapla(k, b1)).toBe(3);
-    expect(yildizHesapla({ ...k, puan: 1200 }, b1)).toBe(2);
-    expect(yildizHesapla({ ...k, puan: 100 }, b1)).toBe(1);
+    expect(yildizHesapla({ ...k, puan: y2 }, b1)).toBe(2);
+    expect(yildizHesapla({ ...k, puan: y2 - 1 }, b1)).toBe(1);
     expect(yildizHesapla({ ...k, istatistik: { ...k.istatistik, ustaEli: true } }, b1)).toBe(1);
   });
 });

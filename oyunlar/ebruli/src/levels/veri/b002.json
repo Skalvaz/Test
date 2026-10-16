@@ -5,7 +5,7 @@
   "tur": "ogretim",
   "w": 6,
   "h": 7,
-  "hamle": 15,
+  "hamle": 18,
   "tohum": 1002,
   "dogum": [20, 20, 20, 11, 11, 11],
   "garanti": 3,
@@ -32,6 +32,6 @@
   "sonrakiTanitim": "Sıradaki: Tarak!",
   "botBandi": [98, 100],
   "acemiAlt": 95,
-  "yildizEsikleri": [1200, 1800],
+  "yildizEsikleri": [2900, 4100],
   "elleEsik": true
 }
