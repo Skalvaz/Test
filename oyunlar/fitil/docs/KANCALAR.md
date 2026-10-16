@@ -667,6 +667,10 @@ Sıra: K1 → (K2, K3, K4 paralel) → K5 → K6.
   tanıtımı ve mühür uçuşu; `goc` (390×700) ve `goc600` (375×600) profilleri
   yayındaki şema 2 sürümünün localStorage'ını kurup göçü, kasabayı, şenliği ve
   mühürlü bölümü dener; `kayitYama` eski şemalı kaydı göçle yükler.
+  Koşu: telefon, masaüstü, küçük, goc, goc600 dev sunucusunda; küçük + goc
+  `file://…/fitil.html`'de; küçük + goc600 claude.ai iskeletine sarılmış
+  `dist-single/artifact.html`'de — hepsi pageerror/console.error olmadan geçti.
+  Açık: 60 fps eski Android'de ölçülmedi (swiftshader); aile ile insan oyunu.
 
 ### Sözleşme kodu (P0, bu paket)
 - `src/core/types.ts`: `MuhurKosulu`, `MuhurOlcusu`, `MuhurKapsami`,
