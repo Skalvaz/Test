@@ -41,6 +41,8 @@
   .f-bo.f-muhurlu .f-hedef-kutu-ikon { width: 46px; height: 46px; flex: none; border-radius: 14px; }
   .f-bo.f-muhurlu .f-hedef-kutu-ikon .f-resim { width: 36px; height: 36px; }
   .f-bo.f-muhurlu .f-hedef-kutu-metin { font-size: 14px; }
+  /* 3+ hedefte yatay kutu sığmaz: sütun düzeni, küçük ikon. */
+  .f-bo.f-muhurlu .f-bo-hedef-sira.f-n3 .f-hedef-kutu, .f-bo.f-muhurlu .f-bo-hedef-sira.f-n4 .f-hedef-kutu { flex-direction: column; text-align: center; gap: 4px; }
   .f-bo.f-muhurlu .f-bo-cosku { padding: 4px 10px; }
   .f-bo.f-muhurlu .f-bo-cosku .f-resim { width: 30px; height: 30px; }
   .f-bo.f-muhurlu .f-bo-yeni { padding: 4px 10px 4px 4px; gap: 8px; border-radius: 999px; }

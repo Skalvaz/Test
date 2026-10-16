@@ -440,10 +440,8 @@ export class Uygulama {
     this.haritaAcik = true;
     const p = this.ui.harita(this.haritaModeli());
     const secim = await Promise.race([p, this.ui.haritaKutlamasi().then(() => null)]);
-    if (secim && secim.tur !== 'kapandi') {
-      this.bekleyenHaritaSecimi = secim;
-      return;
-    }
+    // Kutlama sürerken haritada seçim yapıldıysa kaybolmasın (döngü işler); kart yine gösterilir.
+    if (secim && secim.tur !== 'kapandi') this.bekleyenHaritaSecimi = secim;
     const senlik = r.oduller.find((o): o is Extract<meta.KasabaOdulu, { tur: 'kasabaSenligi' }> => o.tur === 'kasabaSenligi');
     if (senlik) {
       this.ekranAdi = 'defterKarti';
@@ -471,7 +469,8 @@ export class Uygulama {
       });
     };
     if (k.ayarlar.ipuclari && k.kasaba.isler.length === 0 && !gorulen.includes(I.kasabaIlk) && !gorulen.includes(I.kasabaHosgeldin)) {
-      const ilk = !!oduller?.some((o) => o.tur === 'kasabaAcildi');
+      // Kasaba bu kazançla açıldıysa (ya da oyuncu hâlâ İskele'deyse) ilk kandil, değilse göçle gelen oyuncu.
+      const ilk = !!oduller?.some((o) => o.tur === 'kasabaAcildi') || !meta.bolumKazanildi(k, 5);
       let y = meta.ipucuGoruldu(meta.ipucuGoruldu(k, I.kasabaIlk), I.kasabaHosgeldin);
       const sira = meta.kasabaUyarisi(y);
       if (sira) y = meta.kasabaUyarildi(y, sira.id);
@@ -770,7 +769,7 @@ export class Uygulama {
         const r = meta.kayitKoduCoz(kod);
         if (!r.tamam) return { gecerli: false, hata: r.mesaj };
         const o = r.onizleme;
-        return { gecerli: true, toplamYildiz: o.anaYildiz + o.ustaYildiz, sonBolum: o.acikBolum, desen: o.desen };
+        return { gecerli: true, toplamYildiz: o.anaYildiz + o.ustaYildiz, sonBolum: o.acikBolum, desen: o.desen, muhur: o.muhur, kasabaIs: o.kasabaIs, kandil: o.kandil };
       },
       kayitYukle: (kod) => {
         const r = meta.kayitKoduCoz(kod);

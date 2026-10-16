@@ -303,6 +303,7 @@ export const MK = {
   } as Record<string, string>,
   kasabaDugme: (n: number, hazir: boolean) => `Kasaba: ${n} kandil${hazir ? ', yapılacak iş var' : ''}`,
   kasabaKartlari: 'Kasaba kartları',
+  kayitOzeti: (muhur: number, isler: number, kandil: number) => `Mühür ${muhur} · Kasaba ${isler}/48 işi · ${kandil} kandil`,
 } as const;
 
 /** Kapsül renk adları (§2.3); küçük harfli, sayılarla kullanılır. */

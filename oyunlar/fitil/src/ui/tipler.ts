@@ -354,7 +354,7 @@ export type AyarDegisikligi = Partial<Pick<AyarlarVM, 'sfx' | 'muzik' | 'ortam' 
 
 /** Kayıt kodu içe aktarma önizlemesi. */
 export type KayitOnizleme =
-  | { gecerli: true; toplamYildiz: number; sonBolum: number; desen: number; kayitTarihi?: string }
+  | { gecerli: true; toplamYildiz: number; sonBolum: number; desen: number; kayitTarihi?: string; /** (Kancalar §D.6) */ muhur?: number; kasabaIs?: number; kandil?: number }
   | { gecerli: false; hata: string };
 
 // ─────────────────── Nasıl oynanır / Defter ───────────────────

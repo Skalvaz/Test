@@ -5,7 +5,7 @@
  */
 import { h, panoyaKopyala, metniSec, sistemAzHareket } from '../dom';
 import { ikon, kapsulSvg, tanimlariKur } from '../ikonlar';
-import { M, DEFTER_KARTLARI } from '../metinler';
+import { M, MK, DEFTER_KARTLARI } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { satir, kasabaKartSatirlari } from './ortak';
 import { MAHALLELER } from '../../app/katalog';
@@ -264,6 +264,8 @@ function kayitBolumu(b: Baglam, d: AyarlarVM): HTMLElement {
             h('span', { s: 'f-cip' }, ikon('harita'), h('span', { s: 'f-sayi', t: `${M.bolum} ${o.sonBolum}` })),
             h('span', { s: 'f-cip' }, ikon('defter'), h('span', { s: 'f-sayi', t: `${o.desen} desen` })),
           );
+          // (Kancalar §D.6) "Mühür 23 · Kasaba 17/48 işi · 6 kandil"
+          if (o.muhur !== undefined && o.kasabaIs !== undefined && o.kandil !== undefined) onizleme.appendChild(h('small', { s: 'f-not', t: MK.kayitOzeti(o.muhur, o.kasabaIs, o.kandil) }));
           if (o.kayitTarihi) onizleme.appendChild(h('small', { s: 'f-not', t: o.kayitTarihi }));
         } else {
           gecerliKod = null;
