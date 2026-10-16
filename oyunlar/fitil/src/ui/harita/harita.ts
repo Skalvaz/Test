@@ -532,6 +532,8 @@ export class HaritaEkrani {
   private async kutlamalariOynat(liste: KutlamaBilgisi[], vm: HaritaVM): Promise<void> {
     const az = this.b.az();
     let ilk = true;
+    /** Son sakin balonunun kalkacağı an: kutlama onu bekler (panel ya da kart üstüne binmesin). */
+    let sozSonu = 0;
     for (const k of liste) {
       if (this.vm !== vm) return;
       this.kaydirYere(k.capa, true);
@@ -579,11 +581,15 @@ export class HaritaEkrani {
           }
         }
         setTimeout(() => soz.remove(), az ? 2400 : 3800);
+        sozSonu = performance.now() + (az ? 2400 : 3600);
       }
       await this.bekle(az ? 400 : Math.min(2400, 900 + k.isik * 70));
       setTimeout(() => fisek.remove(), 2400);
       if (k.mahalleTamam && this.gorunur) await this.senlik(k.m);
     }
+    // Sakin balonu okunsun: kutlama (ve ardından kendiliğinden açılan panel) balon kalkınca biter.
+    const kalan = sozSonu - performance.now();
+    if (kalan > 0 && this.vm === vm && this.gorunur) await this.bekle(kalan);
   }
 
   private bekle(ms: number): Promise<void> {

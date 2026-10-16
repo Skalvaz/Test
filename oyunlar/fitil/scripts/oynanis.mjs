@@ -236,8 +236,9 @@ async function profilKos(browser, p) {
       await page.waitForTimeout(250);
     }
     await bekleKosul(page, () => window.__fitil.ekran() === 'harita' || window.__fitil.ekran() === 'kasaba', null, 20000, 'kutlamadan haritaya');
-    // Panel kendiliğinden açıldıysa (kandil sıradaki işe yetiyor) girişi bitsin.
-    await page.waitForTimeout(700);
+    // Kandil sıradaki işe yetiyorsa panel kutlamadan ~1,4 sn sonra kendiliğinden açılır: bekle (en çok 4 sn).
+    await bekleKosul(page, () => window.__fitil.ekran() === 'kasaba' && !!document.querySelector('.f-kasaba-modal.f-giris'), null, 4000, 'panel yeniden').catch(() => undefined);
+    await page.waitForTimeout(400);
     return true;
   };
 
