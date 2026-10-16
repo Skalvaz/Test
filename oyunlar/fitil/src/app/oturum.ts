@@ -88,6 +88,13 @@ export class Oturum {
   v: BolumVerisi | null = null;
   d: OyunDurumu | null = null;
   private oz: OyunOzeti = meta.ozetBaslat();
+  /**
+   * (Kancalar §C.3) HUD rozetinin gördüğü özet. `oz` eylem uygulanır
+   * uygulanmaz ilerler (Duraklat kartı bilerek sonraki durumu gösterir);
+   * rozet ise oynatma bitene, uçuş başlayana kadar eski özette kalır:
+   * nokta reaksiyon oynarken dolmaz, damgayla dolar.
+   */
+  private ozHud: OyunOzeti = this.oz;
   private denemeNo = 0;
   private jeton = 0;
   private coz: ((s: OturumSonucu) => void) | null = null;
@@ -175,6 +182,7 @@ export class Oturum {
     this.v = v;
     this.d = d0;
     this.oz = meta.ozetBaslat();
+    this.ozHud = this.oz;
     this.denemeNo = denemeNo;
     this.hamleSayisi = 0;
     this.geriSarAnlik = null;
@@ -267,6 +275,8 @@ export class Oturum {
     this.durumAyarla('kapali');
     this.zamanlayicilariDurdur();
     const { cizici, ui, yc } = this.o;
+    // Süren mühür uçuşu ve etiketi haritanın üstünde kalmasın.
+    ui.muhurUcuslariniIptal();
     cizici.dev.dondur(false);
     cizici.vurgula(null, 'zorunlu');
     cizici.vurgula(null, 'ipucu');
@@ -321,7 +331,7 @@ export class Oturum {
       v: this.v!,
       d,
       kayit: this.kayit,
-      oz: this.oz,
+      oz: this.ozHud,
       girdiAcik: this.durum === 'bekliyor' || this.durum === 'secim',
       geriSarHazir: !!this.geriSarAnlik && this.d!.istatistik.guclendirici === 0,
     });
@@ -690,7 +700,10 @@ export class Oturum {
     d.istatistik.guclendirici += 1;
     this.d = d;
     this.oz = a.oz;
+    this.ozHud = a.oz;
     // Geri Sar özeti de geri alır: tutmuş görünen mühür geri dönebilir (rozet söner, ters uçuş yok).
+    // Süren uçuş iptal edilir: geri alınan mühür damgalanmaz, ses ve etiket çıkmaz.
+    this.o.ui.muhurUcuslariniIptal();
     this.muhurOnceki = this.muhurDurumlari();
     this.geriSarAnlik = null;
     this.sonHamleOncesi = null;
@@ -756,7 +769,10 @@ export class Oturum {
     }
     this.d = sonuc.durum;
     this.gPuan = this.d.puan;
-    this.muhurUcuslari(sonuc.olaylar);
+    // Kayıpta mühür basılmaz (KANCALAR §C.5): uçuş, ses ve etiket yok; yalnız
+    // karşılaştırma tabanı güncellenir (Usta'nın Eli devamı doğru başlasın).
+    if (this.d.bitti === 'kayip') this.muhurOnceki = this.muhurDurumlari();
+    else this.muhurUcuslari(sonuc.olaylar);
     if (this.d.bitti === 'kazanc') {
       await this.kazanc(jeton);
       return;
@@ -947,7 +963,7 @@ export class Oturum {
       sonrakiOge: ana ? yeniOge(v.id + 1) : null,
       ipucu,
       duyurular: odulDuyurulari(sonuc.oduller, { sonrakiBolum: ana ? v.id + 1 : undefined }),
-      ...kazandinKancalari(v, sonuc, this.kayit.ipuclari.gorulen),
+      ...kazandinKancalari(v, sonuc, this.kayit.ipuclari.gorulen, { ipuclari: this.ayar.ipuclari, ustaEli: d.istatistik.ustaEli === true }),
     };
   }
 
@@ -1065,6 +1081,8 @@ export class Oturum {
     this.geriSarAnlik = null;
     // Kayıp ve o ana kadarki olaylar meta'ya işlendi: devam sonucu yalnız Eli sonrasını taşır.
     this.oz = meta.ozetBaslat();
+    this.ozHud = this.oz;
+    ui.muhurUcuslariniIptal();
     this.muhurOnceki = this.muhurDurumlari();
     this.sonucYazildi = false;
     this.o.ekran('oyun');
@@ -1086,39 +1104,33 @@ export class Oturum {
   }
 
   /**
-   * Eylemin oynatması bitti: durumu yeni 'tuttu' olan ve kayıtta basılı
-   * OLMAYAN her mühür reaksiyon merkezinden (yoksa tahta ortasından) rozete
-   * uçar. İlk uçuşta Kıvılcım Usta balonu (bir kez). HUD bu çağrıdan sonra
-   * eşitlenir; nokta damgaya kadar boş kalır.
+   * Eylemin oynatması bitti: rozet yeni özete geçer; durumu yeni 'tuttu'
+   * olan ve kayıtta basılı OLMAYAN her mühür reaksiyon merkezinden (yoksa
+   * tahta ortasından) rozete uçar. Uçan noktalar HUD eşitlenmeden ÖNCE
+   * "uçuşta" işaretlenir: nokta damgaya kadar boş kalır. İlk uçuşta
+   * Kıvılcım Usta balonu (bir kez).
    */
   private muhurUcuslari(olaylar: readonly Olay[]): void {
     const v = this.v;
     if (!v) return;
+    this.ozHud = this.oz;
     const yeni = this.muhurDurumlari();
     const once = this.muhurOnceki;
     this.muhurOnceki = yeni;
-    if (!yeni.length) return;
     const basili = meta.muhurMaskeCoz(meta.bolumKaydi(this.kayit, v.id)?.muhur);
     const ucan: number[] = [];
     yeni.forEach((d, i) => {
       if (d === 'tuttu' && once[i] !== 'tuttu' && !basili[i]) ucan.push(i);
     });
-    if (!ucan.length) return;
-    const kaynak = this.reaksiyonMerkezi(olaylar);
-    const jeton = this.jeton;
-    ucan.forEach((i, n) => {
-      const bas = () => {
-        if (jeton !== this.jeton) return;
-        void this.o.ui.muhurTuttu(i, meta.MUHUR_KADEMELERI[i], kaynak);
-      };
-      if (n === 0) bas();
-      else setTimeout(bas, n * 160);
-    });
+    if (ucan.length) void this.o.ui.muhurTuttu(ucan.map((i) => ({ indeks: i, kademe: meta.MUHUR_KADEMELERI[i] })), this.reaksiyonMerkezi(olaylar));
     this.hudTazele();
+    if (!ucan.length) return;
     if (this.d?.bitti || !this.ayar.ipuclari || this.kayit.ipuclari.gorulen.includes(meta.KANCA_IPUCU.muhurHud)) return;
+    const jeton = this.jeton;
     this.o.kayitci.degistir(meta.ipucuGoruldu(this.kayit, meta.KANCA_IPUCU.muhurHud), 1500);
     void this.o.bekle(this.o.ui.hareketiAzaltik() ? 0 : 760).then(() => {
-      if (jeton === this.jeton && this.durum === 'bekliyor') void this.balonGoster(MK.muhurHud, 2400);
+      // Kısa ekranda tahtanın ilk sırasına binerse dokunuşu yakalamaz (geçirgen).
+      if (jeton === this.jeton && this.durum === 'bekliyor') void this.balonGoster(MK.muhurHud, 2400, { gecirgen: true });
     });
   }
 
@@ -1193,9 +1205,9 @@ export class Oturum {
     if (t) void this.balonGoster(t.metin, 0);
   }
 
-  private balonGoster(metin: string, sure: number): Promise<void> {
+  private balonGoster(metin: string, sure: number, o?: { gecirgen?: boolean }): Promise<void> {
     this.balonSira++;
-    return this.o.ui.balon(metin, sure);
+    return this.o.ui.balon(metin, sure, o);
   }
 
   private tetikIpucu(tetik: 'baslangic' | 'ilkHamleSonrasi' | 'kisaYol'): void {

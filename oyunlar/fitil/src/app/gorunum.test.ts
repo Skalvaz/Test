@@ -205,6 +205,42 @@ describe('(Kancalar) mühür, kasaba ve Kazandın eşlemeleri', () => {
     expect(kazandinKancalari(bolumGetir(7)!, r7, []).muhurler?.sancak).toBe(true);
   });
 
+  it('Kazandın tanıtımı: ipuçları kapalıyken ve muhur-kart görülmüşse (göç) yok; Eli notu', () => {
+    const v6 = bolumGetir(6)!;
+    const r = kazan(ilerlet(5, 3), 6, 3, { muhurler: [true, false, false] });
+    expect(kazandinKancalari(v6, r, [], { ipuclari: false }).muhurler?.tanitim).toBe(false);
+    expect(kazandinKancalari(v6, r, [meta.KANCA_IPUCU.muhurKart]).muhurler?.tanitim).toBe(false);
+    expect(kazandinKancalari(v6, r, []).muhurler?.ustaEli).toBeUndefined();
+    expect(kazandinKancalari(v6, r, [], { ustaEli: true }).muhurler?.ustaEli).toBe(true);
+  });
+
+  it('Duraklat ilerlemesi: bekleyen sayaçta değer/eşik, tek hamlede en iyi; tutanda yok', () => {
+    const v21 = bolumGetir(21)!;
+    const k = ilerlet(21, 2);
+    const d0 = bolumuYukle(v21, 0);
+    const iz = (halka: boolean, doseme: number): meta.HamleIzi[] => [
+      {
+        eylem: 'fitil', zincir: 5, renk: 0, halka, R: 0, nesil: 0, patlama: 5, renkPatlama: [5, 0, 0, 0, 0, 0], isiPatlamasi: 0, olusan: 'yok',
+        roket: 0, kasimpati: 0, yildiz: 0, caprazRoket: 0, kombolar: [], kafes: 0, kaya: 0, engelHasar: 0, doseme, desen: 0, is: 0, fener: 0,
+        devFisek: 0, izliDevFisek: 0, caprazEngel: 0, kurutma: 0,
+      },
+    ];
+    const oz = { ...meta.ozetBaslat(), hamleIzleri: [...iz(true, 4), ...iz(true, 7)] };
+    const m = muhurVMleri(v21, k, { oz, d: d0 })!;
+    // Çırak "Tek hamlede 10 döşeme": en iyi 7/10; Usta "4 halka çiz": 2/4.
+    expect(m[0].durum).toBe('bekliyor');
+    expect(m[0].ilerleme).toEqual({ deger: 7, hedef: 10, tek: true });
+    expect(m[2].ilerleme).toEqual({ deger: 2, hedef: 4, tek: false });
+    // Bölüm öncesi (özetsiz) satırlarda ilerleme yok.
+    expect(muhurVMleri(v21, k)!.every((x) => x.ilerleme === undefined)).toBe(true);
+    // Tutunca ilerleme yazısı kalkar.
+    const tam = { ...meta.ozetBaslat(), hamleIzleri: [...iz(true, 10), ...iz(true, 0), ...iz(true, 0), ...iz(true, 0)] };
+    const m2 = muhurVMleri(v21, k, { oz: tam, d: d0 })!;
+    expect(m2[0].durum).toBe('tuttu');
+    expect(m2[0].ilerleme).toBeUndefined();
+    expect(m2[2].durum).toBe('tuttu');
+  });
+
   it('kasaba paneli: süslenen mahalle seçili, durumlar meta ile aynı, sıra ve harita kilidi', () => {
     let k = ilerlet(7, 3);
     let vm = kasabaVM(k);

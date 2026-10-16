@@ -112,6 +112,8 @@
 .f-kz-sancak { font-size: 13px; font-weight: 800; color: #3A1606; padding: 2px 10px; border-radius: 999px; background: linear-gradient(#FFE7A2, #FFB020); box-shadow: 0 0 0 1.5px #8A3E18; opacity: 0; transform: scale(.6); }
 .f-kz-sancak.f-goster { opacity: 1; transform: none; transition: opacity .2s, transform .35s var(--yay); }
 .f-az .f-kz-muhur .f-kz-mum, .f-az .f-kz-yeni, .f-az .f-kz-sancak { transition: none !important; }
+/* Usta'nın Eli ile kazanç: boş halkaların altında kısa açıklama. */
+.f-kz-muhur-not { display: block; margin-top: -6px; text-align: center; font-size: 12px; font-weight: 700; color: var(--krem-2); }
 
 /* ── Kandil */
 .f-kandil-svg { display: block; width: 26px; height: 20px; overflow: visible; }

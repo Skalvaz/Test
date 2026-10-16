@@ -53,7 +53,8 @@ export class Hud {
   private vurgulu: GuclendiriciId | 'koruk' | null = null;
   /** (Kancalar §C.3) Duraklat düğmesindeki mühür rozeti; mühürsüz bölümde yok. */
   private rozet: MuhurRozeti | null = null;
-  /** Uçuşu süren mühürler: nokta damgaya kadar boş kalır. */
+  /** Uçuşu süren mühürler (indeks → uçuş sayısı): nokta damgaya kadar boş kalır. */
+  private ucusSayisi = new Map<number, number>();
   private ucusta = new Set<number>();
   /** "Son hamle!" bandı (Arayuz bağlar). */
   bantGoster: (metin: string) => void = () => {};
@@ -78,6 +79,9 @@ export class Hud {
     this.b.fisekKatmani.classList.add('f-acik');
     this.gosterilenPuan = vm.puan;
     this.oncekiKorukDolu = vm.korukKapasite > 0 && vm.korukDolum >= vm.korukKapasite;
+    // Yeni bölüm: önceki bölümün uçuşları (oturum iptal etti) sayılmaz.
+    this.ucusSayisi.clear();
+    this.ucusta.clear();
     this.ciz();
   }
 
@@ -149,8 +153,7 @@ export class Hud {
     duraklatDg.addEventListener('click', () => this.b.geri.duraklatIstendi?.());
     // Mühür rozeti Duraklat'a yapışık (üst banda hiçbir şey eklenmez, KA12).
     this.rozet = vm.muhurler && vm.muhurler.length ? new MuhurRozeti() : null;
-    this.ucusta.clear();
-    if (this.rozet && vm.muhurler) this.rozet.guncelle(vm.muhurler);
+    if (this.rozet && vm.muhurler) this.rozet.guncelle(vm.muhurler, this.ucusta);
     const duraklat = this.rozet ? h('span', { s: 'f-duraklat-kap' }, duraklatDg, this.rozet.el) : duraklatDg;
     const guclendiriciler = h('div', { s: 'f-gucler' });
     for (const g of vm.guclendiriciler) guclendiriciler.appendChild(this.guclendiriciDugmesi(g));
@@ -365,19 +368,36 @@ export class Hud {
     return this.rozet?.noktaKonumu(i, this.b.kok) ?? null;
   }
 
-  /** Uçuş başlar: nokta damgaya kadar boş görünür. */
+  /** Uçuş başlar (ya da sırada bekler): nokta damgaya kadar boş görünür. */
   muhurUcusBasla(i: number): void {
+    this.ucusSayisi.set(i, (this.ucusSayisi.get(i) ?? 0) + 1);
     this.ucusta.add(i);
     if (this.rozet && this.vm?.muhurler) this.rozet.guncelle(this.vm.muhurler, this.ucusta);
   }
 
-  /** Uçuş indi: nokta damgalanır (ölçek 1 → 1,4 → 1). */
-  muhurDamgala(i: number): void {
-    this.ucusta.delete(i);
-    if (this.rozet && this.vm?.muhurler) {
-      this.rozet.guncelle(this.vm.muhurler, this.ucusta);
-      if (!this.b.az()) this.rozet.damgala(i);
+  /**
+   * Uçuş bitti. `damga`: indi (ölçek 1 → 1,4 → 1); false: iptal edildi
+   * (Geri Sar), nokta yalnız güncel duruma döner. Damga yalnız nokta hâlâ
+   * 'tuttu' (ya da basılı) ise vurulur: uçuş sürerken geri alınan mühür
+   * damgalanmaz.
+   */
+  muhurUcusBitti(i: number, damga: boolean): void {
+    const n = (this.ucusSayisi.get(i) ?? 0) - 1;
+    if (n > 0) this.ucusSayisi.set(i, n);
+    else {
+      this.ucusSayisi.delete(i);
+      this.ucusta.delete(i);
     }
+    if (!this.rozet || !this.vm?.muhurler) return;
+    this.rozet.guncelle(this.vm.muhurler, this.ucusta);
+    const m = this.vm.muhurler[i];
+    if (damga && n <= 0 && m && (m.basili || m.durum === 'tuttu') && !this.b.az()) this.rozet.damgala(i);
+  }
+
+  /** Mühür hâlâ 'tuttu' (ya da basılı) mı: iniş sesi ve etiketi için. */
+  muhurTutuyor(i: number): boolean {
+    const m = this.vm?.muhurler?.[i];
+    return !!m && (m.basili || m.durum === 'tuttu');
   }
 
   /** Hedef sayacı (§12.2: sayaç 1→1,25→1, 150 ms; tamamlanınca onay outBack 250 ms). */

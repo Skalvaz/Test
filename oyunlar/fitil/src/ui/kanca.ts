@@ -23,7 +23,9 @@ export function muhurListesi(liste: readonly MuhurVM[], o: { durumlu?: boolean; 
     { s: `f-muhur-liste${o.durumlu ? ' f-durumlu' : ''}${o.sinif ? ` ${o.sinif}` : ''}`, role: 'list', 'aria-label': MK.muhurler },
     liste.map((m) => {
       const durum = m.basili ? 'basili' : (m.durum ?? null);
-      const yazi = o.durumlu && durum ? (o.ustaEli && !m.basili ? MK.ustaEliMuhur : MK.durum[durum]) : null;
+      const eli = o.ustaEli && !m.basili;
+      const ilerleme = !eli && !m.basili && m.ilerleme ? MK.muhurIlerleme(m.ilerleme.deger, m.ilerleme.hedef, m.ilerleme.tek) : null;
+      const yazi = o.durumlu && durum ? (eli ? MK.ustaEliMuhur : ilerleme ? `${MK.durum[durum]} · ${ilerleme}` : MK.durum[durum]) : null;
       return h(
         'div',
         {
@@ -94,8 +96,8 @@ export class MuhurRozeti {
  * 600 ms `inOutCubic` ile hedefe uçar. Hareketi azaltta uçmaz. Kare başına
  * bellek ayırmaz (yalnız transform yazılır).
  */
-export function muhurUcur(b: Baglam, kademe: string, kaynak: Nokta, hedef: Nokta): Promise<void> {
-  if (b.az()) return Promise.resolve();
+export function muhurUcur(b: Baglam, kademe: string, kaynak: Nokta, hedef: Nokta, sinyal?: AbortSignal): Promise<void> {
+  if (b.az() || sinyal?.aborted) return Promise.resolve();
   const el = h('span', { s: 'f-muhur-ucan', 'aria-hidden': 'true' }, muhurSvg(kademe, true));
   el.style.transform = `translate(${kaynak.x}px, ${kaynak.y}px) scale(0.2)`;
   b.ustKatman.appendChild(el);
@@ -106,7 +108,14 @@ export function muhurUcur(b: Baglam, kademe: string, kaynak: Nokta, hedef: Nokta
     const t0 = performance.now();
     const BELIR = 120;
     const UC = 600;
+    // İptal (Geri Sar, bölümden çıkış): uçan mühür hemen kalkar, söz çözülür.
+    const iptal = () => {
+      el.remove();
+      coz();
+    };
+    sinyal?.addEventListener('abort', iptal, { once: true });
     const adim = (t: number) => {
+      if (sinyal?.aborted) return;
       const g = t - t0;
       if (g < BELIR) {
         const u = egri.outBack(g / BELIR);
@@ -124,6 +133,7 @@ export function muhurUcur(b: Baglam, kademe: string, kaynak: Nokta, hedef: Nokta
       el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) scale(${s.toFixed(3)})`;
       if (u < 1) requestAnimationFrame(adim);
       else {
+        sinyal?.removeEventListener('abort', iptal);
         el.remove();
         coz();
       }
@@ -132,12 +142,17 @@ export function muhurUcur(b: Baglam, kademe: string, kaynak: Nokta, hedef: Nokta
   });
 }
 
-/** Rozetin üstünde 900 ms "Kalfa mührü!" etiketi (alt bantta). */
-export function muhurEtiketi(b: Baglam, metin: string, konum: Nokta): void {
+/** Rozetin üstünde 900 ms "Kalfa mührü!" etiketi (alt bantta); `sinyal` iptalinde hemen kalkar. */
+export function muhurEtiketi(b: Baglam, metin: string, konum: Nokta, sinyal?: AbortSignal): void {
   const el = h('span', { s: 'f-muhur-etiket', role: 'status', t: metin, css: { left: `${Math.round(konum.x)}px`, top: `${Math.round(konum.y)}px` } });
   b.ustKatman.appendChild(el);
   b.duyur(metin);
-  setTimeout(() => el.remove(), b.az() ? 900 : 1100);
+  const kaldir = () => el.remove();
+  sinyal?.addEventListener('abort', kaldir, { once: true });
+  setTimeout(() => {
+    sinyal?.removeEventListener('abort', kaldir);
+    el.remove();
+  }, b.az() ? 900 : 1100);
 }
 
 // ─────────────────────── Kandil ───────────────────────
@@ -153,8 +168,11 @@ export function kandilHapi(n: number, sinif = ''): { el: HTMLElement; sayi: HTML
 /**
  * Küçük kandiller kaynaklardan hedefe uçar (Kazandın: yıldız/mühür başına
  * bir kandil). Her kandil vardığında `vardi(i)` çağrılır (sayaç artar).
+ * `sinyal` iptal edilirse (ekran kapandı) uçanlar hemen kalkar, `vardi`
+ * artık çağrılmaz, söz çözülür.
  */
-export function kandilUcur(b: Baglam, kaynaklar: readonly Nokta[], hedef: Nokta, vardi: (i: number) => void, ara = 90, kivilcim = false): Promise<void> {
+export function kandilUcur(b: Baglam, kaynaklar: readonly Nokta[], hedef: Nokta, vardi: (i: number) => void, ara = 90, kivilcim = false, sinyal?: AbortSignal): Promise<void> {
+  if (sinyal?.aborted) return Promise.resolve();
   if (b.az() || kaynaklar.length === 0) {
     kaynaklar.forEach((_, i) => vardi(i));
     return Promise.resolve();
@@ -162,14 +180,29 @@ export function kandilUcur(b: Baglam, kaynaklar: readonly Nokta[], hedef: Nokta,
   const sure = kivilcim ? 450 : 520;
   return new Promise((coz) => {
     let kalan = kaynaklar.length;
+    const ucanlar = new Set<HTMLElement>();
+    const zamanlar: ReturnType<typeof setTimeout>[] = [];
+    sinyal?.addEventListener(
+      'abort',
+      () => {
+        zamanlar.forEach(clearTimeout);
+        ucanlar.forEach((el) => el.remove());
+        ucanlar.clear();
+        coz();
+      },
+      { once: true },
+    );
     kaynaklar.forEach((k, i) => {
-      setTimeout(() => {
+      zamanlar.push(setTimeout(() => {
+        if (sinyal?.aborted) return;
         const el = kivilcim ? h('span', { s: 'f-kivilcim-ucan', 'aria-hidden': 'true' }) : h('span', { s: 'f-kandil-ucan', 'aria-hidden': 'true' }, kandilSvg());
         b.ustKatman.appendChild(el);
+        ucanlar.add(el);
         const kx = (k.x + hedef.x) / 2 + ((i % 2) * 2 - 1) * (kivilcim ? 18 + (i % 3) * 14 : 30);
         const ky = Math.min(k.y, hedef.y) - (kivilcim ? 70 : 50);
         const t0 = performance.now();
         const adim = (t: number) => {
+          if (sinyal?.aborted) return;
           const u = Math.min(1, (t - t0) / sure);
           const e = egri.inOutCubic(u);
           const a = 1 - e;
@@ -180,12 +213,13 @@ export function kandilUcur(b: Baglam, kaynaklar: readonly Nokta[], hedef: Nokta,
           if (u < 1) requestAnimationFrame(adim);
           else {
             el.remove();
+            ucanlar.delete(el);
             vardi(i);
             if (--kalan === 0) coz();
           }
         };
         requestAnimationFrame(adim);
-      }, i * ara);
+      }, i * ara));
     });
   });
 }

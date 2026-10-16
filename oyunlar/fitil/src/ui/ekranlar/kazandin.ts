@@ -29,6 +29,8 @@ export function kazandinEkrani(
   const sonra = (ms: number, fn: () => void) => zamanlayicilar.push(setTimeout(fn, az ? 0 : ms));
   let sayimIptal: (() => void) | null = null;
   let kandilIptal: (() => void) | null = null;
+  // Ekran kapanınca (Devam/Tekrar) uçan kandiller kalkar, sayaç sesi susar.
+  const ucusIptal = new AbortController();
 
   // ── Yıldızlar
   const yildizlar = [0, 1, 2].map((i) => {
@@ -57,6 +59,8 @@ export function kazandinEkrani(
     : [];
   const sancakCip = mv?.sancak ? h('span', { s: 'f-kz-sancak', t: MK.sancak }) : null;
   const muhurSira = mv ? h('div', { s: 'f-kz-muhurler', 'aria-label': MK.muhurler }, muhurKutulari, sancakCip) : null;
+  // Usta'nın Eli ile kazanç: boş halkalar açıklamasız kalmasın.
+  const eliNotu = mv?.ustaEli ? h('small', { s: 'f-kz-muhur-not', t: MK.ustaEliMuhur }) : null;
 
   const icerik = h(
     'div',
@@ -64,6 +68,7 @@ export function kazandinEkrani(
     h('div', { s: 'f-kz-bolum' }, h('span', { s: 'f-etiket', t: bolumBasligi(vm.bolumId, vm.tur) }), h('span', { s: 'f-kz-ad', t: vm.bolumAdi })),
     yildizSira,
     muhurSira,
+    eliNotu,
     h('div', { s: 'f-kz-orta' }, puan, rekor),
   );
   // Öğretim balonu (§15 Bölüm 5: "Yıldızlar puanından gelir.") yıldızların hemen altında:
@@ -128,13 +133,18 @@ export function kazandinEkrani(
       h('span', { s: 'f-kz-kandil-not', t: kv.tanitim ? MK.kandilTanitim : MK.kandilArti(kv.yeni - kv.onceki) }),
     );
   }
-  const duyurular = [...(vm.kasabaHazir ? [{ ikon: 'harita', metin: MK.isHazir, hazir: true }] : []), ...(vm.duyurular ?? []).map((d) => ({ ...d, hazir: false }))];
-  if (duyurular.length || kandilCip) {
+  // Şerit sırası (§C.5): kandil → mühür parçası (öncelikli; sınırdan muaf) → "iş hazır" → diğerleri.
+  const tum = (vm.duyurular ?? []).map((d) => ({ ...d, hazir: false }));
+  const oncelikli = tum.filter((d) => d.oncelikli);
+  const duyurular = [...(vm.kasabaHazir ? [{ ikon: 'harita', metin: MK.isHazir, hazir: true }] : []), ...tum.filter((d) => !d.oncelikli)];
+  if (duyurular.length || oncelikli.length || kandilCip) {
     // Çok duyuru kartı taşırır (küçük ekranda düğmelerin altında kalır): ilk birkaçı, gerisi "+N" çipinde.
     const sinir = window.innerHeight <= 700 || window.innerWidth > window.innerHeight ? 1 : 3;
     const liste = duyurular;
-    const ogeler = liste.map((d) => h('li', { s: `f-kz-duyuru${d.hazir ? ' f-kz-hazir' : ''}` }, d.hazir ? kandilSvg() : ikon(d.ikon as IkonAdi), h('span', { t: d.metin })));
-    const ul = h('ul', { s: 'f-kz-duyurular', 'aria-label': 'Kazanılanlar' }, kandilCip, liste.length > sinir + 1 ? ogeler.slice(0, sinir) : ogeler);
+    const cip = (d: { ikon: string; metin: string; hazir: boolean }) =>
+      h('li', { s: `f-kz-duyuru${d.hazir ? ' f-kz-hazir' : ''}` }, d.hazir ? kandilSvg() : ikon(d.ikon as IkonAdi), h('span', { t: d.metin }));
+    const ogeler = liste.map(cip);
+    const ul = h('ul', { s: 'f-kz-duyurular', 'aria-label': 'Kazanılanlar' }, kandilCip, oncelikli.map(cip), liste.length > sinir + 1 ? ogeler.slice(0, sinir) : ogeler);
     if (liste.length > sinir + 1) {
       const fazla = ogeler.slice(sinir);
       const dg = h('button', { s: 'f-kz-duyuru f-kz-daha', type: 'button', 'aria-label': `${fazla.length} kazanım daha` }, h('span', { t: `+${fazla.length} daha` }));
@@ -156,6 +166,7 @@ export function kazandinEkrani(
     zamanlayicilar.forEach(clearTimeout);
     sayimIptal?.();
     kandilIptal?.();
+    ucusIptal.abort();
     if (vm.tablo?.eskiVar && tabloKarari !== null) b.geri.tabloKarari?.(vm.bolumId, tabloKarari);
     t.kapat();
   };
@@ -233,14 +244,23 @@ export function kazandinEkrani(
       if (mv) mv.liste.forEach((m, i) => m.yeni && kaynaklar.length < 8 && kaynaklar.push(merkez(muhurKutulari[i], kok)));
       const hedef = merkez(cip.querySelector('.f-kandil-svg') ?? cip, kok);
       let sayac = kv.onceki;
-      void kandilUcur(b, kaynaklar, hedef, () => {
-        sayac = Math.min(kv.yeni, sayac + 1);
-        sy.textContent = String(sayac);
-        cip.classList.remove('f-zipla');
-        void cip.offsetWidth;
-        cip.classList.add('f-zipla');
-        b.ses('dugme');
-      }).then(() => {
+      void kandilUcur(
+        b,
+        kaynaklar,
+        hedef,
+        () => {
+          sayac = Math.min(kv.yeni, sayac + 1);
+          sy.textContent = String(sayac);
+          cip.classList.remove('f-zipla');
+          void cip.offsetWidth;
+          cip.classList.add('f-zipla');
+          b.ses('dugme');
+        },
+        90,
+        false,
+        ucusIptal.signal,
+      ).then(() => {
+        if (ucusIptal.signal.aborted) return;
         kandilIptal = say(sy, sayac, kv.yeni, az ? 0 : 500, (x) => String(Math.round(x)));
       });
     });

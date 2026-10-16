@@ -262,6 +262,8 @@ export const MK = {
     basili: 'Basılı',
   } as Record<'tuttu' | 'bekliyor' | 'korunuyor' | 'bozuldu' | 'sonda' | 'basili', string>,
   ustaEliMuhur: "Usta'nın Eli ile mühür basılmaz",
+  /** Duraklat ilerlemesi: "2/4" ya da tek hamle ölçüsünde "En iyi 19/27". */
+  muhurIlerleme: (deger: number, hedef: number, tek: boolean) => (tek ? `En iyi ${deger}/${hedef}` : `${deger}/${hedef}`),
   rozetEtiket: (n: number) => `Mühürler: ${n}/3`,
   yeni: 'YENİ',
   muhurTanitim: 'Yeni: Mühürler! Her bölümde üç görev var; kazandığın oyunda tutanlar basılır.',

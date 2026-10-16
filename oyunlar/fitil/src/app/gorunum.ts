@@ -117,13 +117,31 @@ export function muhurVMleri(v: BolumVerisi, k: Kayit, oz?: { oz: meta.OyunOzeti;
   if (v.tur === 'gunluk' || v.tur === 'sonsuz' || v.tur === 'usta') return undefined;
   if (!meta.muhurlerGorunur(k)) return undefined;
   const basili = meta.muhurMaskeCoz(meta.bolumKaydi(k, v.id)?.muhur);
-  const anlik = oz ? meta.muhurAnlik(v, meta.muhurOzeti(oz.oz, oz.d)) : null;
+  const mo = oz ? meta.muhurOzeti(oz.oz, oz.d) : null;
+  const anlik = mo ? meta.muhurAnlik(v, mo) : null;
   return v.muhurler.map((m, i) => ({
     kademe: meta.MUHUR_KADEMELERI[i],
     metin: meta.muhurMetni(m),
     basili: basili[i],
     ...(anlik ? { durum: anlik[i] } : {}),
+    ...(mo && anlik ? muhurIlerlemesi(m, mo, anlik[i]) : {}),
   }));
+}
+
+/**
+ * (Kancalar §C.4) Duraklat'ta "Henüz değil · 2/4" ve "En iyi 19/27": oyuncu
+ * ne kadar yaklaştığını görsün. Yalnız eşiği 2+ olan bekleyen sayaçlarda
+ * ve sınırı 1+ olan korunan kısıtlarda; kalan hamle (sonda), tutmuş ve
+ * bozulmuş mühürde yok.
+ */
+function muhurIlerlemesi(k: meta.MuhurKosulu, oz: meta.MuhurOzeti, durum: meta.MuhurAnlikDurumu): Pick<MuhurVM, 'ilerleme'> {
+  if (durum === 'bekliyor' && k.enAz !== undefined && k.enAz >= 2) {
+    return { ilerleme: { deger: Math.min(meta.muhurDegeri(k, oz), k.enAz), hedef: k.enAz, tek: k.kapsam === 'hamle' } };
+  }
+  if (durum === 'korunuyor' && k.enCok !== undefined && k.enCok >= 1) {
+    return { ilerleme: { deger: meta.muhurDegeri(k, oz), hedef: k.enCok, tek: false } };
+  }
+  return {};
 }
 
 export interface HudBaglam {
@@ -337,9 +355,17 @@ export function kasabaVM(k: Kayit): KasabaVM {
 
 /**
  * (Kancalar §C.5) Kazandın ekranının mühür satırı, kandil çipi ve "iş hazır"
- * ipucu. `gorulen`: kaydın görülen ipuçları (tanıtım bir kez).
+ * ipucu. `gorulen`: kaydın görülen ipuçları (tanıtım bir kez). Tanıtım
+ * (Kıvılcım Usta ipucu) ipuçları kapalıyken ve bölüm öncesi kartında
+ * `muhur-kart` ile tanıtılmış (göçle gelen) oyuncuda çıkmaz (§A.2).
+ * `ustaEli`: kazanç Usta'nın Eli ile (mühür basılmaz; satırın altında not).
  */
-export function kazandinKancalari(v: BolumVerisi, sonuc: meta.BolumSonucCiktisi, gorulen: readonly string[]): Pick<KazandinVM, 'muhurler' | 'kandil' | 'kasabaHazir'> {
+export function kazandinKancalari(
+  v: BolumVerisi,
+  sonuc: meta.BolumSonucCiktisi,
+  gorulen: readonly string[],
+  ek: { ipuclari?: boolean; ustaEli?: boolean } = {},
+): Pick<KazandinVM, 'muhurler' | 'kandil' | 'kasabaHazir'> {
   const k = sonuc.kayit;
   const o = sonuc.oduller;
   let muhurler: KazandinVM['muhurler'] = null;
@@ -347,10 +373,12 @@ export function kazandinKancalari(v: BolumVerisi, sonuc: meta.BolumSonucCiktisi,
   if (satir) {
     const mo = o.find((x): x is Extract<meta.Odul, { tur: 'muhur' }> => x.tur === 'muhur');
     const yeni = new Set(mo?.yeni ?? []);
+    const I = meta.KANCA_IPUCU;
     muhurler = {
       liste: satir.map((m) => ({ ...m, yeni: yeni.has(m.kademe) })),
-      tanitim: !!mo?.tanitim && !gorulen.includes(meta.KANCA_IPUCU.muhurTanitim),
+      tanitim: !!mo?.tanitim && ek.ipuclari !== false && !gorulen.includes(I.muhurTanitim) && !gorulen.includes(I.muhurKart),
       sancak: o.some((x) => x.tur === 'sancak'),
+      ...(ek.ustaEli ? { ustaEli: true } : {}),
     };
   }
   const ko = o.find((x): x is Extract<meta.Odul, { tur: 'kandil' }> => x.tur === 'kandil');
@@ -446,14 +474,14 @@ export function coskuRoketi(v: BolumVerisi, k: Kayit): boolean {
 }
 
 /** Kazançla gelen ödüllerden Kazandın kartındaki kısa duyurular (sandık ve tablo kendi yerinde), önem sırasıyla. */
-export function odulDuyurulari(oduller: readonly meta.Odul[], s: { sonrakiBolum?: number } = {}): { ikon: string; metin: string }[] {
+export function odulDuyurulari(oduller: readonly meta.Odul[], s: { sonrakiBolum?: number } = {}): { ikon: string; metin: string; oncelikli?: boolean }[] {
   // Sıradaki bölüm öğretimse hazır roket verilmez (coskuRoketi): duyuru da çıkmaz.
   const sonrakiOgretim = s.sonrakiBolum !== undefined && bolumGetir(s.sonrakiBolum)?.tur === 'ogretim';
   const sirali = oduller
     .map((o, i) => ({ o, i }))
     .sort((a, b) => (DUYURU_ONEMI[a.o.tur] ?? 9) - (DUYURU_ONEMI[b.o.tur] ?? 9) || a.i - b.i)
     .map((x) => x.o);
-  const r: { ikon: string; metin: string }[] = [];
+  const r: { ikon: string; metin: string; oncelikli?: boolean }[] = [];
   for (const o of sirali) {
     switch (o.tur) {
       case 'guclendiriciAcildi':
@@ -498,7 +526,8 @@ export function odulDuyurulari(oduller: readonly meta.Odul[], s: { sonrakiBolum?
       case 'muhurParcasi': {
         // (Kancalar §A.6) Mahallenin 5/10/15. mührü: fitil parçası (ya da üçü varsa toz).
         const ad = FITILLER.find((f) => f.id === o.fitil)?.ad ?? 'Fitil';
-        r.push({ ikon: 'alev', metin: o.parca ? MK.parcaDuyuru(ad, o.esik) : MK.tozDuyuru(o.toz, o.esik) });
+        // Şerit sırası (§C.5): kandil → mühür parçası → diğerleri; kısa ekranda da "+N daha"ya gömülmez.
+        r.push({ ikon: 'alev', metin: o.parca ? MK.parcaDuyuru(ad, o.esik) : MK.tozDuyuru(o.toz, o.esik), oncelikli: true });
         break;
       }
       default:

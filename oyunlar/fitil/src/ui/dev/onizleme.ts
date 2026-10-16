@@ -256,7 +256,7 @@ async function calistir(): Promise<void> {
       await oyunSahnesi('muhur');
       const y = ui.yerlesim();
       const bekle = Number(p.get('bekle') ?? 400);
-      setTimeout(() => void ui.muhurTuttu(1, 'kalfa', { x: y.tahta.x + y.tahta.w * 0.6, y: y.tahta.y + y.tahta.h * 0.4 }), bekle);
+      setTimeout(() => void ui.muhurTuttu([{ indeks: 1, kademe: 'kalfa' }], { x: y.tahta.x + y.tahta.w * 0.6, y: y.tahta.y + y.tahta.h * 0.4 }), bekle);
       break;
     }
     case 'kasaba':

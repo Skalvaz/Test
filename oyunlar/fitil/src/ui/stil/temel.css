@@ -635,6 +635,8 @@
   transition: transform .4s var(--yay), opacity .18s ease;
 }
 .f-balon.f-giris { transform: none; opacity: 1; }
+.f-balon.f-gecirgen { pointer-events: none; }
+.f-balon.f-gecirgen.f-giris { opacity: .84; }
 .f-balon.f-cikis { transform: translateY(-4px) scale(.9); opacity: 0; transition-duration: .16s; }
 .f-balon::after {
   content: '';

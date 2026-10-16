@@ -69,6 +69,13 @@ export interface MuhurVM {
   metin: string;
   basili: boolean;
   durum?: 'tuttu' | 'bekliyor' | 'korunuyor' | 'bozuldu' | 'sonda';
+  /**
+   * (Kancalar §C.4) Sayaç/eşik mühüründe ilerleme (Duraklat): `deger`
+   * ölçülen (tek hamle kapsamında bu denemenin en iyisi), `hedef` eşik;
+   * `tek`: "tek hamlede" (en iyi) ölçüsü. Eşik 1 olan ve kalan hamle
+   * mühürlerinde yok.
+   */
+  ilerleme?: { deger: number; hedef: number; tek: boolean };
 }
 
 /** Kasaba paneli (alt çekmece) iş kartı. */
@@ -278,12 +285,12 @@ export interface KazandinVM {
    * (P5 ek) Kazançla gelen kısa duyurular (rozet, açılan bölüm/güçlendirici,
    * görev, Usta Bölümü…): kartta küçük çipler. `ikon` çizgi ikon adı.
    */
-  duyurular?: { ikon: string; metin: string }[];
+  duyurular?: { ikon: string; metin: string; /** (Kancalar §C.5) Kandilden hemen sonra, "+N daha"ya gömülmez (mühür parçası). */ oncelikli?: boolean }[];
   /**
    * (Kancalar §C.3) Mühürler: yıldızlardan sonra damgalanır; `yeni` olanlar
    * bu kazançta basıldı. `tanitim`: ilk kez (6. bölüm) "Yeni: Mühürler".
    */
-  muhurler?: { liste: (MuhurVM & { yeni: boolean })[]; tanitim: boolean; sancak: boolean } | null;
+  muhurler?: { liste: (MuhurVM & { yeni: boolean })[]; tanitim: boolean; sancak: boolean; /** Usta'nın Eli ile kazanıldı: mühür basılmadı (satırın altında not). */ ustaEli?: boolean } | null;
   /**
    * (Kancalar §C.5) Kandil kazanımı: önceki → yeni bakiye, kazanç şeridinin
    * ilk çipi. `yildiz`/`muhur`: bu kazancın yeni yıldız/mühür kandilleri

@@ -119,7 +119,10 @@ export class Arayuz {
   private balonEl: HTMLElement | null = null;
   private balonCoz: (() => void) | null = null;
   private balonSure: ReturnType<typeof setTimeout> | null = null;
+  private balonGecirgen = false;
   private kisayol: boolean;
+  /** (Kancalar §C.3) Süren mühür uçuşlarının iptali (Geri Sar, bölümden çıkış). */
+  private muhurIptalci = new AbortController();
 
   constructor(s: ArayuzSecenek) {
     this.b = new Baglam({ kok: s.kok, ses: s.ses, titresim: s.titresim });
@@ -460,21 +463,47 @@ export class Arayuz {
   }
 
   /**
-   * (Kancalar §C.3) Mühür bu denemede tuttu: `kaynak`ta (reaksiyon merkezi,
-   * kök öğeye göre CSS px) 28 px mum mühür belirir, rozetin noktasına uçar,
-   * nokta damgalanır, ses + titreşim + "Kalfa mührü!" etiketi. Hareketi
-   * azaltta uçuş yok, nokta anında dolar.
+   * (Kancalar §C.3) Mühürler bu denemede tuttu: `kaynak`ta (reaksiyon
+   * merkezi, kök öğeye göre CSS px) 28 px mum mühür belirir, rozetin
+   * noktasına uçar (birden çoksa 160 ms arayla), nokta damgalanır, ses +
+   * titreşim + "Kalfa mührü!" etiketi. Bütün noktalar çağrı anında "uçuşta"
+   * sayılır (sıradakiler de damgaya kadar boş kalır). Hareketi azaltta uçuş
+   * yok, nokta anında dolar. `muhurUcuslariniIptal` (Geri Sar, çıkış) uçanları
+   * kaldırır: damga, ses ve etiket çıkmaz.
    */
-  async muhurTuttu(indeks: number, kademe: 'cirak' | 'kalfa' | 'usta', kaynak: { x: number; y: number }): Promise<void> {
-    const hedef = this.hud.muhurNoktasi(indeks);
-    this.hud.muhurUcusBasla(indeks);
-    if (hedef) await muhurUcur(this.b, kademe, kaynak, hedef);
-    this.hud.muhurDamgala(indeks);
-    this.b.ses('muhur');
-    this.b.titret(15);
-    const p = hedef ?? this.hud.muhurNoktasi(indeks);
-    if (p) muhurEtiketi(this.b, MK.muhurTuttu(MK.kademe[kademe]), { x: Math.max(64, Math.min(this.yer.ekranW - 64, p.x)), y: p.y - 14 });
-    else this.b.duyur(MK.muhurTuttu(MK.kademe[kademe]));
+  muhurTuttu(liste: readonly { indeks: number; kademe: 'cirak' | 'kalfa' | 'usta' }[], kaynak: { x: number; y: number }): Promise<void> {
+    const sinyal = this.muhurIptalci.signal;
+    for (const m of liste) this.hud.muhurUcusBasla(m.indeks);
+    const tek = async (m: { indeks: number; kademe: 'cirak' | 'kalfa' | 'usta' }, gecikme: number): Promise<void> => {
+      if (gecikme > 0 && !sinyal.aborted) await new Promise<void>((r) => {
+        const t = setTimeout(r, gecikme);
+        sinyal.addEventListener('abort', () => {
+          clearTimeout(t);
+          r();
+        }, { once: true });
+      });
+      const hedef = sinyal.aborted ? null : this.hud.muhurNoktasi(m.indeks);
+      if (hedef) await muhurUcur(this.b, m.kademe, kaynak, hedef, sinyal);
+      // Uçuş sürerken Geri Sar mühürü geri aldıysa ya da bölümden çıkıldıysa damga yok.
+      if (sinyal.aborted || !this.hud.muhurTutuyor(m.indeks)) {
+        this.hud.muhurUcusBitti(m.indeks, false);
+        return;
+      }
+      this.hud.muhurUcusBitti(m.indeks, true);
+      this.b.ses('muhur');
+      this.b.titret(15);
+      const metin = MK.muhurTuttu(MK.kademe[m.kademe]);
+      const p = hedef ?? this.hud.muhurNoktasi(m.indeks);
+      if (p) muhurEtiketi(this.b, metin, { x: Math.max(64, Math.min(this.yer.ekranW - 64, p.x)), y: p.y - 14 }, sinyal);
+      else this.b.duyur(metin);
+    };
+    return Promise.all(liste.map((m, n) => tek(m, n * 160))).then(() => undefined);
+  }
+
+  /** Süren mühür uçuşlarını ve etiketlerini kaldırır (Geri Sar, bölümden çıkış). */
+  muhurUcuslariniIptal(): void {
+    this.muhurIptalci.abort();
+    this.muhurIptalci = new AbortController();
   }
 
   /** Hareketi azalt açık mı (ayar ya da sistem). */
@@ -493,10 +522,11 @@ export class Arayuz {
    * Kıvılcım Usta balonu (§14.4, §15): tahtanın üst kenarında, tek satır,
    * dokununca kapanır. `sure` ms sonra kendiliğinden kapanır (0 = beklemez).
    */
-  balon(metin: string, sure = 0): Promise<void> {
+  balon(metin: string, sure = 0, o: { gecirgen?: boolean } = {}): Promise<void> {
     this.balonKapat();
     const el = h('div', { s: 'f-balon', role: 'status', tabindex: '0', 'aria-label': `Kıvılcım Usta: ${metin}` }, ustaSvg(), h('span', { s: 'f-balon-metin', t: metin }));
     this.balonEl = el;
+    this.balonGecirgen = !!o.gecirgen;
     this.b.ustKatman.appendChild(el);
     this.balonKonumla();
     this.b.duyur(metin);
@@ -542,6 +572,10 @@ export class Arayuz {
     const plakaAlti = y.kip === 'dikey' ? y.guvenli.ust + 76 : y.guvenli.ust + 8;
     const ust = t.y - 62 >= plakaAlti ? t.y - 62 : Math.max(plakaAlti, t.y + 6);
     el.style.top = `${Math.round(ust)}px`;
+    // Oyun ortasında kendiliğinden çıkan balon (ör. "Mühür tuttu!") tahtaya
+    // biniyorsa dokunuşu yakalamaz ve yarı saydamdır: ilk sıradan başlayan
+    // sürükleme tahtaya gider (KANCALAR §C.3, kısa ekran).
+    el.classList.toggle('f-gecirgen', this.balonGecirgen && ust + 52 > t.y);
   }
 
   toast(metin: string, ms?: number): void {
