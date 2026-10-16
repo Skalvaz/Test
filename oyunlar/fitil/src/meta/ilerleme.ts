@@ -66,7 +66,7 @@ import { arsivdeMi, gorevIlerlet, gorevMetni, gunlukAcik, gunlukDahaIyi, gunlukT
 import type { SeriSonucu } from './gunluk';
 import { acikEnYuksek, anaYildiz, bolumKazanildi, kayitKopyala, parcaId, sonsuzAcikMi } from './kayit';
 import type { BolumKaydi, GorevDurumu, GunlukSonucKaydi, KartId, Kayit, Nadirlik, ParcaId, Rekorlar, SandikNedeni, Yildiz } from './kayit';
-import { kandilKazanimi, kasabaAcikMi, toplamMuhur } from './kasaba';
+import { gunlukKandilEkle, kandilKazanimi, kasabaAcikMi, toplamMuhur } from './kasaba';
 import { MUHUR_ACILIS_BOLUMU, MUHUR_MASKE_TAVANI, MUHUR_PARCA_ESIKLERI, MUHUR_SON_BOLUM, muhurBirlestir, muhurSayisi } from './muhur';
 import type { MuhurKademe } from './muhur';
 import { ozetBaslat } from './ozet';
@@ -495,8 +495,9 @@ export function bolumSonucu(kayit: Kayit, g: BolumSonucGirdisi, ayarK?: Partial<
       const parlak = hepsi && j === r.tamamlanan.length - 1 && !k.gunluk.ucGorevSandigi;
       if (parlak) {
         k.gunluk.ucGorevSandigi = true;
-        // 7b. Günün üç görevi: günde en çok 1 kandil (parlak sandık bir kez verilir).
-        k.kasaba.gunlukKandil += 1;
+        // 7b. Günün üç görevi: günde en çok 1 kandil (parlak sandık bir kez verilir);
+        // gün kaydedilir (iki cihazın birleşiminde ayrı günler korunur).
+        gunlukKandilEkle(k.kasaba, tarih);
       }
       gorevSandiklari.push({ tur: parlak ? 'parlak' : 'normal', neden: 'gorev' });
     });

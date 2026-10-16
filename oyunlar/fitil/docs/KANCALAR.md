@@ -579,6 +579,7 @@ BolumKaydi.muhur?: number        // 3 bitlik maske, yalnız kazanılmış 6–40
 Kayit.kasaba: {
   isler: string[];               // yapılan işler (KASABA_ISLERI kimlikleri), sırayla
   gunlukKandil: number;          // 3/3 görev günlerinden kandil
+  kandilGunleri?: number[];      // o günler (yyyymmdd, artan, ≤ 400; boşsa yok)
   uyarilan: string[];            // "Kandil yetti" uyarısı yapılmış işler
 }
 Kayit.muhurOdulleri: string[];   // verilmiş mühür parça basamakları ("carsi:5")
@@ -611,7 +612,8 @@ karşılaştırma tutarlı kalır.
    `muhurOdulleri`'nde yoksa: `MUHUR_FITILLERI[m]`'nin en küçük eksik parçası
    koleksiyona; üçü de varsa +`TOZ_PARCA_BEDELI` toz; basamak kayda;
    `Odul muhurParcasi`.
-3. **7b:** 3/3 görev parlak sandığı verildiği anda `kasaba.gunlukKandil += 1`.
+3. **7b:** 3/3 görev parlak sandığı verildiği anda `gunlukKandilEkle`:
+   `kasaba.gunlukKandil += 1` ve gün `kandilGunleri`'ne (aynı gün iki kez yok).
 4. **11 (son):** `kandilDokumu(önceki).bakiye` ≠ yeni ise `Odul kandil
    { onceki, yeni, kaynak }` (kaynak = kazanılan farkının dökümü); kasaba bu
    kazançla açıldıysa `Odul kasabaAcildi { kandil }`.
@@ -625,11 +627,35 @@ karşılaştırma tutarlı kalır.
   yapılan işlerden geri alınır.
 - `muhurOdulleri`: `<mahalleId>:<5|10|15>`, İskele hariç, tekrarsız.
 - Kart `kasaba:<mahalleId>` geçerli.
+- `kandilGunleri`: geçerli, tekrarsız, artan, en çok 400 (en yeniler);
+  `gunlukKandil` ∈ [gün sayısı, gün sayısı + 366] (tarihsiz kısım tavanlı:
+  elle düzenlenmiş kayıt koduyla sınırsız kandil yok).
 
 ### D.6 Kayıt kodu ve önizleme
 `FTL1:` kodu yeni alanları taşır (test: gidiş-dönüş eşit). İçe aktarma
 önizlemesine (`KayitOnizleme`) `muhur`, `kasabaIs`, `kandil` eklendi; arayüz
 satırı: "Mühür 23 · Kasaba 17/48 işi · 6 kandil".
+
+### D.7 Birleştirme, ileri uyumluluk ve eski sekme (QA, testli: `app/kayitci.test.ts`)
+- **Birleştirme** (`kancaBirlestir`, bulut + tarayıcı): mühür maskeleri VEYA;
+  eksik işler kurallar/bütçeyle; günlük kandil = gün kümelerinin birleşimi +
+  tarihsiz kısmın büyüğü (ayrı cihazda ayrı günlerde kazanılan kaybolmaz,
+  ortak gün iki kez sayılmaz). Birleşim seçilenin (göç + onarım sonrası)
+  aynısıysa seçilen ham veri döner; `pickMerged` anahtar sırasından bağımsız
+  karşılaştırır (`kanonikJson`): yerel = bulut iken yeni zarf, "Bulut kaydı
+  yüklendi" ve fazladan bulut yazımı yok.
+- **İleri uyumluluk:** `kayitDeposuAyarlari().tooNew` (`surum` >
+  `KAYIT_SURUMU`). Ana kayıt, buluttaki kayıt ya da yazmadan hemen önce
+  tarayıcıdaki kayıt yeni bir şemadansa depo **salt okunur** olur (yerel ve
+  bulut yazımı, yedek kaydırma yok); haritada "Oyunun yeni sürümü açıldı: bu
+  sayfa ilerlemeni kaydetmiyor. Sayfayı yenile." Yeni şemalı veri birleştirilmez.
+- **Eski sürümün açık sekmesi** (yayındaki şema 2 istemcisi) şema 3 kaydını
+  bilmeden yazarsa: açılışta ana kayıt eski şemadan ve bir yedek (`yedek1`,
+  `yedek2`) bu şemadansa yedeklerin mühürleri ve işleri `kancaBirlestir` ile
+  geri eklenir ve yazılır. Ana kayıt bu şemadansa yedekler birleştirilmez
+  (ilerlemeyi sıfırlama geri alınmasın). Bulut kaydı seçilse de yereldeki
+  mühürler/işler eklenir (`bulutUygula`). Yayındaki eski istemcinin kendisi
+  düzeltilemez: iki kaynağı birden ve yedekleri üç kez ezerse kayıp kalıcıdır.
 
 ---
 

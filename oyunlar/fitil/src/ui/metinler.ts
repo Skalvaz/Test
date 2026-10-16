@@ -306,6 +306,7 @@ export const MK = {
   kasabaDugme: (n: number, hazir: boolean) => `Kasaba: ${n} kandil${hazir ? ', yapılacak iş var' : ''}`,
   fenerKoyu: 'Fener Koyu',
   kasabaTamamDugme: 'Fener Koyu: bütün kasaba süslendi',
+  yeniSurum: 'Oyunun yeni sürümü açıldı: bu sayfa ilerlemeni kaydetmiyor. Sayfayı yenile.',
   kasabaKartlari: 'Kasaba kartları',
   kayitOzeti: (muhur: number, isler: number, kandil: number) => `Mühür ${muhur} · Kasaba ${isler}/48 işi · ${kandil} kandil`,
 } as const;

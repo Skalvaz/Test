@@ -287,8 +287,18 @@ export class Uygulama {
     this.bildir('Bulut kaydı yüklendi');
   }
 
-  /** Depolama yoksa (gizli pencere) haritada bir kez, öğretimden sonra: oyun ekranında tahtayı örtmesin. */
+  /**
+   * Depolama yoksa (gizli pencere) haritada bir kez, öğretimden sonra: oyun ekranında tahtayı örtmesin.
+   * Yeni sürümün kaydı görüldüyse (eski sekme; depo salt okunur) her harita dönüşünde: ilerleme
+   * kaydedilmiyor, sayfa yenilenmeli.
+   */
   private bellekUyarisi(): void {
+    if (this.kayitci.saltOkunur) {
+      void this.bekle(900).then(() => {
+        if (this.haritaAcik) this.bildir(MK.yeniSurum, 4500);
+      });
+      return;
+    }
     if (this.bellekUyarildi || !this.kayitci.bellekte) return;
     this.bellekUyarildi = true;
     void this.bekle(900).then(() => {

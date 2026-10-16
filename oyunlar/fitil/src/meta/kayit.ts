@@ -384,7 +384,13 @@ export function progressScore(k: Kayit, ayar: MetaAyar = VARSAYILAN_META_AYAR): 
  * mühürler ve kasaba işleri eklenir (`kancaBirlestir`); zarftaki veri eski
  * şemada olabileceğinden önce ikisi de göç + onarımdan geçer.
  */
-export function kayitDeposuAyarlari(ayar?: Partial<MetaAyar>): { key: string; version: number; progressScore: (d: Kayit) => number; merge: (secilen: Kayit, diger: Kayit) => Kayit } {
+export function kayitDeposuAyarlari(ayar?: Partial<MetaAyar>): {
+  key: string;
+  version: number;
+  progressScore: (d: Kayit) => number;
+  merge: (secilen: Kayit, diger: Kayit) => Kayit;
+  tooNew: (d: unknown) => boolean;
+} {
   const a = metaAyar(ayar);
   return {
     key: KAYIT_ANAHTARI,
@@ -393,9 +399,35 @@ export function kayitDeposuAyarlari(ayar?: Partial<MetaAyar>): { key: string; ve
     merge: (secilen, diger) => {
       const s = kayitCoz(secilen, secilen?.kayitTohumu ?? 0);
       const d = kayitCoz(diger, diger?.kayitTohumu ?? 0);
-      return s.yeni ? secilen : d.yeni ? s.kayit : kancaBirlestir(s.kayit, d.kayit, a);
+      // Yeni bir şemanın kaydı birleştirilmez (bilinmeyen alanları düşürüp yazmasın).
+      if (s.gelecekSurum || d.gelecekSurum) return secilen;
+      if (s.yeni) return secilen;
+      const b = d.yeni ? s.kayit : kancaBirlestir(s.kayit, d.kayit, a);
+      // Birleşim seçilenin (göç + onarım sonrası) aynısıysa seçilen ham veri aynen döner:
+      // göç ya da anahtar sırası farkı yeni zarf, "Bulut kaydı yüklendi" ve bulut yazımı doğurmaz.
+      return kanonikEsit(b, s.kayit) ? secilen : b;
     },
+    tooNew: kayitSurumuIleride,
   };
+}
+
+/** Kayıt verisi (zarfın `data`'sı) bu kodun bilmediği yeni bir şemadan mı (`surum` > KAYIT_SURUMU). */
+export function kayitSurumuIleride(d: unknown): boolean {
+  const s = d && typeof d === 'object' ? (d as { surum?: unknown }).surum : undefined;
+  return typeof s === 'number' && Number.isInteger(s) && s > KAYIT_SURUMU;
+}
+
+/** Anahtar sırasından bağımsız derin eşitlik (JSON değerleri). */
+function kanonikEsit(a: unknown, b: unknown): boolean {
+  const k = (x: unknown) =>
+    JSON.stringify(x, (_y, v: unknown) => {
+      if (!v || typeof v !== 'object' || Array.isArray(v)) return v;
+      const o = v as Record<string, unknown>;
+      const s: Record<string, unknown> = {};
+      for (const n of Object.keys(o).sort()) s[n] = o[n];
+      return s;
+    });
+  return k(a) === k(b);
 }
 
 // ─────────────────────── Parça ve koleksiyon kimlikleri ───────────────────────

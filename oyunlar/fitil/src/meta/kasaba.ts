@@ -24,6 +24,7 @@ import type { Kayit } from './kayit';
 import { MUHUR_ACILIS_BOLUMU, MUHUR_MASKE_TAVANI, MUHUR_SON_BOLUM, muhurSayisi } from './muhur';
 import { bolumTuru, mahalleBolumleri, mahalleSayisi, metaAyar } from './sabitler';
 import type { MetaAyar } from './sabitler';
+import { tarihGecerli } from './takvim';
 
 // ───────────────────────────── Sabitler ─────────────────────────────
 
@@ -69,12 +70,62 @@ export interface KasabaKaydi {
   isler: string[];
   /** Günlük görevlerden kazanılan kandil (3/3 görev günü başına 1). */
   gunlukKandil: number;
+  /**
+   * Günlük kandilin kazanıldığı günler (yyyymmdd, artan, en çok
+   * `KANDIL_GUNU_SINIRI`): iki cihaz birleşirken ayrı günlerde kazanılan
+   * kandil küme birleşimiyle korunur (`kancaBirlestir`). `gunlukKandil` −
+   * gün sayısı = tarihsiz eski kısım (≤ `GUNLUK_KANDIL_TARIHSIZ_TAVANI`).
+   * Boşsa yazılmaz.
+   */
+  kandilGunleri?: number[];
   /** "Kandil yetti" uyarısı yapılmış işler (kazanç sonrası oto-kart iş başına bir kez atlanır). */
   uyarilan: string[];
 }
 
 export function bosKasaba(): KasabaKaydi {
   return { isler: [], gunlukKandil: 0, uyarilan: [] };
+}
+
+/** Kayıtta tutulan en çok günlük kandil günü (en yeniler; eskiler tarihsiz sayaca geçer). */
+export const KANDIL_GUNU_SINIRI = 400;
+/**
+ * Günlük kandilin tarihsiz kısmının tavanı (kayıt kodu ya da elle düzenlenmiş
+ * kayıtla sınırsız kandil olmasın; QA). Günde en çok 1 kandil: bir yıl.
+ */
+export const GUNLUK_KANDIL_TARIHSIZ_TAVANI = 366;
+
+/**
+ * Günlük kandil kazanımı (3/3 görev günü; `bolumSonucu` 7b): sayaç +1 ve gün
+ * listeye. Aynı gün iki kez sayılmaz (çağıran günde bir kez çağırır; burada da denetlenir).
+ */
+export function gunlukKandilEkle(k: KasabaKaydi, tarih: number): void {
+  const gunler = k.kandilGunleri ?? [];
+  if (tarihGecerli(tarih) && gunler.includes(tarih)) return;
+  k.gunlukKandil += 1;
+  if (!tarihGecerli(tarih)) return;
+  const y = [...gunler, tarih].sort((a, b) => a - b);
+  // Sınır aşılırsa en eski gün tarihsiz kısma geçer (sayaç değişmez).
+  while (y.length > KANDIL_GUNU_SINIRI) y.shift();
+  k.kandilGunleri = y;
+}
+
+/**
+ * İki kaydın günlük kandili: günler küme birleşimi + tarihsiz kısmın büyüğü
+ * (iki cihazın ortak tarihsiz geçmişi iki kez sayılmaz; ayrı günlerde
+ * kazanılan kandil kaybolmaz).
+ */
+function gunlukKandilBirlestir(a: KasabaKaydi, b: KasabaKaydi | undefined): Pick<KasabaKaydi, 'gunlukKandil' | 'kandilGunleri'> {
+  const ga = a.kandilGunleri ?? [];
+  const gb = b?.kandilGunleri ?? [];
+  const la = Math.max(0, a.gunlukKandil - ga.length);
+  const lb = Math.max(0, (b?.gunlukKandil ?? 0) - gb.length);
+  const u = [...new Set([...ga, ...gb])].sort((x, y) => x - y);
+  let tarihsiz = Math.max(la, lb);
+  while (u.length > KANDIL_GUNU_SINIRI) {
+    u.shift();
+    tarihsiz++;
+  }
+  return { gunlukKandil: tarihsiz + u.length, ...(u.length ? { kandilGunleri: u } : {}) };
 }
 
 const IS_HARITASI = new Map<string, KasabaIsi>(KASABA_ISLERI.map((x) => [x.id, x]));
@@ -308,9 +359,29 @@ export function kasabaOnar(ham: unknown, k: Pick<Kayit, 'bolumler'>, not: (yol: 
     if (ham !== undefined) not('kasaba');
     return v;
   }
+  // Günlük kandil günleri: geçerli, tekrarsız, artan; en çok KANDIL_GUNU_SINIRI (en yeniler).
+  let gunler: number[] = [];
+  if (Array.isArray(o.kandilGunleri)) {
+    const k2 = new Set<number>();
+    for (const t of o.kandilGunleri) {
+      if (tarihGecerli(t) && !k2.has(t)) k2.add(t);
+      else not('kasaba.kandilGunleri');
+    }
+    gunler = [...k2].sort((a, b) => a - b);
+    if (gunler.length > KANDIL_GUNU_SINIRI) {
+      gunler = gunler.slice(gunler.length - KANDIL_GUNU_SINIRI);
+      not('kasaba.kandilGunleri');
+    }
+  } else if (o.kandilGunleri !== undefined) not('kasaba.kandilGunleri');
+  // Sayaç: en az gün sayısı, en çok gün sayısı + tarihsiz tavan.
   const g = o.gunlukKandil;
-  if (typeof g === 'number' && Number.isInteger(g) && g >= 0 && g <= 100_000) v.gunlukKandil = g;
-  else if (g !== undefined) not('kasaba.gunlukKandil');
+  const gEnCok = gunler.length + GUNLUK_KANDIL_TARIHSIZ_TAVANI;
+  if (typeof g === 'number' && Number.isInteger(g) && g >= gunler.length && g <= gEnCok) v.gunlukKandil = g;
+  else {
+    if (g !== undefined || gunler.length > 0) not('kasaba.gunlukKandil');
+    v.gunlukKandil = typeof g === 'number' && Number.isFinite(g) ? Math.min(gEnCok, Math.max(gunler.length, Math.trunc(g))) : gunler.length;
+  }
+  if (gunler.length) v.kandilGunleri = gunler;
   // İşler: sırayla kabul, kurallara uymayan atılır.
   const kabul: string[] = [];
   const kume = new Set<string>();
@@ -333,6 +404,7 @@ export function kasabaOnar(ham: unknown, k: Pick<Kayit, 'bolumler'>, not: (yol: 
   } else if (o.isler !== undefined) not('kasaba.isler');
   // Bütçe: harcanan ≤ kazanılan (sondan geri al).
   const kazanilan = kandilDokumu({ bolumler: k.bolumler, kasaba: { isler: [], gunlukKandil: v.gunlukKandil, uyarilan: [] } }, ayarK).kazanilan;
+  // (Not: v.kandilGunleri yalnız sayacın tarihli kısmıdır; bütçe sayaçtan.)
   let harcanan = kabul.reduce((s, id) => s + IS_HARITASI.get(id)!.maliyet, 0);
   while (harcanan > kazanilan && kabul.length > 0) {
     harcanan -= IS_HARITASI.get(kabul.pop()!)!.maliyet;
@@ -362,7 +434,8 @@ export function kasabaOnar(ham: unknown, k: Pick<Kayit, 'bolumler'>, not: (yol: 
  *  - mühür maskeleri: kazananda kazanılmış 6–40. bölümlerde bit bit VEYA;
  *  - kasaba işleri: kazananın sırası korunur, öbürünün eksik işleri kendi
  *    sırasıyla eklenir; kurallara ya da bütçeye uymayan atılır (`kasabaOnar`);
- *  - günlük kandil: büyük olan (iki cihazın ortak geçmişi iki kez sayılmaz);
+ *  - günlük kandil: kazanılan günlerin küme birleşimi + tarihsiz kısmın
+ *    büyüğü (ortak geçmiş iki kez sayılmaz, ayrı günlerde kazanılan kaybolmaz);
  *  - uyarılan işler birleşimi; süslenmiş mahallenin `kasaba:` kartı.
  * Yıldız, rozet, koleksiyon ve mühür ödülleri kazananınkidir (bu birleştirme
  * yalnız kandili ve işleri korur). Girdiler onarılmış kayıtlar olmalı; saf.
@@ -379,7 +452,7 @@ export function kancaBirlestir(kazanan: Kayit, diger: Kayit, ayarK?: Partial<Met
   const kendi = new Set(y.kasaba.isler);
   const aday: KasabaKaydi = {
     isler: [...y.kasaba.isler, ...(diger.kasaba?.isler ?? []).filter((id) => !kendi.has(id))],
-    gunlukKandil: Math.max(y.kasaba.gunlukKandil, diger.kasaba?.gunlukKandil ?? 0),
+    ...gunlukKandilBirlestir(y.kasaba, diger.kasaba),
     uyarilan: [...new Set([...y.kasaba.uyarilan, ...(diger.kasaba?.uyarilan ?? [])])],
   };
   y.kasaba = kasabaOnar(aday, y, () => undefined, ayar);

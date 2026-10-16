@@ -13,6 +13,12 @@
  * oyuncunun ilerlemesi kaybolmaz. `merge` verilmişse kazanan kayda öbüründen
  * kaybolmaması gerekenler eklenir (FİTİL: mühürler ve kasaba işleri). Yazma birleştirilir: art arda gelen
  * kayıtlar tek yazmaya iner, aynı belgeye aynı anda iki yazma gitmez.
+ *
+ * İleri uyumluluk: `tooNew` verilmişse depoda (tarayıcıda ya da bulutta) bu
+ * kodun bilmediği yeni bir şemayla yazılmış kayıt görülünce depo SALT
+ * OKUNUR olur (`readOnly`): eski sürümün açık kalmış sekmesi yeni sürümün
+ * alanlarını (ör. mühürler, kasaba) bilmeden ezmesin. Uygulama "sayfayı
+ * yenile" bildirimi gösterir.
  */
 import type { ClaudeDb, ClaudeDocRef } from './claude';
 
@@ -38,12 +44,19 @@ export class SaveStore<T> {
 
   /** İki kaynak birleşirken seçilen kayda öbüründen eklenecekler (isteğe bağlı; `pickMerged`). */
   private merge: ((better: T, other: T) => T) | undefined;
+  /** Veri bu kodun bilmediği yeni bir şemadan mı (ileri uyumluluk). */
+  private tooNew: ((d: unknown) => boolean) | undefined;
+  /** Yeni şemalı kayıt görüldü: bu sayfa hiçbir yere yazmaz (bellekte sürer). */
+  readOnly = false;
+  /** `readOnly` ilk kez açılınca (uygulama bildirim gösterir). */
+  onReadOnly: (() => void) | null = null;
 
-  constructor(opts: { key: string; version: number; progressScore: (d: T) => number; merge?: (better: T, other: T) => T }) {
+  constructor(opts: { key: string; version: number; progressScore: (d: T) => number; merge?: (better: T, other: T) => T; tooNew?: (d: unknown) => boolean }) {
     this.key = opts.key;
     this.version = opts.version;
     this.score = opts.progressScore;
     this.merge = opts.merge;
+    this.tooNew = opts.tooNew;
     if (localGet(this.key) !== undefined) this.backend = 'tarayici';
     else if (localAvailable()) this.backend = 'tarayici';
   }
@@ -75,6 +88,12 @@ export class SaveStore<T> {
       this.remote = ref;
       this.backend = 'bulut';
       const remoteEnv = snap.exists ? parseEnvelope<T>(JSON.stringify(snap.data()), this.version) : null;
+      // Bulutta yeni bir sürümün kaydı: birleştirme ve yazma yok (eski veriyle ezilmesin).
+      if (remoteEnv && this.tooNew?.(remoteEnv.data)) {
+        this.setReadOnly();
+        return null;
+      }
+      if (this.readOnly) return null;
       const localEnv = this.loadLocal();
       const better = pickMerged(localEnv, remoteEnv, this.merge, (d) => ({ v: this.version, savedAt: Date.now(), progressScore: this.score(d), data: d }));
       if (better && better !== remoteEnv) this.queue(better);
@@ -88,19 +107,50 @@ export class SaveStore<T> {
   save(data: T): void {
     const env: SaveEnvelope<T> = { v: this.version, savedAt: Date.now(), progressScore: this.score(data), data };
     this.memory = env;
+    if (!this.writable()) return;
     if (!localSet(this.key, JSON.stringify(env)) && this.backend === 'tarayici') this.backend = 'bellek';
     this.queue(env);
   }
 
+  /**
+   * Yazmadan önce: tarayıcıdaki kayıt bu arada yeni bir sürümün sekmesince
+   * yazıldıysa (ileri şema) depo salt okunur olur ve false döner.
+   */
+  writable(): boolean {
+    if (this.readOnly) return false;
+    if (this.tooNew) {
+      const env = parseEnvelope<T>(localGet(this.key), this.version);
+      if (env && this.tooNew(env.data)) {
+        this.setReadOnly();
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Salt okunur kip (bir kez; bekleyen bulut yazımı da düşer). */
+  setReadOnly(): void {
+    if (this.readOnly) return;
+    this.readOnly = true;
+    this.pending = null;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    try {
+      this.onReadOnly?.();
+    } catch {
+      /* bildirim isteğe bağlı */
+    }
+  }
+
   private queue(env: SaveEnvelope<T>): void {
-    if (!this.remote) return;
+    if (!this.remote || this.readOnly) return;
     this.pending = env;
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => void this.flush(), 800);
   }
 
   private async flush(): Promise<void> {
-    if (this.writing || !this.remote || !this.pending) return;
+    if (this.writing || !this.remote || !this.pending || this.readOnly) return;
     const env = this.pending;
     this.pending = null;
     this.writing = true;
@@ -141,10 +191,22 @@ export function pickMerged<T>(local: SaveEnvelope<T> | null, remote: SaveEnvelop
   const other = better === local ? remote : local;
   try {
     const data = merge(better.data, other.data);
-    return JSON.stringify(data) === JSON.stringify(better.data) ? better : wrap(data);
+    // Anlamsal eşitlik (anahtar sırası farkı yeni zarf, bildirim ve bulut yazımı doğurmasın).
+    return data === better.data || kanonikJson(data) === kanonikJson(better.data) ? better : wrap(data);
   } catch {
     return better;
   }
+}
+
+/** Anahtarları sıralanmış JSON (nesne anahtar sırasından bağımsız karşılaştırma için). */
+export function kanonikJson(x: unknown): string {
+  return JSON.stringify(x, (_k, v: unknown) => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return v;
+    const o = v as Record<string, unknown>;
+    const s: Record<string, unknown> = {};
+    for (const a of Object.keys(o).sort()) s[a] = o[a];
+    return s;
+  });
 }
 
 function parseEnvelope<T>(raw: string | undefined | null, version: number): SaveEnvelope<T> | null {

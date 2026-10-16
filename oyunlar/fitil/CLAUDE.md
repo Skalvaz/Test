@@ -16,7 +16,9 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
 - Kasaba ekonomisi ve kayıt: `kandilKazanimi` (önceki → yeni döküm farkı,
   `Odul kandil` için), `kancaBirlestir` (bulut + tarayıcı: seçilen kayda
   öbüründen mühür maskeleri VEYA, eksik işler kurallar/bütçeyle, günlük
-  kandil büyük olan); `SaveStore` `merge` seçeneği + `pickMerged`,
+  kandil gün kümesi birleşimi); `SaveStore` `merge`/`tooNew` + `pickMerged`
+  (anahtar sırasından bağımsız), yeni şemalı kayıtta salt okunur depo, eski
+  sekmenin şema 2 yazımında açılışta yedekten tamamlama (KANCALAR §D.7),
   `Kayitci.bulutUygula` iki yönde birleştirir. Gerçek şema 2 kayıt örnekleri
   `src/meta/_test/kayitlar/` (yayındaki `fitil.html` @5c88078 botla oynanıp
   localStorage'dan alındı); göç testleri `kayitOrnekleri.test.ts`.

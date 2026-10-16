@@ -16,8 +16,8 @@
  *
  * Bütün localStorage erişimleri try/catch içinde (WhatsApp içi tarayıcı).
  */
-import { SaveStore } from '../platform/storage';
-import { KAYIT_ANAHTARI, KAYIT_YEDEK_ANAHTARLARI, kancaBirlestir, kayitDeposuAyarlari, kayitYukle, type Kayit } from '../meta';
+import { SaveStore, kanonikJson } from '../platform/storage';
+import { KAYIT_ANAHTARI, KAYIT_YEDEK_ANAHTARLARI, kancaBirlestir, kayitCoz, kayitDeposuAyarlari, kayitYukle, type Kayit } from '../meta';
 
 const ilerlemePuani = kayitDeposuAyarlari().progressScore;
 import { rastgeleTohum } from './zaman';
@@ -54,6 +54,11 @@ function yedekVerisi(anahtar: string): unknown {
 export class Kayitci {
   readonly depo: SaveStore<Kayit>;
   kayit: Kayit;
+  /**
+   * Göçle gelen ana kayıt (eski sürümün sekmesi yazdı) yedeklerdeki şema 3
+   * mühürleri/işleriyle tamamlandı (açılışta; KANCALAR §D.6).
+   */
+  readonly yedektenTamamlandi: boolean;
   /** İlk açılış mı (hiç kayıt bulunamadı). */
   readonly ilkAcilis: boolean;
   /** Kayıt hangi adaydan geldi (0 ana, 1–2 yedek, −1 yeni). */
@@ -71,6 +76,25 @@ export class Kayitci {
     this.kayit = r.kayit;
     this.kaynak = r.kaynak;
     this.ilkAcilis = r.kaynak === -1;
+    // Ana kayıt yeni bir şemadan (yeni sürümün sekmesi yazdı): bu sayfa salt okunur.
+    if (r.gelecekSurum) this.depo.setReadOnly();
+    // Ana kayıt eski şemadan geldiyse ama yedeklerde bu şemanın kaydı varsa, eski sürümün
+    // açık kalmış sekmesi şema 3 alanlarını bilmeden yazmıştır: yedeklerin mühürleri ve
+    // kasaba işleri geri eklenir (kancaBirlestir: yalnız eklenir, kurallar/bütçe ile).
+    let tamam = false;
+    if (r.kaynak === 0 && r.gocler.length > 0 && !r.gelecekSurum) {
+      for (const a of KAYIT_YEDEK_ANAHTARLARI) {
+        const y = kayitCoz(yedekVerisi(a), this.kayit.kayitTohumu);
+        if (y.yeni || y.gocler.length > 0 || y.gelecekSurum) continue;
+        const b = kancaBirlestir(this.kayit, y.kayit);
+        if (JSON.stringify(b) !== JSON.stringify(this.kayit)) {
+          this.kayit = b;
+          tamam = true;
+        }
+      }
+    }
+    this.yedektenTamamlandi = tamam;
+    if (tamam) this.planla(0);
     const kapat = () => this.hemenYaz();
     try {
       document.addEventListener('visibilitychange', () => {
@@ -103,6 +127,8 @@ export class Kayitci {
     if (this.zamanlayici) clearTimeout(this.zamanlayici);
     this.zamanlayici = null;
     this.bekliyor = false;
+    // Yeni sürümün kaydı görüldüyse yazılmaz (yedekler de kaymaz).
+    if (!this.depo.writable()) return;
     // Yedek döndürme: önceki ana kayıt → yedek1 → yedek2 (§16.7).
     const onceki = okuHam(KAYIT_ANAHTARI);
     if (onceki) {
@@ -122,6 +148,11 @@ export class Kayitci {
     return this.depo.backend === 'bellek';
   }
 
+  /** Yeni sürümün kaydı görüldü: bu sayfa kaydetmiyor (sayfayı yenilemek gerekir). */
+  get saltOkunur(): boolean {
+    return this.depo.readOnly;
+  }
+
   /**
    * Bulut kaydına bağlan (10 sn'ye kadar sürebilir; bir kez başlar, söz
    * paylaşılır). Bulut daha ilerideyse onun kaydı döner (henüz UYGULANMAZ);
@@ -135,6 +166,10 @@ export class Kayitci {
           const zarf = await this.depo.connectRemote();
           if (!zarf) return null;
           const r = kayitYukle([zarf.data], this.kayit.kayitTohumu);
+          if (r.gelecekSurum) {
+            this.depo.setReadOnly();
+            return null;
+          }
           return r.kaynak === 0 ? r.kayit : null;
         } catch {
           return null;
@@ -150,13 +185,16 @@ export class Kayitci {
    * yerele de hemen yazılır (çevrimdışı sonraki açılış aynı kaydı görür).
    */
   bulutUygula(k: Kayit): boolean {
+    if (this.depo.readOnly) return false;
     if (this.kayit !== this.bulutOncesi && ilerlemePuani(this.kayit) >= ilerlemePuani(k)) {
       // Yerel kalır; buluttaki mühür ve kasaba işleri kaybolmasın (KANCALAR §D.3).
       const b = kancaBirlestir(this.kayit, k);
-      if (JSON.stringify(b) !== JSON.stringify(this.kayit)) this.degistir(b, 0);
+      if (kanonikJson(b) !== kanonikJson(this.kayit)) this.degistir(b, 0);
       return false;
     }
-    this.kayit = this.kayit === this.bulutOncesi ? k : kancaBirlestir(k, this.kayit);
+    // Bulut seçilse de yereldeki mühürler ve işler eklenir (ör. açılışta yedekten
+    // tamamlanan kayıt; depo birleşimi yalnız diskteki ham kaydı görür).
+    this.kayit = kancaBirlestir(k, this.kayit);
     this.planla(0);
     return true;
   }
