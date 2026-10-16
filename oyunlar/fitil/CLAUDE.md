@@ -162,16 +162,23 @@ yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
 - Görünüm modelleri `app/gorunum.ts`: `muhurVMleri` (yalnız 6. bölüm kazanıldıysa
   ve mühürlü ana bölümde; `oz` verilirse anlık durum), `kazandinKancalari`,
   `kasabaVM`, `kasabaKartlari`. Oturum: eylem sonu `muhurUcuslari` (yeni 'tuttu' +
-  kayıtta basılı değil → uçuş); kazançta mühürler final ÖNCESİ durum ve finalsiz
-  özetle değerlendirilir. Uygulama: `kasabaAkisi` (Yap → kayıt → harita kutlaması
-  → 6/6 ise kasaba kartı), `haritaBalonu` (kasaba-ilk / hoşgeldin / Kandil yetti /
-  sancak-ilk; balon çıkan dönüşte oto-kart atlanır).
+  kayıtta basılı değil → uçuş); HUD rozeti ayrı özetten (`ozHud`: oynatma bitip
+  uçuş başlayınca ilerler; Duraklat `oz` ile sonraki durumu gösterir);
+  `ui.muhurTuttu(liste, kaynak)` noktaları önce "uçuşta" işaretler, Geri Sar /
+  Eli / çıkış `muhurUcuslariniIptal` (damga, ses, etiket yok); kayıpta uçuş yok.
+  Kazançta mühürler final ÖNCESİ durum ve finalsiz özetle değerlendirilir.
+  Uygulama: `kasabaAkisi` (Yap → kayıt → harita kutlaması → 6/6 ise kasaba
+  kartı; kandil sıradaki işe yetiyorsa panel kendiliğinden yeniden açılır),
+  `haritaBalonu` (kasaba-ilk / hoşgeldin / sancak-ilk / Kandil yetti; ipucu
+  ancak balon gösterilince "görüldü"; sancak balonu haritayı sancağa kaydırır
+  ve `.f-harita-icerik` içinde durur; balon çıkan dönüşte oto-kart atlanır).
 - Dikkat: `.f-sonda` (güvenli alan ölçüm sondası) global sınıf: durum sınıflarını
   önekle (`f-mr-*`). Harita aynı modelle yeniden çağrılırsa yeniden çizilmez
   (kutlama/sakin balonu kesilmesin). Yeni işin ışıkları `--kd` gecikmesiyle
   kıvılcımlar varınca yanar.
 - Önizleme: `dev/arayuz.html?ekran=bolumOncesi&v=m|mi`, `hud&v=muhur`, `ucus`,
-  `duraklat&v=m`, `kazandin&v=m|mt`, `kasaba[&ogretim=1]`, `haritaBalon`,
+  `duraklat&v=m`, `kazandin&v=m|mt|mk|me` (mk: kalabalık ilk mühürlü kazanç,
+  me: Usta'nın Eli), `kasaba[&ogretim=1]`, `haritaBalon`,
   `kasabaKarti&m=0`, `harita&kasaba=1|bos|yok`.
 
 ## Bölüm Mühürleri (K5 ölçümü; docs/KANCALAR.md §A.5, §A.7, KA13–KA15)
