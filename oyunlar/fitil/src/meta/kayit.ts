@@ -20,7 +20,7 @@ import type { Palet } from '../app/sozlesme';
 import { fnv1a, mulberry32Bir } from '../core/rng';
 import type { Motif } from '../core/types';
 import { base64Metin, metinBase64 } from './kodlama';
-import { bosKasaba, kandilDokumu, kasabaOnar, toplamMuhur } from './kasaba';
+import { bosKasaba, kancaBirlestir, kandilDokumu, kasabaOnar, toplamMuhur } from './kasaba';
 import type { KasabaKaydi } from './kasaba';
 import { MUHUR_ACILIS_BOLUMU, MUHUR_MASKE_TAVANI, MUHUR_PARCA_ESIKLERI, MUHUR_SON_BOLUM } from './muhur';
 import {
@@ -378,10 +378,24 @@ export function progressScore(k: Kayit, ayar: MetaAyar = VARSAYILAN_META_AYAR): 
   return toplamYildiz(k, ayar) * 1000 + acik + 5 * toplamMuhur(k, ayar) + 3 * (k.kasaba?.isler.length ?? 0);
 }
 
-/** `new SaveStore<Kayit>(kayitDeposuAyarlari())` için seçenekler. */
-export function kayitDeposuAyarlari(ayar?: Partial<MetaAyar>): { key: string; version: number; progressScore: (d: Kayit) => number } {
+/**
+ * `new SaveStore<Kayit>(kayitDeposuAyarlari())` için seçenekler. `merge`:
+ * bulut ve tarayıcı kaydı birlikte varken seçilen (ilerisi) kayda öbüründen
+ * mühürler ve kasaba işleri eklenir (`kancaBirlestir`); zarftaki veri eski
+ * şemada olabileceğinden önce ikisi de göç + onarımdan geçer.
+ */
+export function kayitDeposuAyarlari(ayar?: Partial<MetaAyar>): { key: string; version: number; progressScore: (d: Kayit) => number; merge: (secilen: Kayit, diger: Kayit) => Kayit } {
   const a = metaAyar(ayar);
-  return { key: KAYIT_ANAHTARI, version: ZARF_SURUMU, progressScore: (d) => progressScore(d, a) };
+  return {
+    key: KAYIT_ANAHTARI,
+    version: ZARF_SURUMU,
+    progressScore: (d) => progressScore(d, a),
+    merge: (secilen, diger) => {
+      const s = kayitCoz(secilen, secilen?.kayitTohumu ?? 0);
+      const d = kayitCoz(diger, diger?.kayitTohumu ?? 0);
+      return s.yeni ? secilen : d.yeni ? s.kayit : kancaBirlestir(s.kayit, d.kayit, a);
+    },
+  };
 }
 
 // ─────────────────────── Parça ve koleksiyon kimlikleri ───────────────────────
