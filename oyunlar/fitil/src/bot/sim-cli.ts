@@ -9,6 +9,10 @@
  *   npm run kalibre -- --bolum 6-19 --kural k24           K24 eşikleri (+ Acemi), bayrağı yazar
  *   npm run bot -- --dagilim --bolum 1-12 --tohum 100 --acemi-tohum 60
  *                                                         Usta + Acemi kazanma ve yıldız dağılımı
+ *   npm run bot -- --muhur --bolum 6-40 --tohum 150 --acemi-tohum 300 --bas 2000
+ *                                                         Bölüm Mühürleri: kazançlarda tutma oranı,
+ *                                                         bant denetimi ve eşik önerisi (KANCALAR §A.7)
+ *   npm run bot -- --muhur --bolum 22 --katalog           + bölüme uyan aday mühürlerin eşik tablosu
  *
  * Seçenekler:
  *   --bolum N      Bölüm id (1..40, 101..108). Virgülle ya da aralıkla: 1-10,12
@@ -24,6 +28,16 @@
  *   --kural k24    --kalibre'de K24 eşik kuralı (bölüme "esikKurali": "k24" yazar)
  *   --json DOSYA   Ölçümleri JSON olarak yaz
  *   --yazma        --kalibre'de JSON'a yazma
+ *   --muhur        Mühür ölçümü (varsayılan: mühürlü bütün bölümler, Usta 150 /
+ *                  Acemi 2 × Usta tohum, 2 işçi). Kısıt mühürlerinde (`enCok`)
+ *                  kısıtlı botu da aynı tohumlarla oynatır.
+ *   --katalog      --muhur'da bölüm öğelerine göre aday koşulların eşik tablosu
+ *   --aday DOSYA   --muhur'da ek aday koşullar (JSON: koşul dizisi ya da
+ *                  {"<bölüm>": [koşul…]}); aynı oyunlarda oranları yazılır
+ *
+ * `--dogrula` mühürlü bölümlerde mühür oranlarını da hesaplar ve bandın ±5
+ * puan dışındaki mühürde UYARI verir (başarısızlık değil; Çırak yalnız Acemi
+ * ölçüldüyse, kısıt mühürleri yalnız `--muhur` ile).
  *
  * `elleEsik: true` taşıyan bölümlerin (öğretim, GDD K22) yıldız eşiklerini
  * kalibre YAZMAZ, yalnız Usta önerisini gösterir; bu eşikler `--dagilim`
@@ -49,7 +63,22 @@ import { TUM_BOLUMLER, bolumGetir } from '../levels/index';
 import { bolumDogrula } from '../levels/dogrulayici';
 import { olcumHesapla, olcutHatalari, yildizEsikleriHesapla, yildizEsikleriIlkIzlenim, yildizEsikleriK24, yildizEsikleriOgretim, yuzdelik, type BolumOlcumu } from './olcut';
 import type { BotTuru } from './ortak';
-import { oyunOyna, type OyunSonucu } from './simulasyon';
+import { oyunOyna, type OyunKisiti, type OyunSonucu } from './simulasyon';
+import { muhurDegeri, muhurKosuluDogrula, muhurMetni, MUHUR_KADEME_ADLARI, MUHUR_KADEMELERI } from '../meta/muhur';
+import type { MuhurKosulu } from '../core/index';
+import {
+  adayKatalogu,
+  esikOnerisi,
+  kazancDegerleri,
+  kosulKisiti,
+  muhurluOyun,
+  muhurOlc,
+  oyunDegerleri,
+  oyunMuhurOzeti,
+  type DegerliOyun,
+  type MuhurOlcumu,
+  type MuhurOyunu,
+} from './muhurOlcum';
 
 interface Gorev {
   no: number;
@@ -59,11 +88,19 @@ interface Gorev {
   bot: BotTuru;
   hamleEk: number;
   tohumlar: number[];
+  /** --muhur: oyunların eylem izlerini döndür. */
+  muhur?: boolean;
+  /** --muhur: kısıt mühürü için kısıtlı bot. */
+  kisit?: OyunKisiti;
+  /** --dogrula: sonuçlara bölümün mühür değerlerini ekle. */
+  muhurDeger?: boolean;
 }
 
 interface Cevap {
   no: number;
   sonuclar: OyunSonucu[];
+  /** --muhur: eylem izli oyunlar. */
+  oyunlar?: MuhurOyunu[];
 }
 
 // ─── İşçi ───────────────────────────────────────────────────────────────
@@ -72,14 +109,28 @@ function isciCalis(): void {
     if (!g) {
       process.exit(0);
     }
-    const sonuclar = g.tohumlar.map((t) => oyunOyna(g.bolum, t, g.bot, { hamleEk: g.hamleEk }));
-    parentPort!.postMessage({ no: g.no, sonuclar } satisfies Cevap);
+    const sonuclar: OyunSonucu[] = [];
+    const oyunlar: MuhurOyunu[] = [];
+    for (const t of g.tohumlar) {
+      if (!g.muhur && !g.muhurDeger) {
+        sonuclar.push(oyunOyna(g.bolum, t, g.bot, { hamleEk: g.hamleEk }));
+        continue;
+      }
+      const r = muhurluOyun(g.bolum, t, g.bot, { hamleEk: g.hamleEk, kisit: g.kisit });
+      if (g.muhurDeger && g.bolum.muhurler) {
+        const mo = oyunMuhurOzeti(r.oyun);
+        r.sonuc.muhurDegerleri = g.bolum.muhurler.map((k) => muhurDegeri(k, mo));
+      }
+      sonuclar.push(r.sonuc);
+      if (g.muhur) oyunlar.push(r.oyun);
+    }
+    parentPort!.postMessage({ no: g.no, sonuclar, ...(g.muhur ? { oyunlar } : {}) } satisfies Cevap);
   });
 }
 
 // ─── Ana iş parçacığı ──────────────────────────────────────────────────
 interface Argumanlar {
-  kip: 'tek' | 'dogrula' | 'kalibre' | 'dagilim';
+  kip: 'tek' | 'dogrula' | 'kalibre' | 'dagilim' | 'muhur';
   bolumler: number[] | null;
   /** Diskteki bölüm JSON'ları (varyant denemesi; index'e girmeden). */
   dosyalar: string[];
@@ -87,6 +138,8 @@ interface Argumanlar {
   bas: number;
   bot: BotTuru;
   isci: number;
+  /** --isci açıkça verildi mi (--muhur varsayılanı 2 işçi). */
+  isciVerildi: boolean;
   taslaklar: boolean;
   acemi: boolean;
   /** --dagilim'de Acemi tohum sayısı (null = --tohum). */
@@ -95,6 +148,10 @@ interface Argumanlar {
   yazma: boolean;
   /** --kalibre'de eşik kuralı (null = bölümün `esikKurali`'na göre). */
   kural: 'k24' | null;
+  /** --muhur: aday katalog tablosu. */
+  katalog: boolean;
+  /** --muhur: ek aday koşul dosyası. */
+  aday: string | null;
 }
 
 function argumanlar(argv: string[]): Argumanlar {
@@ -106,12 +163,15 @@ function argumanlar(argv: string[]): Argumanlar {
     bas: 0,
     bot: 'usta',
     isci: Math.max(1, Math.min(3, availableParallelism() - 1)),
+    isciVerildi: false,
     taslaklar: false,
     acemi: false,
     acemiTohum: null,
     json: null,
     yazma: true,
     kural: null,
+    katalog: false,
+    aday: null,
   };
   for (let k = 0; k < argv.length; k++) {
     const s = argv[k];
@@ -129,6 +189,15 @@ function argumanlar(argv: string[]): Argumanlar {
         break;
       case '--dagilim':
         a.kip = 'dagilim';
+        break;
+      case '--muhur':
+        a.kip = 'muhur';
+        break;
+      case '--katalog':
+        a.katalog = true;
+        break;
+      case '--aday':
+        a.aday = deger();
         break;
       case '--acemi-tohum':
         a.acemiTohum = Number(deger());
@@ -154,6 +223,7 @@ function argumanlar(argv: string[]): Argumanlar {
       }
       case '--isci':
         a.isci = Math.max(1, Number(deger()));
+        a.isciVerildi = true;
         break;
       case '--taslaklar':
         a.taslaklar = true;
@@ -237,6 +307,60 @@ async function havuz(gorevler: Gorev[], isciSayisi: number, ilerleme?: (bitti: n
     }
   });
   return sonuc;
+}
+
+/**
+ * Kalıcı işçi havuzu (--muhur): bölümler sırayla, her bölümün görevleri
+ * paralel çalışır; eylem izleri bölüm yazdırılınca atılır (bellek).
+ */
+interface KaliciHavuz {
+  calistir(gorevler: Gorev[]): Promise<Map<number, Cevap>>;
+  kapat(): Promise<void>;
+}
+
+function kaliciHavuz(n: number): KaliciHavuz {
+  const isciler = Array.from({ length: Math.max(1, n) }, () => isciBaslat());
+  let is: { gorevler: Gorev[]; sira: number; biten: number; sonuc: Map<number, Cevap>; coz: (m: Map<number, Cevap>) => void; reddet: (e: unknown) => void } | null = null;
+  const ver = (w: Worker): void => {
+    if (is && is.sira < is.gorevler.length) w.postMessage(is.gorevler[is.sira++]);
+  };
+  for (const w of isciler) {
+    w.on('message', (c: Cevap) => {
+      if (!is) return;
+      is.sonuc.set(c.no, c);
+      is.biten++;
+      ilerlemeYaz(is.biten, is.gorevler.length);
+      if (is.biten === is.gorevler.length) {
+        const s = is;
+        is = null;
+        s.coz(s.sonuc);
+      } else ver(w);
+    });
+    w.on('error', (e) => is?.reddet(e));
+  }
+  return {
+    calistir(gorevler) {
+      return new Promise((coz, reddet) => {
+        if (gorevler.length === 0) {
+          coz(new Map());
+          return;
+        }
+        is = { gorevler, sira: 0, biten: 0, sonuc: new Map(), coz, reddet };
+        for (const w of isciler) ver(w);
+      });
+    },
+    async kapat() {
+      await Promise.all(
+        isciler.map(
+          (w) =>
+            new Promise<void>((coz) => {
+              w.once('exit', () => coz());
+              w.postMessage(null);
+            }),
+        ),
+      );
+    },
+  };
 }
 
 /** Dosyadan okunan bölümlerin dosya adı (tabloda gösterilir). */
@@ -337,7 +461,8 @@ async function dogrula(a: Argumanlar): Promise<number> {
   const acemiBolum = sim.filter((v) => a.acemi || v.tur === 'ogretim' || v.tur === 'tanitim');
   const nA = a.acemiTohum ?? sayi;
   const acemiG = gorevleriKur(acemiBolum, 'acemi', a.bas, nA, () => 0, ustaG.length);
-  const gorevler = [...ustaG, ...acemiG];
+  // Mühürlü bölümlerde işçi mühür değerlerini de döndürür (bant uyarısı, KANCALAR §A.7).
+  const gorevler = [...ustaG, ...acemiG].map((g) => (g.bolum.muhurler?.length ? { ...g, muhurDeger: true } : g));
   console.log(
     `Doğrulama: ${sim.length} bölüm × ${sayi} tohum (Usta${acemiBolum.length ? `, Acemi ${acemiBolum.length} bölüm × ${nA}` : ''}), ${Math.min(a.isci, gorevler.length)} işçi`,
   );
@@ -353,6 +478,10 @@ async function dogrula(a: Argumanlar): Promise<number> {
     console.log(tabloSatiri(v, o));
     for (const h of hatalar) console.log(`        ${v.taslak ? 'taslak' : 'HATA'}: ${h}`);
     for (const u of uyarilar) console.log(`        uyarı: ${u}`);
+    for (const u of muhurUyarilari(v, topla(gorevler, cevap, v, 'usta'), acemiBolum.includes(v) ? topla(gorevler, cevap, v, 'acemi') : null)) {
+      uyarilar.push(u);
+      console.log(`        uyarı: ${u}`);
+    }
     if (hatalar.length && !v.taslak) basarisiz++;
   }
   const sn = (Date.now() - t0) / 1000;
@@ -576,6 +705,158 @@ async function dagilim(a: Argumanlar): Promise<number> {
   return 0;
 }
 
+// ─── Bölüm Mühürleri (docs/KANCALAR.md §A.5, §A.7) ───────────────────────
+
+const KADEME_HARFI = { cirak: 'Ç', kalfa: 'K', usta: 'U' } as const;
+
+function oranMetni(x: number | null): string {
+  return x === null ? '  —' : `${Math.round(x)}`.padStart(3);
+}
+
+function bantMetni(o: Pick<MuhurOlcumu, 'bant'>): string {
+  const b = o.bant;
+  return `${b.bot === 'usta' ? 'U' : 'A'} ${b.max >= 100 ? `≥ ${b.min}` : `${b.min}–${b.max}`}`;
+}
+
+/**
+ * --dogrula: mühür oranları bandın ±5 puan dışındaysa uyarı. Çırak yalnız
+ * Acemi ölçüldüyse; kısıt mühürleri (kısıtlı bot gerekir) yalnız --muhur ile.
+ */
+function muhurUyarilari(v: BolumVerisi, usta: OyunSonucu[], acemi: OyunSonucu[] | null): string[] {
+  if (!v.muhurler?.length) return [];
+  const degerli = (l: OyunSonucu[]): DegerliOyun[] => l.filter((s) => s.muhurDegerleri).map((s) => ({ kazandi: s.kazandi, degerler: s.muhurDegerleri! }));
+  const u: string[] = [];
+  for (const o of muhurOlc(v, { usta: degerli(usta), acemi: acemi ? degerli(acemi) : undefined })) {
+    if (o.kademe === 'cirak' && !acemi) continue;
+    if (o.durum !== 'disinda') continue;
+    u.push(`mühür ${MUHUR_KADEME_ADLARI[o.kademe]} "${o.metin}" ${bantMetni(o).split(' ')[0]} %${Math.round(o.oran ?? 0)} (bant ${bantMetni(o)}${o.yedek ? ', yedek' : ''})`);
+  }
+  return u;
+}
+
+/** --aday dosyası: koşul dizisi (her bölüme) ya da {"<bölüm>": [koşul…]}. */
+function adaylariOku(dosya: string): (id: number) => MuhurKosulu[] {
+  const j = JSON.parse(readFileSync(dosya, 'utf8')) as MuhurKosulu[] | Record<string, MuhurKosulu[]>;
+  const denetle = (l: MuhurKosulu[]): MuhurKosulu[] => {
+    for (const k of l) {
+      const h = muhurKosuluDogrula(k);
+      if (h.length) throw new Error(`${dosya}: ${JSON.stringify(k)}: ${h.join('; ')}`);
+    }
+    return l;
+  };
+  if (Array.isArray(j)) {
+    const l = denetle(j);
+    return () => l;
+  }
+  for (const l of Object.values(j)) denetle(l);
+  return (id) => j[String(id)] ?? [];
+}
+
+interface MuhurBolumRaporu {
+  bolumId: number;
+  ad: string;
+  usta: { oyun: number; kazanc: number };
+  acemi: { oyun: number; kazanc: number };
+  muhurler: (MuhurOlcumu & { oneri: ReturnType<typeof esikOnerisi> })[];
+  adaylar: { kosul: MuhurKosulu; metin: string; usta: number | null; acemi: number | null }[];
+}
+
+async function muhurKip(a: Argumanlar): Promise<number> {
+  const t0 = Date.now();
+  const nU = a.tohum ?? 150;
+  const nA = a.acemiTohum ?? 2 * nU;
+  const isci = a.isciVerildi ? a.isci : Math.min(2, a.isci);
+  const aday = a.aday ? adaylariOku(a.aday) : null;
+  const secili = seciliBolumler(
+    a,
+    TUM_BOLUMLER.filter((v) => v.muhurler?.length),
+  ).filter((v) => v.muhurler?.length || a.katalog || aday);
+  console.log(`Mühür ölçümü: ${secili.length} bölüm × Usta ${nU} / Acemi ${nA} tohum (ilk tohum ${a.bas}), ${isci} işçi`);
+  const havuz = kaliciHavuz(isci);
+  const raporlar: MuhurBolumRaporu[] = [];
+  const sayac = { bantta: 0, payda: 0, disinda: 0, olculemedi: 0 };
+  try {
+    for (const v of secili) {
+      const m = v.muhurler ?? [];
+      // Görevler: normal Usta ve Acemi; kısıt mühürlerinde aynı tohumlarla kısıtlı bot(lar).
+      const gorevler: Gorev[] = [];
+      const ekle = (bot: BotTuru, sayi: number, kisit?: OyunKisiti): Gorev[] => {
+        const g = gorevleriKur([v], bot, a.bas, sayi, () => 0, gorevler.length).map((x) => ({ ...x, muhur: true, ...(kisit ? { kisit } : {}) }));
+        gorevler.push(...g);
+        return g;
+      };
+      const gU = ekle('usta', nU);
+      const gA = ekle('acemi', nA);
+      const gK = m.map((k, i) => {
+        const kisit = kosulKisiti(k);
+        if (!kisit) return undefined;
+        // Çırak bandı Acemi'yle ölçülür; Kalfa/Usta Usta'yla.
+        return { usta: ekle('usta', nU, kisit), acemi: i === 0 ? ekle('acemi', nA, kisit) : undefined };
+      });
+      const cevap = await havuz.calistir(gorevler);
+      if (process.stderr.isTTY) process.stderr.write('\r\x1b[K');
+      const oyunlar = (g: Gorev[] | undefined): MuhurOyunu[] => (g ?? []).flatMap((x) => cevap.get(x.no)?.oyunlar ?? []);
+      const oU = oyunlar(gU);
+      const oA = oyunlar(gA);
+      const degerli = (l: MuhurOyunu[]): DegerliOyun[] => l.map((o) => oyunDegerleri(m, o));
+      const olcumler = muhurOlc(v, {
+        usta: degerli(oU),
+        acemi: degerli(oA),
+        kisitli: gK.map((x) => (x ? { usta: degerli(oyunlar(x.usta)), acemi: x.acemi ? degerli(oyunlar(x.acemi)) : undefined } : undefined)),
+      });
+      const kU = oU.filter((o) => o.kazandi).length;
+      const kA = oA.filter((o) => o.kazandi).length;
+      console.log(`\nBölüm ${v.id} "${v.ad}" (${v.tur}): kazanç Usta %${oranMetni((100 * kU) / Math.max(1, oU.length)).trim()} (${kU}/${oU.length}), Acemi %${oranMetni((100 * kA) / Math.max(1, oA.length)).trim()} (${kA}/${oA.length})`);
+      const rapor: MuhurBolumRaporu = { bolumId: v.id, ad: v.ad, usta: { oyun: oU.length, kazanc: kU }, acemi: { oyun: oA.length, kazanc: kA }, muhurler: [], adaylar: [] };
+      olcumler.forEach((o, i) => {
+        sayac[o.durum]++;
+        const k = m[i];
+        const oneri = o.durum !== 'bantta' && k.enAz !== undefined ? esikOnerisi(o.kademe, kazancDegerleri(k, oU), kazancDegerleri(k, oA)) : null;
+        rapor.muhurler.push({ ...o, oneri });
+        const ks = o.kisitli ? ` kısıtlı U ${oranMetni(o.kisitli.usta?.oran ?? null)}${o.kisitli.acemi ? ` A ${oranMetni(o.kisitli.acemi.oran)}` : ''}` : '';
+        const isaret = { bantta: 'bantta', payda: 'PAYDA (±5)', disinda: 'BANT DIŞI', olculemedi: 'ölçülemedi' }[o.durum];
+        console.log(
+          `  ${KADEME_HARFI[o.kademe]} ${(o.metin + (k.sans ? ' (şans)' : '')).padEnd(42)} U ${oranMetni(o.usta.oran)}  A ${oranMetni(o.acemi?.oran ?? null)}${ks}  → ${oranMetni(o.oran)} (bant ${bantMetni(o)}${o.yedek ? ', yedek' : ''}) ${isaret}`,
+        );
+        if (oneri) console.log(`      öneri: enAz ${oneri.enAz} → U ${oranMetni(oneri.usta)} A ${oranMetni(oneri.acemi)}  "${muhurMetni({ ...k, enAz: oneri.enAz, metin: undefined })}"`);
+      });
+      // Ek adaylar (dosyadan): doğal oranlar.
+      for (const k of aday?.(v.id) ?? []) {
+        const dU = kazancDegerleri(k, oU);
+        const dA = kazancDegerleri(k, oA);
+        const oran = (d: number[]): number | null => (d.length ? (100 * d.filter((x) => (k.enAz === undefined || x >= k.enAz) && (k.enCok === undefined || x <= k.enCok)).length) / d.length : null);
+        const s = { kosul: k, metin: muhurMetni(k), usta: oran(dU), acemi: oran(dA) };
+        rapor.adaylar.push(s);
+        console.log(`  aday ${s.metin.padEnd(40)} U ${oranMetni(s.usta)}  A ${oranMetni(s.acemi)}${k.enCok !== undefined ? ' (doğal oran; kısıt için kısıtlı bot gerekir)' : ''}`);
+      }
+      // Katalog: bölüm öğelerine göre adaylar ve kademe başına önerilen eşik.
+      if (a.katalog) {
+        console.log(`  Katalog (Ç: Acemi ≥ 45 en zor eşik, K: Usta ~45, U: Usta ~16; oranlar Usta/Acemi kazançlarında):`);
+        for (const b of adayKatalogu(v)) {
+          const k = { ...b, enAz: 1 } as MuhurKosulu;
+          const dU = kazancDegerleri(k, oU);
+          const dA = kazancDegerleri(k, oA);
+          const parca = MUHUR_KADEMELERI.map((kd) => {
+            const e = esikOnerisi(kd, dU, dA.length ? dA : null);
+            return `${KADEME_HARFI[kd]} ${e ? `${String(e.enAz).padStart(2)}: U ${oranMetni(e.usta)} A ${oranMetni(e.acemi)}` : '        —        '}`;
+          });
+          const ad = muhurMetni({ ...k, enAz: 99 }).replace('99', 'N');
+          console.log(`    ${ad.padEnd(36)} ${parca.join(' │ ')}`);
+        }
+      }
+      // Kısıt adayları kataloğun dışında: kısıtlı bot gerekir (yalnız mühür olarak yazılınca ölçülür).
+      raporlar.push(rapor);
+    }
+  } finally {
+    await havuz.kapat();
+  }
+  console.log(
+    `\n${secili.length} bölüm, ${raporlar.reduce((t, r) => t + r.muhurler.length, 0)} mühür: ${sayac.bantta} bantta, ${sayac.payda} payda (±5), ${sayac.disinda} bant dışı, ${sayac.olculemedi} ölçülemedi; ${((Date.now() - t0) / 1000).toFixed(0)} sn.`,
+  );
+  if (a.json) writeFileSync(a.json, JSON.stringify(raporlar, null, 2));
+  return 0;
+}
+
 function hamleMetni(w: number, h: Hamle): string {
   switch (h.tur) {
     case 'fitil':
@@ -619,6 +900,7 @@ async function ana(): Promise<void> {
   if (a.kip === 'dogrula') kod = await dogrula(a);
   else if (a.kip === 'kalibre') kod = await kalibre(a);
   else if (a.kip === 'dagilim') kod = await dagilim(a);
+  else if (a.kip === 'muhur') kod = await muhurKip(a);
   else kod = tek(a);
   process.exitCode = kod;
 }

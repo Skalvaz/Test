@@ -25,6 +25,23 @@ export interface BotSecenek {
   izin?: readonly (readonly [number, number])[] | null;
   /** Ağırlıklar (varsayılan bot/agirliklar.json). */
   agirlik?: Agirliklar;
+  /**
+   * Mühür kısıtı ölçümü (docs/KANCALAR.md §A.7): Körük dolu olsa da
+   * kullanma ("Körük kullanmadan kazan").
+   */
+  korukYok?: boolean;
+  /**
+   * Mühür kısıtı ölçümü: bundan kısa fitil adaylarını ele (4 = "hiç 3'lük
+   * zincir çizmeden"). Uygun aday kalmazsa süzgeç uygulanmaz.
+   */
+  enKisaZincir?: number;
+}
+
+/** `enKisaZincir` süzgeci: uygun aday yoksa listeyi olduğu gibi döndürür. */
+export function zincirSuz<T extends { yol: readonly number[] }>(adaylar: T[], enKisa: number | undefined): T[] {
+  if (!enKisa || enKisa <= 3) return adaylar;
+  const l = adaylar.filter((a) => a.yol.length >= enKisa);
+  return l.length > 0 ? l : adaylar;
 }
 
 /** Hamle başına bot tohumları. */

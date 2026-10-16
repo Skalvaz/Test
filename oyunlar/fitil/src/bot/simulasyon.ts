@@ -47,14 +47,30 @@ export interface OyunSonucu {
   isiSayi: number;
   /** Tahmini süre: Σ(3 sn + eylem canlandırması) + final gösterisi. */
   sureMs: number;
+  /**
+   * Bölümün mühür koşullarının bu oyundaki değerleri (`muhurDegeri`, mühür
+   * sırasıyla); yalnız sim-cli `--dogrula` doldurur (bant uyarısı).
+   */
+  muhurDegerleri?: number[];
 }
 
 export interface OyunSecenek {
   bot?: BotSecenek;
   /** Kalibrasyon: başlangıç hamlesine eklenecek hamle (öneri eğrisi için). */
   hamleEk?: number;
-  /** Her eylemi kaydet (sim-cli tek oyun dökümü). */
+  /** Her eylemi kaydet (sim-cli tek oyun dökümü, mühür izi). */
   kayit?: (k: { d: OyunDurumu; hamle: Hamle; olaylar: Olay[]; sonraki: OyunDurumu }) => void;
+  /**
+   * Mühür kısıtı (docs/KANCALAR.md §A.7, `enCok` mühürleri): oyunda en çok
+   * bu kadar Körük / ≤ 3 düğümlü fitil. Sınır dolunca bot Körük'ü
+   * kullanmaz / 3'lük adayları eler (uygun aday yoksa eleyemez).
+   */
+  kisit?: OyunKisiti;
+}
+
+export interface OyunKisiti {
+  koruk?: number;
+  kisaZincir?: number;
 }
 
 function sonT(olaylar: readonly Olay[]): number {
@@ -89,10 +105,16 @@ export function* oyunAdimlari(v: BolumVerisi, tohum: number, bot: BotTuru, s: Oy
     isiSayi: 0,
     sureMs: 0,
   };
+  let korukSayaci = 0;
+  let kisaSayaci = 0;
   for (let eylem = 0; !d.bitti && eylem < EYLEM_SINIRI; eylem++) {
     const izin = d.hamleNo === 0 ? (v.zorunluIlkHamle ?? null) : null;
     const secenek: BotSecenek = { ...s.bot, izin };
+    if (s.kisit?.koruk !== undefined && korukSayaci >= s.kisit.koruk) secenek.korukYok = true;
+    if (s.kisit?.kisaZincir !== undefined && kisaSayaci >= s.kisit.kisaZincir) secenek.enKisaZincir = 4;
     const h = bot === 'usta' ? ustaSec(d, botTohumu, secenek) : acemiSec(d, botTohumu, secenek);
+    if (h.tur === 'koruk') korukSayaci++;
+    else if (h.tur === 'fitil' && h.yol.length <= 3) kisaSayaci++;
     const r = hamleUygula(d, h);
     s.kayit?.({ d, hamle: h, olaylar: r.olaylar, sonraki: r.durum });
     sonuc.sureMs += DUSUNME_MS + sonT(r.olaylar);

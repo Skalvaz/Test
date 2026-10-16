@@ -10,7 +10,7 @@
 import { hamleUygula, ilerlemeYuzdesi } from '../core/index';
 import type { Hamle, OyunDurumu } from '../core/index';
 import { adaylariUret, enIyiler, tahtaBilgi, ucuzBaglam, ucuzPuanla } from './adaylar';
-import { AGIRLIKLAR, botTohumlari, degerV, fitilHamlesi, korukDolu, korukMerkezi, ozelTaslar, type BotSecenek } from './ortak';
+import { AGIRLIKLAR, botTohumlari, degerV, fitilHamlesi, korukDolu, korukMerkezi, ozelTaslar, zincirSuz, type BotSecenek } from './ortak';
 
 export interface UstaKarar {
   hamle: Hamle;
@@ -24,10 +24,10 @@ export interface UstaKarar {
 export function ustaKarar(d: OyunDurumu, botTohumu: number, s: BotSecenek = {}): UstaKarar {
   const W = s.agirlik ?? AGIRLIKLAR;
   const b = tahtaBilgi(d, s.izin ?? null);
-  if (korukDolu(d)) return { hamle: { tur: 'koruk', merkez: korukMerkezi(b) }, V: 0, cozulen: 0, aday: 0 };
+  if (korukDolu(d) && !s.korukYok) return { hamle: { tur: 'koruk', merkez: korukMerkezi(b) }, V: 0, cozulen: 0, aday: 0 };
 
   const t = botTohumlari(d, botTohumu);
-  const adaylar = adaylariUret(b, t.siralama, s.adaySiniri);
+  const adaylar = zincirSuz(adaylariUret(b, t.siralama, s.adaySiniri), s.enKisaZincir);
   ucuzPuanla(ucuzBaglam(b), adaylar, W.ucuz);
   const secilen = enIyiler(adaylar, s.tamCozum ?? 64);
   const hamleler: Hamle[] = secilen.map((a) => fitilHamlesi(d.w, a.yol, a.halka));

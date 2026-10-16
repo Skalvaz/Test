@@ -112,8 +112,10 @@ describe('eylem izi (OyunOzeti.hamleIzleri)', () => {
       { t: 445, tur: 'ozelOlustu', hucre: { x: 5, y: 0 }, ozel: 'roket', eksen: 0, renk: 1, isi: 0 },
       // Kombinasyonla başka hücrede oluşan roket dönüşüm sayılmaz.
       { t: 500, tur: 'ozelOlustu', hucre: { x: 2, y: 3 }, ozel: 'roket', eksen: 1, renk: 1, isi: 1 },
+      // Gerçek akışta tetiklenen taş önce patlar (patlama.ozel), sonra etkisi başlar.
+      O.patlama(4, 4, 1, { t: 520, neden: 'isi', nesil: 1, ozel: 'roket' }),
       O.ozel(4, 4, 'roket', 2, 520),
-      O.reaksiyon(0, 600),
+      O.reaksiyon(1, 600),
     ];
     const i = ozetHamle(ozetBaslat(), olaylar).hamleIzleri[0];
     expect(i.olusan).toBe('roket');

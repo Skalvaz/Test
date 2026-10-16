@@ -10,7 +10,7 @@
 import { rngInt } from '../core/index';
 import type { Hamle, Konum, OyunDurumu } from '../core/index';
 import { adaylariUret, tahtaBilgi } from './adaylar';
-import { botTohumlari, fitilHamlesi, korukDolu, ozelTaslar, type BotSecenek } from './ortak';
+import { botTohumlari, fitilHamlesi, korukDolu, ozelTaslar, zincirSuz, type BotSecenek } from './ortak';
 
 /**
  * Boşta ipucu (§15): "Acemi botun en iyi adayı" — Acemi'nin ağırlığı
@@ -28,14 +28,14 @@ export function acemiEnIyiAday(d: OyunDurumu, botTohumu = 0, izin: BotSecenek['i
 export function acemiSec(d: OyunDurumu, botTohumu: number, s: BotSecenek = {}): Hamle {
   const t = botTohumlari(d, botTohumu);
   const r = t.siralama;
-  if (korukDolu(d)) {
+  if (korukDolu(d) && !s.korukYok) {
     const hucreler: number[] = [];
     for (let i = 0; i < d.hucreler.length; i++) if (!d.hucreler[i].delik) hucreler.push(i);
     const i = hucreler[rngInt(r, hucreler.length)];
     return { tur: 'koruk', merkez: { x: i % d.w, y: Math.floor(i / d.w) } };
   }
   const b = tahtaBilgi(d, s.izin ?? null);
-  const adaylar = adaylariUret(b, r, s.adaySiniri);
+  const adaylar = zincirSuz(adaylariUret(b, r, s.adaySiniri), s.enKisaZincir);
   const ozeller = ozelTaslar(b);
   if (adaylar.length === 0 && ozeller.length === 0) {
     if (s.izin) return acemiSec(d, botTohumu, { ...s, izin: null });
