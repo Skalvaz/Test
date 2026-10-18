@@ -42,12 +42,21 @@ describe('yerleşim (§13.7)', () => {
     expect(y.hucre).toBe(51);
   });
 
-  it('64 px üst sınırı', () => {
-    const y = yerlesimHesapla(700, 1000, 5, 6);
+  it('64 px üst sınırı (telefon)', () => {
+    const y = yerlesimHesapla(560, 1000, 5, 6);
     expect(y.hucre).toBe(64);
   });
 
-  it('1280×800 yatay: sağ panel 320 px, hücre = min(64, (Y−160)/h)', () => {
+  it('tablet (kısa kenar ≥ 600): üst sınır 96, tahta ekranı doldurur', () => {
+    expect(yerlesimHesapla(700, 1000, 5, 6).hucre).toBe(96);
+    // 800×1280, 7×9: min((800−32)/7, (0,66·1280−24)/9) = 91
+    const y = yerlesimHesapla(800, 1280, 7, 9);
+    expect(y.hucre).toBe(91);
+    expect(y.tahta.y).toBeGreaterThanOrEqual(y.tahtaAlani.y);
+    expect(y.tahta.y + y.tahta.h).toBeLessThanOrEqual(y.altBant!.y);
+  });
+
+  it('1280×800 yatay: sağ panel 320 px, hücre = min(96, (Y−160−32)/h)', () => {
     expect(yatayMi(1280, 800)).toBe(true);
     expect(yatayMi(390, 844)).toBe(false);
     expect(yatayMi(768, 1024)).toBe(false);
@@ -55,11 +64,11 @@ describe('yerleşim (§13.7)', () => {
     expect(y.kip).toBe('yatay');
     expect(y.panel!.w).toBe(320);
     expect(y.panel!.x + y.panel!.w).toBe(1280 - 16);
-    expect(y.hucre).toBe(64);
+    expect(y.hucre).toBe(67);
     // Tahta panelin solunda
     expect(y.tahta.x + y.tahta.w).toBeLessThan(y.panel!.x);
     const k = yerlesimHesapla(1280, 600, 8, 10);
-    expect(k.hucre).toBe(Math.floor((600 - 160) / 10));
+    expect(k.hucre).toBe(Math.floor((600 - 160 - 32) / 10));
   });
 });
 

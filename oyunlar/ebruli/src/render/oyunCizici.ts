@@ -234,10 +234,12 @@ class OyunCiziciSinifi implements OyunCiziciTam {
     const W = this.st.width || 390;
     const H = this.st.height || 844;
     const r = this.alan ?? { x: 0, y: 0, w: W, h: H };
-    const tahmin = Math.min((r.w - 44) / bw, (r.h - 44) / bh, 64);
+    // Hücre üst sınırı ui/yerlesim.ts `hucreSiniri` ile aynı: telefonda 64, büyük ekranda 96.
+    const sinir = Math.min(W, H) >= 600 ? 96 : 64;
+    const tahmin = Math.min((r.w - 44) / bw, (r.h - 44) / bh, sinir);
     const bant = bantKalinligi(tahmin);
     const pay = bant + 8;
-    let hucre = Math.floor(Math.min((r.w - 2 * pay) / bw, (r.h - 2 * pay) / bh, 64));
+    let hucre = Math.floor(Math.min((r.w - 2 * pay) / bw, (r.h - 2 * pay) / bh, sinir));
     hucre = Math.max(20, hucre);
     return {
       x: Math.round(r.x + (r.w - bw * hucre) / 2),

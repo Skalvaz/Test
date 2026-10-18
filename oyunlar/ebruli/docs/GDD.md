@@ -520,6 +520,8 @@ Sprite önbelleğine bir kez çizilir (renk × tür × hücre boyu × DPR × pal
 - Alt bant %88–%100: [Duraklat] solda (48 px); orta boş (güçlendirici yok).
 - `touch-action: none`; tuvalde `setPointerCapture`; sayfa kaydırma/yakınlaştırma kapalı.
 
+**Tablet ek:** kısa kenarı ≥ 600 px olan ekranda (tablet, masaüstü) hücre üst sınırı 64 yerine 96 (`hucreSiniri`, `ui/yerlesim.ts`; çizici `geometriHesapla` aynı kuralı kullanır).
+
 **Masaüstü / yatay** (en/boy > 0,75): tahta solda %62'lik alanda, `hucre = min(64, (Y − 140)/h)`; sağda 300 px kâğıt panel: hedefler, hamle, puan, tarif şeridi, duraklat. Su tam arka planda.
 
 ---

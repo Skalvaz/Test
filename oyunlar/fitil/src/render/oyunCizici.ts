@@ -475,11 +475,13 @@ class OyunCiziciSinifi implements OyunCizici {
     const H = s.ekranH;
     const t = s.tahta;
     if (!t.w) return false;
+    // Hücre üst sınırı ui/yerlesim.ts `hucreSiniri` ile aynı: telefonda 64, büyük ekranda 96.
+    const sinir = Math.min(W, H) >= 600 ? 96 : 64;
     if (!this.alanVerildi) {
       const dikey = W / H <= 0.75;
       if (dikey) {
         // §13.7: hücre 40 px'in altına düşerse üst bant %14'e iner.
-        const hucre = Math.floor(Math.min((W - 32) / t.w, (0.66 * H - 24) / t.h, 64));
+        const hucre = Math.floor(Math.min((W - 32) / t.w, (0.66 * H - 24) / t.h, sinir));
         const ust = Math.round(H * (hucre < 40 ? 0.14 : 0.2));
         s.gokBandi = { x: 0, y: 0, w: W, h: ust };
         s.alan = { x: 0, y: ust, w: W, h: Math.round(H * 0.86) - ust };
@@ -491,7 +493,7 @@ class OyunCiziciSinifi implements OyunCizici {
     }
     const a = s.alan;
     const dikeyMi = W / H <= 0.75;
-    const c = Math.max(18, Math.floor(Math.min((a.w - 32) / t.w, dikeyMi ? (a.h - 24) / t.h : a.h / t.h, 64)));
+    const c = Math.max(18, Math.floor(Math.min((a.w - 32) / t.w, dikeyMi ? (a.h - 24) / t.h : (a.h - 32) / t.h, sinir)));
     s.c = c;
     s.cerceve = Math.max(10, Math.min(16, Math.round(c * 0.26)));
     s.gx = Math.round(a.x + (a.w - t.w * c) / 2);

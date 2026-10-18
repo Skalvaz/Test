@@ -44,8 +44,17 @@ const CERCEVE_PAYI = 22;
 
 const sinirla = (v: number, a: number, b: number): number => Math.max(a, Math.min(b, v));
 
-function hucreTahmini(r: Dikdortgen, bw: number, bh: number): number {
-  return Math.floor(Math.min((r.w - 2 * CERCEVE_PAYI) / bw, (r.h - 2 * CERCEVE_PAYI) / bh, 64));
+/**
+ * Hücre üst sınırı: telefonda 64, büyük ekranda (tablet, masaüstü; kısa kenar
+ * ≥ 600 px) 96. 64'te tablette tahta ekranın ortasında küçük kalıyordu.
+ * Çizici (`render/oyunCizici.ts` geometriHesapla) aynı kuralı kullanır.
+ */
+export function hucreSiniri(W: number, H: number): number {
+  return Math.min(W, H) >= 600 ? 96 : 64;
+}
+
+function hucreTahmini(r: Dikdortgen, bw: number, bh: number, sinir: number): number {
+  return Math.floor(Math.min((r.w - 2 * CERCEVE_PAYI) / bw, (r.h - 2 * CERCEVE_PAYI) / bh, sinir));
 }
 
 export function yanKipMi(W: number, H: number): boolean {
@@ -77,7 +86,7 @@ export function yerlesimHesapla(W: number, H: number, g: Kenarlar, bw: number, b
       tahta,
       alt: { x: 0, y: H, w: W, h: 0 },
       panel,
-      hucre: hucreTahmini(tahta, bw, bh),
+      hucre: hucreTahmini(tahta, bw, bh, hucreSiniri(W, H)),
     };
   }
   const ustH = g.ust + Math.round(sinirla(H * 0.12, 70, 100));
@@ -95,7 +104,7 @@ export function yerlesimHesapla(W: number, H: number, g: Kenarlar, bw: number, b
       tahta,
       alt: { x: 0, y: H - altH, w: W, h: altH },
       panel: null,
-      hucre: hucreTahmini(tahta, bw, bh),
+      hucre: hucreTahmini(tahta, bw, bh, hucreSiniri(W, H)),
     };
   };
   const y = kur(tarifIstegi);

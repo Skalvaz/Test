@@ -8,7 +8,10 @@
  * Yüzdeler güvenli alan çıkarılmış kullanılabilir yüksekliğe (Y) göredir.
  *
  * Masaüstü / yatay (en/boy > 0,75): sağda 320 px panel, tahta panelin
- * solundaki alanda ortalanır, hucre = min(64, (Y − 160)/h).
+ * solundaki alanda ortalanır, hucre = min(64, (Y − 160 − 32)/h) (−32: çerçeve payı).
+ *
+ * Büyük ekran (tablet, masaüstü; kısa kenar ≥ 600 px): üst sınır 64 yerine 96
+ * (`hucreSiniri`). 64'te tablette tahta ekranın ortasında küçük kalıyordu.
  *
  * Görünür gök (fişek ek): dikeyde üst bandın büyük kısmını DOM HUD plakası
  * kaplar; gök fişekleri HUD'un alt kenarı ile tahtanın üstü arasındaki
@@ -65,6 +68,9 @@ export interface Yerlesim {
 export const PANEL_GENISLIK = 320;
 export const PANEL_PAY = 16;
 export const HUCRE_EN_BUYUK = 64;
+/** Büyük ekranda (kısa kenar ≥ `GENIS_EKRAN`) hücre üst sınırı. */
+export const HUCRE_EN_BUYUK_GENIS = 96;
+export const GENIS_EKRAN = 600;
 export const HUCRE_EN_KUCUK = 40;
 export const UST_ORAN = 0.2;
 export const UST_ORAN_DAR = 0.14;
@@ -107,10 +113,15 @@ export function yatayMi(ekranW: number, ekranH: number): boolean {
   return ekranH > 0 && ekranW / ekranH > 0.75;
 }
 
+/** Hücre üst sınırı: telefonda 64, tablet ve masaüstünde 96. */
+export function hucreSiniri(ekranW: number, ekranH: number): number {
+  return Math.min(ekranW, ekranH) >= GENIS_EKRAN ? HUCRE_EN_BUYUK_GENIS : HUCRE_EN_BUYUK;
+}
+
 /** Dikey hücre formülü; `ustOran` üst bandın payı (0,20 / 0,14). */
-export function dikeyHucre(G: number, Y: number, tw: number, th: number, ustOran: number): number {
+export function dikeyHucre(G: number, Y: number, tw: number, th: number, ustOran: number, sinir: number = HUCRE_EN_BUYUK): number {
   const bant = (ALT_SINIR - ustOran) * Y;
-  return Math.floor(Math.min((G - 32) / tw, (bant - 24) / th, HUCRE_EN_BUYUK));
+  return Math.floor(Math.min((G - 32) / tw, (bant - 24) / th, sinir));
 }
 
 export function yerlesimHesapla(ekranW: number, ekranH: number, tahtaW: number, tahtaH: number, guvenli: Kenarlar = SIFIR_KENAR): Yerlesim {
@@ -118,13 +129,14 @@ export function yerlesimHesapla(ekranW: number, ekranH: number, tahtaW: number, 
   const th = Math.max(1, tahtaH);
   const G = Math.max(1, ekranW - guvenli.sol - guvenli.sag);
   const Y = Math.max(1, ekranH - guvenli.ust - guvenli.alt);
+  const sinir = hucreSiniri(ekranW, ekranH);
 
   if (!yatayMi(ekranW, ekranH)) {
     let ustOran = UST_ORAN;
-    let hucre = dikeyHucre(G, Y, tw, th, ustOran);
+    let hucre = dikeyHucre(G, Y, tw, th, ustOran, sinir);
     if (hucre < HUCRE_EN_KUCUK) {
       ustOran = UST_ORAN_DAR;
-      hucre = dikeyHucre(G, Y, tw, th, ustOran);
+      hucre = dikeyHucre(G, Y, tw, th, ustOran, sinir);
     }
     hucre = Math.max(8, hucre);
     const ustSon = Math.round(guvenli.ust + ustOran * Y);
@@ -172,7 +184,8 @@ export function yerlesimHesapla(ekranW: number, ekranH: number, tahtaW: number, 
   const alanX = guvenli.sol;
   const alanW = Math.max(1, panel.x - PANEL_PAY - alanX);
   const tahtaAlani = { x: alanX, y: guvenli.ust + pay, w: alanW, h: Math.max(1, Y - 2 * pay) };
-  const hucre = Math.max(8, Math.floor(Math.min(HUCRE_EN_BUYUK, tahtaAlani.h / th, (alanW - 32) / tw)));
+  // −32: çerçeve payı (büyük hücrede çerçeve üstteki kasaba şeridine binmesin).
+  const hucre = Math.max(8, Math.floor(Math.min(sinir, (tahtaAlani.h - 32) / th, (alanW - 32) / tw)));
   const tW = hucre * tw;
   const tH = hucre * th;
   const tahta = {

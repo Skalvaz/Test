@@ -1040,6 +1040,7 @@ Sprite önbelleğine bir kez çizilir; boyut ve DPR'ye göre yeniden üretilir. 
   - Sağda puan ve 3 yıldız işaretli çubuk (120×40).
   - Göğe uçan kıvılcımlar ve havai fişekler bu bantta patlar. HUD plakası bandın üst kısmını kapladığından (claude.ai görüntüleyicisinde ~390×700'de bandın ~%55'i) merkezler **görünür gök şeridine** (HUD'un ölçülen alt kenarı → ufuk/sandık üstü) düşer, patlama ölçeği şeride göre ayarlanır (yarıçap ≈ 1,7 × şerit, en az 105 px). Patlamanın HUD'a taşan üst kısmı HUD'un üstündeki **fişek katmanında** (ikinci, bant boyunda tuval; `pointer-events: none`; üstte %60, sınırda tam opak) çizilir: HUD kısa süre okunur kalır, balon/bant/modallar fişeklerin üstündedir. Hedef kartlarına uçan kıvılcımlar ve kart patlamaları da bu katmanda kartların üstünde görünür.
 - Tahta %20–%86: `hucre = floor(min((G − 32)/w, (0,66·Y − 24)/h, 64))`. Alt sınır 40 px; altına düşerse üst bant %14'e iner. Tahta yatayda ortalanır, 16 px kenar boşluğu bırakılır.
+- **Tablet ek (Ekim 2026):** kısa kenarı ≥ 600 px olan ekranda (tablet, masaüstü) üst sınır 64 yerine **96** (`hucreSiniri`, `ui/yerlesim.ts`; çizici aynı kuralı kullanır). 64'te 10" tablette tahta ekranın ortasında küçük kalıyordu. Telefon değişmez.
 - Alt çubuk %86–%100 (güvenli alan payı dahil), bütün düğmeler burada:
   - [Duraklat] solda.
   - [Kibrit] [Kalıp] [Geri Sar] ortada, 56×56.
@@ -1047,7 +1048,7 @@ Sprite önbelleğine bir kez çizilir; boyut ve DPR'ye göre yeniden üretilir. 
 - `touch-action: none`; tuvalde `setPointerCapture`. Sayfa kaydırması ve yakınlaştırma kapalıdır.
 
 **Masaüstü ve yatay** (en/boy oranı > 0,75):
-- Tahta solda %62'lik alanda ortalanır, `hucre = min(64, (Y − 160)/h)`.
+- Tahta solda %62'lik alanda ortalanır, `hucre = min(64, (Y − 160 − 32)/h)` (tablet ekiyle sınır 96; −32 çerçeve payı: büyük hücrede çerçeve üstteki kasaba şeridine binmesin).
 - Sağda 320 px panel: hedefler, hamle, puan, güçlendiriciler, Körük.
 - Gökyüzü ve kasaba tam arka planda; kasaba üstte. Gök fişekleri panelin solundaki gökte patlar.
 
