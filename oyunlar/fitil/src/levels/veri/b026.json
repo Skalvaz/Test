@@ -233,7 +233,8 @@
     85,
     90
   ],
-  "yildizEsikleri": [11300, 15100],
+  "yildizEsikleri": [9700, 15100],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Nemli Gece!",
   "dogumAgirliklari": [
     3,

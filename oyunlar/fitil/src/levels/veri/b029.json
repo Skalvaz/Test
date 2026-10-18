@@ -7,7 +7,7 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 22,
+  "hamle": 24,
   "tohum": 3010760460,
   "yardim": 0,
   "ozelEsikleri": [
@@ -19,12 +19,12 @@
     {
       "tur": "topla",
       "renk": 0,
-      "adet": 50
+      "adet": 40
     },
     {
       "tur": "topla",
       "renk": 1,
-      "adet": 50
+      "adet": 40
     }
   ],
   "duzen": [
@@ -62,7 +62,8 @@
     90,
     100
   ],
-  "yildizEsikleri": [13700, 15700],
+  "yildizEsikleri": [11000, 13400],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Tepe Şenliği!",
   "bayram": true,
   "dogumAgirliklari": [
@@ -74,7 +75,7 @@
   ],
   "muhurler": [
     {"olcu": "olusum", "kapsam": "oyun", "enAz": 1, "ozel": "kasimpati"},
-    {"olcu": "zincir", "kapsam": "hamle", "enAz": 13},
-    {"olcu": "R", "kapsam": "hamle", "enAz": 37, "sans": true}
+    {"olcu": "zincir", "kapsam": "hamle", "enAz": 12},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 32, "sans": true}
   ]
 }

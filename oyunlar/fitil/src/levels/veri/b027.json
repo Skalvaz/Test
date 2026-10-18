@@ -7,7 +7,7 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 5,
-  "hamle": 22,
+  "hamle": 26,
   "tohum": 4041699076,
   "yardim": 0,
   "ozelEsikleri": [
@@ -108,10 +108,11 @@
     }
   ],
   "botBandi": [
-    65,
-    80
+    85,
+    100
   ],
-  "yildizEsikleri": [7700, 9100],
+  "yildizEsikleri": [7000, 9600],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Kova Bulmacası!",
   "dogumAgirliklari": [
     3,
@@ -123,6 +124,6 @@
   "muhurler": [
     {"olcu": "kafes", "kapsam": "hamle", "enAz": 2},
     {"olcu": "nesil", "kapsam": "hamle", "enAz": 6, "sans": true},
-    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 6}
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 10}
   ]
 }

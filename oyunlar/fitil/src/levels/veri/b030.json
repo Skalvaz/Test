@@ -13,7 +13,7 @@
   "ozelEsikleri": [
     6,
     9,
-    12
+    13
   ],
   "hedefler": [
     {
@@ -22,7 +22,7 @@
     },
     {
       "tur": "devFisek",
-      "adet": 3
+      "adet": 2
     }
   ],
   "duzen": [
@@ -145,11 +145,14 @@
     }
   },
   "korukKapasitesi": 20,
+  "dogumAgirliklari": [5, 5, 3, 3, 3, 3],
+  "onIsi": [[4, 1, 2], [3, 2, 2], [4, 2, 2], [5, 2, 2], [2, 3, 2], [3, 3, 2], [4, 3, 2], [5, 3, 2], [6, 3, 2], [4, 4, 2], [1, 5, 2], [2, 5, 2], [3, 5, 2], [4, 5, 2], [5, 5, 2], [6, 5, 2], [2, 6, 2], [3, 6, 2], [4, 6, 2], [5, 6, 2]],
   "botBandi": [
-    45,
-    55
+    60,
+    85
   ],
-  "yildizEsikleri": [14800, 17900],
+  "yildizEsikleri": [11200, 14200],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: İs!",
   "sabitKapsuller": [
     {
@@ -259,6 +262,6 @@
   "muhurler": [
     {"olcu": "desen", "kapsam": "hamle", "enAz": 9},
     {"olcu": "ozelAtes", "kapsam": "hamle", "enAz": 2},
-    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 12}
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 16}
   ]
 }

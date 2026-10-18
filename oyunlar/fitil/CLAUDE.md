@@ -108,10 +108,19 @@ yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
   (22–24) ≥ %20 (Usta [85, 100]), zor ≥ %8 ve Usta [60, 85] (Bölüm 10: ≥ %15,
   [70, 85]; 20, 25: [65, 85]), rahatlama ≥ %60. `dogrula` öğretim ve
   tanıtımda Acemi'yi de ölçer (< %30 uyarı); normal/zor/rahatlamada
-  `--acemi --acemi-tohum 60` ile ölç. 26–30 henüz ayarlanmadı: bağımsız
-  denetimde (tohum 3000+, 120 tohum) Acemi 26 %55, 27 %13, 28 %11, 29 %32
-  (rahatlama), 30 %3 ve eşikleri §7.4'te (Acemi kazançlarının %69–100'ü 1★);
-  sıradaki uçurum 27'de.
+  `--acemi --acemi-tohum 60` ile ölç. 26–30 de Acemi'ye göre ayarlı ve K24
+  eşikli (Ekim 2026; eskiden Acemi 27 %13, 28 %11, 29 %32, 30 %3): 27 hamle
+  26, 28 hamle 25 + Körük 14, 29 hamle 24 + 40/40, 30 dev fişek 2 + desen
+  hücrelerine ön ısı 2 + doğum [5,5,3,3,3,3] + `ozelEsikleri` [6,9,13]; Usta
+  bantları yeni kurala çekildi (normal [85,100], zor [60,85]). Ölçüm (0–99 ve
+  5000+): Acemi 26 ~%50, 27 ~%40, 28 ~%36, 29 ~%90, 30 ~%13; Usta 30 %77–88.
+  Mühürler yeniden ölçüldü (2000+, 6000+ hepsi bantta). 31–40 Acemi'ye göre
+  ölçülmedi.
+- Deneyerek bulundu (30): desen hedefinde Acemi'yi yükselten tek düğme desen
+  hücrelerine ön ısı (2); doğumu hedef renklerine kaydırmak ([5,5,2,…])
+  Acemi'yi artırır ama reaksiyon p90'ı 15–19'a, yıldız özelini %9'a çıkarır;
+  `ozelEsikleri` 13 yıldızı keser ama Usta'yı düşürür, ön ısıyla birlikte
+  dengeler. Hamle azaltmak dev fişek 2'de Usta'yı neredeyse değiştirmez.
 - Deneyerek bulundu: `soguma` Acemi'yi en çok cezalandıran düğmedir (ısı
   şansını siler); kaldırmak Acemi'yi 3–5 kat artırır ama reaksiyon p90'ı 14'ü
   aşar. Süre ≥ 60 sn ≈ Usta'nın ≥ 15 hamlede kazanması: hedef adedini çok

@@ -7,7 +7,7 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 20,
+  "hamle": 25,
   "tohum": 288134948,
   "yardim": 0,
   "ozelEsikleri": [
@@ -31,12 +31,13 @@
     ". . C . . C . .",
     ". . . . . . . ."
   ],
-  "korukKapasitesi": 20,
+  "korukKapasitesi": 14,
   "botBandi": [
-    65,
-    80
+    85,
+    100
   ],
-  "yildizEsikleri": [8700, 11000],
+  "yildizEsikleri": [8900, 12900],
+  "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Meltem!",
   "onIsi": [
     [
