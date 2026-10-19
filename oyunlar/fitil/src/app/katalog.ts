@@ -211,17 +211,17 @@ export const KASABA_ISLERI: readonly KasabaIsi[] = [
   kasabaIsi(2, 5, 'Liman kapısı', 'limanKapisi', 4, 'tabela', [200, 582], 'Rıhtım girişine ışıklı bir liman kapısı kurulur.', 'Hoş geldin, demek ki şenliğe geldin!'),
   // Saat Kulesi (22)
   kasabaIsi(3, 0, 'Sokak lambaları', 'sokakLambalari', 3, 'kandilDizisi', [384, 556], 'Meydan yolundaki eski lambalar yeniden yakılır.', 'Lambalar tam vaktinde yandı, saniyesi saniyesine.'),
-  kasabaIsi(3, 1, 'Kule çelengi', 'kuleCelengi', 3, 'kemer', [200, 262], 'Kulenin gövdesine ışıklı bir çelenk sarılır.', 'Kule bayramlığını giydi.'),
+  kasabaIsi(3, 1, 'Kule çelengi', 'kuleCelengi', 3, 'kemer', [326, 46], 'Kulenin gövdesine ışıklı bir çelenk sarılır.', 'Kule bayramlığını giydi.'),
   kasabaIsi(3, 2, 'Balkon fenerleri', 'balkonFenerleri', 3, 'fenerDizisi', [271, 449], 'Meydanı çevreleyen balkonlara fenerler asılır.', 'Balkonlardan herkes kuleyi seyrediyor.'),
-  kasabaIsi(3, 3, 'Çeşme ışıkları', 'cesmeIsiklari', 4, 'parilti', [200, 592], 'Meydan çeşmesinin suyu altından aydınlatılır.', 'Su bile ışıl ışıl akıyor.'),
-  kasabaIsi(3, 4, 'Aydınlık kadran', 'aydinlikKadran', 4, 'yapiIsigi', [200, 160], 'Saatin kadranı içten ışıklanır, akrebi parlar.', 'Artık gece de herkes saati görecek.'),
-  kasabaIsi(3, 5, 'Şenlik çanı', 'senlikCani', 5, 'yapiIsigi', [200, 26], 'Kulenin tepesindeki çan ışıklı bir taçla asılır.', 'Çan çaldı: şenlik vakti!'),
+  kasabaIsi(3, 3, 'Çeşme ışıkları', 'cesmeIsiklari', 4, 'parilti', [74, 215], 'Meydan çeşmesinin suyu altından aydınlatılır.', 'Su bile ışıl ışıl akıyor.'),
+  kasabaIsi(3, 4, 'Aydınlık kadran', 'aydinlikKadran', 4, 'yapiIsigi', [326, 2], 'Saatin kadranı içten ışıklanır, akrebi parlar.', 'Artık gece de herkes saati görecek.'),
+  kasabaIsi(3, 5, 'Şenlik çanı', 'senlikCani', 5, 'yapiIsigi', [365, 2], 'Kulenin tepesindeki çan ışıklı bir taçla asılır.', 'Çan çaldı: şenlik vakti!'),
   // Bahçeler (24)
   kasabaIsi(4, 0, 'Çardak fenerleri', 'cardakFenerleri', 3, 'fenerDizisi', [122, 449], 'Asmalı çardağa yuvarlak fenerler asılır.', 'Çardağın altı ışıktan bir bahçe oldu.'),
   kasabaIsi(4, 1, 'Dilek ağacı', 'dilekAgaci', 3, 'flama', [374, 439], 'Yaşlı dut ağacına renkli dilek kurdeleleri bağlanır.', 'Senin dileğin de bir kurdelede, biliyorum.'),
   kasabaIsi(4, 2, 'Ateş böceği kavanozları', 'atesBocegiKavanozlari', 4, 'parilti', [127, 209], 'Patikalara ışıldayan kavanozlar dizilir.', 'Ateş böcekleri bu gece misafirimiz.'),
-  kasabaIsi(4, 3, 'Gül kemeri', 'gulKemeri', 4, 'kemer', [200, 576], 'Bahçe girişine ışıklı bir gül kemeri kurulur.', 'Güller bile gece açtı.'),
-  kasabaIsi(4, 4, 'Yüzen kandiller', 'yuzenKandiller', 5, 'parilti', [200, 54], 'Havuza küçük kandiller bırakılır, suda süzülür.', 'Her kandil bir dilek taşıyor.'),
+  kasabaIsi(4, 3, 'Gül kemeri', 'gulKemeri', 4, 'kemer', [69, 561], 'Bahçe girişine ışıklı bir gül kemeri kurulur.', 'Güller bile gece açtı.'),
+  kasabaIsi(4, 4, 'Yüzen kandiller', 'yuzenKandiller', 5, 'parilti', [67, 345], 'Havuza küçük kandiller bırakılır, suda süzülür.', 'Her kandil bir dilek taşıyor.'),
   kasabaIsi(4, 5, 'Hıdırellez ateşi', 'hidirellezAtesi', 5, 'ates', [350, 84], 'Bahçenin ortasında Hıdırellez ateşi yakılır.', 'Atla bakalım, bütün dileklerin kabul olsun!'),
   // Tepe (26)
   kasabaIsi(5, 0, 'Patika fenerleri', 'patikaFenerleri', 3, 'kandilDizisi', [200, 340], 'Tepeye çıkan patika fenerlerle çizilir.', 'Yolu artık yıldızlar değil fenerler gösteriyor.'),

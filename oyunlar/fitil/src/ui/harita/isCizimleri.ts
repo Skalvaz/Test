@@ -419,6 +419,11 @@ export const CIZIMLER: Record<string, IsCizici> = {
   },
 
   // ═════════ Saat Kulesi ═════════
+  // Kule işleri (çelenk, kadran, çan) 20. bölümün terasındaki saat kulesinde
+  // (`binalar[4]`, kadran merkezi `gobek`). Arka plandaki silüet kule fitil
+  // yolunun arkasında boydan boya durur (kadranı 19–20 arasındaki yolun
+  // üstünde, tepesi mahalle şeridinin altında): süsleri orada yola ve
+  // düğümlere binerdi. Çeşme 19. bölümün konağının önünde, sokakta.
   'saatKulesi.sokakLambalari': (c, g) => {
     const basl: Nokta[] = [];
     g.dugumler.forEach((d, j) => {
@@ -438,72 +443,96 @@ export const CIZIMLER: Record<string, IsCizici> = {
     c.capa = { x: d0.taraf === 'sol' ? 16 : 384, y: d0.zemin - 30 };
   },
   'saatKulesi.kuleCelengi': (c, g) => {
+    // Kulenin gövdesi: kornişin altından tabana, pencere sıraları arasında
+    // dört sarkık çelenk; köşelerden inen ışık dizileri.
+    const k = g.binalar[4];
+    const x0 = k.x - k.w / 2;
+    const x1 = k.x + k.w / 2;
     const tum: Nokta[] = [];
-    for (const y of [196, 262, 328, 394]) {
-      const yy = ip(P(g, 167, y), P(g, 233, y), 8);
-      c.ekle('arka', ipCiz(c, yy.d, 1.8, '#2E5A2E'));
-      const ps = aralik(7, 0, 1).map((t) => yy.nokta(t));
-      c.ekle('arka', isiklar(c, ps, 1.3, '#FFE3A0', 4.5));
+    for (const dy of [38, 63, 89, 118]) {
+      const yy = ip({ x: x0 - 2, y: k.ust + dy }, { x: x1 + 2, y: k.ust + dy }, 4);
+      c.ekle(4, ipCiz(c, yy.d, 1.7, '#2E5A2E'));
+      const ps = aralik(5, 0, 1).map((t) => yy.nokta(t));
+      c.ekle(4, isiklar(c, ps, 1.25, '#FFE3A0', 4.5));
       tum.push(...ps);
     }
-    const kose = [...dogru(P(g, 166, 190), P(g, 166, 420), 13), ...dogru(P(g, 234, 190), P(g, 234, 420), 13)];
-    c.ekle('arka', isiklar(c, kose, 1.1, '#FFC86B', 3.5));
-    parilti(c, tum, 6, 2.8);
-    c.capa = P(g, 200, 262);
+    const kose = [...dogru({ x: x0, y: k.ust + 37 }, { x: x0, y: k.taban - 3 }, 10), ...dogru({ x: x1, y: k.ust + 37 }, { x: x1, y: k.taban - 3 }, 10)];
+    c.ekle(4, isiklar(c, kose, 1.1, '#FFC86B', 3.5));
+    parilti(c, tum, 5.5, 2.8);
+    c.capa = { x: k.x, y: k.ust + 78 };
   },
   'saatKulesi.balkonFenerleri': (c, g) => fenerDizisi(c, g, 1, 6, 'kure', [1, 0, 1, 5, 1, 0], 22),
   'saatKulesi.cesmeIsiklari': (c, g) => {
-    const y0 = g.ust + GIRIS_Y;
-    let s = sekil(c, `M178 ${f(y0)}V${f(y0 - 32)}H222V${f(y0)}z`, '#7A7288');
-    s += sekil(c, `M174 ${f(y0 - 36)}h52v5h-52z`, '#8A8298');
-    s += sekil(c, `M191 ${f(y0 - 36)}a9 7 0 0 1 18 0z`, '#6A6278');
-    s += c.yanik ? `<path d="M188 ${f(y0 - 6)}V${f(y0 - 18)}Q188 ${f(y0 - 28)} 200 ${f(y0 - 30)}Q212 ${f(y0 - 28)} 212 ${f(y0 - 18)}V${f(y0 - 6)}z" fill="#1A1424"/>` : '';
-    s += sekil(c, `M182 ${f(y0 - 7)}h36l-3 7h-30z`, '#5A5268');
+    // Duvar çeşmesi: 19. bölümün konağının önünde, sokakta (iki pencere
+    // sütununun arasında). Çizim çeşmenin taban ortasına göre yerel
+    // birimlerde, `o` ölçeğiyle.
+    const b = g.binalar[3];
+    const o = 0.66;
+    const x = b.x;
+    const y0 = b.taban + 3;
+    const n = (p: Nokta): Nokta => ({ x: x + p.x * o, y: y0 + p.y * o });
+    let s = sekil(c, 'M-22 0V-32H22V0z', '#7A7288');
+    s += sekil(c, 'M-26 -36h52v5h-52z', '#8A8298');
+    s += sekil(c, 'M-9 -36a9 7 0 0 1 18 0z', '#6A6278');
+    s += c.yanik ? '<path d="M-12 -6V-18Q-12 -28 0 -30Q12 -28 12 -18V-6z" fill="#1A1424"/>' : '';
+    s += sekil(c, 'M-18 -7h36l-3 7h-30z', '#5A5268');
     if (c.yanik) {
-      s += `<path d="M184 ${f(y0 - 6)}h32" stroke="#6AE0FF" stroke-width="2" opacity=".85"/><ellipse cx="200" cy="${f(y0 - 6)}" rx="18" ry="5" fill="#6AE0FF" opacity=".22"/>`;
-      s += `<path d="M200 ${f(y0 - 18)}q3 4 1 12" fill="none" stroke="#BFF4FF" stroke-width="1.4" stroke-linecap="round"/><rect x="198" y="${f(y0 - 20)}" width="4" height="2.4" rx="1" fill="#D9A441"/>`;
+      s += '<path d="M-16 -6h32" stroke="#6AE0FF" stroke-width="2" opacity=".85"/><ellipse cx="0" cy="-6" rx="18" ry="5" fill="#6AE0FF" opacity=".22"/>';
+      s += '<path d="M0 -18q3 4 1 12" fill="none" stroke="#BFF4FF" stroke-width="1.4" stroke-linecap="round"/><rect x="-2" y="-20" width="4" height="2.4" rx="1" fill="#D9A441"/>';
     }
-    c.ekle('on', s);
-    const yayIsik = yay({ x: 200, y: y0 - 18 }, 15, 15, 195, 345, 7);
-    c.ekle('on', isiklar(c, yayIsik, 1.1, '#BFF4FF', 3.5) + isiklar(c, [{ x: 178, y: y0 - 40 }, { x: 222, y: y0 - 40 }], 1.8, '#FFE3A0', 6));
+    const yayIsik = yay({ x: 0, y: -18 }, 15, 15, 195, 345, 7);
+    s += isiklar(c, yayIsik, 1.1, '#BFF4FF', 3.5) + isiklar(c, [{ x: -22, y: -40 }, { x: 22, y: -40 }], 1.8, '#FFE3A0', 6);
+    c.ekle(3, `<g transform="translate(${f(x)} ${f(y0)}) scale(${o})">${s}</g>`);
     if (c.yanik) {
-      c.grupla('su', { tur: 'nabiz', x: 180, y: y0 - 16, w: 40, h: 16, ic: '<ellipse cx="20" cy="10" rx="20" ry="6" fill="url(#hs-su)"/>', sure: 1.2 });
-      c.grupla('su', { tur: 'nabiz', x: 194, y: y0 - 20, w: 12, h: 16, ic: '<path d="M6 0q4 6 1 14" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>', sure: 1.2 });
+      const su = n({ x: -20, y: -16 });
+      const dere = n({ x: -6, y: -20 });
+      c.grupla('su', { tur: 'nabiz', x: su.x, y: su.y, w: 40 * o, h: 16 * o, ic: `<g transform="scale(${o})"><ellipse cx="20" cy="10" rx="20" ry="6" fill="url(#hs-su)"/></g>`, sure: 1.2 });
+      c.grupla('su', { tur: 'nabiz', x: dere.x, y: dere.y, w: 12 * o, h: 16 * o, ic: `<g transform="scale(${o})"><path d="M6 0q4 6 1 14" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></g>`, sure: 1.2 });
     }
-    parilti(c, yayIsik, 4.5, 2.4);
-    c.capa = P(g, 200, GIRIS_Y - 20);
+    parilti(c, yayIsik.map(n), 3.4, 2.4);
+    c.capa = n({ x: 0, y: -20 });
   },
   'saatKulesi.aydinlikKadran': (c, g) => {
-    const m = P(g, 200, 160);
-    let s = hale(c, m, 52, 0.55);
+    // Kulenin kendi kadranının üstüne (bina kadranı r 13): içten ışıklı kadran.
+    const k = g.binalar[4];
+    const m = k.gobek ?? { x: k.x, y: k.ust + 15 };
+    let s = hale(c, m, 30, 0.55);
     s += c.yanik
-      ? `<circle cx="${f(m.x)}" cy="${f(m.y)}" r="25" fill="url(#hs-kadran)" stroke="#D9A441" stroke-width="2.6"/><circle cx="${f(m.x)}" cy="${f(m.y)}" r="27.5" fill="none" stroke="#FFD15C" stroke-width="1" opacity=".7"/>`
-      : `<circle cx="${f(m.x)}" cy="${f(m.y)}" r="25" fill="${HAYALET}" stroke="${HAYALET_CIZGI}" stroke-width="1.6"/>`;
-    const saat = Array.from({ length: 12 }, (_, i) => ({ x: m.x + Math.sin((i * Math.PI) / 6) * 20.5, y: m.y - Math.cos((i * Math.PI) / 6) * 20.5 }));
-    s += isiklar(c, saat, 1.25, '#B8642E', 0);
-    s += `<path d="M${f(m.x)} ${f(m.y)}l-8 -5" stroke="${c.yanik ? '#3A2416' : HAYALET_CIZGI}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${f(m.x)}" cy="${f(m.y)}" r="2" fill="${c.yanik ? '#3A2416' : HAYALET_CIZGI}"/>`;
+      ? `<circle cx="${f(m.x)}" cy="${f(m.y)}" r="14" fill="url(#hs-kadran)" stroke="#D9A441" stroke-width="2"/><circle cx="${f(m.x)}" cy="${f(m.y)}" r="15.8" fill="none" stroke="#FFD15C" stroke-width=".8" opacity=".7"/>`
+      : `<circle cx="${f(m.x)}" cy="${f(m.y)}" r="14" fill="${HAYALET}" stroke="${HAYALET_CIZGI}" stroke-width="1.2"/>`;
+    const saat = Array.from({ length: 12 }, (_, i) => ({ x: m.x + Math.sin((i * Math.PI) / 6) * 11.2, y: m.y - Math.cos((i * Math.PI) / 6) * 11.2 }));
+    s += isiklar(c, saat, 0.85, '#B8642E', 0);
+    s += `<path d="M${f(m.x)} ${f(m.y)}l-4.8 -3" stroke="${c.yanik ? '#3A2416' : HAYALET_CIZGI}" stroke-width="1.7" stroke-linecap="round"/><circle cx="${f(m.x)}" cy="${f(m.y)}" r="1.3" fill="${c.yanik ? '#3A2416' : HAYALET_CIZGI}"/>`;
     c.ekle(4, s);
     if (c.yanik) {
-      const yelkovan = '<path d="M18 18V3.5" stroke="#3A2416" stroke-width="1.8" stroke-linecap="round"/><circle cx="18" cy="4.5" r="1.4" fill="#FFD15C"/><circle cx="18" cy="18" r="1.4" fill="#D9A441"/>';
-      c.oge({ tur: 'don', x: m.x - 18, y: m.y - 18, w: 36, h: 36, ic: yelkovan, koken: '50% 50%', sure: 24 }, { k: 4, svg: `<g transform="translate(${f(m.x - 18)} ${f(m.y - 18)})">${yelkovan}</g>` });
-      c.oge({ tur: 'nabiz', x: m.x - 30, y: m.y - 30, w: 60, h: 60, ic: '<circle cx="30" cy="30" r="30" fill="url(#hs-parla)" opacity=".7"/>', sure: 3.2 });
+      const yelkovan = '<path d="M10 10V2.2" stroke="#3A2416" stroke-width="1.3" stroke-linecap="round"/><circle cx="10" cy="2.8" r="1" fill="#FFD15C"/><circle cx="10" cy="10" r="1" fill="#D9A441"/>';
+      c.oge({ tur: 'don', x: m.x - 10, y: m.y - 10, w: 20, h: 20, ic: yelkovan, koken: '50% 50%', sure: 24 }, { k: 4, svg: `<g transform="translate(${f(m.x - 10)} ${f(m.y - 10)})">${yelkovan}</g>` });
+      c.oge({ tur: 'nabiz', x: m.x - 18, y: m.y - 18, w: 36, h: 36, ic: '<circle cx="18" cy="18" r="18" fill="url(#hs-parla)" opacity=".7"/>', sure: 3.2 });
     }
-    c.capa = m;
+    // Kadran mahallenin üst sınırının biraz üstünde: çapa sınırın içinde, hemen altında.
+    c.capa = { x: m.x, y: Math.max(m.y, g.ust + 2) };
   },
   'saatKulesi.senlikCani': (c, g) => {
-    const y = (v: number) => g.ust + v;
-    let s = hale(c, P(g, 200, 30), 30, 0.55);
-    s += `<path d="M189 ${f(y(48))}V${f(y(16))}M211 ${f(y(48))}V${f(y(16))}" stroke="${c.yanik ? '#3A2A2A' : HAYALET_CIZGI}" stroke-width="2.4"/>`;
-    s += sekil(c, `M185 ${f(y(16))}Q200 ${f(y(-2))} 215 ${f(y(16))}z`, '#5A3A30');
-    s += c.yanik ? `<path d="M200 ${f(y(6))}v-6" stroke="#D9A441" stroke-width="1.4"/><circle ${c.sira()} cx="200" cy="${f(y(-1))}" r="2" fill="#FFD15C"/>` : '';
+    // Kulenin tepesinde, saçağın altındaki demir kolda (kadranın sağında):
+    // kubbeli şapkasıyla çan, üstünde ışıklı taç.
+    const k = g.binalar[4];
+    const x1 = k.x + k.w / 2;
+    const ay = k.ust + 10;
+    const bx = x1 + 19;
+    let s = hale(c, { x: bx, y: ay + 9 }, 24, 0.55);
+    s += `<path d="M${f(x1)} ${f(ay)}H${f(bx + 2)}M${f(x1)} ${f(ay + 12)}Q${f(x1 + 3)} ${f(ay + 2)} ${f(bx - 5)} ${f(ay)}" fill="none" stroke="${c.yanik ? '#3A2A2A' : HAYALET_CIZGI}" stroke-width="2" stroke-linecap="round"/>`;
+    s += sekil(c, `M${f(bx - 9)} ${f(ay + 0.5)}Q${f(bx)} ${f(ay - 12)} ${f(bx + 9)} ${f(ay + 0.5)}z`, '#5A3A30');
+    s += c.yanik ? `<path d="M${f(bx)} ${f(ay - 5)}v-5" stroke="#D9A441" stroke-width="1.2"/><circle ${c.sira()} cx="${f(bx)}" cy="${f(ay - 11)}" r="1.8" fill="#FFD15C"/>` : '';
     c.ekle(4, s);
-    const tac = yay(P(g, 200, 16), 17, 13, 190, 350, 7);
-    c.ekle(4, isiklar(c, tac, 1.3, '#FFE3A0', 4.5));
+    const tac = yay({ x: bx, y: ay }, 14, 13, 190, 350, 7);
+    c.ekle(4, isiklar(c, tac, 1.25, '#FFE3A0', 4.5));
     const can = `<path d="M7 0v3" stroke="#3A2416" stroke-width="1"/><path d="M2 14Q2 4 7 3Q12 4 12 14L13.4 16H.6Z" fill="url(#ftl-pirinc)" stroke="#8A4E1C" stroke-width=".6"/><circle cx="7" cy="17" r="1.6" fill="#8A4E1C"/>`;
-    if (c.yanik) c.oge({ tur: 'salin', x: 193, y: y(17), w: 14, h: 19, ic: can, koken: '50% 0', sure: 1.6 }, { k: 4, svg: `<g transform="translate(193 ${f(y(17))})">${can}</g>` });
-    else c.ekle(4, `<g transform="translate(193 ${f(y(17))})" opacity=".6">${can.replace('url(#ftl-pirinc)', HAYALET)}</g>`);
-    parilti(c, tac, 6, 1.8);
-    c.capa = P(g, 200, 26);
+    const cx = bx - 7;
+    const cy = ay + 0.5;
+    if (c.yanik) c.oge({ tur: 'salin', x: cx, y: cy, w: 14, h: 19, ic: can, koken: '50% 0', sure: 1.6 }, { k: 4, svg: `<g transform="translate(${f(cx)} ${f(cy)})">${can}</g>` });
+    else c.ekle(4, `<g transform="translate(${f(cx)} ${f(cy)})" opacity=".6">${can.replace('url(#ftl-pirinc)', HAYALET)}</g>`);
+    parilti(c, tac, 5.5, 1.8);
+    c.capa = { x: bx, y: Math.max(ay + 10, g.ust + 2) };
   },
 
   // ═════════ Bahçeler ═════════
@@ -540,53 +569,59 @@ export const CIZIMLER: Record<string, IsCizici> = {
     }
   },
   'bahceler.gulKemeri': (c, g) => {
-    const y0 = g.ust + GIRIS_Y;
+    // Bahçeler'in ilk köşkünün (21. bölüm) kapısında: kemer köşkün önünde,
+    // terasta durur (alt sıradaki iki pencerenin arasında). Çizim kemerin
+    // taban ortasına göre yerel birimlerde, `o` ölçeğiyle.
+    const b = g.binalar[0];
+    const o = 0.68;
+    const x = b.x;
+    const y0 = b.taban + 3;
+    const n = (p: Nokta): Nokta => ({ x: x + p.x * o, y: y0 + p.y * o });
     let s = '';
-    for (const x of [173, 221]) {
-      s += sutun(c, x, y0 - 36, 6, 36, '#2A4A2E', '#4A7A4E');
-      if (c.yanik) for (let y = y0 - 32; y < y0; y += 6) s += `<path d="M${x} ${f(y)}l6 4M${x + 6} ${f(y)}l-6 4" stroke="#1A3A1E" stroke-width=".7"/>`;
+    for (const sx of [-27, 21]) {
+      s += sutun(c, sx, -36, 6, 36, '#2A4A2E', '#4A7A4E');
+      if (c.yanik) for (let y = -32; y < 0; y += 6) s += `<path d="M${sx} ${y}l6 4M${sx + 6} ${y}l-6 4" stroke="#1A3A1E" stroke-width=".7"/>`;
     }
-    s += `<path d="M176 ${f(y0 - 34)}A24 24 0 0 1 224 ${f(y0 - 34)}" fill="none" stroke="${c.yanik ? '#1E4A26' : HAYALET_CIZGI}" stroke-width="7" stroke-linecap="round"/>`;
+    s += `<path d="M-24 -34A24 24 0 0 1 24 -34" fill="none" stroke="${c.yanik ? '#1E4A26' : HAYALET_CIZGI}" stroke-width="7" stroke-linecap="round"/>`;
     if (c.yanik) {
       // Yaprak kümeleri.
-      for (const p of yay({ x: 200, y: y0 - 34 }, 24, 24, 175, 365, 12)) s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="3.6" fill="#2E6A36"/>`;
-      for (const p of [...dogru({ x: 176, y: y0 - 30 }, { x: 176, y: y0 - 6 }, 4), ...dogru({ x: 224, y: y0 - 30 }, { x: 224, y: y0 - 6 }, 4)]) s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="3" fill="#2E6A36"/>`;
+      for (const p of yay({ x: 0, y: -34 }, 24, 24, 175, 365, 12)) s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="3.6" fill="#2E6A36"/>`;
+      for (const p of [...dogru({ x: -24, y: -30 }, { x: -24, y: -6 }, 4), ...dogru({ x: 24, y: -30 }, { x: 24, y: -6 }, 4)]) s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="3" fill="#2E6A36"/>`;
     }
-    c.ekle('on', s);
     // Güller.
-    const gul = [...yay({ x: 200, y: y0 - 34 }, 25, 25, 185, 355, 9), { x: 175, y: y0 - 20 }, { x: 177, y: y0 - 9 }, { x: 225, y: y0 - 22 }, { x: 223, y: y0 - 11 }];
+    const gul = [...yay({ x: 0, y: -34 }, 25, 25, 185, 355, 9), { x: -25, y: -20 }, { x: -23, y: -9 }, { x: 25, y: -22 }, { x: 23, y: -11 }];
     const gRenk = ['#FF5FB4', '#FF4D4D', '#FFC2E3'];
-    let gs = '';
     gul.forEach((p, i) => {
-      gs += c.yanik ? `<g ${c.sira()}><circle cx="${f(p.x)}" cy="${f(p.y)}" r="2.6" fill="${gRenk[i % 3]}"/><circle cx="${f(p.x - 0.5)}" cy="${f(p.y - 0.5)}" r="1" fill="#fff" opacity=".55"/></g>` : `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="2.2" fill="${HAYALET}" stroke="${HAYALET_CIZGI}" stroke-width=".5"/>`;
+      s += c.yanik ? `<g ${c.sira()}><circle cx="${f(p.x)}" cy="${f(p.y)}" r="2.6" fill="${gRenk[i % 3]}"/><circle cx="${f(p.x - 0.5)}" cy="${f(p.y - 0.5)}" r="1" fill="#fff" opacity=".55"/></g>` : `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="2.2" fill="${HAYALET}" stroke="${HAYALET_CIZGI}" stroke-width=".5"/>`;
     });
-    const isikP = yay({ x: 200, y: y0 - 34 }, 30, 30, 190, 350, 8);
-    gs += isiklar(c, isikP, 1.1, '#FFF4C2', 4);
-    c.ekle('on', gs);
-    parilti(c, isikP, 5, 2);
-    c.capa = P(g, 200, GIRIS_Y - 36);
+    const isikP = yay({ x: 0, y: -34 }, 30, 30, 190, 350, 8);
+    s += isiklar(c, isikP, 1.1, '#FFF4C2', 4);
+    c.ekle(0, `<g transform="translate(${f(x)} ${f(y0)}) scale(${o})">${s}</g>`);
+    parilti(c, isikP.map(n), 3.6, 2);
+    c.capa = n({ x: 0, y: -36 });
   },
   'bahceler.yuzenKandiller': (c, g) => {
-    const y = (v: number) => g.ust + v;
+    // 23. bölümün köşkünün önünde, terasın üstünde süs havuzu (ağaç sağda).
+    const b = g.binalar[2];
+    const hx = b.x - 11;
+    const hy = b.taban + 5;
     let s = '';
-    // Küçük bahçe adacığı (teras gibi aşağı kararır) ve havuz.
-    s += `<path d="M152 ${f(y(58))}Q200 ${f(y(46))} 248 ${f(y(58))}L238 ${f(y(84))}H162Z" fill="url(#hb-yuz-sol)"/>`;
-    s += sekil(c, `M152 ${f(y(58))}Q200 ${f(y(44))} 248 ${f(y(58))}Q200 ${f(y(70))} 152 ${f(y(58))}z`, '#1E3A22');
-    s += c.yanik ? `<ellipse cx="200" cy="${f(y(58))}" rx="36" ry="7" fill="#0A1A2A" stroke="#4A7A6A" stroke-width="1.4"/><ellipse cx="200" cy="${f(y(58))}" rx="30" ry="4.5" fill="#FFC86B" opacity=".14"/>` : `<ellipse cx="200" cy="${f(y(58))}" rx="36" ry="7" fill="${HAYALET}" stroke="${HAYALET_CIZGI}"/>`;
-    if (c.yanik) s += `<ellipse cx="172" cy="${f(y(60))}" rx="4" ry="1.6" fill="#2E6A36"/><ellipse cx="229" cy="${f(y(57))}" rx="3.6" ry="1.4" fill="#2E6A36"/>`;
-    c.ekle('on', s);
-    const xs = [178, 190, 201, 212, 223];
+    s += sekil(c, `M${f(hx - 31)} ${f(hy)}a31 6 0 1 0 62 0a31 6 0 1 0 -62 0z`, '#3A4A3A');
+    s += c.yanik ? `<ellipse cx="${f(hx)}" cy="${f(hy)}" rx="28" ry="4.4" fill="#0A1A2A" stroke="#4A7A6A" stroke-width="1.2"/><ellipse cx="${f(hx)}" cy="${f(hy)}" rx="23" ry="2.8" fill="#FFC86B" opacity=".14"/>` : `<ellipse cx="${f(hx)}" cy="${f(hy)}" rx="28" ry="4.4" fill="${HAYALET}" stroke="${HAYALET_CIZGI}"/>`;
+    if (c.yanik) s += `<ellipse cx="${f(hx - 22)}" cy="${f(hy + 1)}" rx="3.6" ry="1.3" fill="#2E6A36"/><ellipse cx="${f(hx + 23)}" cy="${f(hy - 0.5)}" rx="3.2" ry="1.2" fill="#2E6A36"/>`;
+    c.ekle(2, s);
     const kandil = `<path d="M0 6h9l-1.6 2.4H1.6z" fill="#B8642E"/><path d="M4.5 0C3 2 3 4 4.5 5.6C6 4 6 2 4.5 0z" fill="#FFE9A0"/><circle cx="4.5" cy="4" r="4" fill="url(#ftl-koz)" opacity=".7"/>`;
-    xs.forEach((x, i) => {
-      const yy = y(56 + ((i * 3) % 4) - 1);
+    [-17, -8, 1, 10, 19].forEach((dx, i) => {
+      const x = hx + dx;
+      const yy = hy - 2 + ((i * 3) % 4) * 0.6;
       if (!c.yanik) {
-        c.ekle('on', `<path d="M${x - 4.5} ${f(yy + 1)}h9l-1.6 2.4h-5.8z" fill="${HAYALET}" stroke="${HAYALET_CIZGI}" stroke-width=".4"/>`);
+        c.ekle(2, `<path d="M${f(x - 4.5)} ${f(yy + 1)}h9l-1.6 2.4h-5.8z" fill="${HAYALET}" stroke="${HAYALET_CIZGI}" stroke-width=".4"/>`);
         return;
       }
-      c.ekle('on', `<circle ${c.sira()} cx="${x}" cy="${f(yy + 1)}" r="7" fill="url(#ftl-isik)" opacity=".45"/><path d="M${x} ${f(yy + 4)}v5" stroke="#FFC86B" stroke-width="2" opacity=".3"/>`);
-      c.grupla('kandil', { tur: 'suz', x: x - 4.5, y: yy - 5, w: 9, h: 8.4, ic: kandil, sure: 3 }, { k: 'on', svg: `<g transform="translate(${x - 4.5} ${f(yy - 5)})">${kandil}</g>` });
+      c.ekle(2, `<circle ${c.sira()} cx="${f(x)}" cy="${f(yy + 1)}" r="7" fill="url(#ftl-isik)" opacity=".45"/><path d="M${f(x)} ${f(yy + 4)}v4" stroke="#FFC86B" stroke-width="2" opacity=".3"/>`);
+      c.grupla('kandil', { tur: 'suz', x: x - 4.5, y: yy - 5, w: 9, h: 8.4, ic: kandil, sure: 3 }, { k: 2, svg: `<g transform="translate(${f(x - 4.5)} ${f(yy - 5)})">${kandil}</g>` });
     });
-    c.capa = P(g, 200, 54);
+    c.capa = { x: hx, y: hy - 4 };
   },
   'bahceler.hidirellezAtesi': (c, g) => {
     const y = (v: number) => g.ust + v;
