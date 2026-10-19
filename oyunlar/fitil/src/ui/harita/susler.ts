@@ -6,7 +6,8 @@
  *  - durağan SVG (ip, direk, ışık noktası, hale), katmanına göre mahallenin
  *    SVG'sine girer: `arka` (arka plan yapısının üstü, terasların altı),
  *    `0..4` (o terasın lambasından hemen sonra: üstteki terasın önünde,
- *    alttakinin arkasında) ya da `on` (en önde);
+ *    alttakinin arkasında), `on` (en önde) ya da `kiyi` (yalnız İskele:
+ *    alt paydaki deniz ve başlangıç iskelesi, alt payın SVG'sinde);
  *  - canlı öğeler (salınan fener, dalgalanan bayrak, titreyen alev, dönen
  *    kanat, yanıp sönen harf…): HTML katmanında, yalnız transform/opacity;
  *    görünmeyen mahallede `.f-harita-bolge:not(.f-gorunur)` ile durur;
@@ -52,7 +53,7 @@ export interface MahalleSusleri {
   gizle: Set<string>;
 }
 
-const KATMAN_SIRASI: readonly Katman[] = ['arka', 4, 3, 2, 1, 0, 'on'];
+const KATMAN_SIRASI: readonly Katman[] = ['arka', 4, 3, 2, 1, 0, 'on', 'kiyi'];
 
 /** Kimliği çizimde olmayan (sonradan eklenen) iş: çapasında küçük bir ışık kümesi. */
 function yedekCizim(c: Cizim, g: BolgeGeo, is: KasabaIsi): void {

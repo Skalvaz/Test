@@ -506,6 +506,8 @@ export interface BolgeCizimi {
   canli: CanliOge[];
   /** Bu çizimde yeni yapılan işler: kutlama katmanında ayrı çizilir. */
   kutla: KutlamaCizimi[];
+  /** Alt paydaki kıyı süsleri (yalnız İskele; alt payın SVG'sine, yolun üstüne). */
+  kiyi: string;
 }
 
 /**
@@ -565,7 +567,7 @@ export function bolgeCiz(m: number, bolumler: readonly BolumDugumuVM[], motifler
     }
   }
   if (sus) s += sus.katman('on');
-  return { svg: s, catilar, sancaklar, canli: sus?.canli ?? [], kutla: sus?.kutla ?? [] };
+  return { svg: s, catilar, sancaklar, canli: sus?.canli ?? [], kutla: sus?.kutla ?? [], kiyi: sus?.katman('kiyi') ?? '' };
 }
 
 /**
@@ -594,7 +596,14 @@ export function bolgeGeo(m: number): BolgeGeo {
     binalar.push({ id: bid, j, taraf: k.taraf, x: bx, w: b.w, taban: zemin - 4, ust: b.ust, cati: b.cati, sancak: b.sancak, kapi: b.kapi, baca: b.baca, agac: b.agac, gobek: b.gobek });
   }
   const b0 = baslangicKonumu();
-  const geo: BolgeGeo = { m, ust: bolgeUst(m), dugumler, binalar, tabela: m === 0 ? { x: b0.x, y: b0.y + 74 } : null };
+  const geo: BolgeGeo = {
+    m,
+    ust: bolgeUst(m),
+    dugumler,
+    binalar,
+    tabela: m === 0 ? { x: b0.x, y: b0.y + 74 } : null,
+    kiyi: m === 0 ? { iskele: { x: b0.x, y: b0.y + 4 }, yelkenliler: yelkenliler() } : null,
+  };
   GEO_ONBELLEK.set(m, geo);
   return geo;
 }
@@ -649,6 +658,16 @@ export function ustPayCiz(): string {
   return s;
 }
 
+/** Alt paydaki iki yelkenli: su çizgisinin ortası (altPayCiz ile aynı Rng sırası). */
+export function yelkenliler(): Nokta[] {
+  const r = new Rng('alt-pay');
+  for (let k = 0; k < 12; k++) {
+    r.int(400);
+    r.int(70);
+  }
+  return [70, 330].map((x) => ({ x, y: HARITA_H - ALT_PAY + 140 + r.int(60) }));
+}
+
 /** Alt pay: deniz, iskele, kayıklar. */
 export function altPayCiz(): string {
   const ust = HARITA_H - ALT_PAY;
@@ -662,8 +681,7 @@ export function altPayCiz(): string {
   for (let k = 0; k < 8; k++) s += `<path d="M${b.x - 26} ${b.y + 10 + k * 18}h52" stroke="#24160D" stroke-width="2"/>`;
   s += `<path d="M${b.x - 30} ${b.y + 4}v${ALT_PAY}M${b.x + 30} ${b.y + 4}v${ALT_PAY}" stroke="#1A0E06" stroke-width="5"/>`;
   s += lamba(b.x - 30, b.y + 4, true) + lamba(b.x + 30, b.y + 4, true);
-  for (const kx of [70, 330]) {
-    const ky = ust + 140 + r.int(60);
+  for (const { x: kx, y: ky } of yelkenliler()) {
     s += `<path d="M${kx - 24} ${ky}h48l-8 11h-32z" fill="#140C1E"/><path d="M${kx} ${ky}v-34l18 26h-18" fill="#1E1430"/><circle cx="${kx + 20}" cy="${ky - 5}" r="2.6" fill="#FFC86B"/><circle cx="${kx + 20}" cy="${ky - 5}" r="10" fill="url(#ftl-koz)" opacity=".6"/>`;
   }
   return s;

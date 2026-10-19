@@ -233,6 +233,7 @@ export class HaritaEkrani {
     const suslenen = kasabaAcik ? suslenenMahalle(yapilan) : -1;
     const canlilar = new Map<number, CanliOge[]>();
     const kutla = new Map<number, KutlamaCizimi[]>();
+    let kiyi = '';
     for (let m = MAHALLE_SAYISI - 1; m >= 0; m--) {
       const sus: SusSecenek | undefined = kasabaAcik ? { yapilan, hayalet: m === suslenen, yeni: yeniIsler } : undefined;
       const c = bolgeCiz(m, bolumler, motifMahalle.get(m) ?? [], sus);
@@ -240,6 +241,7 @@ export class HaritaEkrani {
       for (const x of c.sancaklar) this.sancakYerleri.set(x.id, { x: x.x, y: x.y });
       canlilar.set(m, [...c.canli, ...sancakOgeleri(c.sancaklar, m, c.canli.length)]);
       if (c.kutla.length) kutla.set(m, c.kutla);
+      if (m === 0) kiyi = c.kiyi;
       // Bu mahallenin alt düğümlerinden çıkan fitil parçaları (k = id; id → id+1).
       let yol = '';
       for (let id = m * 5 + 1; id <= m * 5 + 5 && id < 40; id++) yol += this.yolParcasi(yollar[id].d, bolumler[id], id === yeniAcilan);
@@ -249,7 +251,7 @@ export class HaritaEkrani {
       // Yanık fitil yolunun akışı (SVG yeniden boyar) görünmeyen mahallede durur.
       this.gozcu?.observe(e);
     }
-    const altPay = svg(`<svg class="f-bolge-svg" viewBox="0 ${HARITA_H - ALT_PAY} ${HARITA_W} ${ALT_PAY}" aria-hidden="true">${altPayCiz()}<g class="f-yol">${this.yolParcasi(yollar[0].d, bolumler[0], false)}</g></svg>`);
+    const altPay = svg(`<svg class="f-bolge-svg" viewBox="0 ${HARITA_H - ALT_PAY} ${HARITA_W} ${ALT_PAY}" aria-hidden="true">${altPayCiz()}<g class="f-yol">${this.yolParcasi(yollar[0].d, bolumler[0], false)}</g>${kiyi}</svg>`);
     icerik.appendChild(altPay);
     this.gozcu?.observe(altPay);
 

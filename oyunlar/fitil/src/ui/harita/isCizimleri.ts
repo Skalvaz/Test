@@ -120,16 +120,32 @@ function sutun(c: Cizim, x0: number, y0: number, w: number, h: number, renk: str
  * (yeni oyuncunun ilk kasaba işi, KANCALAR §C.1).
  */
 function kayik(c: Cizim, k: Katman, x: number, y: number, yon: 1 | -1, renk: number, i: number, b = 1): void {
-  const govde = `M${f(x - 15 * b)} ${f(y - 5 * b)}h${f(30 * b)}l${f(-5 * b)} ${f(6 * b)}h${f(-20 * b)}z`;
-  c.ekle(k, sekil(c, govde, '#2A1C34') + `<path d="M${f(x - 15.5 * b)} ${f(y - 5 * b)}h${f(31 * b)}" stroke="${c.yanik ? '#8A6A8A' : HAYALET_CIZGI}" stroke-width="1.3" stroke-linecap="round"/>`);
-  if (c.yanik) c.ekle(k, `<ellipse cx="${f(x + yon * 9 * b)}" cy="${f(y - 2.5 * b)}" rx="${f(6 * b)}" ry="${f(2.4 * b)}" fill="#FFB020" opacity=".35"/><path d="M${f(x - 12 * b)} ${f(y + 3)}h${f(24 * b)}" stroke="#FFC86B" stroke-width="1" opacity=".25"/>`);
+  // Ay biçimli gövde: kıç alçak, pruva (yon tarafı) kalkık; küpeşte açık renk.
+  const u = (dx: number) => f(x + yon * dx * b);
+  const v = (dy: number) => f(y + dy * b);
+  const govde = `M${u(-15)} ${v(-4)}Q${u(-13)} ${v(3)} ${u(-6)} ${v(3.4)}H${u(7)}Q${u(14)} ${v(3)} ${u(17)} ${v(-6.5)}Q${u(4)} ${v(-3.4)} ${u(-15)} ${v(-4)}z`;
+  const kupeste = `M${u(-15)} ${v(-4)}Q${u(4)} ${v(-3.4)} ${u(17)} ${v(-6.5)}`;
+  c.ekle(k, sekil(c, govde, '#3A2638') + `<path d="${kupeste}" fill="none" stroke="${c.yanik ? '#B08A9A' : HAYALET_CIZGI}" stroke-width="1.3" stroke-linecap="round"/>`);
+  if (c.yanik) c.ekle(k, `<path d="M${u(-9)} ${v(-0.6)}H${u(9)}" stroke="#1E1424" stroke-width="1" opacity=".7"/><path d="M${f(x - 13 * b)} ${f(y + 4.6 * b)}h${f(26 * b)}" stroke="#FFC86B" stroke-width="1" opacity=".25"/>`);
   // Pruva direği ve fener.
-  const dx = x + yon * 12 * b;
-  const fx = dx + yon * 4 * b;
-  const fy = y - 20 * b;
+  const dx = x + yon * 13 * b;
+  const fx = dx + yon * 3 * b;
+  const fy = y - 21 * b;
   c.ekle(k, ipCiz(c, `M${f(dx)} ${f(y - 5 * b)}Q${f(dx + yon * b)} ${f(y - 14 * b)} ${f(fx)} ${f(fy)}`, 1.2 * b, '#3A2416'));
-  if (c.yanik) c.ekle(k, hale(c, { x: fx, y: fy + 8 * b }, 16 * b, 0.6) + yansima(fx, y + 2, '#FFC86B', 7 * b));
-  fener(c, k, { x: fx, y: fy }, renk, 'kagit', i, 0.75 * b);
+  if (c.yanik) c.ekle(k, hale(c, { x: fx, y: fy + 8 * b }, 16 * b, 0.6) + yansima(fx, y + 6 * b, '#FFC86B', 7 * b));
+  fener(c, k, { x: fx, y: fy }, renk, 'kagit', i, 0.8 * b);
+}
+
+/**
+ * Alt paydaki yelkenlinin (altPayCiz; su çizgisi ortası `y`, burun sağda)
+ * pruvasına kâğıt fener: kısa direk, fener, aydınlanan küpeşte ve yansıma.
+ */
+function yelkenliFeneri(c: Cizim, y: Nokta, renk: number, i: number): void {
+  const bx = y.x + 20;
+  const fy = y.y - 22;
+  if (c.yanik) c.ekle('kiyi', `<path d="M${f(y.x - 23)} ${f(y.y + 0.6)}h46" stroke="#8A6A8A" stroke-width="1.3" stroke-linecap="round"/>` + hale(c, { x: bx + 4, y: fy + 9 }, 18, 0.6) + yansima(bx + 4, y.y + 14, '#FFC86B', 9));
+  c.ekle('kiyi', ipCiz(c, `M${f(bx)} ${f(y.y)}Q${f(bx + 1)} ${f(y.y - 12)} ${f(bx + 4)} ${f(fy)}`, 1.4, '#3A2416'));
+  fener(c, 'kiyi', { x: bx + 4, y: fy }, renk, 'kagit', i, 1);
 }
 
 /** Bina saçağından sarkan küçük fenerler. */
@@ -143,28 +159,38 @@ function sacakFenerleri(c: Cizim, g: BolgeGeo, j: number, oranlar: readonly numb
 
 export const CIZIMLER: Record<string, IsCizici> = {
   // ═════════ İskele ═════════
+  // İskele'nin kıyı işleri alt payda (katman `kiyi`): fitilin çıktığı
+  // başlangıç iskelesi, yelkenliler ve deniz. Mahallenin içinde düğüm, yol
+  // ve şerit arasında sıkışmazlar; denize, iskeleye otururlar.
   'iskele.kayikFenerleri': (c, g) => {
-    kayik(c, 0, 236, g.ust + 600, 1, 1, 0, 1.45);
-    kayik(c, 0, 336, g.ust + 610, -1, 0, 1, 1.45);
-    kayik(c, 0, 376, g.ust + 572, -1, 3, 2, 1.3);
-    c.capa = P(g, 300, 588);
+    const k = g.kiyi!;
+    // İki yelkenlinin pruvasına fener; iskelenin solunda bağlı bir kayık.
+    k.yelkenliler.forEach((y, i) => yelkenliFeneri(c, y, i === 0 ? 1 : 3, i));
+    kayik(c, 'kiyi', 112, k.iskele.y - 60, 1, 0, 2, 1.3);
+    c.capa = { x: 112, y: k.iskele.y - 70 };
   },
   'iskele.iskeleBayraklari': (c, g) => flamaDizisi(c, g, 2, 9, 'ucgen', [vurgu(g), '#FF4D4D', '#FFB020', KREM, '#2EE07A'], 16),
   'iskele.fenerDizisi': (c, g) => fenerDizisi(c, g, 1, 6, 'kagit', [1, 0, 3, 5, 2, 4], 22),
+  // Başlangıç iskelesinin başında, fitil altından geçer (kemer yolun üstüne çizilir).
   'iskele.kandilliKemer': (c, g) => {
-    const y0 = g.ust + GIRIS_Y;
-    let s = sutun(c, 173, y0 - 34, 6, 34, '#4A2E1A', '#7A5432') + sutun(c, 221, y0 - 34, 6, 34, '#4A2E1A', '#7A5432');
-    s += `<path d="M176 ${f(y0 - 32)}A24 22 0 0 1 224 ${f(y0 - 32)}" fill="none" stroke="${c.yanik ? '#5A3A22' : HAYALET_CIZGI}" stroke-width="5"/>`;
-    if (c.yanik) s += `<path d="M176 ${f(y0 - 32)}A24 22 0 0 1 224 ${f(y0 - 32)}" fill="none" stroke="#8A6040" stroke-width="1" transform="translate(0 -2)"/>`;
-    c.ekle('on', s);
-    const ps = yay({ x: 200, y: y0 - 32 }, 27, 25, 180, 360, 11);
-    c.ekle('on', isiklar(c, ps, 1.7, '#FFD15C', 5.5));
-    fener(c, 'on', { x: 200, y: y0 - 54 }, 0, 'kagit', 0, 0.8);
+    const { x: cx, y: y0 } = g.kiyi!.iskele;
+    const sol = cx - 24;
+    const sag = cx + 24;
+    const omuz = y0 - 40;
+    let s = sutun(c, sol - 3, omuz, 6, 40, '#4A2E1A', '#7A5432') + sutun(c, sag - 3, omuz, 6, 40, '#4A2E1A', '#7A5432');
+    const kemer = `M${f(sol)} ${f(omuz + 2)}A24 22 0 0 1 ${f(sag)} ${f(omuz + 2)}`;
+    s += `<path d="${kemer}" fill="none" stroke="${c.yanik ? '#5A3A22' : HAYALET_CIZGI}" stroke-width="5"/>`;
+    if (c.yanik) s += `<path d="${kemer}" fill="none" stroke="#8A6040" stroke-width="1" transform="translate(0 -2)"/>`;
+    c.ekle('kiyi', s);
+    const ps = yay({ x: cx, y: omuz + 2 }, 27, 25, 180, 360, 11);
+    c.ekle('kiyi', isiklar(c, ps, 1.7, '#FFD15C', 5.5));
+    fener(c, 'kiyi', { x: cx, y: omuz - 20 }, 0, 'kagit', 0, 0.8);
     parilti(c, ps, 6, 2.2);
-    c.capa = P(g, 200, GIRIS_Y - 34);
+    c.capa = { x: cx, y: omuz };
   },
+  // Kıyıdaki kayalıkta, sağda; huzme denizin üstünü süpürür.
   'iskele.denizFeneri': (c, g) => {
-    const t = g.ust + 606;
+    const t = g.kiyi!.iskele.y - 54;
     let s = sekil(c, `M346 ${f(t + 10)}Q350 ${f(t - 6)} 364 ${f(t - 8)}Q378 ${f(t - 14)} 392 ${f(t - 8)}Q404 ${f(t - 6)} 412 ${f(t)}V${f(t + 12)}H346z`, '#1A1426');
     s += sekil(c, `M372 ${f(t - 8)}L375 ${f(t - 84)}H385L388 ${f(t - 8)}z`, '#E4DCEA');
     if (c.yanik) s += `<path d="M373.4 ${f(t - 30)}h13.3M374 ${f(t - 56)}h12" stroke="#B8381C" stroke-width="7"/><path d="M376 ${f(t - 84)}V${f(t - 8)}" stroke="#fff" stroke-width="1.4" opacity=".4"/>`;
@@ -172,13 +198,13 @@ export const CIZIMLER: Record<string, IsCizici> = {
     s += c.yanik ? `<rect ${c.sira()} x="374" y="${f(t - 100)}" width="12" height="12" rx="1.5" fill="#FFF4C2"/>` : `<rect x="374" y="${f(t - 100)}" width="12" height="12" rx="1.5" fill="${HAYALET}" stroke="${HAYALET_CIZGI}" stroke-width=".6"/>`;
     s += sekil(c, `M371 ${f(t - 100)}L380 ${f(t - 110)}L389 ${f(t - 100)}z`, '#3A2416');
     s += hale(c, { x: 380, y: t - 94 }, 30, 0.7);
-    c.ekle(0, s);
+    c.ekle('kiyi', s);
     if (c.yanik) {
-      c.ekle(0, yansima(380, t + 12, '#FFE3A0', 12));
-      c.oge({ tur: 'huzme', x: 380 - 150, y: t - 108, w: 150, h: 28, ic: `<path d="M150 14L0 0V28Z" fill="url(#hs-huzme)"/>`, koken: '100% 50%', sure: 7 });
+      c.ekle('kiyi', yansima(380, t + 14, '#FFE3A0', 12));
+      c.oge({ tur: 'huzme', x: 380 - 120, y: t - 108, w: 120, h: 28, ic: `<path d="M120 14L0 0V28Z" fill="url(#hs-huzme)"/>`, koken: '100% 50%', sure: 7 });
       c.oge({ tur: 'nabiz', x: 362, y: t - 112, w: 36, h: 36, ic: `<circle cx="18" cy="18" r="18" fill="url(#hs-parla)"/>`, sure: 1.8 });
     }
-    c.capa = P(g, 380, 512);
+    c.capa = { x: 380, y: t - 60 };
   },
   // Taç: alt paydaki "FENER KOYU" tabelası (HTML; ampulleri harita.ts takar).
   'iskele.tabela': (c, g) => {

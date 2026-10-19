@@ -189,11 +189,11 @@ function kasabaIsi(mahalle: number, sira: number, ad: string, isAdi: string, mal
  */
 export const KASABA_ISLERI: readonly KasabaIsi[] = [
   // İskele (14)
-  kasabaIsi(0, 0, 'Pruva fenerleri', 'kayikFenerleri', 1, 'parilti', [300, 588], 'Kıyıdaki kayıkların pruvasına kâğıt fenerler asılır.', 'Fenerler yanınca kayıklar yolunu bulur!'),
+  kasabaIsi(0, 0, 'Pruva fenerleri', 'kayikFenerleri', 1, 'parilti', [112, 744], 'Kıyıdaki kayıkların pruvasına kâğıt fenerler asılır.', 'Fenerler yanınca kayıklar yolunu bulur!'),
   kasabaIsi(0, 1, 'İskele bayrakları', 'iskeleBayraklari', 2, 'flama', [278, 324], 'İskele babalarına rengârenk flamalar gerilir.', 'Rüzgâr bayrakları görünce şenliği anladı!'),
   kasabaIsi(0, 2, 'Fener dizisi', 'fenerDizisi', 2, 'fenerDizisi', [129, 449], 'Teraslar arasına ip gerilir, kâğıt fenerler asılır.', 'Merdivenleri artık gözü kapalı çıkarım.'),
-  kasabaIsi(0, 3, 'Kandilli kemer', 'kandilliKemer', 2, 'kemer', [200, 578], 'İskele girişine kandillerle süslü bir kemer kurulur.', 'Koya gelen herkes bu kemerin altından geçecek.'),
-  kasabaIsi(0, 4, 'Deniz feneri', 'denizFeneri', 3, 'yapiIsigi', [380, 512], 'Kayalıktaki eski deniz fenerinin ışığı yeniden döner.', 'Babam o ışığı görmeden denize açılmazdı.'),
+  kasabaIsi(0, 3, 'Kandilli kemer', 'kandilliKemer', 2, 'kemer', [200, 774], 'İskele girişine kandillerle süslü bir kemer kurulur.', 'Koya gelen herkes bu kemerin altından geçecek.'),
+  kasabaIsi(0, 4, 'Deniz feneri', 'denizFeneri', 3, 'yapiIsigi', [380, 700], 'Kayalıktaki eski deniz fenerinin ışığı yeniden döner.', 'Babam o ışığı görmeden denize açılmazdı.'),
   kasabaIsi(0, 5, 'İskele tabelası', 'tabela', 4, 'tabela', [200, 884], 'İskelenin üstünde "Fener Koyu" yazısı ışıl ışıl yanar.', 'İşte şimdi burası gerçekten Fener Koyu!'),
   // Çarşı (18)
   kasabaIsi(1, 0, 'Dükkân kandilleri', 'dukkanKandilleri', 2, 'kandilDizisi', [71, 411], 'Dükkân kapılarına birer bakır kandil asılır.', 'Her kandil bir ezgi mırıldanıyor, duyuyor musun?'),

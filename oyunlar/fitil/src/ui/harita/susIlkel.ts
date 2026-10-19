@@ -45,9 +45,20 @@ export interface BolgeGeo {
   binalar: BinaGeo[];
   /** Alt paydaki "Fener Koyu" tabelasının merkezi (yalnız İskele). */
   tabela: Nokta | null;
+  /**
+   * Alt paydaki kıyı (yalnız İskele): başlangıç iskelesinin başı (fitilin
+   * çıktığı nokta, iskele zemini) ve iki yelkenlinin su çizgisindeki ortası.
+   */
+  kiyi: { iskele: Nokta; yelkenliler: Nokta[] } | null;
 }
 
-export type Katman = 'arka' | 'on' | 0 | 1 | 2 | 3 | 4;
+/**
+ * Süs katmanı: `arka` (arka plan yapısının üstü), `0..4` (o terasın
+ * lambasından hemen sonra), `on` (en önde) ya da `kiyi`: alt paydaki kıyı
+ * (deniz, başlangıç iskelesi; yalnız İskele). Kıyı alt payın SVG'sine,
+ * fitil yolunun üstüne çizilir (kemer yolu çerçeveler).
+ */
+export type Katman = 'arka' | 'on' | 'kiyi' | 0 | 1 | 2 | 3 | 4;
 
 /**
  * Canlı öğe türleri (harita.css `.f-sus-<tur>`):

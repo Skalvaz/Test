@@ -83,7 +83,8 @@ describe('kasaba süsleri', () => {
     expect(yeni.canli.map((o) => o.sahip)).toEqual([id]);
   });
 
-  it('çapa mahallenin içinde ve katalogdaki `yer` ile aynı (İskele tabelası alt payda)', () => {
+  it('çapa mahallenin içinde ve katalogdaki `yer` ile aynı (İskele tabelası ve kıyı işleri alt payda)', () => {
+    const KIYI = new Set(['iskele.tabela', 'iskele.kayikFenerleri', 'iskele.kandilliKemer', 'iskele.denizFeneri']);
     for (const is of KASABA_ISLERI) {
       const g = bolgeGeo(is.mahalle);
       const c = isCapasi(is.id, g)!;
@@ -91,7 +92,7 @@ describe('kasaba süsleri', () => {
       expect(Math.abs(c.y - g.ust - is.yer.y), is.id).toBeLessThanOrEqual(1);
       expect(c.x).toBeGreaterThanOrEqual(0);
       expect(c.x).toBeLessThanOrEqual(400);
-      if (is.id === 'iskele.tabela') expect(c.y).toBeGreaterThan(bolgeUst(0) + BOLGE_H);
+      if (KIYI.has(is.id)) expect(c.y, is.id).toBeGreaterThan(bolgeUst(0) + BOLGE_H);
       else {
         expect(c.y, is.id).toBeGreaterThanOrEqual(bolgeUst(is.mahalle));
         expect(c.y, is.id).toBeLessThanOrEqual(bolgeUst(is.mahalle) + BOLGE_H);
