@@ -24,7 +24,7 @@
 
 /* Bölüm öncesi bloğu */
 .f-bo-muhurler { display: flex; flex-direction: column; gap: 4px; padding: 7px 10px 6px; border-radius: 16px; background: rgba(0, 0, 0, .2); box-shadow: inset 0 0 0 1.5px rgba(255, 200, 120, .18); }
-.f-bo-muhurler .f-usta-ipucu { font-size: 13px; padding: 3px 12px 3px 3px; margin-bottom: 4px; line-height: 1.2; }
+.f-bo-muhurler .f-usta-ipucu { font-size: 16px; padding: 4px 14px 4px 4px; margin-bottom: 2px; line-height: 1.25; }
 .f-bo-muhurler .f-usta-ipucu .f-usta { width: 30px; height: 30px; flex: none; }
 /* Mühür bloğu varken kısa ekranda "Yeni öğe" kutusu tek satırlık çipe küçülür, "En iyi"
    yıldız satırına taşınır, hedef kutuları küçülür (§C.2: 390×700'de kaydırmasız). */

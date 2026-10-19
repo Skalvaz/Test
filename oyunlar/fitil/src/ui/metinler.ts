@@ -82,7 +82,7 @@ export const M = {
   // 1★ da bir kazançtır (bütün hedefler tamam): başlık olumlu; ilk bölümde çoğu oyuncu 1★ alır.
   kazandinBaslik: ['Başardın!', 'Başardın!', 'Harika!', 'Muhteşem!'] as const,
   yeniRekor: 'Yeni rekor',
-  sandikAc: 'Aç',
+  sandikAc: 'Sandığı aç',
   sonrakiSandik: 'Sonraki sandık',
   tekrarOyna: 'Tekrar oyna',
   sakla: 'Sakla',
@@ -267,7 +267,7 @@ export const MK = {
   rozetEtiket: (n: number) => `Mühürler: ${n}/3`,
   yeni: 'YENİ',
   muhurTanitim: 'Her bölümde üç mühür var. Kazandığın oyunda tutanlar basılır.',
-  muhurKart: 'Mühürler bölümü başka bir yolla oynatır. Üçünü ayrı denemelerde toplayabilirsin.',
+  muhurKart: 'Her bölümde 3 mühür görevi var. Görevleri oyunda Duraklat menüsünde görürsün.',
   muhurHud: 'Mühür tuttu! Kazanırsan basılır.',
   sancakIlk: 'Üç mühür: çatıya sancak!',
   parcaDuyuru: (fitil: string, n: number) => `${fitil} parçası (${n} mühür)`,

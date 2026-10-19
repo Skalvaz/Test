@@ -808,7 +808,6 @@
 .f-kz-kutu-sandik { padding: 4px; }
 .f-kz-kutu-sandik .f-kz-sandik-kutu { padding: 0; background: none; box-shadow: none; gap: 4px; }
 .f-kz-kutu-sandik .f-sandik { width: 92px; height: 84px; }
-.f-kz-kutu-sandik .f-sandik-etiket { font-size: 13px; }
 li.f-kz-tablo { padding: 8px; }
 li.f-kz-tablo .f-tablo { width: 64px; max-width: 64px; }
 .f-kz-dugmeler { align-items: center; }
@@ -853,27 +852,36 @@ li.f-kz-tablo .f-tablo { width: 64px; max-width: 64px; }
 .f-bo-yeni-metin span:last-child { font-size: 16px; }
 .f-bo-ad { font-size: 30px; }
 
-/* GEÇİCİ: üç menü düzeni (src/ui/tasarim.ts) */
+/* "Liste" düzeni (Ekim 2026): bölüm kartında hedefler büyük yazılı liste, mühürler tek
+   satır; Kazandın'da ödüller satır listesi (kandil, güçlendirici, sandık). */
+.f-hamle-etiket { display: none; }
+.f-hamle-sayi { font-size: 32px; line-height: 1; }
+.f-bo-muhurler { background: none; box-shadow: none; padding: 0; gap: 8px; }
+.f-bo-muhurler .f-usta-ipucu { font-size: 16px; line-height: 1.25; margin-bottom: 0; }
 .f-bo-muhur-sira { display: flex; justify-content: center; align-items: center; gap: 10px; }
 .f-bo-muhur-tek .f-muhur-svg { width: 36px; height: 36px; display: block; }
 .f-bo-muhur-yazi { font-size: 19px; font-weight: 800; color: var(--pirinc-acik); margin-right: 4px; }
-[data-tasarim="1"] .f-bo-hedefler .f-hedef-kutu-ikon { width: 80px; height: 80px; border-radius: 22px; }
-[data-tasarim="1"] .f-bo-hedefler .f-hedef-kutu-ikon .f-resim { width: 60px; height: 60px; }
-[data-tasarim="1"] .f-bo-hedefler .f-hedef-kutu-metin { font-size: 20px; }
-[data-tasarim="1"] .f-bo-bilgiler .f-cip { font-size: 20px; }
-[data-tasarim="1"] .f-kz-bolum { display: none; }
 .f-bo-liste { list-style: none; margin: 0; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; border-radius: 20px;
   background: linear-gradient(180deg, rgba(0, 0, 0, .3), rgba(0, 0, 0, .16)); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .4), 0 1px 0 rgba(255, 220, 160, .08); }
 .f-bo-liste li { display: flex; align-items: center; gap: 14px; font-size: 22px; font-weight: 800; line-height: 1.15; text-align: left; }
 .f-bo-liste-ikon { width: 54px; height: 54px; flex: none; display: grid; place-items: center; }
 .f-bo-liste-ikon .f-hedef-kutu-ikon { width: 54px; height: 54px; border-radius: 16px; }
 .f-bo-liste-ikon .f-hedef-kutu-ikon .f-resim { width: 42px; height: 42px; }
-.f-bo-liste-hamle { color: var(--krem-2); }
-.f-bo-liste-hamle .f-ikon { width: 32px; height: 32px; color: var(--pirinc-acik); }
-[data-tasarim="3"] .f-kz-kutular { flex-direction: column; align-items: stretch; gap: 8px; }
-[data-tasarim="3"] .f-kz-kutu { flex-direction: row; justify-content: flex-start; min-height: 0; gap: 12px; padding: 8px 16px; }
-[data-tasarim="3"] .f-kz-kutu-sayi { font-size: 24px; }
-[data-tasarim="3"] .f-kz-kutu-ad { font-size: 19px; }
-[data-tasarim="3"] .f-kz-kutu-sandik { justify-content: center; }
-[data-tasarim="3"] .f-kz-kutu-sandik .f-sandik { width: 84px; height: 72px; }
-[data-tasarim="3"] .f-kz-haber { font-size: 18px; }
+.f-bo-liste-hamle, .f-bo-liste-kural { color: var(--krem-2); }
+.f-bo-liste-hamle .f-ikon, .f-bo-liste-kural .f-ikon { width: 32px; height: 32px; color: var(--pirinc-acik); }
+.f-bo-liste-kural { font-size: 18px !important; }
+.f-kz-kutular { flex-direction: column; align-items: stretch; gap: 10px; }
+.f-kz-kutu { flex-direction: row; justify-content: flex-start; min-height: 60px; gap: 14px; padding: 8px 18px; }
+.f-kz-kutu > .f-ikon, .f-kz-kutu > .f-kandil-svg, .f-kz-kandil .f-kandil-svg { width: 40px; height: 32px; flex: none; }
+.f-kz-kutu-sayi { font-size: 24px; }
+.f-kz-kutu-ad { font-size: 19px; }
+.f-kz-haber { font-size: 18px; }
+/* Sandık: öteki satırlarla aynı yükseklikte; sandık resmi solda, "Sandığı aç" yanında. */
+.f-kz-kutu-sandik { padding: 6px 18px; }
+.f-kz-kutu-sandik .f-kz-sandik-kutu { width: 100%; padding: 0; background: none; box-shadow: none; gap: 6px; align-items: stretch; }
+.f-kz-kutu-sandik .f-sandik { width: 100%; height: 52px; flex-direction: row; justify-content: flex-start; align-items: center; gap: 14px; }
+.f-kz-kutu-sandik .f-sandik-resim svg { width: 48px; height: 44px; display: block; }
+.f-kz-kutu-sandik .f-sandik-isin { display: none; }
+.f-kz-kutu-sandik .f-sandik-etiket { margin: 0; font-size: 19px; }
+.f-kz-kutu-sandik .f-sandik-sayac { position: static; margin-left: auto; font-size: 16px; }
+.f-kz-kutu-sandik .f-sandik-oduller { justify-content: flex-start; }

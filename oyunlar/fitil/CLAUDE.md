@@ -34,6 +34,16 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   `Arayuz.haritaKutlamasi()` bitince Defter kartı. Önizleme:
   `dev/kasaba.html?mahalle=0..7&isler=bos|yarim|tam|<n>|<id,…>&kutla=<id>&senlik=<m>&temiz=1&sancak=1|yarim&az=1`.
   Süssüz `bolgeCiz` çıktısı eskisiyle birebir (test).
+- Menü düzeni "Liste" (Ekim 2026, kullanıcı seçti; her yaş okusun): en küçük
+  yazı ~16 px, önemli satır 18–22 px. Bölüm kartı: ad + hedefler büyük yazılı
+  liste (ikon + metin, hamle ve kurallar aynı listede) + tek satır "Mühürler
+  1/3" + [Oyna] (mahalle çipi, yıldız/en iyi, tablo, yeni öğe, Coşku kartı
+  YOK; mühür görev metinleri Duraklat'ta, ilk mühürlü kartta `MK.muhurKart`
+  balonu). Kazandın: kurdele, tek satır bölüm, yıldız, mühür, puan, en çok iki
+  haber, ödül satırları (kandil, güçlendirici, "Sandığı aç"), yuvarlak Tekrar +
+  Devam; tablo kutusu ve tanıtım balonları yok. HUD hamle yuvarlağında yalnız
+  sayı. Kullanıcı yazı kalabalığına ve küçük yazıya duyarlı: yeni metin
+  eklerken kısa tut, satır sayısını artırma.
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).

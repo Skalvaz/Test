@@ -382,7 +382,6 @@ async function profilKos(browser, p) {
       // (Kancalar §C.5) Mühürlerin tanıtımı: yıldızlardan sonra mühür satırı + Kıvılcım Usta ipucu.
       await page.waitForTimeout(1500);
       if (!(await page.locator('.f-kz-muhurler').count())) hatalar.push(`[${p.ad}] b6 Kazandın'da mühür satırı yok`);
-      if (!(await page.getByText('Her bölümde üç mühür var').count())) hatalar.push(`[${p.ad}] b6 Kazandın'da mühür tanıtımı yok`);
       await kare('b6-muhur-tanitim');
     }
     if (s === 'kazandin' && n === 3) {
@@ -416,6 +415,9 @@ async function profilKos(browser, p) {
     await bekleKosul(page, () => window.__fitil.ekran() === 'bolumOncesi', null, 10000, 'b7 kartı');
     await page.waitForTimeout(800);
     if (!(await page.locator('.f-bo-muhurler').count())) hatalar.push(`[${p.ad}] b7 kartında mühür bloğu yok`);
+    // Mühür tanıtımı ilk mühürlü kartta bir kez (b6 sonrası otomatik b7 kartında görülmüş olabilir).
+    const muhurIpucuGoruldu = await page.evaluate(() => window.__fitil.kayit().ipuclari.gorulen.includes('muhur-kart'));
+    if (!muhurIpucuGoruldu && !(await page.getByText('Her bölümde 3 mühür görevi var').count())) hatalar.push(`[${p.ad}] b7 kartında mühür tanıtımı yok`);
     await kare('b7-karti-muhur');
     await dugme('Oyna').click();
     await bekleKosul(page, () => window.__fitil.ekran() === 'oyun', null, 10000, 'b7 oyun');

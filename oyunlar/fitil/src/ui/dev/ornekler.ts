@@ -117,7 +117,7 @@ export function bolumOncesiVm(v = '1'): BolumOncesiVM {
       tablo: { nadirlik: 'parlak' },
       cosku: true,
       muhurler: muhurlerVm(),
-      muhurIpucu: v === 'mi' ? 'Mühürler bölümü başka bir yolla oynatır. Üçünü ayrı denemelerde toplayabilirsin.' : null,
+      muhurIpucu: v === 'mi' ? 'Her bölümde 3 mühür görevi var. Görevleri oyunda Duraklat menüsünde görürsün.' : null,
     };
   if (v === '2')
     return {

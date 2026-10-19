@@ -10,12 +10,11 @@
  */
 import { h, say, bekle } from '../dom';
 import { yildizSvg, sandikSvg, ikon, muhurSvg, kandilSvg, type IkonAdi } from '../ikonlar';
-import { M, MK, NADIRLIK_ADLARI, bolumBasligi, sayi } from '../metinler';
+import { M, MK, bolumBasligi, sayi } from '../metinler';
 import { kandilUcur, merkez } from '../kanca';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
-import { odulOgesi, tabloCercevesi, ustaIpucu, nadirlikSirasi } from './ortak';
+import { odulOgesi, ustaIpucu, nadirlikSirasi } from './ortak';
 import type { KazandinVM, SandikVM } from '../tipler';
-import { tasarim } from '../tasarim';
 
 const YILDIZ_ILK = 520;
 const YILDIZ_ARA = 300;
@@ -26,7 +25,7 @@ const MUHUR_ARA = 250;
 export function kazandinEkrani(
   b: Baglam,
   vm: KazandinVM,
-  ek: { tablo?: HTMLCanvasElement | null } = {},
+  _ek: { tablo?: HTMLCanvasElement | null } = {},
 ): { soz: Promise<'devam' | 'tekrar'>; kapat: () => void } {
   const { soz, sec } = secimSozu<'devam' | 'tekrar'>();
   const az = b.az();
@@ -77,14 +76,12 @@ export function kazandinEkrani(
   );
   // Öğretim balonu (§15 Bölüm 5: "Yıldızlar puanından gelir.") yıldızların hemen altında:
   // düğmelerin arkasında kalmasın, anlattığı şeyin yanında dursun. Mühür tanıtımı da burada (§C.5).
-  const ipucu = [vm.ipucu, mv?.tanitim ? MK.muhurTanitim : null].filter(Boolean).join(' ');
+  const ipucu = vm.ipucu;
   if (ipucu) icerik.appendChild(ustaIpucu(ipucu));
 
   // ── Haberler: en önemli en çok iki açılış (sıra odulDuyurulari'nin önem sırası).
   const HABER = new Set(['mahalleTamam', 'muhurParcasi', 'guclendiriciAcildi', 'gunlukAcildi', 'sonsuzAcildi', 'ustaAcildi', 'fitil', 'efsane']);
-  const ts = tasarim();
-  // 1 (Sade): haber satırı yok; 2–3: en çok iki.
-  const haberler = ts === '1' ? [] : (vm.duyurular ?? []).filter((d) => d.oncelikli || HABER.has(d.tur ?? '')).slice(0, 2);
+  const haberler = (vm.duyurular ?? []).filter((d) => d.oncelikli || HABER.has(d.tur ?? '')).slice(0, 2);
   if (haberler.length) {
     icerik.appendChild(
       h('ul', { s: 'f-kz-haberler', 'aria-label': 'Haberler' }, haberler.map((d) => h('li', { s: 'f-kz-haber' }, ikon(d.ikon as IkonAdi), h('span', { t: d.metin })))),
@@ -101,43 +98,15 @@ export function kazandinEkrani(
     kandilKutu = h('li', { s: 'f-kz-kutu f-kz-kandil', 'aria-label': `${MK.kandilArti(kv.yeni - kv.onceki)}: ${kv.yeni}` }, kandilSvg(), kandilSayi, h('span', { s: 'f-kz-kutu-ad', t: 'kandil' }));
     kutular.appendChild(kandilKutu);
   }
-  for (const d of ts === '1' ? [] : (vm.duyurular ?? [])) {
+  for (const d of vm.duyurular ?? []) {
     if (d.tur !== 'guclendirici') continue;
     const [sayiKismi, ...ad] = d.metin.split(' ');
     kutular.appendChild(h('li', { s: 'f-kz-kutu', 'aria-label': d.metin }, ikon(d.ikon as IkonAdi), h('span', { s: 'f-kz-kutu-sayi f-sayi', t: sayiKismi }), h('span', { s: 'f-kz-kutu-ad', t: ad.join(' ').toLocaleLowerCase('tr') })));
   }
   if (vm.sandiklar.length > 0) kutular.appendChild(h('li', { s: 'f-kz-kutu f-kz-kutu-sandik' }, sandikKutusu(b, vm.sandiklar)));
-  let tabloKarari: boolean | null = null;
-  // 1 ve 3: tablo kutusu yok (Defter'de görünür); eski tablo varsa varsayılan karar uygulanır.
-  if (vm.tablo?.eskiVar && ts !== '2') tabloKarari = !vm.tablo.eskiNadirlik || nadirlikSirasi(vm.tablo.nadirlik) >= nadirlikSirasi(vm.tablo.eskiNadirlik);
-  if (vm.tablo && ts === '2') {
-    const tb = vm.tablo;
-    const kutu = h('li', { s: 'f-kz-kutu f-kz-tablo' }, tabloCercevesi(tb.nadirlik, ek.tablo ?? null));
-    if (tb.eskiVar) {
-      const varsayilan = !tb.eskiNadirlik || nadirlikSirasi(tb.nadirlik) >= nadirlikSirasi(tb.eskiNadirlik);
-      tabloKarari = varsayilan;
-      const sakla = h('button', { type: 'button', role: 'radio', t: M.sakla });
-      const koru = h('button', { type: 'button', role: 'radio', t: M.eskisiniKoru });
-      const boya = () => {
-        sakla.setAttribute('aria-checked', String(tabloKarari === true));
-        koru.setAttribute('aria-checked', String(tabloKarari === false));
-      };
-      sakla.addEventListener('click', () => {
-        tabloKarari = true;
-        boya();
-      });
-      koru.addEventListener('click', () => {
-        tabloKarari = false;
-        boya();
-      });
-      boya();
-      kutu.appendChild(h('div', { s: 'f-parcali f-kz-tablo-sec', role: 'radiogroup', 'aria-label': M.tabloEtiketi }, sakla, koru));
-      if (tb.eskiNadirlik) kutu.appendChild(h('small', { s: 'f-kz-eski', t: `Eski: ${NADIRLIK_ADLARI[tb.eskiNadirlik]}` }));
-    }
-    kutular.appendChild(kutu);
-  }
+  // Tablo kutusu yok (Defter'de görünür): eski tablo varsa daha nadir olan saklanır.
+  const tabloKarari: boolean | null = vm.tablo?.eskiVar ? !vm.tablo.eskiNadirlik || nadirlikSirasi(vm.tablo.nadirlik) >= nadirlikSirasi(vm.tablo.eskiNadirlik) : null;
   if (kutular.childElementCount) icerik.appendChild(kutular);
-  if (kv?.tanitim) icerik.appendChild(ustaIpucu(MK.kandilTanitim));
   if (mv || kv) icerik.classList.add('f-kancali');
 
   const bitir = (s: 'devam' | 'tekrar') => {
