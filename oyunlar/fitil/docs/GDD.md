@@ -59,7 +59,7 @@ Kapsam dışı (sonraki sürüm): Cep yuvası, sunucu veritabanı, çok oyunculu
 5. **Engeller ısıyla konuşur.** Kafes yalnız ısıyla ya da özel taşla açılır, kova ısıyı keser, dev fişek dolup fırlar, barut izi domino gibi yanar.
 6. **Bölüm içi zamanlama kararı:** Körük Göstergesi dolduğunda ne zaman kullanacağına oyuncu karar verir.
 7. **Ödül kişiseldir:** Her bölüm, oyuncunun kendi patlamalarından çizilen bir Gece Tablosu bırakır.
-8. **İş modeli farklıdır:** Can yok, bekleme yok, mağaza yok, satın alma yok.
+8. **İş modeli farklıdır:** Can yok, bekleme yok, mağaza yok, satın alma yok (şimdilik; gelecek taslağı §10.8).
 
 ---
 
@@ -798,6 +798,12 @@ Kartlar en fazla 4 cümlelik, kısa kültür notlarıdır; Ayarlar > Defter'den 
 
 ### 10.8 Can sistemi
 **YOKTUR.** Kaybetmenin tek sonucu Coşku Serisi'nin sıfırlanmasıdır. Tekrar dene düğmesi 1 sn'den kısa sürede yeni denemeyi başlatır.
+
+**Gelecek (taslak, Ekim 2026; henüz karar değil):** Ürün sahibi gelir için can dinamiği ve "reklam izle, devam et" istiyor. §1.1'deki 8. madde (can yok, mağaza yok) o gün yeniden yazılır. Uygulamadan önce netleşecekler:
+- **Yer:** claude.ai sayfası ve tek dosya `fitil.html` reklam ağı taşıyamaz; ödüllü reklam için mağaza uygulaması gerekir (ör. Android sarmalayıcı + AdMob). Gelir modeli o sürümle gelir.
+- **Yumuşak can:** cömert sayı (ör. 5), hızlı dolum; ilk mahallelerde (öğretim, İskele) can harcanmaz; kazanılan bölüm can harcamaz.
+- **Ödüllü reklam yalnız oyuncu isteyince:** kaybedince "+5 hamle için reklam izle" (bölüm başına bir kez), can bitince "reklamla 1 can"; zorunlu ara reklam yok.
+- **Kasaba bağı:** kandil ve kasaba işleri reklamsız kazanılır; reklam yalnız hızlandırır. Gündelik oyuncu hiç reklam izlemeden de ilerleyebilmeli.
 
 ---
 
