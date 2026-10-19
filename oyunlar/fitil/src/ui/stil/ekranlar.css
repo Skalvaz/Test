@@ -831,3 +831,49 @@ li.f-kz-tablo .f-tablo { width: 64px; max-width: 64px; }
 .f-dr-ikon-dg:active .f-dr-ikon-yuva { transform: translateY(2px); box-shadow: inset 0 2px 0 rgba(255, 220, 160, .2), 0 0 0 2px #C89A45, 0 2px 0 rgba(0, 0, 0, .45); }
 .f-dr-ikon-dg:focus-visible .f-dr-ikon-yuva { outline: 3px solid #FFE08A; outline-offset: 3px; }
 .f-dr-ikon-ad { font-size: 14px; font-weight: 800; color: var(--krem-2); }
+
+/* ── Okunaklılık (her yaş, Ekim 2026): en küçük yazı ~16 px, önemli satırlar 18–22 px. */
+.f-hamle-sayi { font-size: 30px; }
+.f-hamle-etiket { font-size: 11px; letter-spacing: 0; text-transform: none; margin-top: 1px; }
+.f-hedef-sayi { font-size: 22px; }
+.f-hedef.f-uzun .f-hedef-sayi { font-size: 16px; }
+.f-puan-sayi { font-size: 22px; }
+.f-hedef-kutu { max-width: 132px; }
+.f-hedef-kutu-metin { font-size: 18px; line-height: 1.15; }
+.f-bo-bilgiler .f-cip { font-size: 18px; padding-top: 4px; padding-bottom: 5px; }
+.f-muhur-metin > span { font-size: 17px; white-space: normal; }
+.f-muhur-durum { font-size: 15px; white-space: normal; }
+.f-muhur-kademe { font-size: 15px; width: 52px; }
+.f-kz-bolum { font-size: 18px; }
+.f-kz-haber { font-size: 17px; }
+.f-kz-kutu-sayi { font-size: 24px; }
+.f-kz-kutu-ad { font-size: 15px; }
+.f-dr-ikon-ad { font-size: 16px; }
+.f-bo-yeni-metin strong { font-size: 19px; }
+.f-bo-yeni-metin span:last-child { font-size: 16px; }
+.f-bo-ad { font-size: 30px; }
+
+/* GEÇİCİ: üç menü düzeni (src/ui/tasarim.ts) */
+.f-bo-muhur-sira { display: flex; justify-content: center; align-items: center; gap: 10px; }
+.f-bo-muhur-tek .f-muhur-svg { width: 36px; height: 36px; display: block; }
+.f-bo-muhur-yazi { font-size: 19px; font-weight: 800; color: var(--pirinc-acik); margin-right: 4px; }
+[data-tasarim="1"] .f-bo-hedefler .f-hedef-kutu-ikon { width: 80px; height: 80px; border-radius: 22px; }
+[data-tasarim="1"] .f-bo-hedefler .f-hedef-kutu-ikon .f-resim { width: 60px; height: 60px; }
+[data-tasarim="1"] .f-bo-hedefler .f-hedef-kutu-metin { font-size: 20px; }
+[data-tasarim="1"] .f-bo-bilgiler .f-cip { font-size: 20px; }
+[data-tasarim="1"] .f-kz-bolum { display: none; }
+.f-bo-liste { list-style: none; margin: 0; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; border-radius: 20px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .3), rgba(0, 0, 0, .16)); box-shadow: inset 0 2px 5px rgba(0, 0, 0, .4), 0 1px 0 rgba(255, 220, 160, .08); }
+.f-bo-liste li { display: flex; align-items: center; gap: 14px; font-size: 22px; font-weight: 800; line-height: 1.15; text-align: left; }
+.f-bo-liste-ikon { width: 54px; height: 54px; flex: none; display: grid; place-items: center; }
+.f-bo-liste-ikon .f-hedef-kutu-ikon { width: 54px; height: 54px; border-radius: 16px; }
+.f-bo-liste-ikon .f-hedef-kutu-ikon .f-resim { width: 42px; height: 42px; }
+.f-bo-liste-hamle { color: var(--krem-2); }
+.f-bo-liste-hamle .f-ikon { width: 32px; height: 32px; color: var(--pirinc-acik); }
+[data-tasarim="3"] .f-kz-kutular { flex-direction: column; align-items: stretch; gap: 8px; }
+[data-tasarim="3"] .f-kz-kutu { flex-direction: row; justify-content: flex-start; min-height: 0; gap: 12px; padding: 8px 16px; }
+[data-tasarim="3"] .f-kz-kutu-sayi { font-size: 24px; }
+[data-tasarim="3"] .f-kz-kutu-ad { font-size: 19px; }
+[data-tasarim="3"] .f-kz-kutu-sandik { justify-content: center; }
+[data-tasarim="3"] .f-kz-kutu-sandik .f-sandik { width: 84px; height: 72px; }
+[data-tasarim="3"] .f-kz-haber { font-size: 18px; }

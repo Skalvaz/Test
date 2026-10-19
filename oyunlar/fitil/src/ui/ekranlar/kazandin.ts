@@ -15,6 +15,7 @@ import { kandilUcur, merkez } from '../kanca';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { odulOgesi, tabloCercevesi, ustaIpucu, nadirlikSirasi } from './ortak';
 import type { KazandinVM, SandikVM } from '../tipler';
+import { tasarim } from '../tasarim';
 
 const YILDIZ_ILK = 520;
 const YILDIZ_ARA = 300;
@@ -81,7 +82,9 @@ export function kazandinEkrani(
 
   // ── Haberler: en önemli en çok iki açılış (sıra odulDuyurulari'nin önem sırası).
   const HABER = new Set(['mahalleTamam', 'muhurParcasi', 'guclendiriciAcildi', 'gunlukAcildi', 'sonsuzAcildi', 'ustaAcildi', 'fitil', 'efsane']);
-  const haberler = (vm.duyurular ?? []).filter((d) => d.oncelikli || HABER.has(d.tur ?? '')).slice(0, 2);
+  const ts = tasarim();
+  // 1 (Sade): haber satırı yok; 2–3: en çok iki.
+  const haberler = ts === '1' ? [] : (vm.duyurular ?? []).filter((d) => d.oncelikli || HABER.has(d.tur ?? '')).slice(0, 2);
   if (haberler.length) {
     icerik.appendChild(
       h('ul', { s: 'f-kz-haberler', 'aria-label': 'Haberler' }, haberler.map((d) => h('li', { s: 'f-kz-haber' }, ikon(d.ikon as IkonAdi), h('span', { t: d.metin })))),
@@ -98,14 +101,16 @@ export function kazandinEkrani(
     kandilKutu = h('li', { s: 'f-kz-kutu f-kz-kandil', 'aria-label': `${MK.kandilArti(kv.yeni - kv.onceki)}: ${kv.yeni}` }, kandilSvg(), kandilSayi, h('span', { s: 'f-kz-kutu-ad', t: 'kandil' }));
     kutular.appendChild(kandilKutu);
   }
-  for (const d of vm.duyurular ?? []) {
+  for (const d of ts === '1' ? [] : (vm.duyurular ?? [])) {
     if (d.tur !== 'guclendirici') continue;
     const [sayiKismi, ...ad] = d.metin.split(' ');
     kutular.appendChild(h('li', { s: 'f-kz-kutu', 'aria-label': d.metin }, ikon(d.ikon as IkonAdi), h('span', { s: 'f-kz-kutu-sayi f-sayi', t: sayiKismi }), h('span', { s: 'f-kz-kutu-ad', t: ad.join(' ').toLocaleLowerCase('tr') })));
   }
   if (vm.sandiklar.length > 0) kutular.appendChild(h('li', { s: 'f-kz-kutu f-kz-kutu-sandik' }, sandikKutusu(b, vm.sandiklar)));
   let tabloKarari: boolean | null = null;
-  if (vm.tablo) {
+  // 1 ve 3: tablo kutusu yok (Defter'de görünür); eski tablo varsa varsayılan karar uygulanır.
+  if (vm.tablo?.eskiVar && ts !== '2') tabloKarari = !vm.tablo.eskiNadirlik || nadirlikSirasi(vm.tablo.nadirlik) >= nadirlikSirasi(vm.tablo.eskiNadirlik);
+  if (vm.tablo && ts === '2') {
     const tb = vm.tablo;
     const kutu = h('li', { s: 'f-kz-kutu f-kz-tablo' }, tabloCercevesi(tb.nadirlik, ek.tablo ?? null));
     if (tb.eskiVar) {

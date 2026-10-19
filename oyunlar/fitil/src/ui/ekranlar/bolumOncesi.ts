@@ -1,35 +1,26 @@
 /**
- * Bölüm öncesi kartı (§14.3; sadeleştirme Ekim 2026): ad, mahalle, yıldızlar
- * + en iyi, hedefler ve hamle, mühürler, yeni öğe tek satır, Coşku tek satır.
+ * Bölüm öncesi kartı (§14.3; sadeleştirme Ekim 2026): ad, hedefler ve hamle,
+ * mühürler; büyük yazı. Mahalle çipi, en iyi puan, tablo küçük resmi ve
+ * Coşku kartı yok (harita/tahtada görünür). Üç düzen (`tasarim.ts`, geçici).
  * Büyük bulmaca oyunlarındaki gibi tek büyük [Oyna]; geri dönüş köşedeki X
  * (ve perde/Esc).
  */
 import { h } from '../dom';
-import { ikon, kapsulIsaretleme } from '../ikonlar';
-import { M, YENI_OGE, bolumBasligi, esikBilgisi, sayi } from '../metinler';
+import { ikon } from '../ikonlar';
+import { M, YENI_OGE, bolumBasligi, esikBilgisi } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
-import { hedefKutusu, mahalleCipi, tabloCercevesi, yeniOgeOnizleme, kucukYildizlar } from './ortak';
-import { svg } from '../dom';
+import { hedefKutusu, yeniOgeOnizleme, kucukYildizlar } from './ortak';
 import type { BolumOncesiVM } from '../tipler';
 import { muhurListesi } from '../kanca';
 import { ustaIpucu } from './ortak';
+import { tasarim } from '../tasarim';
+import { muhurSvg } from '../ikonlar';
+import { MK, hedefMetni } from '../metinler';
 
 export function bolumOncesiEkrani(b: Baglam, vm: BolumOncesiVM): { soz: Promise<'basla' | 'geri'>; kapat: () => void } {
   const { soz, sec } = secimSozu<'basla' | 'geri'>();
 
-  const ust = h('div', { s: 'f-bo-ust' }, mahalleCipi(vm.mahalle));
   const ad = h('h2', { s: 'f-baslik f-bo-ad', t: vm.ad });
-
-  // Yıldızlar + en iyi + tablo
-  const rekor = h(
-    'div',
-    { s: 'f-bo-rekor' },
-    h('div', { s: 'f-bo-rekor-sol' }, kucukYildizlar(vm.yildiz), vm.enIyi != null ? h('span', { s: 'f-bo-eniyi f-sayi', t: `${M.enIyi}: ${sayi(vm.enIyi)}` }) : null),
-  );
-  if (vm.tablo) {
-    const tuval = b.geri.tabloTuvali?.(vm.id) ?? null;
-    rekor.appendChild(h('div', { s: 'f-bo-tablo', title: M.tabloEtiketi }, tabloCercevesi(vm.tablo.nadirlik, tuval, false)));
-  }
 
   const bilgiler = h('div', { s: 'f-bo-bilgiler' }, h('span', { s: 'f-cip' }, ikon('hamle'), h('span', { s: 'f-sayi', t: `${vm.hamle} ${M.hamle}` })));
   const esik = esikBilgisi(vm.esik);
@@ -53,30 +44,44 @@ export function bolumOncesiEkrani(b: Baglam, vm: BolumOncesiVM): { soz: Promise<
         muhurListesi(vm.muhurler!),
       )
     : null;
-  const icerik = h('div', { s: `f-bo${muhurlu ? ' f-muhurlu' : ''}` }, ust, ad, rekor, hedefler, muhurler);
+  const ts = tasarim();
+  // Mühürler yazısız sıra (1, 3): basılı dolu, bekleyen boş halka; kart sadeleşir.
+  const muhurSirasi = muhurlu
+    ? h(
+        'div',
+        { s: 'f-bo-muhur-sira', role: 'img', 'aria-label': `${MK.muhurler}: ${vm.muhurler!.filter((m) => m.basili).length}/3` },
+        ts === '3' ? h('span', { s: 'f-bo-muhur-yazi', t: `${MK.muhurler} ${vm.muhurler!.filter((m) => m.basili).length}/3` }) : null,
+        vm.muhurler!.map((m) => h('span', { s: `f-bo-muhur-tek${m.basili ? ' f-basili' : ''}` }, muhurSvg(m.kademe, m.basili))),
+      )
+    : null;
+  // 3: hedefler büyük yazılı liste (ikon + metin), altında hamle satırı.
+  const liste =
+    ts === '3'
+      ? h(
+          'ul',
+          { s: 'f-bo-liste', 'aria-label': M.hedefler },
+          vm.hedefler.map((x) => h('li', null, h('span', { s: 'f-bo-liste-ikon' }, hedefKutusu(x, b.palet).firstElementChild!), h('span', { t: hedefMetni(x) }))),
+          h('li', { s: 'f-bo-liste-hamle' }, h('span', { s: 'f-bo-liste-ikon' }, ikon('hamle')), h('span', { t: `${vm.hamle} ${M.hamle}` })),
+        )
+      : null;
+  const icerik =
+    ts === '1'
+      ? h('div', { s: 'f-bo f-bo-t1' }, ad, hedefler, muhurSirasi)
+      : ts === '3'
+        ? h('div', { s: 'f-bo f-bo-t3' }, ad, liste, muhurSirasi)
+        : h('div', { s: `f-bo f-bo-t2${muhurlu ? ' f-muhurlu' : ''}` }, ad, h('div', { s: 'f-bo-rekor' }, kucukYildizlar(vm.yildiz)), hedefler, muhurler);
 
-  if (vm.yeniOge) {
+  if (vm.yeniOge && ts === '2') {
     const yo = YENI_OGE[vm.yeniOge];
     icerik.appendChild(
       h(
         'div',
         { s: 'f-bo-yeni' },
         yeniOgeOnizleme(vm.yeniOge, b.palet),
-        h('div', { s: 'f-bo-yeni-metin' }, h('span', { s: 'f-yeni-rozet', t: M.yeniOge }), h('strong', { t: yo.ad }), h('span', { t: yo.metin })),
+        h('div', { s: 'f-bo-yeni-metin' }, h('strong', { t: `${M.yeniOge}: ${yo.ad}` }), h('span', { t: yo.metin })),
       ),
     );
   }
-  if (vm.cosku) {
-    icerik.appendChild(
-      h(
-        'div',
-        { s: 'f-bo-cosku' },
-        svg(`<svg class="f-resim" viewBox="-24 -24 48 48" aria-hidden="true">${kapsulIsaretleme(0, 13, b.palet)}<path d="M-12 0H12M12 0l-5-4M12 0l-5 4M-12 0l5-4M-12 0l5 4" stroke="url(#ftl-pirinc)" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg>`),
-        h('span', { t: M.hazirRoket }),
-      ),
-    );
-  }
-
   const basla = dugme(M.oyna, 'birincil', () => {
     if (sec('basla')) t.kapat();
   }, { buyuk: true, odak: true, ikon: 'oynat' });

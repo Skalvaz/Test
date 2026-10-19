@@ -32,6 +32,7 @@ import { acilisEkrani } from './ekranlar/acilis';
 import { bolumOncesiEkrani } from './ekranlar/bolumOncesi';
 import { duraklatEkrani } from './ekranlar/duraklat';
 import { kazandinEkrani } from './ekranlar/kazandin';
+import { tasarim } from './tasarim';
 import { kaybettinEkrani } from './ekranlar/kaybettin';
 import { ayarlarEkrani, type AyarlarEk } from './ekranlar/ayarlar';
 import { nasilEkrani } from './ekranlar/nasil';
@@ -125,6 +126,7 @@ export class Arayuz {
   private muhurIptalci = new AbortController();
 
   constructor(s: ArayuzSecenek) {
+    tasarim(); // GEÇİCİ: menü alternatifi (data-tasarim)
     this.b = new Baglam({ kok: s.kok, ses: s.ses, titresim: s.titresim });
     this.b.geri = { ...(s.geri ?? {}) };
     this.b.palet = s.palet ?? 'standart';
