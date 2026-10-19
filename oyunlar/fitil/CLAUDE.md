@@ -34,6 +34,10 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   `Arayuz.haritaKutlamasi()` bitince Defter kartı. Önizleme:
   `dev/kasaba.html?mahalle=0..7&isler=bos|yarim|tam|<n>|<id,…>&kutla=<id>&senlik=<m>&temiz=1&sancak=1|yarim&az=1`.
   Süssüz `bolgeCiz` çıktısı eskisiyle birebir (test).
+- Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
+  korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
+  (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).
+  İyileştirme mevcut dilin içinde, öğe öğe yapılır.
 - Sözleşmeler: `src/core/types.ts` (durum, olaylar, bölüm verisi),
   `src/core/index.ts` (çekirdek API), `src/app/sozlesme.ts` (çizici, girdi, ses).
   Sözleşmede var olan bir alanın anlamını değiştirme; alan eklemek serbest.

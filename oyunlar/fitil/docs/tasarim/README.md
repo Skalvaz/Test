@@ -12,4 +12,7 @@ perçin, parlak şekerleme taşlar, degrade düğmeler, kurdele başlıklar, Bal
 
 Yazı tipleri `node_modules/@fontsource/...` yolundan yüklenir (bu klasörde
 `npm i @fontsource/alfa-slab-one @fontsource/archivo-narrow @fontsource/young-serif @fontsource/atkinson-hyperlegible`).
-Seçim yapılınca oyuna uygulanır; o zamana kadar yalnız başvuru.
+**Karar (19 Ekim 2026): ikisi de reddedildi.** Kullanıcı mevcut görsel dili
+(gece kasabası, ahşap HUD, parlak kapsüller) ikisinden de güzel buldu. Yön
+değiştirme önerme; iyileştirme gerekiyorsa mevcut dilin içinde, tek tek
+öğelerde yap.
