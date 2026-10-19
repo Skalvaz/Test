@@ -240,10 +240,10 @@ export const KASABA_ISLERI: readonly KasabaIsi[] = [
   // Kale (34)
   kasabaIsi(7, 0, 'Sur kandilleri', 'surKandilleri', 4, 'kandilDizisi', [329, 256], 'Sur dişlerinin arasına kandiller dizilir.', 'Surlar yüz yıl sonra yeniden yandı.'),
   kasabaIsi(7, 1, 'Burç bayrakları', 'burcBayraklari', 5, 'flama', [76, 386], 'Burçların tepesine uzun bayraklar çekilir.', 'Bayraklar şafakla yarışıyor.'),
-  kasabaIsi(7, 2, 'Kapı meşaleleri', 'kapiMesaleleri', 5, 'ates', [200, 582], 'Kale kapısının iki yanında meşaleler yanar.', 'Meşaleler kapıyı bekliyor, ben de.'),
+  kasabaIsi(7, 2, 'Kapı meşaleleri', 'kapiMesaleleri', 5, 'ates', [332, 562], 'Kale kapısının iki yanında meşaleler yanar.', 'Meşaleler kapıyı bekliyor, ben de.'),
   kasabaIsi(7, 3, 'Mazgal fenerleri', 'mazgalFenerleri', 6, 'parilti', [329, 292], 'Mazgal deliklerinden fener ışığı süzülür.', 'Kale gözlerini açtı.'),
   kasabaIsi(7, 4, 'Donanma ışıkları', 'donanmaIsiklari', 6, 'kandilDizisi', [329, 282], 'Surların bütün kenarları ışıkla çizilir: kale donanır.', 'İşte gerçek bir donanma gecesi!'),
-  kasabaIsi(7, 5, 'Büyük burç ateşi', 'burcAtesi', 8, 'ates', [200, 34], 'En yüksek burçta büyük şenlik ateşi yakılır.', 'Kıvılcım Usta bu ateşi görüyordur.'),
+  kasabaIsi(7, 5, 'Büyük burç ateşi', 'burcAtesi', 8, 'ates', [24, 92], 'Gözcü burcunda büyük şenlik ateşi yakılır.', 'Kıvılcım Usta bu ateşi görüyordur.'),
 ];
 
 /** Mahalle başına iş (son iş taç iştir). */
