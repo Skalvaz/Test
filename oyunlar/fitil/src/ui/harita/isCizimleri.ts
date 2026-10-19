@@ -804,6 +804,10 @@ export const CIZIMLER: Record<string, IsCizici> = {
   },
 
   // ═════════ Kale ═════════
+  // Kale'nin işleri burçların (binaların) üstündedir: mazgal dişleri, duvar,
+  // kapı. Sağ üstteki U8 Usta rozetinin altına (en uzun burcun tepesi) ışık
+  // konmaz (`kaleRozetAltinda`); büyük ateş sol üst terasın boş ucunda, kendi
+  // gözcü burcunda yanar; kapı meşaleleri ilk burcun kapısında.
   'kale.surKandilleri': (c, g) => {
     let i = 0;
     const kandiller: Nokta[] = [];
@@ -812,6 +816,7 @@ export const CIZIMLER: Record<string, IsCizici> = {
       const dis = (b.w + 6) / 5;
       for (const k of [1, 3]) {
         const p = { x: x0 + (k + 0.5) * dis, y: b.ust - 2 };
+        if (kaleRozetAltinda(g, p.x, p.y - 8)) continue;
         c.ekle(b.j as Katman, sekil(c, `M${f(p.x - 3)} ${f(p.y)}h6l-1 2h-4z`, '#B8642E'));
         if (c.yanik) alev(c, b.j as Katman, { x: p.x, y: p.y }, 6, i++, 1.6, false);
         else c.ekle(b.j as Katman, isik(c, { x: p.x, y: p.y - 2 }, 1.2));
@@ -838,28 +843,47 @@ export const CIZIMLER: Record<string, IsCizici> = {
     const b = g.binalar[1];
     c.capa = { x: b.x, y: b.ust + 16 };
   },
+  // Kalenin kapısı ilk burcun (36'nın binası) kapısıdır: taş kemer, demir
+  // parmaklık, iki yanında duvara çakılı meşaleler (alevler en alt pencere
+  // sırasının altında kalır). Giriş yuvasından (düğüm ile mahalle şeridi
+  // arası) taşındı.
   'kale.kapiMesaleleri': (c, g) => {
-    const y0 = g.ust + GIRIS_Y;
-    let s = sekil(c, `M164 ${f(y0)}V${f(y0 - 46)}H236V${f(y0)}z`, '#4A4250');
-    if (c.yanik) for (let y = y0 - 38; y < y0; y += 9) s += `<path d="M164 ${f(y)}H236" stroke="#3A3240" stroke-width="1"/>`;
-    for (let k = 0; k < 5; k += 2) s += sekil(c, `M${f(162 + (k * 76) / 5)} ${f(y0 - 54)}h${f(76 / 5)}v9h${f(-76 / 5)}z`, '#4A4250');
-    s += sekil(c, `M162 ${f(y0 - 47)}h76v4h-76z`, '#5A5260');
-    s += c.yanik ? `<path d="M184 ${f(y0)}V${f(y0 - 20)}A16 16 0 0 1 216 ${f(y0 - 20)}V${f(y0)}z" fill="#120C18"/><path d="M188 ${f(y0 - 26)}V${f(y0)}M194 ${f(y0 - 33)}V${f(y0)}M200 ${f(y0 - 35)}V${f(y0)}M206 ${f(y0 - 33)}V${f(y0)}M212 ${f(y0 - 26)}V${f(y0)}M184 ${f(y0 - 18)}H216M184 ${f(y0 - 9)}H216" stroke="#3A3440" stroke-width="1.4"/><rect x="186" y="${f(y0 - 6)}" width="28" height="6" fill="#FFB020" opacity=".12"/>` : sekil(c, `M184 ${f(y0)}V${f(y0 - 20)}A16 16 0 0 1 216 ${f(y0 - 20)}V${f(y0)}z`, '#1A1420');
-    // Meşale kolları.
-    for (const x of [172, 228]) s += `<path d="M${x} ${f(y0 - 22)}l${x < 200 ? 2 : -2} 6" stroke="${c.yanik ? '#2A1A10' : HAYALET_CIZGI}" stroke-width="1.4"/><path d="M${x - 1.6} ${f(y0 - 34)}h3.2l-.6 12h-2z" fill="${c.yanik ? '#5A3A22' : HAYALET}"/>`;
-    c.ekle('on', s);
-    alev(c, 'on', { x: 172, y: y0 - 33 }, 13, 0, 1.4);
-    alev(c, 'on', { x: 228, y: y0 - 33 }, 13, 1, 1.4);
-    kivilcim(c, { x: 172, y: y0 - 44 }, 2, 22, '#FFD15C', 6);
-    kivilcim(c, { x: 228, y: y0 - 44 }, 2, 22, '#FFD15C', 6);
-    c.capa = P(g, 200, GIRIS_Y - 30);
+    const b = g.binalar[0];
+    const x = b.x;
+    const t = b.taban;
+    // Bina kapısı (cizim.ts): 18 genişlik, kemer merkezi tabandan 14 yukarıda.
+    const yk = t - 14;
+    const kapi = `M${f(x - 9)} ${f(t)}V${f(yk)}A9 9 0 0 1 ${f(x + 9)} ${f(yk)}V${f(t)}z`;
+    let s = '';
+    // Kemer taşları.
+    s += `<path d="M${f(x - 11.5)} ${f(t)}V${f(yk)}A11.5 11.5 0 0 1 ${f(x + 11.5)} ${f(yk)}V${f(t)}" fill="none" stroke="${c.yanik ? '#5A5260' : HAYALET_CIZGI}" stroke-width="3"/>`;
+    if (c.yanik)
+      for (const a of [200, 230, 260, 290, 320, 340])
+        s += `<path d="M${f(x + Math.cos((a * Math.PI) / 180) * 10)} ${f(yk + Math.sin((a * Math.PI) / 180) * 10)}L${f(x + Math.cos((a * Math.PI) / 180) * 13)} ${f(yk + Math.sin((a * Math.PI) / 180) * 13)}" stroke="#3A3240" stroke-width=".9"/>`;
+    // Kapının içi, parmaklık ve eşikten sızan sıcak ışık.
+    if (c.yanik) {
+      s += `<path d="${kapi}" fill="#120C18"/><rect x="${f(x - 8)}" y="${f(t - 7)}" width="16" height="7" fill="#FFB020" opacity=".2"/>`;
+      let p = '';
+      for (const dx of [-6, -2, 2, 6]) p += `M${f(x + dx)} ${f(yk - Math.sqrt(81 - dx * dx) + 0.6)}V${f(t)}`;
+      p += `M${f(x - 8.5)} ${f(t - 17)}H${f(x + 8.5)}M${f(x - 9)} ${f(t - 9)}H${f(x + 9)}`;
+      s += `<path d="${p}" stroke="#3A3440" stroke-width="1.2"/>`;
+    } else s += sekil(c, kapi, '#1A1420');
+    // Meşale sapları ve duvar kolları.
+    for (const mx of [x - 15, x + 15]) s += `<path d="M${f(mx)} ${f(t - 11)}l${mx < x ? 1.6 : -1.6} 4.5" stroke="${c.yanik ? '#2A1A10' : HAYALET_CIZGI}" stroke-width="1.2"/><path d="M${f(mx - 1.2)} ${f(t - 20)}h2.4l-.45 9h-1.5z" fill="${c.yanik ? '#5A3A22' : HAYALET}"/>`;
+    c.ekle(0, s);
+    alev(c, 0, { x: x - 15, y: t - 19.2 }, 10, 0, 1.4);
+    alev(c, 0, { x: x + 15, y: t - 19.2 }, 10, 1, 1.4);
+    kivilcim(c, { x: x - 15, y: t - 27 }, 2, 18, '#FFD15C', 5);
+    kivilcim(c, { x: x + 15, y: t - 27 }, 2, 18, '#FFD15C', 5);
+    c.capa = { x, y: t - 20 };
   },
   'kale.mazgalFenerleri': (c, g) => {
     const ps: Nokta[] = [];
     for (const b of g.binalar) {
-      for (const dy of [20, 52]) {
+      // Uzun burçta (40) üçüncü mazgal: rozetin altında kalan üstteki yerine.
+      for (const dy of [20, 52, 84]) {
         const p = { x: b.x, y: b.ust + dy };
-        if (p.y > b.taban - 26) continue;
+        if (p.y > b.taban - 26 || kaleRozetAltinda(g, p.x, p.y - 5)) continue;
         let s = c.yanik ? `<path d="M${f(p.x - 1)} ${f(p.y)}L${f(p.x - 14)} ${f(p.y + 22)}H${f(p.x + 14)}L${f(p.x + 1)} ${f(p.y)}z" fill="url(#hs-mazgal)" opacity=".5"/>` : '';
         s += c.yanik ? `<rect ${c.sira()} x="${f(p.x - 1.4)}" y="${f(p.y - 5)}" width="2.8" height="10" rx="1.2" fill="#FFD15C"/>` : `<rect x="${f(p.x - 1.4)}" y="${f(p.y - 5)}" width="2.8" height="10" rx="1.2" fill="${HAYALET}" stroke="${HAYALET_CIZGI}" stroke-width=".5"/>`;
         c.ekle(b.j as Katman, s);
@@ -870,15 +894,27 @@ export const CIZIMLER: Record<string, IsCizici> = {
     const b = g.binalar[2];
     c.capa = { x: b.x, y: b.ust + 30 };
   },
-  'kale.donanmaIsiklari': (c, g) => {
+  'kale.donanmaIsiklari': (c, g, bag) => {
     const tum: Nokta[] = [];
+    const bayrakli = bag.ciziliyor('kale.burcBayraklari');
     for (const b of g.binalar) {
-      const x0 = b.x - b.w / 2;
-      const x1 = b.x + b.w / 2;
+      // Köşe dizileri; düğüme bakan köşe düğümden en az 38 birim uzak kalır
+      // (küçük telefonda düğüm + yıldızlar + pay), burç iki yandan eşit içeri.
+      const d = g.dugumler[b.j];
+      const ic = Math.max(1, b.taraf === 'sol' ? b.x + b.w / 2 - (d.x - 38) : d.x + 38 - (b.x - b.w / 2));
+      const x0 = b.x - b.w / 2 + ic;
+      const x1 = b.x + b.w / 2 - ic;
       const ps: Nokta[] = [];
-      for (let y = b.ust + 6; y < b.taban - 4; y += 9) ps.push({ x: x0 + 1, y }, { x: x1 - 1, y });
+      for (let y = b.ust + 6; y < b.taban - 4; y += 9)
+        for (const x of [x0, x1]) {
+          if (kaleRozetAltinda(g, x, y - 2)) continue;
+          // Burç bayrağının kumaşına ampul düşmez (bayrak: köşeden 6 içeride, 24 boy).
+          if (bayrakli && b.j < 4 && y < b.ust + 31 && Math.abs(x - (x < b.x ? b.x - b.w / 2 + 6 : b.x + b.w / 2 - 6)) < 4.3) continue;
+          ps.push({ x, y });
+        }
       const dis = (b.w + 6) / 5;
-      for (let k = 0; k < 5; k += 2) ps.push({ x: x0 - 3 + k * dis + 1, y: b.ust - 9 }, { x: x0 - 3 + (k + 1) * dis - 1, y: b.ust - 9 });
+      for (let k = 0; k < 5; k += 2)
+        for (const x of [b.x - b.w / 2 - 3 + k * dis + 1, b.x - b.w / 2 - 3 + (k + 1) * dis - 1]) if (!kaleRozetAltinda(g, x, b.ust - 11)) ps.push({ x, y: b.ust - 9 });
       c.ekle(b.j as Katman, isiklar(c, ps, 1.05, '#FFE9B0', 0));
       tum.push(...ps);
     }
@@ -886,20 +922,30 @@ export const CIZIMLER: Record<string, IsCizici> = {
     const b = g.binalar[2];
     c.capa = { x: b.x, y: b.ust + 20 };
   },
+  // Gözcü burcu: 39'un terasında, binanın solundaki boş taş zeminde tek başına
+  // yükselir; mangalı komşu burcun mazgallarından yüksekte. Eskiden mahallenin
+  // üst ortasında, 40'ın terasının ucunda havada duruyordu.
   'kale.burcAtesi': (c, g) => {
-    const y = (v: number) => g.ust + v;
-    let s = hale(c, P(g, 200, 34), 88, 0.42);
-    s += sekil(c, `M184 ${f(y(102))}V${f(y(94))}H216V${f(y(102))}z`, '#3A3446');
-    s += sekil(c, `M188 ${f(y(94))}V${f(y(62))}H212V${f(y(94))}z`, '#4A4250');
-    if (c.yanik) s += `<path d="M188 ${f(y(70))}h24M188 ${f(y(78))}h24M188 ${f(y(86))}h24M200 ${f(y(62))}v8M194 ${f(y(70))}v8M206 ${f(y(78))}v8" stroke="#3A3240" stroke-width="1"/>`;
-    s += sekil(c, `M182 ${f(y(62))}h36l-4-12h-28z`, '#2A2430');
-    if (c.yanik) s += `<path d="M186 ${f(y(52))}h28M188 ${f(y(56))}h24" stroke="#5A5060" stroke-width="1"/><ellipse cx="200" cy="${f(y(50))}" rx="14" ry="3" fill="#FFB020" opacity=".6"/>`;
-    c.ekle('on', s);
-    alev(c, 'on', { x: 200, y: y(52) }, 40, 0, 1.4);
-    alev(c, 'on', { x: 190, y: y(53) }, 24, 1);
-    alev(c, 'on', { x: 210, y: y(53) }, 26, 2);
-    kivilcim(c, { x: 200, y: y(14) }, 8, 60, '#FFD15C', 24);
-    c.capa = P(g, 200, 34);
+    const b = g.binalar[3];
+    const t = b.taban;
+    const x = (b.x - b.w / 2) / 2 + 1;
+    const ust = b.ust - 16;
+    let s = hale(c, { x, y: ust - 30 }, 72, 0.42);
+    s += sekil(c, `M${f(x - 17)} ${f(t)}V${f(t - 9)}H${f(x + 17)}V${f(t)}z`, '#3A3446');
+    s += sekil(c, `M${f(x - 13)} ${f(t - 9)}V${f(ust)}H${f(x + 13)}V${f(t - 9)}z`, '#4A4250');
+    if (c.yanik) {
+      let p = '';
+      for (let y = ust + 8, k = 0; y < t - 9; y += 8, k++) p += `M${f(x - 13)} ${f(y)}h26M${f(x + [0, -6, 6][k % 3])} ${f(y - 8)}v8`;
+      s += `<path d="${p}" stroke="#3A3240" stroke-width="1"/><path d="M${f(x - 12.4)} ${f(ust)}V${f(t - 9)}" stroke="#6A6070" stroke-width="1.2" opacity=".6"/>`;
+    }
+    s += sekil(c, `M${f(x - 18)} ${f(ust)}h36l-4-12h-28z`, '#2A2430');
+    if (c.yanik) s += `<path d="M${f(x - 14)} ${f(ust - 10)}h28M${f(x - 12)} ${f(ust - 6)}h24" stroke="#5A5060" stroke-width="1"/><ellipse cx="${f(x)}" cy="${f(ust - 12)}" rx="14" ry="3" fill="#FFB020" opacity=".6"/>`;
+    c.ekle(3, s);
+    alev(c, 3, { x, y: ust - 10 }, 40, 0, 1.4);
+    alev(c, 3, { x: x - 10, y: ust - 9 }, 24, 1);
+    alev(c, 3, { x: x + 10, y: ust - 9 }, 26, 2);
+    kivilcim(c, { x, y: ust - 48 }, 8, 60, '#FFD15C', 24);
+    c.capa = { x, y: ust - 26 };
   },
 };
 
@@ -913,4 +959,13 @@ function gemiGovdesi(c: Cizim, g: BolgeGeo, b: CizimBaglami, sahip: string): voi
   s += `<path d="M262 ${f(t - 10)}L300 ${f(t - 80)}M300 ${f(t - 80)}L352 ${f(t - 72)}M352 ${f(t - 72)}L396 ${f(t - 10)}" stroke="#1E2E38" stroke-width=".7"/>`;
   s += `<path d="M268 ${f(t + 7)}h112" stroke="${SICAK}" stroke-opacity=".12" stroke-width="2"/>`;
   c.ekle(0, s);
+}
+
+/**
+ * Kale: sağ üstteki U8 Usta rozetinin (ustaKonumu: x 340, mahallenin üst
+ * kenarı) bölgesi ve çevresindeki boşluk. Buraya düşen süs çizilmez (rozetin
+ * altında kalır, seçilmez). `y` küresel.
+ */
+function kaleRozetAltinda(g: BolgeGeo, x: number, y: number): boolean {
+  return x > 294 && x < 386 && y - g.ust < 40;
 }
