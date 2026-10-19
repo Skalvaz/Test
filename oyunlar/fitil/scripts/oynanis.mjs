@@ -175,7 +175,7 @@ async function profilKos(browser, p) {
         await kare('defter-karti');
         await dugme('Devam').click();
       } else if (s === 'bolumOncesi') {
-        await dugme('Geri').click();
+        await dugme('Kapat').click();
       } else if (s === 'harita') {
         await page.waitForTimeout(1700);
         if ((await ekran(page)) === 'harita') break;
@@ -282,7 +282,7 @@ async function profilKos(browser, p) {
     await page.waitForTimeout(800);
     if (!(await page.locator('.f-bo-muhurler').count())) hatalar.push(`[${p.ad}] b${sira} kartında mühür bloğu yok`);
     await kare(`b${sira}-karti-muhur`);
-    await dugme('Başla').click();
+    await dugme('Oyna').click();
     await bekleKosul(page, () => window.__fitil.ekran() === 'oyun', null, 10000, 'oyun');
     await page.waitForTimeout(800);
     if (!(await page.locator('.f-muhur-rozet').count())) hatalar.push(`[${p.ad}] HUD'da mühür rozeti yok`);
@@ -353,7 +353,7 @@ async function profilKos(browser, p) {
     await bekleKosul(page, () => window.__fitil.ekran() === 'bolumOncesi', null, 15000, 'otomatik bölüm 2 kartı');
     await page.waitForTimeout(700);
     await kare('bolum2-karti');
-    await dugme('Geri').click();
+    await dugme('Kapat').click();
     await page.waitForTimeout(600);
   } else await haritayaDon();
 
@@ -382,7 +382,7 @@ async function profilKos(browser, p) {
       // (Kancalar §C.5) Mühürlerin tanıtımı: yıldızlardan sonra mühür satırı + Kıvılcım Usta ipucu.
       await page.waitForTimeout(1500);
       if (!(await page.locator('.f-kz-muhurler').count())) hatalar.push(`[${p.ad}] b6 Kazandın'da mühür satırı yok`);
-      if (!(await page.getByText('Yeni: Mühürler!').count())) hatalar.push(`[${p.ad}] b6 Kazandın'da mühür tanıtımı yok`);
+      if (!(await page.getByText('Her bölümde üç mühür var').count())) hatalar.push(`[${p.ad}] b6 Kazandın'da mühür tanıtımı yok`);
       await kare('b6-muhur-tanitim');
     }
     if (s === 'kazandin' && n === 3) {
@@ -417,7 +417,7 @@ async function profilKos(browser, p) {
     await page.waitForTimeout(800);
     if (!(await page.locator('.f-bo-muhurler').count())) hatalar.push(`[${p.ad}] b7 kartında mühür bloğu yok`);
     await kare('b7-karti-muhur');
-    await dugme('Başla').click();
+    await dugme('Oyna').click();
     await bekleKosul(page, () => window.__fitil.ekran() === 'oyun', null, 10000, 'b7 oyun');
     await page.waitForTimeout(700);
     if (!(await page.locator('.f-muhur-rozet').count())) hatalar.push(`[${p.ad}] b7 HUD'da mühür rozeti yok`);
@@ -459,7 +459,7 @@ async function profilKos(browser, p) {
     await bekleKosul(page, () => window.__fitil.ekran() === 'bolumOncesi', null, 180000, 'sonsuz bölüm üretildi');
     await page.waitForTimeout(700);
     await kare('sonsuz-karti');
-    await dugme('Geri').click();
+    await dugme('Kapat').click();
     await page.waitForTimeout(800);
   }
 
@@ -499,7 +499,7 @@ async function profilKos(browser, p) {
   await bekleKosul(page, () => window.__fitil.ekran() === 'bolumOncesi', null, 120000, 'günlük bölüm üretildi');
   await page.waitForTimeout(700);
   await kare('gunluk-karti');
-  await dugme('Başla').click();
+  await dugme('Oyna').click();
   await bekleKosul(page, () => window.__fitil.ekran() === 'oyun', null, 10000, 'günlük bölüm başladı');
   await page.waitForTimeout(900);
   await kare('gunluk-oyun');

@@ -446,7 +446,6 @@ export class HaritaEkrani {
       { s: `f-harita-hap f-gunluk-hap${vm.gunluk.acik ? '' : ' f-kilitli'}`, type: 'button', 'aria-label': `${M.gunlukGorev}: ${vm.gunluk.tamam}/${vm.gunluk.toplam}` },
       ikon('takvim'),
       h('span', { s: 'f-sayi', t: vm.gunluk.acik ? `${vm.gunluk.tamam}/${vm.gunluk.toplam}` : '' }),
-      vm.gunluk.acik && vm.gunluk.tamam < vm.gunluk.toplam ? h('span', { s: 'f-nokta' }) : null,
     );
     gunluk.addEventListener('click', () => (vm.gunluk.acik ? this.sec({ tur: 'gunluk' }) : this.b.toast(M.gunlukKilitli)));
     const yardim = h('button', { s: 'f-yuvarlak f-harita-yardim', type: 'button', 'aria-label': M.nasilOynanir }, ikon('soru'));
@@ -459,7 +458,8 @@ export class HaritaEkrani {
     alt.replaceChildren(
       this.sekme(M.gununSenligi, 'takvim', { tur: 'gunluk' }, vm.gunluk.acik && vm.gunluk.tamam < vm.gunluk.toplam, !vm.gunluk.acik),
       this.sekme(M.fisekDefteri, 'defter', { tur: 'defter' }, !!vm.defterYeni),
-      this.sekme(M.istatistik, 'kupa', { tur: 'istatistik' }, !!vm.rozetYeni),
+      // Bildirim noktası yalnız oyuncuyu bir yere çağıran şeyde (günlük, defter); yeni rozet nokta çıkarmaz.
+      this.sekme(M.istatistik, 'kupa', { tur: 'istatistik' }),
       this.sekme(M.ayarlar, 'ayar', { tur: 'ayarlar' }),
     );
     // (Kancalar §C.1) Kasaba düğmesi: kandil ikonu + sayı + "Kasaba"; yapılabilir iş varsa amber nokta.

@@ -49,7 +49,7 @@ export const M = {
   sonsuzSenlik: 'Sonsuz Şenlik',
 
   // Bölüm öncesi
-  hazirRoket: 'Hazır roketle başlıyorsun!',
+  hazirRoket: 'Hazır roketle başlıyorsun',
   coskuSerisi: 'Coşku Serisi',
   yeniOge: 'Yeni',
   tabloEtiketi: 'Gece Tablosu',
@@ -81,8 +81,8 @@ export const M = {
   // Kazandın
   // 1★ da bir kazançtır (bütün hedefler tamam): başlık olumlu; ilk bölümde çoğu oyuncu 1★ alır.
   kazandinBaslik: ['Başardın!', 'Başardın!', 'Harika!', 'Muhteşem!'] as const,
-  yeniRekor: 'YENİ REKOR!',
-  sandikAc: 'Dokun, aç!',
+  yeniRekor: 'Yeni rekor',
+  sandikAc: 'Aç',
   sonrakiSandik: 'Sonraki sandık',
   tekrarOyna: 'Tekrar oyna',
   sakla: 'Sakla',
@@ -266,7 +266,7 @@ export const MK = {
   muhurIlerleme: (deger: number, hedef: number, tek: boolean) => (tek ? `En iyi ${deger}/${hedef}` : `${deger}/${hedef}`),
   rozetEtiket: (n: number) => `Mühürler: ${n}/3`,
   yeni: 'YENİ',
-  muhurTanitim: 'Yeni: Mühürler! Her bölümde üç görev var; kazandığın oyunda tutanlar basılır.',
+  muhurTanitim: 'Her bölümde üç mühür var. Kazandığın oyunda tutanlar basılır.',
   muhurKart: 'Mühürler bölümü başka bir yolla oynatır. Üçünü ayrı denemelerde toplayabilirsin.',
   muhurHud: 'Mühür tuttu! Kazanırsan basılır.',
   sancakIlk: 'Üç mühür: çatıya sancak!',
@@ -278,7 +278,7 @@ export const MK = {
   kandil: 'Kandil',
   kandilSayisi: (n: number) => `${n} kandil`,
   kandilArti: (n: number) => `+${n} kandil`,
-  kandilTanitim: 'Yıldızların kandile döndü!',
+  kandilTanitim: 'Her yeni yıldız bir kandil. Kandille kasabayı süsle.',
   yap: 'Yap',
   yapildi: 'Yapıldı',
   eksik: (n: number) => `${n} eksik`,
@@ -288,7 +288,7 @@ export const MK = {
   kasabaKapali: '3. bölümü kazanınca açılır',
   kandilYetti: (is: string) => `Kandil yetti: ${is} yapalım mı?`,
   kasabaIlk: 'Yıldızların kandile döndü! Kasabayı süsleyelim.',
-  kasabaHosgeldin: (n: number) => `Fener Koyu seni bekliyordu: ${n} kandilin var!`,
+  kasabaHosgeldin: (n: number) => `Fener Koyu seni bekliyordu. ${n} kandilin var.`,
   isHazir: 'Kasabada yapılacak iş hazır!',
   sakinIsleri: (m: number) => `${SAKIN_IYELIK[m] ?? ''} işleri`,
   mahalleSenligi: 'Mahalle şenliği',

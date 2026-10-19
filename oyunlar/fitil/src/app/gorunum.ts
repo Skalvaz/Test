@@ -474,60 +474,60 @@ export function coskuRoketi(v: BolumVerisi, k: Kayit): boolean {
 }
 
 /** Kazançla gelen ödüllerden Kazandın kartındaki kısa duyurular (sandık ve tablo kendi yerinde), önem sırasıyla. */
-export function odulDuyurulari(oduller: readonly meta.Odul[], s: { sonrakiBolum?: number } = {}): { ikon: string; metin: string; oncelikli?: boolean }[] {
+export function odulDuyurulari(oduller: readonly meta.Odul[], s: { sonrakiBolum?: number } = {}): { tur: string; ikon: string; metin: string; oncelikli?: boolean }[] {
   // Sıradaki bölüm öğretimse hazır roket verilmez (coskuRoketi): duyuru da çıkmaz.
   const sonrakiOgretim = s.sonrakiBolum !== undefined && bolumGetir(s.sonrakiBolum)?.tur === 'ogretim';
   const sirali = oduller
     .map((o, i) => ({ o, i }))
     .sort((a, b) => (DUYURU_ONEMI[a.o.tur] ?? 9) - (DUYURU_ONEMI[b.o.tur] ?? 9) || a.i - b.i)
     .map((x) => x.o);
-  const r: { ikon: string; metin: string; oncelikli?: boolean }[] = [];
+  const r: { tur: string; ikon: string; metin: string; oncelikli?: boolean }[] = [];
   for (const o of sirali) {
     switch (o.tur) {
       case 'guclendiriciAcildi':
-        r.push({ ikon: o.guc, metin: `${GUC_ADI[o.guc]} açıldı · ${o.verilen.adet} hediye` });
+        r.push({ tur: o.tur, ikon: o.guc, metin: `${GUC_ADI[o.guc]} açıldı · ${o.verilen.adet} hediye` });
         break;
       case 'guclendirici':
-        if (o.neden !== 'mahalle') r.push({ ikon: o.verilen.guc, metin: o.verilen.adet > 0 ? `+${o.verilen.adet} ${GUC_ADI[o.verilen.guc]}` : `+${o.verilen.toz} toz` });
+        if (o.neden !== 'mahalle') r.push({ tur: o.tur, ikon: o.verilen.guc, metin: o.verilen.adet > 0 ? `+${o.verilen.adet} ${GUC_ADI[o.verilen.guc]}` : `+${o.verilen.toz} toz` });
         break;
       case 'gunlukAcildi':
-        r.push({ ikon: 'takvim', metin: 'Günün Şenliği açıldı' });
+        r.push({ tur: o.tur, ikon: 'takvim', metin: 'Günün Şenliği açıldı' });
         break;
       case 'sonsuzAcildi':
-        r.push({ ikon: 'alev', metin: 'Sonsuz Şenlik açıldı' });
+        r.push({ tur: o.tur, ikon: 'alev', metin: 'Sonsuz Şenlik açıldı' });
         break;
       case 'ustaAcildi':
-        r.push({ ikon: 'sapka', metin: `Usta Bölümü ${o.ustaNo} açıldı` });
+        r.push({ tur: o.tur, ikon: 'sapka', metin: `Usta Bölümü ${o.ustaNo} açıldı` });
         break;
       case 'mahalleTamam':
-        r.push({ ikon: 'harita', metin: `${MAHALLELER[o.mahalle]?.ad ?? 'Mahalle'} tamamlandı` });
+        r.push({ tur: o.tur, ikon: 'harita', metin: `${MAHALLELER[o.mahalle]?.ad ?? 'Mahalle'} tamamlandı` });
         break;
       case 'efsane':
-        r.push({ ikon: 'defter', metin: 'Efsane kartı açıldı' });
+        r.push({ tur: o.tur, ikon: 'defter', metin: 'Efsane kartı açıldı' });
         break;
       case 'motif':
-        r.push({ ikon: o.motif, metin: 'Işık Deseni haritaya asıldı' });
+        r.push({ tur: o.tur, ikon: o.motif, metin: 'Işık Deseni haritaya asıldı' });
         break;
       case 'rozet':
-        r.push({ ikon: 'rozet', metin: `Rozet: ${o.ad}` });
+        r.push({ tur: o.tur, ikon: 'rozet', metin: `Rozet: ${o.ad}` });
         break;
       case 'gorev':
-        r.push({ ikon: 'tik', metin: `Görev: ${o.metin}` });
+        r.push({ tur: o.tur, ikon: 'tik', metin: `Görev: ${o.metin}` });
         break;
       case 'seriBasamagi':
-        if (o.basamak > 0) r.push({ ikon: 'alev', metin: `Fener Nöbeti: ${o.ad}` });
+        if (o.basamak > 0) r.push({ tur: o.tur, ikon: 'alev', metin: `Fener Nöbeti: ${o.ad}` });
         break;
       case 'fitil':
-        r.push({ ikon: 'denizFeneri', metin: 'Deniz Feneri fitili senin' });
+        r.push({ tur: o.tur, ikon: 'denizFeneri', metin: 'Deniz Feneri fitili senin' });
         break;
       case 'cosku':
-        if (o.aktif && !o.bozuldu && !sonrakiOgretim) r.push({ ikon: 'roket', metin: 'Coşku: sıradaki bölüm roketle başlar' });
+        if (o.aktif && !o.bozuldu && !sonrakiOgretim) r.push({ tur: o.tur, ikon: 'roket', metin: 'Coşku: sıradaki bölüm roketle başlar' });
         break;
       case 'muhurParcasi': {
         // (Kancalar §A.6) Mahallenin 5/10/15. mührü: fitil parçası (ya da üçü varsa toz).
         const ad = FITILLER.find((f) => f.id === o.fitil)?.ad ?? 'Fitil';
         // Şerit sırası (§C.5): kandil → mühür parçası → diğerleri; kısa ekranda da "+N daha"ya gömülmez.
-        r.push({ ikon: 'alev', metin: o.parca ? MK.parcaDuyuru(ad, o.esik) : MK.tozDuyuru(o.toz, o.esik), oncelikli: true });
+        r.push({ tur: o.tur, ikon: 'alev', metin: o.parca ? MK.parcaDuyuru(ad, o.esik) : MK.tozDuyuru(o.toz, o.esik), oncelikli: true });
         break;
       }
       default:

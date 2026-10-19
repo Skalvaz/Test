@@ -1,4 +1,8 @@
-/** Duraklat (§14.5): [Devam] [Yeniden başla] [Ayarlar] [Haritaya dön]. */
+/**
+ * Duraklat (§14.5; sadeleştirme Ekim 2026): tek satır bölüm, hedefler, mühürler;
+ * büyük [Devam] ve altında yuvarlak simge düğmeleri [Yeniden] [Ayarlar] [Harita]
+ * (büyük bulmaca oyunlarındaki küçük duraklat kutusu gibi).
+ */
 import { h } from '../dom';
 import { hedefIkonu } from '../ikonlar';
 import { M, bolumBasligi, hedefKalan, hedefEtiketi, sayi } from '../metinler';
@@ -25,11 +29,15 @@ export function duraklatEkrani(b: Baglam, vm: DuraklatVM): { soz: Promise<Durakl
       ),
     ),
   );
-  const yeniden = dugme(M.yenidenBasla, 'ikincil', () => secVeKapat('yeniden'), { ikon: 'tekrar' });
+  const ikonDugme = (ad: string, etiket: string, ik: Parameters<typeof ikon>[0], fn: () => void) => {
+    const d = h('button', { type: 'button', s: 'f-dr-ikon-dg', 'aria-label': etiket }, h('span', { s: 'f-dr-ikon-yuva' }, ikon(ik)), h('span', { s: 'f-dr-ikon-ad', t: ad }));
+    d.addEventListener('click', fn);
+    return d;
+  };
   const icerik = h(
     'div',
     { s: 'f-dr' },
-    h('div', { s: 'f-dr-bolum' }, h('span', { s: 'f-etiket', t: bolumBasligi(vm.bolumId) }), h('h2', { s: 'f-baslik', t: vm.bolumAdi })),
+    h('div', { s: 'f-dr-bolum f-kz-bolum', t: `${bolumBasligi(vm.bolumId)} · ${vm.bolumAdi}` }),
     hedefler,
     // (Kancalar §C.4) Hedeflerin altında üç mühür ve anlık durumları.
     vm.muhurler && vm.muhurler.length ? muhurListesi(vm.muhurler, { durumlu: true, ustaEli: !!vm.ustaEli, sinif: 'f-dr-muhurler' }) : null,
@@ -37,10 +45,14 @@ export function duraklatEkrani(b: Baglam, vm: DuraklatVM): { soz: Promise<Durakl
       'div',
       { s: 'f-dg-sutun' },
       dugme(M.devam, 'birincil', () => secVeKapat('devam', true), { buyuk: true, odak: true, ikon: 'oynat' }),
-      yeniden,
+      h(
+        'div',
+        { s: 'f-dr-ikonlar' },
+        ikonDugme('Yeniden', M.yenidenBasla, 'tekrar', () => secVeKapat('yeniden')),
+        ikonDugme('Ayarlar', M.ayarlar, 'ayar', () => secVeKapat('ayarlar')),
+        ikonDugme('Harita', M.haritayaDon, 'harita', () => secVeKapat('harita')),
+      ),
       vm.coskuAktif ? h('p', { s: 'f-not f-not-uyari', t: M.coskuBozulur }) : null,
-      dugme(M.ayarlar, 'ikincil', () => secVeKapat('ayarlar'), { ikon: 'ayar' }),
-      dugme(M.haritayaDon, 'ikincil', () => secVeKapat('harita'), { ikon: 'harita' }),
     ),
   );
   const t = b.modalAc({

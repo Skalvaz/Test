@@ -34,7 +34,7 @@ export function muhurListesi(liste: readonly MuhurVM[], o: { durumlu?: boolean; 
           'aria-label': `${MK.kademe[m.kademe]} mührü: ${m.metin}${m.basili ? `, ${MK.durum.basili}` : yazi ? `, ${yazi}` : ''}`,
         },
         h('span', { s: 'f-muhur-yuva' }, muhurSvg(m.kademe, m.basili || m.durum === 'tuttu')),
-        h('span', { s: 'f-muhur-kademe', t: MK.kademeBuyuk[m.kademe] }),
+        h('span', { s: 'f-muhur-kademe', t: MK.kademe[m.kademe] }),
         h('span', { s: 'f-muhur-metin' }, h('span', { t: m.metin }), yazi ? h('small', { s: 'f-muhur-durum', t: yazi }) : null),
       );
     }),

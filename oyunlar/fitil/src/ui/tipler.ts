@@ -285,7 +285,7 @@ export interface KazandinVM {
    * (P5 ek) Kazançla gelen kısa duyurular (rozet, açılan bölüm/güçlendirici,
    * görev, Usta Bölümü…): kartta küçük çipler. `ikon` çizgi ikon adı.
    */
-  duyurular?: { ikon: string; metin: string; /** (Kancalar §C.5) Kandilden hemen sonra, "+N daha"ya gömülmez (mühür parçası). */ oncelikli?: boolean }[];
+  duyurular?: { /** Ödül türü (meta `Odul['tur']`): Kazandın haber/kutu ayrımı için. */ tur?: string; ikon: string; metin: string; /** (Kancalar §C.5) Kandilden hemen sonra, "+N daha"ya gömülmez (mühür parçası). */ oncelikli?: boolean }[];
   /**
    * (Kancalar §C.3) Mühürler: yıldızlardan sonra damgalanır; `yeni` olanlar
    * bu kazançta basıldı. `tanitim`: ilk kez (6. bölüm) "Yeni: Mühürler".
