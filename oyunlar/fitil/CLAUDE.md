@@ -24,10 +24,18 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   localStorage'dan alındı); göç testleri `kayitOrnekleri.test.ts`.
 - Harita süsleri: `src/ui/harita/susler.ts` (dışa açık), `susIlkel.ts`
   (fener, bayrak, alev, ışık; `Cizim` toplayıcı), `isCizimleri.ts` (48 iş).
-  Yerleşim: mahalle şeridinin üstü "giriş yuvası" (kemer/kapı/çeşme), düğüm
-  lambasından karşı kenara "cep ipi" (fener/flama dizisi), binalar ve arka
-  plan simgeleri, mahallenin üst ortası (taç işler). Katalog `yer` =
-  `isCapasi` (test). İş başına en çok 1 canlı öğe (`Cizim.canliSiniri`;
+  Yerleşim (Ekim 2026, kullanıcı "yerleşim daha iyi olmalı" dedi): her iş
+  sahnede gerçek bir şeye oturur ya da asılır (teras, bina kapısı/cephesi/
+  çatısı, saçak, deniz); düğüm, yıldız, mahalle şeridi, Usta rozeti ve
+  tabelayla çakışmaz, yolun üstüne dolu parça koymaz; ilk düğümle şerit
+  arası boş kalır (eski "giriş yuvası" kaldırıldı). Kapı/kemer işleri bina
+  kapılarında; İskele'nin kemer, kayık fenerleri ve deniz feneri alt payda
+  (katman `kiyi`, alt payın SVG'sine yolun üstüne). Denetim:
+  `node scripts/kasaba-yerlesim.mjs http://localhost:5173 <klasör> 390 844`
+  (ve 360 640): çakışma 0 olmalı; kaplamalı görüntüye bak. Düğüm lambasından
+  karşı kenara "cep ipi" (fener/flama dizisi); canlı ipler tablette
+  `.f-harita-bolge { overflow-x: clip }` ile kesilir. Katalog `yer` =
+  `isCapasi` (test; İskele kıyı işleri alt payda). İş başına en çok 1 canlı öğe (`Cizim.canliSiniri`;
   mahalle ≤ 6, ip + fenerler tek öğe skewX ile sallanır); fazlası durağan
   yedekle çizilir. Yeni iş `harita(vm)` önceki modelde yoksa kutlanır (1–2
   iş; toplu değişiklikte yok), mahalle 6/6 olduysa `senlik(m)`;

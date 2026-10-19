@@ -41,7 +41,8 @@
 .f-harita-tanim { position: absolute; width: 0; height: 0; }
 .f-bolge-svg { display: block; width: 100%; height: auto; overflow: visible; }
 .f-harita-ogeler { position: absolute; inset: 0; pointer-events: none; }
-.f-harita-bolge { position: absolute; left: 0; right: 0; pointer-events: none; }
+.f-harita-bolge { position: absolute; left: 0; right: 0; pointer-events: none; overflow-x: clip; }
+/* overflow-x: clip — kenara gerilen canlı ip dizileri (x −12 / 412) tablette harita sütununun dışına taşmasın; dikeyde fişek ve buhar serbest. */
 .f-harita-bolge:not(.f-gorunur) *, .f-harita-bolge:not(.f-gorunur) *::before, .f-harita-bolge:not(.f-gorunur) *::after { animation-play-state: paused !important; }
 /* Görünmeyen mahallenin yanık fitil akışı ve süslü şerit kenarı da durur (gözcü, harita.ts). */
 .f-bolge-svg:not(.f-gorunur) .f-yol-kor, .f-mahalle-serit.f-suslendi:not(.f-gorunur)::after { animation-play-state: paused !important; }

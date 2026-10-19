@@ -1,13 +1,18 @@
 /**
- * 48 kasaba işinin harita çizimleri (docs/KANCALAR.md §B.3). Her mahallede:
- *  - "giriş" yuvası: mahalle şeridinin hemen üstü, ortada (kemer, kapı,
- *    çeşme, ateş çanakları…); düğümler arasında kalır, fitil altından geçer;
+ * 48 kasaba işinin harita çizimleri (docs/KANCALAR.md §B.3). Yerleşim kuralı
+ * (Ekim 2026): her iş sahnede gerçek bir şeye oturur ya da asılır; düğüm,
+ * yıldızlar, mahalle şeridi ve Usta rozetiyle çakışmaz, fitil yolunun üstüne
+ * dolu parça koymaz (`scripts/kasaba-yerlesim.mjs` ölçer). İlk düğümle şerit
+ * arası (eski "giriş yuvası") boş kalır. Her mahallede:
+ *  - kapı ve kemer işleri bir binanın kapısında ya da cephesinde (Çarşı
+ *    taçkapısı, liman deposu, köşk, atölye, burç kapısı); İskele'nin kıyı
+ *    işleri alt payda (`kiyi`: başlangıç iskelesi, yelkenliler, deniz);
  *  - "cep ipleri": bir düğümün lamba direğinden karşı kenara gerilen ip
  *    (fener dizisi, flama) — karşıdaki üst terasın yüzünün önünde, alt
  *    binanın çatısının üstündeki boş gökte;
  *  - binalar (kandil, çelenk, baca, burç) ve arka plan simgeleri (Çarşı
- *    kubbesi ve mahyası, saat kulesi, tepe sırtı);
- *  - tepe yuvası (ortada, mahallenin üst kenarı): taç işler için.
+ *    kubbesi ve mahyası, tepe sırtı); Saat Kulesi işleri 20. bölümün saat
+ *    kulesinde.
  * Koordinatlar mahalle yerelinde yazılır (`P(g, x, y)`); çizim küreseldir.
  */
 import { MAHALLELER } from '../../app/katalog';
@@ -51,9 +56,6 @@ export type IsCizici = (c: Cizim, g: BolgeGeo, b: CizimBaglami, is: KasabaIsi) =
 /** Mahalle yerel koordinatı → küresel nokta. */
 const P = (g: BolgeGeo, x: number, y: number): Nokta => ({ x, y: g.ust + y });
 const vurgu = (g: BolgeGeo) => MAHALLELER[g.m]?.vurgu ?? '#FFB020';
-
-/** Giriş yuvasının tabanı (mahalle şeridinin üst kenarı, ortada). */
-const GIRIS_Y = 612;
 
 // ─────────────────────────── Şablonlar ───────────────────────────
 
@@ -707,7 +709,7 @@ export const CIZIMLER: Record<string, IsCizici> = {
     // tepedeki ateş yerine çıkan patika. Sırtın sağ yanı 28. düğümün,
     // lambasının ve binasının arkasında kalır: patika oraya uzanmaz.
     const ps = aralik(7, -8, 116).map((x) => P(g, x, tepeSirti(x)));
-    let s = `<path d="${tepeSirtYolu(g, 0, 120, 3)}" fill="none" stroke="${c.yanik ? '#3A3060' : HAYALET_CIZGI}" stroke-width="2" stroke-dasharray="3 2" opacity=".8"/>`;
+    let s = `<path d="${tepeSirtYolu(g, 0, 128, 3)}" fill="none" stroke="${c.yanik ? '#3A3060' : HAYALET_CIZGI}" stroke-width="2" stroke-dasharray="3 2" opacity=".8"/>`;
     for (const p of ps) s += `<path d="M${f(p.x)} ${f(p.y + 2)}v-7" stroke="${c.yanik ? '#2A2030' : HAYALET_CIZGI}" stroke-width="1.2"/>`;
     const isikP = ps.map((p) => ({ x: p.x, y: p.y - 6 }));
     s += isiklar(c, isikP, 1.5, '#FFD15C', 5.5);
@@ -769,8 +771,8 @@ export const CIZIMLER: Record<string, IsCizici> = {
     // düğümün lambası arasındaki açık sırtta çimenli bir tümsek (teraslar
     // gibi yüzü aşağı kararır); çanaklar üçayaklarıyla tümseğe basar, patika
     // buraya çıkar.
-    const A = 112;
-    const B = 194;
+    const A = 124;
+    const B = 190;
     const zemin = (x: number) => tepeSirti(x) - 9 * Math.sin((Math.PI * Math.min(Math.max(x - A, 0), B - A)) / (B - A));
     const Z = (x: number, dy = 0) => `${f(x)} ${f(g.ust + zemin(x) + dy)}`;
     const xs = Array.from({ length: 21 }, (_, i) => A + ((B - A) * i) / 20);
@@ -779,11 +781,11 @@ export const CIZIMLER: Record<string, IsCizici> = {
     s += sekil(c, `M${xs.map((x) => Z(x)).join('L')}L${Z(B - 1.5, 5)}L${[...xs].reverse().slice(1, -1).map((x) => Z(x, 6)).join('L')}L${Z(A + 1.5, 5)}z`, '#22381E');
     if (c.yanik) {
       s += `<path d="M${xs.map((x) => Z(x)).join('L')}" fill="none" stroke="#8A7A9A" stroke-opacity=".55" stroke-width="1.4"/>`;
-      for (const [x, r] of [[118, 3], [141, 2.5], [166, 3.5], [189, 2.5]] as const) s += `<circle cx="${f(x)}" cy="${f(g.ust + zemin(x))}" r="${r}" fill="#1A3A20"/>`;
-      s += `<ellipse cx="${f((A + B) / 2)}" cy="${f(g.ust + zemin((A + B) / 2) + 1)}" rx="40" ry="6" fill="#FFB020" opacity=".16"/>`;
+      for (const [x, r] of [[129, 3], [149, 2.5], [168, 3.5], [186, 2.5]] as const) s += `<circle cx="${f(x)}" cy="${f(g.ust + zemin(x))}" r="${r}" fill="#1A3A20"/>`;
+      s += `<ellipse cx="${f((A + B) / 2)}" cy="${f(g.ust + zemin((A + B) / 2) + 1)}" rx="34" ry="6" fill="#FFB020" opacity=".16"/>`;
     }
     c.ekle('arka', s);
-    [132, 153, 174].forEach((x, i) => {
+    [141, 157, 173].forEach((x, i) => {
       const y0 = g.ust + zemin(x);
       const tas = i === 1 ? y0 - 22 : y0 - 15;
       let t = `<path d="M${x - 5} ${f(y0)}L${x} ${f(tas + 4)}L${x + 5} ${f(y0)}M${x} ${f(y0)}V${f(tas + 4)}" stroke="${c.yanik ? '#2A2030' : HAYALET_CIZGI}" stroke-width="1.4"/>`;
@@ -793,7 +795,7 @@ export const CIZIMLER: Record<string, IsCizici> = {
       alev(c, 'arka', { x, y: tas + 1 }, i === 1 ? 16 : 12, i);
       kivilcim(c, { x, y: tas - 10 }, 2, 26, '#FFD15C', 8);
     });
-    c.capa = P(g, 153, 318);
+    c.capa = P(g, 157, 318);
   },
   'tepe.gokHaritasi': (c, g) => {
     // Durağan (Tepe'nin canlı öğe payını değirmenler kullanır).

@@ -228,7 +228,7 @@ export const KASABA_ISLERI: readonly KasabaIsi[] = [
   kasabaIsi(5, 1, 'Değirmen kanatları', 'degirmenKanatlari', 4, 'yapiIsigi', [71, 379], 'Yel değirmeninin kanatları ışık dizileriyle döner.', 'Rüzgâr ışığı da çeviriyor!'),
   kasabaIsi(5, 2, 'Rüzgâr flamaları', 'ruzgarFlamalari', 4, 'flama', [275, 439], 'Tepedeki direklere uzun rüzgâr flamaları çekilir.', 'Flamalar rüzgârın yönünü söylüyor.'),
   kasabaIsi(5, 3, 'Rasathane kubbesi', 'rasathaneKubbesi', 5, 'yapiIsigi', [334, 44], 'Rasathanenin kubbesi yıldız haritasıyla aydınlanır.', 'Kubbeden bakınca gök iki kat parlak.'),
-  kasabaIsi(5, 4, 'Ateş çanakları', 'atesCanaklari', 5, 'ates', [153, 318], 'Tepeye Nevruz ateş çanakları dizilir.', 'Kışı ateşin üstünden atlayıp uğurladık.'),
+  kasabaIsi(5, 4, 'Ateş çanakları', 'atesCanaklari', 5, 'ates', [157, 318], 'Tepeye Nevruz ateş çanakları dizilir.', 'Kışı ateşin üstünden atlayıp uğurladık.'),
   kasabaIsi(5, 5, 'Gök haritası', 'gokHaritasi', 5, 'tabela', [140, 56], 'Tepenin üstüne ışıktan bir takımyıldız çizilir.', 'Bak, şu yıldızlar senin adını yazıyor!'),
   // Fabrika (28)
   kasabaIsi(6, 0, 'Atölye lambaları', 'atolyeLambalari', 4, 'kandilDizisi', [51, 536], 'Atölye pencerelerine sıcak lambalar asılır.', 'Barut sabır ister, ışık da öyle.'),
