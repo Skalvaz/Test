@@ -222,7 +222,7 @@ class OyunCiziciSinifi implements OyunCizici {
     });
     // Yazı tipi yüklenince reaksiyon yazıları doğru ölçülsün.
     try {
-      void document.fonts?.load('800 48px "Baloo 2"');
+      void document.fonts?.load('800 48px "Nunito"');
     } catch {
       /* yok */
     }

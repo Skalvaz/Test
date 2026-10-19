@@ -9,7 +9,7 @@ import { yayAdim, type YayDurumu } from './matematik';
 import { spriteUret, type Ctx, type Sprite } from './tuval';
 import type { Donusum } from './donusum';
 
-export const YAZI_FONT = '"Baloo 2", ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif';
+export const YAZI_FONT = '"Nunito", ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif';
 
 export interface YaziStili {
   boyut: number;

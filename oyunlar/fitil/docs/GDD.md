@@ -1019,6 +1019,7 @@ Sprite önbelleğine bir kez çizilir; boyut ve DPR'ye göre yeniden üretilir. 
 
 ### 13.5 Yazı tipleri
 - **Google Fonts: "Baloo 2"** (SIL OFL), ağırlık 700 ve 800, Latin + Latin Extended alt kümesi (ğ ş ı İ ç ö ü). Derleme sırasında woff2 olarak indirilir ve base64 ile tek dosyaya gömülür (yaklaşık 60 KB). Çalışma anında ağ isteği yapılmaz.
+- **Ekim 2026 değişikliği:** yazı tipi **Nunito** (SIL OFL, değişken ağırlık 200–1000, Latin + Latin Extended, `@fontsource-variable/nunito`). Baloo 2, Nunito, Fredoka, M PLUS Rounded 1c ve Sniglet oyun ekranlarında karşılaştırıldı: Nunito okunaklılık (x-yüksekliği ~0,48, açık harf biçimleri, küçük satırlarda net) ile yuvarlak, sıcak hattı en iyi dengeleyen; M PLUS daha okunaklı ama geniş (satır kayar), Fredoka 700'de sıkışık, Sniglet 800'de topak.
 - **Yedek yığın:** `ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif`.
 - **Boyutlar:** hamle sayısı 28/800; hedef sayısı 18/800; balon 16/700; düğme 18/800; gövde metni 15/700; reaksiyon yazısı 44–64/800. Sayılar tabular (`font-variant-numeric: tabular-nums`).
 

@@ -361,7 +361,7 @@ export function kivilcim(c: Cizim, p: Nokta, n: number, yukseklik: number, renk 
   }
 }
 
-/** Yazı (Baloo 2; mahya harfi, tabela). */
+/** Yazı (Nunito; mahya harfi, tabela). */
 export function yazi(metin: string, x: number, y: number, boy: number, renk: string, ek = ''): string {
-  return `<text x="${f(x)}" y="${f(y)}" font-family="'Baloo 2', ui-rounded, sans-serif" font-weight="800" font-size="${f(boy)}" text-anchor="middle" fill="${renk}" ${ek}>${metin}</text>`;
+  return `<text x="${f(x)}" y="${f(y)}" font-family="'Nunito', ui-rounded, sans-serif" font-weight="800" font-size="${f(boy)}" text-anchor="middle" fill="${renk}" ${ek}>${metin}</text>`;
 }

@@ -155,7 +155,7 @@ export const M = {
   defterKartlari: 'Defter kartları',
   hakkinda: 'Hakkında',
   hakkindaMetin: 'Fener Koyu’nun Işık Şenliği’ni yeniden yak. Can yok, bekleme yok, mağaza yok.',
-  yaziTipi: 'Yazı tipi: Baloo 2 (SIL OFL). Sesler ve görüntüler oyun içinde üretilir.',
+  yaziTipi: 'Yazı tipi: Nunito (SIL OFL). Sesler ve görüntüler oyun içinde üretilir.',
   surum: (s: string) => `Sürüm ${s}`,
 
   // Nasıl oynanır

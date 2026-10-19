@@ -747,13 +747,13 @@ export function muhurIsaretleme(kademe: string, basili: boolean): string {
   const harf = KADEME_HARFI[kademe] ?? '?';
   if (!basili)
     return `<circle r="12.4" fill="rgba(0,0,0,.28)" stroke="#E8CFA8" stroke-opacity=".55" stroke-width="1.6" stroke-dasharray="3.2 2.6"/>
-      <text y="5" text-anchor="middle" font-size="14" font-weight="800" fill="#E8CFA8" fill-opacity=".38" font-family="'Baloo 2',system-ui,sans-serif">${harf}</text>`;
+      <text y="5" text-anchor="middle" font-size="14" font-weight="800" fill="#E8CFA8" fill-opacity=".38" font-family="'Nunito',system-ui,sans-serif">${harf}</text>`;
   return `<path d="${MUM_YOLU}" fill="#3A0606" transform="translate(.6 1.4)"/>
     <path d="${MUM_YOLU}" fill="url(#ftl-mum)"/>
     <circle r="9.4" fill="none" stroke="#7A0E0E" stroke-width="1.4" opacity=".75"/>
     <circle r="9.4" fill="none" stroke="#FF9A84" stroke-width=".7" opacity=".45" transform="translate(-.5 -.6)"/>
-    <text y="5.6" text-anchor="middle" font-size="13.5" font-weight="800" fill="#FF9A84" fill-opacity=".55" font-family="'Baloo 2',system-ui,sans-serif" transform="translate(-.6 -.7)">${harf}</text>
-    <text y="5.6" text-anchor="middle" font-size="13.5" font-weight="800" fill="#5A0808" font-family="'Baloo 2',system-ui,sans-serif">${harf}</text>
+    <text y="5.6" text-anchor="middle" font-size="13.5" font-weight="800" fill="#FF9A84" fill-opacity=".55" font-family="'Nunito',system-ui,sans-serif" transform="translate(-.6 -.7)">${harf}</text>
+    <text y="5.6" text-anchor="middle" font-size="13.5" font-weight="800" fill="#5A0808" font-family="'Nunito',system-ui,sans-serif">${harf}</text>
     <ellipse cx="-5" cy="-7" rx="3.4" ry="1.6" fill="#FFD2C4" opacity=".45" transform="rotate(-30 -5 -7)"/>`;
 }
 

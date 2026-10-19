@@ -257,7 +257,8 @@ gibi POSIX sözdizimi kullanma.
   fare + klavye. Tüm düğmeler alt bantta, başparmakla erişilebilir.
 - claude.ai sayfa çerçevesinde çalışır: `alert/confirm/prompt` YOK (onayı
   sayfa içinde yap), indirme bağlantısı yok, `window.open` yok, harici
-  görsel/ses/fetch yok. Her şey prosedürel; "Baloo 2" `src/ui/yazitipi.ts` ile
+  görsel/ses/fetch yok. Her şey prosedürel; "Nunito" (değişken, Ekim 2026'da Baloo 2
+  yerine; okunaklılık + yuvarlak hat) `src/ui/yazitipi.ts` ile
   gömülü (FontFace'e ikili veri: CSP font-src'ye takılmaz, ağ isteği yok).
 - WhatsApp içi tarayıcı (Android Custom Tab, iOS Safari görünümü): ses yalnız
   ilk dokunuştan sonra; `localStorage` her erişimde try/catch; güvenli alan

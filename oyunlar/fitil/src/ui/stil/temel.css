@@ -20,7 +20,7 @@
   --beyaz-sicak: #FFF4C2;
   --uyari: #FF5A3C;
   --basari: #7CFFB2;
-  --yazi: "Baloo 2", ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  --yazi: "Nunito", ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
   --guv-ust: env(safe-area-inset-top, 0px);
   --guv-sag: env(safe-area-inset-right, 0px);
   --guv-alt: env(safe-area-inset-bottom, 0px);
