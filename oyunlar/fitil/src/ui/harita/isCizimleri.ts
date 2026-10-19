@@ -215,8 +215,10 @@ export const CIZIMLER: Record<string, IsCizici> = {
 
   // ═════════ Çarşı ═════════
   'carsi.dukkanKandilleri': (c, g) => {
-    sacakFenerleri(c, g, 1, [0.07, 0.335, 0.665, 0.93], 'kafes', 1, 0.72, 2);
-    sacakFenerleri(c, g, 3, [0.07, 0.335, 0.665, 0.93], 'kafes', 1, 0.72, 2, 4);
+    // Pencere aralarına ve dış köşeye; düğüme bakan köşe boş (küçük ekranda
+    // düğüm düğmesi binanın o köşesine taşar).
+    sacakFenerleri(c, g, 1, [0.07, 0.335, 0.665], 'kafes', 1, 0.72, 2);
+    sacakFenerleri(c, g, 3, [0.07, 0.335, 0.665], 'kafes', 1, 0.72, 2, 3);
     const b = g.binalar[1];
     c.capa = { x: b.x, y: b.ust + 10 };
   },
@@ -236,9 +238,12 @@ export const CIZIMLER: Record<string, IsCizici> = {
         tum.push(...ps);
       }
       if (j === 2) {
-        // Kemerli pencerelerin üstü (2 sıra × 3 pencere).
+        // Kemerli pencerelerin üstü (2 sıra × 3 pencere); düğüme bitişik
+        // sütun hariç (küçük ekranda düğüm düğmesi o pencerelere değer).
+        const yakin = b.taraf === 'sag' ? 0 : 2;
         for (let sat = 0; sat < 2; sat++)
           for (let sut = 0; sut < 3; sut++) {
+            if (sut === yakin) continue;
             const wx = x0 + 9 + (sut * (b.w - 26)) / 2 + 4;
             const wy = b.ust + 12 + sat * 22 + 4;
             const ps = yay({ x: wx, y: wy }, 5.6, 5.6, 180, 360, 5);
@@ -253,12 +258,19 @@ export const CIZIMLER: Record<string, IsCizici> = {
   },
   'carsi.laleFenerleri': (c, g) => fenerDizisi(c, g, 1, 6, 'lale', [4, 5, 1, 4, 5, 1], 22),
   'carsi.kubbeKandilleri': (c, g) => {
-    const ana = yay(P(g, 200, 400), 112, 95, 180, 360, 19);
-    const sol = yay(P(g, 86, 430), 38, 32, 180, 360, 7);
-    const sag = yay(P(g, 314, 430), 38, 32, 180, 360, 7);
+    // Arka plandaki büyük kubbenin dış çizgisi: sol etekten tepeye. Sağ yanı
+    // 8. düğümün, lambasının ve terasın, yan kubbeler binaların ve terasların
+    // arkasında kalır: oralara kandil konmaz (düğüm önde, kubbe arkada).
+    const acikta = (p: Nokta) =>
+      g.dugumler.every((d) => {
+        const dugumde = Math.abs(p.x - d.x) < 38 && p.y > d.y - 38 && p.y < d.y + 50;
+        const lambada = Math.abs(p.x - d.lamba.x) < 12 && p.y > d.lamba.y - 16 && p.y < d.zemin;
+        return !dugumde && !lambada;
+      });
+    const ana = yay(P(g, 200, 400), 112, 95, 180, 270, 10).filter(acikta);
     let s = '';
-    if (c.yanik) s += `<path d="M88 ${f(g.ust + 400)}A112 95 0 0 1 312 ${f(g.ust + 400)}" fill="none" stroke="#FFB020" stroke-width="5" opacity=".08"/>`;
-    s += isiklar(c, ana, 1.4, '#FFE3A0', 4.5) + isiklar(c, sol, 1.2, '#FFE3A0', 4) + isiklar(c, sag, 1.2, '#FFE3A0', 4);
+    if (c.yanik) s += `<path d="M88 ${f(g.ust + 400)}A112 95 0 0 1 200 ${f(g.ust + 305)}" fill="none" stroke="#FFB020" stroke-width="5" opacity=".08"/>`;
+    s += isiklar(c, ana, 1.4, '#FFE3A0', 4.5);
     // Alem (hilal) ve hale.
     const alem = P(g, 200, 296);
     s += hale(c, alem, 14, 0.7);
@@ -270,10 +282,12 @@ export const CIZIMLER: Record<string, IsCizici> = {
     c.capa = P(g, 200, 330);
   },
   'carsi.mahyaYazisi': (c, g) => {
+    // Harfler minareler arasındaki mahya dizisine asılı; 8. düğümün lambasından
+    // uzak, kubbe çizgisi E ile N arasından geçer.
     const harfler = ['Ş', 'E', 'N', 'L', 'İ', 'K'];
     let s = '';
     harfler.forEach((h, i) => {
-      const x = 92 + i * 24;
+      const x = 68 + i * 24;
       const ym = 292 + Math.sin((Math.PI * (x - 46)) / 310) * 26;
       const p = P(g, x, ym + 2);
       s += `<path d="M${f(x)} ${f(p.y - 2)}v5" stroke="${c.yanik ? '#8A6A3A' : HAYALET_CIZGI}" stroke-width=".6"/>`;
@@ -287,46 +301,52 @@ export const CIZIMLER: Record<string, IsCizici> = {
       c.grupla('harf', { tur: 'yanip', x: x - 8, y: p.y + 2, w: 16, h: 18, ic: harf, sure: 2.4 }, { k: 3, svg: `<g transform="translate(${f(x - 8)} ${f(p.y + 2)})">${harf}</g>` });
     });
     c.ekle(3, s);
-    c.capa = P(g, 152, 318);
+    c.capa = P(g, 128, 318);
   },
   'carsi.carsiKapisi': (c, g) => {
-    const y0 = g.ust + GIRIS_Y;
+    // Çarşı binasının (6. bölüm, alt terasta) cephesinde taçkapı: terasa
+    // basar, geçidi orta pencere sütununun önünde, tepeliği saçağa varır.
+    // Çizim kapının taban ortasına göre (y yukarı eksi), `k` ölçeğiyle.
+    const b = g.binalar[0];
+    const k = 0.6;
+    const M = (x: number, y: number): Nokta => ({ x: b.x + x * k, y: b.taban + y * k });
     let s = '';
     // Kapının içi (karanlık geçit), sütunlar, sivri kemer, tepelik.
-    s += c.yanik ? `<path d="M179 ${f(y0)}V${f(y0 - 40)}Q181 ${f(y0 - 60)} 200 ${f(y0 - 68)}Q219 ${f(y0 - 60)} 221 ${f(y0 - 40)}V${f(y0)}z" fill="#140A20"/>` : '';
-    s += sutun(c, 170, y0 - 40, 9, 40, '#4A3C5C', '#6A5A80') + sutun(c, 221, y0 - 40, 9, 40, '#4A3C5C', '#6A5A80');
-    s += sekil(c, `M168 ${f(y0 - 44)}h13v4h-13zM219 ${f(y0 - 44)}h13v4h-13z`, '#5A4A70');
-    s += `<path d="M174.5 ${f(y0 - 42)}Q176 ${f(y0 - 64)} 200 ${f(y0 - 74)}Q224 ${f(y0 - 64)} 225.5 ${f(y0 - 42)}" fill="none" stroke="${c.yanik ? '#5A4A70' : HAYALET_CIZGI}" stroke-width="5"/>`;
-    s += sekil(c, `M191 ${f(y0 - 76)}a9 7 0 0 1 18 0z`, '#4A3A60');
-    if (c.yanik) s += `<path d="M200 ${f(y0 - 83)}v-5" stroke="#D9A441" stroke-width="1.2"/><path ${c.sira()} d="M202.6 ${f(y0 - 92)}a3.6 3.6 0 1 0 0 6a3 3 0 1 1 0-6z" fill="#FFD15C"/>`;
-    c.ekle('on', s);
+    if (c.yanik) s += '<path d="M-21 0V-40Q-19 -60 0 -68Q19 -60 21 -40V0z" fill="#140A20"/>';
+    s += sutun(c, -30, -40, 9, 40, '#4A3C5C', '#6A5A80') + sutun(c, 21, -40, 9, 40, '#4A3C5C', '#6A5A80');
+    s += sekil(c, 'M-32 -44h13v4h-13zM19 -44h13v4h-13z', '#5A4A70');
+    s += `<path d="M-25.5 -42Q-24 -64 0 -74Q24 -64 25.5 -42" fill="none" stroke="${c.yanik ? '#5A4A70' : HAYALET_CIZGI}" stroke-width="5"/>`;
+    s += sekil(c, 'M-9 -76a9 7 0 0 1 18 0z', '#4A3A60');
+    if (c.yanik) s += `<path d="M0 -83v-5" stroke="#D9A441" stroke-width="1.2"/><path ${c.sira()} d="M2.6 -92a3.6 3.6 0 1 0 0 6a3 3 0 1 1 0-6z" fill="#FFD15C"/>`;
+    c.ekle(0, `<g transform="translate(${f(b.x)} ${f(b.taban)}) scale(${k})">${s}</g>`);
     const kemer: Nokta[] = [];
     for (let i = 0; i <= 12; i++) {
       const t = i / 12;
       // Sivri kemerin iki kolu (ikinci derece Bezier).
       const sol = t <= 0.5;
       const u = sol ? t * 2 : (t - 0.5) * 2;
-      const a = sol ? { x: 174.5, y: y0 - 42 } : { x: 200, y: y0 - 74 };
-      const k = sol ? { x: 176, y: y0 - 64 } : { x: 224, y: y0 - 64 };
-      const b = sol ? { x: 200, y: y0 - 74 } : { x: 225.5, y: y0 - 42 };
-      kemer.push({ x: (1 - u) * (1 - u) * a.x + 2 * (1 - u) * u * k.x + u * u * b.x, y: (1 - u) * (1 - u) * a.y + 2 * (1 - u) * u * k.y + u * u * b.y - 3 });
+      const a = sol ? { x: -25.5, y: -42 } : { x: 0, y: -74 };
+      const d = sol ? { x: -24, y: -64 } : { x: 24, y: -64 };
+      const e = sol ? { x: 0, y: -74 } : { x: 25.5, y: -42 };
+      kemer.push(M((1 - u) * (1 - u) * a.x + 2 * (1 - u) * u * d.x + u * u * e.x, (1 - u) * (1 - u) * a.y + 2 * (1 - u) * u * d.y + u * u * e.y - 3));
     }
-    const sutunlar = [...dogru({ x: 168, y: y0 - 36 }, { x: 168, y: y0 - 6 }, 4), ...dogru({ x: 232, y: y0 - 36 }, { x: 232, y: y0 - 6 }, 4)];
-    c.ekle('on', isiklar(c, kemer, 1.5, '#FFE3A0', 5) + isiklar(c, sutunlar, 1.2, '#FFC86B', 4));
-    fener(c, 'on', { x: 200, y: y0 - 66 }, 1, 'kafes', 0, 0.9);
-    parilti(c, [...kemer, ...sutunlar], 5.5, 2);
-    c.capa = P(g, 200, GIRIS_Y - 40);
+    const sutunlar = [...dogru(M(-32, -36), M(-32, -6), 4), ...dogru(M(32, -36), M(32, -6), 4)];
+    c.ekle(0, isiklar(c, kemer, 1.2, '#FFE3A0', 4) + isiklar(c, sutunlar, 1, '#FFC86B', 3.2));
+    fener(c, 0, M(0, -66), 1, 'kafes', 0, 0.9 * k);
+    parilti(c, [...kemer, ...sutunlar], 4.5, 2);
+    c.capa = M(0, -40);
   },
 
   // ═════════ Liman ═════════
   'liman.direkFenerleri': (c, g, b) => {
-    gemiGovdesi(c, g, b, 'liman.direkFenerleri');
-    const t = g.ust + 600;
-    fener(c, 0, { x: 300, y: t - 76 }, 1, 'kafes', 0, 0.8);
-    fener(c, 0, { x: 352, y: t - 68 }, 0, 'kafes', 1, 0.8);
-    fener(c, 0, { x: 266, y: t - 13 }, 2, 'kafes', 2, 0.6);
-    if (c.yanik) c.ekle(0, yansima(300, t + 9, '#FFC86B', 8) + yansima(352, t + 9, '#FFC86B', 8));
-    c.capa = P(g, 326, 545);
+    // Gemi 12. bölümün rıhtımının önündeki suda (sağ alt); fenerler direk
+    // tepelerinde ve pruvada.
+    const M = gemiGovdesi(c, g, b, 'liman.direkFenerleri');
+    fener(c, 0, M(300, -76), 1, 'kafes', 0, 0.75);
+    fener(c, 0, M(352, -68), 0, 'kafes', 1, 0.75);
+    fener(c, 0, M(266, -13), 2, 'kafes', 2, 0.55);
+    if (c.yanik) c.ekle(0, yansima(M(300, 0).x, M(0, 9).y, '#FFC86B', 7) + yansima(M(352, 0).x, M(0, 9).y, '#FFC86B', 7));
+    c.capa = M(326, -55);
   },
   'liman.halatFlamalari': (c, g) => flamaDizisi(c, g, 4, 8, 'kare', ['#3AA8FF', '#FFB020', '#FF4D4D', '#2EE07A', '#B266FF', '#FFF3D6'], 14, 7, 7),
   'liman.vincIsiklari': (c, g) => {
@@ -363,7 +383,9 @@ export const CIZIMLER: Record<string, IsCizici> = {
     c.capa = P(g, 330, 345);
   },
   'liman.mendirekFenerleri': (c, g) => {
-    const y = g.ust + 494;
+    // Uzaktaki liman ağzı (arka planın denizi): 11. bölümün ambar çatısının
+    // ve çatı fişeğinin üstünde, ondan ayrık.
+    const y = g.ust + 478;
     let s = sekil(c, `M-12 ${f(y - 2)}H124Q130 ${f(y - 2)} 130 ${f(y + 3)}V${f(y + 7)}H-12z`, '#1A1E2A');
     if (c.yanik) s += `<path d="M-12 ${f(y - 2)}H124" stroke="#4A5A6A" stroke-width="1"/>`;
     for (const [x, renk, i] of [[22, '#FF4D4D', 0], [118, '#2EE07A', 1]] as const) {
@@ -374,15 +396,14 @@ export const CIZIMLER: Record<string, IsCizici> = {
       if (c.yanik) c.grupla('isaret', { tur: 'yanip', x: x - 10, y: y - 37, w: 20, h: 20, ic: `<circle cx="10" cy="10" r="10" fill="url(#hs-${i === 0 ? 'kirmizi' : 'yesil'})"/><circle cx="10" cy="10" r="2.8" fill="#fff" opacity=".85"/>`, sure: 2.2 });
     }
     c.ekle('arka', s);
-    c.capa = P(g, 70, 480);
+    c.capa = P(g, 70, 464);
   },
   'liman.gemiDonanmasi': (c, g, b) => {
-    gemiGovdesi(c, g, b, 'liman.gemiDonanmasi');
-    const t = g.ust + 600;
-    const pruva = { x: 264, y: t - 10 };
-    const d1 = { x: 300, y: t - 78 };
-    const d2 = { x: 352, y: t - 70 };
-    const kic = { x: 394, y: t - 10 };
+    const M = gemiGovdesi(c, g, b, 'liman.gemiDonanmasi');
+    const pruva = M(264, -10);
+    const d1 = M(300, -78);
+    const d2 = M(352, -70);
+    const kic = M(394, -10);
     const a = dogru(pruva, d1, 10).slice(1);
     const m = dogru(d1, d2, 7).slice(1, -1);
     const k = dogru(d2, kic, 10).slice(0, -1);
@@ -390,32 +411,39 @@ export const CIZIMLER: Record<string, IsCizici> = {
     const renk = ['#FF4D4D', '#FFB020', '#2EE07A', '#3AA8FF', '#FFE9B0'];
     const hepsi = [...a, ...m, ...k];
     let s = '';
-    hepsi.forEach((p, i) => (s += isik(c, p, 1.25, renk[i % renk.length], 3.8)));
+    hepsi.forEach((p, i) => (s += isik(c, p, 1.15, renk[i % renk.length], 3.4)));
     // Lombozlar ve güverte.
-    const lomboz = dogru({ x: 296, y: t - 4 }, { x: 368, y: t - 4 }, 6);
-    s += isiklar(c, lomboz, 1.4, '#FFE3A0', 4);
+    const lomboz = dogru(M(296, -4), M(368, -4), 6);
+    s += isiklar(c, lomboz, 1.25, '#FFE3A0', 3.6);
     c.ekle(0, s);
-    parilti(c, hepsi, 4.5, 2);
-    c.capa = P(g, 330, 560);
+    parilti(c, hepsi, 4, 2);
+    c.capa = M(330, -40);
   },
   'liman.limanKapisi': (c, g) => {
-    const y0 = g.ust + GIRIS_Y;
-    let s = sutun(c, 170, y0 - 38, 10, 38, '#3A4A56', '#5A6E7A') + sutun(c, 220, y0 - 38, 10, 38, '#3A4A56', '#5A6E7A');
-    s += sekil(c, `M168 ${f(y0 - 42)}h14v4h-14zM218 ${f(y0 - 42)}h14v4h-14z`, '#2A3A44');
-    s += sekil(c, `M164 ${f(y0 - 50)}H236V${f(y0 - 43)}H164z`, '#4A2E1A');
-    if (c.yanik) s += `<path d="M164 ${f(y0 - 47)}H236" stroke="#C8A070" stroke-width="1.6" stroke-dasharray="2 1.4"/>`;
+    // 14. bölümün ambarının büyük kapısında: sütunlar kapıyı çevreler,
+    // ışıklı kiriş kapı kemerinin üstünde, pencere sırasının altında kalır;
+    // çapa levhası kapının ağzında asılı. Çizim kapının taban ortasına göre
+    // (y yukarı eksi), `k` ölçeğiyle.
+    const bn = g.binalar[3];
+    const k = 0.72;
+    const M = (x: number, y: number): Nokta => ({ x: bn.x + x * k, y: bn.taban + y * k });
+    let s = sutun(c, -30, -38, 10, 38, '#3A4A56', '#5A6E7A') + sutun(c, 20, -38, 10, 38, '#3A4A56', '#5A6E7A');
+    s += sekil(c, 'M-32 -42h14v4h-14zM18 -42h14v4h-14z', '#2A3A44');
+    s += sekil(c, 'M-33 -50H33V-43H-33z', '#4A2E1A');
+    if (c.yanik) s += '<path d="M-33 -47H33" stroke="#C8A070" stroke-width="1.6" stroke-dasharray="2 1.4"/>';
     // Çapa levhası.
-    s += ipCiz(c, `M200 ${f(y0 - 43)}v5`, 0.8, '#8A6A3A');
-    s += c.yanik ? `<circle ${c.sira()} cx="200" cy="${f(y0 - 27)}" r="11" fill="#0E2A3A" stroke="#D9A441" stroke-width="1.6"/>` : `<circle cx="200" cy="${f(y0 - 27)}" r="11" fill="${HAYALET}" stroke="${HAYALET_CIZGI}"/>`;
-    if (c.yanik) s += `<g fill="none" stroke="#FFD15C" stroke-width="1.5" stroke-linecap="round"><path d="M200 ${f(y0 - 33)}v12M196 ${f(y0 - 30)}h8M194 ${f(y0 - 24)}q6 6 12 0"/><circle cx="200" cy="${f(y0 - 34.5)}" r="1.4"/></g>`;
-    c.ekle('on', s);
-    const ust = dogru({ x: 166, y: y0 - 52 }, { x: 234, y: y0 - 52 }, 9);
-    c.ekle('on', isiklar(c, ust, 1.4, '#FFE9B0', 4.5));
-    parilti(c, ust, 5, 2.2);
-    if (c.yanik) c.oge({ tur: 'nabiz', x: 184, y: y0 - 43, w: 32, h: 32, ic: '<circle cx="16" cy="16" r="16" fill="url(#hs-parla)"/>', sure: 2.4 });
-    fener(c, 'on', { x: 175, y: y0 - 38 }, 1, 'kafes', 0, 0.7);
-    fener(c, 'on', { x: 225, y: y0 - 38 }, 1, 'kafes', 1, 0.7);
-    c.capa = P(g, 200, GIRIS_Y - 30);
+    s += ipCiz(c, 'M0 -43v5', 0.8, '#8A6A3A');
+    s += c.yanik ? `<circle ${c.sira()} cx="0" cy="-27" r="11" fill="#0E2A3A" stroke="#D9A441" stroke-width="1.6"/>` : `<circle cx="0" cy="-27" r="11" fill="${HAYALET}" stroke="${HAYALET_CIZGI}"/>`;
+    if (c.yanik) s += '<g fill="none" stroke="#FFD15C" stroke-width="1.5" stroke-linecap="round"><path d="M0 -33v12M-4 -30h8M-6 -24q6 6 12 0"/><circle cx="0" cy="-34.5" r="1.4"/></g>';
+    c.ekle(3, `<g transform="translate(${f(bn.x)} ${f(bn.taban)}) scale(${k})">${s}</g>`);
+    const ust = dogru(M(-31, -52), M(31, -52), 9);
+    c.ekle(3, isiklar(c, ust, 1.2, '#FFE9B0', 3.8));
+    parilti(c, ust, 4.5, 2.2);
+    const nabiz = M(-16, -43);
+    if (c.yanik) c.oge({ tur: 'nabiz', x: nabiz.x, y: nabiz.y, w: 32 * k, h: 32 * k, ic: `<circle cx="${f(16 * k)}" cy="${f(16 * k)}" r="${f(16 * k)}" fill="url(#hs-parla)"/>`, sure: 2.4 });
+    fener(c, 3, M(-25, -38), 1, 'kafes', 0, 0.55);
+    fener(c, 3, M(25, -38), 1, 'kafes', 1, 0.55);
+    c.capa = M(0, -30);
   },
 
   // ═════════ Saat Kulesi ═════════
@@ -903,14 +931,23 @@ export const CIZIMLER: Record<string, IsCizici> = {
   },
 };
 
-/** Liman gemisinin gövdesi (iki iş paylaşır; ilk çizilen iş çizer). */
-function gemiGovdesi(c: Cizim, g: BolgeGeo, b: CizimBaglami, sahip: string): void {
-  if (sahip === 'liman.gemiDonanmasi' && b.ciziliyor('liman.direkFenerleri')) return;
+/**
+ * Liman gemisinin gövdesi (iki iş paylaşır; ilk çizilen iş çizer): sağ alt
+ * köşede, 12. bölümün rıhtımının önündeki suda, ölçekli; pruva x 296'da,
+ * giriş bölgesine (11. düğümle mahalle şeridi arası) taşmaz. Döner: gemi
+ * koordinatı (x: 262 pruva … 396 kıç, dy: su çizgisine göre) → küresel nokta.
+ */
+function gemiGovdesi(c: Cizim, g: BolgeGeo, b: CizimBaglami, sahip: string): (x: number, dy: number) => Nokta {
   const t = g.ust + 600;
-  let s = `<path d="M262 ${f(t - 10)}L271 ${f(t + 5)}H386L396 ${f(t - 10)}z" fill="#0E1A22"/><path d="M262 ${f(t - 10)}H396" stroke="#2A3E4A" stroke-width="1.2"/>`;
-  s += `<path d="M328 ${f(t - 10)}V${f(t - 20)}H362V${f(t - 10)}" fill="#122028"/>`;
-  s += `<path d="M300 ${f(t - 10)}V${f(t - 80)}M352 ${f(t - 20)}V${f(t - 72)}M290 ${f(t - 64)}H310M343 ${f(t - 58)}H361" stroke="#16262E" stroke-width="2.2"/>`;
-  s += `<path d="M262 ${f(t - 10)}L300 ${f(t - 80)}M300 ${f(t - 80)}L352 ${f(t - 72)}M352 ${f(t - 72)}L396 ${f(t - 10)}" stroke="#1E2E38" stroke-width=".7"/>`;
-  s += `<path d="M268 ${f(t + 7)}h112" stroke="${SICAK}" stroke-opacity=".12" stroke-width="2"/>`;
-  c.ekle(0, s);
+  const k = 0.78;
+  const x0 = 296 - 262 * k;
+  const M = (x: number, dy: number): Nokta => ({ x: x0 + x * k, y: t + dy * k });
+  if (sahip === 'liman.gemiDonanmasi' && b.ciziliyor('liman.direkFenerleri')) return M;
+  let s = '<path d="M262 -10L271 5H386L396 -10z" fill="#0E1A22"/><path d="M262 -10H396" stroke="#2A3E4A" stroke-width="1.2"/>';
+  s += '<path d="M328 -10V-20H362V-10" fill="#122028"/>';
+  s += '<path d="M300 -10V-80M352 -20V-72M290 -64H310M343 -58H361" stroke="#16262E" stroke-width="2.2"/>';
+  s += '<path d="M262 -10L300 -80M300 -80L352 -72M352 -72L396 -10" stroke="#1E2E38" stroke-width=".7"/>';
+  s += `<path d="M268 7h112" stroke="${SICAK}" stroke-opacity=".12" stroke-width="2"/>`;
+  c.ekle(0, `<g transform="translate(${f(x0)} ${f(t)}) scale(${k})">${s}</g>`);
+  return M;
 }
