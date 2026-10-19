@@ -155,6 +155,38 @@ function sacakFenerleri(c: Cizim, g: BolgeGeo, j: number, oranlar: readonly numb
   oranlar.forEach((o, i) => fener(c, j as Katman, { x: x0 + o * b.w, y: b.ust + dy }, renk, bicim, i0 + i, olcek));
 }
 
+/** Tepe sırtı (cizim.ts arkaPlan, mahalle 5): iki kübik parça, yerel koordinat (x0 y0 … x3 y3). */
+const TEPE_SIRTI = [
+  [0, 380, 80, 330, 160, 360, 220, 340],
+  [220, 340, 280, 320, 340, 300, 400, 330],
+] as const;
+
+/** Tepe sırtının x'teki yerel y'si (iki kübik de x'te tekdüze: ikiye bölmeyle). */
+function tepeSirti(x: number): number {
+  const p = x <= 220 ? TEPE_SIRTI[0] : TEPE_SIRTI[1];
+  const k = (a: number, b: number, c: number, d: number, t: number) => {
+    const u = 1 - t;
+    return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d;
+  };
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 24; i++) {
+    const m = (lo + hi) / 2;
+    if (k(p[0], p[2], p[4], p[6], m) < x) lo = m;
+    else hi = m;
+  }
+  return k(p[1], p[3], p[5], p[7], (lo + hi) / 2);
+}
+
+/** Tepe sırtının x0 → x1 arasını izleyen çizgi (küresel SVG yolu). */
+function tepeSirtYolu(g: BolgeGeo, x0: number, x1: number, dy = 0): string {
+  const n = Math.max(2, Math.ceil(Math.abs(x1 - x0) / 4));
+  return Array.from({ length: n + 1 }, (_, i) => {
+    const x = x0 + ((x1 - x0) * i) / n;
+    return `${i ? 'L' : 'M'}${f(x)} ${f(g.ust + tepeSirti(x) + dy)}`;
+  }).join('');
+}
+
 // ─────────────────────────── Çizimler ───────────────────────────
 
 export const CIZIMLER: Record<string, IsCizici> = {
@@ -608,20 +640,17 @@ export const CIZIMLER: Record<string, IsCizici> = {
 
   // ═════════ Tepe ═════════
   'tepe.patikaFenerleri': (c, g) => {
-    // Arka plandaki sırt (cizim.ts arkaPlan, mahalle 5) boyunca.
-    const kubik = (p0: Nokta, p1: Nokta, p2: Nokta, p3: Nokta, t: number): Nokta => {
-      const u = 1 - t;
-      return { x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x, y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y };
-    };
-    const ps: Nokta[] = [];
-    for (let i = 1; i <= 6; i++) ps.push(kubik(P(g, 0, 380), P(g, 80, 330), P(g, 160, 360), P(g, 220, 340), i / 7));
-    for (let i = 0; i <= 6; i++) ps.push(kubik(P(g, 220, 340), P(g, 280, 320), P(g, 340, 300), P(g, 400, 330), i / 7));
-    let s = `<path d="M0 ${f(g.ust + 383)}C80 ${f(g.ust + 333)} 160 ${f(g.ust + 363)} 220 ${f(g.ust + 343)}S340 ${f(g.ust + 303)} 400 ${f(g.ust + 333)}" fill="none" stroke="${c.yanik ? '#3A3060' : HAYALET_CIZGI}" stroke-width="2" stroke-dasharray="3 2" opacity=".8"/>`;
+    // Arka plandaki tepe sırtında (cizim.ts arkaPlan, mahalle 5) soldan
+    // tepedeki ateş yerine çıkan patika. Sırtın sağ yanı 28. düğümün,
+    // lambasının ve binasının arkasında kalır: patika oraya uzanmaz.
+    const ps = aralik(7, -8, 116).map((x) => P(g, x, tepeSirti(x)));
+    let s = `<path d="${tepeSirtYolu(g, 0, 120, 3)}" fill="none" stroke="${c.yanik ? '#3A3060' : HAYALET_CIZGI}" stroke-width="2" stroke-dasharray="3 2" opacity=".8"/>`;
     for (const p of ps) s += `<path d="M${f(p.x)} ${f(p.y + 2)}v-7" stroke="${c.yanik ? '#2A2030' : HAYALET_CIZGI}" stroke-width="1.2"/>`;
-    s += isiklar(c, ps.map((p) => ({ x: p.x, y: p.y - 6 })), 1.5, '#FFD15C', 5.5);
+    const isikP = ps.map((p) => ({ x: p.x, y: p.y - 6 }));
+    s += isiklar(c, isikP, 1.5, '#FFD15C', 5.5);
     c.ekle('arka', s);
-    parilti(c, ps.map((p) => ({ x: p.x, y: p.y - 6 })), 6, 3);
-    c.capa = P(g, 200, 340);
+    parilti(c, isikP, 6, 3);
+    c.capa = P(g, 54, 360);
   },
   'tepe.degirmenKanatlari': (c, g) => {
     // İki değirmen de döner: bu iş iki canlı öğe kullanır (Gök haritası durağan, mahalle ≤ 6).
@@ -646,7 +675,9 @@ export const CIZIMLER: Record<string, IsCizici> = {
     const b = g.binalar[1];
     c.capa = b.gobek ?? { x: b.x, y: b.ust };
   },
-  'tepe.ruzgarFlamalari': (c, g) => flamaDizisi(c, g, 2, 7, 'uzun', [vurgu(g), '#FFB020', '#3AA8FF', '#2EE07A', '#B266FF'], 12, 5, 15),
+  // 27. bölümün lamba direğinden sağ kenara: 28. terasın yüzünün önünde,
+  // 26. binanın çatısının üstünde (sırt, patika ve ateş tepede serbest kalır).
+  'tepe.ruzgarFlamalari': (c, g) => flamaDizisi(c, g, 1, 7, 'uzun', [vurgu(g), '#FFB020', '#3AA8FF', '#2EE07A', '#B266FF'], 12, 5, 15),
   'tepe.rasathaneKubbesi': (c, g) => {
     const b = g.binalar[4];
     const m = b.gobek ?? { x: b.x, y: b.ust };
@@ -671,17 +702,35 @@ export const CIZIMLER: Record<string, IsCizici> = {
     c.capa = { x: m.x, y: m.y - 16 };
   },
   'tepe.atesCanaklari': (c, g) => {
-    const y0 = g.ust + GIRIS_Y;
-    [176, 200, 224].forEach((x, i) => {
-      const ust = i === 1 ? y0 - 22 : y0 - 15;
-      let s = `<path d="M${x - 5} ${f(y0)}L${x} ${f(ust + 4)}L${x + 5} ${f(y0)}M${x} ${f(y0)}V${f(ust + 4)}" stroke="${c.yanik ? '#2A2030' : HAYALET_CIZGI}" stroke-width="1.4"/>`;
-      s += sekil(c, `M${x - 7} ${f(ust)}h14q-1 5-7 5t-7-5z`, '#4A3A3E');
-      if (c.yanik) s += `<path d="M${x - 7} ${f(ust)}h14" stroke="#D9A441" stroke-width="1"/>`;
-      c.ekle('on', s);
-      alev(c, 'on', { x, y: ust + 1 }, i === 1 ? 16 : 12, i);
-      kivilcim(c, { x, y: ust - 10 }, 2, 26, '#FFD15C', 8);
+    // Tepe sırtının doruğunda (arka plan): yel değirmeninin kanatlarıyla 28.
+    // düğümün lambası arasındaki açık sırtta çimenli bir tümsek (teraslar
+    // gibi yüzü aşağı kararır); çanaklar üçayaklarıyla tümseğe basar, patika
+    // buraya çıkar.
+    const A = 112;
+    const B = 194;
+    const zemin = (x: number) => tepeSirti(x) - 9 * Math.sin((Math.PI * Math.min(Math.max(x - A, 0), B - A)) / (B - A));
+    const Z = (x: number, dy = 0) => `${f(x)} ${f(g.ust + zemin(x) + dy)}`;
+    const xs = Array.from({ length: 21 }, (_, i) => A + ((B - A) * i) / 20);
+    // Yüz (aşağı kararır), üst yüzey (çimen) ve kenar ışığı.
+    let s = `<path d="M${Z(A, 2)}L${xs.map((x) => Z(x, 2)).join('L')}L${Z(B - 6, 16)}L${f(B - 18)} ${f(g.ust + tepeSirti(B) + 34)}H${f(A + 16)}L${Z(A + 5, 14)}z" fill="url(#hb-yuz-sol)"/>`;
+    s += sekil(c, `M${xs.map((x) => Z(x)).join('L')}L${Z(B - 1.5, 5)}L${[...xs].reverse().slice(1, -1).map((x) => Z(x, 6)).join('L')}L${Z(A + 1.5, 5)}z`, '#22381E');
+    if (c.yanik) {
+      s += `<path d="M${xs.map((x) => Z(x)).join('L')}" fill="none" stroke="#8A7A9A" stroke-opacity=".55" stroke-width="1.4"/>`;
+      for (const [x, r] of [[118, 3], [141, 2.5], [166, 3.5], [189, 2.5]] as const) s += `<circle cx="${f(x)}" cy="${f(g.ust + zemin(x))}" r="${r}" fill="#1A3A20"/>`;
+      s += `<ellipse cx="${f((A + B) / 2)}" cy="${f(g.ust + zemin((A + B) / 2) + 1)}" rx="40" ry="6" fill="#FFB020" opacity=".16"/>`;
+    }
+    c.ekle('arka', s);
+    [132, 153, 174].forEach((x, i) => {
+      const y0 = g.ust + zemin(x);
+      const tas = i === 1 ? y0 - 22 : y0 - 15;
+      let t = `<path d="M${x - 5} ${f(y0)}L${x} ${f(tas + 4)}L${x + 5} ${f(y0)}M${x} ${f(y0)}V${f(tas + 4)}" stroke="${c.yanik ? '#2A2030' : HAYALET_CIZGI}" stroke-width="1.4"/>`;
+      t += sekil(c, `M${x - 7} ${f(tas)}h14q-1 5-7 5t-7-5z`, '#4A3A3E');
+      if (c.yanik) t += `<path d="M${x - 7} ${f(tas)}h14" stroke="#D9A441" stroke-width="1"/>`;
+      c.ekle('arka', t);
+      alev(c, 'arka', { x, y: tas + 1 }, i === 1 ? 16 : 12, i);
+      kivilcim(c, { x, y: tas - 10 }, 2, 26, '#FFD15C', 8);
     });
-    c.capa = P(g, 200, GIRIS_Y - 26);
+    c.capa = P(g, 153, 318);
   },
   'tepe.gokHaritasi': (c, g) => {
     // Durağan (Tepe'nin canlı öğe payını değirmenler kullanır).
@@ -717,35 +766,45 @@ export const CIZIMLER: Record<string, IsCizici> = {
 
   // ═════════ Fabrika ═════════
   'fabrika.atolyeLambalari': (c, g) => {
+    // 31. ve 33. bölümün atölyelerinde, saçaktan pencere sütunlarının üstüne;
+    // düğüme bitişik sütun boş (düğüm düğmesi binanın o köşesine biner).
     for (const j of [0, 2]) {
       const b = g.binalar[j];
       const x0 = b.x - b.w / 2;
-      const xs = [13, b.w / 2, b.w - 13].map((dx) => x0 + dx);
-      c.ekle(j as Katman, `<path d="M${f(x0 + 4)} ${f(b.ust + 2)}H${f(x0 + b.w - 4)}" stroke="${c.yanik ? '#2A2030' : HAYALET_CIZGI}" stroke-width=".8"/>`);
-      xs.forEach((x, i) => fener(c, j as Katman, { x, y: b.ust + 2 }, 1, 'koni', j * 3 + i, 0.8));
+      const sutunlar = [x0 + 13, b.x, x0 + b.w - 13];
+      const xs = b.taraf === 'sol' ? sutunlar.slice(0, 2) : sutunlar.slice(1);
+      c.ekle(j as Katman, `<path d="M${f(xs[0] - 9)} ${f(b.ust + 2)}H${f(xs[1] + 9)}" stroke="${c.yanik ? '#2A2030' : HAYALET_CIZGI}" stroke-width=".8"/>`);
+      xs.forEach((x, i) => fener(c, j as Katman, { x, y: b.ust + 2 }, 1, 'koni', j * 3 + i, 0.9));
     }
     const b = g.binalar[0];
-    c.capa = { x: b.x, y: b.ust + 10 };
+    const x0 = b.x - b.w / 2;
+    c.capa = { x: b.taraf === 'sol' ? (x0 + 13 + b.x) / 2 : (b.x + x0 + b.w - 13) / 2, y: b.ust + 10 };
   },
   'fabrika.depoKapisi': (c, g) => {
-    const y0 = g.ust + GIRIS_Y;
-    let s = sutun(c, 166, y0 - 42, 10, 42, '#5A2A22', '#8A4A3A') + sutun(c, 224, y0 - 42, 10, 42, '#5A2A22', '#8A4A3A');
-    if (c.yanik) for (let y = y0 - 36; y < y0; y += 7) s += `<path d="M166 ${f(y)}h10M224 ${f(y)}h10" stroke="#3A1A16" stroke-width=".8"/>`;
-    s += sekil(c, `M162 ${f(y0 - 48)}H238V${f(y0 - 41)}H162z`, '#3A3440');
-    if (c.yanik) s += dogru({ x: 166, y: y0 - 44.5 }, { x: 234, y: y0 - 44.5 }, 9).map((p) => `<circle cx="${f(p.x)}" cy="${f(p.y)}" r=".9" fill="#8A8098"/>`).join('');
+    // 32. bölümün atölyesinin cephesinde (sağ, orta): kapı terasa basar, orta
+    // pencere sütununun alt penceresinin yerinde; levha iki pencere sırasının
+    // arasında, yan pencereler açıkta. Çizim kapının taban ortasına göre
+    // (y yukarı eksi), `k` ölçeğiyle.
+    const b = g.binalar[1];
+    const k = 0.52;
+    const M = (x: number, y: number): Nokta => ({ x: b.x + x * k, y: b.taban + y * k });
+    let s = sutun(c, -34, -42, 10, 42, '#5A2A22', '#8A4A3A') + sutun(c, 24, -42, 10, 42, '#5A2A22', '#8A4A3A');
+    if (c.yanik) for (let y = -36; y < 0; y += 7) s += `<path d="M-34 ${y}h10M24 ${y}h10" stroke="#3A1A16" stroke-width=".8"/>`;
+    s += sekil(c, 'M-38 -48H38V-41H-38z', '#3A3440');
+    if (c.yanik) s += dogru({ x: -34, y: -44.5 }, { x: 34, y: -44.5 }, 9).map((p) => `<circle cx="${f(p.x)}" cy="${f(p.y)}" r=".9" fill="#8A8098"/>`).join('');
     // Çift kanatlı ahşap kapı, çapraz kuşaklar.
-    s += sekil(c, `M176 ${f(y0)}V${f(y0 - 41)}H224V${f(y0)}z`, '#2A1A12');
-    if (c.yanik) s += `<path d="M200 ${f(y0 - 41)}V${f(y0)}M176 ${f(y0 - 41)}L200 ${f(y0)}M200 ${f(y0 - 41)}L176 ${f(y0)}M200 ${f(y0 - 41)}L224 ${f(y0)}M224 ${f(y0 - 41)}L200 ${f(y0)}" stroke="#4A2E1A" stroke-width="2"/><path d="M182 ${f(y0 - 41)}V${f(y0)}M188 ${f(y0 - 41)}V${f(y0)}M194 ${f(y0 - 41)}V${f(y0)}M206 ${f(y0 - 41)}V${f(y0)}M212 ${f(y0 - 41)}V${f(y0)}M218 ${f(y0 - 41)}V${f(y0)}" stroke="#1A0E08" stroke-width=".6"/><rect x="196" y="${f(y0 - 24)}" width="8" height="6" fill="#FFB020" opacity=".25"/>`;
+    s += sekil(c, 'M-24 0V-41H24V0z', '#2A1A12');
+    if (c.yanik) s += '<path d="M0 -41V0M-24 -41L0 0M0 -41L-24 0M0 -41L24 0M24 -41L0 0" stroke="#4A2E1A" stroke-width="2"/><path d="M-18 -41V0M-12 -41V0M-6 -41V0M6 -41V0M12 -41V0M18 -41V0" stroke="#1A0E08" stroke-width=".6"/><rect x="-4" y="-24" width="8" height="6" fill="#FFB020" opacity=".25"/>';
     // Lento üstünde barut fişeği levhası.
-    s += sekil(c, `M188 ${f(y0 - 58)}h24v9h-24z`, '#4A2622');
-    if (c.yanik) s += `<g ${c.sira()}><path d="M193 ${f(y0 - 53.5)}h14" stroke="#FFB020" stroke-width="1.4"/><circle cx="207.5" cy="${f(y0 - 53.5)}" r="1.6" fill="#FFE9A0"/><path d="M209 ${f(y0 - 56)}l2-2M209 ${f(y0 - 51)}l2 2M210 ${f(y0 - 53.5)}h2.6" stroke="#FFE9A0" stroke-width=".7"/></g>`;
-    c.ekle('on', s);
-    const ust = dogru({ x: 164, y: y0 - 50 }, { x: 236, y: y0 - 50 }, 10);
-    c.ekle('on', isiklar(c, ust, 1.3, '#FFE9B0', 4.5));
-    parilti(c, ust, 5, 2);
-    fener(c, 'on', { x: 171, y: y0 - 40 }, 1, 'kafes', 0, 0.75);
-    fener(c, 'on', { x: 229, y: y0 - 40 }, 1, 'kafes', 1, 0.75);
-    c.capa = P(g, 200, GIRIS_Y - 28);
+    s += sekil(c, 'M-12 -58h24v9h-24z', '#4A2622');
+    if (c.yanik) s += `<g ${c.sira()}><path d="M-7 -53.5h14" stroke="#FFB020" stroke-width="1.4"/><circle cx="7.5" cy="-53.5" r="1.6" fill="#FFE9A0"/><path d="M9 -56l2-2M9 -51l2 2M10 -53.5h2.6" stroke="#FFE9A0" stroke-width=".7"/></g>`;
+    c.ekle(1, `<g transform="translate(${f(b.x)} ${f(b.taban)}) scale(${k})">${s}</g>`);
+    const ust = dogru(M(-36, -50), M(36, -50), 10);
+    c.ekle(1, isiklar(c, ust, 1, '#FFE9B0', 3.4));
+    parilti(c, ust, 4, 2);
+    fener(c, 1, M(-29, -40), 1, 'kafes', 0, 0.5);
+    fener(c, 1, M(29, -40), 1, 'kafes', 1, 0.5);
+    c.capa = M(0, -28);
   },
   'fabrika.rayFenerleri': (c, g) => fenerDizisi(c, g, 1, 6, 'kafes', [0, 1, 2, 1, 0, 1], 20),
   'fabrika.bacaKivilcimlari': (c, g) => {
@@ -778,29 +837,45 @@ export const CIZIMLER: Record<string, IsCizici> = {
     c.capa = b ? { x: b.x, y: b.ust + 20 } : P(g, 100, 260);
   },
   'fabrika.senlikDudugu': (c, g) => {
-    const y = (v: number) => g.ust + v;
-    let s = hale(c, P(g, 200, 48), 34, 0.45);
+    // 34. bölümün atölyesinin testere çatısında (sağ üst), bacanın öbür
+    // ucundaki dişin yamacında: buhar borusu çatıdan çıkar; Kale şeridinin
+    // dibi ve 35. düğümün lambası boş kalır. Çizim borunun dibine göre
+    // (y yukarı eksi), `k` ölçeğiyle.
+    const bn = g.binalar[3];
+    const k = 0.8;
+    const dis = bn.baca && bn.baca.x < bn.x ? 2 : 0;
+    // Testere dişi: tepe (x0 + dis·w/3, ust − 16) → saçak (x0 + (dis + 1)·w/3, ust + 1).
+    const dx = bn.x - bn.w / 2 + ((dis + 0.6) * bn.w) / 3;
+    const dy = bn.ust - 16 + 0.6 * 17;
+    const M = (x: number, y: number): Nokta => ({ x: dx + x * k, y: dy + y * k });
+    // Kaide: tabla ile aşağı inen yamaç arasındaki takoz (tabla çatıya otursun).
+    const egim = 17 / (bn.w / 3);
+    let s = sekil(c, `M0 0H12V${f(12 * egim)}z`, '#3A3440');
+    s += hale(c, { x: 0, y: -56 }, 34, 0.45);
     // Buhar borusu, vana çarkı, pirinç düdük (silindir + bilezikler + kubbe).
-    s += sekil(c, `M197.5 ${f(y(100))}V${f(y(66))}H202.5V${f(y(100))}z`, '#4A4250');
-    s += sekil(c, `M188 ${f(y(100))}h24v4h-24z`, '#3A3440');
-    s += c.yanik ? `<circle cx="207" cy="${f(y(80))}" r="4.4" fill="none" stroke="#B8381C" stroke-width="1.6"/><path d="M202.5 ${f(y(80))}h4.5M207 ${f(y(75.6))}v8.8M202.6 ${f(y(80))}h8.8" stroke="#B8381C" stroke-width=".9"/>` : '';
+    s += sekil(c, 'M-2.5 -4V-38H2.5V-4z', '#4A4250');
+    s += sekil(c, 'M-12 -4h24v4h-24z', '#3A3440');
+    s += c.yanik ? '<circle cx="7" cy="-24" r="4.4" fill="none" stroke="#B8381C" stroke-width="1.6"/><path d="M2.5 -24h4.5M7 -28.4v8.8M2.6 -24h8.8" stroke="#B8381C" stroke-width=".9"/>' : '';
     s += c.yanik
-      ? `<path d="M194 ${f(y(66))}V${f(y(40))}H206V${f(y(66))}z" fill="url(#ftl-pirinc)"/><path d="M193 ${f(y(62))}h14M193 ${f(y(50))}h14M193 ${f(y(44))}h14" stroke="#8A4E1C" stroke-width="1.4"/><path d="M192 ${f(y(40))}Q200 ${f(y(30))} 208 ${f(y(40))}z" fill="url(#ftl-pirinc)"/><path d="M200 ${f(y(33))}v-4" stroke="#8A4E1C" stroke-width="1.4"/><path d="M196 ${f(y(56))}h8" stroke="#FFF4C2" stroke-width="1" opacity=".6"/>`
-      : sekil(c, `M194 ${f(y(66))}V${f(y(40))}H206V${f(y(66))}zM192 ${f(y(40))}Q200 ${f(y(30))} 208 ${f(y(40))}z`, '#4A4250');
-    c.ekle('on', s);
-    const halka = yay(P(g, 200, 52), 16, 18, 0, 330, 12);
-    c.ekle('on', isiklar(c, halka, 1.2, '#FFE9B0', 4));
+      ? '<path d="M-6 -38V-64H6V-38z" fill="url(#ftl-pirinc)"/><path d="M-7 -42h14M-7 -54h14M-7 -60h14" stroke="#8A4E1C" stroke-width="1.4"/><path d="M-8 -64Q0 -74 8 -64z" fill="url(#ftl-pirinc)"/><path d="M0 -71v-4" stroke="#8A4E1C" stroke-width="1.4"/><path d="M-4 -48h8" stroke="#FFF4C2" stroke-width="1" opacity=".6"/>'
+      : sekil(c, 'M-6 -38V-64H6V-38zM-8 -64Q0 -74 8 -64z', '#4A4250');
+    c.ekle(3, `<g transform="translate(${f(dx)} ${f(dy)}) scale(${k})">${s}</g>`);
+    const halka = yay(M(0, -52), 16 * k, 18 * k, 0, 330, 12);
+    c.ekle(3, isiklar(c, halka, 1.1, '#FFE9B0', 3.6));
     if (c.yanik)
-      for (let i = 0; i < 4; i++)
-        c.grupla('buhar', { tur: 'yuksel', x: 192 + ((i * 5) % 9), y: y(26) - i * 8, w: 10, h: 10, ic: `<circle cx="5" cy="5" r="${5 - i * 0.6}" fill="#EEE6F6" opacity="${(0.6 - i * 0.1).toFixed(2)}"/>`, sure: 2.4, dy: 30 });
-    parilti(c, halka, 5, 1.6);
+      for (let i = 0; i < 4; i++) {
+        const p = M(-8 + ((i * 5) % 9), -78 - i * 8);
+        const r = (5 - i * 0.6) * k;
+        c.grupla('buhar', { tur: 'yuksel', x: p.x, y: p.y, w: 10 * k, h: 10 * k, ic: `<circle cx="${f(5 * k)}" cy="${f(5 * k)}" r="${f(r)}" fill="#EEE6F6" opacity="${(0.6 - i * 0.1).toFixed(2)}"/>`, sure: 2.4, dy: 30 * k });
+      }
+    parilti(c, halka, 4.5, 1.6);
     // Bacaların tacı.
     for (const b of g.binalar) {
       if (!b.baca) continue;
       const tac = yay({ x: b.baca.x, y: b.baca.ust - 1 }, 7, 5, 180, 360, 5);
       c.ekle(b.j as Katman, isiklar(c, tac, 1.1, '#FFD15C', 3.5));
     }
-    c.capa = P(g, 200, 50);
+    c.capa = M(0, -54);
   },
 
   // ═════════ Kale ═════════
