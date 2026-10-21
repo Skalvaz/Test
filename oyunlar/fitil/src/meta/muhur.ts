@@ -24,6 +24,7 @@
  *   const bas = muhurleriDegerlendir(v, muhurOzeti(oz, d)); // kazanç: [ç, k, u]
  */
 import type { BolumVerisi, KomboTuru, MuhurKapsami, MuhurKosulu, MuhurOlcusu, OyunDurumu } from '../core/types';
+import { DIL, t } from '../platform/dil';
 
 export type { MuhurEylemi, MuhurKapsami, MuhurKosulu, MuhurOlcusu } from '../core/types';
 import type { HamleIzi, OyunOzeti } from './ozet';
@@ -33,7 +34,10 @@ import type { HamleIzi, OyunOzeti } from './ozet';
 export type MuhurKademe = 'cirak' | 'kalfa' | 'usta';
 /** Sıra kayıttaki bit sırasıdır (bit 0 Çırak, 1 Kalfa, 2 Usta). DEĞİŞTİRME. */
 export const MUHUR_KADEMELERI: readonly MuhurKademe[] = ['cirak', 'kalfa', 'usta'];
-export const MUHUR_KADEME_ADLARI: Readonly<Record<MuhurKademe, string>> = { cirak: 'Çırak', kalfa: 'Kalfa', usta: 'Usta' };
+export const MUHUR_KADEME_ADLARI: Readonly<Record<MuhurKademe, string>> = t(
+  { cirak: 'Çırak', kalfa: 'Kalfa', usta: 'Usta' },
+  { cirak: 'Apprentice', kalfa: 'Journeyman', usta: 'Master' },
+);
 /** Mühürlü ilk bölüm; bu bölümün ilk kazancında mühürler tanıtılır. */
 export const MUHUR_ACILIS_BOLUMU = 6;
 /** Mühürlü son ana bölüm. */
@@ -265,20 +269,32 @@ export function muhurBirlestir(eski: number | undefined, bu: readonly boolean[])
 
 const RENK_ADI = ['kızıl', 'kehribar', 'zümrüt', 'gök', 'mor', 'gül'] as const;
 const OZEL_ADI = { roket: 'roket', kasimpati: 'kasımpatı', yildiz: 'yıldız topu' } as const;
-export const KOMBO_ADLARI: Readonly<Record<KomboTuru, string>> = {
-  yildizHatti: 'Yıldız Hattı',
-  kalinRoket: 'Kalın Roket',
-  devKasimpati: 'Dev Kasımpatı',
-  roketYagmuru: 'Roket Yağmuru',
-  bahce: 'Bahçe',
-  buyukFinal: 'Büyük Final',
-};
+export const KOMBO_ADLARI: Readonly<Record<KomboTuru, string>> = t(
+  {
+    yildizHatti: 'Yıldız Hattı',
+    kalinRoket: 'Kalın Roket',
+    devKasimpati: 'Dev Kasımpatı',
+    roketYagmuru: 'Roket Yağmuru',
+    bahce: 'Bahçe',
+    buyukFinal: 'Büyük Final',
+  },
+  {
+    yildizHatti: 'Star Line',
+    kalinRoket: 'Thick Rocket',
+    devKasimpati: 'Giant Chrysanthemum',
+    roketYagmuru: 'Rocket Rain',
+    bahce: 'Garden',
+    buyukFinal: 'Grand Finale',
+  },
+);
 
 /**
- * Koşulun tek satırlık Türkçe metni (bölüm öncesi kartı, Duraklat,
- * Kazandın). `metin` alanı verilmişse o kullanılır.
+ * Koşulun tek satırlık metni, sayfanın dilinde (bölüm öncesi kartı,
+ * Duraklat, Kazandın). Türkçede `metin` alanı verilmişse o kullanılır;
+ * İngilizcede metin her zaman üretilir (elle `metin` Türkçe yazılır).
  */
 export function muhurMetni(k: MuhurKosulu): string {
+  if (DIL === 'en') return muhurMetniEn(k);
   if (k.metin) return k.metin;
   const n = k.enAz ?? 0;
   const tek = k.kapsam === 'hamle';
@@ -357,6 +373,122 @@ export function muhurMetni(k: MuhurKosulu): string {
 
 function olcuAdi(k: MuhurKosulu): string {
   return k.olcu;
+}
+
+// İngilizce metin. Türkçedeki "Tek hamlede …" öneki İngilizcede sonda
+// "… at once" (reaksiyonda "in one move"). İngilizce sözcükler Türkçeden
+// geniş düşer ve Duraklat satırı tek satırdır (taşarsa üç nokta): metinler
+// kısa tutuldu (gerçek mühürlerin en genişi ≈ 188 px: 360 px ekranda sığar;
+// Türkçenin en genişi 228 px); kesin sınır yine 34 karakter.
+const RENK_EN = ['red', 'amber', 'emerald', 'sky', 'purple', 'rose'] as const;
+/** Özel taş adı: [tekil, çoğul]. */
+const OZEL_EN = {
+  roket: ['rocket', 'rockets'],
+  kasimpati: ['chrysanthemum', 'chrysanthemums'],
+  yildiz: ['star ball', 'star balls'],
+} as const;
+const OZEL_TAS_EN = ['special piece', 'special pieces'] as const;
+
+/** Sayı + tekil/çoğul ad: (1, cage, cages) → "1 cage". */
+const adet = (n: number, tekil: string, cogul: string): string => `${n} ${n === 1 ? tekil : cogul}`;
+/** Belirsiz tanımlık: "an amber", "a red". */
+const tanimlik = (s: string): string => `${/^[aeiou]/i.test(s) ? 'an' : 'a'} ${s}`;
+/** Sayının önündeki tanımlık (okunuşa göre): "an 8+", "an 18+", "a 24+". */
+const sayiTanimligi = (n: number): string => (/^8/.test(String(n)) || n === 11 || n === 18 ? 'an' : 'a');
+/** Tekrar sayısı: once, twice, 3 times. */
+const kez = (n: number): string => (n === 1 ? 'once' : n === 2 ? 'twice' : `${n} times`);
+/** Sıra sayısı: 1st, 2nd, 3rd, 4th, 11th, 22nd. */
+function sira(n: number): string {
+  const y = n % 100;
+  const son = y >= 11 && y <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+  return `${n}${son}`;
+}
+/** İngilizcede tercih edilen üst sınır (karakter; 360 px ekranda Duraklat satırı ≈ 186 px). */
+const YUMUSAK_SINIR = 29;
+/** Yumuşak sınıra (29), yoksa kesin sınıra (34) sığan ilk aday; hiçbiri sığmazsa en kısası. */
+function sigan(...adaylar: string[]): string {
+  for (const sinir of [YUMUSAK_SINIR, MUHUR_METIN_SINIRI]) for (const a of adaylar) if (a.length <= sinir) return a;
+  return adaylar.reduce((a, b) => (b.length < a.length ? b : a));
+}
+
+function muhurMetniEn(k: MuhurKosulu): string {
+  const n = k.enAz ?? 0;
+  const tek = k.kapsam === 'hamle';
+  /** "Tek hamlede" karşılığı sonda: "… at once" (adaylar uzundan kısaya; tek hamle değilse ilki). */
+  const th = (...s: string[]): string => (tek ? sigan(...s.map((x) => `${x} at once`)) : s[0]);
+  const ozel = k.ozel ? OZEL_EN[k.ozel] : OZEL_TAS_EN;
+  if (k.enCok !== undefined) {
+    const c = k.enCok;
+    const hic = c === 0;
+    switch (k.olcu) {
+      case 'koruk':
+        return hic ? 'Win without the Bellows' : c === 1 ? 'Use the Bellows at most once' : `Use the Bellows at most ${c} times`;
+      case 'guclendirici':
+        return hic ? 'Win without boosters' : `Use at most ${adet(c, 'booster', 'boosters')}`;
+      case 'kisaZincir':
+        return hic ? 'Win with no chains of just 3' : `Draw at most ${adet(c, 'chain', 'chains')} of just 3`;
+      case 'halka':
+        return hic ? 'Win without drawing a loop' : `Draw at most ${adet(c, 'loop', 'loops')}`;
+      default:
+        return `${olcuAdi(k)}: at most ${c}`;
+    }
+  }
+  switch (k.olcu) {
+    case 'R':
+      if (k.eylem === 'koruk') return `${n}+ reaction with Bellows`;
+      if (k.halka) return `${n}+ reaction with a loop`;
+      return `${n}+ reaction in one move`;
+    case 'nesil':
+      return sigan(`Make ${sayiTanimligi(n)} ${sira(n)}-generation blast`, `${sira(n)}-generation blast`);
+    case 'zincir':
+      if (k.halka) return `Close a loop of ${n}+`;
+      if (k.renk !== undefined) return `Draw ${tanimlik(RENK_EN[k.renk])} chain of ${n}+`;
+      return `Draw a chain of ${n}+`;
+    case 'kalanHamle':
+      return n === 1 ? 'Win with a move to spare' : `Win with ${n}+ moves left`;
+    case 'halka':
+      return n === 1 ? 'Draw a loop' : `Draw ${n} loops`;
+    case 'patlama':
+      if (k.renk !== undefined) return tek ? `Pop ${n} ${RENK_EN[k.renk]} at once` : `Pop ${n} ${RENK_EN[k.renk]} ${n === 1 ? 'capsule' : 'capsules'}`;
+      return th(`Pop ${adet(n, 'capsule', 'capsules')}`);
+    case 'isiPatlamasi':
+      return th(`Pop ${adet(n, 'capsule', 'capsules')} with heat`);
+    case 'olusum':
+      return `Make ${n === 1 ? tanimlik(ozel[0]) : `${n} ${ozel[1]}`}`;
+    case 'ozelAtes':
+      return tek ? th(`Fire ${adet(n, ozel[0], ozel[1])}`) : `Fire ${n === 1 ? tanimlik(ozel[0]) : `${n} ${ozel[1]}`}`;
+    case 'caprazRoket':
+      return th(`Fire ${adet(n, 'diagonal rocket', 'diagonal rockets')}`);
+    case 'kombo':
+      if (k.kombo) return n <= 1 ? `Make a ${KOMBO_ADLARI[k.kombo]} combo` : `Make ${n} ${KOMBO_ADLARI[k.kombo]} combos`;
+      return th(n <= 1 ? 'Make a combo' : `Make ${n} combos`);
+    case 'kafes':
+      return th(`Break ${adet(n, 'cage', 'cages')}`);
+    case 'kaya':
+      return th(`Break ${adet(n, 'rock', 'rocks')}`);
+    case 'engelHasar':
+      return th(`Hit obstacles ${kez(n)}`, `${adet(n, 'obstacle hit', 'obstacle hits')}`);
+    case 'doseme':
+      return th(`Light up ${adet(n, 'tile', 'tiles')}`);
+    case 'desen':
+      return th(`Paint ${adet(n, 'pattern tile', 'pattern tiles')}`, adet(n, 'pattern tile', 'pattern tiles'));
+    case 'is':
+      return th(`Clear ${adet(n, 'soot spot', 'soot spots')}`);
+    case 'fener':
+      return th(`Bring down ${adet(n, 'lantern', 'lanterns')}`);
+    case 'devFisek':
+      return th(`Fire ${adet(n, 'giant firework', 'giant fireworks')}`, adet(n, 'giant firework', 'giant fireworks'));
+    case 'izliDevFisek':
+      return n === 1 ? 'Fire a giant firework via a trail' : `Fire ${n} giant fireworks via trails`;
+    case 'caprazEngel':
+      return n === 1 ? 'Hit an obstacle diagonally' : `Hit ${n} obstacles diagonally`;
+    case 'kurutma':
+      return th(`Dry ${adet(n, 'wet powder', 'wet powders')}`);
+    case 'koruk':
+      return n === 1 ? 'Use the Bellows' : `Use the Bellows ${kez(n)}`;
+    default:
+      return olcuAdi(k);
+  }
 }
 
 // ─────────────────────────── Doğrulama ───────────────────────────

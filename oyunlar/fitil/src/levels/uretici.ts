@@ -39,6 +39,7 @@ import type { BolumVerisi, Hedef } from '../core/index';
 import { oyunAdimlari, type OyunSonucu } from '../bot/simulasyon';
 import type { BotSecenek } from '../bot/ortak';
 import { bolumDogrula } from './dogrulayici';
+import { t } from '../platform/dil';
 
 export interface UreticiSecenek {
   /** En fazla aday bölüm (§10.5: 50). */
@@ -110,6 +111,17 @@ function agirlikli(r: R, a: readonly number[]): number {
     if (k < 0) return i;
   }
   return a.length - 1;
+}
+
+/**
+ * Üretilen bölümün görünen adı, sayfanın dilinde: "Günün Şenliği",
+ * "Sonsuz Şenlik 12". Web Worker'da sayfa dili bilinmez (işçi Türkçe ad
+ * yazar) ve önbellekteki bölüm başka dilde üretilmiş olabilir: ana iş
+ * parçacığı adı gösterirken bununla yeniden kurmalı.
+ */
+export function uretilenBolumAdi(tur: 'gunluk' | 'sonsuz', id: number): string {
+  const n = id - 1_000_000;
+  return tur === 'gunluk' ? t('Günün Şenliği', 'Daily Festival') : t(`Sonsuz Şenlik ${n}`, `Endless Festival ${n}`);
 }
 
 /** Tek bir aday bölüm (bot süzmesinden önce). */
@@ -200,7 +212,7 @@ export function adayBolum(tohum: number, id: number, tur: 'gunluk' | 'sonsuz', z
   const sonOnIsi = onIsi.filter(([x, y]) => g[y][x] === 'C');
   const v: BolumVerisi = {
     id,
-    ad: tur === 'gunluk' ? 'Günün Şenliği' : `Sonsuz Şenlik ${id - 1_000_000}`,
+    ad: uretilenBolumAdi(tur, id),
     mahalle: rngInt(r, 8),
     tur,
     w,
