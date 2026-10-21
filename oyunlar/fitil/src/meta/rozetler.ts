@@ -17,6 +17,7 @@
  *    Üçüncü Kuşak bu yüzden kayıt rekorundan değil oyunun özetinden okunur.
  */
 import type { GuclendiriciId } from '../app/katalog';
+import { t } from '../platform/dil';
 import { toplananDesenSayisi } from './defter';
 import type { Kayit, Nadirlik } from './kayit';
 import type { OyunOzeti } from './ozet';
@@ -59,28 +60,28 @@ function mahalleUcYildiz(k: Kayit, ayar: MetaAyar): boolean {
 }
 
 const TANIMLAR: Record<RozetId, Omit<RozetTanimi, 'id'>> = {
-  ilkKivilcim: { ad: 'İlk Kıvılcım', aciklama: '1. bölümü kazan', kosul: (b) => (b.kayit.bolumler['1']?.yildiz ?? 0) >= 1 },
-  caprazNisanci: { ad: 'Çapraz Nişancı', aciklama: 'Çapraz roketle 3 kafes kır (tek oyunda)', kosul: (b) => (b.oyun?.ozet.caprazRoketKafes ?? 0) >= 3 },
-  sarVePisir: { ad: 'Sar ve Pişir', aciklama: 'Tek zincirle bir kafesi 3 komşusundan ısıt', kosul: (b) => !!b.oyun?.ozet.sarVePisir },
-  halkaci: { ad: 'Halkacı', aciklama: 'Toplam 50 halka çiz', odul: { guc: 'kibrit', adet: 1 }, kosul: (b) => b.kayit.istatistik.toplamHalka >= 50 },
-  otuzluk: { ad: 'Otuzluk', aciklama: 'Tek hamlede 30+ reaksiyon', odul: { guc: 'kalip', adet: 1 }, kosul: (b) => b.kayit.rekorlar.enBuyukReaksiyon >= 30 },
-  senlik: { ad: 'ŞENLİK!', aciklama: 'Tek hamlede 40+ reaksiyon', odul: { guc: 'geriSar', adet: 1 }, kosul: (b) => b.kayit.rekorlar.enBuyukReaksiyon >= 40 },
-  ucuncuKusak: { ad: 'Üçüncü Kuşak', aciklama: 'Bir hamlede 3. nesil patlama', kosul: (b) => !!b.oyun && !ogretimOyunu(b) && b.oyun.ozet.enCokNesil >= 3 },
-  buyukFinal: { ad: 'Büyük Final', aciklama: 'Yıldız + Yıldız kombinasyonu', kosul: (b) => !!b.oyun?.ozet.kombolar.includes('buyukFinal') },
-  roketYagmuru: { ad: 'Roket Yağmuru', aciklama: 'Yıldız + Roket kombinasyonu', kosul: (b) => !!b.oyun?.ozet.kombolar.includes('roketYagmuru') },
-  kilpayi: { ad: 'Kılpayı', aciklama: 'Son hamlede kazan', kosul: (b) => !!b.oyun?.kazandi && b.oyun.kalanHamle === 0 },
-  tutumlu: { ad: 'Tutumlu', aciklama: '10+ hamle kalarak kazan', kosul: (b) => !!b.oyun?.kazandi && !ogretimOyunu(b) && (b.oyun.kalanHamle ?? 0) >= 10 },
-  ustaCirak: { ad: 'Usta Çırak', aciklama: 'Bir mahallenin tamamında 3★', odul: { guc: 'kibrit', adet: 1 }, kosul: (b) => mahalleUcYildiz(b.kayit, b.ayar) },
+  ilkKivilcim: { ad: t('İlk Kıvılcım', 'First Spark'), aciklama: t('1. bölümü kazan', 'Win level 1'), kosul: (b) => (b.kayit.bolumler['1']?.yildiz ?? 0) >= 1 },
+  caprazNisanci: { ad: t('Çapraz Nişancı', 'Diagonal Ace'), aciklama: t('Çapraz roketle 3 kafes kır (tek oyunda)', 'Break 3 cages with diagonal rockets (one game)'), kosul: (b) => (b.oyun?.ozet.caprazRoketKafes ?? 0) >= 3 },
+  sarVePisir: { ad: t('Sar ve Pişir', 'Wrap and Bake'), aciklama: t('Tek zincirle bir kafesi 3 komşusundan ısıt', 'Heat a cage from 3 sides with one chain'), kosul: (b) => !!b.oyun?.ozet.sarVePisir },
+  halkaci: { ad: t('Halkacı', 'Loop Maker'), aciklama: t('Toplam 50 halka çiz', 'Draw 50 loops in total'), odul: { guc: 'kibrit', adet: 1 }, kosul: (b) => b.kayit.istatistik.toplamHalka >= 50 },
+  otuzluk: { ad: t('Otuzluk', 'Thirty Club'), aciklama: t('Tek hamlede 30+ reaksiyon', '30+ reaction in one move'), odul: { guc: 'kalip', adet: 1 }, kosul: (b) => b.kayit.rekorlar.enBuyukReaksiyon >= 30 },
+  senlik: { ad: t('ŞENLİK!', 'FESTIVAL!'), aciklama: t('Tek hamlede 40+ reaksiyon', '40+ reaction in one move'), odul: { guc: 'geriSar', adet: 1 }, kosul: (b) => b.kayit.rekorlar.enBuyukReaksiyon >= 40 },
+  ucuncuKusak: { ad: t('Üçüncü Kuşak', 'Third Generation'), aciklama: t('Bir hamlede 3. nesil patlama', '3rd-generation blast in one move'), kosul: (b) => !!b.oyun && !ogretimOyunu(b) && b.oyun.ozet.enCokNesil >= 3 },
+  buyukFinal: { ad: t('Büyük Final', 'Grand Finale'), aciklama: t('Yıldız + Yıldız kombinasyonu', 'Star + Star combo'), kosul: (b) => !!b.oyun?.ozet.kombolar.includes('buyukFinal') },
+  roketYagmuru: { ad: t('Roket Yağmuru', 'Rocket Rain'), aciklama: t('Yıldız + Roket kombinasyonu', 'Star + Rocket combo'), kosul: (b) => !!b.oyun?.ozet.kombolar.includes('roketYagmuru') },
+  kilpayi: { ad: t('Kılpayı', 'Close Call'), aciklama: t('Son hamlede kazan', 'Win on the last move'), kosul: (b) => !!b.oyun?.kazandi && b.oyun.kalanHamle === 0 },
+  tutumlu: { ad: t('Tutumlu', 'Thrifty'), aciklama: t('10+ hamle kalarak kazan', 'Win with 10+ moves left'), kosul: (b) => !!b.oyun?.kazandi && !ogretimOyunu(b) && (b.oyun.kalanHamle ?? 0) >= 10 },
+  ustaCirak: { ad: t('Usta Çırak', 'Top Apprentice'), aciklama: t('Bir mahallenin tamamında 3★', '3★ on every level of a district'), odul: { guc: 'kibrit', adet: 1 }, kosul: (b) => mahalleUcYildiz(b.kayit, b.ayar) },
   saheser: {
-    ad: 'Şaheser',
-    aciklama: 'İlk Şaheser tablo',
+    ad: t('Şaheser', 'Masterpiece'),
+    aciklama: t('İlk Şaheser tablo', 'First Masterpiece'),
     kosul: (b) => b.oyun?.nadirlik === 2 || Object.values(b.kayit.bolumler).some((x) => x.nadirlik === 2),
   },
-  defterci: { ad: 'Defterci', aciklama: '12 desen tamamla', kosul: (b) => toplananDesenSayisi(b.kayit) >= 12 },
-  nobetci: { ad: 'Nöbetçi', aciklama: 'Fener Nöbeti 7', kosul: (b) => b.kayit.gunluk.enUzunSeri >= 7 },
-  denizFeneri: { ad: 'Deniz Feneri', aciklama: 'Fener Nöbeti 30', kosul: (b) => b.kayit.gunluk.enUzunSeri >= 30 },
-  korukcu: { ad: 'Körükçü', aciklama: 'Körükle 10+ reaksiyon', kosul: (b) => (b.oyun?.ozet.korukEnBuyukR ?? 0) >= 10 },
-  domino: { ad: 'Domino', aciklama: 'Barut iziyle 3 dev fişek ateşle (tek oyunda)', odul: { guc: 'kalip', adet: 1 }, kosul: (b) => (b.oyun?.ozet.izliDevFisek ?? 0) >= 3 },
+  defterci: { ad: t('Defterci', 'Collector'), aciklama: t('12 desen tamamla', 'Complete 12 patterns'), kosul: (b) => toplananDesenSayisi(b.kayit) >= 12 },
+  nobetci: { ad: t('Nöbetçi', 'Night Watch'), aciklama: t('Fener Nöbeti 7', 'Lantern Watch 7'), kosul: (b) => b.kayit.gunluk.enUzunSeri >= 7 },
+  denizFeneri: { ad: t('Deniz Feneri', 'Lighthouse'), aciklama: t('Fener Nöbeti 30', 'Lantern Watch 30'), kosul: (b) => b.kayit.gunluk.enUzunSeri >= 30 },
+  korukcu: { ad: t('Körükçü', 'Bellows Pro'), aciklama: t('Körükle 10+ reaksiyon', '10+ reaction with the Bellows'), kosul: (b) => (b.oyun?.ozet.korukEnBuyukR ?? 0) >= 10 },
+  domino: { ad: t('Domino', 'Domino'), aciklama: t('Barut iziyle 3 dev fişek ateşle (tek oyunda)', 'Fire 3 giant fireworks via powder trails (one game)'), odul: { guc: 'kalip', adet: 1 }, kosul: (b) => (b.oyun?.ozet.izliDevFisek ?? 0) >= 3 },
 };
 
 /** Rozetler gösterim sırasıyla. */

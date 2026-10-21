@@ -17,6 +17,7 @@
 import { DESEN_PARCA, DESENLER, EN_FAZLA_TAKILI_DESEN, FITILLER, GOKYUZU, MAHALLELER } from '../app/katalog';
 import type { DesenId, FitilId, GokyuzuId } from '../app/katalog';
 import type { Motif } from '../core/types';
+import { t } from '../platform/dil';
 import { desenAcik, desenTamam, fitilAcik, fitilTamam, gokyuzuAcik, kayitKopyala, parcaCoz, parcaId } from './kayit';
 import type { KartId, Kayit, Nadirlik, ParcaId } from './kayit';
 import { parcaVer } from './sandik';
@@ -104,12 +105,12 @@ export function gokyuzuDurumlari(k: Kayit): GokyuzuDurumu[] {
 
 /** Işık Deseni motifleri ve geldikleri yer (§10.3). `mart` ve `burc` Usta Bölümü motifleridir. */
 export const MOTIFLER: readonly { id: Motif; ad: string; kaynak: string }[] = [
-  { id: 'lale', ad: 'Lale', kaynak: '26. bölüm' },
-  { id: 'kayik', ad: 'Kayık', kaynak: '30. bölüm' },
-  { id: 'fener', ad: 'Fener', kaynak: '38. bölüm' },
-  { id: 'carkifelek', ad: 'Çarkıfelek', kaynak: '40. bölüm' },
-  { id: 'mart', ad: 'Martı', kaynak: 'Usta Bölümü' },
-  { id: 'burc', ad: 'Burç', kaynak: 'Usta Bölümü' },
+  { id: 'lale', ad: t('Lale', 'Tulip'), kaynak: t('26. bölüm', 'Level 26') },
+  { id: 'kayik', ad: t('Kayık', 'Boat'), kaynak: t('30. bölüm', 'Level 30') },
+  { id: 'fener', ad: t('Fener', 'Lantern'), kaynak: t('38. bölüm', 'Level 38') },
+  { id: 'carkifelek', ad: t('Çarkıfelek', 'Pinwheel'), kaynak: t('40. bölüm', 'Level 40') },
+  { id: 'mart', ad: t('Martı', 'Seagull'), kaynak: t('Usta Bölümü', 'Master Level') },
+  { id: 'burc', ad: t('Burç', 'Tower'), kaynak: t('Usta Bölümü', 'Master Level') },
 ];
 
 export function motifDurumlari(k: Kayit): { id: Motif; ad: string; kaynak: string; asili: boolean }[] {
@@ -129,6 +130,9 @@ export interface KartTanimi {
 /**
  * Fener Koyu Defteri kültür kartları (gerçek gelenekler) ve Fener Koyu
  * efsaneleri (oyun dünyasına ait kurgu). Sıra mahalle sırasıdır.
+ * Dil notu: oyuncunun gördüğü kart metinleri `ui/metinler.ts`'ten gelir
+ * (DEFTER_KARTLARI, KASABA_KARTLARI; iki dilli). Bu tablo meta tarafında
+ * kimlik ve sayım içindir, metinleri yalnız Türkçe tutulur.
  */
 export const KARTLAR: readonly KartTanimi[] = [
   {

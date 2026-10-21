@@ -15,6 +15,7 @@
  * (12 → 3); sıfırlamaz. Geri dönülen gün düşen değere dahildir.
  */
 import { rngInt } from '../core/rng';
+import { t } from '../platform/dil';
 import { bolumKazanildi, seriBasamakIndeksi } from './kayit';
 import type { GorevDurumu, GunlukKaydi, GunlukSonucKaydi, Kayit } from './kayit';
 import type { OyunOzeti } from './ozet';
@@ -46,7 +47,7 @@ export interface GorevSablonu {
 }
 
 /** Kapsül renk adları küçük harfle (§2.3). */
-export const RENK_ADLARI_KUCUK = ['kızıl', 'kehribar', 'zümrüt', 'gök', 'mor', 'gül'] as const;
+export const RENK_ADLARI_KUCUK: readonly string[] = t(['kızıl', 'kehribar', 'zümrüt', 'gök', 'mor', 'gül'], ['red', 'amber', 'emerald', 'sky', 'purple', 'rose']);
 
 const evet = (x: boolean) => (x ? 1 : 0);
 
@@ -74,50 +75,50 @@ export const GOREV_SABLONLARI: readonly GorevSablonu[] = [
   { no: 20, hedef: 1, acilis: 1, olc: (b) => evet(b.kazandi && b.ilkDeneme) },
 ];
 
-/** Görevin arayüz metni (Türkçe, tek satır). */
+/** Görevin arayüz metni (sayfanın dilinde, tek satır). */
 export function gorevMetni(g: Pick<GorevDurumu, 'sablon' | 'renk'>): string {
   const renk = RENK_ADLARI_KUCUK[g.renk ?? 3];
   switch (g.sablon) {
     case 1:
-      return '2 halka çiz';
+      return t('2 halka çiz', 'Draw 2 loops');
     case 2:
-      return 'Tek hamlede 15+ reaksiyon yap';
+      return t('Tek hamlede 15+ reaksiyon yap', 'Get a 15+ reaction in one move');
     case 3:
-      return `50 ${renk} patlat`;
+      return t(`50 ${renk} patlat`, `Pop 50 ${renk} capsules`);
     case 4:
-      return '3 roket ateşle';
+      return t('3 roket ateşle', 'Fire 3 rockets');
     case 5:
-      return '1 kasımpatı ateşle';
+      return t('1 kasımpatı ateşle', 'Fire 1 chrysanthemum');
     case 6:
-      return 'Bir kombinasyon yap';
+      return t('Bir kombinasyon yap', 'Make a combo');
     case 7:
-      return '5 kafes kır';
+      return t('5 kafes kır', 'Break 5 cages');
     case 8:
-      return '20 döşeme aydınlat';
+      return t('20 döşeme aydınlat', 'Light up 20 tiles');
     case 9:
-      return '3 bölüm kazan';
+      return t('3 bölüm kazan', 'Win 3 levels');
     case 10:
-      return 'Bir bölümü 3★ ile bitir';
+      return t('Bir bölümü 3★ ile bitir', 'Finish a level with 3★');
     case 11:
-      return '12+ düğümlü bir zincir çiz';
+      return t('12+ düğümlü bir zincir çiz', 'Draw a chain of 12+');
     case 12:
-      return "Körük'ü 2 kez kullan";
+      return t("Körük'ü 2 kez kullan", 'Use the Bellows twice');
     case 13:
-      return 'Çapraz roketle 2 engel vur';
+      return t('Çapraz roketle 2 engel vur', 'Hit 2 obstacles by diagonal rocket');
     case 14:
-      return '10 kaya kır';
+      return t('10 kaya kır', 'Break 10 rocks');
     case 15:
-      return '2 fener indir';
+      return t('2 fener indir', 'Bring down 2 lanterns');
     case 16:
-      return 'Final gösterisinde 5+ roket ateşle';
+      return t('Final gösterisinde 5+ roket ateşle', 'Fire 5+ rockets in the finale');
     case 17:
-      return "Günün Şenliği'ni kazan";
+      return t("Günün Şenliği'ni kazan", 'Win the Daily Festival');
     case 18:
-      return '2. nesil bir patlama yap';
+      return t('2. nesil bir patlama yap', 'Set off a 2nd-generation blast');
     case 19:
-      return '30 kapsülü ısıyla patlat';
+      return t('30 kapsülü ısıyla patlat', 'Pop 30 capsules with heat');
     case 20:
-      return 'Bir bölümü ilk denemede kazan';
+      return t('Bir bölümü ilk denemede kazan', 'Win a level on the first try');
     default:
       return '';
   }
@@ -307,7 +308,9 @@ export function izgaraMetni(reaksiyonlar: readonly number[]): string {
  */
 export function paylasimMetni(tarih: number, s: Pick<GunlukSonucKaydi, 'yildiz' | 'kullanilan' | 'toplam' | 'enBuyuk' | 'izgara'>): string {
   const yildiz = '★'.repeat(s.yildiz) + '☆'.repeat(3 - s.yildiz);
-  return [`FİTİL · Günün Şenliği ${tarihMetni(tarih)}`, `${yildiz}  ${s.kullanilan}/${s.toplam} hamle  En büyük: ${s.enBuyuk}`, s.izgara].join('\n');
+  const baslik = t(`FİTİL · Günün Şenliği ${tarihMetni(tarih)}`, `FİTİL · Daily Festival ${tarihMetni(tarih)}`);
+  const satir = t(`${yildiz}  ${s.kullanilan}/${s.toplam} hamle  En büyük: ${s.enBuyuk}`, `${yildiz}  ${s.kullanilan}/${s.toplam} moves  Biggest: ${s.enBuyuk}`);
+  return [baslik, satir, s.izgara].join('\n');
 }
 
 /** Sonuç daha iyi mi: önce kazanç, sonra puan. */

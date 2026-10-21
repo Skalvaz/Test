@@ -19,6 +19,7 @@ import type { DesenId, FitilId, GokyuzuId, GuclendiriciId } from '../app/katalog
 import type { Palet } from '../app/sozlesme';
 import { fnv1a, mulberry32Bir } from '../core/rng';
 import type { Motif } from '../core/types';
+import { t } from '../platform/dil';
 import { base64Metin, metinBase64 } from './kodlama';
 import { bosKasaba, kancaBirlestir, kandilDokumu, kasabaOnar, toplamMuhur } from './kasaba';
 import type { KasabaKaydi } from './kasaba';
@@ -960,12 +961,12 @@ export function kayitKoduUret(k: Kayit, secenek: { tablolarHaric?: boolean } = {
 export type KayitKoduHatasi = 'bos' | 'onek' | 'saglama' | 'base64' | 'json' | 'sema';
 
 export const KAYIT_KODU_HATA_METINLERI: Record<KayitKoduHatasi, string> = {
-  bos: 'Kod boş. Kayıt kodunu yapıştır.',
-  onek: 'Bu bir FİTİL kayıt kodu değil (FTL1: ile başlamalı).',
-  saglama: 'Kod eksik ya da bozuk kopyalanmış. Tamamını yeniden kopyala.',
-  base64: 'Kodda geçersiz karakter var.',
-  json: 'Kod çözülemedi.',
-  sema: 'Kodun içinde kayıt bulunamadı.',
+  bos: t('Kod boş. Kayıt kodunu yapıştır.', 'The code is empty. Paste your save code.'),
+  onek: t('Bu bir FİTİL kayıt kodu değil (FTL1: ile başlamalı).', 'This is not a FİTİL save code (it should start with FTL1:).'),
+  saglama: t('Kod eksik ya da bozuk kopyalanmış. Tamamını yeniden kopyala.', 'The code is incomplete or damaged. Copy all of it again.'),
+  base64: t('Kodda geçersiz karakter var.', 'The code has an invalid character.'),
+  json: t('Kod çözülemedi.', 'Could not read the code.'),
+  sema: t('Kodun içinde kayıt bulunamadı.', 'No save was found in the code.'),
 };
 
 /** İçe aktarma önizlemesi (onaydan önce gösterilir). */
