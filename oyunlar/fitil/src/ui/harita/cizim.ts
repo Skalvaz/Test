@@ -571,6 +571,35 @@ export function bolgeCiz(m: number, bolumler: readonly BolumDugumuVM[], motifler
 }
 
 /**
+ * Önizlemeler (Kasaba paneli, kasaba kartı) için süssüz sahne parçaları:
+ * gök + arka plan, j. terasın teras-bina-lamba üçlüsü (`teras[j]`) ve
+ * İskele'de alt pay. Bütün bölümler açık ve 3★ (pencereler yanık). Çizim
+ * sırası bolgeCiz'inkiyle aynıdır; işin katmanları araya girer.
+ */
+export function sahneParcalari(m: number): { arka: string; teras: string[]; altPay: string } {
+  const ust = bolgeUst(m);
+  const r = new Rng(`mahalle-${m}`);
+  const g = gok(m);
+  const id = `hb${m}`;
+  let arka = `<defs><linearGradient id="${id}-gok" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${sinirRengi(m)}"/><stop offset=".3" stop-color="${g.ust}"/><stop offset=".78" stop-color="${g.alt}"/><stop offset="1" stop-color="${sinirRengi(m - 1)}"/></linearGradient></defs>`;
+  arka += `<rect x="0" y="${ust - 2}" width="400" height="${BOLGE_H + 4}" fill="url(#${id}-gok)"/>`;
+  arka += yildizlar(r, ust, ust + BOLGE_H * 0.8, 46);
+  arka += arkaPlan(m, ust, r, false);
+  const terasList: string[] = [];
+  for (let j = 0; j < 5; j++) {
+    const bid = m * 5 + j + 1;
+    const k = dugumKonumu(bid);
+    const zemin = k.y + 18;
+    const br = new Rng(`bina-${bid}`);
+    let s = teras(m, k.taraf, k.x + (k.taraf === 'sol' ? 46 : -46), zemin, br, false);
+    s += bina(m, k.x + (k.taraf === 'sol' ? -64 : 64), zemin - 4, br, 3, 'acik', j).svg;
+    s += lamba(k.x + (k.taraf === 'sol' ? 40 : -40), zemin - 4, true);
+    terasList.push(s);
+  }
+  return { arka, teras: terasList, altPay: m === 0 ? altPayCiz() : '' };
+}
+
+/**
  * Mahallenin süs geometrisi (düğümler, lamba direkleri, binaların tutunma
  * noktaları). Yalnız mahalleye bağlıdır (belirlenimli): iş çapası kayıttan
  * bağımsız hesaplanır.

@@ -1,7 +1,8 @@
 /**
  * Kasaba paneli (KANCALAR §C.1): alttan açılan çekmece — başlık + kandil
  * hapı + [X]; yatay kaydırılan mahalle sekmeleri; sakin satırı ve 6 bölmeli
- * ilerleme; 6 iş kartı (şablon ikonu · ad · tek satır açıklama · durum).
+ * ilerleme; 6 iş kartı (işin haritadaki küçük resmi · ad · iki satıra kadar
+ * açıklama · durum). Küçük resim yapılmamış işte sönük (ne geleceğini gösterir).
  * "Yap" seçimle çözülür; panel kapanır (240 ms), uygulama haritada kutlar.
  */
 import { h, svg } from '../dom';
@@ -9,6 +10,7 @@ import { ikon, kandilSvg } from '../ikonlar';
 import { MK } from '../metinler';
 import { secimSozu, type Baglam } from '../cekirdek';
 import { KASABA_ISLERI, MAHALLELER } from '../../app/katalog';
+import { isOnizlemesi, onizlemeKaynagi } from '../harita/onizleme';
 import type { KasabaCizimi } from '../../app/katalog';
 import type { KasabaIsVM, KasabaSecimi, KasabaVM } from '../tipler';
 
@@ -76,6 +78,7 @@ export function kasabaEkrani(b: Baglam, vm: KasabaVM): { soz: Promise<KasabaSeci
     );
     let ilkYap: HTMLElement | null = null;
     liste.replaceChildren(
+      onizlemeKaynagi(m.indeks),
       ...m.isler.map((is) => {
         const k = isKarti(is, mh.vurgu, m.indeks);
         if (!ilkYap && is.durum === 'yapilabilir') ilkYap = k.querySelector('.f-ks-yap');
@@ -96,7 +99,7 @@ export function kasabaEkrani(b: Baglam, vm: KasabaVM): { soz: Promise<KasabaSeci
     const kart = h(
       'div',
       { s: `f-ks-is f-d-${is.durum}${is.tac ? ' f-tac' : ''}`, role: 'listitem', 'aria-label': MK.isEtiketi(is.ad, is.maliyet, MK.isDurumAdi[is.durum] ?? '') },
-      h('span', { s: 'f-ks-ikon', css: { '--vurgu': vurgu } }, isIkonu(CIZIM.get(is.id) ?? 'parilti', vurgu, is.durum === 'yapildi')),
+      h('span', { s: `f-ks-ikon${is.durum === 'yapildi' || is.durum === 'yapilabilir' ? '' : ' f-sonuk'}`, css: { '--vurgu': vurgu } }, isOnizlemesi(is.id, mahalle) ?? isIkonu(CIZIM.get(is.id) ?? 'parilti', vurgu, is.durum === 'yapildi')),
       h('span', { s: 'f-ks-metin' }, h('strong', { t: is.ad }), h('small', { t: is.aciklama })),
       isDurumu(is, mahalle),
     );

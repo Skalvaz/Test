@@ -7,6 +7,7 @@ import { ustaSvg, sandikSvg } from '../ikonlar';
 import { M, MK, DEFTER_KARTLARI, KASABA_KARTLARI } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { odulOgesi } from './ortak';
+import { mahalleKartpostali } from '../harita/onizleme';
 import { GOKYUZU, MAHALLELER } from '../../app/katalog';
 import type { DefterKartiVM, MolaSecimi, SandikVM } from '../tipler';
 
@@ -34,7 +35,10 @@ export function defterKartiEkrani(b: Baglam, vm: DefterKartiVM): { soz: Promise<
   const kapak = h(
     'div',
     { s: 'f-dk-kapak', css: { '--ust': g.ust, '--alt': g.alt, '--vurgu': m.vurgu } },
-    svg(`<svg viewBox="0 0 300 110" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+    // Kasaba kartında süslenmiş mahallenin kendisi (kartpostal); Defter kartında silüet.
+    kasaba
+      ? mahalleKartpostali(vm.mahalle, 2.4)
+      : svg(`<svg viewBox="0 0 300 110" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
       ${Array.from({ length: 24 }, (_, i) => `<circle cx="${(i * 53) % 300}" cy="${(i * 29) % 70}" r="${i % 4 ? 0.8 : 1.4}" fill="#fff" opacity=".75"/>`).join('')}
       <circle cx="240" cy="30" r="14" fill="#FFF4C2" opacity=".9"/><circle cx="246" cy="26" r="13" fill="${g.ust}"/>
       <path d="M0 92h20v-18h12v8h16v-30l8-10 8 10v30h14v-14h12v-8h10v22h18v-34h4v-8h6v8h4v34h22v-12l10-8 10 8v12h16v-20h24v20h14v-8h10v26H0z" fill="#120A1E"/>

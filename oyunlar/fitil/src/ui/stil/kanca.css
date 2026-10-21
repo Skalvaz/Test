@@ -245,3 +245,18 @@
 
 /* Defter / Ayarlar: kasaba kartı satırı (kandil ikonu) */
 .f-kasaba-satir .f-ks-satir-ikon { width: 26px; height: 20px; flex: none; }
+
+/* Kasaba 2 (Ekim 2026): iş satırında işin haritadaki küçük resmi; açıklama iki satıra kadar. */
+.f-onz-kaynak { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
+.f-ks-is { min-height: 68px; }
+.f-ks-ikon { width: 72px; height: 54px; border-radius: 12px; overflow: hidden; background: #140C1E; }
+.f-ks-ikon .f-onz { width: 100%; height: 100%; display: block; }
+.f-ks-ikon.f-sonuk .f-onz { filter: grayscale(.7) brightness(.72); }
+.f-ks-is.f-d-tacKilitli .f-ks-ikon .f-onz, .f-ks-is.f-d-sirada .f-ks-ikon .f-onz { filter: grayscale(.9) brightness(.55); }
+.f-ks-metin small { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-height: 700px) {
+  .f-ks-is { min-height: 62px; }
+  .f-ks-ikon { width: 64px; height: 48px; }
+}
+.f-kasaba-karti .f-dk-kapak { height: 150px; }
+.f-kasaba-karti .f-dk-kapak .f-onz-kart { position: absolute; inset: 0; width: 100%; height: 100%; }

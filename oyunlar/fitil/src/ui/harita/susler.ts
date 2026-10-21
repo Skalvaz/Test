@@ -80,6 +80,23 @@ export function isCapasi(id: string, g: BolgeGeo): Nokta | null {
   return isCiz(is, g, true, HEPSI).capa;
 }
 
+/** Canlı öğenin durağan hâli (önizlemeler: kendi kutusunda iç içe SVG). */
+export function canliDuragan(o: CanliOge): string {
+  return `<svg x="${o.x}" y="${o.y}" width="${o.w}" height="${o.h}" viewBox="0 0 ${o.w} ${o.h}" overflow="visible">${o.ic}</svg>`;
+}
+
+/**
+ * Tek işin yanık çizimi (önizlemeler): katmanları, canlı öğelerinin durağan
+ * hâli ve çapası. Ortak sahne parçaları (Liman gemisi) iş kendi başına
+ * çiziliyormuş gibi gelir.
+ */
+export function isCizimi(id: string, g: BolgeGeo): { katman(k: Katman): string; canli: string; capa: Nokta } | null {
+  const is = KASABA_ISLERI.find((x) => x.id === id);
+  if (!is || is.mahalle !== g.m) return null;
+  const c = isCiz(is, g, true, { ciziliyor: (x) => x === id });
+  return { katman: (k) => c.parca.get(k) ?? '', canli: c.canli.map(canliDuragan).join(''), capa: c.capa };
+}
+
 /** Mahallenin süsleri: durağan katmanlar, canlı öğeler, kutlama çizimleri. */
 export function mahalleSusleri(g: BolgeGeo, s: SusSecenek): MahalleSusleri {
   const katmanlar = new Map<Katman, string>();

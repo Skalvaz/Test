@@ -41,7 +41,13 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   iş; toplu değişiklikte yok), mahalle 6/6 olduysa `senlik(m)`;
   `Arayuz.haritaKutlamasi()` bitince Defter kartı. Önizleme:
   `dev/kasaba.html?mahalle=0..7&isler=bos|yarim|tam|<n>|<id,…>&kutla=<id>&senlik=<m>&temiz=1&sancak=1|yarim&az=1`.
-  Süssüz `bolgeCiz` çıktısı eskisiyle birebir (test).
+  Süssüz `bolgeCiz` çıktısı eskisiyle birebir (test). Önizlemeler
+  (`src/ui/harita/onizleme.ts`): Kasaba panelinde her işin haritadaki
+  küçük resmi (gizli kaynakta `sahneParcalari` + `<use>`, işin katmanları
+  terasların arasına girer; kırpma işin kutusundan 4:3, kimliğe göre
+  önbellekli), kasaba kartı kapağında süslenmiş mahallenin kartpostalı (en
+  çok çapayı içine alan bant). İskele tabelası haritada HTML; önizlemede
+  `tabelaSvg`.
 - Menü düzeni "Liste" (Ekim 2026, kullanıcı seçti; her yaş okusun): en küçük
   yazı ~16 px, önemli satır 18–22 px. Bölüm kartı: ad + hedefler büyük yazılı
   liste (ikon + metin, hamle ve kurallar aynı listede) + tek satır "Mühürler
