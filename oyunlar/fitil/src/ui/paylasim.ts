@@ -6,7 +6,8 @@
  *   ★★☆  18/22 hamle  En büyük: 27
  *   ●●▲●■▲●●▲▲●■●▲●●▲▲
  */
-import { tarihKisa } from './metinler';
+import { M, tarihKisa } from './metinler';
+import { t } from '../platform/dil';
 import type { PaylasimVM } from './tipler';
 
 export function hamleSimgesi(r: number): string {
@@ -18,8 +19,8 @@ export function hamleSimgesi(r: number): string {
 export function paylasimMetni(p: PaylasimVM): string {
   const y = Math.max(0, Math.min(3, p.yildiz));
   const yildizlar = '★'.repeat(y) + '☆'.repeat(3 - y);
-  const satir1 = `FİTİL · Günün Şenliği ${tarihKisa(p.tarih)}`;
-  const satir2 = `${yildizlar}  ${p.kullanilanHamle}/${p.toplamHamle} hamle  En büyük: ${p.enBuyuk}`;
+  const satir1 = `${M.oyunAdi} · ${M.gununSenligi} ${tarihKisa(p.tarih)}`;
+  const satir2 = `${yildizlar}  ${p.kullanilanHamle}/${p.toplamHamle} ${M.hamle}  ${t('En büyük', 'Biggest')}: ${p.enBuyuk}`;
   const satir3 = p.reaksiyonlar.map(hamleSimgesi).join('');
   return [satir1, satir2, satir3].filter((s) => s.length > 0).join('\n');
 }

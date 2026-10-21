@@ -21,7 +21,8 @@ import type {
 } from '../tipler';
 import { DESENLER, FITILLER, KASABA_ISLERI, MAHALLELER } from '../../app/katalog';
 import type { KasabaIsVM, KasabaVM } from '../tipler';
-import { ROZET_SIRASI, gorevMetni } from '../metinler';
+import { MK, ROZET_SIRASI, gorevMetni } from '../metinler';
+import { t } from '../../platform/dil';
 
 export function haritaVm(simdiki = 14, kasaba: { isler: string[]; kandil: number; yapilabilir: boolean } | null = null): HaritaVM {
   const yildizlar: Yildiz[] = [3, 3, 2, 3, 1, 2, 3, 3, 2, 1, 3, 2, 3, 3, 2, 3, 2, 1, 3, 3, 2, 3, 3, 2, 1, 3, 3, 2, 3, 3, 2, 3, 3, 3, 2, 3, 2, 3, 3, 3];
@@ -69,9 +70,9 @@ export function kasabaVm(ogretim = false): KasabaVM {
 /** (Kancalar) Örnek mühür satırları. */
 export function muhurlerVm(durumlu = false): MuhurVM[] {
   return [
-    { kademe: 'cirak', metin: '2 kasımpatı yap', basili: true, ...(durumlu ? { durum: 'tuttu' as const } : {}) },
-    { kademe: 'kalfa', metin: 'Tek hamlede 3 özel taş ateşle', basili: false, ...(durumlu ? { durum: 'tuttu' as const } : {}) },
-    { kademe: 'usta', metin: '8 hamle kala kazan', basili: false, ...(durumlu ? { durum: 'sonda' as const } : {}) },
+    { kademe: 'cirak', metin: t('2 kasımpatı yap', 'Make 2 chrysanthemums'), basili: true, ...(durumlu ? { durum: 'tuttu' as const } : {}) },
+    { kademe: 'kalfa', metin: t('Tek hamlede 3 özel taş ateşle', 'Fire 3 specials in one move'), basili: false, ...(durumlu ? { durum: 'tuttu' as const } : {}) },
+    { kademe: 'usta', metin: t('8 hamle kala kazan', 'Win with 8 moves left'), basili: false, ...(durumlu ? { durum: 'sonda' as const } : {}) },
   ];
 }
 
@@ -79,7 +80,7 @@ export function hudVm(w = 7, h = 9, varyant = ''): HudVM {
   return {
     ...(varyant === 'muhur' ? { muhurler: muhurlerVm(true) } : {}),
     bolumId: 12,
-    bolumAdi: 'Yıldız Topu',
+    bolumAdi: t('Yıldız Topu', 'Star Ball'),
     tahtaW: w,
     tahtaH: h,
     hedefler:
@@ -105,7 +106,7 @@ export function bolumOncesiVm(v = '1'): BolumOncesiVM {
   if (v === 'm' || v === 'mi')
     return {
       id: 14,
-      ad: 'Kombinasyon',
+      ad: t('Kombinasyon', 'Combo'),
       mahalle: 2,
       tur: 'tanitim',
       hedefler: [hedef({ renk: 0, gerekli: 30 }), hedef({ tur: 'kafes', gerekli: 6 })],
@@ -117,12 +118,12 @@ export function bolumOncesiVm(v = '1'): BolumOncesiVM {
       tablo: { nadirlik: 'parlak' },
       cosku: true,
       muhurler: muhurlerVm(),
-      muhurIpucu: v === 'mi' ? 'Her bölümde 3 mühür görevi var. Görevleri oyunda Duraklat menüsünde görürsün.' : null,
+      muhurIpucu: v === 'mi' ? MK.muhurKart : null,
     };
   if (v === '2')
     return {
       id: 19,
-      ad: 'Kuru Gece',
+      ad: t('Kuru Gece', 'Dry Night'),
       mahalle: 3,
       tur: 'rahatlama',
       hedefler: [hedef({ tur: 'zincirleme', esik: 15, gerekli: 3 })],
@@ -137,13 +138,13 @@ export function bolumOncesiVm(v = '1'): BolumOncesiVM {
   if (v === '3')
     return {
       id: 102,
-      ad: 'Yalnız Halka',
+      ad: t('Yalnız Halka', 'Loops Only'),
       mahalle: 1,
       tur: 'usta',
       hedefler: [hedef({ tur: 'halka', gerekli: 6 }), hedef({ tur: 'puan', gerekli: 6000 })],
       hamle: 18,
       esik: 4,
-      ustaKurali: 'Yalnız halkalar geçerli hamledir',
+      ustaKurali: t('Yalnız halkalar geçerli hamledir', 'Only loops count as moves'),
       enIyi: 5400,
       yildiz: 1,
       tablo: { nadirlik: 'sade' },
@@ -151,7 +152,7 @@ export function bolumOncesiVm(v = '1'): BolumOncesiVM {
     };
   return {
     id: 12,
-    ad: 'Yıldız Topu',
+    ad: t('Yıldız Topu', 'Star Ball'),
     mahalle: 2,
     tur: 'tanitim',
     hedefler: [hedef({ renk: 0, gerekli: 40 }), hedef({ renk: 3, gerekli: 40 })],
@@ -168,13 +169,13 @@ export function bolumOncesiVm(v = '1'): BolumOncesiVM {
 export function duraklatVm(v = '1'): DuraklatVM {
   const m = muhurlerVm(true);
   if (v === 'm') m[2] = { ...m[2], durum: 'bekliyor' };
-  return { bolumId: 12, bolumAdi: 'Yıldız Topu', hedefler: hudVm().hedefler, coskuAktif: true, ...(v === 'm' ? { muhurler: m } : {}) };
+  return { bolumId: 12, bolumAdi: t('Yıldız Topu', 'Star Ball'), hedefler: hudVm().hedefler, coskuAktif: true, ...(v === 'm' ? { muhurler: m } : {}) };
 }
 
 export function kazandinVm(v = '1'): KazandinVM {
   return {
     bolumId: 10,
-    bolumAdi: 'Çarşı Gecesi',
+    bolumAdi: t('Çarşı Gecesi', 'Bazaar Night'),
     yildiz: v === '2' ? 2 : 3,
     oncekiYildiz: 1,
     puan: 8640,
@@ -187,9 +188,9 @@ export function kazandinVm(v = '1'): KazandinVM {
             { tur: 'normal', oduller: [{ tur: 'fitilParcasi', id: 'altinTel', parca: 1 }] },
           ],
     tablo: { nadirlik: v === '2' ? 'sade' : 'saheser', eskiVar: true, eskiNadirlik: 'parlak' },
-    sonrakiTanitim: 'Sıradaki: Fener Alayı!',
+    sonrakiTanitim: t('Sıradaki: Fener Alayı!', 'Next: Lantern Parade!'),
     sonrakiOge: 'fener',
-    ipucu: v === '2' ? 'Yıldızlar puanından gelir.' : null,
+    ipucu: v === '2' ? t('Yıldızlar puanından gelir.', 'Stars come from your score.') : null,
     ...(v === 'm' || v === 'mt'
       ? {
           muhurler: {
@@ -199,7 +200,7 @@ export function kazandinVm(v = '1'): KazandinVM {
           },
           kandil: v === 'mt' ? { onceki: 0, yeni: 8, tanitim: true, yildiz: 3, muhur: 0 } : { onceki: 14, yeni: 21, tanitim: false, yildiz: 2, muhur: 2 },
           kasabaHazir: v === 'm',
-          duyurular: v === 'm' ? [{ ikon: 'alev', metin: 'Lale Dalı parçası (5 mühür)', oncelikli: true }, { ikon: 'rozet', metin: 'Rozet: Halkacı' }] : [],
+          duyurular: v === 'm' ? [{ ikon: 'alev', metin: t('Lale Dalı parçası (5 mühür)', 'Tulip Branch piece (5 seals)'), oncelikli: true }, { ikon: 'rozet', metin: t('Rozet: Halkacı', 'Badge: Looper') }] : [],
         }
       : {}),
     // (QA) Kalabalık ilk mühürlü kazanç (360×640): tanıtım + kandil + iş hazır + 3 duyuru + sandık + tablo.
@@ -207,14 +208,14 @@ export function kazandinVm(v = '1'): KazandinVM {
       ? {
           sandiklar: [{ tur: 'normal' as const, oduller: [{ tur: 'fitilParcasi' as const, id: 'altinTel' as const, parca: 1 }] }],
           tablo: { nadirlik: 'parlak' as const, eskiVar: false },
-          sonrakiTanitim: 'Sıradaki: Dev Fişek!',
+          sonrakiTanitim: t('Sıradaki: Dev Fişek!', 'Next: Giant Firework!'),
           muhurler: { liste: muhurlerVm().map((m, i) => ({ ...m, basili: i === 0, yeni: i === 0 })), tanitim: true, sancak: false },
           kandil: { onceki: 31, yeni: 35, tanitim: false, yildiz: 3, muhur: 1 },
           kasabaHazir: true,
           duyurular: [
-            { ikon: 'rozet', metin: 'Rozet: Halkacı' },
-            { ikon: 'tik', metin: 'Görev: 3 bölüm kazan' },
-            { ikon: 'alev', metin: 'Fener Nöbeti: Çıra' },
+            { ikon: 'rozet', metin: t('Rozet: Halkacı', 'Badge: Looper') },
+            { ikon: 'tik', metin: t('Görev: 3 bölüm kazan', 'Task: Win 3 levels') },
+            { ikon: 'alev', metin: t('Fener Nöbeti: Çıra', 'Lantern Watch: Kindling') },
           ],
         }
       : {}),
@@ -228,7 +229,7 @@ export function kazandinVm(v = '1'): KazandinVM {
 export function kaybettinVm(v = '1'): KaybettinVM {
   return {
     bolumId: 15,
-    bolumAdi: 'Liman Fırtınası',
+    bolumAdi: t('Liman Fırtınası', 'Harbor Storm'),
     yuzde: 0.92,
     enZorHedef: hedef({ renk: 0, gerekli: 40, ilerleme: 37 }),
     hayalet: v === 'izlendi' ? 'izlendi' : 'var',
@@ -261,10 +262,10 @@ export function defterVm(): DefterVM {
     fitiller: FITILLER.map((f, i) => ({ id: f.id, parca: f.baslangicta ? 3 : [1, 3, 0, 2][i % 4], secili: i === 0 })),
     gokyuzleri: MAHALLELER.map((m, i) => ({ id: m.gokyuzu, acik: i < 3, secili: i === 1 })),
     tablolar: [
-      { bolumId: 1, ad: 'İlk Kıvılcım', nadirlik: 'sade' },
-      { bolumId: 5, ad: 'Nişan', nadirlik: 'parlak' },
-      { bolumId: 10, ad: 'Çarşı Gecesi', nadirlik: 'saheser' },
-      { bolumId: 11, ad: 'Fener Alayı', nadirlik: 'sade' },
+      { bolumId: 1, ad: t('İlk Kıvılcım', 'First Spark'), nadirlik: 'sade' },
+      { bolumId: 5, ad: t('Nişan', 'Aim'), nadirlik: 'parlak' },
+      { bolumId: 10, ad: t('Çarşı Gecesi', 'Bazaar Night'), nadirlik: 'saheser' },
+      { bolumId: 11, ad: t('Fener Alayı', 'Lantern Parade'), nadirlik: 'sade' },
     ],
     motifler: [{ motif: 'lale', acik: true }, { motif: 'kayik', acik: false }, { motif: 'fener', acik: false }, { motif: 'carkifelek', acik: false }],
     kartlar: [true, true, false, false, false, false, false, false],
@@ -298,11 +299,11 @@ export function istatistikVm(): IstatistikVM {
     enIyiGunluk: 9120,
     toplamYildiz: 37,
     bolumSkorlari: [
-      { id: 1, ad: 'İlk Kıvılcım', enIyi: 2450, yildiz: 3 },
-      { id: 2, ad: 'Çapraz Yol', enIyi: 3120, yildiz: 3 },
-      { id: 3, ad: 'Isınma', enIyi: 3980, yildiz: 2 },
-      { id: 4, ad: 'Sar ve Pişir', enIyi: 4410, yildiz: 3 },
-      { id: 5, ad: 'Nişan', enIyi: 5230, yildiz: 1 },
+      { id: 1, ad: t('İlk Kıvılcım', 'First Spark'), enIyi: 2450, yildiz: 3 },
+      { id: 2, ad: t('Çapraz Yol', 'Diagonals'), enIyi: 3120, yildiz: 3 },
+      { id: 3, ad: t('Isınma', 'Warming Up'), enIyi: 3980, yildiz: 2 },
+      { id: 4, ad: t('Sar ve Pişir', 'Wrap and Bake'), enIyi: 4410, yildiz: 3 },
+      { id: 5, ad: t('Nişan', 'Aim'), enIyi: 5230, yildiz: 1 },
     ],
     rozetler: ROZET_SIRASI.map((id, i) => ({ id, acik: [0, 3, 4, 6, 9, 10, 14].includes(i) })),
   };

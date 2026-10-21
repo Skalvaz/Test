@@ -10,6 +10,7 @@ import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import type { DuraklatSecimi, DuraklatVM } from '../tipler';
 import { ikon } from '../ikonlar';
 import { muhurListesi } from '../kanca';
+import { t as tt } from '../../platform/dil';
 
 export function duraklatEkrani(b: Baglam, vm: DuraklatVM): { soz: Promise<DuraklatSecimi>; kapat: () => void } {
   const { soz, sec } = secimSozu<DuraklatSecimi>();
@@ -48,9 +49,9 @@ export function duraklatEkrani(b: Baglam, vm: DuraklatVM): { soz: Promise<Durakl
       h(
         'div',
         { s: 'f-dr-ikonlar' },
-        ikonDugme('Yeniden', M.yenidenBasla, 'tekrar', () => secVeKapat('yeniden')),
-        ikonDugme('Ayarlar', M.ayarlar, 'ayar', () => secVeKapat('ayarlar')),
-        ikonDugme('Harita', M.haritayaDon, 'harita', () => secVeKapat('harita')),
+        ikonDugme(tt('Yeniden', 'Restart'), M.yenidenBasla, 'tekrar', () => secVeKapat('yeniden')),
+        ikonDugme(M.ayarlar, M.ayarlar, 'ayar', () => secVeKapat('ayarlar')),
+        ikonDugme(tt('Harita', 'Map'), M.haritayaDon, 'harita', () => secVeKapat('harita')),
       ),
       vm.coskuAktif ? h('p', { s: 'f-not f-not-uyari', t: M.coskuBozulur }) : null,
     ),

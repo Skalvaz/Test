@@ -5,17 +5,17 @@
  */
 import { h, svg, tekilKimlik } from '../dom';
 import { kapsulIsaretleme, hedefIkonu, odulIkonu, yildizSvg, kucukYildiz, motifIsaretleme, guclendiriciIsaretleme, ustaSvg } from '../ikonlar';
-import { hedefMetni, NADIRLIK_ADLARI, GUCLENDIRICI_ADLARI, YENI_OGE, KASABA_KARTLARI } from '../metinler';
+import { M, hedefMetni, NADIRLIK_ADLARI, GUCLENDIRICI_ADLARI, YENI_OGE, KASABA_KARTLARI } from '../metinler';
 import { kandilSvg, ikon } from '../ikonlar';
 import { DESENLER, FITILLER, MAHALLELER } from '../../app/katalog';
 import type { HedefVM, Nadirlik, OdulVM, Palet, YeniOge, Yildiz } from '../tipler';
 
 export function yildizSirasi(n: Yildiz, sinif = ''): HTMLElement {
-  return h('div', { s: `f-yildiz-sira ${sinif}`, role: 'img', 'aria-label': `${n}/3 yıldız` }, [0, 1, 2].map((i) => yildizSvg(i < n)));
+  return h('div', { s: `f-yildiz-sira ${sinif}`, role: 'img', 'aria-label': M.yildizEtiketi(n) }, [0, 1, 2].map((i) => yildizSvg(i < n)));
 }
 
 export function kucukYildizlar(n: Yildiz): HTMLElement {
-  return h('span', { s: 'f-kyildizlar', role: 'img', 'aria-label': `${n}/3 yıldız` }, [0, 1, 2].map((i) => kucukYildiz(i < n)));
+  return h('span', { s: 'f-kyildizlar', role: 'img', 'aria-label': M.yildizEtiketi(n) }, [0, 1, 2].map((i) => kucukYildiz(i < n)));
 }
 
 /** Bölüm öncesi / duraklat hedef kutucuğu. */
@@ -34,16 +34,16 @@ export function odulMetni(o: OdulVM): string {
       return `${GUCLENDIRICI_ADLARI[o.id]} +${o.adet}`;
     case 'desenParcasi': {
       const ad = DESENLER.find((d) => d.id === o.id)?.ad ?? o.id;
-      return o.tekrar ? `${ad}: +3 toz` : `${ad} ${o.parca}/3`;
+      return o.tekrar ? `${ad}: ${M.tozArti(3)}` : `${ad} ${o.parca}/3`;
     }
     case 'fitilParcasi': {
       const ad = FITILLER.find((d) => d.id === o.id)?.ad ?? o.id;
-      return o.tekrar ? `${ad}: +3 toz` : `${ad} ${o.parca}/3`;
+      return o.tekrar ? `${ad}: ${M.tozArti(3)}` : `${ad} ${o.parca}/3`;
     }
     case 'toz':
-      return `+${o.adet} toz`;
+      return M.tozArti(o.adet);
     case 'sandik':
-      return `Sandık +${o.adet}`;
+      return `${M.sandik} +${o.adet}`;
   }
 }
 

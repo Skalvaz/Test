@@ -15,6 +15,7 @@ import { kandilUcur, merkez } from '../kanca';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { odulOgesi, ustaIpucu, nadirlikSirasi } from './ortak';
 import type { KazandinVM, SandikVM } from '../tipler';
+import { kucukHarf, t as tt } from '../../platform/dil';
 
 const YILDIZ_ILK = 520;
 const YILDIZ_ARA = 300;
@@ -42,7 +43,7 @@ export function kazandinEkrani(
     const kivilcim = h('span', { s: 'f-kz-kivilcim' }, Array.from({ length: 10 }, (_, k) => h('i', { css: { '--a': `${k * 36 + 8}deg` } })));
     return h('div', { s: `f-kz-yildiz f-y${i}` }, yildizSvg(false, 'f-kz-yuva'), h('span', { s: 'f-kz-halka' }), kivilcim, altin);
   });
-  const yildizSira = h('div', { s: 'f-kz-yildizlar', role: 'img', 'aria-label': `${vm.yildiz}/3 yıldız` }, yildizlar);
+  const yildizSira = h('div', { s: 'f-kz-yildizlar', role: 'img', 'aria-label': M.yildizEtiketi(vm.yildiz) }, yildizlar);
   const rekor = h('div', { s: `f-kz-rekor${vm.yeniRekor ? '' : ' f-yok'}`, 'aria-hidden': vm.yeniRekor ? undefined : 'true' }, h('span', { t: M.yeniRekor }));
   const puanSayi = h('span', { s: 'f-kz-puan-sayi f-sayi', t: '0' });
   const puan = h('div', { s: 'f-kz-puan', 'aria-label': M.puan }, puanSayi);
@@ -53,7 +54,7 @@ export function kazandinEkrani(
     ? mv.liste.map((m) =>
         h(
           'span',
-          { s: `f-kz-muhur${m.basili && !m.yeni ? ' f-once' : ''}`, role: 'img', 'aria-label': `${MK.kademe[m.kademe]} mührü${m.basili ? '' : ': yok'}${m.yeni ? `, ${MK.yeni}` : ''}` },
+          { s: `f-kz-muhur${m.basili && !m.yeni ? ' f-once' : ''}`, role: 'img', 'aria-label': `${MK.muhurAdi(m.kademe)}${m.basili ? '' : MK.muhurYok}${m.yeni ? `, ${MK.yeni}` : ''}` },
           muhurSvg(m.kademe, false),
           muhurSvg(m.kademe, true, 'f-kz-mum'),
           h('span', { s: 'f-kz-toz', 'aria-hidden': 'true' }),
@@ -84,24 +85,24 @@ export function kazandinEkrani(
   const haberler = (vm.duyurular ?? []).filter((d) => d.oncelikli || HABER.has(d.tur ?? '')).slice(0, 2);
   if (haberler.length) {
     icerik.appendChild(
-      h('ul', { s: 'f-kz-haberler', 'aria-label': 'Haberler' }, haberler.map((d) => h('li', { s: 'f-kz-haber' }, ikon(d.ikon as IkonAdi), h('span', { t: d.metin })))),
+      h('ul', { s: 'f-kz-haberler', 'aria-label': tt('Haberler', 'News') }, haberler.map((d) => h('li', { s: 'f-kz-haber' }, ikon(d.ikon as IkonAdi), h('span', { t: d.metin })))),
     );
   }
 
   // ── Ödül kutuları: kandil → güçlendirici → sandık → tablo (tek sıra).
-  const kutular = h('ul', { s: 'f-kz-kutular', 'aria-label': 'Kazanılanlar' });
+  const kutular = h('ul', { s: 'f-kz-kutular', 'aria-label': tt('Kazanılanlar', 'Rewards') });
   const kv = vm.kandil && vm.kandil.yeni !== vm.kandil.onceki ? vm.kandil : null;
   let kandilKutu: HTMLElement | null = null;
   let kandilSayi: HTMLElement | null = null;
   if (kv) {
     kandilSayi = h('span', { s: 'f-kz-kutu-sayi f-sayi', t: '+0' });
-    kandilKutu = h('li', { s: 'f-kz-kutu f-kz-kandil', 'aria-label': `${MK.kandilArti(kv.yeni - kv.onceki)}: ${kv.yeni}` }, kandilSvg(), kandilSayi, h('span', { s: 'f-kz-kutu-ad', t: 'kandil' }));
+    kandilKutu = h('li', { s: 'f-kz-kutu f-kz-kandil', 'aria-label': `${MK.kandilArti(kv.yeni - kv.onceki)}: ${kv.yeni}` }, kandilSvg(), kandilSayi, h('span', { s: 'f-kz-kutu-ad', t: MK.kandilKutuAdi }));
     kutular.appendChild(kandilKutu);
   }
   for (const d of vm.duyurular ?? []) {
     if (d.tur !== 'guclendirici') continue;
     const [sayiKismi, ...ad] = d.metin.split(' ');
-    kutular.appendChild(h('li', { s: 'f-kz-kutu', 'aria-label': d.metin }, ikon(d.ikon as IkonAdi), h('span', { s: 'f-kz-kutu-sayi f-sayi', t: sayiKismi }), h('span', { s: 'f-kz-kutu-ad', t: ad.join(' ').toLocaleLowerCase('tr') })));
+    kutular.appendChild(h('li', { s: 'f-kz-kutu', 'aria-label': d.metin }, ikon(d.ikon as IkonAdi), h('span', { s: 'f-kz-kutu-sayi f-sayi', t: sayiKismi }), h('span', { s: 'f-kz-kutu-ad', t: kucukHarf(ad.join(' ')) })));
   }
   if (vm.sandiklar.length > 0) kutular.appendChild(h('li', { s: 'f-kz-kutu f-kz-kutu-sandik' }, sandikKutusu(b, vm.sandiklar)));
   // Tablo kutusu yok (Defter'de görünür): eski tablo varsa daha nadir olan saklanır.
@@ -172,7 +173,7 @@ export function kazandinEkrani(
         muhurKutulari[i].classList.add('f-bas');
         b.ses('muhur');
         b.titret(20);
-        b.duyur(`${MK.kademe[m.kademe]} mührü`);
+        b.duyur(MK.muhurAdi(m.kademe));
       });
     });
     if (sancakCip) sonra(muhurSonu + 120, () => sancakCip.classList.add('f-goster'));

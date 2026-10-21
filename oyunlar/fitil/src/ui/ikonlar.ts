@@ -8,6 +8,7 @@
  */
 import { svg, tekilKimlik } from './dom';
 import { KAPSUL_RENKLERI } from '../app/katalog';
+import { t as tt } from '../platform/dil';
 import type { HedefVM, OdulVM, Palet, RozetId } from './tipler';
 import type { Motif } from '../core/types';
 import type { DesenId, FitilId, GuclendiriciId } from '../app/katalog';
@@ -738,7 +739,8 @@ const MUM_YOLU = (() => {
   return `M${p.join('L')}Z`;
 })();
 
-const KADEME_HARFI: Record<string, string> = { cirak: 'Ç', kalfa: 'K', usta: 'U' };
+/** Kademe harfi: Çırak/Kalfa/Usta → Ç/K/U; İngilizcede Apprentice/Journeyman/Master → A/J/M. */
+const KADEME_HARFI: Record<string, string> = tt({ cirak: 'Ç', kalfa: 'K', usta: 'U' }, { cirak: 'A', kalfa: 'J', usta: 'M' });
 
 /**
  * Mum mühür (KANCALAR §C.2): basılı = kırmızı mum + kabartma kademe harfi

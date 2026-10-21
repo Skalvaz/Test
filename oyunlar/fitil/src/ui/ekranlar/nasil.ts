@@ -9,6 +9,7 @@ import { M, NASIL_KARTLARI, ENGEL_ADLARI } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { yeniOgeOnizleme } from './ortak';
 import type { EngelId, NasilVM, Palet, YeniOge } from '../tipler';
+import { t as tt } from '../../platform/dil';
 
 const ENGEL_SIRASI: EngelId[] = ['kafes', 'islak', 'doseme', 'fener', 'kaya', 'devFisek', 'kova', 'barutIzi', 'delik', 'desen', 'meltem', 'is', 'cisenti'];
 const ENGEL_ONIZLEME: Record<EngelId, YeniOge> = {
@@ -112,7 +113,7 @@ export function nasilEkrani(b: Baglam, vm: NasilVM): { soz: Promise<void>; kapat
     } else resim = h('div', { s: 'f-nk-resim' }, sahne(i, b.palet));
     return h(
       'div',
-      { s: 'f-nk-kart', role: 'group', 'aria-roledescription': 'kart', 'aria-label': `${i + 1}/6 ${k.baslik}` },
+      { s: 'f-nk-kart', role: 'group', 'aria-roledescription': tt('kart', 'card'), 'aria-label': `${i + 1}/6 ${k.baslik}` },
       resim,
       h('h3', { s: 'f-nk-baslik', t: k.baslik }),
       h('p', { s: 'f-govde f-nk-metin', t: k.metin }),

@@ -10,6 +10,7 @@
 import { KASABA_ISLERI } from '../../app/katalog';
 import { svg } from '../dom';
 import { M } from '../metinler';
+import { buyukHarf, t as tt } from '../../platform/dil';
 import type { BolumDugumuVM } from '../tipler';
 import { ALT_PAY, BOLGE_H, HARITA_H, HARITA_W, altPayCiz, bolgeCiz, bolgeGeo, bolgeUst, haritaTanimlari, sahneParcalari } from './cizim';
 import { canliDuragan, isCapasi, isCizimi } from './susler';
@@ -58,18 +59,19 @@ export function isOnizlemesi(id: string, m: number): SVGSVGElement | null {
  * levha ve çevresinde yanan ampuller.
  */
 function tabelaSvg(p: Nokta): string {
-  const w = 96;
+  // İngilizce ad ("LANTERN COVE") iki harf uzun: levha genişler.
+  const w = tt(96, 118);
   const h = 24;
   const x0 = p.x - w / 2;
   const y0 = p.y - h / 2;
   let ampul = '';
   for (let i = 0; i <= 8; i++) for (const y of [y0 - 5, y0 + h + 5]) ampul += `<circle cx="${(x0 + (w * i) / 8).toFixed(1)}" cy="${y}" r="1.6" fill="#FFF4C2"/>`;
-  return `<defs><linearGradient id="f-onz-tabela" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE7A8"/><stop offset=".55" stop-color="#D9A441"/><stop offset="1" stop-color="#9A5A22"/></linearGradient></defs><circle cx="${p.x}" cy="${p.y}" r="${w * 0.7}" fill="url(#ftl-koz)" opacity=".35"/><rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="5" fill="url(#f-onz-tabela)" stroke="#4A2208" stroke-width="1.5"/><text x="${p.x}" y="${p.y + 4.2}" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="1.4" fill="#3A1606" font-family="Nunito, sans-serif">${tabelaYazisi()}</text>${ampul}`;
+  return `<defs><linearGradient id="f-onz-tabela" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE7A8"/><stop offset=".55" stop-color="#D9A441"/><stop offset="1" stop-color="#9A5A22"/></linearGradient></defs><circle cx="${p.x}" cy="${p.y}" r="${w * 0.7}" fill="url(#ftl-koz)" opacity=".35"/><rect x="${x0}" y="${y0}" width="${w}" height="${h}" rx="5" fill="url(#f-onz-tabela)" stroke="#4A2208" stroke-width="1.5"/><text x="${p.x}" y="${p.y + 4.2}" text-anchor="middle" font-size="12" font-weight="800" letter-spacing="${tt(1.4, 0.8)}" fill="#3A1606" font-family="Nunito, sans-serif">${tabelaYazisi()}</text>${ampul}`;
 }
 
 /** Tabela yazısı (büyük harf, dile göre). */
 function tabelaYazisi(): string {
-  return M.fenerKoyu.toLocaleUpperCase('tr');
+  return buyukHarf(M.fenerKoyu);
 }
 
 /** Çizimin kutusu (DOM'da ölçülür; ölçülemezse null → çapa çevresi). */

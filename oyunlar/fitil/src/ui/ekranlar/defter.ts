@@ -119,7 +119,7 @@ export function defterEkrani(b: Baglam, ilkVm: DefterVM, ek: { defterKartiAc?: (
               'div',
               { s: `f-df-satir${tam ? ' f-tam' : ''}${v.secili ? ' f-secili' : ''}` },
               h('div', { s: 'f-df-fitil' }, fitilSvg(d.id, tam || v.parca > 0)),
-              h('div', { s: 'f-df-satir-metin' }, h('strong', { t: d.ad }), d.sandiktan || tam ? parcaNoktalari(v.parca) : h('small', { t: 'Fener Nöbeti 30' })),
+              h('div', { s: 'f-df-satir-metin' }, h('strong', { t: d.ad }), d.sandiktan || tam ? parcaNoktalari(v.parca) : h('small', { t: `${M.fenerNobeti} 30` })),
             );
             if (harcamaKipi && !tam && d.sandiktan) satir.appendChild(harcamaDugmesi(`f:${d.id}`, () => harca({ tur: 'fitil', id: d.id })));
             else if (tam) {
