@@ -71,7 +71,7 @@ function istatistikler(vm: IstatistikVM): HTMLElement {
 }
 
 function rozetler(vm: IstatistikVM, b: Baglam): HTMLElement {
-  const aciklama = h('p', { s: 'f-is-rozet-aciklama', 'aria-live': 'polite' });
+  const aciklama = h('p', { s: 'f-is-rozet-aciklama', 'aria-live': 'polite', 'data-bos': M.rozeteDokun });
   const izgara = h(
     'div',
     { s: 'f-is-rozetler' },

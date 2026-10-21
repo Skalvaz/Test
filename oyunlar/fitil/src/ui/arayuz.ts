@@ -43,7 +43,8 @@ import { kasabaEkrani } from './ekranlar/kasaba';
 import { beklemeEkrani, eksenSecici, type BeklemeTutamak } from './ekranlar/ek';
 import type { Eksen } from '../core/types';
 import { muhurUcur, muhurEtiketi } from './kanca';
-import { MK } from './metinler';
+import { M, MK } from './metinler';
+import { t as tt } from '../platform/dil';
 import type { Dikdortgen, SesMotoru } from '../app/sozlesme';
 import type { GuclendiriciId } from '../app/katalog';
 import type {
@@ -95,10 +96,11 @@ export interface ArayuzSecenek {
 }
 
 const KUTLAMA: Record<ReaksiyonKademesi, { metin: string; boy: number; parilti: string }> = {
-  guzel: { metin: 'Güzel!', boy: 44, parilti: 'rgba(255,200,90,.8)' },
-  harika: { metin: 'Harika!', boy: 50, parilti: 'rgba(255,150,40,.85)' },
-  muhtesem: { metin: 'Muhteşem!', boy: 56, parilti: 'rgba(255,95,180,.85)' },
-  senlik: { metin: 'ŞENLİK!', boy: 64, parilti: 'rgba(178,102,255,.9)' },
+  guzel: { metin: tt('Güzel!', 'Nice!'), boy: 44, parilti: 'rgba(255,200,90,.8)' },
+  harika: { metin: tt('Harika!', 'Great!'), boy: 50, parilti: 'rgba(255,150,40,.85)' },
+  muhtesem: { metin: tt('Muhteşem!', 'Amazing!'), boy: 56, parilti: 'rgba(255,95,180,.85)' },
+  // İngilizce sözcük iki harf uzun: harf boyu biraz küçülür, satır sığsın.
+  senlik: { metin: tt('ŞENLİK!', 'FESTIVAL!'), boy: tt(64, 54), parilti: 'rgba(178,102,255,.9)' },
 };
 
 interface Kapanabilir {
@@ -525,7 +527,7 @@ export class Arayuz {
    */
   balon(metin: string, sure = 0, o: { gecirgen?: boolean } = {}): Promise<void> {
     this.balonKapat();
-    const el = h('div', { s: 'f-balon', role: 'status', tabindex: '0', 'aria-label': `Kıvılcım Usta: ${metin}` }, ustaSvg(), h('span', { s: 'f-balon-metin', t: metin }));
+    const el = h('div', { s: 'f-balon', role: 'status', tabindex: '0', 'aria-label': `${M.ustaAdi}: ${metin}` }, ustaSvg(), h('span', { s: 'f-balon-metin', t: metin }));
     this.balonEl = el;
     this.balonGecirgen = !!o.gecirgen;
     this.b.ustKatman.appendChild(el);

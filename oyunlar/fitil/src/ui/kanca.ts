@@ -8,6 +8,10 @@ import { muhurSvg, kandilSvg } from './ikonlar';
 import { MK } from './metinler';
 import type { Baglam } from './cekirdek';
 import type { MuhurVM } from './tipler';
+import { t } from '../platform/dil';
+
+/** İngilizce kademe adları (Apprentice, Journeyman) Türkçesinden uzun: sütun genişler, koşul metni sarar. */
+const KADEME_SINIFI = t('', ' f-kademe-uzun');
 
 type Nokta = { x: number; y: number };
 
@@ -20,7 +24,7 @@ type Nokta = { x: number; y: number };
 export function muhurListesi(liste: readonly MuhurVM[], o: { durumlu?: boolean; ustaEli?: boolean; sinif?: string } = {}): HTMLElement {
   return h(
     'div',
-    { s: `f-muhur-liste${o.durumlu ? ' f-durumlu' : ''}${o.sinif ? ` ${o.sinif}` : ''}`, role: 'list', 'aria-label': MK.muhurler },
+    { s: `f-muhur-liste${KADEME_SINIFI}${o.durumlu ? ' f-durumlu' : ''}${o.sinif ? ` ${o.sinif}` : ''}`, role: 'list', 'aria-label': MK.muhurler },
     liste.map((m) => {
       const durum = m.basili ? 'basili' : (m.durum ?? null);
       const eli = o.ustaEli && !m.basili;
@@ -31,7 +35,7 @@ export function muhurListesi(liste: readonly MuhurVM[], o: { durumlu?: boolean; 
         {
           s: `f-muhur-satir f-k-${m.kademe}${m.basili ? ' f-basili' : ''}${m.durum ? ` f-d-${m.durum}` : ''}`,
           role: 'listitem',
-          'aria-label': `${MK.kademe[m.kademe]} mührü: ${m.metin}${m.basili ? `, ${MK.durum.basili}` : yazi ? `, ${yazi}` : ''}`,
+          'aria-label': `${MK.muhurAdi(m.kademe)}: ${m.metin}${m.basili ? `, ${MK.durum.basili}` : yazi ? `, ${yazi}` : ''}`,
         },
         h('span', { s: 'f-muhur-yuva' }, muhurSvg(m.kademe, m.basili || m.durum === 'tuttu')),
         h('span', { s: 'f-muhur-kademe', t: MK.kademe[m.kademe] }),

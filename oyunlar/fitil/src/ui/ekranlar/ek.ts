@@ -10,6 +10,7 @@ import { ikon, ustaSvg } from '../ikonlar';
 import { M } from '../metinler';
 import { secimSozu, type Baglam } from '../cekirdek';
 import type { Eksen } from '../../core/types';
+import { t as tt } from '../../platform/dil';
 
 export interface BeklemeTutamak {
   /** 0..1 */
@@ -42,7 +43,12 @@ export function beklemeEkrani(b: Baglam, metin: string, alt?: string, iptal?: ()
 }
 
 const EKSEN_ACI: Record<Eksen, number> = { 0: 0, 1: 90, 2: -45, 3: 45 };
-const EKSEN_ADI: Record<Eksen, string> = { 0: 'Yatay', 1: 'Dikey', 2: 'Çapraz ↗', 3: 'Çapraz ↘' };
+const EKSEN_ADI: Record<Eksen, string> = tt<Record<Eksen, string>>(
+  { 0: 'Yatay', 1: 'Dikey', 2: 'Çapraz ↗', 3: 'Çapraz ↘' },
+  { 0: 'Horizontal', 1: 'Vertical', 2: 'Diagonal ↗', 3: 'Diagonal ↘' },
+);
+const YON_SEC = tt('Roketin yönünü seç', 'Pick the rocket’s direction');
+const ROKET = tt('Roket', 'Rocket');
 
 function okSvg(aci: number): SVGSVGElement {
   return svg(`<svg class="f-eksen-ok" viewBox="-20 -20 40 40" aria-hidden="true"><g transform="rotate(${aci})">
@@ -72,7 +78,7 @@ export function eksenSecici(b: Baglam, merkez: { x: number; y: number }, hucre: 
     }
   };
   const dugmeler = ([0, 1, 2, 3] as Eksen[]).map((e) => {
-    const d = h('button', { s: 'f-yuvarlak f-eksen-dg', type: 'button', 'aria-label': `Roket: ${EKSEN_ADI[e]}` }, okSvg(EKSEN_ACI[e]));
+    const d = h('button', { s: 'f-yuvarlak f-eksen-dg', type: 'button', 'aria-label': `${ROKET}: ${EKSEN_ADI[e]}` }, okSvg(EKSEN_ACI[e]));
     d.addEventListener('click', (ev) => {
       ev.stopPropagation();
       bitir(e);
@@ -90,11 +96,11 @@ export function eksenSecici(b: Baglam, merkez: { x: number; y: number }, hucre: 
   const ust = ustte ? merkez.y - hucre * 0.6 - 64 : merkez.y + hucre * 0.6 + 8;
   const serit = h(
     'div',
-    { s: 'f-eksen-serit', role: 'group', 'aria-label': 'Roketin yönünü seç', css: { left: `${Math.round(sol)}px`, top: `${Math.round(ust)}px` } },
+    { s: 'f-eksen-serit', role: 'group', 'aria-label': YON_SEC, css: { left: `${Math.round(sol)}px`, top: `${Math.round(ust)}px` } },
     dugmeler,
     iptal,
   );
-  const etiket = h('div', { s: 'f-eksen-etiket', t: 'Roketin yönünü seç', css: { left: `${Math.round(sol + genislik / 2)}px`, top: `${Math.round(ustte ? ust - 30 : ust + 64)}px` } });
+  const etiket = h('div', { s: 'f-eksen-etiket', t: YON_SEC, css: { left: `${Math.round(sol + genislik / 2)}px`, top: `${Math.round(ustte ? ust - 30 : ust + 64)}px` } });
   const kok = h('div', { s: 'f-eksen-kok' }, serit, etiket);
   kok.addEventListener('pointerup', (e) => {
     if (e.target === kok) bitir(null);

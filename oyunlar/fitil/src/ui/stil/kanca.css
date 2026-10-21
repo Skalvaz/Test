@@ -21,6 +21,9 @@
 }
 .f-d-bozuldu:not(.f-basili) .f-muhur-yuva { opacity: .5; }
 .f-durumlu .f-muhur-satir { min-height: 38px; }
+/* İngilizce: "Journeyman" sütuna sığar; koşul ve durum kesilmez, iki satıra sarar. */
+.f-muhur-liste.f-kademe-uzun .f-muhur-kademe { width: 76px; }
+.f-muhur-liste.f-kademe-uzun .f-muhur-metin > span, .f-muhur-liste.f-kademe-uzun .f-muhur-durum { white-space: normal; }
 
 /* Bölüm öncesi bloğu */
 .f-bo-muhurler { display: flex; flex-direction: column; gap: 4px; padding: 7px 10px 6px; border-radius: 16px; background: rgba(0, 0, 0, .2); box-shadow: inset 0 0 0 1.5px rgba(255, 200, 120, .18); }

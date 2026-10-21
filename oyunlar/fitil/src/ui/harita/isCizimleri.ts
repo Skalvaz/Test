@@ -16,6 +16,7 @@
  * Koordinatlar mahalle yerelinde yazılır (`P(g, x, y)`); çizim küreseldir.
  */
 import { MAHALLELER } from '../../app/katalog';
+import { t as tt } from '../../platform/dil';
 import type { KasabaIsi } from '../../app/katalog';
 import type { Nokta } from './cizim';
 import {
@@ -318,7 +319,8 @@ export const CIZIMLER: Record<string, IsCizici> = {
   'carsi.mahyaYazisi': (c, g) => {
     // Harfler minareler arasındaki mahya dizisine asılı; 8. düğümün lambasından
     // uzak, kubbe çizgisi E ile N arasından geçer.
-    const harfler = ['Ş', 'E', 'N', 'L', 'İ', 'K'];
+    // İngilizcede aynı altı harflik dizi: FIESTA (katalogdaki iş açıklaması ve Nazlı'nın mektubu da bu sözcüğü anar).
+    const harfler = tt(['Ş', 'E', 'N', 'L', 'İ', 'K'], ['F', 'I', 'E', 'S', 'T', 'A']);
     let s = '';
     harfler.forEach((h, i) => {
       const x = 68 + i * 24;

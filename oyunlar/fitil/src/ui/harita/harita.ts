@@ -13,6 +13,7 @@
 import { h, svg } from '../dom';
 import { ikon, alevSvg, kucukYildiz, ustaSvg, kandilSvg } from '../ikonlar';
 import { M, MK, sayi } from '../metinler';
+import { t as tt } from '../../platform/dil';
 import { kandilUcur, merkez } from '../kanca';
 import { yildizAlani } from '../sahne';
 import type { Baglam } from '../cekirdek';
@@ -184,7 +185,7 @@ export class HaritaEkrani {
       this.sec({ tur: 'kasaba' });
     });
     const oynaSira = h('div', { s: 'f-harita-oyna-sira' }, this.kasabaDg, this.oynaDg);
-    const alt = h('nav', { s: 'f-harita-alt', 'aria-label': 'Menü' });
+    const alt = h('nav', { s: 'f-harita-alt', 'aria-label': tt('Menü', 'Menu') });
     const kok = h(
       'div',
       { s: 'f-harita', role: 'main', 'aria-label': M.fenerKoyu },
@@ -285,7 +286,7 @@ export class HaritaEkrani {
       const suslendi = !kilitli && mahalleSuslu(yapilan, m);
       // Mühür çipi "● 9/15" (İskele mühürsüz; mühürler 6. bölüm kazanılınca görünür).
       const muhur = bolumler.slice(m * 5, m * 5 + 5).reduce((a, x) => a + (x.muhur ?? 0), 0);
-      const muhurCipi = muhurGorunur && !kilitli && m > 0 ? h('span', { s: 'f-serit-muhur', 'aria-label': `Mühür ${muhur}/15` }, h('i', { 'aria-hidden': 'true' }), h('span', { s: 'f-sayi', t: `${muhur}/15` })) : null;
+      const muhurCipi = muhurGorunur && !kilitli && m > 0 ? h('span', { s: 'f-serit-muhur', 'aria-label': MK.muhurSayac(muhur, 15) }, h('i', { 'aria-hidden': 'true' }), h('span', { s: 'f-sayi', t: `${muhur}/15` })) : null;
       const serit = h(
         'div',
         { s: `f-mahalle-serit${kilitli ? ' f-kilitli' : ''}${suslendi ? ' f-suslendi' : ''}`, css: { left: '50%', top: yuzdeY(ust + BOLGE_H - 28), '--vurgu': mh.vurgu } },
@@ -356,7 +357,7 @@ export class HaritaEkrani {
           s: `f-dugum f-${d.durum}${yeni ? ' f-yeni' : ''}`,
           type: 'button',
           css: { left: yuzdeX(k.x), top: yuzdeY(k.y) },
-          'aria-label': `${M.bolum} ${d.id}${d.durum === 'kilitli' ? `, ${M.kilitli}` : d.durum === 'acik' ? `, ${d.yildiz} yıldız` : `, ${M.buradasin}`}`,
+          'aria-label': `${M.bolum} ${d.id}${d.durum === 'kilitli' ? `, ${M.kilitli}` : d.durum === 'acik' ? `, ${M.yildizAdet(d.yildiz)}` : `, ${M.buradasin}`}`,
           'data-id': String(d.id),
         },
         h('span', { s: 'f-dugum-ic' }, h('span', { s: 'f-dugum-no f-sayi', t: String(d.id) })),
@@ -405,7 +406,7 @@ export class HaritaEkrani {
           <path d="M-6.4-4h12.6M-5.6-14h11.4" stroke="${u.acik ? '#B8381C' : '#3A3040'}" stroke-width="4"/>
           <rect x="-6" y="-31" width="12" height="9" rx="2" fill="${u.acik ? '#FFF4C2' : '#2A2232'}"/>
           <path d="M-8-31 0-38 8-31z" fill="#3A2416"/></svg>`),
-        h('span', { s: 'f-usta-etiket' }, h('span', { t: `U${sira}` }), u.acik ? h('span', { s: 'f-usta-yildiz' }, [0, 1, 2].map((i) => kucukYildiz(i < u.yildiz))) : h('small', { s: 'f-sayi' }, ikon('yildizDolu'), h('span', { t: String(u.gerekenYildiz) }))),
+        h('span', { s: 'f-usta-etiket' }, h('span', { t: `${M.ustaKisa}${sira}` }), u.acik ? h('span', { s: 'f-usta-yildiz' }, [0, 1, 2].map((i) => kucukYildiz(i < u.yildiz))) : h('small', { s: 'f-sayi' }, ikon('yildizDolu'), h('span', { t: String(u.gerekenYildiz) }))),
       );
       dg.addEventListener('click', () => {
         if (!u.acik) {
@@ -565,7 +566,7 @@ export class HaritaEkrani {
       this.b.ses('kasaba');
       this.b.titret(20);
       if (is) {
-        this.b.duyur(`${is.ad} yapıldı`);
+        this.b.duyur(MK.isYapildi(is.ad));
         const soz = h('div', { s: 'f-sus-soz', role: 'status', css: { left: '50%', top: yuzdeY(k.capa.y - 30) } }, h('span', { t: is.sakin }));
         this.icerik?.querySelector('.f-harita-ogeler')?.appendChild(soz);
         // Balon çapanın üstünde, ama ekrandan taşmasın (genişliği ölçülerek kenara yaslanır;
@@ -757,10 +758,10 @@ export class HaritaEkrani {
     this.kaydirYere({ x: 200, y: bolgeUst(m) + BOLGE_H * 0.45 }, true);
     kap.classList.add('f-senlik');
     const katman = h('div', { s: 'f-senlik-katman', 'aria-hidden': 'true' });
-    const bant = h('div', { s: 'f-senlik-bant', role: 'status' }, h('small', { t: MAHALLELER[m]?.ad ?? '' }), h('span', { t: 'Mahalle şenliği' }));
+    const bant = h('div', { s: 'f-senlik-bant', role: 'status' }, h('small', { t: MAHALLELER[m]?.ad ?? '' }), h('span', { t: MK.mahalleSenligi }));
     kok.appendChild(katman);
     kok.appendChild(bant);
-    this.b.duyur(`${MAHALLELER[m]?.ad ?? ''} mahalle şenliği`);
+    this.b.duyur(MK.mahalleSenligiDuyuru(MAHALLELER[m]?.ad ?? ''));
     this.b.titret([30, 20, 60]);
     this.b.ses('kazandin');
     const renk = ['#FF5FB4', '#FFB020', '#3AA8FF', '#2EE07A', '#B266FF', '#FF4D4D', MAHALLELER[m]?.vurgu ?? '#FFD15C'];

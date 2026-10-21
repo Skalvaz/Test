@@ -17,6 +17,8 @@ import * as O from './ornekler';
 import { KASABA_ISLERI } from '../../app/katalog';
 import type { Kenarlar, Yerlesim } from '../yerlesim';
 import type { HaritaSecimi, Palet } from '../tipler';
+import { M, MK, tarihKisa } from '../metinler';
+import { t } from '../../platform/dil';
 
 const p = new URLSearchParams(location.search);
 const ekran = p.get('ekran') ?? 'harita';
@@ -47,14 +49,14 @@ const ui = new Arayuz({
   geri: {
     duraklatIstendi: () => void duraklatAc(),
     guclendiriciSecildi: (id) => {
-      ui.secimKipi(id === 'kibrit' ? 'Kibrit: tutuşturulacak hücreyi seç' : 'Kalıp: rokete dönecek kapsülü seç', id);
+      ui.secimKipi(id === 'kibrit' ? M.secimMetni.kibrit : M.secimMetni.kalip, id);
     },
-    korukSecildi: () => ui.secimKipi('Isıtılacak merkezi seç', 'koruk'),
+    korukSecildi: () => ui.secimKipi(M.secimMetni.koruk, 'koruk'),
     secimIptal: () => ui.secimKipi(null),
     ayarDegisti: (d) => log('ayar', d),
     balonlariSifirla: () => log('balonlar'),
     kayitKodu: () => 'FTL1:eyJzdXJ1bSI6MSwia2F5aXRUb2h1bXUiOjQ4MTIzLCJib2x1bWxlciI6eyIxIjp7InlpbGRpeiI6MywiZW5JeWkiOjI0NTB9fX0=:7F3A',
-    kayitOnizle: (k) => (k.startsWith('FTL1:') ? { gecerli: true, toplamYildiz: 37, sonBolum: 14, desen: 6, kayitTarihi: '12.10.2026' } : { gecerli: false, hata: 'Kod “FTL1:” ile başlamalı' }),
+    kayitOnizle: (k) => (k.startsWith('FTL1:') ? { gecerli: true, toplamYildiz: 37, sonBolum: 14, desen: 6, kayitTarihi: tarihKisa(20261012) } : { gecerli: false, hata: t('Kod “FTL1:” ile başlamalı', 'The code must start with “FTL1:”') }),
     kayitYukle: () => true,
     ilerlemeyiSifirla: () => log('sıfırla'),
     tabloKarari: (id, s) => log('tablo', id, s),
@@ -265,7 +267,7 @@ async function calistir(): Promise<void> {
       break;
     case 'haritaBalon':
       void haritaSahnesi();
-      setTimeout(() => void ui.haritaBalonu(p.get('m') ?? 'Kandil yetti: Kemer çelengi yapalım mı?', 'kasaba', 0), 900);
+      setTimeout(() => void ui.haritaBalonu(p.get('m') ?? MK.kandilYetti(t('Kemer çelengi', 'Arch garland')), 'kasaba', 0), 900);
       break;
     case 'kasabaKarti':
       void haritaSahnesi();
@@ -273,7 +275,7 @@ async function calistir(): Promise<void> {
       break;
     case 'secim':
       await oyunSahnesi('koruk');
-      ui.secimKipi('Isıtılacak merkezi seç', 'koruk');
+      ui.secimKipi(M.secimMetni.koruk, 'koruk');
       break;
     case 'duraklat':
       await oyunSahnesi();
@@ -317,15 +319,15 @@ async function calistir(): Promise<void> {
       break;
     case 'sandik':
       void haritaSahnesi();
-      await ui.sandikAc({ tur: 'parlak', oduller: [{ tur: 'desenParcasi', id: 'spiral', parca: 1 }, { tur: 'toz', adet: 3 }] }, 'Günlük görev');
+      await ui.sandikAc({ tur: 'parlak', oduller: [{ tur: 'desenParcasi', id: 'spiral', parca: 1 }, { tur: 'toz', adet: 3 }] }, t('Günlük görev', 'Daily task'));
       break;
     case 'balon':
       await oyunSahnesi();
-      void ui.balon('Aynı renkleri parmağınla birleştir, bırak.');
+      void ui.balon(t('Aynı renkleri parmağınla birleştir, bırak.', 'Join matching colors with your finger, let go.'));
       break;
     case 'bant':
       await oyunSahnesi('son1');
-      void ui.bant('Son hamle!');
+      void ui.bant(M.sonHamle);
       break;
     case 'kutlama':
       await oyunSahnesi();
@@ -333,7 +335,7 @@ async function calistir(): Promise<void> {
       break;
     case 'toast':
       void haritaSahnesi();
-      ui.toast('Panoya kopyalandı');
+      ui.toast(M.kopyalandi);
       break;
   }
 }

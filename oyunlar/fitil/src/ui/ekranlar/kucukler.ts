@@ -91,6 +91,6 @@ export function sandikEkrani(b: Baglam, sandik: SandikVM, baslik?: string): { so
   const kapat = () => {
     if (sec()) t.kapat(true);
   };
-  const t = b.modalAc({ icerik, serit: baslik ?? 'Sandık', seritTur: 'altin', onIptal: kapat, sinif: 'f-sandik-modal' });
+  const t = b.modalAc({ icerik, serit: baslik ?? M.sandik, seritTur: 'altin', onIptal: kapat, sinif: 'f-sandik-modal' });
   return { soz, kapat };
 }

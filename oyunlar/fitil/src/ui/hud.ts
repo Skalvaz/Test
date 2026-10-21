@@ -232,7 +232,7 @@ export class Hud {
     this.hamleSayi = h('span', { s: 'f-hamle-sayi f-sayi', t: String(vm.kalanHamle) });
     this.hamleKutu = h(
       'div',
-      { s: 'f-hamle', role: 'status', 'aria-label': `${vm.kalanHamle} ${M.hamle}` },
+      { s: 'f-hamle', role: 'status', 'aria-label': M.hamleAdet(vm.kalanHamle) },
       halka,
       h('span', { s: 'f-hamle-ic' }, this.hamleSayi, h('span', { s: 'f-hamle-etiket', t: M.hamle })),
     );
@@ -440,7 +440,7 @@ export class Hud {
   private hamleGuncelle(kalan: number, canli: boolean): void {
     if (!this.hamleSayi || !this.hamleKutu || !this.vm) return;
     this.hamleSayi.textContent = String(Math.max(0, kalan));
-    this.hamleKutu.setAttribute('aria-label', `${kalan} ${M.hamle}`);
+    this.hamleKutu.setAttribute('aria-label', M.hamleAdet(kalan));
     const oran = this.vm.toplamHamle > 0 ? Math.max(0, Math.min(1, kalan / this.vm.toplamHamle)) : 0;
     this.hamleHalka?.setAttribute('stroke-dashoffset', (HAMLE_CEVRE * (1 - oran)).toFixed(2));
     this.hamleKutu.classList.toggle('f-son5', kalan <= 5 && kalan > 0);

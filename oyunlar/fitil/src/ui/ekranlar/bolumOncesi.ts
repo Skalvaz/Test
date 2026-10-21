@@ -25,7 +25,7 @@ export function bolumOncesiEkrani(b: Baglam, vm: BolumOncesiVM): { soz: Promise<
     'ul',
     { s: 'f-bo-liste', 'aria-label': M.hedefler },
     vm.hedefler.map((x) => satir(hedefKutusu(x, b.palet).firstElementChild!, hedefMetni(x))),
-    satir(ikon('hamle'), `${vm.hamle} ${M.hamle}`, 'f-bo-liste-hamle'),
+    satir(ikon('hamle'), M.hamleAdet(vm.hamle), 'f-bo-liste-hamle'),
   );
   const esik = esikBilgisi(vm.esik);
   if (esik) liste.appendChild(satir(ikon('alev'), esik, 'f-bo-liste-kural'));

@@ -7,7 +7,8 @@
  */
 import { h, svg } from '../dom';
 import { ikon, kandilSvg } from '../ikonlar';
-import { MK } from '../metinler';
+import { M, MK } from '../metinler';
+import { t as tt } from '../../platform/dil';
 import { secimSozu, type Baglam } from '../cekirdek';
 import { KASABA_ISLERI, MAHALLELER } from '../../app/katalog';
 import { isOnizlemesi, onizlemeKaynagi } from '../harita/onizleme';
@@ -20,7 +21,7 @@ export function kasabaEkrani(b: Baglam, vm: KasabaVM): { soz: Promise<KasabaSeci
   const { soz, sec } = secimSozu<KasabaSecimi>();
   let secili = Math.max(0, Math.min(MAHALLELER.length - 1, vm.secili));
 
-  const kapatDg = h('button', { s: 'f-yuvarlak f-ks-kapat', type: 'button', 'aria-label': 'Kapat' }, ikon('kapat'));
+  const kapatDg = h('button', { s: 'f-yuvarlak f-ks-kapat', type: 'button', 'aria-label': M.kapat }, ikon('kapat'));
   kapatDg.addEventListener('click', () => kapat());
   const baslik = h(
     'header',
@@ -30,7 +31,7 @@ export function kasabaEkrani(b: Baglam, vm: KasabaVM): { soz: Promise<KasabaSeci
     kapatDg,
   );
 
-  const sekmeler = h('div', { s: 'f-ks-sekmeler f-kaydir', role: 'tablist', 'aria-label': 'Mahalleler' });
+  const sekmeler = h('div', { s: 'f-ks-sekmeler f-kaydir', role: 'tablist', 'aria-label': tt('Mahalleler', 'Districts') });
   const sakin = h('div', { s: 'f-ks-sakin' });
   const liste = h('div', { s: 'f-ks-liste f-kaydir', role: 'list' });
 
@@ -111,7 +112,7 @@ export function kasabaEkrani(b: Baglam, vm: KasabaVM): { soz: Promise<KasabaSeci
       case 'yapildi':
         return h('span', { s: 'f-ks-durum f-ks-yapildi' }, ikon('tik'), h('span', { t: MK.yapildi }));
       case 'yapilabilir': {
-        const d = h('button', { s: 'f-dg f-dg-birincil f-ks-yap', type: 'button', 'aria-label': `${MK.yap}: ${is.ad}, ${is.maliyet} kandil` }, h('span', { t: MK.yap }), h('span', { s: 'f-ks-bedel' }, kandilSvg(), h('span', { s: 'f-sayi', t: String(is.maliyet) })));
+        const d = h('button', { s: 'f-dg f-dg-birincil f-ks-yap', type: 'button', 'aria-label': `${MK.yap}: ${is.ad}, ${MK.kandilSayisi(is.maliyet)}` }, h('span', { t: MK.yap }), h('span', { s: 'f-ks-bedel' }, kandilSvg(), h('span', { s: 'f-sayi', t: String(is.maliyet) })));
         d.addEventListener('click', () => {
           if (sec({ tur: 'yap', id: is.id })) t.kapat();
         });
