@@ -1,1 +1,196 @@
-{}
+{
+  "1": {
+    "ad": "First Spark",
+    "sonrakiTanitim": "Next: Rocket!",
+    "ipuclari": ["Drag across matching colors, then let go.", "Hot capsules ignite when a neighbor pops!", "At least 3."]
+  },
+  "2": {
+    "ad": "Diagonal Path",
+    "sonrakiTanitim": "Next: Warming Up!",
+    "ipuclari": ["Diagonals work too. 6+ = ROCKET!", "Add the rocket to a chain to fire it.", "At least 3."]
+  },
+  "3": {
+    "ad": "Warming Up",
+    "sonrakiTanitim": "Next: Cage!",
+    "ipuclari": ["A pop heats its neighbors. A hot capsule POPS with one more heat.", "Heat stays. Hot ones need just one touch.", "At least 3."]
+  },
+  "4": {
+    "ad": "Wrap and Bake",
+    "sonrakiTanitim": "Next: Take Aim!",
+    "ipuclari": ["Cages only open with heat. Surround them!", "At least 3."]
+  },
+  "5": {
+    "ad": "Take Aim",
+    "sonrakiTanitim": "Next: Chrysanthemum!",
+    "ipuclari": ["End diagonally for a diagonal rocket.", "Stars come from your score.", "Spare moves turn into rockets!"]
+  },
+  "6": {
+    "ad": "Chrysanthemum",
+    "sonrakiTanitim": "Next: Wet Powder!",
+    "ipuclari": ["9+ = CHRYSANTHEMUM. It also heats around it."]
+  },
+  "7": {
+    "ad": "Wet Powder",
+    "sonrakiTanitim": "Next: Loop!",
+    "ipuclari": ["Wet powder can't chain. Pop next to it to dry it."]
+  },
+  "8": {
+    "ad": "Loop",
+    "sonrakiTanitim": "Next: Street of Lights!",
+    "ipuclari": ["Return to your start: LOOP! Double heat."]
+  },
+  "9": {
+    "ad": "Street of Lights",
+    "sonrakiTanitim": "Next: Bazaar Night!",
+    "ipuclari": ["Pop on the tiles to light up the street."]
+  },
+  "10": {
+    "ad": "Bazaar Night",
+    "sonrakiTanitim": "Next: Lantern Parade!"
+  },
+  "11": {
+    "ad": "Lantern Parade",
+    "sonrakiTanitim": "Next: Star Ball!",
+    "ipuclari": ["Get the lantern to the bottom.", "Pop below the lantern. It's collected at the bottom."]
+  },
+  "12": {
+    "ad": "Star Ball",
+    "sonrakiTanitim": "Next: Rocky Shore!",
+    "ipuclari": ["12+ = STAR BALL. It matches every color."]
+  },
+  "13": {
+    "ad": "Rocky Shore",
+    "sonrakiTanitim": "Next: Double Rocket!",
+    "ipuclari": ["Rocks crumble when a neighbor pops."]
+  },
+  "14": {
+    "ad": "Double Rocket",
+    "sonrakiTanitim": "Next: Harbor Storm!",
+    "ipuclari": ["Put two specials in one fuse: they combine!"]
+  },
+  "15": {
+    "ad": "Harbor Storm",
+    "sonrakiTanitim": "Next: Giant Firework!",
+    "ipuclari": ["Thick breakwater: rocks lose a layer with each pop."]
+  },
+  "16": {
+    "ad": "Giant Firework",
+    "sonrakiTanitim": "Next: Bellows!",
+    "ipuclari": ["Pop beside giant fireworks to fill them. Two will do!"]
+  },
+  "17": {
+    "ad": "Bellows",
+    "sonrakiTanitim": "Next: Water Bucket!",
+    "ipuclari": ["Heat pops fill the Bellows. When full, tap it and heat anywhere."]
+  },
+  "18": {
+    "ad": "Water Bucket",
+    "sonrakiTanitim": "Next: Dry Night!",
+    "ipuclari": ["Buckets block heat nearby. Break them first."]
+  },
+  "19": {
+    "ad": "Dry Night",
+    "sonrakiTanitim": "Next: Midnight!",
+    "ipuclari": ["Dry night: 2 embers make capsules hot. Quick to ignite!"]
+  },
+  "20": {
+    "ad": "Midnight",
+    "sonrakiTanitim": "Next: Powder Trail!"
+  },
+  "21": {
+    "ad": "Powder Trail",
+    "sonrakiTanitim": "Next: Six Colors!",
+    "ipuclari": ["A pop on the powder trail ignites the whole trail."]
+  },
+  "22": {
+    "ad": "Six Colors",
+    "sonrakiTanitim": "Next: Tulip Bed!",
+    "ipuclari": ["New color: ROSE. Six colors mean shorter chains."]
+  },
+  "23": {
+    "ad": "Tulip Bed",
+    "sonrakiTanitim": "Next: Double Layer!",
+    "ipuclari": ["Fuses can't cross gaps in the board."]
+  },
+  "24": {
+    "ad": "Double Layer",
+    "sonrakiTanitim": "Next: Garden Wall!",
+    "ipuclari": ["Dark tiles need two pops on the same spot."]
+  },
+  "25": {
+    "ad": "Garden Wall",
+    "sonrakiTanitim": "Next: Tulip Pattern!"
+  },
+  "26": {
+    "ad": "Tulip Pattern",
+    "sonrakiTanitim": "Next: Damp Night!",
+    "ipuclari": ["Each pattern tile needs a pop of its own color.", "Painted tiles stay. Stem and leaves need green."]
+  },
+  "27": {
+    "ad": "Damp Night",
+    "sonrakiTanitim": "Next: Bucket Puzzle!",
+    "ipuclari": ["Damp night: capsules pop at 5 heat. Four ember slots."]
+  },
+  "28": {
+    "ad": "Bucket Puzzle",
+    "sonrakiTanitim": "Next: Breeze!"
+  },
+  "29": {
+    "ad": "Breeze",
+    "sonrakiTanitim": "Next: Hilltop Festival!",
+    "ipuclari": ["The breeze heats a row. Wait for it!"]
+  },
+  "30": {
+    "ad": "Hilltop Festival",
+    "sonrakiTanitim": "Next: Soot!"
+  },
+  "31": {
+    "ad": "Soot",
+    "sonrakiTanitim": "Next: Chimneys!",
+    "ipuclari": ["Soot spreads! Clear one every move."]
+  },
+  "32": {
+    "ad": "Chimneys",
+    "sonrakiTanitim": "Next: Drizzle!"
+  },
+  "33": {
+    "ad": "Drizzle",
+    "sonrakiTanitim": "Next: Dry Night II!",
+    "ipuclari": ["Drizzle puts out a row. Fire there first."]
+  },
+  "34": {
+    "ad": "Dry Night II",
+    "sonrakiTanitim": "Next: Factory Blaze!"
+  },
+  "35": {
+    "ad": "Factory Blaze",
+    "sonrakiTanitim": "Next: Castle Gate!"
+  },
+  "36": {
+    "ad": "Castle Gate",
+    "sonrakiTanitim": "Next: Powder Store!"
+  },
+  "37": {
+    "ad": "Powder Store",
+    "sonrakiTanitim": "Next: Wall Lantern!"
+  },
+  "38": {
+    "ad": "Wall Lantern",
+    "sonrakiTanitim": "Next: Festival Eve!"
+  },
+  "39": {
+    "ad": "Festival Eve",
+    "sonrakiTanitim": "Next: Grand Festival!"
+  },
+  "40": {
+    "ad": "Grand Festival"
+  },
+  "101": { "ad": "Dry Powder" },
+  "102": { "ad": "Loops Only" },
+  "103": { "ad": "Four Ways" },
+  "104": { "ad": "Hidden Heat" },
+  "105": { "ad": "Domino" },
+  "106": { "ad": "Giant Chest" },
+  "107": { "ad": "Drizzle Storm" },
+  "108": { "ad": "Master Spark's Trial" }
+}
