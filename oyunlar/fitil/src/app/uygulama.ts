@@ -16,7 +16,7 @@
  * okutmak yerine "Dokun ve başla" doğrudan Bölüm 1'in el animasyonuna gider;
  * harita ilk kazancın ödülü olarak, fitil 2. bölüme yanarak açılır.
  */
-import { dilKaydet } from '../platform/dil';
+import { dilKaydet, t } from '../platform/dil';
 import { Stage } from '../render/stage';
 import { oyunCiziciOlustur, type OyunCiziciTam } from '../render/oyunCizici';
 import { tabloCiz } from '../render/tablo';
@@ -56,6 +56,28 @@ import { bekle, bugun, rastgeleTohum, simdi } from './zaman';
 
 const SURUM = '1.0';
 const GORULEN_ANAHTARI = 'fitil.gorulen';
+
+/** Uygulama bildirimleri (toast, bant, bekleme kartı). */
+const U = {
+  bulutYuklendi: t('Bulut kaydı yüklendi', 'Cloud save loaded'),
+  bellekte: t(
+    'Bu tarayıcı ilerlemeni saklamıyor. Ayarlar > Kayıt kodu ile yedekleyebilirsin.',
+    'This browser won’t keep your progress. Back it up in Settings > Save code.',
+  ),
+  isYapilamiyor: t('Bu iş şimdi yapılamıyor', 'Can’t build this decoration now'),
+  bolumYuklenemedi: t('Bu bölüm yüklenemedi', 'Couldn’t load this level'),
+  mahalleTamam: t((ad: string) => `${ad} tamamlandı!`, (ad: string) => `${ad} complete!`),
+  gunlukHazirlaniyor: t('Kıvılcım Usta bugünün tahtasını hazırlıyor…', 'Master Spark is setting up today’s board…'),
+  sonsuzHazirlaniyor: t((n: number) => `Kıvılcım Usta ${n}. şenliği hazırlıyor…`, (n: number) => `Master Spark is setting up festival ${n}…`),
+  gunlukAlt: t('Herkes bugün aynı tahtayı oynar.', 'Everyone plays the same board today.'),
+  sonsuzAlt: t('Her tahta botla denenip ayarlanır.', 'Every board is test-played and tuned.'),
+  tahtaHazirlanamadi: t('Tahta hazırlanamadı, sonra yeniden dene', 'Couldn’t set up the board, try again later'),
+  arsivdeDegil: t('Bu gün artık arşivde değil', 'This day is no longer in the archive'),
+  olmadi: t('Olmadı', 'That didn’t work'),
+  koleksiyonTamam: t('Bu koleksiyon tamam', 'You have every piece'),
+  parcaTamam: t('Tamamlandı! Artık takabilirsin', 'Complete! You can use it now'),
+  parcaAlindi: t('Parça alındı', 'Got a piece'),
+};
 
 export interface SicakVeri {
   bolum?: number | null;
@@ -285,7 +307,7 @@ export class Uygulama {
     this.tabloOnbellek.clear();
     this.ayarlariUygula();
     if (this.haritaAcik && this.oturum.durum === 'kapali') void this.ui.harita(this.haritaModeli());
-    this.bildir('Bulut kaydı yüklendi');
+    this.bildir(U.bulutYuklendi);
   }
 
   /**
@@ -303,7 +325,7 @@ export class Uygulama {
     if (this.bellekUyarildi || !this.kayitci.bellekte) return;
     this.bellekUyarildi = true;
     void this.bekle(900).then(() => {
-      if (this.haritaAcik) this.bildir('Bu tarayıcı ilerlemeni saklamıyor. Ayarlar > Kayıt kodu ile yedekleyebilirsin.', 4200);
+      if (this.haritaAcik) this.bildir(U.bellekte, 4200);
       else this.bellekUyarildi = false;
     });
   }
@@ -445,7 +467,7 @@ export class Uygulama {
       if (s.tur !== 'yap') return;
       const r = meta.kasabaIsYap(this.kayit, s.id);
       if (!r.tamam) {
-        this.bildir('Bu iş şimdi yapılamıyor');
+        this.bildir(U.isYapilamiyor);
         return;
       }
       this.kayitci.degistir(r.kayit, 0);
@@ -556,7 +578,7 @@ export class Uygulama {
       try {
         d0 = bolumuYukle(v, deneme, { cosku });
       } catch {
-        this.bildir('Bu bölüm yüklenemedi');
+        this.bildir(U.bolumYuklenemedi);
         return 'harita';
       }
       if (kart) {
@@ -616,7 +638,7 @@ export class Uygulama {
     this.cizici.sov(true);
     this.cizici.karart(0);
     const ad = MAHALLELER[mahalle]?.ad;
-    if (ad) void this.ui.bant(`${ad} tamamlandı!`, 'altin');
+    if (ad) void this.ui.bant(U.mahalleTamam(ad), 'altin');
     const W = this.stage.width;
     const ufuk = Math.max(120, this.cizici.ufuk());
     const sure = this.hizliKip ? 300 : 6000;
@@ -673,8 +695,8 @@ export class Uygulama {
     let iptalEt: () => void = () => {};
     const iptalSoz = new Promise<null>((r) => (iptalEt = () => r(null)));
     const b = this.ui.bekleme(
-      tur === 'gunluk' ? 'Kıvılcım Usta bugünün tahtasını hazırlıyor…' : `Kıvılcım Usta ${n}. şenliği hazırlıyor…`,
-      tur === 'gunluk' ? 'Herkes bugün aynı tahtayı oynar.' : 'Her tahta botla denenip ayarlanır.',
+      tur === 'gunluk' ? U.gunlukHazirlaniyor : U.sonsuzHazirlaniyor(n),
+      tur === 'gunluk' ? U.gunlukAlt : U.sonsuzAlt,
       () => iptalEt(),
     );
     try {
@@ -684,7 +706,7 @@ export class Uygulama {
       await this.bekle(250);
       return this.adlandir(v);
     } catch {
-      this.bildir('Tahta hazırlanamadı, sonra yeniden dene');
+      this.bildir(U.tahtaHazirlanamadi);
       return null;
     } finally {
       this.uretici.dinleyicileriBirak(id);
@@ -702,7 +724,7 @@ export class Uygulama {
       const s = await this.ui.gunluk(gunlukVM(this.kayit, t), { kucukResim: hazir ? kucukResim(hazir) : null });
       if (s.tur === 'geri') return;
       if (!meta.bolumAcikMi(this.kayit, s.tarih, t)) {
-        this.bildir('Bu gün artık arşivde değil');
+        this.bildir(U.arsivdeDegil);
         continue;
       }
       const v = await this.uretilmisBolum('gunluk', s.tarih);
@@ -842,7 +864,7 @@ export class Uygulama {
       desenTak: (id, tak) => {
         const r = tak ? meta.desenTak(this.kayit, id) : meta.desenCikar(this.kayit, id);
         if (!r.tamam) {
-          this.ui.toast(DEFTER_HATA[r.hata] ?? 'Olmadı');
+          this.ui.toast(DEFTER_HATA[r.hata] ?? U.olmadi);
           return;
         }
         this.kayitci.degistir(r.kayit);
@@ -852,7 +874,7 @@ export class Uygulama {
       fitilSec: (id) => {
         const r = meta.fitilSec(this.kayit, id);
         if (!r.tamam) {
-          this.ui.toast(DEFTER_HATA[r.hata] ?? 'Olmadı');
+          this.ui.toast(DEFTER_HATA[r.hata] ?? U.olmadi);
           return;
         }
         this.kayitci.degistir(r.kayit);
@@ -862,7 +884,7 @@ export class Uygulama {
       gokyuzuSec: (id) => {
         const r = meta.gokyuzuSec(this.kayit, id);
         if (!r.tamam) {
-          this.ui.toast(DEFTER_HATA[r.hata] ?? 'Olmadı');
+          this.ui.toast(DEFTER_HATA[r.hata] ?? U.olmadi);
           return;
         }
         this.kayitci.degistir(r.kayit);
@@ -880,17 +902,17 @@ export class Uygulama {
           }
         }
         if (!parca) {
-          this.ui.toast('Bu koleksiyon tamam');
+          this.ui.toast(U.koleksiyonTamam);
           return;
         }
         const r = meta.tozlaParcaAl(this.kayit, parca);
         if (!r.tamam) {
-          this.ui.toast(DEFTER_HATA[r.hata] ?? 'Olmadı');
+          this.ui.toast(DEFTER_HATA[r.hata] ?? U.olmadi);
           return;
         }
         this.kayitci.degistir(r.kayit);
         this.ses.arayuz('parca');
-        this.ui.toast(r.cekilis.tur === 'parca' && r.cekilis.tamamlandi ? 'Tamamlandı! Artık takabilirsin' : 'Parça alındı');
+        this.ui.toast(r.cekilis.tur === 'parca' && r.cekilis.tamamlandi ? U.parcaTamam : U.parcaAlindi);
         return defterVM(this.kayit, kategori === 'desen' ? 'desenler' : 'fitiller');
       },
     };
@@ -1047,14 +1069,24 @@ export class Uygulama {
   }
 }
 
-const DEFTER_HATA: Record<string, string> = {
-  kapali: 'Önce 3 parçayı topla',
-  dolu: 'En fazla 6 desen takılır',
-  sonDesen: 'En az bir desen takılı kalmalı',
-  yetersizToz: '10 toz gerekir',
-  sahip: 'Bu parça zaten sende',
-  gecersiz: 'Bu parça tozla alınamaz',
-};
+const DEFTER_HATA: Record<string, string> = t<Record<string, string>>(
+  {
+    kapali: 'Önce 3 parçayı topla',
+    dolu: 'En fazla 6 desen takılır',
+    sonDesen: 'En az bir desen takılı kalmalı',
+    yetersizToz: '10 toz gerekir',
+    sahip: 'Bu parça zaten sende',
+    gecersiz: 'Bu parça tozla alınamaz',
+  },
+  {
+    kapali: 'Collect all 3 pieces first',
+    dolu: 'Up to 6 patterns in use',
+    sonDesen: 'Keep at least one pattern in use',
+    yetersizToz: 'Needs 10 dust',
+    sahip: 'You already have this piece',
+    gecersiz: 'This piece can’t be bought with dust',
+  },
+);
 
 /** Günün Şenliği kartı için gerçek tahtanın küçük resmi (ilk tahta). */
 function kucukResim(v: BolumVerisi): HTMLCanvasElement | null {
@@ -1126,3 +1158,6 @@ function kucukResim(v: BolumVerisi): HTMLCanvasElement | null {
     }
   return c;
 }
+
+/** Metin tabloları (İngilizce testi: src/dil/en-oyun.test.ts). */
+export { U as UYGULAMA_METNI, DEFTER_HATA };

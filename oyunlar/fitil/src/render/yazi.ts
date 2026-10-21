@@ -52,21 +52,35 @@ export class Yazi {
   private olcek: YayDurumu = { x: 0, v: 0 };
   genislik = 0;
 
-  goster(metin: string, stil: YaziStili, x: number, y: number, dpr: number): void {
-    this.stil = stil;
+  /**
+   * `enGenis` (px) verilirse yazı ondan genişse harf boyu orantılı küçülür
+   * (uzun İngilizce kombo adları dar ekrana sığsın; sığan yazı aynen kalır).
+   */
+  goster(metin: string, stil: YaziStili, x: number, y: number, dpr: number, enGenis?: number): void {
     this.x = x;
     this.y = y;
     this.t = 0;
     this.aktif = true;
     this.olcek.x = stil.yay ? 0 : 1;
     this.olcek.v = 0;
-    const font = `800 ${stil.boyut}px ${YAZI_FONT}`;
     const olc = spriteUret(1, 1, 1, () => {});
     const oc = olc.t.getContext('2d')!;
-    oc.font = font;
     const karakterler = [...metin];
-    const genis = karakterler.map((k) => oc.measureText(k).width);
-    const toplam = genis.reduce((a, b) => a + b, 0) - Math.max(0, karakterler.length - 1) * stil.boyut * 0.02;
+    const olcum = (st: YaziStili) => {
+      oc.font = `800 ${st.boyut}px ${YAZI_FONT}`;
+      const g = karakterler.map((k) => oc.measureText(k).width);
+      return { g, toplam: g.reduce((a, b) => a + b, 0) - Math.max(0, karakterler.length - 1) * st.boyut * 0.02 };
+    };
+    let o = olcum(stil);
+    if (enGenis && enGenis > 0 && o.toplam > enGenis) {
+      const k = enGenis / o.toplam;
+      stil = { ...stil, boyut: stil.boyut * k, dalga: stil.dalga * k };
+      o = olcum(stil);
+    }
+    this.stil = stil;
+    const font = `800 ${stil.boyut}px ${YAZI_FONT}`;
+    const genis = o.g;
+    const toplam = o.toplam;
     this.genislik = toplam;
     let px = -toplam / 2;
     this.harfler = karakterler.map((k, i) => {

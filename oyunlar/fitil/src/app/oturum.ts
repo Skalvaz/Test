@@ -42,6 +42,7 @@ import { NADIRLIK, duraklatVM, hudVM, kaybettinVM, kazandinKancalari, odulDuyuru
 import { kareBekle, simdi } from './zaman';
 import { MK } from '../ui/metinler';
 import { USTA_ELI_HAMLE } from '../core/sabitler';
+import { t } from '../platform/dil';
 
 export type OturumSonucu =
   | { tur: 'tekrar' }
@@ -72,10 +73,33 @@ export interface OturumOrtami {
 type SecimTuru = 'koruk' | 'kibrit' | 'kalip';
 
 // Dar ekranda (360 px) tek satıra sığsın: "Ne: ne seçilir".
-const SECIM_METNI: Record<SecimTuru, string> = {
-  koruk: 'Körük: 3×3 alanın ortasını seç',
-  kibrit: 'Kibrit: yakılacak hücreyi seç',
-  kalip: 'Kalıp: roket olacak kapsülü seç',
+const SECIM_METNI: Record<SecimTuru, string> = t<Record<SecimTuru, string>>(
+  {
+    koruk: 'Körük: 3×3 alanın ortasını seç',
+    kibrit: 'Kibrit: yakılacak hücreyi seç',
+    kalip: 'Kalıp: roket olacak kapsülü seç',
+  },
+  {
+    koruk: 'Bellows: pick a 3×3 center',
+    kibrit: 'Match: pick a cell to ignite',
+    kalip: 'Rocket Mold: pick a capsule',
+  },
+);
+
+/** Oyun içi kısa bildirimler (toast, balon). */
+const BILDIRIM = {
+  aksilik: t('Bir aksilik oldu, haritaya dönüldü', 'Something went wrong, back to the map'),
+  halkaGerekli: t('Bu bölümde yalnız halka geçerli: başladığın yere dön', 'This level needs a loop: end where you started'),
+  tekrarDokun: t('Ateşlemek için tekrar dokun', 'Tap again to ignite'),
+  bolumBasina1: t('Bölüm başına 1 güçlendirici', '1 booster per level'),
+  stokYok: t('Stok yok', 'None left'),
+  tahtaIci: t('Tahtanın içinde bir hücre seç', 'Pick a cell on the board'),
+  doluHucre: t('Dolu bir hücre seç', 'Pick a filled cell'),
+  duzKapsul: t('Düz bir kapsül seç', 'Pick a plain capsule'),
+  geriSarSon: t('Geri Sar yalnız son hamleyi geri alır', 'Undo only takes back your last move'),
+  geriAlindi: t('Son hamle geri alındı', 'Last move undone'),
+  hamleOlmaz: t('Bu hamle olmaz', 'That move won’t work'),
+  ustaYaninda: t('Kıvılcım Usta yanında: 5 hamle daha!', 'Master Spark is here: 5 more moves!'),
 };
 
 /** İpucu balonu kimliği (kayıtta "görüldü"). */
@@ -266,7 +290,7 @@ export class Oturum {
       this.o.ui.ekranlariKapat();
       this.o.cizici.karart(0);
       this.bitir({ tur: 'harita' });
-      this.o.ui.toast('Bir aksilik oldu, haritaya dönüldü');
+      this.o.ui.toast(BILDIRIM.aksilik);
     });
   }
 
@@ -483,7 +507,7 @@ export class Oturum {
       temizle();
       ses.iptal();
       if (hata === 'kisa') this.tetikIpucu('kisaYol');
-      else if (hata === 'halkaGerekli') this.o.ui.toast('Bu bölümde yalnız halka geçerli: başladığın yere dön');
+      else if (hata === 'halkaGerekli') this.o.ui.toast(BILDIRIM.halkaGerekli);
       return;
     }
     ses.tutusma();
@@ -527,7 +551,7 @@ export class Oturum {
     this.etkilesim();
     const k = this.kayit;
     if (meta.ciftDokunusIpucuGoster(k)) {
-      this.o.ui.toast('Ateşlemek için tekrar dokun');
+      this.o.ui.toast(BILDIRIM.tekrarDokun);
       this.o.kayitci.degistir(meta.ciftDokunusIpucuSay(k));
     }
   }
@@ -572,11 +596,11 @@ export class Oturum {
     }
     if (this.durum !== 'bekliyor' && this.durum !== 'secim') return;
     if (this.d.istatistik.guclendirici > 0) {
-      this.o.ui.toast('Bölüm başına 1 güçlendirici');
+      this.o.ui.toast(BILDIRIM.bolumBasina1);
       return;
     }
     if ((this.kayit.guclendiriciler[id] ?? 0) <= 0) {
-      this.o.ui.toast('Stok yok');
+      this.o.ui.toast(BILDIRIM.stokYok);
       return;
     }
     if (id === 'geriSar') {
@@ -632,7 +656,7 @@ export class Oturum {
     if (tur === 'koruk') {
       const hamle: Hamle = { tur: 'koruk', merkez: { x: h.x, y: h.y } };
       if (hamleHatasi(d, hamle)) {
-        ui.toast('Tahtanın içinde bir hücre seç');
+        ui.toast(BILDIRIM.tahtaIci);
         return;
       }
       this.secimBitir();
@@ -642,12 +666,12 @@ export class Oturum {
     if (tur === 'kibrit') {
       const hamle: Hamle = { tur: 'kibrit', hucre: { x: h.x, y: h.y } };
       if (hamleHatasi(d, hamle) || !d.hucreler[h.y * d.w + h.x].icerik) {
-        ui.toast('Dolu bir hücre seç');
+        ui.toast(BILDIRIM.doluHucre);
         return;
       }
       const k = meta.guclendiriciKullan(this.kayit, 'kibrit');
       if (!k) {
-        ui.toast('Stok yok');
+        ui.toast(BILDIRIM.stokYok);
         return;
       }
       this.o.kayitci.degistir(k);
@@ -657,7 +681,7 @@ export class Oturum {
     }
     // Fişek Kalıbı: önce kapsül, sonra eksen (§9: 4 eksen).
     if (hamleHatasi(d, { tur: 'kalip', hucre: h, eksen: 0 })) {
-      ui.toast('Düz bir kapsül seç');
+      ui.toast(BILDIRIM.duzKapsul);
       return;
     }
     const jeton = this.jeton;
@@ -673,7 +697,7 @@ export class Oturum {
     }
     const k = meta.guclendiriciKullan(this.kayit, 'kalip');
     if (!k) {
-      ui.toast('Stok yok');
+      ui.toast(BILDIRIM.stokYok);
       this.secimBitir();
       return;
     }
@@ -686,12 +710,12 @@ export class Oturum {
   private geriSar(): void {
     const a = this.geriSarAnlik;
     if (!a) {
-      this.o.ui.toast('Geri Sar yalnız son hamleyi geri alır');
+      this.o.ui.toast(BILDIRIM.geriSarSon);
       return;
     }
     const k = meta.guclendiriciKullan(this.kayit, 'geriSar');
     if (!k) {
-      this.o.ui.toast('Stok yok');
+      this.o.ui.toast(BILDIRIM.stokYok);
       return;
     }
     this.o.kayitci.degistir(k);
@@ -710,7 +734,7 @@ export class Oturum {
     this.o.cizici.durumGoster(d);
     this.o.ses.arayuz('kapa');
     this.titret([15, 30, 15]);
-    this.o.ui.toast('Son hamle geri alındı');
+    this.o.ui.toast(BILDIRIM.geriAlindi);
     this.gPuan = d.puan;
     this.hudTazele();
     this.o.ui.puan(d.puan);
@@ -727,7 +751,7 @@ export class Oturum {
     try {
       sonuc = hamleUygula(onceki, h);
     } catch {
-      this.o.ui.toast('Bu hamle olmaz');
+      this.o.ui.toast(BILDIRIM.hamleOlmaz);
       return;
     }
     const { cizici, ui } = this.o;
@@ -1090,7 +1114,7 @@ export class Oturum {
     ui.hamleSayaci(this.d.kalanHamle);
     this.durumAyarla('bekliyor');
     this.hudTazele();
-    void ui.balon('Kıvılcım Usta yanında: 5 hamle daha!', 2400);
+    void ui.balon(BILDIRIM.ustaYaninda, 2400);
   }
 
   // ─────────────────────────── Mühürler (Kancalar §C.3) ───────────────────────────
@@ -1338,3 +1362,6 @@ export class Oturum {
     };
   }
 }
+
+/** Metin tabloları (İngilizce testi: src/dil/en-oyun.test.ts). */
+export { SECIM_METNI, BILDIRIM as OTURUM_BILDIRIMI };
