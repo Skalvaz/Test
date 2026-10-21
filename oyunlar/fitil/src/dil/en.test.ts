@@ -2,7 +2,7 @@
  * İngilizce taraması (vitest): sayfa dili İngilizceyken metin tabloları ve
  * katalog verisinde Türkçe kalıntı (Türkçe harf) var mı. Modüller dil
  * belirlendikten SONRA yüklenmeli: bu dosyada yalnız dinamik içe aktarım.
- * Özel adlar (Rıza, Nazlı…) ve dil seçicisindeki "Türkçe" beyaz listede.
+ * Sakinlerin özel adları (Rıza, Nazlı, Hüsnü, Gülizar, Ayşe), bayram adları ve dil seçicisindeki "Türkçe" beyaz listede.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
 
@@ -10,7 +10,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 const TR_HARF = /[ğüşıöçĞÜŞİÖÇ]/;
 /** Çevrilmeyen özel adlar ve kasıtlı Türkçe sözcükler. */
-const BEYAZ = [/Türkçe/g, /FİTİL/g, /Rıza/g, /Nazlı/g, /Kıvılcım/g, /Hıdırellez/g, /Nevruz/g];
+const BEYAZ = [/Türkçe/g, /FİTİL/g, /Rıza/g, /Nazlı/g, /Hüsnü/g, /Gülizar/g, /Ayşe/g, /Hıdırellez/g, /Nevruz/g];
 
 function kalintilar(deger: unknown, yol: string, out: string[], gorulen = new Set<unknown>()): void {
   if (typeof deger === 'string') {

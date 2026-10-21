@@ -24,7 +24,7 @@ const EKRANLAR = [
 const TR_HARF = /[ğüşıöçĞÜŞİÖÇ]/;
 const TR_SOZ = /\b(ve|bir|ile|icin|için|Devam|Kapat|Oyna|Yap|Tamam|Geri|hamle|Hamle|Kasaba|Mahalle|Bolum|Ayarlar|Yeni|Sandik|Puan|kandil|Kandil|Muhur|Usta|Kilitli|eksik|kalan|Tekrar|Kazandin|Kaybettin|Gunun|Defter|Fisek|Sonsuz|Coskun|yildiz|Yildiz|Ses|Muzik|Titresim)\b/;
 // Özel adlar ve dil seçicisi.
-const BEYAZ = [/Türkçe/, /FİTİL/, /Rıza/, /Nazlı/, /Kıvılcım/, /İskele/i, /Hıdırellez/i, /Nevruz/i];
+const BEYAZ = [/Türkçe/, /FİTİL/, /Rıza/, /Nazlı/, /Hüsnü/, /Gülizar/, /Ayşe/, /Hıdırellez/i, /Nevruz/i];
 
 const browser = await chromium.launch({ executablePath: exe, args: ['--use-gl=angle', '--use-angle=swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
