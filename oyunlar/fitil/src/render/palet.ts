@@ -5,6 +5,7 @@
 import { KAPSUL_RENKLERI } from '../app/katalog';
 import type { Palet } from '../app/sozlesme';
 import { karistir } from './matematik';
+import { t } from '../platform/dil';
 
 export const P = {
   gokUst: '#0B1030',
@@ -46,7 +47,7 @@ export interface KapsulRengi {
 }
 
 /** Yıldız topu (renksiz inci cam). */
-export const INCI: KapsulRengi = { ana: '#EDE8F7', acik: '#FFFFFF', koyu: '#7C7396', sekil: 'daire', ad: 'Yıldız' };
+export const INCI: KapsulRengi = { ana: '#EDE8F7', acik: '#FFFFFF', koyu: '#7C7396', sekil: 'daire', ad: t('Yıldız', 'Star') };
 
 /** Paletteki 6 kapsül rengi. */
 export function kapsulRenkleri(palet: Palet): KapsulRengi[] {

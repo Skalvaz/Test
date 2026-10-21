@@ -32,8 +32,12 @@ import { DESENLER, FITILLER, GUCLENDIRICILER, MAHALLELER } from './katalog';
 import { BOLUMLER, bolumGetir } from '../levels';
 import { MK } from '../ui/metinler';
 import type { StorageBackend } from '../platform/storage';
+import { t } from '../platform/dil';
 
 export const NADIRLIK: readonly UiNadirlik[] = ['sade', 'parlak', 'saheser'];
+
+/** Adı bilinmeyen bölümün yedek adı ("Bölüm 12"). */
+const bolumYedekAdi = t((id: number) => `Bölüm ${id}`, (id: number) => `Level ${id}`);
 
 /** Yeni öğe tanıtımı (bölüm öncesi kartı, "Sıradaki: X!"), §8.3 "Yeni öğe" sütunu. */
 const YENI_OGE: Partial<Record<number, YeniOge>> = {
@@ -318,7 +322,7 @@ export function defterVM(k: Kayit, sekme?: DefterVM['sekme']): DefterVM {
     desenler: meta.desenDurumlari(k).map((d) => ({ id: d.id, parca: d.parcalar.filter(Boolean).length, takili: d.takili })),
     fitiller: meta.fitilDurumlari(k).map((f) => ({ id: f.id, parca: f.parcalar.filter(Boolean).length, secili: f.secili })),
     gokyuzleri: meta.gokyuzuDurumlari(k).map((g) => ({ id: g.id, acik: g.acik, secili: g.secili })),
-    tablolar: meta.tabloListesi(k).map((t) => ({ bolumId: t.bolumId, ad: bolumGetir(t.bolumId)?.ad ?? `Bölüm ${t.bolumId}`, nadirlik: NADIRLIK[t.nadirlik] })),
+    tablolar: meta.tabloListesi(k).map((t) => ({ bolumId: t.bolumId, ad: bolumGetir(t.bolumId)?.ad ?? bolumYedekAdi(t.bolumId), nadirlik: NADIRLIK[t.nadirlik] })),
     motifler: meta.motifDurumlari(k).map((m) => ({ motif: m.id, acik: m.asili })),
     kartlar: MAHALLELER.map((m) => k.koleksiyon.kartlar.includes(`defter:${m.id}`)),
     kasabaKartlari: kasabaKartlari(k),
@@ -415,7 +419,7 @@ export function gunlukVM(k: Kayit, bugun: number): GunlukVM {
 }
 
 export function istatistikVM(k: Kayit): IstatistikVM {
-  const ad = (id: number) => bolumGetir(id)?.ad ?? `Bölüm ${id}`;
+  const ad = (id: number) => bolumGetir(id)?.ad ?? bolumYedekAdi(id);
   const skorlar = Object.entries(k.bolumler)
     .map(([id, b]) => ({ id: Number(id), b }))
     .filter((x) => x.b.yildiz > 0 && (x.id <= BOLUMLER.length || (x.id > 100 && x.id < 200)))
@@ -439,7 +443,32 @@ export function nasilVM(k: Kayit): NasilVM {
   return { acikEngeller: (Object.keys(ENGEL_ACILIS) as EngelId[]).filter((e) => acik >= ENGEL_ACILIS[e]) };
 }
 
-const GUC_ADI: Record<'kibrit' | 'kalip' | 'geriSar', string> = { kibrit: 'Kibrit', kalip: 'Fişek Kalıbı', geriSar: 'Geri Sar' };
+const GUC_ADI: Record<'kibrit' | 'kalip' | 'geriSar', string> = t(
+  { kibrit: 'Kibrit', kalip: 'Fişek Kalıbı', geriSar: 'Geri Sar' },
+  { kibrit: 'Match', kalip: 'Rocket Mold', geriSar: 'Undo' },
+);
+
+/** Kazandın duyuru metinleri (kısa: kartta tek satır). */
+const D = {
+  gucAcildi: t(
+    (ad: string, n: number) => `${ad} açıldı · ${n} hediye`,
+    (ad: string, n: number) => `${ad} unlocked · +${n}`,
+  ),
+  toz: t((n: number) => `+${n} toz`, (n: number) => `+${n} dust`),
+  gunluk: t('Günün Şenliği açıldı', 'Daily Festival unlocked'),
+  sonsuz: t('Sonsuz Şenlik açıldı', 'Endless Festival unlocked'),
+  usta: t((n: number) => `Usta Bölümü ${n} açıldı`, (n: number) => `Master Level ${n} unlocked`),
+  mahalle: t('Mahalle', 'District'),
+  mahalleTamam: t((ad: string) => `${ad} tamamlandı`, (ad: string) => `${ad} complete`),
+  efsane: t('Efsane kartı açıldı', 'Legend card unlocked'),
+  motif: t('Işık Deseni haritaya asıldı', 'Light Pattern on the map'),
+  rozet: t('Rozet', 'Badge'),
+  gorev: t('Görev', 'Task'),
+  nobet: t('Fener Nöbeti', 'Lantern Watch'),
+  denizFeneri: t('Deniz Feneri fitili senin', 'Lighthouse fuse is yours'),
+  cosku: t('Coşku: sıradaki bölüm roketle başlar', 'Cheer: next level starts with a rocket'),
+  fitil: t('Fitil', 'Fuse'),
+};
 
 /**
  * Kazandın duyurularının önemi (küçük sayı önce): kart yalnız ilk birkaçını
@@ -485,47 +514,47 @@ export function odulDuyurulari(oduller: readonly meta.Odul[], s: { sonrakiBolum?
   for (const o of sirali) {
     switch (o.tur) {
       case 'guclendiriciAcildi':
-        r.push({ tur: o.tur, ikon: o.guc, metin: `${GUC_ADI[o.guc]} açıldı · ${o.verilen.adet} hediye` });
+        r.push({ tur: o.tur, ikon: o.guc, metin: D.gucAcildi(GUC_ADI[o.guc], o.verilen.adet) });
         break;
       case 'guclendirici':
-        if (o.neden !== 'mahalle') r.push({ tur: o.tur, ikon: o.verilen.guc, metin: o.verilen.adet > 0 ? `+${o.verilen.adet} ${GUC_ADI[o.verilen.guc]}` : `+${o.verilen.toz} toz` });
+        if (o.neden !== 'mahalle') r.push({ tur: o.tur, ikon: o.verilen.guc, metin: o.verilen.adet > 0 ? `+${o.verilen.adet} ${GUC_ADI[o.verilen.guc]}` : D.toz(o.verilen.toz) });
         break;
       case 'gunlukAcildi':
-        r.push({ tur: o.tur, ikon: 'takvim', metin: 'Günün Şenliği açıldı' });
+        r.push({ tur: o.tur, ikon: 'takvim', metin: D.gunluk });
         break;
       case 'sonsuzAcildi':
-        r.push({ tur: o.tur, ikon: 'alev', metin: 'Sonsuz Şenlik açıldı' });
+        r.push({ tur: o.tur, ikon: 'alev', metin: D.sonsuz });
         break;
       case 'ustaAcildi':
-        r.push({ tur: o.tur, ikon: 'sapka', metin: `Usta Bölümü ${o.ustaNo} açıldı` });
+        r.push({ tur: o.tur, ikon: 'sapka', metin: D.usta(o.ustaNo) });
         break;
       case 'mahalleTamam':
-        r.push({ tur: o.tur, ikon: 'harita', metin: `${MAHALLELER[o.mahalle]?.ad ?? 'Mahalle'} tamamlandı` });
+        r.push({ tur: o.tur, ikon: 'harita', metin: D.mahalleTamam(MAHALLELER[o.mahalle]?.ad ?? D.mahalle) });
         break;
       case 'efsane':
-        r.push({ tur: o.tur, ikon: 'defter', metin: 'Efsane kartı açıldı' });
+        r.push({ tur: o.tur, ikon: 'defter', metin: D.efsane });
         break;
       case 'motif':
-        r.push({ tur: o.tur, ikon: o.motif, metin: 'Işık Deseni haritaya asıldı' });
+        r.push({ tur: o.tur, ikon: o.motif, metin: D.motif });
         break;
       case 'rozet':
-        r.push({ tur: o.tur, ikon: 'rozet', metin: `Rozet: ${o.ad}` });
+        r.push({ tur: o.tur, ikon: 'rozet', metin: `${D.rozet}: ${o.ad}` });
         break;
       case 'gorev':
-        r.push({ tur: o.tur, ikon: 'tik', metin: `Görev: ${o.metin}` });
+        r.push({ tur: o.tur, ikon: 'tik', metin: `${D.gorev}: ${o.metin}` });
         break;
       case 'seriBasamagi':
-        if (o.basamak > 0) r.push({ tur: o.tur, ikon: 'alev', metin: `Fener Nöbeti: ${o.ad}` });
+        if (o.basamak > 0) r.push({ tur: o.tur, ikon: 'alev', metin: `${D.nobet}: ${o.ad}` });
         break;
       case 'fitil':
-        r.push({ tur: o.tur, ikon: 'denizFeneri', metin: 'Deniz Feneri fitili senin' });
+        r.push({ tur: o.tur, ikon: 'denizFeneri', metin: D.denizFeneri });
         break;
       case 'cosku':
-        if (o.aktif && !o.bozuldu && !sonrakiOgretim) r.push({ tur: o.tur, ikon: 'roket', metin: 'Coşku: sıradaki bölüm roketle başlar' });
+        if (o.aktif && !o.bozuldu && !sonrakiOgretim) r.push({ tur: o.tur, ikon: 'roket', metin: D.cosku });
         break;
       case 'muhurParcasi': {
         // (Kancalar §A.6) Mahallenin 5/10/15. mührü: fitil parçası (ya da üçü varsa toz).
-        const ad = FITILLER.find((f) => f.id === o.fitil)?.ad ?? 'Fitil';
+        const ad = FITILLER.find((f) => f.id === o.fitil)?.ad ?? D.fitil;
         // Şerit sırası (§C.5): kandil → mühür parçası → diğerleri; kısa ekranda da "+N daha"ya gömülmez.
         r.push({ tur: o.tur, ikon: 'alev', metin: o.parca ? MK.parcaDuyuru(ad, o.esik) : MK.tozDuyuru(o.toz, o.esik), oncelikli: true });
         break;
@@ -571,3 +600,6 @@ export function gokyuzuTemasi(k: Kayit): string {
   const g = k.koleksiyon.gokyuzu;
   return g && g !== 'ayIsigi' && meta.gokyuzuAcik(k, g) ? g : '';
 }
+
+/** Metin tabloları (İngilizce testi: src/dil/en-oyun.test.ts). */
+export { D as DUYURU_METNI, GUC_ADI, bolumYedekAdi };

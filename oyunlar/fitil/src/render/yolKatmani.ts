@@ -22,17 +22,28 @@ import type { TahtaCizimi } from './tahtaCizimi';
 import { YAZI_FONT } from './yazi';
 import type { Ctx } from './tuval';
 import { fitilRenkleri } from './fitilGorunumu';
+import { t } from '../platform/dil';
 
 const DUGUM_ITKI = 7; // tepe ≈ 1,25 (k400 c18, hedef 1,1)
 
-export const KOMBO_ADLARI: Record<KomboTuru, string> = {
-  yildizHatti: 'YILDIZ HATTI',
-  kalinRoket: 'KALIN ROKET',
-  devKasimpati: 'DEV KASIMPATI',
-  roketYagmuru: 'ROKET YAĞMURU',
-  bahce: 'BAHÇE',
-  buyukFinal: 'BÜYÜK FİNAL',
-};
+export const KOMBO_ADLARI: Record<KomboTuru, string> = t<Record<KomboTuru, string>>(
+  {
+    yildizHatti: 'YILDIZ HATTI',
+    kalinRoket: 'KALIN ROKET',
+    devKasimpati: 'DEV KASIMPATI',
+    roketYagmuru: 'ROKET YAĞMURU',
+    bahce: 'BAHÇE',
+    buyukFinal: 'BÜYÜK FİNAL',
+  },
+  {
+    yildizHatti: 'STAR CROSS',
+    kalinRoket: 'BIG ROCKET',
+    devKasimpati: 'GIANT CHRYSANTHEMUM',
+    roketYagmuru: 'ROCKET RAIN',
+    bahce: 'GARDEN',
+    buyukFinal: 'GRAND FINALE',
+  },
+);
 
 const eksenAcisi = (e: Eksen): number => (e === 0 ? 0 : e === 1 ? Math.PI / 2 : e === 2 ? -Math.PI / 4 : Math.PI / 4);
 

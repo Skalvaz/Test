@@ -44,12 +44,22 @@ import { STILLER, Yazi } from './yazi';
 import { DESENLER } from '../app/katalog';
 import { fitilRenkleri } from './fitilGorunumu';
 import type { Ctx } from './tuval';
+import { t } from '../platform/dil';
 
 /** Oynatma sonunda son olaydan sonra beklenen pay (tik). */
 const KUYRUK = 140;
 const simdiMs = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-const REAKSIYON_METNI: Record<string, string> = { guzel: 'Güzel!', harika: 'Harika!', muhtesem: 'Muhteşem!', senlik: 'ŞENLİK!' };
+const REAKSIYON_METNI: Record<string, string> = t<Record<string, string>>(
+  { guzel: 'Güzel!', harika: 'Harika!', muhtesem: 'Muhteşem!', senlik: 'ŞENLİK!' },
+  { guzel: 'Nice!', harika: 'Great!', muhtesem: 'Amazing!', senlik: 'FESTIVAL!' },
+);
+
+/** Tahtaya yazılan küçük bilgi yazıları. */
+const BILGI = {
+  karistirma: t('Sandık sallanıyor…', 'The chest is shaking…'),
+  final: t('Şenlik başlıyor!', 'Festival begins!'),
+};
 
 /** Anında bitirmede bile bildirilen (durum taşıyan) olaylar. */
 const DURUM_OLAYLARI = new Set(['hedefIlerledi', 'puanEklendi', 'korukDoldu', 'korukKullanildi', 'reaksiyon', 'bolumBitti', 'finalBasladi']);
@@ -929,7 +939,7 @@ class OyunCiziciSinifi implements OyunCizici {
       case 'karistirma': {
         t.uygula(e);
         s.kamera.sars(0.1);
-        this.bilgiYaz('Sandık sallanıyor…', s.gy + hc * 0.6);
+        this.bilgiYaz(BILGI.karistirma, s.gy + hc * 0.6);
         break;
       }
       case 'hedefIlerledi':
@@ -960,7 +970,7 @@ class OyunCiziciSinifi implements OyunCizici {
         break;
       }
       case 'finalBasladi': {
-        this.bilgiYaz('Şenlik başlıyor!', s.gy + s.tahta.h * hc * 0.42, 'kombo');
+        this.bilgiYaz(BILGI.final, s.gy + s.tahta.h * hc * 0.42, 'kombo');
         for (let k = 0; k < 3; k++) this.zamanla(k * 260, () => this.gokFisegi());
         break;
       }
@@ -1479,7 +1489,7 @@ class OyunCiziciSinifi implements OyunCizici {
     const s = this.s;
     const x = s.gx + (s.tahta.w * s.c) / 2;
     const y = s.gy + s.tahta.h * s.c * 0.38;
-    this.yazi.goster(REAKSIYON_METNI[kademe] ?? kademe, STILLER[kademe] ?? STILLER.guzel, x, y, Math.min(2, s.dpr));
+    this.yazi.goster(REAKSIYON_METNI[kademe] ?? kademe, STILLER[kademe] ?? STILLER.guzel, x, y, Math.min(2, s.dpr), this.yaziSiniri());
     // Yazı çevresinde 20 kıvılcım.
     const n = s.havuz.adet(20);
     const rx = this.yazi.genislik / 2 + 24;
@@ -1496,12 +1506,23 @@ class OyunCiziciSinifi implements OyunCizici {
     if (kademe === 'senlik' || kademe === 'muhtesem') for (let k = 0; k < (kademe === 'senlik' ? 3 : 1); k++) this.zamanla(120 + k * 300, () => this.gokFisegi());
   }
 
+  /**
+   * Tuval yazısının en geniş hâli (px): durulunca tahtaya sığsın (uzun
+   * İngilizce adlar küçülür; açılış yayındaki kısa taşma kalır).
+   */
+  private yaziSiniri(): number {
+    const s = this.s;
+    return Math.max(120, Math.min(s.ekranW - 40, s.tahta.w * s.c - 8));
+  }
+
   private bilgiYaz(metin: string, y: number, stil: 'bilgi' | 'kombo' = 'bilgi', x?: number): void {
     const s = this.s;
-    const bx = x ?? s.gx + (s.tahta.w * s.c) / 2;
-    const yari = (STILLER[stil].boyut * metin.length) / 4;
-    const gx = Math.max(s.gx + yari, Math.min(s.gx + s.tahta.w * s.c - yari, bx));
-    this.bilgi.goster(metin, STILLER[stil], gx, y, Math.min(2, s.dpr));
+    const gen = s.tahta.w * s.c;
+    const bx = x ?? s.gx + gen / 2;
+    this.bilgi.goster(metin, STILLER[stil], bx, y, Math.min(2, s.dpr), this.yaziSiniri());
+    // Ölçülen genişlikle tahtanın içinde tut; tahtadan genişse ortala.
+    const yari = this.bilgi.genislik / 2;
+    this.bilgi.x = 2 * yari >= gen ? s.gx + gen / 2 : Math.max(s.gx + yari, Math.min(s.gx + gen - yari, bx));
   }
 
   private havaGorsel(e: Extract<Olay, { tur: 'havaOlayi' }>): void {
@@ -2087,3 +2108,6 @@ const UYARI_KESIK = [6, 5];
 const BOS: number[] = [];
 
 export type { OyunCizici };
+
+/** Metin tabloları (İngilizce testi: src/dil/en-oyun.test.ts). */
+export { REAKSIYON_METNI, BILGI as CIZICI_BILGI };
