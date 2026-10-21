@@ -10,13 +10,19 @@ import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { satir, kasabaKartSatirlari } from './ortak';
 import { MAHALLELER } from '../../app/katalog';
 import type { AyarDegisikligi, AyarlarVM, MolaDakika, Palet } from '../tipler';
+import { DIL, DILLER, type Dil } from '../../platform/dil';
 
 export interface AyarlarEk {
   nasilAc?: () => void;
   defterKartiAc?: (mahalle: number, tur?: 'defter' | 'kasaba') => void;
   /** Palet/hareket önizlemesini Arayuz'a anında uygula. */
   yerelUygula?: (d: AyarDegisikligi) => void;
+  /** Dil seçildi (uygulama sayfayı o dille yeniden açar). */
+  dilDegisti?: (d: Dil) => void;
 }
+
+/** Dil adları kendi dillerinde (oyuncu kendi dilini tanısın). */
+const DIL_ADLARI: Record<Dil, string> = { tr: 'Türkçe', en: 'English' };
 
 function anahtar(acik: boolean, etiket: string, degisti: (v: boolean) => void): HTMLButtonElement {
   const a = h('button', { s: 'f-anahtar', type: 'button', role: 'switch', 'aria-checked': String(acik), 'aria-label': etiket }) as HTMLButtonElement;
@@ -95,6 +101,19 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
     'section',
     { s: 'f-ay-bolum' },
     h('h3', { s: 'f-etiket', t: M.gorunum }),
+    h(
+      'div',
+      { s: 'f-satir f-satir-dikey' },
+      h('span', { s: 'f-satir-ust' }, h('span', { s: 'f-satir-ikon' }, ikon('dil')), h('span', { s: 'f-satir-etiket', t: M.dil })),
+      parcali(
+        DILLER.map((x) => ({ d: x, ad: DIL_ADLARI[x] })),
+        DIL,
+        M.dil,
+        (v) => {
+          if (v !== DIL) ek.dilDegisti?.(v);
+        },
+      ),
+    ),
     satir(M.hareketiAzalt, anahtar(d.hareketiAzalt || sistemAz, M.hareketiAzalt, (v) => degis({ hareketiAzalt: v })), ikon('hareket'), sistemAz ? 'Sistem tercihi açık' : undefined),
     h(
       'div',

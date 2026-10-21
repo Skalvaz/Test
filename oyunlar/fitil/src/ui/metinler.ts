@@ -112,6 +112,7 @@ export const M = {
   ortamSesi: 'Ortam sesi',
   titresim: 'Titreşim',
   gorunum: 'Görünüm',
+  dil: 'Dil',
   hareketiAzalt: 'Hareketi azalt',
   animasyonHizi: 'Animasyon hızı',
   normal: 'Normal',

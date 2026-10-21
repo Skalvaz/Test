@@ -358,6 +358,7 @@ export class Arayuz {
         nasilAc: ek.nasilAc,
         defterKartiAc: ek.defterKartiAc ?? ((m, tur) => void this.defterKarti({ mahalle: m, oduller: [], tur })),
         yerelUygula,
+        dilDegisti: (d) => this.b.geri.dilDegisti?.(d),
       }),
     );
   }

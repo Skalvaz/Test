@@ -16,6 +16,7 @@
  * okutmak yerine "Dokun ve başla" doğrudan Bölüm 1'in el animasyonuna gider;
  * harita ilk kazancın ödülü olarak, fitil 2. bölüme yanarak açılır.
  */
+import { dilKaydet } from '../platform/dil';
 import { Stage } from '../render/stage';
 import { oyunCiziciOlustur, type OyunCiziciTam } from '../render/oyunCizici';
 import { tabloCiz } from '../render/tablo';
@@ -793,6 +794,16 @@ export class Uygulama {
       korukSecildi: () => this.oturum.korukSecildi(),
       secimIptal: () => this.oturum.secimIptal(),
       ayarDegisti: (d) => this.ayarDegisti(d),
+      dilDegisti: (d) => {
+        // Bütün metin tabloları sayfa açılırken kurulur: kaydı hemen yaz, seçimi cihaza yaz, yeniden yükle.
+        this.kayitci.hemenYaz();
+        dilKaydet(d);
+        try {
+          window.location.reload();
+        } catch {
+          /* yeniden yükleme engelli: seçim bir sonraki açılışta geçerli */
+        }
+      },
       balonlariSifirla: () => this.kayitci.degistir(meta.ipuclariniSifirla(this.kayit)),
       kayitKodu: () => meta.kayitKoduUret(this.kayit),
       kayitOnizle: (kod) => {

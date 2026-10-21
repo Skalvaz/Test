@@ -5,6 +5,7 @@
  * yalnız kendi `veri/*.json` dosyasını değiştirir, bu dosyaya dokunmaz.
  */
 import type { BolumVerisi } from '../core/types';
+import { bolumMetniUygula } from './metin';
 import b001 from './veri/b001.json';
 import b002 from './veri/b002.json';
 import b003 from './veri/b003.json';
@@ -54,7 +55,8 @@ import u106 from './veri/u106.json';
 import u107 from './veri/u107.json';
 import u108 from './veri/u108.json';
 
-const bv = (v: unknown): BolumVerisi => v as BolumVerisi;
+// Sayfa İngilizceyse ad, tanıtım ve ipuçları `metin.en.json`'dan (src/levels/metin.ts).
+const bv = (v: unknown): BolumVerisi => bolumMetniUygula(v as BolumVerisi);
 
 /** Ana yol: 40 bölüm, id 1..40 (indeks = id − 1). */
 export const BOLUMLER: readonly BolumVerisi[] = [

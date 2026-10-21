@@ -8,6 +8,7 @@
  * `ArayuzGeriCagirim` içinde, tuval gibi öğeler ekranın ikinci bağımsız
  * değişkeninde (`ek`) gelir.
  */
+import type { Dil } from '../platform/dil';
 import type { Hedef, Motif, ReaksiyonKademesi } from '../core/types';
 import type { Palet } from '../app/sozlesme';
 import type { DesenId, FitilId, GokyuzuId, GuclendiriciId } from '../app/katalog';
@@ -467,6 +468,8 @@ export interface ArayuzGeriCagirim {
   secimIptal(): void;
   /** Herhangi bir ayar değişti (anında uygula, gecikmeli kaydet). */
   ayarDegisti(d: AyarDegisikligi): void;
+  /** Ayarlar > Dil: seçim cihaza yazılır, kayıt hemen yazılır, sayfa yeniden yüklenir. */
+  dilDegisti?(d: Dil): void;
   /** Ayarlar > İpuçları > Balonları yeniden izle. */
   balonlariSifirla(): void;
   /** Kayıt kodu (FTL1:…). */
