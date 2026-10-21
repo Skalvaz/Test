@@ -6,6 +6,7 @@
  * bir `MetaAyar` alır, böylece bölüm listesi değişse de meta mantığı değişmez.
  */
 import { ANA_BOLUM_SAYISI, BOLUM_PER_MAHALLE, MAHALLELER, USTA_BOLUM_IDLERI, USTA_YILDIZ_ADIMI } from '../app/katalog';
+import { t } from '../platform/dil';
 
 /**
  * Kayıt şeması sürümü (veri içindeki `surum`). 1 = GDD §16.7 taslağı,
@@ -52,13 +53,16 @@ export const GUNLUK_GOREV_SAYISI = 3;
 /** Günlük sonuçlar bu kadar gün saklanır (arşiv 7 gün + pay). */
 export const GUNLUK_SAKLAMA_GUN = 30;
 
-/** Fener Nöbeti basamakları (§10.5). `yonelme`: "Meşale'ye 2 gün" gibi metinler için yönelme hâli. */
+/**
+ * Fener Nöbeti basamakları (§10.5). `yonelme`: "Meşale'ye 2 gün" gibi metinler
+ * için yönelme hâli; İngilizcede "to Torch" (metin "2 days to Torch" diye kurulur).
+ */
 export const SERI_BASAMAKLARI = [
-  { id: 'kivilcim', ad: 'Kıvılcım', yonelme: "Kıvılcım'a", esik: 1 },
-  { id: 'cira', ad: 'Çıra', yonelme: "Çıra'ya", esik: 3 },
-  { id: 'mesale', ad: 'Meşale', yonelme: "Meşale'ye", esik: 7 },
-  { id: 'fener', ad: 'Fener', yonelme: "Fener'e", esik: 14 },
-  { id: 'denizFeneri', ad: 'Deniz Feneri', yonelme: "Deniz Feneri'ne", esik: 30 },
+  { id: 'kivilcim', ad: t('Kıvılcım', 'Spark'), yonelme: t("Kıvılcım'a", 'to Spark'), esik: 1 },
+  { id: 'cira', ad: t('Çıra', 'Kindling'), yonelme: t("Çıra'ya", 'to Kindling'), esik: 3 },
+  { id: 'mesale', ad: t('Meşale', 'Torch'), yonelme: t("Meşale'ye", 'to Torch'), esik: 7 },
+  { id: 'fener', ad: t('Fener', 'Lantern'), yonelme: t("Fener'e", 'to Lantern'), esik: 14 },
+  { id: 'denizFeneri', ad: t('Deniz Feneri', 'Lighthouse'), yonelme: t("Deniz Feneri'ne", 'to Lighthouse'), esik: 30 },
 ] as const;
 export type SeriBasamakId = (typeof SERI_BASAMAKLARI)[number]['id'];
 
@@ -69,7 +73,7 @@ export const TABLO_REAKSIYON_SAYISI = 3;
 export const TABLO_REAKSIYON_PAYI = 150;
 /** Tablo zaman çizelgesinde bölümler arası boşluk (tik). */
 export const TABLO_BOSLUK = 400;
-export const NADIRLIK_ADLARI = ['Sade', 'Parlak', 'Şaheser'] as const;
+export const NADIRLIK_ADLARI = [t('Sade', 'Plain'), t('Parlak', 'Bright'), t('Şaheser', 'Masterpiece')] as const;
 
 /** Rozet kimlikleri (§10.6). Sıra arayüzde gösterim sırasıdır; kimlikler kayıtta saklanır. */
 export const ROZET_IDLERI = [

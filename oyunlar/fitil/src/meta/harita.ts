@@ -9,6 +9,7 @@
 import { MAHALLELER } from '../app/katalog';
 import type { GokyuzuId } from '../app/katalog';
 import { fnv1a } from '../core/rng';
+import { t } from '../platform/dil';
 import type { Motif } from '../core/types';
 import { gunlukAcik, sonrakiBasamak } from './gunluk';
 import { coskuAktif, ustaGerekenYildiz } from './ilerleme';
@@ -123,14 +124,14 @@ export interface HaritaVerisi {
 
 /** Usta Bölümleri (§10.2). */
 export const USTA_BOLUMLERI: readonly { ad: string; kural: string }[] = [
-  { ad: 'Kuru Barut', kural: 'Eşik 2, 14 hamle, puan hedefi' },
-  { ad: 'Yalnız Halka', kural: 'Yalnız halkalar geçerli hamledir' },
-  { ad: 'Dört Yön', kural: 'Çapraz bağlantı yok' },
-  { ad: 'Gizli Isı', kural: 'Yalnız kızgın kapsüller görünür' },
-  { ad: 'Domino', kural: 'Barut izi ve dev fişek düzeneği, 19 hamle' },
-  { ad: 'Dev Sandık', kural: '8×10, 6 renk, 3 hedef' },
-  { ad: 'Çisenti Fırtınası', kural: 'İki çisenti her hamle bir hattı söndürür' },
-  { ad: "Kıvılcım Usta'nın Sınavı", kural: 'Bütün öğeler, 30 hamle' },
+  { ad: t('Kuru Barut', 'Dry Powder'), kural: t('Eşik 2, 14 hamle, puan hedefi', 'Ignites at 2 heat, 14 moves, score goal') },
+  { ad: t('Yalnız Halka', 'Loops Only'), kural: t('Yalnız halkalar geçerli hamledir', 'Only loops count as moves') },
+  { ad: t('Dört Yön', 'Four Ways'), kural: t('Çapraz bağlantı yok', 'No diagonal links') },
+  { ad: t('Gizli Isı', 'Hidden Heat'), kural: t('Yalnız kızgın kapsüller görünür', 'Only hot capsules show their heat') },
+  { ad: t('Domino', 'Domino'), kural: t('Barut izi ve dev fişek düzeneği, 19 hamle', 'Powder trails and giant fireworks, 19 moves') },
+  { ad: t('Dev Sandık', 'Giant Chest'), kural: t('8×10, 6 renk, 3 hedef', '8×10, 6 colors, 3 goals') },
+  { ad: t('Çisenti Fırtınası', 'Drizzle Storm'), kural: t('İki çisenti her hamle bir hattı söndürür', 'Two drizzles douse a line every move') },
+  { ad: t("Kıvılcım Usta'nın Sınavı", "Master Spark's Trial"), kural: t('Bütün öğeler, 30 hamle', 'Everything at once, 30 moves') },
 ];
 
 /** Motiflerin geldiği bölümler (§8.3 planı); bölüm paketi farklıysa `haritaVerisi`'ne verilir. */
@@ -208,7 +209,7 @@ export function haritaVerisi(k: Kayit, secenek: { ayar?: Partial<MetaAyar>; moti
       const ub = bolumKaydi(k, ustaId);
       const uy = (ub?.yildiz ?? 0) as Yildiz;
       const gerek = ustaGerekenYildiz(m + 1, ayar);
-      const u = USTA_BOLUMLERI[m] ?? { ad: `Usta ${m + 1}`, kural: '' };
+      const u = USTA_BOLUMLERI[m] ?? { ad: t(`Usta ${m + 1}`, `Master ${m + 1}`), kural: '' };
       dugumler.push({
         tur: 'usta',
         id: ustaId,

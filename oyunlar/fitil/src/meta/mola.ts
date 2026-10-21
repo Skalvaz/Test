@@ -12,6 +12,7 @@
  * arasında 5 dakikadan uzun boşluk varsa (cihaz uyudu) oyuncu zaten mola
  * vermiştir: sayaç sıfırlanır. Kısa gizlenmeler süreye eklenmez.
  */
+import { t } from '../platform/dil';
 import type { MolaDakika } from './kayit';
 
 /** Bu süreden uzun ara gerçek moladır. */
@@ -95,4 +96,4 @@ export function molayaKalan(d: MolaDurumu, dakika: MolaDakika): number | null {
 }
 
 /** Balon metni (§11 #30). */
-export const MOLA_METNI = 'Kıvılcım Usta: Biraz mola?';
+export const MOLA_METNI = t('Kıvılcım Usta: Biraz mola?', 'Master Spark: Time for a break?');

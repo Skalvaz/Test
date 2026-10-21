@@ -7,6 +7,7 @@
  * H. Hinnant'ın days_from_civil algoritması). Haftalar Pazartesi başlar
  * (Türkiye'deki takvim alışkanlığı); Fener Nöbeti affı bu haftalara göredir.
  */
+import { DIL } from '../platform/dil';
 
 /** Yerel tarih bileşenlerinden yyyymmdd. */
 export function tarihYyyymmdd(yil: number, ay: number, gun: number): number {
@@ -80,8 +81,11 @@ export function haftaNo(t: number): number {
   return Math.floor((gunNo(t) + 3) / 7);
 }
 
-/** Paylaşım biçimi: 14.10.2026. */
+const AYLAR_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Paylaşım biçimi: 14.10.2026 (İngilizcede gün/ay karışmasın diye "Oct 14, 2026"). */
 export function tarihMetni(t: number): string {
   const { yil, ay, gun } = tarihBilesenleri(t);
+  if (DIL === 'en') return `${AYLAR_EN[ay - 1] ?? ''} ${gun}, ${yil}`;
   return `${String(gun).padStart(2, '0')}.${String(ay).padStart(2, '0')}.${yil}`;
 }
