@@ -22,7 +22,7 @@ const [taban = 'http://localhost:5173', cikti = 'kasaba-yerlesim', w = '390', h 
 mkdirSync(cikti, { recursive: true });
 
 const browser = await chromium.launch({ executablePath: exe, args: ['--use-gl=angle', '--use-angle=swiftshader'] });
-const page = await browser.newPage({ viewport: { width: +w, height: +h }, deviceScaleFactor: 2, isMobile: +w < 700, hasTouch: true });
+const page = await browser.newPage({ locale: 'tr-TR', viewport: { width: +w, height: +h }, deviceScaleFactor: 2, isMobile: +w < 700, hasTouch: true });
 const hatalar = [];
 page.on('pageerror', (e) => hatalar.push(e.message));
 // simdiki=41: bütün düğümler açık (yıldızlı); "buradasın" işareti yok.

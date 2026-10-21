@@ -737,6 +737,7 @@ async function profilKos(browser, analizSayfa, ad, p) {
   const dir = join(OUT, ad);
   mkdirSync(dir, { recursive: true });
   const ctx = await browser.newContext({
+    locale: 'tr-TR',
     viewport: { width: p.w, height: p.h },
     deviceScaleFactor: p.dpr,
     isMobile: p.mobil,

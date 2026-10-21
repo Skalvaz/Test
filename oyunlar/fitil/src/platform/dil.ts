@@ -2,7 +2,8 @@
  * Arayüz dili (Ekim 2026: Türkçe + İngilizce). Sayfa açılırken bir kez
  * belirlenir ve sayfa ömrü boyunca sabittir; bütün metin tabloları modül
  * yüklenirken bu dille kurulur. Sıra: `?dil=tr|en` (geliştirme), bu cihazda
- * seçilen dil (`fitil-dil`), cihaz dili (tr… → Türkçe, gerisi İngilizce).
+ * seçilen dil (`fitil-dil`), kaydı olan (dil seçimi gelmeden önce oynamış)
+ * oyuncuda Türkçe, yeni oyuncuda cihaz dili (tr… → Türkçe, gerisi İngilizce).
  * Ayarlar'da dil değişince seçim yazılır ve sayfa yeniden yüklenir.
  * Node'da (vitest, bot) Türkçe.
  */
@@ -11,6 +12,8 @@ export type Dil = 'tr' | 'en';
 export const DILLER: readonly Dil[] = ['tr', 'en'];
 
 const ANAHTAR = 'fitil-dil';
+/** Kayıt anahtarı (meta/sabitler KAYIT_ANAHTARI; platform katmanı meta'yı içe aktarmaz). */
+const ESKI_KAYIT = 'fitil.kayit.v1';
 
 const gecerli = (x: unknown): x is Dil => x === 'tr' || x === 'en';
 
@@ -25,14 +28,21 @@ function ilkDil(): Dil {
   } catch {
     /* adres okunamadı */
   }
+  let kayitVar = false;
   try {
     const k = window.localStorage.getItem(ANAHTAR);
     if (gecerli(k)) return k;
+    kayitVar = !!window.localStorage.getItem(ESKI_KAYIT);
   } catch {
     /* depolama kapalı */
   }
+  // İlk karar bu cihaza yazılır (sonraki açılışlar aynı dilde): dil seçimi
+  // gelmeden önce oynamış oyuncu (kaydı var) Türkçede kalır, yeni oyuncu
+  // cihaz dilinde başlar.
   const n = typeof navigator === 'undefined' ? [] : navigator.languages?.length ? navigator.languages : [navigator.language];
-  return n.some((x) => /^tr\b/i.test(x ?? '')) ? 'tr' : 'en';
+  const d: Dil = kayitVar || n.some((x) => /^tr\b/i.test(x ?? '')) ? 'tr' : 'en';
+  dilKaydet(d);
+  return d;
 }
 
 /** Bu sayfanın dili. */

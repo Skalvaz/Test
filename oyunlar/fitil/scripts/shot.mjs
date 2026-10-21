@@ -13,6 +13,7 @@ const exe = process.env.CHROME_PATH || (existsSync('/opt/pw-browsers/chromium') 
 const [url, out, w = '390', h = '844', wait = '1500', js] = process.argv.slice(2);
 const browser = await chromium.launch({ executablePath: exe, args: ['--use-gl=angle', '--use-angle=swiftshader', '--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage({
+  locale: 'tr-TR',
   viewport: { width: +w, height: +h },
   deviceScaleFactor: 3,
   isMobile: +w < 700,

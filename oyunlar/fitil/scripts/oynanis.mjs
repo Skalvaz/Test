@@ -77,6 +77,7 @@ const ekran = (page) => page.evaluate(() => window.__fitil?.ekran?.() ?? 'yok');
 
 async function profilKos(browser, p) {
   const ctx = await browser.newContext({
+    locale: 'tr-TR',
     viewport: { width: p.w, height: p.h },
     deviceScaleFactor: 2,
     isMobile: p.dokunmatik,
