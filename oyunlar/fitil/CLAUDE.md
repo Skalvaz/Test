@@ -58,6 +58,23 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   Devam; tablo kutusu ve tanıtım balonları yok. HUD hamle yuvarlağında yalnız
   sayı. Kullanıcı yazı kalabalığına ve küçük yazıya duyarlı: yeni metin
   eklerken kısa tut, satır sayısını artırma.
+- Dil (Ekim 2026): Türkçe + İngilizce. `src/platform/dil.ts`: sayfa dili
+  açılışta BİR KEZ (`?dil=tr|en`, cihazda `fitil-dil`; yoksa kaydı olan eski
+  oyuncu Türkçe, yeni oyuncu cihaz dili; ilk karar yazılır) ve sayfa boyunca
+  sabit; Ayarlar > Görünüm > Dil değişince kayıt hemen yazılır, sayfa yeniden
+  yüklenir. Metinler yerinde `t('Türkçe', 'English')` (işlev de olur), sayı
+  ve tarih `YEREL`, büyük harf `buyukHarf`. Türkçe çıktı birebir korunur
+  (testler). Bölüm metinleri `src/levels/metin.en.json` (`levels/metin.ts`),
+  mühürler `muhurMetniEn` (≤ 29 karakter), üretilen Günün/Sonsuz adı ana
+  iş parçacığında (`uretim.ts` `adla`). Terim sözlüğü: Fener Koyu → Lantern
+  Cove, İskele/Çarşı/Liman/Saat Kulesi/Bahçeler/Tepe/Fabrika/Kale → Pier/
+  Bazaar/Harbor/Clock Tower/Gardens/Hilltop/Factory/Castle, kandil → lamp,
+  mühür → seal (Apprentice/Journeyman/Master), Kıvılcım Usta → Master Spark,
+  Coşku Serisi → Cheer Streak, Fener Nöbeti → Lantern Watch. Yeni metin
+  eklerken iki dili birlikte yaz. Denetim: `src/dil/*.test.ts` (İngilizce
+  tablolarda Türkçe harf yok) ve `node scripts/dil-tara.mjs <url> <klasör>`
+  (37 ekran, 0 kalıntı olmalı). Playwright araçları `locale: 'tr-TR'` ile
+  açılır (yoksa cihaz dili İngilizce sayılır).
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).

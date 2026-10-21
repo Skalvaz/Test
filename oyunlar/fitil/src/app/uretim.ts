@@ -17,7 +17,7 @@
  * önbelleklenir: aynı gün ikinci açılışta tahta anında hazırdır. Günlükler
  * ve sonsuzlar ayrı sınırla saklanır (biri ötekini silmesin).
  */
-import { gunlukUret, sonsuzUret, type UretimIlerleme } from '../levels/uretici';
+import { gunlukUret, sonsuzUret, uretilenBolumAdi, type UretimIlerleme } from '../levels/uretici';
 import type { BolumVerisi } from '../core/types';
 import { SONSUZ_TABANI } from '../meta';
 import { simdi } from './zaman';
@@ -41,6 +41,14 @@ interface Is {
   eylem: number;
   sozler: { coz: (v: BolumVerisi) => void; red: (e: unknown) => void }[];
   ilerleme: ((o: number) => void)[];
+}
+
+/**
+ * Üretilen bölümün adı sayfanın dilinde: işçi (Web Worker) sayfa dilini
+ * bilmez ve önbellekteki bölüm başka dilde üretilmiş olabilir.
+ */
+function adla(v: BolumVerisi): BolumVerisi {
+  return v.tur === 'gunluk' || v.tur === 'sonsuz' ? { ...v, ad: uretilenBolumAdi(v.tur, v.id) } : v;
 }
 
 function depoOku(id: number): BolumVerisi | null {
@@ -102,8 +110,10 @@ export class BolumUretici {
     const b = this.bellek.get(id);
     if (b) return b;
     const d = depoOku(id);
-    if (d) this.bellek.set(id, d);
-    return d;
+    if (!d) return null;
+    const v = adla(d);
+    this.bellek.set(id, v);
+    return v;
   }
 
   /** Üretim işçide mi çalışıyor (arka plan üretimi ana iş parçacığına yük değil). */
@@ -255,7 +265,8 @@ export class BolumUretici {
     requestAnimationFrame(adim);
   }
 
-  private bitir(is: Is, v: BolumVerisi): void {
+  private bitir(is: Is, uretilen: BolumVerisi): void {
+    const v = adla(uretilen);
     this.isler = this.isler.filter((x) => x !== is);
     this.bellek.set(is.id, v);
     depoYaz(is.id, v);

@@ -280,7 +280,7 @@ export const KOMBO_ADLARI: Readonly<Record<KomboTuru, string>> = t(
   },
   {
     yildizHatti: 'Star Line',
-    kalinRoket: 'Thick Rocket',
+    kalinRoket: 'Big Rocket',
     devKasimpati: 'Giant Chrysanthemum',
     roketYagmuru: 'Rocket Rain',
     bahce: 'Garden',

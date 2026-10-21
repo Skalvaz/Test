@@ -1,0 +1,15 @@
+(globalThis as { __FITIL_DIL__?: string }).__FITIL_DIL__ = 'en';
+const M = await import('../src/ui/metinler.ts');
+const R = await import('../src/meta/rozetler.ts');
+const H = await import('../src/meta/harita.ts');
+const MU = await import('../src/meta/muhur.ts');
+const Y = await import('../src/render/yolKatmani.ts').catch(() => null);
+const L = await import('../src/levels/index.ts');
+console.log('ROZET ui vs meta:');
+const ui = M.ROZETLER as Record<string, { ad: string }>;
+const rz = (R as Record<string, unknown>);
+for (const k of Object.keys(rz)) if (Array.isArray(rz[k]) || typeof rz[k] === 'object') console.log(' export', k);
+console.log(JSON.stringify(Object.fromEntries(Object.entries(ui).map(([k, v]) => [k, v.ad]))));
+console.log('KOMBO muhur:', JSON.stringify((MU as Record<string, unknown>).KOMBO_ADLARI));
+console.log('USTA levels:', L.USTA_BOLUMLERI.map((b) => b.ad).join(' | '));
+for (const k of Object.keys(H)) console.log(' harita export', k);

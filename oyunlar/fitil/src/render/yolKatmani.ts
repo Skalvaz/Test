@@ -36,7 +36,7 @@ export const KOMBO_ADLARI: Record<KomboTuru, string> = t<Record<KomboTuru, strin
     buyukFinal: 'BÜYÜK FİNAL',
   },
   {
-    yildizHatti: 'STAR CROSS',
+    yildizHatti: 'STAR LINE',
     kalinRoket: 'BIG ROCKET',
     devKasimpati: 'GIANT CHRYSANTHEMUM',
     roketYagmuru: 'ROCKET RAIN',
