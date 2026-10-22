@@ -243,6 +243,8 @@ function ustaOynandi(k: Kayit, id: number): boolean {
  * `USTA_ACILIS_BOLUMU` (12) kazanıldı (§10.2; Ekim 2026). Eski kayıt koruması
  * (göç değişmedi): bir Usta Bölümü oynamış oyuncuda kapı geçilmiş sayılır
  * (yıldızı yeten bütün Ustalar açık), oynanmış Usta her durumda açık kalır.
+ * Eski kuralla açılıp hiç oynanmamış Usta 12 kazanılana dek yeniden kilitlenir
+ * (kayıtta açılış izi yok; GDD K25 "bilinen bedel").
  */
 export function ustaKilidi(k: Kayit, ustaNo: number, ayarK?: Partial<MetaAyar>): UstaKilidi {
   const ayar = metaAyar(ayarK);

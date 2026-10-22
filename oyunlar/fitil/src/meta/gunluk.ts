@@ -69,7 +69,9 @@ export const GOREV_SABLONLARI: readonly GorevSablonu[] = [
   { no: 14, hedef: 10, acilis: 13, olc: (b) => b.ozet.kayaYokEdilen },
   { no: 15, hedef: 2, acilis: 11, olc: (b) => b.ozet.fenerToplanan },
   { no: 16, hedef: 1, acilis: 5, olc: (b) => evet(b.ozet.finalRoket >= 5) },
-  { no: 17, hedef: 1, acilis: GUNLUK_ACILIS_BOLUMU + 1, olc: (b) => evet(b.gununSenligi && b.kazandi) },
+  // 17'nin mekaniği günlüğün kendisi: görevler yalnız günlük açıkken seçilir
+  // (`gunlukTazele_yerinde` → `gunlukAcik`), eski kayıt korumasıyla 11–13. bölümde de.
+  { no: 17, hedef: 1, acilis: 1, olc: (b) => evet(b.gununSenligi && b.kazandi) },
   { no: 18, hedef: 1, acilis: 3, olc: (b) => evet(b.ozet.enCokNesil >= 2) },
   { no: 19, hedef: 30, acilis: 3, olc: (b) => b.ozet.isiPatlamasi },
   { no: 20, hedef: 1, acilis: 1, olc: (b) => evet(b.kazandi && b.ilkDeneme) },
