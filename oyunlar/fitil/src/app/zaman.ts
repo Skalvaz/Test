@@ -10,6 +10,14 @@ export function bugun(): number {
   return tarihYyyymmdd(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
 
+/**
+ * Duvar saati (epoch ms): kayda yazılan zamanlar için (can dolumu,
+ * CAN-REKLAM §2). `simdi()` sayfa başına sıfırlanan monoton saattir, kayda yazılmaz.
+ */
+export function duvarSaati(): number {
+  return Date.now();
+}
+
 /** Monoton ms saati. */
 export function simdi(): number {
   return typeof performance !== 'undefined' ? performance.now() : Date.now();

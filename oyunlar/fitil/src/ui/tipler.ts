@@ -12,6 +12,7 @@ import type { Dil } from '../platform/dil';
 import type { Hedef, Motif, ReaksiyonKademesi } from '../core/types';
 import type { Palet } from '../app/sozlesme';
 import type { DesenId, FitilId, GokyuzuId, GuclendiriciId } from '../app/katalog';
+import type { UrunId } from '../platform/gelir';
 
 export type { Palet, ReaksiyonKademesi };
 
@@ -206,6 +207,14 @@ export interface HaritaVM {
    * kimlikleri (çizim); `uyari`: "Kandil yetti" balonu gösterilecek iş adı.
    */
   kasaba?: { acik: boolean; kandil: number; isler: string[]; yapilabilir: boolean; uyari?: string | null };
+  /**
+   * (CAN-REKLAM §6) Can hapı: üst çubukta, yıldızın yanında; yalnız gelir
+   * sağlayıcısı varken (yoksa null/yok: hap çizilmez). Dokununca seçim
+   * `{ tur: 'can' }`. Canlı sayaç `Arayuz.haritaCanGuncelle` ile tazelenir;
+   * "aynı modelle yeniden çizmeme" denetimi bu alanı DIŞARIDA bırakır
+   * (saniyelik değişim haritayı yeniden çizdirmesin, kutlamayı kesmesin).
+   */
+  can?: CanSayaciVM | null;
 }
 
 export type HaritaSecimi =
@@ -222,6 +231,8 @@ export type HaritaSecimi =
   | { tur: 'kasaba' }
   /** Ayarlar + üstünde Oyun özeti (haritada düğmesi yok; test kancası `ac('oyunOzeti')`). */
   | { tur: 'oyunOzeti' }
+  /** (CAN-REKLAM §6) Can hapına dokunuldu: uygulama can panelini açar. */
+  | { tur: 'can' }
   /** Harita başka bir ekranla programlı olarak kapatıldı. */
   | { tur: 'kapandi' };
 
@@ -321,6 +332,24 @@ export interface KaybettinVM {
   ustaEli: boolean;
   /** Coşku Serisi bu kayıpla sıfırlandı. */
   coskuSifirlandi: boolean;
+  /**
+   * (CAN-REKLAM §6) Bu kayıpta can düştü: başlık altında tek satır
+   * "−1 can · 3 kaldı" (`kalan` düşüşten sonraki can). Can harcamayan
+   * bölümde, sağlayıcı yokken ya da devamdan sonraki ikinci kayıpta null/yok.
+   */
+  can?: { kalan: number } | null;
+  /**
+   * (CAN-REKLAM §3, C7) "+5 hamle" düğmesi (seçim 'reklamHamle'): reklam
+   * simgeli; `kart` (Usta kartı) ise simgesiz "Ücretsiz". Yalnız `ustaEli`
+   * false iken, denemede bir kez, Günün Şenliği dışında ve reklam hazırken
+   * (ya da kartla) verilir; yoksa null/yok.
+   */
+  reklamHamle?: { kart: boolean } | null;
+  /**
+   * (CAN-REKLAM §2, C5) Can kalmadı: "Tekrar dene" yerine "Can bitti"
+   * düğmesi (seçim 'canBitti'; uygulama can panelini açar).
+   */
+  canBitti?: boolean;
 }
 
 export interface DuraklatVM {
@@ -336,7 +365,67 @@ export interface DuraklatVM {
 }
 
 export type DuraklatSecimi = 'devam' | 'yeniden' | 'ayarlar' | 'harita';
-export type KaybettinSecimi = 'tekrar' | 'harita' | 'ustaEli' | 'hayalet';
+export type KaybettinSecimi = 'tekrar' | 'harita' | 'ustaEli' | 'hayalet' | 'reklamHamle' | 'canBitti';
+
+// ─────────────── Can, reklam, Mağaza (docs/CAN-REKLAM.md §6; G3) ───────────────
+
+/** Can sayacı: harita hapı ve can panelinin büyük sayacı. */
+export interface CanSayaciVM {
+  sayi: number;
+  /** En çok can (5): "3/5". */
+  enCok: number;
+  /** Sonraki cana kalan ms ("12:31"); can doluysa null (sayaç yok). */
+  sonrakiMs: number | null;
+}
+
+/**
+ * Can paneli / Can bitti (modal, `ekranlar/can.ts`). Satırlar sırayla:
+ * reklam, doldur, [Bekle] (her zaman; seçim 'kapat').
+ */
+export interface CanVM extends CanSayaciVM {
+  /** 'bitti': başlık "Canların bitti" (0 can); 'durum': "Canlar 3/5". */
+  tur: 'bitti' | 'durum';
+  /**
+   * "Reklam izle · +1 can" satırı (seçim 'reklam'); null: satır yok (can dolu).
+   *  - `hak`: bugün kalan hak; 0 → düğme yerine "Yarın yine" yazısı;
+   *  - `hazir`: reklam şu an hazır; hak > 0 iken false → satır gizli;
+   *  - `kart`: Usta kartı sahibi → "Ücretsiz +1 can", reklam simgesi yok
+   *    (hazır her zaman true).
+   */
+  reklam: { hak: number; hazir: boolean; kart: boolean } | null;
+  /** "Canları doldur · ₺29,99" (seçim 'doldur'); null: satır yok (can dolu ya da fiyat alınamadı). `fiyat` mağazanın yerel metni. */
+  doldur: { fiyat: string } | null;
+}
+
+export type CanPaneliSecimi = 'reklam' | 'doldur' | 'kapat';
+
+/** Mağaza'da bir ürün satırı: simge (id'den), ad, tek satır açıklama, fiyat düğmesi. */
+export interface MagazaUrunVM {
+  id: UrunId;
+  /** Hazır metin (uygulama verir; iki dil). */
+  ad: string;
+  aciklama: string;
+  /** Mağazanın yerel fiyat metni; null: henüz gelmedi (düğme pasif, "…"). */
+  fiyat: string | null;
+  /**
+   *  - 'satilik': fiyat düğmesi (seçim `satinAl`);
+   *  - 'sende': kalıcı ürün alınmış ("Sende var", düğme yok);
+   *  - 'stokDolu': şu an verilemez: paket stok sınırını aşar ("Stok dolu"),
+   *    `can_doldur` canlar doluyken ("Canların dolu");
+   *  - 'yok': mağaza bu ürünü sunmuyor ("Şu an yok", düğme yok).
+   */
+  durum: 'satilik' | 'sende' | 'stokDolu' | 'yok';
+}
+
+/** Mağaza (Ayarlar > Mağaza, `ekranlar/magaza.ts`): üç ürün satırı + altta geri yükleme. */
+export interface MagazaVM {
+  /** `URUN_IDLERI` sırasıyla. */
+  urunler: MagazaUrunVM[];
+  /** "Satın alımları geri yükle" düğmesi görünsün mü (seçim `geriYukle`). */
+  geriYukle: boolean;
+}
+
+export type MagazaSecimi = { tur: 'satinAl'; id: UrunId } | { tur: 'geriYukle' } | { tur: 'kapat' };
 
 // ───────────────────────── Ayarlar ─────────────────────────
 

@@ -53,6 +53,9 @@ import type {
   AyarDegisikligi,
   AyarlarVM,
   BolumOncesiVM,
+  CanPaneliSecimi,
+  CanSayaciVM,
+  CanVM,
   DefterKartiVM,
   DefterVM,
   DuraklatSecimi,
@@ -68,6 +71,8 @@ import type {
   KaybettinSecimi,
   KaybettinVM,
   KazandinVM,
+  MagazaSecimi,
+  MagazaVM,
   MolaSecimi,
   NasilVM,
   OyunOzetiVM,
@@ -95,6 +100,11 @@ export interface ArayuzSecenek {
   klavyeKisayollari?: boolean;
   /** Güvenli alan paylarını elle ver (önizleme/test); verilmezse env(safe-area-inset-*). */
   guvenliAlan?: Kenarlar;
+}
+
+/** G0 iskeleti: G3 gövdeyi yazana kadar çağrılırsa hata. Bağımsız değişkenler yalnız imzayı korur. */
+function g3(ad: string, ..._girdi: unknown[]): Error {
+  return new Error(`G3: Arayuz.${ad} henüz yazılmadı`);
 }
 
 const KUTLAMA: Record<ReaksiyonKademesi, { metin: string; boy: number; parilti: string }> = {
@@ -361,6 +371,8 @@ export class Arayuz {
       ayarlarEkrani(this.b, vm, {
         nasilAc: ek.nasilAc,
         oyunOzetiAc: ek.oyunOzetiAc,
+        magazaAc: ek.magazaAc,
+        gelirVar: ek.gelirVar,
         defterKartiAc: ek.defterKartiAc ?? ((m, tur) => void this.defterKarti({ mahalle: m, oduller: [], tur })),
         yerelUygula,
         dilDegisti: (d) => this.b.geri.dilDegisti?.(d),
@@ -392,6 +404,56 @@ export class Arayuz {
 
   istatistik(vm: IstatistikVM, sekme: 'istatistik' | 'rozetler' = 'istatistik'): Promise<void> {
     return this.ac(istatistikEkrani(this.b, vm, sekme));
+  }
+
+  // ─────────────── Can, reklam, Mağaza (docs/CAN-REKLAM.md §6; gövde G3) ───────────────
+  //
+  // Modal davranışı (G0 kararı, şartname §13): can paneli ve Mağaza bir
+  // SEÇİMDE KAPANIR (Promise çözülür, kart kalkar). Uygulama seçimi işler
+  // (reklam, satın alma, geri yükleme) ve gerekiyorsa yeni modelle yeniden
+  // açar (döngü, `kasabaAkisi` gibi). Kapanıştan sonraki 1 sn içinde aynı ekran
+  // yeniden açılırsa giriş animasyonu oynamaz (panel "yerinde kalmış" görünür;
+  // §3 "iptal → panel yerinde kalır"). `tazele` yalnız AÇIKKEN canlı veri
+  // içindir: ekran saniyede bir çağırıp yeni modeli çizer (sayaç, reklam
+  // hazır, fiyatların gelmesi); verilmezse `sonrakiMs` açılış anından yerelde
+  // geri sayılır. `ekranlariKapat` ile programlı kapanışta 'kapat' / false.
+
+  /**
+   * Can paneli / Can bitti (modal; `ekranlar/can.ts`): başlık, büyük sayaç
+   * "Sonraki can 12:31", satırlar [Reklam izle · +1 can] [Canları doldur ·
+   * fiyat] [Bekle]. Esc ve Bekle → 'kapat'.
+   */
+  canPaneli(vm: CanVM, tazele?: () => CanVM): Promise<CanPaneliSecimi> {
+    throw g3('canPaneli', vm, tazele);
+  }
+
+  /**
+   * Mağaza (modal; `ekranlar/magaza.ts`; Ayarlar'ın üstünde açılır): üç ürün
+   * satırı ve "Satın alımları geri yükle". Seçimde kapanır (yukarıdaki karar);
+   * Esc ve Kapat → `{ tur: 'kapat' }`.
+   */
+  magaza(vm: MagazaVM, tazele?: () => MagazaVM): Promise<MagazaSecimi> {
+    throw g3('magaza', vm, tazele);
+  }
+
+  /**
+   * Bölümden çıkış onayı (sayfa içi kart; `alert/confirm` yok): "Bölümden
+   * çıkarsan 1 can gider." [Çık] [Vazgeç]; `neden` 'yeniden' ise metin ve
+   * düğme yeniden başlamaya göre ("Yeniden başla"). Duraklat kapandıktan
+   * sonra açılır; true = onaylandı (can düşer), false = Vazgeç/Esc (uygulama
+   * Duraklat'ı yeniden açar).
+   */
+  cikisOnayi(neden: 'harita' | 'yeniden' = 'harita'): Promise<boolean> {
+    throw g3('cikisOnayi', neden);
+  }
+
+  /**
+   * Harita can hapını yeniden çizmeden tazeler (sayı, "12:31"); harita açık
+   * değilse ya da hap yoksa bir şey yapmaz. null: hap kalkar. Uygulama harita
+   * açıkken saniyede bir çağırır (§10 G4).
+   */
+  haritaCanGuncelle(can: CanSayaciVM | null): void {
+    throw g3('haritaCanGuncelle', can);
   }
 
   /** Mola balonu (§11 kanca 30). */

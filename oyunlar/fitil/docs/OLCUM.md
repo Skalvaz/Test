@@ -26,8 +26,25 @@ olayları yazan yerler `src/app/uygulama.ts` ve `src/app/oturum.ts`.
 | `kasaba_is` | Kasaba işi yapıldı | `id` |
 | `dil` | Dil değiştirildi | `d` |
 
-Aşama 2'de eklenecek: `can_bitti`, `can_doldu`, `reklam_teklif`,
-`reklam_izlendi`, `satin_alma_basla`, `satin_alma_bitti`.
+### Aşama 2: can, ödüllü reklam, satın alma (`docs/CAN-REKLAM.md` §8)
+
+Yalnız gelir sağlayıcısı varken (Android, deneme `?gelir=sahte`) yazılır.
+Türler `src/platform/olcum.ts` (`OlcumGelirOzellikleri`, `OlcumGelirOlayi`,
+`OLCUM_GELIR_OLAYLARI`); tür denetimli kısa yol `gelirOlayi(ad, p)`. Jeton,
+fiyat ve tutar ölçüme YAZILMAZ.
+
+| Olay | Ne zaman | Özellikler |
+|---|---|---|
+| `can_harcandi` | Kayıpta ya da onaylı çıkışta 1 can düştü | `neden` (kayip, cikis), `kalan` (düşüşten sonraki can), `bolum` |
+| `can_bitti` | Can 0'a indi ya da 0 canla bölüm başlatılmak istendi | `bolum` |
+| `can_doldu` | Can arttı | `neden` (zaman, reklam, satin, iade) |
+| `reklam_teklif` | Reklam (ya da Usta kartı) düğmesi gösterildi | `yer` (can, hamle) |
+| `reklam_sonuc` | Reklam bitti ya da Usta kartıyla ödül verildi | `yer`, `sonuc` (odul, iptal, yok, hata), `kart` (Usta kartı) |
+| `satin_alma` | Satın alma adımı | `urun` (can_doldur, guclendirici_paketi, usta_karti), `durum` (basla, basarili, iptal, beklemede, hata, geri_yukle) |
+
+`bolum_bitti`'ye reklamla +5 hamle devamında `reklam: true` eklenir (Usta'nın
+Eli `eli`'den ayrı). Geri yüklemede her kalıcı ürün için bir `satin_alma`
+(`durum: geri_yukle`).
 
 ## Göstergeler (özet: `olcumOzeti`, test kancası `__fitil.olcum()`)
 

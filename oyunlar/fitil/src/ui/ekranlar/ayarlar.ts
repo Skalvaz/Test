@@ -21,6 +21,17 @@ export interface AyarlarEk {
   yerelUygula?: (d: AyarDegisikligi) => void;
   /** Dil seçildi (uygulama sayfayı o dille yeniden açar). */
   dilDegisti?: (d: Dil) => void;
+  /**
+   * (CAN-REKLAM §4, §6; G3) "Mağaza" satırı: yalnız verilince görünür
+   * (gelir sağlayıcısı varken). Ayarlar açık kalır, Mağaza üstünde açılır.
+   */
+  magazaAc?: () => void;
+  /**
+   * (CAN-REKLAM §6; G3) Gelir sağlayıcısı var: Hakkında'daki "Can yok,
+   * bekleme yok, mağaza yok." yerine "Canlar 30 dakikada dolar; reklam yalnız
+   * sen isteyince." Yoksa metin aynen kalır.
+   */
+  gelirVar?: boolean;
 }
 
 /** Dil adları kendi dillerinde (oyuncu kendi dilini tanısın). */

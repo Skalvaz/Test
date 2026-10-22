@@ -22,6 +22,7 @@ import type { Motif } from '../core/types';
 import { t } from '../platform/dil';
 import { base64Metin, metinBase64 } from './kodlama';
 import { bosKasaba, kancaBirlestir, kandilDokumu, kasabaOnar, toplamMuhur } from './kasaba';
+import type { CanKaydi, GelirKaydi } from './can';
 import type { KasabaKaydi } from './kasaba';
 import { MUHUR_ACILIS_BOLUMU, MUHUR_MASKE_TAVANI, MUHUR_PARCA_ESIKLERI, MUHUR_SON_BOLUM } from './muhur';
 import {
@@ -221,6 +222,14 @@ export interface Kayit {
   kasaba: KasabaKaydi;
   /** Şema 3: verilmiş mühür parça ödülleri, `<mahalleId>:<5|10|15>` (KANCALAR §A.6). */
   muhurOdulleri: string[];
+  /**
+   * Aşama 2 (CAN-REKLAM §7; şema 3 kalır): can ve reklam hakkı. İsteğe bağlı:
+   * yoksa `varsayilanCan()` sayılır. Onarım, kopya ve bulut birleştirmesi
+   * G1'in (`meta/can.ts`); sağlayıcı yokken de bulunabilir, anlamı yok sayılır.
+   */
+  can?: CanKaydi;
+  /** Aşama 2: Usta kartı ve işlenmiş satın alma jetonları. Yoksa `varsayilanGelir()`. */
+  gelir?: GelirKaydi;
 }
 
 // ─────────────────────────── Varsayılan ───────────────────────────
