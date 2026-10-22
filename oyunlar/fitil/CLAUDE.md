@@ -73,7 +73,7 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   Coşku Serisi → Cheer Streak, Fener Nöbeti → Lantern Watch. Yeni metin
   eklerken iki dili birlikte yaz. Denetim: `src/dil/*.test.ts` (İngilizce
   tablolarda Türkçe harf yok) ve `node scripts/dil-tara.mjs <url> <klasör>`
-  (37 ekran, 0 kalıntı olmalı). Playwright araçları `locale: 'tr-TR'` ile
+  (39 ekran, 0 kalıntı olmalı). Playwright araçları `locale: 'tr-TR'` ile
   açılır (yoksa cihaz dili İngilizce sayılır).
 - Yayın ve gelir (Ekim 2026 kararı): `docs/YAYIN.md` — Android (Play Store),
   yumuşak can + yalnız istekle ödüllü reklam + küçük satın alma; claude.ai/tek
@@ -81,6 +81,11 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   isteği yok; yerel halka günlük `fitil.olcum.v1`, Android'de
   `window.FitilYerel.olay` köprüsü), olay sözlüğü `docs/OLCUM.md`, test kancası
   `__fitil.olcum()` (olaylar + özet: bölüm hunisi, ilk oturum, günler).
+  Ayarlar > Oyun özeti (Hakkında'nın üstü): ölçümün ömür boyu toplamlarından
+  (`olcum.toplam()`; halka günlük dolsa da doğru) ekran görüntüsü için özet
+  (`app/oyunOzeti.ts`, `ui/ekranlar/oyunOzeti.ts`; buluta gitmez, aile
+  testinde oyuncu görüntüyü gönderir; OLCUM.md sonu). `sure` etkin süredir
+  (arka plan, Duraklat, mola düşülür; `Oturum.olcumDurak`).
   İlk dakikalar denetimi: `node scripts/ilk-dakikalar.mjs <url> <klasör> [son]`
   (yeni oyuncu, gerçek hız; araya giren her balon/modal/bant metni, kelime,
   süre tahmini → `rapor.md`). Sonuçlar `docs/YAYIN.md` "Aşama 1 denetimi".
@@ -136,7 +141,7 @@ bekliyordu" → İskele'nin 6 işi (şenlik + kasaba kartı) → mühürlü sır
 Test kancası `window.__fitil`: `durum()`, `bolum()`, `ekran()`, `bolumAc(id)`,
 `botHamle('usta'|'acemi')`, `hizli(on)`, `kayit()`, `kayitYama({...})` (eski
 şemalı tam kayıt `{ surum: 2, … }` verilirse gerçek göç + onarım yolundan geçer),
-`ac('gunluk'|'defter'|'ayarlar'|'istatistik'|'nasil'|'sonsuz'|'kasaba')`, `geometri()`, `ogretim()`,
+`ac('gunluk'|'defter'|'ayarlar'|'istatistik'|'nasil'|'sonsuz'|'kasaba'|'oyunOzeti')`, `geometri()`, `ogretim()`,
 `cizici()` (çizici: `dev.dondur(true)` + `dev.ilerle(ms)` ile kare dondurulur; özel
 yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
 `devFisekFirlat({x, y})` — fişek ekran görüntüleri için).

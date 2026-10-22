@@ -21,7 +21,7 @@ olayları yazan yerler `src/app/uygulama.ts` ve `src/app/oturum.ts`.
 | `oturum_basla` | Sayfa/uygulama açıldı | `dil`, `surum`, `ana` (açık en yüksek ana bölüm) |
 | `ekran` | Ekran değişti | `ad` (acilis, harita, oyun, kazandin, kaybettin, kasaba, ayarlar…) |
 | `bolum_basla` | Bölüm başladı | `id`, `tur` (ana, usta, gunluk, sonsuz), `deneme` (0 = ilk deneme) |
-| `bolum_bitti` | Kazanç, kayıp ya da çıkış | `id`, `tur`, `sonuc` (kazanc, kayip, cikis), `yildiz`, `kalan` (hamle), `hamle` (yapılan), `sure` (sn), `deneme`, `eli` (Usta'nın Eli) |
+| `bolum_bitti` | Kazanç, kayıp ya da çıkış | `id`, `tur`, `sonuc` (kazanc, kayip, cikis), `yildiz`, `kalan` (hamle), `hamle` (yapılan), `sure` (etkin sn: sayfa arka plandayken, Duraklat'ta ve mola kartında geçen süre sayılmaz), `deneme`, `eli` (Usta'nın Eli) |
 | `guclendirici` | Güçlendirici kullanıldı | `id` (kibrit, kalip, geriSar), `bolum` |
 | `kasaba_is` | Kasaba işi yapıldı | `id` |
 | `dil` | Dil değiştirildi | `d` |
@@ -40,3 +40,31 @@ Aşama 2'de eklenecek: `can_bitti`, `can_doldu`, `reklam_teklif`,
   ortasında kapatıldı (terk).
 - Oynanış testi (`scripts/oynanis.mjs`, telefon) günlüğü ve özeti
   `<çıktı>/telefon/olcum.json`'a yazar; bölüm olayları yoksa başarısız.
+
+## Oyun özeti ekranı (Ayarlar > Oyun özeti)
+
+Aile testi için: claude.ai sayfasında dışarıdan gelen ziyaretçi veritabanına
+yazamadığından özet buluta GİTMEZ; oyuncu ekranı açar, görüntüsünü gönderir.
+Kod: `src/app/oyunOzeti.ts` (`oyunOzetiVM(toplam, simdi, ilk, enYuksek)`, saf, testli),
+ekran `src/ui/ekranlar/oyunOzeti.ts`, önizleme
+`dev/arayuz.html?ekran=oyunOzeti[&v=bos|az]`, test kancası
+`__fitil.ac('oyunOzeti')` (Ayarlar + üstünde özet). Açılınca `ekran` olayı
+`ad: oyunOzeti`.
+
+- Sayılar ömür boyu: halka günlük (600 olay; deneme başına ~7 olay) birkaç
+  günde dolar, bu yüzden ölçüm her olayda `toplamaEkle` ile toplamları
+  günceller ve günlükle birlikte saklar (`olcum.toplam()`; toplamsız eski
+  kayıtta günlükte kalan olaylardan kurulur). Bir denemenin süresi en çok
+  15 dk sayılır (`DENEME_SURE_SINIRI`).
+- Üst kutular: ilk açılış (`olcum.ilkAcilis()`; takvim günüyle "Bugün", "Dün",
+  "N gün önce"), oturum (en büyük `o`), oynanan gün (ayrı yerel takvim günü,
+  `yerelGun`; `g` 24 saatlik dilimdir), en yüksek kazanılan ana bölüm
+  (kayıttan, `kazanilanEnYuksek`), oyun süresi (`bolum_bitti.sure` toplamı),
+  sürüm + dil.
+- Tablo: yalnız ana bölümler (`tur` 'ana'), en son oynanan 8 (özet 360×640'ta
+  tek ekrana sığar), numara sırasıyla. Deneme = `bolum_basla` (başlangıcı günlükten düşmüş bitiş de
+  sayılır), Kayıp, Bırakma = `cikis` + bitmeden kapatılan deneme (ardından
+  yeni deneme ya da oturum geldi; günlüğün sonunda süren deneme sayılmaz),
+  Süre = biten denemelerin ortalaması (m:ss). Yıldız: bölüm kazanıldı. En
+  çok kayıp + bırakma olan satır vurgulu (eşitlikte en son oynanan); ikisi
+  ekran okuyucuya satır başlığındaki gizli metinle söylenir.

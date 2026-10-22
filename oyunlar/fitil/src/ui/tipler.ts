@@ -220,6 +220,8 @@ export type HaritaSecimi =
   | { tur: 'sonsuz' }
   /** (Kancalar) Kasaba paneli. */
   | { tur: 'kasaba' }
+  /** Ayarlar + üstünde Oyun özeti (haritada düğmesi yok; test kancası `ac('oyunOzeti')`). */
+  | { tur: 'oyunOzeti' }
   /** Harita başka bir ekranla programlı olarak kapatıldı. */
   | { tur: 'kapandi' };
 
@@ -368,6 +370,40 @@ export type AyarDegisikligi = Partial<Pick<AyarlarVM, 'sfx' | 'muzik' | 'ortam' 
 export type KayitOnizleme =
   | { gecerli: true; toplamYildiz: number; sonBolum: number; desen: number; kayitTarihi?: string; /** (Kancalar §D.6) */ muhur?: number; kasabaIs?: number; kandil?: number }
   | { gecerli: false; hata: string };
+
+// ─────────────────── Oyun özeti (Ayarlar > Oyun özeti) ───────────────────
+
+/** Özetin üst kutularından biri: biçimlenmiş etiket ve değer. */
+export interface OyunOzetiSatiri {
+  anahtar: 'ilkAcilis' | 'oturum' | 'oynananGun' | 'enYuksek' | 'oyunSuresi' | 'surum';
+  etiket: string;
+  deger: string;
+}
+
+/** Bölüm tablosunun bir satırı (yalnız ana bölümler). */
+export interface OyunOzetiBolumu {
+  id: number;
+  /** Başlanan denemeler (süren deneme dahil). */
+  deneme: number;
+  kayip: number;
+  /** Çıkış + bitmeden kapatılan deneme (süren deneme sayılmaz). */
+  birakma: number;
+  /** Biten denemelerin ortalama süresi (sn); biten yoksa null. */
+  ortSure: number | null;
+  kazanildi: boolean;
+  /** Tablodaki en çok kayıp + bırakma (> 0) olan satır. */
+  vurgu: boolean;
+}
+
+export interface OyunOzetiVM {
+  /** Günlükte hiç olay yok. */
+  bos: boolean;
+  satirlar: OyunOzetiSatiri[];
+  /** En son oynanan ana bölümler (en çok `OZET_BOLUM_SINIRI`, 8), numara sırasıyla. */
+  bolumler: OyunOzetiBolumu[];
+  /** Oynanmış ana bölüm sayısı (tabloya sığmayanlar dahil). */
+  oynananBolum: number;
+}
 
 // ─────────────────── Nasıl oynanır / Defter ───────────────────
 

@@ -73,6 +73,8 @@ const CIZGI = {
   indir: '<path d="M12 3.8v11.4M7.4 10.6 12 15.2l4.6-4.6M5 20h14"/>',
   yukle: '<path d="M12 15.6V4.2M7.4 8.8 12 4.2l4.6 4.6M5 20h14"/>',
   istatistik: '<path d="M4.4 20V11M9.4 20V5M14.4 20v-6.4M19.4 20V8.4M2.6 20.2h18.8"/>',
+  /** Oyun özeti: sade çizgi grafik (eksen + yükselen çizgi). */
+  grafik: '<path d="M3.4 3.6v16.8h17.2"/><path d="M6.6 15.6l3.8-4.4 3.2 2.8 5.6-6.6"/><circle cx="10.4" cy="11.2" r="1.3" fill="currentColor" stroke="none"/><circle cx="13.6" cy="14" r="1.3" fill="currentColor" stroke="none"/><circle cx="19.2" cy="7.4" r="1.3" fill="currentColor" stroke="none"/>',
   rozet: '<circle cx="12" cy="9.4" r="5.8"/><path d="M8.6 14.2 7 21l5-2.6 5 2.6-1.6-6.8"/>',
   hamle: '<path d="M5 18.6c3.4-1.2 4.4-5.4 7-7.4s6-1 7.4-4.8"/><circle cx="5" cy="18.6" r="1.8" fill="currentColor"/><circle cx="19.4" cy="6.4" r="1.8" fill="currentColor"/>',
   roket: '<path d="M12 2.8c2.3 1.7 3.3 4.2 3.3 7.1v5H8.7v-5c0-2.9 1-5.4 3.3-7.1z"/><path d="M8.7 12.2 6.2 14.8v2.7l2.5-1.2M15.3 12.2l2.5 2.6v2.7l-2.5-1.2M10.4 17.6 12 21.2l1.6-3.6"/>',

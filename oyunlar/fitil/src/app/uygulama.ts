@@ -17,6 +17,7 @@
  * harita ilk kazancın ödülü olarak, fitil 2. bölüme yanarak açılır.
  */
 import { olcum, olcumOlayi, olcumOzeti } from '../platform/olcum';
+import { oyunOzetiVM } from './oyunOzeti';
 import { dilKaydet, t } from '../platform/dil';
 import { Stage } from '../render/stage';
 import { oyunCiziciOlustur, type OyunCiziciTam } from '../render/oyunCizici';
@@ -209,8 +210,10 @@ export class Uygulama {
       this.ses.uzakFisek((x / w - 0.5) * 1.4, 0.8);
     });
     this.ui.yerlesimDinle(() => this.yerlesimTazele());
+    this.oturum.olcumDurak('gizli', document.hidden);
     document.addEventListener('visibilitychange', () => {
       this.ses.askiya(document.hidden);
+      this.oturum.olcumDurak('gizli', document.hidden);
       this.molaIlerle();
     });
     setInterval(() => this.molaIlerle(), 5000);
@@ -454,6 +457,9 @@ export class Uygulama {
         return;
       case 'ayarlar':
         await this.ayarlarAc();
+        return;
+      case 'oyunOzeti':
+        await this.ayarlarAc(true);
         return;
       case 'nasil':
         this.ekranAdi = 'nasil';
@@ -773,13 +779,25 @@ export class Uygulama {
     await this.ui.defter(defterVM(this.kayit, 'desenler'));
   }
 
-  async ayarlarAc(): Promise<void> {
+  /** Ayarlar (haritadan ya da Duraklat'tan). `ozetle`: üstünde Oyun özeti de açılır (test kancası). */
+  async ayarlarAc(ozetle = false): Promise<void> {
     const onceki = this.ekranAdi;
     this.ekranAdi = 'ayarlar';
-    await this.ui.ayarlar(ayarlarVM(this.kayit, this.kayitci.depo.backend, sistemAzHareket(), SURUM), {
+    let acik = true;
+    // Oyun özeti Ayarlar'ın üstünde açılır; kapanınca Ayarlar'a döner (Ayarlar programlı kapandıysa dönmez).
+    const ozetAc = async () => {
+      this.ekranAdi = 'oyunOzeti';
+      await this.ui.oyunOzeti(oyunOzetiVM(olcum.toplam(), Date.now(), olcum.ilkAcilis(), meta.kazanilanEnYuksek(this.kayit)));
+      if (acik) this.ekranAdi = 'ayarlar';
+    };
+    const p = this.ui.ayarlar(ayarlarVM(this.kayit, this.kayitci.depo.backend, sistemAzHareket(), SURUM), {
       nasilAc: () => void this.ui.nasilOynanir(nasilVM(this.kayit)),
       defterKartiAc: (m, tur) => void this.ui.defterKarti({ mahalle: m, oduller: [], tur }),
+      oyunOzetiAc: () => void ozetAc(),
     });
+    if (ozetle) void ozetAc();
+    await p;
+    acik = false;
     this.ekranAdi = onceki;
   }
 
@@ -994,7 +1012,10 @@ export class Uygulama {
     void (async () => {
       if (oyunda) this.oturum.durum = 'menu';
       if (oyunda) this.yc.kipAyarla('kapali');
+      // (Ölçüm) Mola kartı açıkken deneme süresi işlemez.
+      if (oyunda) this.oturum.olcumDurak('mola', true);
       const s = await this.ui.mola();
+      this.oturum.olcumDurak('mola', false);
       this.molaD = meta.molaKapat(this.molaD, simdi());
       if (oyunda && this.oturum.durum === 'menu') {
         this.oturum.durum = 'bekliyor';
@@ -1043,7 +1064,7 @@ export class Uygulama {
         const tohum = (d: OyunDurumu) => (d.hamleNo * 2654435761) >>> 0;
         return this.oturum.botHamlesi((d, izin) => (tur === 'acemi' ? acemiSec(d, tohum(d), { izin }) : ustaSec(d, tohum(d), { izin, tamCozum: 24 })));
       },
-      /** Ekranı kilitlerden bağımsız aç (test): 'gunluk' | 'defter' | 'ayarlar' | 'istatistik' | 'nasil' | 'sonsuz'. */
+      /** Ekranı kilitlerden bağımsız aç (test): 'gunluk' | 'defter' | 'ayarlar' | 'istatistik' | 'nasil' | 'sonsuz' | 'kasaba' | 'oyunOzeti' (Ayarlar + üstünde özet). */
       ac: (ekran: string) => {
         this.istek = { tur: 'ekran', ekran: { tur: ekran } as HaritaSecimi };
         this.oturum.cik();

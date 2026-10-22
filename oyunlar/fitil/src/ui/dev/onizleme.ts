@@ -4,7 +4,7 @@
  * dikdörtgende) çizilir; ekranlar sahte görünüm modelleriyle açılır.
  *
  * Ekranlar: acilis, harita, bolumOncesi, hud, duraklat, kazandin,
- * kaybettin, ayarlar, nasil, defter, gunluk, istatistik, mola,
+ * kaybettin, ayarlar, oyunOzeti (v=bos|az), nasil, defter, gunluk, istatistik, mola,
  * defterKarti, sandik, balon, bant, kutlama, secim.
  * Parametreler: v (çeşit), w/h (tahta), simdiki (harita), guvenli=47,0,34,0,
  * az=1 (hareketi azalt), palet=renkKoru|yuksekKontrast, panel, sekme, kart.
@@ -291,7 +291,13 @@ async function calistir(): Promise<void> {
       break;
     case 'ayarlar':
       void haritaSahnesi();
-      await ui.ayarlar(O.ayarlarVm(), { nasilAc: () => void ui.nasilOynanir({ acikEngeller: ['kafes', 'islak', 'doseme', 'fener', 'kaya'] }) });
+      await ui.ayarlar(O.ayarlarVm(), { nasilAc: () => void ui.nasilOynanir({ acikEngeller: ['kafes', 'islak', 'doseme', 'fener', 'kaya'] }), oyunOzetiAc: () => void ui.oyunOzeti(O.oyunOzetiVm()) });
+      break;
+    case 'oyunOzeti':
+      // Ayarlar'ın üstünde (gerçek akış); v=bos | az | 1.
+      void haritaSahnesi();
+      void ui.ayarlar(O.ayarlarVm(), { oyunOzetiAc: () => void ui.oyunOzeti(O.oyunOzetiVm(v)) });
+      await ui.oyunOzeti(O.oyunOzetiVm(v));
       break;
     case 'nasil':
       void haritaSahnesi();

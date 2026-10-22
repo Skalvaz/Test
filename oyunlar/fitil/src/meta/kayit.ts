@@ -332,14 +332,19 @@ export function bolumKazanildi(k: Kayit, id: number): boolean {
   return (k.bolumler[String(id)]?.yildiz ?? 0) >= 1;
 }
 
-/** Ana yolda açık en yüksek bölüm: kazanılan en yüksek + 1 (en fazla N). Kilit doğrusaldır (§10.1). */
-export function acikEnYuksek(k: Kayit, ayar: MetaAyar = VARSAYILAN_META_AYAR): number {
+/** Kazanılmış en yüksek ana bölüm (hiç yoksa 0). */
+export function kazanilanEnYuksek(k: Kayit, ayar: MetaAyar = VARSAYILAN_META_AYAR): number {
   let en = 0;
   for (const anahtar of Object.keys(k.bolumler)) {
     const id = Number(anahtar);
     if (bolumTuru(id, ayar) === 'ana' && k.bolumler[anahtar].yildiz >= 1 && id > en) en = id;
   }
-  return Math.min(ayar.anaBolumSayisi, en + 1);
+  return en;
+}
+
+/** Ana yolda açık en yüksek bölüm: kazanılan en yüksek + 1 (en fazla N). Kilit doğrusaldır (§10.1). */
+export function acikEnYuksek(k: Kayit, ayar: MetaAyar = VARSAYILAN_META_AYAR): number {
+  return Math.min(ayar.anaBolumSayisi, kazanilanEnYuksek(k, ayar) + 1);
 }
 
 /** Ana bölümlerin yıldız toplamı (en fazla 3·N; Usta kilitleri buna bakar). */

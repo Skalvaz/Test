@@ -77,7 +77,7 @@ describe('İngilizce arayüz metinleri (ui)', () => {
   it('kısa etiketler Türkçesinden belirgin uzun değil (yerleşim sığsın)', () => {
     const e = new Map<string, string>();
     const t = new Map<string, string>();
-    for (const k of ['M', 'MK', 'MOTIF_ADLARI', 'GUCLENDIRICI_ADLARI', 'NADIRLIK_ADLARI', 'ENGEL_ADLARI', 'SERI_BASAMAKLARI'] as const) {
+    for (const k of ['M', 'MK', 'MO', 'MOTIF_ADLARI', 'GUCLENDIRICI_ADLARI', 'NADIRLIK_ADLARI', 'ENGEL_ADLARI', 'SERI_BASAMAKLARI'] as const) {
       topla(en[k], k, e);
       topla(tr[k], k, t);
     }
@@ -143,6 +143,17 @@ describe('İngilizce arayüz metinleri (ui)', () => {
     expect(en.gorevMetni(3, 0)).toBe('Pop 50 red capsules');
     expect(en.M.kazandinBaslik[1]).toBe('Level complete!');
     expect(en.ROZETLER.senlik.ad).toBe('FESTIVAL!');
+  });
+
+  it('oyun özeti: gün, süre, ekran okuyucu metinleri', () => {
+    expect(en.MO.gunOnce(0)).toBe('Today');
+    expect(en.MO.gunOnce(1)).toBe('Yesterday');
+    expect(en.MO.gunOnce(5)).toBe('5 days ago');
+    expect(tr.MO.gunOnce(5)).toBe('5 gün önce');
+    expect(en.MO.saatDakika(1, 5)).toBe('1 h 5 min');
+    expect(en.MO.sonBolumler(12)).toBe('Last 12 levels');
+    expect(en.MO.kazanildi).toBe('won');
+    expect(tr.MO.enCokTakilan).toBe('en çok takılınan bölüm');
   });
 
   it('paylaşım metni, mühür harfi ve Çarşı mahyası', () => {
