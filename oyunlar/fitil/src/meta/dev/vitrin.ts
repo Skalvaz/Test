@@ -48,6 +48,8 @@ import {
   yeniKayit,
   acikEnYuksek,
   VARSAYILAN_META_AYAR,
+  GUNLUK_ACILIS_BOLUMU,
+  USTA_ACILIS_BOLUMU,
   bolumMahallesi,
   MOTIFLER,
   VARSAYILAN_MOTIF_BOLUMLERI,
@@ -380,7 +382,7 @@ function ustaDugumu(d: HaritaUstaDugumu): HTMLElement {
   const el = h('div', `dugum usta ${d.durum}`);
   el.append(h('div', 'fener-dugum', fenerSvg(d.durum !== 'kilitli')));
   el.append(h('span', 'no', `U${d.ustaNo}`));
-  el.append(h('span', 'ad', d.durum === 'kilitli' ? `${d.ad} · ${d.eksikYildiz}★ kaldı` : `${d.ad}${d.yildiz ? ` · ${'★'.repeat(d.yildiz)}` : ''}`));
+  el.append(h('span', 'ad', d.durum === 'kilitli' ? `${d.ad} · ${d.eksikYildiz > 0 ? `${d.eksikYildiz}★ kaldı` : `${USTA_ACILIS_BOLUMU}. bölümden sonra`}` : `${d.ad}${d.yildiz ? ` · ${'★'.repeat(d.yildiz)}` : ''}`));
   return el;
 }
 
@@ -596,7 +598,7 @@ function gunlukCiz(sag: HTMLElement): void {
   const sayfa = h('div', 'sayfa');
   sayfa.append(h('h2', '', `Günün Şenliği · ${tarihMetni(durum.bugun)} ${GUNLER[haftaGunu(durum.bugun)]}`));
   if (!bolumAcikMi(k, durum.bugun, durum.bugun)) {
-    sayfa.append(h('div', 'kart soluk', `${S.kilit.replace('<svg', '<svg style="width:18px;height:18px;vertical-align:-3px"')} 10. bölümü kazanınca açılır.`));
+    sayfa.append(h('div', 'kart soluk', `${S.kilit.replace('<svg', '<svg style="width:18px;height:18px;vertical-align:-3px"')} ${GUNLUK_ACILIS_BOLUMU}. bölümü kazanınca açılır.`));
   } else {
     const s = k.gunluk.enIyi[String(durum.bugun)];
     const ust = h('div', 'kart satir');

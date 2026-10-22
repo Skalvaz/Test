@@ -166,13 +166,27 @@ export function gorevIlerlet(gorevler: readonly GorevDurumu[], b: GorevBaglami):
   return { gorevler: yeni, tamamlanan };
 }
 
+/**
+ * Günün Şenliği açık mı: `GUNLUK_ACILIS_BOLUMU` (14) kazanıldı ya da kayıtta
+ * günlük geçmişi var. Eski kayıt koruması (Ekim 2026, açılış 10 → 14): eski
+ * kuralla açılmış günlük, oyuncu 11–13. bölümdeyken kapanmasın. Günlük yalnız
+ * açıkken iz bırakır (görev günü/görevler `gunlukTazele_yerinde`, sonuçlar ve
+ * ilk kazanç günlük bölüm oynanınca); Fener Nöbeti (`seri`, `sonGun`) her
+ * bölümde ilerlediği için iz sayılmaz. Göç değişmedi.
+ */
 export function gunlukAcik(k: Kayit): boolean {
-  return bolumKazanildi(k, GUNLUK_ACILIS_BOLUMU);
+  return bolumKazanildi(k, GUNLUK_ACILIS_BOLUMU) || gunlukGecmisiVar(k);
+}
+
+/** Kayıtta Günün Şenliği açıkken bırakılmış iz var mı (eski kayıt koruması). */
+export function gunlukGecmisiVar(k: Kayit): boolean {
+  const g = k.gunluk;
+  return g.tarih !== 0 || g.gorevler.length > 0 || Object.keys(g.enIyi).length > 0 || g.ilkKazanc !== 0 || k.istatistik.gunlukKazanc > 0 || k.rekorlar.enIyiGunluk > 0;
 }
 
 /**
  * Gün değiştiyse görevleri yeniler ve eski günlük sonuçları budar (yerinde).
- * Günlük kapalıysa (10. bölüm kazanılmadı) görev seçilmez.
+ * Günlük kapalıysa (`GUNLUK_ACILIS_BOLUMU` kazanılmadı) görev seçilmez.
  */
 export function gunlukTazele_yerinde(k: Kayit, bugun: number, acikBolum: number): boolean {
   if (!tarihGecerli(bugun)) return false;

@@ -695,9 +695,9 @@ export class Uygulama {
 
   private arkaPlanUretim(): void {
     const t = bugun();
-    // İşçi varsa (ana iş parçacığına yük değil) Günün Şenliği açılmadan önce, 7. bölümden
-    // itibaren hazırlanır: 10. bölüm kazanılınca tahta beklemeden açılır (§10.5).
-    const erken = meta.acikEnYuksek(this.kayit) >= 7 && this.uretici.isciVar;
+    // İşçi varsa (ana iş parçacığına yük değil) Günün Şenliği açılmadan 3 bölüm önce
+    // (11. bölümden) hazırlanır: açılış bölümü (14) kazanılınca tahta beklemeden açılır (§10.5).
+    const erken = meta.acikEnYuksek(this.kayit) >= meta.GUNLUK_ACILIS_BOLUMU - 3 && this.uretici.isciVar;
     if ((meta.gunlukAcik(this.kayit) || erken) && !this.uretici.hazir(t)) void this.uretici.gunluk(t).catch(() => {});
     if (meta.sonsuzAcikMi(this.kayit)) {
       const n = this.kayit.sonsuzEnYuksek + 1;

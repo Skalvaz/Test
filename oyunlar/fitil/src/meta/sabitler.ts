@@ -28,8 +28,19 @@ export const KAYIT_KODU_ONEKI = 'FTL1:';
 export const SANDIK_ACILIS_BOLUMU = 5;
 /** Bu bölümün ilk sandığı garanti Kasımpatı parçası verir (§10.4). */
 export const KASIMPATI_GARANTI_BOLUMU = 5;
-/** Günün Şenliği ve günlük görevler bu bölüm kazanılınca açılır (§10.5). */
-export const GUNLUK_ACILIS_BOLUMU = 10;
+/**
+ * Günün Şenliği ve günlük görevler bu bölüm kazanılınca açılır (§10.5). Ekim
+ * 2026'da 10'dan 14'e alındı: ilk oturum denetimi 5–10. bölümlerde yedi meta
+ * sistemin üst üste geldiğini gösterdi (docs/YAYIN.md). Günlük geçmişi olan
+ * eski kayıtta açık kalır (`gunlukAcik`).
+ */
+export const GUNLUK_ACILIS_BOLUMU = 14;
+/**
+ * Usta Bölümleri bu bölüm kazanılmadan açılmaz (yıldız eşiği de gerekir, §10.2;
+ * Ekim 2026, ilk oturum denetimi). Bir Usta Bölümü oynamış eski kayıtta kapı
+ * geçilmiş sayılır (`ustaKilidi`).
+ */
+export const USTA_ACILIS_BOLUMU = 12;
 /** Coşku Serisi: üst üste bu kadar ilk deneme kazancı hazır roket verir (§15). */
 export const COSKU_ESIGI = 3;
 /** Kıvılcım Usta'nın Eli: aynı bölümde bu sayıda ve sonraki başarısızlıklarda sunulur (§14.7). */

@@ -153,6 +153,8 @@
 .f-usta-etiket { display: flex; flex-direction: column; align-items: center; margin-top: -2px; padding: 1px 8px 2px; border-radius: 10px; font-size: 13px; font-weight: 800; color: #E8E0FF; background: linear-gradient(180deg, #4A3A7A, #241848); box-shadow: 0 0 0 1.5px #8C7CF0, 0 3px 6px rgba(0, 0, 0, .5); line-height: 1.1; }
 .f-usta-etiket small { display: flex; align-items: center; gap: 2px; font-size: 11px; color: #CDB89A; }
 .f-usta-etiket small .f-ikon { width: 11px; height: 11px; color: #FFD15C; }
+/* Yıldız yetiyor, yalnız bölüm kapısı (12) kaldı: iki satır "12. bölümden / sonra". */
+.f-usta-etiket small.f-usta-kapi { flex-direction: column; gap: 0; font-size: 12px; line-height: 1.15; white-space: nowrap; color: #E6D6B4; }
 .f-usta-yildiz { display: flex; }
 .f-usta-yildiz .f-kyildiz { width: 11px; height: 11px; }
 .f-usta-dugum:not(.f-acik) .f-usta-etiket { color: #9A90A8; background: linear-gradient(180deg, #2E2A3A, #1A1622); box-shadow: 0 0 0 1.5px #4A4258; }

@@ -86,11 +86,29 @@ export const M = {
     (gereken: number) => `${gereken} yıldızda açılır`,
     (gereken: number) => `Opens at ${gereken} stars`,
   ),
+  /** Usta: yıldız yetiyor, yalnız bölüm kapısı (12) kaldı. */
+  kilitliUstaBolum: t(
+    (bolum: number) => `${bolum}. bölümden sonra açılır`,
+    (bolum: number) => `Opens after level ${bolum}`,
+  ),
+  /** Usta: yıldız da bölüm kapısı da eksik. */
+  kilitliUstaIkisi: t(
+    (gereken: number, bolum: number) => `${gereken} yıldız ve ${bolum}. bölüm gerekir`,
+    (gereken: number, bolum: number) => `Needs ${gereken} stars and level ${bolum}`,
+  ),
+  /** Usta düğümünün kilit etiketi (yalnız bölüm kapısı kaldıysa; iki satır). */
+  ustaKapiEtiket: t(
+    (bolum: number): [string, string] => [`${bolum}. bölümden`, 'sonra'],
+    (bolum: number): [string, string] => ['After', `level ${bolum}`],
+  ),
   kilitliMahalle: t(
     (ilk: number) => `${ilk}. bölümde açılır`,
     (ilk: number) => `Opens at level ${ilk}`,
   ),
-  gunlukKilitli: t('10. bölümden sonra açılır', 'Opens after level 10'),
+  gunlukKilitli: t(
+    (bolum: number) => `${bolum}. bölümden sonra açılır`,
+    (bolum: number) => `Opens after level ${bolum}`,
+  ),
   sonsuzSenlik: t('Sonsuz Şenlik', 'Endless Festival'),
 
   // Bölüm öncesi

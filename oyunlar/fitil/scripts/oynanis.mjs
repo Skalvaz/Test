@@ -29,7 +29,8 @@
  * Akış: açılış → Bölüm 1 (öğretim; zorunlu ilk hamle GERÇEK sürüklemeyle)
  * → bot ile 1, 2, 5, 6, 10 (kazanç ya da kayıp) → Kazandın / Kaybettin
  * (Tekrar dene < 1 sn ölçülür) → harita → ayarlar → Fişek Defteri →
- * Günün Şenliği (üretim + bölüm başlangıcı). Her aşamada ekran görüntüsü.
+ * Günün Şenliği (14. bölümden önce kilit metni ve kilitli U1; 11–14 `kayitYama`
+ * ile kazanılınca üretim + bölüm başlangıcı). Her aşamada ekran görüntüsü.
  * pageerror ya da console.error → başarısız (çıkış kodu 1).
  *
  * Test kancası: window.__fitil (src/app/uygulama.ts testKancasi).
@@ -493,7 +494,30 @@ async function profilKos(browser, p) {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(600);
 
-  // ── 6. Günün Şenliği (kilitliyse test kancasıyla açılır)
+  // ── 6. Günün Şenliği: 14. bölüm kazanılmadan kilitli (Ekim 2026; Usta Bölümleri de
+  // 12'den önce). Kilit metinleri denetlenir, sonra 11–14 `kayitYama` ile kazanılmış
+  // sayılır: günlük gerçek kilit yolundan açılır (test kancası Oyna'da kilidi atlatmaz).
+  {
+    const k6 = await page.evaluate(() => window.__fitil.kayit());
+    if (!k6.bolumler['14']) {
+      const hap = page.locator('.f-gunluk-hap');
+      if (!(await hap.evaluate((e) => e.classList.contains('f-kilitli')))) hatalar.push(`[${p.ad}] Günün Şenliği 14. bölümden önce açık`);
+      await hap.click();
+      await page.waitForTimeout(400);
+      const toast = await page.evaluate(() => [...document.querySelectorAll('.f-toast')].map((e) => e.textContent).join(' | '));
+      if (!toast.includes('14. bölümden sonra açılır')) hatalar.push(`[${p.ad}] günlük kilit metni: "${toast}"`);
+      await kare('gunluk-kilitli');
+      const ana = Object.entries(k6.bolumler).filter(([id]) => +id <= 40).reduce((a, [, b]) => a + b.yildiz, 0);
+      const ustaOynandi = Object.keys(k6.bolumler).some((id) => +id > 100 && +id < 200);
+      if (!k6.bolumler['12'] && !ustaOynandi && ana >= 15) {
+        const u1 = await page.locator('.f-usta-dugum').first().evaluate((e) => ({ acik: e.classList.contains('f-acik'), etiket: e.textContent }));
+        if (u1.acik || !u1.etiket.includes('12. bölümden')) hatalar.push(`[${p.ad}] U1 12. bölümden önce: ${JSON.stringify(u1)}`);
+      }
+      const kb = { yildiz: 1, enIyi: 1000, deneme: 1, basarisizSeri: 0, kazanc: 1 };
+      await page.evaluate((b) => window.__fitil.kayitYama({ bolumler: b }), { 11: kb, 12: kb, 13: kb, 14: kb });
+      await page.waitForTimeout(2000);
+    }
+  }
   await page.evaluate(() => window.__fitil.ac('gunluk'));
   await bekleKosul(page, () => window.__fitil.ekran() === 'gunluk', null, 10000, 'günlük ekranı');
   await page.waitForTimeout(900);

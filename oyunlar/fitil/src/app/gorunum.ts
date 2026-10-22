@@ -201,7 +201,15 @@ export function haritaVM(k: Kayit, gorulen: { parca: number; rozet: number }): H
         // (Kancalar) Mühür sayısı ve 3/3'te çatı sancağı (mühürsüz bölümde yok).
         ...(d.muhur !== null ? { muhur: meta.muhurSayisi(d.muhur), sancak: d.sancak } : {}),
       });
-    else ustalar.push({ id: d.id, acik: d.durum !== 'kilitli', yildiz: d.yildiz, gerekenYildiz: d.gerekenYildiz });
+    else
+      ustalar.push({
+        id: d.id,
+        acik: d.durum !== 'kilitli',
+        yildiz: d.yildiz,
+        gerekenYildiz: d.gerekenYildiz,
+        eksikYildiz: d.eksikYildiz,
+        ...(d.bolumKapisi ? { kapiBolumu: meta.USTA_ACILIS_BOLUMU } : {}),
+      });
   }
   const motifler: HaritaVM['motifler'] = [];
   for (const m of hv.mahalleler) for (const mo of m.motifler) motifler.push({ motif: mo, mahalle: m.indeks });
@@ -212,7 +220,7 @@ export function haritaVM(k: Kayit, gorulen: { parca: number; rozet: number }): H
     ustalar,
     motifler,
     seri: { gun: k.gunluk.seri, basamak: bi >= 0 ? (meta.SERI_BASAMAKLARI[bi].id as SeriBasamagi) : null },
-    gunluk: { acik: hv.gunluk.acik, tamam: hv.gunluk.gorevTamam, toplam: hv.gunluk.gorevToplam },
+    gunluk: { acik: hv.gunluk.acik, tamam: hv.gunluk.gorevTamam, toplam: hv.gunluk.gorevToplam, acilisBolumu: meta.GUNLUK_ACILIS_BOLUMU },
     defterYeni: k.koleksiyon.parcalar.length > gorulen.parca,
     rozetYeni: k.rozetler.length > gorulen.rozet,
     sonsuz: { acik: hv.sonsuz.acik, siradaki: hv.sonsuz.siradaki },

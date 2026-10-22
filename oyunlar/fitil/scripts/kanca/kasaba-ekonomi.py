@@ -24,6 +24,9 @@ KANDIL_MUHUR = 1
 KANDIL_MAHALLE = 3
 KANDIL_GUNLUK = 1
 KASABA_ACILIS = 3
+# Ekim 2026 (ilk oturum denetimi): Usta Bölümleri 12., Günün Şenliği 14. bölümden sonra.
+USTA_ACILIS = 12
+GUNLUK_ACILIS = 14
 BOLUM_GUN = 5  # günde ~5 bölüm
 
 PROFIL = {
@@ -100,13 +103,13 @@ def simule(profil, tohum, ayrinti=False):
                 eksik = [i for i in range(3) if not muhur[j][i]]
                 if eksik:
                     muhur[j][eksik[0]] = True
-        # Usta bölümleri: her 15★'da bir açılır, açıldığında oynanır
+        # Usta bölümleri: her 15★'da bir açılır (12. bölüm kazanıldıktan sonra), açıldığında oynanır
         ana = sum(yildiz)
         for u in range(1, 9):
-            if ana >= 15 * u and usta[u] == 0 and r.random() < 0.8:
+            if n >= USTA_ACILIS and ana >= 15 * u and usta[u] == 0 and r.random() < 0.8:
                 usta[u] = max(1, min(3, round(usta_y + r.uniform(-0.5, 0.5))))
-        # günlük: her BOLUM_GUN bölümde bir gün (10'dan sonra)
-        if n > 10 and n % BOLUM_GUN == 0 and r.random() < gunluk:
+        # günlük: her BOLUM_GUN bölümde bir gün (14. bölüm kazanıldıktan sonra)
+        if n > GUNLUK_ACILIS and n % BOLUM_GUN == 0 and r.random() < gunluk:
             gunluk_kandil += KANDIL_GUNLUK
         yap_sayi, acik = yap(n)
         if yap_sayi:

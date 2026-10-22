@@ -36,10 +36,11 @@ export function haritaVm(simdiki = 14, kasaba: { isler: string[]; kandil: number
   return {
     toplamYildiz: toplam,
     bolumler,
-    ustalar: Array.from({ length: 8 }, (_, i) => ({ id: 101 + i, acik: toplam >= (i + 1) * 15, yildiz: (i === 0 ? 2 : 0) as Yildiz, gerekenYildiz: (i + 1) * 15 })),
+    // Usta: (i+1)·15★ ve 12. bölüm kazanılmış olmalı (kapı geçilmediyse kapiBolumu).
+    ustalar: Array.from({ length: 8 }, (_, i) => ({ id: 101 + i, acik: toplam >= (i + 1) * 15 && simdiki > 12, yildiz: (i === 0 && simdiki > 12 ? 2 : 0) as Yildiz, gerekenYildiz: (i + 1) * 15, eksikYildiz: Math.max(0, (i + 1) * 15 - toplam), ...(simdiki > 12 ? {} : { kapiBolumu: 12 }) })),
     motifler: simdiki > 26 ? [{ motif: 'lale', mahalle: 5 }] : [],
     seri: { gun: 5, basamak: 'cira' },
-    gunluk: { acik: simdiki > 10, tamam: 1, toplam: 3 },
+    gunluk: { acik: simdiki > 14, tamam: 1, toplam: 3, acilisBolumu: 14 },
     defterYeni: true,
     ...(kasaba ? { kasaba: { acik: true, kandil: kasaba.kandil, isler: kasaba.isler, yapilabilir: kasaba.yapilabilir } } : {}),
   };

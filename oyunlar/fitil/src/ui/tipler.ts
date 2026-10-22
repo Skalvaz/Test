@@ -173,6 +173,10 @@ export interface UstaDugumuVM {
   yildiz: Yildiz;
   /** Açılış için gereken toplam ★ (15, 30, …). */
   gerekenYildiz: number;
+  /** Ana yıldız açığı (0 = yıldız yetiyor). Yoksa yıldız eksik sayılır. */
+  eksikYildiz?: number;
+  /** Usta kapısı henüz geçilmediyse kazanılması gereken bölüm (12); geçildiyse yok. */
+  kapiBolumu?: number;
 }
 
 export interface SeriVM {
@@ -190,8 +194,8 @@ export interface HaritaVM {
   /** Tamamlanmış Işık Deseni motifleri ve asılacakları mahalle (0..7). */
   motifler: { motif: Motif; mahalle: number }[];
   seri: SeriVM;
-  /** Günün Şenliği rozeti: açık mı, bugünkü görevlerden kaç tamam. */
-  gunluk: { acik: boolean; tamam: number; toplam: number };
+  /** Günün Şenliği rozeti: açık mı, bugünkü görevlerden kaç tamam; `acilisBolumu` kilit metni için (14). */
+  gunluk: { acik: boolean; tamam: number; toplam: number; acilisBolumu: number };
   /** Fişek Defteri / Rozetler'de görülmemiş yenilik noktası. */
   defterYeni?: boolean;
   rozetYeni?: boolean;
