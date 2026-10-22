@@ -341,6 +341,43 @@ serbest.
 11. **Sağlayıcı:** `gelirSaglayici()` sayfa başına bir kez seçer, hep aynı
     örneği döndürür; null iken can, reklam, Mağaza ve gelir ölçüm olayları yok.
 
+### G4 (akış) uygulaması
+
+- **`src/app/gelirAkisi.ts`** (yeni): `GelirAkisi` (sağlayıcı varken
+  `Uygulama.gelir`; yoksa null ve hiçbir yeni öğe yok), saf modeller
+  `canSayaciVM`, `canPaneliVM`, `magazaVM`, `kayitKoduGelirKoru`; metinler
+  `GELIR_METNI` ("Şu an reklam yok", "Satın alındı", …). Testler
+  `src/app/gelirAkisi.test.ts`.
+- **Uygulama:** açılışta `baslat()` (tembel dolum kayda, fiyatlar,
+  `bekleyenler()`); harita hapı saniyede bir yalnız harita açıkken
+  (`canTazele` + `haritaCanGuncelle`); bölüm başlatma kapısı bölüm öncesi
+  kartının "Oyna"sından SONRA (0 can → "Canların bitti" paneli; reklam ya
+  da satın alma can verirse bölüm başlar, Bekle → harita); can hapı →
+  can paneli; Ayarlar > Mağaza; Hakkında `gelirVar`. Reklam açıkken
+  `ses.ayarla({ sessiz })` + `cizici.dev.dondur`.
+- **Oturum:** kayıpta `canHarca` (sonuçla birlikte hemen yazılır); aynı
+  denemede devamdan (Eli ya da reklam) sonra ikinci kayıp ve çıkış yeniden
+  düşürmez; devamla kazançta `canIade`. Kaybettin: `can` (−1 can · n
+  kaldı; n güncel can), `reklamHamle` (Eli yoksa, günlük değilse, denemede
+  devam yoksa, reklam hazırsa ya da Usta kartıyla; `yok`/`hata`dan sonra
+  gizli, `iptal`de durur), `canBitti` (can harcayan bölümde 0 can),
+  `gelirVar` her zaman true. Duraklat > Haritaya dön / Yeniden başla:
+  hamle > 0, can harcayan bölüm, bu deneme can ödemediyse ve düşecek can
+  varsa `cikisOnayi`; Vazgeç → Duraklat.
+- **Kayıt kodu içe aktarma** (sağlayıcı varken): can bu cihazda kalır,
+  satın almalar korunur (`kayitKoduGelirKoru`; eski kodla can doldurulamasın).
+- **Test kancası:** `__fitil.gelir()` → `{ saglayici, can, reklamHakki,
+  ustaKarti, stok }` (sağlayıcı yoksa null), `__fitil.canAyarla(n)`
+  (sağlayıcı yoksa false). Oynanış: `npm run oynanis -- <url> <klasör> gelir`.
+- **Sapmalar / ayrıntılar:** reklam ödülünde yalnız `reklamCanKullan`
+  (G1'de +1 canı da verir; ayrıca `canEkle` çağrılırsa can iki artardı).
+  Başarılı satın almada kısa "Satın alındı" bildirimi; geri yüklemede
+  mağaza kalıcı ürün bildirdiyse "Satın alımlar geri yüklendi", yoksa
+  "Geri yüklenecek satın alım yok". Oynanış profili §11'deki "bölüm 9"
+  yerine 10'u (Acemi ~%15–25 kazanır) kaybeder; reklamla devamın kazancı
+  (iade) için 10 → 12 → 13 sırayla denenir. Profil ayrıca kapıyı,
+  `?reklam=hata`yı ve sağlayıcısız Kaybettin'i denetler.
+
 ### Ürün sahibine (uygulanmadı, rapor)
 
 - C8 + stok sınırı 3: paketteki 3 Kibrit yalnız Kibrit stoğu 0 iken sığar

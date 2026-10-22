@@ -88,6 +88,23 @@ await tara('oyun-acilis', `${taban}/?dil=en`, 3000);
 await page.mouse.click(195, 600);
 await page.waitForTimeout(3500);
 await tara('oyun-sonrasi', null, 500);
+// Gelir sağlayıcısıyla (sahte; CAN-REKLAM §6): gerçek akışın harita hapı ve can paneli.
+await page.goto(`${taban}/?dil=en&gelir=sahte`);
+await page.waitForTimeout(2500);
+await page.mouse.click(195, 600);
+await page.waitForFunction(() => window.__fitil?.ekran?.() === 'oyun', null, { timeout: 20_000 });
+await page.evaluate(() => {
+  const kb = { yildiz: 2, enIyi: 1000, deneme: 1, basarisizSeri: 0, kazanc: 1 };
+  window.__fitil.kayitYama({ bolumler: Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map((i) => [i, kb])), ayarlar: { ipuclari: false } });
+  window.__fitil.canAyarla(2);
+});
+await page.getByRole('button', { name: 'Pause', exact: true }).first().click();
+await page.waitForTimeout(600);
+await page.getByRole('button', { name: 'Back to map', exact: true }).first().click();
+await page.waitForFunction(() => window.__fitil.ekran() === 'harita', null, { timeout: 20_000 });
+await tara('oyun-gelir-harita', null, 1500);
+await page.locator('.f-can-hap').click();
+await tara('oyun-gelir-can', null, 1500);
 
 writeFileSync(`${cikti}/rapor.json`, JSON.stringify(rapor, null, 1));
 await browser.close();

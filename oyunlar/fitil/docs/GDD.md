@@ -808,6 +808,8 @@ Kartlar en fazla 4 cümlelik, kısa kültür notlarıdır; Ayarlar > Defter'den 
 - **Ödüllü reklam yalnız oyuncu isteyince:** kaybedince "+5 hamle için reklam izle" (bölüm başına bir kez), can bitince "reklamla 1 can"; zorunlu ara reklam yok.
 - **Kasaba bağı:** kandil ve kasaba işleri reklamsız kazanılır; reklam yalnız hızlandırır. Gündelik oyuncu hiç reklam izlemeden de ilerleyebilmeli.
 
+**Aşama 2 uygulandı (Ekim 2026, sahte sağlayıcı):** kurallar ve ekranlar `docs/CAN-REKLAM.md` (5 can, 30 dk'da 1; 1–5, Günün Şenliği ve Sonsuz Şenlik ücretsiz; kayıpta ve onaylı çıkışta −1, devamla kazanınca iade; reklamla +1 can günde 3, kaybedince reklamla +5 hamle denemede bir kez, Eli kurallarıyla; Mağaza: canları doldur, güçlendirici paketi, Usta kartı). Yalnız gelir sağlayıcısı varken (Android köprüsü; web'de deneme için `?gelir=sahte`); claude.ai ve `fitil.html`'de sağlayıcı yok, yukarıdaki "YOKTUR" aynen geçerli. Gerçek AdMob + Play Billing köprüsü aşama 3.
+
 ---
 
 ## 11. Bağımlılık kancaları ve uygulama yerleri

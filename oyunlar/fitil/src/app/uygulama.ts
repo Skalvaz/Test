@@ -54,7 +54,9 @@ import {
   nasilVM,
   takiliDesenler,
 } from './gorunum';
-import { bekle, bugun, rastgeleTohum, simdi } from './zaman';
+import { bekle, bugun, duvarSaati, rastgeleTohum, simdi } from './zaman';
+import { gelirSaglayici } from '../platform/gelir';
+import { GelirAkisi, kayitKoduGelirKoru } from './gelirAkisi';
 
 const SURUM = '1.0';
 const GORULEN_ANAHTARI = 'fitil.gorulen';
@@ -102,6 +104,12 @@ export class Uygulama {
   readonly kayitci: Kayitci;
   readonly uretici = new BolumUretici();
   readonly oturum: Oturum;
+  /**
+   * (CAN-REKLAM §1, C1) Gelir akışı: yalnız gelir sağlayıcısı varken
+   * (Android, deneme `?gelir=sahte`). null iken can, reklam, Mağaza ve gelir
+   * ölçümü yok; oyun bugünkü gibidir.
+   */
+  readonly gelir: GelirAkisi | null;
   private ekranAdi_ = 'acilis';
   /** Güncel ekran adı (test/inceleme); değişince ölçüme `ekran` olayı yazılır. */
   get ekranAdi(): string {
@@ -162,6 +170,30 @@ export class Uygulama {
     });
     // Bulut kaydı (claude.ai, oturum açık) açılış ekranı beklerken yüklensin: ilk açılış kararı ona göre.
     void this.kayitci.bulutaBaglan();
+    // (CAN-REKLAM §5) Sağlayıcı sayfa başına bir kez seçilir; yoksa gelir akışı hiç kurulmaz.
+    const saglayici = gelirSaglayici();
+    this.gelir = saglayici
+      ? new GelirAkisi({
+          saglayici,
+          kayit: () => this.kayitci.kayit,
+          yaz: (k) => {
+            this.kayitci.degistir(k, 0);
+            this.kayitci.hemenYaz();
+          },
+          degistir: (k) => this.kayitci.degistir(k),
+          ui: this.ui,
+          bildir: (m, sure) => this.bildir(m, sure),
+          saat: duvarSaati,
+          bugun,
+          reklamKipi: (acik) => this.reklamKipi(acik),
+          ekran: (ad) => {
+            const onceki = this.ekranAdi;
+            this.ekranAdi = ad;
+            return onceki;
+          },
+          degisti: () => this.oturum.hudTazele(),
+        })
+      : null;
     // Girdi: geri çağırımlar oturuma gider (oturum hemen ardından kurulur).
     this.yc = yolCiziciOlustur({
       hedef: this.stage.canvas,
@@ -192,6 +224,7 @@ export class Uygulama {
       bekle: (ms) => this.bekle(ms),
       tabloTuvali: (kod, mahalle, nadirlik, bolumId, gunluk) => this.tablo(kod, mahalle, nadirlik, bolumId, gunluk),
       ekran: (ad) => (this.ekranAdi = ad),
+      gelir: this.gelir,
     });
     this.yc.kipAyarla('kapali');
     this.cizici.olayDinle((o) => {
@@ -217,6 +250,8 @@ export class Uygulama {
       this.molaIlerle();
     });
     setInterval(() => this.molaIlerle(), 5000);
+    // (CAN-REKLAM §10 G4) Can hapı: yalnız harita açıkken saniyede bir (tembel dolum kayda, hap tazelenir).
+    if (this.gelir) setInterval(() => this.canSaniyesi(), 1000);
     const dongu = (t: number) => {
       const dt = this.sonKare ? Math.min(100, t - this.sonKare) : 16;
       this.sonKare = t;
@@ -265,6 +300,8 @@ export class Uygulama {
     if (bulut) this.bulutKaydiUygula(bulut);
     else if (bulut === undefined) void this.kayitci.bulutaBaglan().then((k) => k && this.bulutKaydiGeldi(k));
     this.gunTazele();
+    // (CAN-REKLAM §4) Tembel dolum, fiyatlar ve açılışta tamamlanmamış satın almalar.
+    this.gelir?.baslat();
     const ilk = !Object.keys(this.kayit.bolumler).length;
     const sicak = veri.bolum ? this.kaynakBolum(veri.bolum) : null;
     if (sicak) {
@@ -357,7 +394,24 @@ export class Uygulama {
   }
 
   private haritaModeli() {
-    return haritaVM(this.kayit, prefGet(GORULEN_ANAHTARI, { parca: this.kayit.koleksiyon.parcalar.length, rozet: this.kayit.rozetler.length }));
+    const vm = haritaVM(this.kayit, prefGet(GORULEN_ANAHTARI, { parca: this.kayit.koleksiyon.parcalar.length, rozet: this.kayit.rozetler.length }));
+    // (CAN-REKLAM §6) Can hapı yalnız sağlayıcı varken (yoksa alan hiç eklenmez: model bugünküyle aynı).
+    if (this.gelir) vm.can = this.gelir.canSayaci();
+    return vm;
+  }
+
+  /** Harita açıkken saniyede bir: tembel dolum kayda (can_doldu zaman), hap tazelenir. */
+  private canSaniyesi(): void {
+    const g = this.gelir;
+    if (!g || !this.haritaAcik || this.oturum.durum !== 'kapali') return;
+    g.tazele();
+    this.ui.haritaCanGuncelle(g.canSayaci());
+  }
+
+  /** (CAN-REKLAM §3) Reklam açıkken oyun sesi kısılır, çizici durur. */
+  private reklamKipi(acik: boolean): void {
+    this.ses.ayarla({ sessiz: acik });
+    this.cizici.dev.dondur(acik);
   }
 
   private gorulenIsaretle(tur: 'parca' | 'rozet'): void {
@@ -467,6 +521,10 @@ export class Uygulama {
         return;
       case 'kasaba':
         await this.kasabaAkisi();
+        return;
+      case 'can':
+        // (CAN-REKLAM §6) Can hapı: can paneli (Mağaza'ya giriş de buradan, "Canları doldur").
+        await this.gelir?.canPaneliAkisi();
         return;
       default:
         return;
@@ -615,6 +673,14 @@ export class Uygulama {
         const c = await this.ui.bolumOncesi(bolumOncesiVM(v, d0, this.kayit, cosku, muhurIpucu));
         if (c === 'geri' || this.istek) return 'harita';
         kart = false;
+      }
+      // (CAN-REKLAM §2, C5) Bölüm başlatma kapısı: can harcayan bölüm 0 canla başlamaz; can bitti
+      // paneli açılır (reklam/satın alma can verirse bölüm başlar, Bekle → harita).
+      const g = this.gelir;
+      if (g && g.canGerekirMi(v) && g.tazele().sayi <= 0) {
+        g.canBitti(v);
+        await g.canPaneliAkisi({ kapi: true });
+        if (this.istek || g.durum().sayi <= 0) return 'harita';
       }
       this.ui.haritaGizle();
       this.ciziciAktif = true;
@@ -790,10 +856,13 @@ export class Uygulama {
       await this.ui.oyunOzeti(oyunOzetiVM(olcum.toplam(), Date.now(), olcum.ilkAcilis(), meta.kazanilanEnYuksek(this.kayit)));
       if (acik) this.ekranAdi = 'ayarlar';
     };
+    const g = this.gelir;
     const p = this.ui.ayarlar(ayarlarVM(this.kayit, this.kayitci.depo.backend, sistemAzHareket(), SURUM), {
       nasilAc: () => void this.ui.nasilOynanir(nasilVM(this.kayit)),
       defterKartiAc: (m, tur) => void this.ui.defterKarti({ mahalle: m, oduller: [], tur }),
       oyunOzetiAc: () => void ozetAc(),
+      // (CAN-REKLAM §4, §6) Mağaza satırı ve Hakkında metni yalnız sağlayıcı varken.
+      ...(g ? { magazaAc: () => void g.magazaAkisi(), gelirVar: true } : {}),
     });
     if (ozetle) void ozetAc();
     await p;
@@ -878,7 +947,8 @@ export class Uygulama {
         if (!r.tamam) return false;
         // Oyun içinden (Duraklat > Ayarlar): süren deneme yeni kayda yazılmadan biter.
         this.oturum.kayitsizBitir();
-        this.kayitci.degistir(r.kayit, 0);
+        // (CAN-REKLAM) Sağlayıcı varken can bu cihazda kalır, satın almalar korunur.
+        this.kayitci.degistir(this.gelir ? kayitKoduGelirKoru(r.kayit, this.kayit) : r.kayit, 0);
         this.ayarlariUygula();
         this.tabloOnbellek.clear();
         prefSet(GORULEN_ANAHTARI, { parca: r.kayit.koleksiyon.parcalar.length, rozet: r.kayit.rozetler.length });
@@ -1051,6 +1121,16 @@ export class Uygulama {
       ekran: () => this.ekranAdi,
       /** Ölçüm günlüğü ve özeti (docs/OLCUM.md). */
       olcum: () => ({ olaylar: olcum.olaylar(), ozet: olcumOzeti(olcum.olaylar()) }),
+      /** (CAN-REKLAM §10 G4) Gelir durumu: sağlayıcı, can, bugünkü reklam hakkı, Usta kartı, stok; sağlayıcı yoksa null. */
+      gelir: () => (this.gelir ? this.gelir.ozet() : null),
+      /** Yalnız test: can sayısını yazar (sağlayıcı yoksa false; can yalnız sağlayıcıyla vardır). */
+      canAyarla: (n: number) => {
+        const g = this.gelir;
+        if (!g) return false;
+        g.canAyarla(n);
+        if (this.haritaAcik) this.ui.haritaCanGuncelle(g.canSayaci());
+        return true;
+      },
       bolumAc: (id: number) => {
         const v = this.kaynakBolum(id);
         if (!v) return false;

@@ -73,7 +73,7 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   Coşku Serisi → Cheer Streak, Fener Nöbeti → Lantern Watch. Yeni metin
   eklerken iki dili birlikte yaz. Denetim: `src/dil/*.test.ts` (İngilizce
   tablolarda Türkçe harf yok) ve `node scripts/dil-tara.mjs <url> <klasör>`
-  (39 ekran, 0 kalıntı olmalı). Playwright araçları `locale: 'tr-TR'` ile
+  (55 ekran, 0 kalıntı olmalı). Playwright araçları `locale: 'tr-TR'` ile
   açılır (yoksa cihaz dili İngilizce sayılır).
 - Yayın ve gelir (Ekim 2026 kararı): `docs/YAYIN.md` — Android (Play Store),
   yumuşak can + yalnız istekle ödüllü reklam + küçük satın alma; claude.ai/tek
@@ -89,6 +89,19 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   İlk dakikalar denetimi: `node scripts/ilk-dakikalar.mjs <url> <klasör> [son]`
   (yeni oyuncu, gerçek hız; araya giren her balon/modal/bant metni, kelime,
   süre tahmini → `rapor.md`). Sonuçlar `docs/YAYIN.md` "Aşama 1 denetimi".
+- Can + reklam + satın alma (aşama 2, `docs/CAN-REKLAM.md`; §13 sözleşme ve
+  G4 notu): yalnız gelir sağlayıcısı varken (`platform/gelir.ts`
+  `gelirSaglayici()`; Android köprüsü `window.FitilYerel.gelir`, web'de
+  deneme `?gelir=sahte` ya da cihazda `localStorage` `fitil.gelir` =
+  `sahte`; `?reklam=hizli|yok|hata`, `?satin=iptal|hata`, `?gelir=yok`).
+  Yoksa (claude.ai, `fitil.html`) can, reklam, Mağaza ve gelir ölçümü yok.
+  Kayıt mantığı `meta/can.ts` (saf; `simdi` duvar saati, `bugun` yyyymmdd;
+  `k.can`/`k.gelir` olmayabilir), sahte sağlayıcı `platform/gelirSahte.ts`,
+  ekranlar `ui/ekranlar/can.ts`, `magaza.ts` (önizleme `dev/arayuz.html?ekran=can|magaza|kaybettin&v=…`),
+  akış `app/gelirAkisi.ts` (`Uygulama.gelir`, oturuma `gelir`). Test
+  kancası `__fitil.gelir()`, `__fitil.canAyarla(n)`; oynanış profili
+  `gelir` (yalnız adıyla; §11 adımları), gelirsiz profiller can hapı/Mağaza/
+  reklam düğmesi YOK denetler.
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).
@@ -117,6 +130,7 @@ npm run bot -- --muhur --bolum 22 --katalog          # + bölüme uyan aday müh
 node scripts/shot.mjs <url> <png> [w] [h] [bekleme-ms] [js]   # telefon görünümü (390×844)
 npm run oynanis -- http://127.0.0.1:5185/ playtest-output [telefon|masaustu|kucuk]   # tam akış duman testi
 npm run oynanis -- http://127.0.0.1:5185/ playtest-output goc,goc600   # şema 2 kaydının göçü + kasaba + mühür (390×700, 375×600)
+npm run oynanis -- http://127.0.0.1:5185/ playtest-output gelir         # can + reklam + Mağaza (?gelir=sahte&reklam=hizli, CAN-REKLAM §11)
 ```
 
 Oynanış testi (`scripts/oynanis.mjs`) dev sunucusuna ya da `file://…/fitil.html`'e

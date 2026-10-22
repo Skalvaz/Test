@@ -44,6 +44,7 @@ import { kareBekle, simdi } from './zaman';
 import { MK } from '../ui/metinler';
 import { USTA_ELI_HAMLE } from '../core/sabitler';
 import { t } from '../platform/dil';
+import type { GelirAkisi } from './gelirAkisi';
 
 export type OturumSonucu =
   | { tur: 'tekrar' }
@@ -69,6 +70,11 @@ export interface OturumOrtami {
   tabloTuvali(kod: string, mahalle: number, nadirlik: meta.Nadirlik, bolumId: number, gunlukTarih?: number): HTMLCanvasElement | null;
   /** Ekran adı (test kancası). */
   ekran(ad: string): void;
+  /**
+   * (CAN-REKLAM §2–§3) Gelir akışı: yalnız sağlayıcı varken; null iken can,
+   * reklamla +5 hamle ve çıkış onayı yok (Kaybettin ve Duraklat bugünkü gibi).
+   */
+  gelir?: GelirAkisi | null;
 }
 
 type SecimTuru = 'koruk' | 'kibrit' | 'kalip';
@@ -185,6 +191,13 @@ export class Oturum {
   private acikBaslangic: string | null = null;
   /** (Kancalar §C.3) Son eylemden önceki mühür durumları: yeni 'tuttu' uçuşu için. */
   private muhurOnceki: meta.MuhurAnlikDurumu[] = [];
+  /**
+   * (CAN-REKLAM §2) Bu denemede can düştü (kayıpta): devamdan sonraki ikinci
+   * kayıp ve çıkış yeniden düşürmez; devamla kazanç `canIade` ile geri verir.
+   */
+  private harcananCan = false;
+  /** Bu denemenin devamı: Usta'nın Eli ya da reklamla +5 hamle (ölçümde `eli` / `reklam`). */
+  private devam: 'eli' | 'reklam' | null = null;
 
   constructor(private o: OturumOrtami) {}
 
@@ -248,6 +261,8 @@ export class Oturum {
     this.sonucYazildi = false;
     this.baslangicBekliyor = false;
     this.acikBaslangic = null;
+    this.harcananCan = false;
+    this.devam = null;
     this.muhurOnceki = this.muhurDurumlari();
     ses.tahtaBoyutu(d0.w, d0.h);
     ui.hudKur(this.hudModeli());
@@ -863,9 +878,20 @@ export class Oturum {
       // Oynatma sürerken HUD olaylarla ilerlemiştir: kart hamle SONRASI durumu göstersin.
       secim = await ui.duraklat(duraklatVM(this.v, this.oynatilanSonraki ?? this.d, cosku, this.kayit, this.oz));
       if (jeton !== this.jeton) return;
-      if (secim !== 'ayarlar') break;
-      await this.o.ayarlarAc();
-      if (jeton !== this.jeton) return;
+      if (secim === 'ayarlar') {
+        await this.o.ayarlarAc();
+        if (jeton !== this.jeton) return;
+        continue;
+      }
+      // (CAN-REKLAM §2, C4) Hamle yapılmış, can harcayan bölümden çıkış/yeniden başlama 1 can:
+      // önce sayfa içi onay; Vazgeç → Duraklat yeniden açılır.
+      if ((secim === 'harita' || secim === 'yeniden') && this.cikisCanGerekir()) {
+        this.o.ekran('cikisOnayi');
+        const onay = await ui.cikisOnayi(secim);
+        if (jeton !== this.jeton) return;
+        if (!onay) continue;
+      }
+      break;
     }
     this.olcumDurak('menu', false);
     cizici.karart(0);
@@ -884,9 +910,23 @@ export class Oturum {
       return;
     }
     // Yeniden başlamak ve haritaya dönmek kayıp sayılır (§14.5; Coşku bozulur) — hamle yapıldıysa.
+    const canGider = this.cikisCanGerekir();
     if (this.hamleSayisi > 0) this.sonucKaydet(false, undefined, undefined, true);
     else this.olcumBitti('cikis');
+    // Onaylanan çıkışın canı (kayıtla birlikte hemen yazılır).
+    if (canGider && this.v) this.o.gelir?.canHarca(this.v, 'cikis');
     this.bitir({ tur: secim === 'yeniden' ? 'tekrar' : 'harita' });
+  }
+
+  /**
+   * (CAN-REKLAM §2) Duraklat'tan çıkış can götürür mü: sağlayıcı var, bölüm
+   * can harcıyor, en az bir hamle yapıldı, düşecek can var ve bu deneme can
+   * ödemedi (kayıpta düşen can ya da devam: aynı deneme ikinci kez ödemez).
+   */
+  private cikisCanGerekir(): boolean {
+    const g = this.o.gelir;
+    if (!g || !this.v || this.hamleSayisi <= 0 || this.harcananCan || this.devam) return false;
+    return g.canGerekirMi(this.v) && g.durum().sayi > 0;
   }
 
   // ─────────────────────────── Sonuç ───────────────────────────
@@ -925,7 +965,9 @@ export class Oturum {
       hamle: this.hamleSayisi,
       sure: this.olcumSuresi(),
       deneme: this.denemeNo,
-      eli: !!this.d?.istatistik.ustaEli,
+      // (CAN-REKLAM §3) Reklamla +5 hamle devamı Eli'den ayrı sayılır: eli false, reklam true.
+      eli: !!this.d?.istatistik.ustaEli && this.devam !== 'reklam',
+      ...(this.devam === 'reklam' ? { reklam: true } : {}),
     });
   }
 
@@ -986,6 +1028,11 @@ export class Oturum {
       this.d = final.durum;
     }
     const { sonuc, onceki } = this.sonucKaydet(true, kazancKalan, muhurler);
+    // (CAN-REKLAM §2, C4) Devamla (Eli ya da reklamla +5) kazanç: kayıpta giden can geri gelir.
+    if (this.harcananCan && this.devam) {
+      this.harcananCan = false;
+      this.o.gelir?.canIade();
+    }
     await this.o.bekle(420);
     if (jeton !== this.jeton) return;
     if (final && final.olaylar.length > 2) {
@@ -1083,6 +1130,17 @@ export class Oturum {
     this.zamanlayicilariDurdur();
     const coskuOnce = this.kayit.cosku;
     this.sonucKaydet(false);
+    // (CAN-REKLAM §2, C4) Kayıp anında 1 can düşer, kayıtla birlikte hemen yazılır (çökme güvenli).
+    // Aynı denemede devamdan (Eli ya da reklam) sonraki ikinci kayıp yeniden düşürmez.
+    const gelir = this.o.gelir ?? null;
+    const canli = !!gelir && gelir.canGerekirMi(v);
+    let canDustu = false;
+    if (gelir && canli && !this.devam && !this.harcananCan) {
+      if (gelir.canHarca(v, 'kayip') !== null) {
+        this.harcananCan = true;
+        canDustu = true;
+      }
+    }
     // "Bu çizgi kazandırırdı" (§11 kanca 12): son hamleden önceki durumda, bütçeli ve zaman dilimli.
     let hayalet: KazandiranYol | null = null;
     const once = this.sonHamleOncesi;
@@ -1091,12 +1149,52 @@ export class Oturum {
     const ustaEli = v.tur !== 'gunluk' && !this.d!.istatistik.ustaEli && meta.ustaEliSunulur(this.kayit, v.id);
     let hayaletDurumu: KaybettinVM['hayalet'] = hayalet ? 'var' : 'yok';
     const coskuSifirlandi = coskuOnce > 0 && this.kayit.cosku === 0;
+    // (CAN-REKLAM §3, C7) "+5 hamle" reklam teklifi: Eli sunulmuyorsa, Günün Şenliği değilse,
+    // denemede bir kez (Eli ya da reklam), reklam hazırsa ya da Usta kartıyla. `yok`/`hata`dan sonra gizli.
+    const reklamUygun = !!gelir && !ustaEli && v.tur !== 'gunluk' && !this.d!.istatistik.ustaEli;
+    let reklamGizli = false;
+    let teklifYazildi = false;
+    const gelirEki = (): Partial<KaybettinVM> => {
+      if (!gelir) return {};
+      const kart = gelir.ustaKarti();
+      const sayi = gelir.durum().sayi;
+      return {
+        // Sağlayıcı varken "Can yok, bekleme yok" notu hiç çıkmaz (ücretsiz bölüm, devamdan sonraki kayıp).
+        gelirVar: true,
+        can: canDustu ? { kalan: sayi } : null,
+        reklamHamle: reklamUygun && !reklamGizli && (kart || gelir.reklamHazir('hamle')) ? { kart } : null,
+        canBitti: canli && sayi <= 0,
+      };
+    };
     for (;;) {
       this.o.ekran('kaybettin');
       this.sonucAcik = true;
-      const secim = await ui.kaybettin(kaybettinVM(v, this.d!, hayaletDurumu, ustaEli, coskuSifirlandi));
+      const vm: KaybettinVM = { ...kaybettinVM(v, this.d!, hayaletDurumu, ustaEli, coskuSifirlandi), ...gelirEki() };
+      if (gelir && vm.reklamHamle && !teklifYazildi) {
+        teklifYazildi = true;
+        gelir.reklamTeklif('hamle');
+      }
+      const secim = await ui.kaybettin(vm);
       if (jeton !== this.jeton) return;
       this.sonucAcik = false;
+      if (secim === 'reklamHamle' && gelir && vm.reklamHamle) {
+        // Kaybettin kapandı; reklam (ya da Usta kartı) ödül verirse Eli yolu: +5 hamle, en çok 1★, mühür yok.
+        const sonuc = await gelir.reklamOdulu('hamle');
+        if (jeton !== this.jeton) return;
+        if (sonuc === 'odul') {
+          await this.ustaEli(jeton, 'reklam');
+          return;
+        }
+        // iptal: Kaybettin yerinde (düğme durur); yok/hata: bildirim (gelir akışı), düğme gizlenir.
+        if (sonuc !== 'iptal') reklamGizli = true;
+        continue;
+      }
+      if (secim === 'canBitti' && gelir) {
+        // (C5) Can bitti paneli; kapanınca Kaybettin yeniden (can geldiyse "Tekrar dene" döner).
+        await gelir.canPaneliAkisi();
+        if (jeton !== this.jeton) return;
+        continue;
+      }
       if (secim === 'hayalet' && hayalet && once) {
         await this.hayaletGoster(once, hayalet, jeton);
         if (jeton !== this.jeton) return;
@@ -1153,8 +1251,11 @@ export class Oturum {
     cizici.karart(0.55);
   }
 
-  /** Kıvılcım Usta'nın Eli (K16): +5 hamle, en fazla 1★; aynı denemede bir kez. */
-  private async ustaEli(jeton: number): Promise<void> {
+  /**
+   * Kıvılcım Usta'nın Eli (K16): +5 hamle, en fazla 1★; aynı denemede bir kez.
+   * (CAN-REKLAM §3, C7) Reklamla +5 hamle de bu yoldan (`tur` 'reklam'): kurallar aynı.
+   */
+  private async ustaEli(jeton: number, tur: 'eli' | 'reklam' = 'eli'): Promise<void> {
     const { cizici, ui } = this.o;
     let r;
     try {
@@ -1163,6 +1264,7 @@ export class Oturum {
       this.bitir({ tur: 'tekrar' });
       return;
     }
+    this.devam = tur;
     cizici.karart(0);
     this.durum = 'oynuyor';
     this.olayJetonu = jeton;

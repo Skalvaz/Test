@@ -54,6 +54,19 @@ yeniden yazmaz; `reklam_teklif`, Usta kartıyla reklamsız ödül
 (`reklam_sonuc` `kart: true`, `sonuc: odul`) ve `can_*` olayları uygulamanın.
 `bekleyenler()` ölçülmez (aynı satın alma her açılışta yeniden gelebilir).
 
+Uygulama tarafı (`src/app/gelirAkisi.ts`, G4): `can_doldu` can sayısı
+arttığında bir kez yazılır (kaç can geldiğinden bağımsız). `zaman`: tembel
+dolum kayda yazılırken (açılış, harita hapı saniyede bir, can paneli, her
+can işleminden önce) kayıttaki önceki → sonraki fark; `reklam`: reklam ya da
+Usta kartıyla +1; `satin`: `can_doldur` (can zaten doluysa yazılmaz);
+`iade`: devamla kazanç. `can_bitti`: kayıp ya da onaylı çıkış canı 0'a
+indirdiğinde ve 0 canla bölüm başlatılmak istendiğinde (kapı); Kaybettin'in
+"Can bitti" düğmesi yeniden yazmaz. `reklam_teklif`: can panelinin her
+açılışında reklam (ya da Usta kartı) düğmesi görünüyorsa, Kaybettin'de
+"+5 hamle" ilk gösterildiğinde (kayıp başına bir kez). `bolum_bitti`:
+reklamla devam edilen denemede `reklam: true` ve `eli: false` (Eli ile
+devamda `eli: true`).
+
 ## Göstergeler (özet: `olcumOzeti`, test kancası `__fitil.olcum()`)
 
 - Bölüm hunisi: bölüm başına başlama, kazanç, kayıp, çıkış, ilk kazanca kadar
