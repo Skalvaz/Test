@@ -140,7 +140,7 @@ describe('magazaVM', () => {
   });
   it('paket stok sınırını aşacaksa stokDolu, Usta kartı sende, fiyat gelmediyse null, listede yoksa yok', () => {
     const k = kayitCanli(2, { gelir: { ustaKarti: true, jetonlar: [] } });
-    k.guclendiriciler = { kibrit: 1, kalip: 0, geriSar: 0 };
+    k.guclendiriciler = { kibrit: 7, kalip: 0, geriSar: 0 };
     expect(magazaVM(k, T0, FIYAT).urunler.map((u) => u.durum)).toEqual(['satilik', 'stokDolu', 'sende']);
     k.guclendiriciler = { kibrit: 0, kalip: 0, geriSar: 0 };
     expect(magazaVM(k, T0, null).urunler.map((u) => [u.durum, u.fiyat])).toEqual([
@@ -176,7 +176,7 @@ describe('GelirAkisi: satın alma', () => {
   });
   it('stok dolu paket ve dolu can satılmaz (sağlayıcıya gidilmez); Usta kartı sendeyken de', async () => {
     const k = kayitCanli(5, { gelir: { ustaKarti: true, jetonlar: [] } });
-    k.guclendiriciler = { kibrit: 1, kalip: 0, geriSar: 0 };
+    k.guclendiriciler = { kibrit: 7, kalip: 0, geriSar: 0 };
     const { g, r } = kur(k);
     await g.urunleriYukle();
     expect(await g.satinAl('guclendirici_paketi')).toBe('satilmaz');
@@ -211,7 +211,7 @@ describe('GelirAkisi: satın alma', () => {
   });
   it('bekleyenler: verilen ve tekrar tamamlanır, sığmayan paket beklemede kalır', async () => {
     const k = kayitCanli(2, { gelir: { ustaKarti: false, jetonlar: ['b0'] } });
-    k.guclendiriciler = { kibrit: 2, kalip: 0, geriSar: 0 };
+    k.guclendiriciler = { kibrit: 7, kalip: 0, geriSar: 0 };
     const { g, r, kayit } = kur(k, {
       bekleyen: [
         { urun: 'can_doldur', jeton: 'b1' },
@@ -223,7 +223,7 @@ describe('GelirAkisi: satın alma', () => {
     expect(r.adimlar.filter((a) => a.startsWith('tamamla'))).toEqual(['tamamla:b1', 'tamamla:b0']);
     expect(r.adimlar.indexOf('yaz')).toBeLessThan(r.adimlar.indexOf('tamamla:b1'));
     expect(meta.canDurumu(kayit(), T0).sayi).toBe(5);
-    expect(kayit().guclendiriciler.kibrit).toBe(2);
+    expect(kayit().guclendiriciler.kibrit).toBe(7);
     expect(r.bildirimler).toEqual(['Satın alındı']);
   });
   it('geri yükleme yalnız kalıcı ürünü verir; zaten sendeyse kayıt aynı; boş liste ayrı bildirim', async () => {

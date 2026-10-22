@@ -14,7 +14,7 @@
  * Kayıt her zaman düz JSON'dur (sınıf, Map, undefined yok) — buluta ve koda
  * aynen yazılır.
  */
-import { DESENLER, FITILLER, GOKYUZU, GUCLENDIRICI_STOK_SINIRI, GUCLENDIRICILER, MAHALLELER, EN_FAZLA_TAKILI_DESEN } from '../app/katalog';
+import { DESENLER, FITILLER, GOKYUZU, GUCLENDIRICI_SATIN_SINIRI, GUCLENDIRICILER, MAHALLELER, EN_FAZLA_TAKILI_DESEN } from '../app/katalog';
 import type { DesenId, FitilId, GokyuzuId, GuclendiriciId } from '../app/katalog';
 import type { Palet } from '../app/sozlesme';
 import { fnv1a, mulberry32Bir } from '../core/rng';
@@ -718,7 +718,7 @@ export function kayitOnar(ham: unknown, yedekTohum = 0): OnarimSonucu {
   v.toz = tamsayi(o.toz, 0, TOZ_TAVANI, 0, 'toz', not);
   const guc = nesne(o.guclendiriciler);
   if (guc !== o.guclendiriciler) not('guclendiriciler');
-  for (const id of GUC_IDLERI) v.guclendiriciler[id] = tamsayi(guc[id], 0, GUCLENDIRICI_STOK_SINIRI, 0, `guclendiriciler.${id}`, not);
+  for (const id of GUC_IDLERI) v.guclendiriciler[id] = tamsayi(guc[id], 0, GUCLENDIRICI_SATIN_SINIRI, 0, `guclendiriciler.${id}`, not);
   v.hediyeler = kumeFiltre(o.hediyeler, (x): x is GuclendiriciId => typeof x === 'string' && (GUC_IDLERI as string[]).includes(x), 'hediyeler', not);
 
   // sandık
@@ -1144,7 +1144,7 @@ export function ilerlemeyiSifirla(k: Kayit, yeniTohum: number): Kayit {
     y.gelir = gelirOnar(k.gelir);
     for (const id of GUC_IDLERI) {
       const n = k.guclendiriciler?.[id];
-      y.guclendiriciler[id] = typeof n === 'number' && Number.isFinite(n) ? Math.min(GUCLENDIRICI_STOK_SINIRI, Math.max(0, Math.floor(n))) : 0;
+      y.guclendiriciler[id] = typeof n === 'number' && Number.isFinite(n) ? Math.min(GUCLENDIRICI_SATIN_SINIRI, Math.max(0, Math.floor(n))) : 0;
     }
   }
   return y;

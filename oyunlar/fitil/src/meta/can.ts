@@ -29,7 +29,7 @@
  *  - Can yalnız gelir sağlayıcısı varken vardır (C1); bu işlevler sağlayıcıyı
  *    bilmez, kapıyı uygulama (G4) tutar.
  */
-import { GUCLENDIRICI_STOK_SINIRI, GUCLENDIRICILER } from '../app/katalog';
+import { GUCLENDIRICI_SATIN_SINIRI, GUCLENDIRICILER } from '../app/katalog';
 import type { GuclendiriciId } from '../app/katalog';
 import type { BolumVerisi } from '../core/types';
 import type { UrunId } from '../platform/gelir';
@@ -441,12 +441,12 @@ export function reklamCanKullan(k: Kayit, simdi: number, bugun: number): Kayit {
 
 /**
  * Güçlendirici paketi şu an verilebilir mi: her güçlendirici için stok +
- * `GUCLENDIRICI_PAKETI[id]` ≤ `GUCLENDIRICI_STOK_SINIRI`. Güçlendiricinin
+ * `GUCLENDIRICI_PAKETI[id]` ≤ `GUCLENDIRICI_SATIN_SINIRI` (9; hediye sınırı 3 değil). Güçlendiricinin
  * açılmış olması GEREKMEZ (C13: satın alınan stok açılmamışken de bekler).
  * false ise Mağaza paketi "Stok dolu" gösterir ve satmaz (§4).
  */
 export function paketSigarMi(k: Kayit): boolean {
-  return GUCLENDIRICILER.every((g) => stok(k, g.id) + GUCLENDIRICI_PAKETI[g.id] <= GUCLENDIRICI_STOK_SINIRI);
+  return GUCLENDIRICILER.every((g) => stok(k, g.id) + GUCLENDIRICI_PAKETI[g.id] <= GUCLENDIRICI_SATIN_SINIRI);
 }
 
 /**

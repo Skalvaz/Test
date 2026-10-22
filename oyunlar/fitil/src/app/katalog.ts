@@ -107,6 +107,12 @@ export const GUCLENDIRICILER: readonly { id: GuclendiriciId; ad: string; acilis:
   { id: 'geriSar', ad: t('Geri Sar', 'Undo'), acilis: 20, hediye: 1 },
 ];
 export const GUCLENDIRICI_STOK_SINIRI = 3;
+/**
+ * Satın alınan stokla birlikte en çok (CAN-REKLAM §4): oyun içi hediye ve sandık
+ * stoğu `GUCLENDIRICI_STOK_SINIRI`'na kadar doldurur, güçlendirici paketi bu
+ * sınıra kadar ekler (3 ile paket neredeyse hiç sığmıyordu). Onarım da bunu kırpar.
+ */
+export const GUCLENDIRICI_SATIN_SINIRI = 9;
 
 /** Kapsül renkleri (§2.3, §13.1). */
 export const KAPSUL_RENKLERI = [

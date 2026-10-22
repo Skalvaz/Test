@@ -748,7 +748,7 @@ async function gelirProfili({ page, p, kare, dokun, dugme, botlaBitir, haritayaD
   await bekleKosul(page, () => !!document.querySelector('.f-magaza-modal:not(.f-cikis) .f-mg-d-sende'), null, 8000, 'Sende var');
   await page.waitForTimeout(500);
   const durumlar = await page.evaluate(() => [...document.querySelectorAll('.f-magaza-modal:not(.f-cikis) .f-mg-urun')].map((e) => [...e.classList].find((c) => c.startsWith('f-mg-d-'))));
-  if (JSON.stringify(durumlar) !== JSON.stringify(['f-mg-d-stokDolu', 'f-mg-d-stokDolu', 'f-mg-d-sende'])) hatalar.push(`[${p.ad}] Mağaza durumları: ${durumlar}`);
+  if (JSON.stringify(durumlar) !== JSON.stringify(['f-mg-d-stokDolu', 'f-mg-d-satilik', 'f-mg-d-sende'])) hatalar.push(`[${p.ad}] Mağaza durumları: ${durumlar}`);
   await kare('magaza-sende');
   await page.locator('.f-magaza-modal:not(.f-cikis) .f-mg-geri').click();
   await bekleKosul(page, () => window.__fitil.ekran() === 'magaza' && !!document.querySelector('.f-magaza-modal:not(.f-cikis)'), null, 8000, 'geri yükleme → Mağaza');

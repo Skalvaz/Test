@@ -82,7 +82,7 @@ describe('Türkçe metinler şartnameyle birebir (CAN-REKLAM §6)', () => {
   });
   it('Hakkında: sağlayıcı yokken metin aynen, varken can cümlesi', () => {
     expect(M.hakkindaMetin).toBe('Fener Koyu’nun Işık Şenliği’ni yeniden yak. Can yok, bekleme yok, mağaza yok.');
-    expect(M.hakkindaMetinGelir).toBe('Fener Koyu’nun Işık Şenliği’ni yeniden yak. Canlar 30 dakikada dolar; reklam yalnız sen isteyince.');
+    expect(M.hakkindaMetinGelir).toBe('Fener Koyu’nun Işık Şenliği’ni yeniden yak. Her 30 dakikada 1 can dolar; reklam yalnız sen isteyince.');
   });
   it('ürün adları her ürün için var; paket açıklaması GUCLENDIRICI_PAKETI ile tutarlı', () => {
     for (const id of URUN_IDLERI) {

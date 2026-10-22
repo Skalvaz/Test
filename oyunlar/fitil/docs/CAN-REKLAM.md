@@ -85,8 +85,9 @@ alır ("+1 can", "+5 hamle"), aynı günlük ve deneme sınırlarıyla.
   fiyat yazılmaz.
 - **Güçlendirici paketi:** satın alınan stok, güçlendirici henüz açılmamış
   olsa da stokta kalır (toza dönmez; `guclendiriciVer_yerinde`'nin
-  "açılmamış → toz" kuralı yalnız oyun içi hediyeler için). Stok sınırı
-  (`GUCLENDIRICI_STOK_SINIRI`) satın almada da geçerli; sınırı aşacaksa paket
+  "açılmamış → toz" kuralı yalnız oyun içi hediyeler için). Satın alınan
+  stokla en çok `GUCLENDIRICI_SATIN_SINIRI` (9; hediye/sandık sınırı 3
+  aynen kalır, onarım 9'a kırpar); sınırı aşacaksa paket
   düğmesi "Stok dolu" der ve satılmaz.
 - **Çifte verme koruması:** başarılı satın alma jetonu `gelir.jetonlar`'a
   (son 50) yazılır; aynı jeton ikinci kez ödül vermez. Ödül önce kayda yazılır,
@@ -160,7 +161,7 @@ export function gelirSaglayici(): GelirSaglayici | null;
 - **Sahte reklam katmanı** sağlayıcının içindedir (arayüz değil); görünüşü
   sade, "DENEME" etiketli.
 - **Hakkında metni** bugün "Can yok, bekleme yok, mağaza yok." diyor:
-  sağlayıcı varken bu cümle yerine "Canlar 30 dakikada dolar; reklam yalnız
+  sağlayıcı varken bu cümle yerine "Her 30 dakikada 1 can dolar; reklam yalnız
   sen isteyince." (iki dil) gösterilir; sağlayıcı yokken metin aynen kalır.
 
 ## 7. Kayıt (`src/meta/kayit.ts`)
@@ -389,15 +390,16 @@ serbest.
   yapılamadı"); reklam/satın alma süre sınırı yalnız sayfa görünürken
   işler. Sahte reklamda süre dolduktan sonra Esc = `odul`.
 
-### Ürün sahibine (uygulanmadı, rapor)
+### Ürün sahibine (rapor)
 
-- C8 + stok sınırı 3: paketteki 3 Kibrit yalnız Kibrit stoğu 0 iken sığar
-  (Kalıp ve Geri Sar ≤ 1); paket çoğu zaman "Stok dolu" görünebilir.
+- C8 + stok sınırı 3: paketteki 3 Kibrit yalnız Kibrit stoğu 0 iken
+  sığıyordu. Entegrasyonda düzeltildi: satın alma sınırı ayrı,
+  `GUCLENDIRICI_SATIN_SINIRI` = 9 (paket üç kez üst üste alınabilir).
 - §7 "`kancaBirlestir` yeni alanları seçilen kayıttan alır": öbür kayıttaki
   Usta kartı ve jetonlar düşebilir (Android'de bulut yok; geri yükleme kartı
   kurtarır). Öneri: `ustaKarti` VEYA, jetonlar birleşimi. (G1 öneriyi
   uyguladı; can seçilen kayıttan kalır.)
 - Hakkında metni (§6) Türkçede "Canlar 30 dakikada dolar" diyor: bütün
   canların 30 dk'da dolduğu anlaşılabilir (kural: 30 dk'da +1, 0 → 5
-  2,5 saat). İngilizce "A life refills every 30 minutes" doğru. Öneri:
-  "Her 30 dakikada 1 can dolar; reklam yalnız sen isteyince." (onay bekliyor).
+  2,5 saat). İngilizce "A life refills every 30 minutes" doğru. Entegrasyonda
+  "Her 30 dakikada 1 can dolar; reklam yalnız sen isteyince." yapıldı.

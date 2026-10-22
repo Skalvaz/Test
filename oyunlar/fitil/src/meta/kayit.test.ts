@@ -88,7 +88,7 @@ describe('onarım (bozuk alan → varsayılan)', () => {
     const k = ilerlet(6, 2);
     const bozuk = JSON.parse(JSON.stringify(k)) as Record<string, any>;
     bozuk.toz = -40;
-    bozuk.guclendiriciler.kibrit = 9;
+    bozuk.guclendiriciler.kibrit = 12;
     bozuk.guclendiriciler.kalip = 'çok';
     bozuk.bolumler['3'].yildiz = 7;
     bozuk.bolumler['4'] = 'bozuk';
@@ -106,7 +106,7 @@ describe('onarım (bozuk alan → varsayılan)', () => {
     delete bozuk.istatistik;
     const { kayit: v, onarilan } = kayitOnar(bozuk);
     expect(v.toz).toBe(0);
-    expect(v.guclendiriciler.kibrit).toBe(3);
+    expect(v.guclendiriciler.kibrit).toBe(9); // satın alma sınırı (GUCLENDIRICI_SATIN_SINIRI)
     expect(v.guclendiriciler.kalip).toBe(0);
     expect(v.bolumler['3'].yildiz).toBe(3);
     expect(v.bolumler['4']).toBeUndefined();

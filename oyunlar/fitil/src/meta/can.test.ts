@@ -4,7 +4,7 @@
  * paket stok sınırı, açılmamış güçlendirici, onarım, birleştirme, eski kayıt.
  */
 import { describe, expect, it } from 'vitest';
-import { GUCLENDIRICI_STOK_SINIRI } from '../app/katalog';
+import { GUCLENDIRICI_SATIN_SINIRI, GUCLENDIRICI_STOK_SINIRI } from '../app/katalog';
 import { rngInt } from '../core/rng';
 import { TUM_BOLUMLER } from '../levels';
 import { URUN_IDLERI, URUN_TURLERI } from '../platform/gelir';
@@ -304,28 +304,35 @@ describe('satın alma (§4, C8, C13): jeton korumalı', () => {
     expect(r.kayit.can).toBeUndefined();
     // Onarım stoğu korur (stok sınırı açılmadan bağımsız).
     expect(kayitOnar(JSON.parse(anlik(r.kayit))).onarilan).toEqual([]);
-    // İkinci paket sığmaz: verilmez, kayıt aynen döner, jeton yazılmaz (tamamla çağrılmaz).
-    expect(paketSigarMi(r.kayit)).toBe(false);
-    const s = satinAlmaUygula(r.kayit, 'guclendirici_paketi', 'p2', T0);
-    expect(s).toEqual({ kayit: r.kayit, verildi: false, tekrar: false });
-    expect(s.kayit).toBe(r.kayit);
+    // Satın alma sınırı 9: ikinci ve üçüncü paket sığar, dördüncü sığmaz: verilmez,
+    // kayıt aynen döner, jeton yazılmaz (tamamla çağrılmaz).
+    expect(paketSigarMi(r.kayit)).toBe(true);
+    const p2 = satinAlmaUygula(r.kayit, 'guclendirici_paketi', 'p2', T0);
+    const p3 = satinAlmaUygula(p2.kayit, 'guclendirici_paketi', 'p3', T0);
+    expect(p3.kayit.guclendiriciler).toEqual({ kibrit: 9, kalip: 6, geriSar: 6 });
+    expect(kayitOnar(JSON.parse(anlik(p3.kayit))).onarilan).toEqual([]);
+    expect(paketSigarMi(p3.kayit)).toBe(false);
+    const s = satinAlmaUygula(p3.kayit, 'guclendirici_paketi', 'p4', T0);
+    expect(s).toEqual({ kayit: p3.kayit, verildi: false, tekrar: false });
+    expect(s.kayit).toBe(p3.kayit);
     // Kibrit 7. bölümde açılınca satın alınan stok yerinde kalır; açılış hediyesi sığmayan kısmı toza döner.
     const a = ilerlet(6, 1, r.kayit);
     expect(a.guclendiriciler.kibrit).toBe(GUCLENDIRICI_STOK_SINIRI);
     expect(a.toz).toBeGreaterThan(0);
   });
 
-  it('paketSigarMi: her güçlendirici için stok + paket ≤ sınır', () => {
+  it('paketSigarMi: her güçlendirici için stok + paket ≤ satın alma sınırı (9)', () => {
+    expect(GUCLENDIRICI_SATIN_SINIRI).toBe(9);
     const k = yeniKayit(9);
     const st = (kibrit: number, kalip: number, geriSar: number) => ({ ...kayitKopyala(k), guclendiriciler: { kibrit, kalip, geriSar } });
-    expect(paketSigarMi(st(0, 1, 1))).toBe(true);
-    expect(paketSigarMi(st(1, 0, 0))).toBe(false);
-    expect(paketSigarMi(st(0, 2, 0))).toBe(false);
-    expect(paketSigarMi(st(0, 0, 2))).toBe(false);
-    // Açık oyuncu: 7. bölümde kibrit hediyesi (2) gelir; paket sığmaz ("Stok dolu").
+    expect(paketSigarMi(st(6, 7, 7))).toBe(true);
+    expect(paketSigarMi(st(7, 0, 0))).toBe(false);
+    expect(paketSigarMi(st(0, 8, 0))).toBe(false);
+    expect(paketSigarMi(st(0, 0, 8))).toBe(false);
+    // Açık oyuncu: 7. bölümde kibrit hediyesi (2, hediye sınırı 3) gelir; paket yine sığar.
     const acik = ilerlet(6, 1);
     expect(acik.guclendiriciler.kibrit).toBe(2);
-    expect(paketSigarMi(acik)).toBe(false);
+    expect(paketSigarMi(acik)).toBe(true);
   });
 
   it('Usta kartı: kalıcı bayrak; zaten varken jeton yine yazılır', () => {
@@ -531,7 +538,7 @@ describe.each([
     expect(r.kayit.gelir).toBeUndefined();
     expect(canDurumu(r.kayit, T0)).toEqual({ sayi: 5, enCok: 5, sonrakiMs: null });
     expect(reklamCanHakki(r.kayit, D)).toBe(3);
-    expect(paketSigarMi(r.kayit)).toBe(r.kayit.guclendiriciler.kibrit === 0 && r.kayit.guclendiriciler.kalip <= 1 && r.kayit.guclendiriciler.geriSar <= 1);
+    expect(paketSigarMi(r.kayit)).toBe(r.kayit.guclendiriciler.kibrit <= 6 && r.kayit.guclendiriciler.kalip <= 7 && r.kayit.guclendiriciler.geriSar <= 7);
     expect(canTazele(r.kayit, T0)).toBe(r.kayit);
     // İlk kayıp can alanını kurar; kayıt yeniden yüklenince aynen gelir.
     const h = canHarca(r.kayit, T0, 'kayip');
@@ -621,7 +628,7 @@ describe('bulanık: rastgele can/reklam/satın alma dizisi', () => {
         expect(canTazele(tz, t)).toBe(tz);
         expect(reklamCanHakki(y, gun)).toBeGreaterThanOrEqual(0);
         expect(reklamCanHakki(y, gun)).toBeLessThanOrEqual(REKLAM_CAN_GUNLUK);
-        for (const v of Object.values(y.guclendiriciler)) expect(v).toBeLessThanOrEqual(GUCLENDIRICI_STOK_SINIRI);
+        for (const v of Object.values(y.guclendiriciler)) expect(v).toBeLessThanOrEqual(GUCLENDIRICI_SATIN_SINIRI);
         const j = y.gelir?.jetonlar ?? [];
         expect(j.length).toBeLessThanOrEqual(JETON_SINIRI);
         expect(new Set(j).size).toBe(j.length);

@@ -251,7 +251,7 @@ export const M = {
   ),
   /** (CAN-REKLAM §6) Gelir sağlayıcısı varken Hakkında metni ("Can yok…" cümlesinin yerine). */
   hakkindaMetinGelir: t(
-    'Fener Koyu’nun Işık Şenliği’ni yeniden yak. Canlar 30 dakikada dolar; reklam yalnız sen isteyince.',
+    'Fener Koyu’nun Işık Şenliği’ni yeniden yak. Her 30 dakikada 1 can dolar; reklam yalnız sen isteyince.',
     'Relight Lantern Cove’s Festival of Lights. A life refills every 30 minutes; ads only when you ask.',
   ),
   yaziTipi: t('Yazı tipi: Nunito (SIL OFL). Sesler ve görüntüler oyun içinde üretilir.', 'Font: Nunito (SIL OFL). Sounds and pictures are made by the game.'),

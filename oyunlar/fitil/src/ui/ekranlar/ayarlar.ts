@@ -28,7 +28,7 @@ export interface AyarlarEk {
   magazaAc?: () => void;
   /**
    * (CAN-REKLAM §6; G3) Gelir sağlayıcısı var: Hakkında'daki "Can yok,
-   * bekleme yok, mağaza yok." yerine "Canlar 30 dakikada dolar; reklam yalnız
+   * bekleme yok, mağaza yok." yerine "Her 30 dakikada 1 can dolar; reklam yalnız
    * sen isteyince." Yoksa metin aynen kalır.
    */
   gelirVar?: boolean;
