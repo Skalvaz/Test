@@ -1,20 +1,23 @@
 /**
- * Oyun özeti (Ayarlar > Oyun özeti): ölçüm olaylarından biçimlenmiş VM.
- * Türkçe çıktı (Node'da sayfa dili Türkçe).
+ * Oyun özeti (Ayarlar > Oyun özeti): ölçüm toplamlarından biçimlenmiş VM.
+ * Türkçe çıktı (Node'da sayfa dili Türkçe). Zamanlar yerel saatle kurulur:
+ * "Bugün / Dün" ve oynanan gün takvim günüyle sayılır (saat diliminden bağımsız test).
  */
 import { describe, expect, it } from 'vitest';
-import type { OlcumOlayi } from '../platform/olcum';
+import { olaylardanToplam, type OlcumOlayi } from '../platform/olcum';
 import { dakikaSaniye, oyunOzetiVM, oyunSuresiMetni, OZET_BOLUM_SINIRI } from './oyunOzeti';
 
 const GUN = 86_400_000;
-const T0 = 1_760_000_000_000;
+/** Yerel öğle (gün eklemek takvim gününü kaydırmasın). */
+const T0 = new Date(2026, 9, 18, 12, 0, 0).getTime();
 
 /** Olay kurucu: zaman = T0 + gün + sn. */
 const o = (a: string, oturum: number, p?: OlcumOlayi['p'], gun = 0, sn = 0): OlcumOlayi => ({ a, t: T0 + gun * GUN + sn * 1000, g: gun, o: oturum, ...(p ? { p } : {}) });
 const basla = (id: number, oturum: number, tur = 'ana', gun = 0) => o('bolum_basla', oturum, { id, tur, deneme: 0 }, gun);
 const bitti = (id: number, oturum: number, sonuc: 'kazanc' | 'kayip' | 'cikis', sure: number, tur = 'ana', gun = 0) => o('bolum_bitti', oturum, { id, tur, sonuc, sure }, gun);
 
-const deger = (vm: ReturnType<typeof oyunOzetiVM>, anahtar: string) => vm.satirlar.find((s) => s.anahtar === anahtar)?.deger;
+const vm = (olaylar: readonly OlcumOlayi[], simdi: number, ilk = T0, enYuksek?: number) => oyunOzetiVM(olaylardanToplam(olaylar), simdi, ilk, enYuksek);
+const deger = (v: ReturnType<typeof oyunOzetiVM>, anahtar: string) => v.satirlar.find((s) => s.anahtar === anahtar)?.deger;
 
 describe('oyun özeti', () => {
   it('başlık satırları: ilk açılış, oturum, gün, en yüksek bölüm, süre, sürüm + dil', () => {
@@ -31,9 +34,9 @@ describe('oyun özeti', () => {
       basla(20261014, 2, 'gunluk', 2),
       bitti(20261014, 2, 'kazanc', 200, 'gunluk', 2),
     ];
-    const vm = oyunOzetiVM(olaylar, T0 + 5 * GUN + 3600_000, T0);
-    expect(vm.bos).toBe(false);
-    expect(vm.satirlar.map((s) => [s.etiket, s.deger])).toEqual([
+    const v = vm(olaylar, T0 + 5 * GUN + 3600_000);
+    expect(v.bos).toBe(false);
+    expect(v.satirlar.map((s) => [s.etiket, s.deger])).toEqual([
       ['İlk açılış', '5 gün önce'],
       ['Oturum', '2'],
       ['Oynanan gün', '2'],
@@ -41,17 +44,26 @@ describe('oyun özeti', () => {
       ['Oyun süresi', '8 dk'],
       ['Sürüm', '1.0 · Türkçe'],
     ]);
-    expect(vm.bolumler.map((b) => b.id)).toEqual([1, 2, 3]);
-    expect(vm.oynananBolum).toBe(3);
+    expect(v.bolumler.map((b) => b.id)).toEqual([1, 2, 3]);
+    expect(v.oynananBolum).toBe(3);
+    expect(deger(vm(olaylar, T0), 'surum')).toBe('1.0 · Türkçe');
+    expect(deger(vm([o('oturum_basla', 1, { dil: 'en', surum: '1.0' })], T0), 'surum')).toBe('1.0 · English');
   });
 
-  it('ilk açılış: bugün / dün; verilmezse olaylardan tahmin', () => {
-    const olaylar = [o('oturum_basla', 1, { dil: 'en', surum: '1.0' })];
-    expect(deger(oyunOzetiVM(olaylar, T0 + 1000), 'ilkAcilis')).toBe('Bugün');
-    expect(deger(oyunOzetiVM(olaylar, T0 + GUN + 5), 'ilkAcilis')).toBe('Dün');
-    // Halka günlük eski olayları düşürmüş: en eski kalan olay 3. günden.
-    expect(deger(oyunOzetiVM([o('oturum_basla', 9, undefined, 3, 10)], T0 + 4 * GUN + 20_000), 'ilkAcilis')).toBe('4 gün önce');
-    expect(deger(oyunOzetiVM(olaylar, T0), 'surum')).toBe('1.0 · English');
+  it('ilk açılış ve oynanan gün takvim günüyle (24 saatlik dilimle değil)', () => {
+    const dun20 = new Date(2026, 9, 17, 20, 0, 0).getTime();
+    const bugun8 = new Date(2026, 9, 18, 8, 0, 0).getTime();
+    const bugun9 = new Date(2026, 9, 18, 9, 0, 0).getTime();
+    // 13 saat sonra ama takvimde dün.
+    expect(deger(vm([], bugun9, dun20), 'ilkAcilis')).toBe('Dün');
+    expect(deger(vm([], new Date(2026, 9, 17, 23, 59, 0).getTime(), new Date(2026, 9, 17, 0, 1, 0).getTime()), 'ilkAcilis')).toBe('Bugün');
+    expect(deger(vm([], new Date(2026, 9, 22, 0, 5, 0).getTime(), dun20), 'ilkAcilis')).toBe('5 gün önce');
+    // Dün 20:00 ve bugün 08:00 aynı 24 saatlik dilimde (g = 0) ama iki ayrı gün.
+    const olaylar: OlcumOlayi[] = [
+      { a: 'oturum_basla', t: dun20, g: 0, o: 1 },
+      { a: 'oturum_basla', t: bugun8, g: 0, o: 2 },
+    ];
+    expect(deger(vm(olaylar, bugun9, dun20), 'oynananGun')).toBe('2');
   });
 
   it('bölüm satırı: deneme, kayıp, bırakma (çıkış + bitmeden kapanan), ortalama süre, kazanıldı', () => {
@@ -71,22 +83,36 @@ describe('oyun özeti', () => {
       basla(5, 2, 'ana', 1),
       // Süren deneme: bırakma değil (Ayarlar oyun içinden açıldı).
     ];
-    const vm = oyunOzetiVM(olaylar, T0 + GUN);
-    expect(vm.bolumler).toEqual([
+    const v = vm(olaylar, T0 + GUN);
+    expect(v.bolumler).toEqual([
       { id: 4, deneme: 4, kayip: 1, birakma: 2, ortSure: 70, kazanildi: true, vurgu: true },
       { id: 5, deneme: 2, kayip: 0, birakma: 1, ortSure: null, kazanildi: false, vurgu: false },
     ]);
-    expect(deger(vm, 'enYuksek')).toBe('4');
+    expect(deger(v, 'enYuksek')).toBe('4');
   });
 
   it('başlangıcı günlükten düşmüş bitiş de bir denemedir; usta/sonsuz tabloya girmez', () => {
-    const vm = oyunOzetiVM([bitti(7, 3, 'kayip', 60), basla(103, 3, 'usta'), bitti(103, 3, 'kazanc', 80, 'usta'), basla(1_000_002, 3, 'sonsuz')], T0);
-    expect(vm.bolumler).toEqual([{ id: 7, deneme: 1, kayip: 1, birakma: 0, ortSure: 60, kazanildi: false, vurgu: true }]);
-    expect(deger(vm, 'enYuksek')).toBe('—');
-    expect(deger(vm, 'oturum')).toBe('3');
+    const v = vm([bitti(7, 3, 'kayip', 60), basla(103, 3, 'usta'), bitti(103, 3, 'kazanc', 80, 'usta'), basla(1_000_002, 3, 'sonsuz')], T0);
+    expect(v.bolumler).toEqual([{ id: 7, deneme: 1, kayip: 1, birakma: 0, ortSure: 60, kazanildi: false, vurgu: true }]);
+    expect(deger(v, 'enYuksek')).toBe('—');
+    expect(deger(v, 'oturum')).toBe('3');
   });
 
-  it('en son oynanan 12 ana bölüm, numara sırasıyla; vurgu eşitlikte en son oynanan', () => {
+  it('en yüksek bölüm: kayıttaki değer verilirse o (40. bölüm de)', () => {
+    // Kazanç olayı günlükten düşmüş, oturum yalnız açık en yüksek bölümü (40) taşıyor.
+    const olaylar = [o('oturum_basla', 9, { ana: 40 })];
+    expect(deger(vm(olaylar, T0, T0, 40), 'enYuksek')).toBe('40');
+    expect(deger(vm(olaylar, T0, T0, 39), 'enYuksek')).toBe('39');
+    expect(deger(vm(olaylar, T0), 'enYuksek')).toBe('—');
+  });
+
+  it('bir denemenin süresi en çok 15 dk sayılır (unutulup sonra bitirilen deneme)', () => {
+    const v = vm([basla(9, 1), bitti(9, 1, 'kazanc', 3700), basla(9, 1), bitti(9, 1, 'kayip', 120)], T0);
+    expect(deger(v, 'oyunSuresi')).toBe('17 dk');
+    expect(v.bolumler[0].ortSure).toBe((900 + 120) / 2);
+  });
+
+  it(`en son oynanan ${OZET_BOLUM_SINIRI} ana bölüm, numara sırasıyla; vurgu eşitlikte en son oynanan`, () => {
     const olaylar: OlcumOlayi[] = [o('oturum_basla', 1, { ana: 1 })];
     for (let id = 1; id <= 15; id++) {
       olaylar.push(basla(id, 1));
@@ -94,21 +120,21 @@ describe('oyun özeti', () => {
     }
     // 2. bölüm yeniden oynandı: en son oynananlar arasına girer.
     olaylar.push(basla(2, 1), bitti(2, 1, 'kazanc', 60));
-    const vm = oyunOzetiVM(olaylar, T0);
-    expect(vm.bolumler).toHaveLength(OZET_BOLUM_SINIRI);
-    expect(vm.bolumler.map((b) => b.id)).toEqual([2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-    expect(vm.oynananBolum).toBe(15);
-    expect(vm.bolumler.filter((b) => b.vurgu).map((b) => b.id)).toEqual([11]);
+    const v = vm(olaylar, T0);
+    expect(OZET_BOLUM_SINIRI).toBe(8);
+    expect(v.bolumler.map((b) => b.id)).toEqual([2, 9, 10, 11, 12, 13, 14, 15]);
+    expect(v.oynananBolum).toBe(15);
+    expect(v.bolumler.filter((b) => b.vurgu).map((b) => b.id)).toEqual([11]);
     // Hiç kayıp/bırakma yoksa vurgu yok.
-    expect(oyunOzetiVM([basla(1, 1), bitti(1, 1, 'kazanc', 30)], T0).bolumler[0].vurgu).toBe(false);
+    expect(vm([basla(1, 1), bitti(1, 1, 'kazanc', 30)], T0).bolumler[0].vurgu).toBe(false);
   });
 
   it('boş günlük: boş durum; süre ve sayı biçimleri', () => {
-    const vm = oyunOzetiVM([], T0);
-    expect(vm.bos).toBe(true);
-    expect(vm.bolumler).toEqual([]);
-    expect(deger(vm, 'ilkAcilis')).toBe('Bugün');
-    expect(deger(vm, 'surum')).toBe('—');
+    const v = vm([], T0);
+    expect(v.bos).toBe(true);
+    expect(v.bolumler).toEqual([]);
+    expect(deger(v, 'ilkAcilis')).toBe('Bugün');
+    expect(deger(v, 'surum')).toBe('—');
     expect(dakikaSaniye(48)).toBe('0:48');
     expect(dakikaSaniye(65)).toBe('1:05');
     expect(dakikaSaniye(720)).toBe('12:00');

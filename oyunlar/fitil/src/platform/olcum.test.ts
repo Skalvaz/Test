@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EN_COK, Olcum, olcumOzeti, type OlcumOlayi } from './olcum';
+import { EN_COK, Olcum, olaylardanToplam, olcumOzeti, yerelGun, type OlcumOlayi } from './olcum';
 
 class Bellek {
   m = new Map<string, string>();
@@ -50,6 +50,57 @@ describe('ölçüm günlüğü', () => {
     a.olay('ekran', { ad: 'harita' });
     for (const o of a.olaylar()) expect(Object.keys(o).sort()).toEqual(expect.arrayContaining(['a', 'g', 'o', 't']));
     expect(JSON.stringify(a.olaylar())).not.toMatch(/userAgent|kimlik|id":"[a-f0-9-]{20,}/);
+  });
+});
+
+describe('ömür boyu toplamlar (Oyun özeti)', () => {
+  it('halka günlük dolsa da gün, süre ve bölüm sayaçları baştan beri doğru; yeniden açılışta sürer', () => {
+    const d = new Bellek();
+    let t = new Date(2026, 9, 18, 12, 0, 0).getTime();
+    let a = new Olcum(d, () => t);
+    // 6 gün, günde 20 deneme (deneme başına 7 olay, ekran olaylarıyla), 1. bölümde hep kayıp.
+    for (let gun = 0; gun < 6; gun++) {
+      if (gun > 0) {
+        a.yaz();
+        t += GUN;
+        a = new Olcum(d, () => t);
+      }
+      a.basla({ surum: '1.0', ana: 1 });
+      for (let i = 0; i < 20; i++) {
+        a.olay('ekran', { ad: 'harita' });
+        a.olay('ekran', { ad: 'bolumOncesi' });
+        a.olay('bolum_basla', { id: 1, tur: 'ana', deneme: i });
+        a.olay('ekran', { ad: 'oyun' });
+        a.olay('bolum_bitti', { id: 1, tur: 'ana', sonuc: 'kayip', sure: 90 });
+        a.olay('ekran', { ad: 'kaybettin' });
+        a.olay('ekran', { ad: 'harita' });
+      }
+    }
+    expect(a.olaylar()).toHaveLength(EN_COK);
+    const T = a.toplam();
+    expect(T.gunler).toHaveLength(6);
+    expect(T.oturum).toBe(6);
+    expect(T.sure).toBe(6 * 20 * 90);
+    expect(T.bolum[1]).toMatchObject({ deneme: 120, kayip: 120, birakma: 0, kazanildi: false, biten: 120 });
+    // Günlükte kalan olaylardan kurulan toplam eksik kalırdı.
+    expect(olaylardanToplam(a.olaylar()).bolum[1].deneme).toBeLessThan(120);
+    a.yaz();
+    expect(new Olcum(d, () => t).toplam()).toEqual(T);
+  });
+
+  it('toplamsız eski kayıt: toplam günlükteki olaylardan kurulur; bozuk toplam da', () => {
+    const t0 = new Date(2026, 9, 18, 12, 0, 0).getTime();
+    const olaylar: OlcumOlayi[] = [
+      { a: 'oturum_basla', t: t0, g: 0, o: 1, p: { surum: '1.0', dil: 'tr', ana: 1 } },
+      { a: 'bolum_basla', t: t0 + 1000, g: 0, o: 1, p: { id: 1, tur: 'ana' } },
+      { a: 'bolum_bitti', t: t0 + 61_000, g: 0, o: 1, p: { id: 1, tur: 'ana', sonuc: 'kazanc', sure: 60 } },
+    ];
+    const d = new Bellek();
+    d.setItem('fitil.olcum.v1', JSON.stringify({ ilk: t0, oturum: 1, olaylar }));
+    const T = new Olcum(d, () => t0 + 70_000).toplam();
+    expect(T).toMatchObject({ sira: 3, oturum: 1, gunler: [yerelGun(t0)], sure: 60, enYuksek: 1, surum: '1.0', dil: 'tr', suren: null });
+    d.setItem('fitil.olcum.v1', JSON.stringify({ ilk: t0, oturum: 1, olaylar, toplam: { sira: 'x' } }));
+    expect(new Olcum(d, () => t0).toplam().sira).toBe(3);
   });
 });
 

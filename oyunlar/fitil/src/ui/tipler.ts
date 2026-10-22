@@ -395,7 +395,7 @@ export interface OyunOzetiVM {
   /** Günlükte hiç olay yok. */
   bos: boolean;
   satirlar: OyunOzetiSatiri[];
-  /** En son oynanan ana bölümler (en çok 12), numara sırasıyla. */
+  /** En son oynanan ana bölümler (en çok `OZET_BOLUM_SINIRI`, 8), numara sırasıyla. */
   bolumler: OyunOzetiBolumu[];
   /** Oynanmış ana bölüm sayısı (tabloya sığmayanlar dahil). */
   oynananBolum: number;

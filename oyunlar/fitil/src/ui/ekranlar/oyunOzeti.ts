@@ -52,13 +52,18 @@ function tablo(bolumler: readonly OyunOzetiBolumu[]): HTMLElement {
       null,
       bolumler.map((x) => {
         const sure = x.ortSure === null ? '—' : dakikaSaniye(x.ortSure);
+        // Yıldız ve vurgu görsel: ekran okuyucu için satır başlığında gizli metin (hücre gezintisinde de okunur).
+        const ek = [x.kazanildi ? MO.kazanildi : '', x.vurgu ? MO.enCokTakilan : ''].filter(Boolean);
         return h(
           'tr',
-          {
-            s: x.vurgu ? 'f-oo-vurgu' : undefined,
-            'aria-label': `${MO.satirEtiketi(x.id, x.deneme, x.kayip, x.birakma, sure, x.kazanildi)}${x.vurgu ? ` (${MO.enCokTakilan})` : ''}`,
-          },
-          h('th', { scope: 'row', s: 'f-sayi' }, h('span', { t: String(x.id) }), x.kazanildi ? kucukYildiz(true) : h('i')),
+          { s: x.vurgu ? 'f-oo-vurgu' : undefined },
+          h(
+            'th',
+            { scope: 'row', s: 'f-sayi' },
+            h('span', { t: String(x.id) }),
+            x.kazanildi ? kucukYildiz(true) : h('i'),
+            ek.length ? h('span', { s: 'f-gizli', t: `, ${ek.join(', ')}` }) : null,
+          ),
           h('td', { s: 'f-sayi', t: sayi(x.deneme) }),
           h('td', { s: `f-sayi${x.kayip ? ' f-oo-sicak' : ''}`, t: sayi(x.kayip) }),
           h('td', { s: `f-sayi${x.birakma ? ' f-oo-sicak' : ''}`, t: sayi(x.birakma) }),

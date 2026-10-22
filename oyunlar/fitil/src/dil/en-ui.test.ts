@@ -145,15 +145,15 @@ describe('İngilizce arayüz metinleri (ui)', () => {
     expect(en.ROZETLER.senlik.ad).toBe('FESTIVAL!');
   });
 
-  it('oyun özeti: gün, süre, satır etiketi (tekil/çoğul)', () => {
+  it('oyun özeti: gün, süre, ekran okuyucu metinleri', () => {
     expect(en.MO.gunOnce(0)).toBe('Today');
     expect(en.MO.gunOnce(1)).toBe('Yesterday');
     expect(en.MO.gunOnce(5)).toBe('5 days ago');
     expect(tr.MO.gunOnce(5)).toBe('5 gün önce');
     expect(en.MO.saatDakika(1, 5)).toBe('1 h 5 min');
     expect(en.MO.sonBolumler(12)).toBe('Last 12 levels');
-    expect(en.MO.satirEtiketi(9, 1, 1, 2, '2:11', true)).toBe('Level 9, won: 1 try, 1 loss, 2 quits, average 2:11');
-    expect(tr.MO.satirEtiketi(9, 1, 1, 2, '2:11', false)).toBe('Bölüm 9: 1 deneme, 1 kayıp, 2 bırakma, ortalama 2:11');
+    expect(en.MO.kazanildi).toBe('won');
+    expect(tr.MO.enCokTakilan).toBe('en çok takılınan bölüm');
   });
 
   it('paylaşım metni, mühür harfi ve Çarşı mahyası', () => {

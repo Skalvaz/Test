@@ -128,6 +128,14 @@ export class Oturum {
   private denemeNo = 0;
   /** Bölümün başladığı an (ölçüm süresi; ms). */
   private olcumBaslangic = 0;
+  /**
+   * (Ölçüm) Deneme süresinden düşülen duraklama: sayfa arka planda, Duraklat
+   * ya da mola kartı açık. Süren nedenler, biten duraklamaların toplamı (ms)
+   * ve süren duraklamanın başı.
+   */
+  private durakNedeni = new Set<'gizli' | 'menu' | 'mola'>();
+  private durakToplam = 0;
+  private durakBasi = 0;
   private jeton = 0;
   private coz: ((s: OturumSonucu) => void) | null = null;
   /** Bu denemede yapılan eylem sayısı (öğretim için). */
@@ -218,6 +226,10 @@ export class Oturum {
     this.denemeNo = denemeNo;
     this.hamleSayisi = 0;
     this.olcumBaslangic = Date.now();
+    this.durakToplam = 0;
+    this.durakNedeni.delete('menu');
+    this.durakNedeni.delete('mola');
+    this.durakBasi = this.olcumBaslangic;
     olcumOlayi('bolum_basla', { id: v.id, tur: olcumTuru(v), deneme: denemeNo });
     this.geriSarAnlik = null;
     this.sonHamleOncesi = null;
@@ -835,6 +847,7 @@ export class Oturum {
     if (this.durum === 'secim') this.secimBitir();
     if (oynuyordu) cizici.dev.dondur(true);
     this.durum = 'menu';
+    this.olcumDurak('menu', true);
     this.o.yc.kipAyarla('kapali');
     if (this.bostaSure) clearTimeout(this.bostaSure);
     cizici.karart(0.5);
@@ -854,6 +867,7 @@ export class Oturum {
       await this.o.ayarlarAc();
       if (jeton !== this.jeton) return;
     }
+    this.olcumDurak('menu', false);
     cizici.karart(0);
     this.o.ekran('oyun');
     if (secim === 'devam') {
@@ -877,6 +891,27 @@ export class Oturum {
 
   // ─────────────────────────── Sonuç ───────────────────────────
 
+  /**
+   * (Ölçüm) Deneme süresi duraklasın mı: sayfa arka planda (`gizli`),
+   * Duraklat (`menu`) ya da mola kartı (`mola`) açık. Telefon kilitlenip
+   * sonra bitirilen deneme süreyi şişirmesin.
+   */
+  olcumDurak(neden: 'gizli' | 'menu' | 'mola', on: boolean): void {
+    const once = this.durakNedeni.size > 0;
+    if (on) this.durakNedeni.add(neden);
+    else this.durakNedeni.delete(neden);
+    const sonra = this.durakNedeni.size > 0;
+    if (!once && sonra) this.durakBasi = Date.now();
+    else if (once && !sonra) this.durakToplam += Date.now() - this.durakBasi;
+  }
+
+  /** Denemenin etkin süresi (sn): başlangıçtan bu yana, duraklamalar düşülmüş. */
+  private olcumSuresi(): number {
+    const simdi = Date.now();
+    const durak = this.durakToplam + (this.durakNedeni.size > 0 ? simdi - this.durakBasi : 0);
+    return Math.max(0, Math.round((simdi - this.olcumBaslangic - durak) / 1000));
+  }
+
   /** (Ölçüm, docs/OLCUM.md) Bölüm bitti: sonuç, yıldız, kalan hamle, yapılan hamle, süre, Usta'nın Eli. */
   private olcumBitti(sonuc: 'kazanc' | 'kayip' | 'cikis', yildiz = 0, kalanHamle = this.d?.kalanHamle ?? 0): void {
     const v = this.v;
@@ -888,7 +923,7 @@ export class Oturum {
       yildiz,
       kalan: kalanHamle,
       hamle: this.hamleSayisi,
-      sure: Math.round((Date.now() - this.olcumBaslangic) / 1000),
+      sure: this.olcumSuresi(),
       deneme: this.denemeNo,
       eli: !!this.d?.istatistik.ustaEli,
     });

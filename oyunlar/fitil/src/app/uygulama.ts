@@ -210,8 +210,10 @@ export class Uygulama {
       this.ses.uzakFisek((x / w - 0.5) * 1.4, 0.8);
     });
     this.ui.yerlesimDinle(() => this.yerlesimTazele());
+    this.oturum.olcumDurak('gizli', document.hidden);
     document.addEventListener('visibilitychange', () => {
       this.ses.askiya(document.hidden);
+      this.oturum.olcumDurak('gizli', document.hidden);
       this.molaIlerle();
     });
     setInterval(() => this.molaIlerle(), 5000);
@@ -785,7 +787,7 @@ export class Uygulama {
     // Oyun özeti Ayarlar'ın üstünde açılır; kapanınca Ayarlar'a döner (Ayarlar programlı kapandıysa dönmez).
     const ozetAc = async () => {
       this.ekranAdi = 'oyunOzeti';
-      await this.ui.oyunOzeti(oyunOzetiVM(olcum.olaylar(), Date.now(), olcum.ilkAcilis()));
+      await this.ui.oyunOzeti(oyunOzetiVM(olcum.toplam(), Date.now(), olcum.ilkAcilis(), meta.kazanilanEnYuksek(this.kayit)));
       if (acik) this.ekranAdi = 'ayarlar';
     };
     const p = this.ui.ayarlar(ayarlarVM(this.kayit, this.kayitci.depo.backend, sistemAzHareket(), SURUM), {
@@ -1010,7 +1012,10 @@ export class Uygulama {
     void (async () => {
       if (oyunda) this.oturum.durum = 'menu';
       if (oyunda) this.yc.kipAyarla('kapali');
+      // (Ölçüm) Mola kartı açıkken deneme süresi işlemez.
+      if (oyunda) this.oturum.olcumDurak('mola', true);
       const s = await this.ui.mola();
+      this.oturum.olcumDurak('mola', false);
       this.molaD = meta.molaKapat(this.molaD, simdi());
       if (oyunda && this.oturum.durum === 'menu') {
         this.oturum.durum = 'bekliyor';

@@ -81,9 +81,11 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   isteği yok; yerel halka günlük `fitil.olcum.v1`, Android'de
   `window.FitilYerel.olay` köprüsü), olay sözlüğü `docs/OLCUM.md`, test kancası
   `__fitil.olcum()` (olaylar + özet: bölüm hunisi, ilk oturum, günler).
-  Ayarlar > Oyun özeti (Hakkında'nın üstü): aynı günlükten ekran görüntüsü
-  için özet (`app/oyunOzeti.ts`, `ui/ekranlar/oyunOzeti.ts`; buluta gitmez,
-  aile testinde oyuncu görüntüyü gönderir; OLCUM.md sonu).
+  Ayarlar > Oyun özeti (Hakkında'nın üstü): ölçümün ömür boyu toplamlarından
+  (`olcum.toplam()`; halka günlük dolsa da doğru) ekran görüntüsü için özet
+  (`app/oyunOzeti.ts`, `ui/ekranlar/oyunOzeti.ts`; buluta gitmez, aile
+  testinde oyuncu görüntüyü gönderir; OLCUM.md sonu). `sure` etkin süredir
+  (arka plan, Duraklat, mola düşülür; `Oturum.olcumDurak`).
   İlk dakikalar denetimi: `node scripts/ilk-dakikalar.mjs <url> <klasör> [son]`
   (yeni oyuncu, gerçek hız; araya giren her balon/modal/bant metni, kelime,
   süre tahmini → `rapor.md`). Sonuçlar `docs/YAYIN.md` "Aşama 1 denetimi".

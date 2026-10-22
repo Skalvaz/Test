@@ -29,6 +29,8 @@ interface Kayit {
   /** Açılış (oturum) sayısı. */
   oturum: number;
   olaylar: OlcumOlayi[];
+  /** Ömür boyu toplamlar (Oyun özeti; halka günlükten bağımsız). */
+  toplam: OlcumToplami;
 }
 
 const ANAHTAR = 'fitil.olcum.v1';
@@ -71,6 +73,7 @@ export class Olcum {
     const o: OlcumOlayi = { a: ad, t, g: Math.max(0, Math.floor((t - this.k.ilk) / GUN_MS)), o: this.k.oturum };
     if (p && Object.keys(p).length) o.p = p;
     this.k.olaylar.push(o);
+    toplamaEkle(this.k.toplam, o);
     if (this.k.olaylar.length > EN_COK) this.k.olaylar.splice(0, this.k.olaylar.length - EN_COK);
     try {
       if (typeof window !== 'undefined') window.FitilYerel?.olay?.(ad, JSON.stringify({ ...p, gun: o.g, oturum: o.o }));
@@ -88,6 +91,11 @@ export class Olcum {
   /** İlk açılış zamanı (ms; halka günlükten düşen olaylardan bağımsız). */
   ilkAcilis(): number {
     return this.k.ilk;
+  }
+
+  /** Ömür boyu toplamlar (halka günlükten düşen olaylar dahil). */
+  toplam(): Readonly<OlcumToplami> {
+    return this.k.toplam;
   }
 
   /** Bekleyen yazımı hemen yap (sayfa kapanırken). */
@@ -111,13 +119,156 @@ export class Olcum {
       const ham = this.depo?.getItem(ANAHTAR);
       if (ham) {
         const k = JSON.parse(ham) as Partial<Kayit>;
-        if (typeof k.ilk === 'number' && typeof k.oturum === 'number' && Array.isArray(k.olaylar)) return { ilk: k.ilk, oturum: k.oturum, olaylar: k.olaylar.slice(-EN_COK) };
+        if (typeof k.ilk === 'number' && typeof k.oturum === 'number' && Array.isArray(k.olaylar)) {
+          const olaylar = k.olaylar.slice(-EN_COK);
+          // Toplamsız (eski) ya da bozuk toplam: günlükte kalan olaylardan kurulur.
+          return { ilk: k.ilk, oturum: k.oturum, olaylar, toplam: toplamGecerli(k.toplam) ? k.toplam : olaylardanToplam(olaylar) };
+        }
       }
     } catch {
       /* bozuk ölçüm kaydı: baştan */
     }
-    return { ilk: this.simdi(), oturum: 0, olaylar: [] };
+    return { ilk: this.simdi(), oturum: 0, olaylar: [], toplam: bosToplam() };
   }
+}
+
+// ─────────────────────────── Ömür boyu toplamlar ───────────────────────────
+
+/** Bir denemenin süresi en çok bu kadar sayılır (sn): unutulup sonra bitirilen deneme özeti şişirmesin. */
+export const DENEME_SURE_SINIRI = 15 * 60;
+
+/** Yerel takvim günü numarası (cihazın saat diliminde gece yarısından gece yarısına). */
+export function yerelGun(ms: number): number {
+  return Math.floor((ms - new Date(ms).getTimezoneOffset() * 60_000) / GUN_MS);
+}
+
+/** Bir ana bölümün ömür boyu sayaçları. */
+export interface BolumToplami {
+  /** Başlanan denemeler (başlangıcı görülmemiş bitiş dahil). */
+  deneme: number;
+  kayip: number;
+  /** Çıkış + bitmeden kapatılan deneme (süren deneme sayılmaz). */
+  birakma: number;
+  kazanildi: boolean;
+  /** Biten denemelerin süre toplamı (sn) ve sayısı. */
+  sure: number;
+  biten: number;
+  /** Bölümün son olayının sırası (en son oynananları seçmek için). */
+  son: number;
+}
+
+/**
+ * Ömür boyu toplamlar (Ayarlar > Oyun özeti): halka günlük eski olayları
+ * düşürse de sayılar baştan beri doğru kalsın diye her olayda güncellenir ve
+ * günlükle birlikte saklanır. Tablo yalnız ana bölümleri sayar (`tur` 'ana').
+ */
+export interface OlcumToplami {
+  /** İşlenen olay sayısı (0: hiç olay yok). */
+  sira: number;
+  /** En büyük oturum sırası. */
+  oturum: number;
+  /** Oynanan yerel takvim günleri (`yerelGun`). */
+  gunler: number[];
+  /** Biten denemelerin süre toplamı (sn; deneme başına en çok `DENEME_SURE_SINIRI`). */
+  sure: number;
+  /** Kazanılan en yüksek ana bölüm (0: yok). */
+  enYuksek: number;
+  /** Son `oturum_basla`'nın sürümü ve dili. */
+  surum: string;
+  dil: string;
+  /** Ana bölümler (anahtar: bölüm numarası). */
+  bolum: Record<string, BolumToplami>;
+  /** Başlamış, henüz bitmemiş deneme (bir anda en çok bir bölüm oynanır). */
+  suren: { id: number; ana: boolean } | null;
+}
+
+export function bosToplam(): OlcumToplami {
+  return { sira: 0, oturum: 0, gunler: [], sure: 0, enYuksek: 0, surum: '', dil: '', bolum: {}, suren: null };
+}
+
+function toplamGecerli(x: unknown): x is OlcumToplami {
+  const t = x as Partial<OlcumToplami> | null;
+  return (
+    !!t &&
+    typeof t === 'object' &&
+    typeof t.sira === 'number' &&
+    typeof t.oturum === 'number' &&
+    typeof t.sure === 'number' &&
+    typeof t.enYuksek === 'number' &&
+    Array.isArray(t.gunler) &&
+    !!t.bolum &&
+    typeof t.bolum === 'object'
+  );
+}
+
+/** Olay ana bölüme mi ait (eski olaylarda `tur` yoksa numaradan: 1–100). */
+function anaMi(o: OlcumOlayi): boolean {
+  const tur = o.p?.tur;
+  if (tur !== undefined) return tur === 'ana';
+  const id = Number(o.p?.id);
+  return id >= 1 && id <= 100;
+}
+
+/**
+ * Toplamlara bir olay ekler (yerinde). Bırakma = çıkış + bitmeden kapatılan
+ * deneme (`bolum_basla`'dan sonra `bolum_bitti` gelmeden yeni bir deneme ya
+ * da oturum başladı); süren deneme bırakma sayılmaz (Ayarlar oyun içinden de
+ * açılır).
+ */
+export function toplamaEkle(T: OlcumToplami, o: OlcumOlayi): void {
+  const sira = ++T.sira;
+  const gun = yerelGun(o.t);
+  if (!T.gunler.includes(gun)) T.gunler.push(gun);
+  if (o.o > T.oturum) T.oturum = o.o;
+  const al = (id: number): BolumToplami => {
+    const b = (T.bolum[id] ??= { deneme: 0, kayip: 0, birakma: 0, kazanildi: false, sure: 0, biten: 0, son: sira });
+    b.son = sira;
+    return b;
+  };
+  const terk = () => {
+    const s = T.suren;
+    if (s?.ana && T.bolum[s.id]) T.bolum[s.id].birakma++;
+    T.suren = null;
+  };
+  if (o.a === 'oturum_basla') {
+    terk();
+    if (typeof o.p?.surum === 'string') T.surum = o.p.surum;
+    if (typeof o.p?.dil === 'string') T.dil = o.p.dil;
+  } else if (o.a === 'bolum_basla') {
+    terk();
+    const id = Number(o.p?.id);
+    const ana = anaMi(o);
+    T.suren = { id, ana };
+    if (ana) al(id).deneme++;
+  } else if (o.a === 'bolum_bitti') {
+    const id = Number(o.p?.id);
+    // Başlangıcı halka günlükten düşmüş deneme (eski kayıttan kurulurken) yine bir deneme sayılır.
+    const eslesti = T.suren !== null && T.suren.id === id;
+    if (!eslesti) terk();
+    T.suren = null;
+    const sure = typeof o.p?.sure === 'number' ? Math.min(DENEME_SURE_SINIRI, Math.max(0, o.p.sure)) : null;
+    if (sure !== null) T.sure += sure;
+    if (!anaMi(o)) return;
+    const b = al(id);
+    if (!eslesti) b.deneme++;
+    const sonuc = o.p?.sonuc;
+    if (sonuc === 'kazanc') {
+      b.kazanildi = true;
+      if (id > T.enYuksek) T.enYuksek = id;
+    } else if (sonuc === 'cikis') b.birakma++;
+    else b.kayip++;
+    if (sure !== null) {
+      b.sure += sure;
+      b.biten++;
+    }
+  }
+}
+
+/** Olaylardan toplamlar (eski kayıt, önizleme, testler). */
+export function olaylardanToplam(olaylar: readonly OlcumOlayi[]): OlcumToplami {
+  const T = bosToplam();
+  for (const o of olaylar) toplamaEkle(T, o);
+  return T;
 }
 
 function yerelDepo(): Depo | null {

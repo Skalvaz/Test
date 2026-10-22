@@ -631,7 +631,8 @@
 
 /* ─────────────── Oyun özeti (Ayarlar > Oyun özeti; "Liste": en küçük yazı 16 px) ─────────────── */
 .f-ay-oyun-ozeti { min-height: 56px; }
-.f-ay-oyun-ozeti > .f-satir-ikon { flex: none; }
+/* `.f-kart-satir > span` ikon kutusunu da sütun yapar: ızgara ortalaması geri gelsin. */
+.f-ay-oyun-ozeti > .f-satir-ikon { display: grid; flex: none; }
 .f-ay-oyun-ozeti strong { font-size: 18px; }
 .f-oyun-ozeti .f-kart-ic { padding-left: 12px; padding-right: 12px; }
 .f-oo { display: flex; flex-direction: column; gap: 12px; }
@@ -642,7 +643,7 @@
 .f-oo-bolumler { display: flex; flex-direction: column; gap: 6px; }
 .f-oo-bolumler > h3 { font-size: 16px; padding-left: 4px; }
 .f-oo-tablo { width: 100%; border-collapse: separate; border-spacing: 0 3px; margin-top: -3px; }
-.f-oo-tablo th, .f-oo-tablo td { padding: 4px 3px; text-align: center; white-space: nowrap; }
+.f-oo-tablo th, .f-oo-tablo td { padding: 4px 2px; text-align: center; white-space: nowrap; }
 .f-oo-tablo thead th { font-size: 16px; font-weight: 800; color: var(--pirinc-acik); padding-bottom: 2px; }
 .f-oo-tablo thead th:first-child { text-align: left; padding-left: 10px; }
 .f-oo-tablo tbody tr { background: rgba(0, 0, 0, .22); }
@@ -651,7 +652,7 @@
 .f-oo-tablo tbody tr > :last-child { border-radius: 0 10px 10px 0; }
 .f-oo-tablo tbody th { text-align: left; padding-left: 10px; color: var(--pirinc-acik); }
 .f-oo-tablo tbody th > * { vertical-align: middle; }
-.f-oo-tablo tbody th > span { display: inline-block; min-width: 1.2em; text-align: right; }
+.f-oo-tablo tbody th > span:first-child { display: inline-block; min-width: 1.2em; text-align: right; }
 .f-oo-tablo tbody th .f-kyildiz, .f-oo-tablo tbody th > i { display: inline-block; width: 15px; height: 15px; margin-left: 4px; }
 /* En çok takılınan bölüm: sıcak vurgu (kayıp ve bırakma sayıları turuncu). */
 .f-oo-tablo tbody tr.f-oo-vurgu { background: rgba(242, 112, 58, .26); }
@@ -667,6 +668,18 @@
   .f-oo-izgara { gap: 6px; }
   .f-oo-kutu { padding: 5px 4px 6px; gap: 0; }
   .f-oo-tablo tbody td, .f-oo-tablo tbody th { padding-top: 2px; padding-bottom: 2px; }
+}
+/* Dar ekran: tablo yatayda pay bıraksın ("15:00" süresiyle de; yazı boyları aynı, boşluk sütunlara dağılır). */
+@media (max-width: 380px) {
+  .f-oo-tablo th, .f-oo-tablo td { padding-left: 1px; padding-right: 1px; }
+  .f-oo-tablo thead th:first-child, .f-oo-tablo tbody th { padding-left: 6px; }
+  .f-oo-tablo tbody th .f-kyildiz, .f-oo-tablo tbody th > i { margin-left: 2px; }
+}
+/* 320 px: kart kenar payları da daralır (kapat düğmesi ekranın içinde kalsın). */
+@media (max-width: 340px) {
+  .f-oyun-ozeti.f-modal { padding-left: calc(var(--guv-sol) + 6px); padding-right: calc(var(--guv-sag) + 6px); }
+  .f-oyun-ozeti .f-kart-ic { padding-left: 6px; padding-right: 6px; }
+  .f-oyun-ozeti .f-kapat-dg { right: -2px; }
 }
 
 /* ─────────────── Mola, defter kartı ─────────────── */

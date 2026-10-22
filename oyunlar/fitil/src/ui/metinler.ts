@@ -556,14 +556,9 @@ export const MO = {
   kayip: t('Kayıp', 'Losses'),
   birakma: t('Bırakma', 'Quits'),
   sure: t('Süre', 'Time'),
-  /** Ekran okuyucu: satır özeti. */
-  satirEtiketi: t(
-    (id: number, deneme: number, kayip: number, birakma: number, sure: string, kazanildi: boolean) =>
-      `Bölüm ${id}${kazanildi ? ', kazanıldı' : ''}: ${deneme} deneme, ${kayip} kayıp, ${birakma} bırakma, ortalama ${sure}`,
-    (id: number, deneme: number, kayip: number, birakma: number, sure: string, kazanildi: boolean) =>
-      `Level ${id}${kazanildi ? ', won' : ''}: ${deneme} ${cogul(deneme, 'try', 'tries')}, ${kayip} ${cogul(kayip, 'loss', 'losses')}, ${birakma} ${cogul(birakma, 'quit', 'quits')}, average ${sure}`,
-  ),
-  enCokTakilan: t('En çok takılınan bölüm', 'Hardest level so far'),
+  /** Ekran okuyucu (satır başlığında gizli): yıldızın ve vurgunun anlamı. */
+  kazanildi: t('kazanıldı', 'won'),
+  enCokTakilan: t('en çok takılınan bölüm', 'hardest level so far'),
   bos: t('Henüz oyun kaydı yok. Bir bölüm oynayınca burada görünür.', 'Nothing played yet. Play a level and it shows up here.'),
   bolumYok: t('Henüz bölüm oynanmadı.', 'No levels played yet.'),
   not: t(

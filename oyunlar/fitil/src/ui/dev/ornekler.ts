@@ -24,7 +24,7 @@ import type { KasabaIsVM, KasabaVM } from '../tipler';
 import { MK, ROZET_SIRASI, gorevMetni } from '../metinler';
 import { DIL, t } from '../../platform/dil';
 import { oyunOzetiVM } from '../../app/oyunOzeti';
-import type { OlcumOlayi } from '../../platform/olcum';
+import { olaylardanToplam, type OlcumOlayi } from '../../platform/olcum';
 
 export function haritaVm(simdiki = 14, kasaba: { isler: string[]; kandil: number; yapilabilir: boolean } | null = null): HaritaVM {
   const yildizlar: Yildiz[] = [3, 3, 2, 3, 1, 2, 3, 3, 2, 1, 3, 2, 3, 3, 2, 3, 2, 1, 3, 3, 2, 3, 3, 2, 1, 3, 3, 2, 3, 3, 2, 3, 3, 3, 2, 3, 2, 3, 3, 3];
@@ -325,7 +325,7 @@ export function oyunOzetiVm(v = '1'): ReturnType<typeof oyunOzetiVM> {
     t = Math.max(t + sn * 1000, t0 + gun * GUN);
     olaylar.push({ a, t, g: gun, o: oturum, ...(p ? { p } : {}) });
   };
-  if (v === 'bos') return oyunOzetiVM([], t0, t0);
+  if (v === 'bos') return oyunOzetiVM(olaylardanToplam([]), t0, t0);
   ekle('oturum_basla', 0, 1, { dil: DIL, surum: '1.0', ana: 1 });
   if (v !== 'az') {
     const oyna = (id: number, gun: number, oturum: number, sonuc: 'kazanc' | 'kayip' | 'cikis', sure: number) => {
@@ -342,5 +342,5 @@ export function oyunOzetiVm(v = '1'): ReturnType<typeof oyunOzetiVM> {
     ekle('bolum_basla', 3, 3, { id: 15, tur: 'ana', deneme: 1 });
     ekle('oturum_basla', 4, 4, { dil: DIL, surum: '1.0', ana: 15 });
   }
-  return oyunOzetiVM(olaylar, t0 + 4 * GUN + 600_000, t0);
+  return oyunOzetiVM(olaylardanToplam(olaylar), t0 + 4 * GUN + 600_000, t0);
 }

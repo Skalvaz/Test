@@ -28,7 +28,10 @@ const BEYAZ = [/Türkçe/, /FİTİL/, /Rıza/, /Nazlı/, /Hüsnü/, /Gülizar/, 
 
 const browser = await chromium.launch({ executablePath: exe, args: ['--use-gl=angle', '--use-angle=swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+// Swiftshader'da üst üste modallı ekranların görüntüsü 20–25 sn sürebiliyor (Ayarlar + Oyun özeti): 30 sn sınırı dar.
+page.setDefaultTimeout(120_000);
 const hatalar = [];
+const uyarilar = [];
 page.on('pageerror', (e) => hatalar.push(e.message));
 
 const metinler = () =>
@@ -64,7 +67,12 @@ const tara = async (ad, url, bekle = 2200) => {
   const bulgu = (await metinler()).filter(kalinti);
   rapor[ad] = bulgu;
   toplam += bulgu.length;
-  await page.screenshot({ path: `${cikti}/${ad.replace(/[&=]/g, '_')}.png` });
+  // Görüntü yan üründür: alınamazsa tarama sürer (rapor yine yazılır).
+  try {
+    await page.screenshot({ path: `${cikti}/${ad.replace(/[&=]/g, '_')}.png` });
+  } catch (e) {
+    uyarilar.push(`${ad}: ekran görüntüsü alınamadı (${String(e.message).split('\n')[0]})`);
+  }
   console.log(`${bulgu.length ? '✗' : '✓'} ${ad}${bulgu.length ? `  ${bulgu.slice(0, 6).join(' | ')}${bulgu.length > 6 ? ` … (+${bulgu.length - 6})` : ''}` : ''}`);
 };
 
@@ -81,5 +89,6 @@ await tara('oyun-sonrasi', null, 500);
 writeFileSync(`${cikti}/rapor.json`, JSON.stringify(rapor, null, 1));
 await browser.close();
 for (const e of hatalar) console.log('[pageerror]', e);
+for (const u of uyarilar) console.log('[uyarı]', u);
 console.log(`\n${Object.keys(rapor).length} ekran, ${toplam} Türkçe kalıntı. Görüntüler: ${cikti}/`);
 process.exit(toplam || hatalar.length ? 1 : 0);
