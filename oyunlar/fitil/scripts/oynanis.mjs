@@ -20,6 +20,15 @@
  *             (mühür satırı, kandil çipi) → `kayitYama` ile şema 2 kaydı (27).
  *  - goc600   375×600: aynı denetim 27. bölüme kadar oynanmış kayıtla (panel,
  *             Kazandın kısa ekranda).
+ *  - gelir    390×844, dokunmatik, `?gelir=sahte&reklam=hizli` (CAN-REKLAM §11;
+ *             yalnız adıyla seçilince koşar): harita can hapı → kayıpta −1 can →
+ *             reklamla +5 hamle → 1 canla kayıp → "Can bitti" paneli, üç reklam,
+ *             "Yarın yine" → Mağaza (canları doldur, paket, Usta kartı) →
+ *             "Ücretsiz +1 can" → Duraklat çıkış onayı (Vazgeç, Çık) → `?gelir`
+ *             olmadan hiçbir gelir öğesi yok → §8 ölçüm olayları.
+ *
+ * Gelirsiz profillerde (web/claude.ai) can hapı, Mağaza satırı ve Kaybettin'de
+ * can/reklam öğesi YOK denetlenir (CAN-REKLAM §1, C1).
  *
  * Kanca adımları (telefon/masaüstü): 3. bölüm kazancından sonra ilk kandil
  * balonu → Kasaba paneli → ilk iş (kıvılcımlar, ışıklar, sakin balonu); 6.
@@ -51,7 +60,8 @@ const PROFILLER = [
   { ad: 'kucuk', w: 360, h: 640, dokunmatik: true, tam: false },
   { ad: 'goc', w: 390, h: 700, dokunmatik: true, tam: false, goc: 'sema2-bolum14.json' },
   { ad: 'goc600', w: 375, h: 600, dokunmatik: true, tam: false, goc: 'sema2-bolum27.json' },
-].filter((p) => (SADECE ? SADECE.split(',').includes(p.ad) : !p.goc));
+  { ad: 'gelir', w: 390, h: 844, dokunmatik: true, tam: false, gelir: true },
+].filter((p) => (SADECE ? SADECE.split(',').includes(p.ad) : !p.goc && !p.gelir));
 
 const KAYIT_KLASORU = new globalThis.URL('../src/meta/_test/kayitlar/', import.meta.url);
 const eskiKayit = (ad) => JSON.parse(readFileSync(new globalThis.URL(ad, KAYIT_KLASORU), 'utf-8'));
@@ -244,6 +254,25 @@ async function profilKos(browser, p) {
     return true;
   };
 
+  /** (CAN-REKLAM §1, C1) Sağlayıcı yokken hiçbir gelir öğesi görünmez. */
+  const gelirsizDenetle = async (yer) => {
+    const r = await page.evaluate(() => ({
+      gelir: window.__fitil.gelir?.() ?? null,
+      hap: document.querySelectorAll('.f-can-hap').length,
+      magaza: document.querySelectorAll('.f-ay-magaza').length,
+      kb: document.querySelectorAll('.f-kb-can, .f-kb-reklam, .f-kb-can-bitti').length,
+      panel: document.querySelectorAll('.f-can-modal, .f-magaza-modal, .f-cikis-modal, .fs-kok').length,
+    }));
+    if (r.gelir !== null || r.hap || r.magaza || r.kb || r.panel) hatalar.push(`[${p.ad}] ${yer}: sağlayıcı yokken gelir öğesi görünüyor ${JSON.stringify(r)}`);
+  };
+
+  // ── 0a. Gelir profili (CAN-REKLAM §11; sahte sağlayıcı, hızlı reklam)
+  if (p.gelir) {
+    await gelirProfili({ page, p, kare, dokun, dugme, botlaBitir, haritayaDon });
+    await ctx.close();
+    return;
+  }
+
   // ── 0. Göç profili (yayındaki şema 2 kaydı)
   if (p.goc) {
     const eski = JSON.parse(eskiKayit(p.goc).localStorage['fitil.kayit.v1']).data;
@@ -336,9 +365,11 @@ async function profilKos(browser, p) {
     await botlaBitir('b1');
     await haritayaDon();
     await kare('harita');
+    await gelirsizDenetle('harita');
     await dugme('Ayarlar').click();
     await page.waitForTimeout(700);
     await kare('ayarlar');
+    await gelirsizDenetle('ayarlar');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
     await ctx.close();
@@ -369,6 +400,7 @@ async function profilKos(browser, p) {
     await page.waitForTimeout(900);
     await kare(`b${n}-baslangic`);
     const s = await botlaBitir(`b${n}-${bot}`, bot);
+    if (s === 'kaybettin') await gelirsizDenetle(`b${n} Kaybettin`);
     if (s === 'kaybettin' && !tekrarOlculdu) {
       tekrarOlculdu = true;
       const t0 = Date.now();
@@ -473,9 +505,11 @@ async function profilKos(browser, p) {
   await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 20000, 'harita');
   await page.waitForTimeout(800);
   await kare('harita');
+  await gelirsizDenetle('harita');
   await dugme('Ayarlar').click();
   await page.waitForTimeout(800);
   await kare('ayarlar');
+  await gelirsizDenetle('ayarlar');
   // Ayar gerçekten etkili mi: renk paleti → renk körü, sonra geri.
   const renkKoru = page.getByRole('radio', { name: 'Renk körü' }).first();
   if (await renkKoru.count()) {
@@ -550,6 +584,343 @@ async function profilKos(browser, p) {
   if (basla === 0 || bitti === 0) hatalar.push(`[${p.ad}] ölçüm: bölüm olayları eksik (başla ${basla}, bitti ${bitti})`);
   console.log(`[${p.ad}] ölçüm: ${olc.olaylar.length} olay, bölüm başla ${basla} / bitti ${bitti}, ekranlar ${Object.keys(olc.ozet.ekranlar).length}`);
   await ctx.close();
+}
+
+/**
+ * (CAN-REKLAM §11) Gelir profili: `?gelir=sahte&reklam=hizli`, 390×844. Adımlar
+ * şartnamedeki sırayla; kayıp için Acemi bot 10. bölümde (zor; Acemi ~%15–25
+ * kazanır, kazanırsa yeniden denenir: kazanç can yemez). Şartname "bölüm 9"
+ * diyor; 9 tanıtım bölümü, Acemi çoğunlukla kazanır, deneme uzar.
+ */
+async function gelirProfili({ page, p, kare, dokun, dugme, botlaBitir, haritayaDon }) {
+  const ek = (url, q) => url + (url.includes('?') ? '&' : '?') + q;
+  const gelir = () => page.evaluate(() => window.__fitil.gelir());
+  const canSayi = async () => (await gelir())?.can?.sayi;
+  const bekleCan = (n, aciklama) => bekleKosul(page, (x) => window.__fitil.gelir()?.can?.sayi === x, n, 15000, aciklama);
+  /** Sahte reklam katmanı: geri sayım biter, "Ödülü al". */
+  const reklamIzle = async (etiket) => {
+    await bekleKosul(page, () => !!document.querySelector('.fs-reklam'), null, 8000, `${etiket}: reklam katmanı`);
+    const ekr = await ekran(page);
+    if (ekr !== 'reklam') hatalar.push(`[${p.ad}] ${etiket}: reklam açıkken ekran "${ekr}"`);
+    await bekleKosul(page, () => !!document.querySelector('.fs-reklam .fs-al:not([disabled])'), null, 8000, `${etiket}: Ödülü al`);
+    if (etiket) await kare(`${etiket}-reklam`);
+    await page.locator('.fs-reklam .fs-al').click();
+    await bekleKosul(page, () => !document.querySelector('.fs-reklam'), null, 5000, `${etiket}: reklam kapandı`);
+  };
+  /** Sahte satın alma kartı: "Satın al". */
+  const satinOnayla = async (etiket) => {
+    await bekleKosul(page, () => !!document.querySelector('.fs-satin.fs-giris'), null, 8000, `${etiket}: onay kartı`);
+    await page.waitForTimeout(350);
+    if (etiket) await kare(`${etiket}-onay`);
+    await page.locator('.fs-satin .fs-dg-birincil').click();
+    await bekleKosul(page, () => !document.querySelector('.fs-satin'), null, 5000, `${etiket}: onay kapandı`);
+  };
+  const panelAcik = () => bekleKosul(page, () => window.__fitil.ekran() === 'canPaneli' && !!document.querySelector('.f-can-modal:not(.f-cikis)'), null, 8000, 'can paneli');
+  /** Bölümü Acemi ile kaybet (kazanırsa yeniden; kazanç can yemez). */
+  const kaybet = async (etiket, n = 10) => {
+    for (let i = 0; i < 6; i++) {
+      await page.evaluate((id) => window.__fitil.bolumAc(id), n);
+      await bekleKosul(page, (id) => window.__fitil.ekran() === 'oyun' && window.__fitil.bolum() === id && window.__fitil.durum().oturum === 'bekliyor', n, 20000, `bölüm ${n}`);
+      await page.evaluate(() => window.__fitil.hizli(true));
+      const s = await botlaBitir(`${etiket}-${i}`, 'acemi');
+      if (s === 'kaybettin') return true;
+    }
+    hatalar.push(`[${p.ad}] ${etiket}: Acemi 6 denemede kaybetmedi`);
+    return false;
+  };
+
+  // 1. Aç; 8 bölüm kazanılmış kayıt (ipuçları kapalı: balonlar akışı kesmesin).
+  await page.goto(ek(URL, 'gelir=sahte&reklam=hizli'));
+  await page.waitForSelector('.f-acilis', { timeout: 20000 });
+  await page.waitForTimeout(1500);
+  await dokun(p.w / 2, p.h * 0.72);
+  await bekleKosul(page, () => window.__fitil.ekran() === 'oyun' && window.__fitil.bolum() === 1, null, 15000, 'bölüm 1');
+  const g0 = await gelir();
+  if (g0?.saglayici !== 'sahte') hatalar.push(`[${p.ad}] sağlayıcı: ${JSON.stringify(g0)}`);
+  const kb = { yildiz: 2, enIyi: 1000, deneme: 1, basarisizSeri: 0, kazanc: 1 };
+  await page.evaluate((b) => window.__fitil.kayitYama({ bolumler: b, ayarlar: { ipuclari: false } }), Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map((i) => [i, kb])));
+  await page.waitForTimeout(600);
+  await dugme('Duraklat').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'duraklat', null, 8000, 'duraklat');
+  await page.waitForTimeout(400);
+  await dugme('Haritaya dön').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 15000, 'harita');
+  await page.waitForTimeout(1200);
+
+  // 2. Haritada can hapı "5"; bölümü kaybet → "−1 can · 4 kaldı".
+  const hap = await page.evaluate(() => document.querySelector('.f-can-hap .f-can-hap-sayi')?.textContent ?? null);
+  if (hap !== '5') hatalar.push(`[${p.ad}] haritada can hapı "${hap}" (5 bekleniyordu)`);
+  await kare('harita-can-hapi');
+  // 3. "+5 hamle" → sahte reklam → oyun 5 hamleyle sürer; kazanırsa can geri gelir. Usta botu 5
+  // hamlede her bölümde kazanmaz: devam kaybederse (ikinci kayıp can düşürmez) sonraki bölüm denenir.
+  let devamKazandi = false;
+  for (const [sira, n] of [10, 12, 13].entries()) {
+    const once = await canSayi();
+    if (!(await kaybet(`b${n}-kayip`, n))) break;
+    const satir = await page.evaluate(() => document.querySelector('.f-kb-can')?.textContent ?? '');
+    if (!satir.includes(`−1 can · ${once - 1} kaldı`)) hatalar.push(`[${p.ad}] b${n} Kaybettin can satırı: "${satir}" (önce ${once})`);
+    if ((await canSayi()) !== once - 1) hatalar.push(`[${p.ad}] b${n} kayıpta can ${once} → ${await canSayi()}`);
+    if (!(await page.locator('.f-kb-reklam').count())) hatalar.push(`[${p.ad}] b${n} Kaybettin'de "+5 hamle" yok`);
+    if (sira === 0) await kare('kaybettin-can-reklam');
+    // Reklamla devam aynı denemedir (Eli gibi): deneme ve başarısızlık serisi devamın sonucuyla artmaz.
+    const kayipKaydi = await page.evaluate((id) => window.__fitil.kayit().bolumler[id], n);
+    await page.locator('.f-kb-reklam').click();
+    await reklamIzle(sira === 0 ? 'hamle' : '');
+    await bekleKosul(page, () => window.__fitil.ekran() === 'oyun' && window.__fitil.durum().oturum === 'bekliyor', null, 15000, 'reklamdan sonra oyun');
+    const d = await page.evaluate(() => window.__fitil.durum());
+    if (d.kalanHamle !== 5) hatalar.push(`[${p.ad}] b${n} reklamla devam: kalan hamle ${d.kalanHamle}`);
+    if (sira === 0) await kare('reklam-devam-oyun');
+    const s3 = await botlaBitir(`b${n}-reklam-devam`, 'usta');
+    const c3 = await canSayi();
+    const devamKaydi = await page.evaluate((id) => window.__fitil.kayit().bolumler[id], n);
+    if (devamKaydi?.deneme !== kayipKaydi?.deneme) hatalar.push(`[${p.ad}] b${n} reklamla devam yeni deneme sayıldı (${kayipKaydi?.deneme} → ${devamKaydi?.deneme})`);
+    if (s3 !== 'kazandin' && devamKaydi?.basarisizSeri !== kayipKaydi?.basarisizSeri) hatalar.push(`[${p.ad}] b${n} devamdan sonraki kayıp seriyi artırdı`);
+    not(`[${p.ad}] b${n} reklamla +5 hamle: ${s3}, can ${once} → ${c3}`);
+    if (s3 === 'kazandin') {
+      // Devamla kazanç: kayıpta giden can geri gelir (C4).
+      if (c3 !== once) hatalar.push(`[${p.ad}] b${n} devamla kazanç: can iade edilmedi (${once} → ${c3})`);
+      devamKazandi = true;
+      await haritayaDon();
+      break;
+    }
+    if (c3 !== once - 1) hatalar.push(`[${p.ad}] b${n} devamdan sonraki kayıp yeniden can düşürdü (${c3})`);
+    if (await page.locator('.f-kb-can, .f-kb-reklam').count()) hatalar.push(`[${p.ad}] b${n} devamdan sonraki Kaybettin'de can satırı ya da +5 hamle var`);
+    await haritayaDon();
+  }
+  if (!devamKazandi) not(`[${p.ad}] reklamla devam hiçbir bölümde kazanmadı: iade yalnız birim testte (gelirAkisi.test.ts)`);
+
+  // 4. canAyarla(1); kaybet → "Can bitti" → panel: sayaç, üç reklam → "Yarın yine".
+  await page.evaluate(() => window.__fitil.canAyarla(1));
+  if (await kaybet('b10-son-can')) {
+    if ((await canSayi()) !== 0) hatalar.push(`[${p.ad}] son can düşmedi: ${await canSayi()}`);
+    if (!(await page.locator('.f-kb-can-bitti').count())) hatalar.push(`[${p.ad}] 0 canda "Can bitti" düğmesi yok`);
+    if (await dugme('Tekrar dene').count()) hatalar.push(`[${p.ad}] 0 canda "Tekrar dene" görünüyor`);
+    await kare('kaybettin-can-bitti');
+    await page.locator('.f-kb-can-bitti').click();
+    await panelAcik();
+    await page.waitForTimeout(500);
+    const sayac = await page.evaluate(() => document.querySelector('.f-can-sure')?.textContent ?? '');
+    if (!/^\d+:\d\d$/.test(sayac)) hatalar.push(`[${p.ad}] can paneli sayacı: "${sayac}"`);
+    await kare('can-paneli-bitti');
+    for (let i = 1; i <= 3; i++) {
+      await page.locator('.f-can-modal:not(.f-cikis) .f-can-reklam').click();
+      await reklamIzle(i === 1 ? 'can' : '');
+      await bekleCan(i, `reklamla can ${i}`);
+      await panelAcik();
+      await page.waitForTimeout(400);
+      if (i === 1) await kare('can-paneli-1-can');
+    }
+    if (!(await page.locator('.f-can-modal:not(.f-cikis) .f-can-yarin').count())) hatalar.push(`[${p.ad}] üç reklamdan sonra "Yarın yine" yok`);
+    if (await page.locator('.f-can-modal:not(.f-cikis) .f-can-reklam').count()) hatalar.push(`[${p.ad}] üç reklamdan sonra reklam düğmesi duruyor`);
+    await kare('can-paneli-yarin-yine');
+    await page.locator('.f-can-modal:not(.f-cikis) .f-can-bekle').click();
+    await bekleKosul(page, () => window.__fitil.ekran() === 'kaybettin', null, 8000, 'panelden Kaybettin');
+    await page.waitForTimeout(600);
+    if (!(await dugme('Tekrar dene').count())) hatalar.push(`[${p.ad}] can gelince Kaybettin'de "Tekrar dene" yok`);
+    await kare('kaybettin-can-geldi');
+    await haritayaDon();
+  }
+
+  // 5. Ayarlar > Mağaza: canları doldur, güçlendirici paketi (+3/+2/+2), Usta kartı → "Sende var".
+  await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 15000, 'harita (mağaza)');
+  await page.evaluate(() => window.__fitil.kayitYama({ guclendiriciler: { kibrit: 0, kalip: 0, geriSar: 0 } }));
+  await page.evaluate(() => window.__fitil.canAyarla(2));
+  await dugme('Ayarlar').click();
+  await page.waitForTimeout(700);
+  await page.locator('.f-ay-magaza').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+  await kare('ayarlar-magaza-satiri');
+  await page.locator('.f-ay-magaza').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'magaza' && document.querySelectorAll('.f-magaza-modal .f-mg-fiyat:not([disabled])').length >= 3, null, 8000, 'Mağaza fiyatları');
+  await page.waitForTimeout(400);
+  await kare('magaza');
+  const satinAl = async (sira, etiket) => {
+    await bekleKosul(page, () => window.__fitil.ekran() === 'magaza' && !!document.querySelector('.f-magaza-modal:not(.f-cikis)'), null, 8000, `${etiket}: Mağaza`);
+    await page.locator('.f-magaza-modal:not(.f-cikis) .f-mg-urun').nth(sira).locator('.f-mg-fiyat').click();
+    await satinOnayla(etiket);
+  };
+  await satinAl(0, 'can-doldur');
+  await bekleCan(5, 'canları doldur');
+  await satinAl(1, 'paket');
+  await bekleKosul(page, () => JSON.stringify(window.__fitil.gelir().stok) === JSON.stringify({ kibrit: 3, kalip: 2, geriSar: 2 }), null, 8000, 'paket stoğu');
+  await satinAl(2, 'usta-karti');
+  await bekleKosul(page, () => window.__fitil.gelir().ustaKarti === true, null, 8000, 'Usta kartı');
+  await bekleKosul(page, () => !!document.querySelector('.f-magaza-modal:not(.f-cikis) .f-mg-d-sende'), null, 8000, 'Sende var');
+  await page.waitForTimeout(500);
+  const durumlar = await page.evaluate(() => [...document.querySelectorAll('.f-magaza-modal:not(.f-cikis) .f-mg-urun')].map((e) => [...e.classList].find((c) => c.startsWith('f-mg-d-'))));
+  if (JSON.stringify(durumlar) !== JSON.stringify(['f-mg-d-stokDolu', 'f-mg-d-stokDolu', 'f-mg-d-sende'])) hatalar.push(`[${p.ad}] Mağaza durumları: ${durumlar}`);
+  await kare('magaza-sende');
+  await page.locator('.f-magaza-modal:not(.f-cikis) .f-mg-geri').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'magaza' && !!document.querySelector('.f-magaza-modal:not(.f-cikis)'), null, 8000, 'geri yükleme → Mağaza');
+  await page.waitForTimeout(400);
+  await page.keyboard.press('Escape');
+  await bekleKosul(page, () => window.__fitil.ekran() === 'ayarlar', null, 8000, 'Mağaza → Ayarlar');
+  await page.waitForTimeout(400);
+  await page.keyboard.press('Escape');
+  await bekleKosul(page, () => window.__fitil.ekran() === 'harita' && !window.__fitil.durum().modal, null, 8000, 'Ayarlar → harita');
+
+  // Usta kartı: reklam satırı "Ücretsiz +1 can" (aynı günlük hakla; hak sıfırlanır, can 3).
+  await page.evaluate(() => window.__fitil.kayitYama({ can: { reklamGun: 0, reklamSayisi: 0 } }));
+  await page.evaluate(() => window.__fitil.canAyarla(3));
+  await page.waitForTimeout(1200);
+  await page.locator('.f-can-hap').click();
+  await panelAcik();
+  await page.waitForTimeout(500);
+  const ucretsiz = await page.evaluate(() => document.querySelector('.f-can-modal:not(.f-cikis) .f-can-reklam')?.textContent ?? '');
+  if (!ucretsiz.includes('Ücretsiz +1 can')) hatalar.push(`[${p.ad}] Usta kartıyla reklam satırı: "${ucretsiz}"`);
+  await kare('can-paneli-usta-karti');
+  await page.locator('.f-can-modal:not(.f-cikis) .f-can-reklam').click();
+  await bekleCan(4, 'Usta kartıyla +1 can');
+  if (await page.locator('.fs-reklam').count()) hatalar.push(`[${p.ad}] Usta kartıyla reklam gösterildi`);
+  await panelAcik();
+  await page.locator('.f-can-modal:not(.f-cikis) .f-can-bekle').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 8000, 'panel → harita');
+
+  // 6. Duraklat (≥ 1 hamle) > Haritaya dön → onay kartı (Vazgeç → Duraklat; Çık → −1 can).
+  const c6 = await canSayi();
+  await page.evaluate(() => window.__fitil.bolumAc(10));
+  await bekleKosul(page, () => window.__fitil.ekran() === 'oyun' && window.__fitil.bolum() === 10 && window.__fitil.durum().oturum === 'bekliyor', null, 20000, 'bölüm 10 (çıkış)');
+  await page.evaluate(() => window.__fitil.botHamle('usta'));
+  await bekleKosul(page, () => window.__fitil.durum().oturum === 'bekliyor', null, 15000, 'hamle bitti');
+  await dugme('Duraklat').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'duraklat', null, 8000, 'duraklat');
+  await page.waitForTimeout(400);
+  await dugme('Haritaya dön').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'cikisOnayi' && !!document.querySelector('.f-cikis-modal'), null, 8000, 'çıkış onayı');
+  await page.waitForTimeout(500);
+  await kare('cikis-onayi');
+  await dugme('Vazgeç').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'duraklat', null, 8000, 'Vazgeç → Duraklat');
+  if ((await canSayi()) !== c6) hatalar.push(`[${p.ad}] Vazgeç can düşürdü`);
+  await page.waitForTimeout(400);
+  await dugme('Haritaya dön').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'cikisOnayi', null, 8000, 'çıkış onayı (2)');
+  await page.locator('.f-co-onay').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 15000, 'Çık → harita');
+  if ((await canSayi()) !== c6 - 1) hatalar.push(`[${p.ad}] onaylı çıkış: can ${c6} → ${await canSayi()}`);
+  await page.waitForTimeout(900);
+  await kare('cikis-sonrasi-harita');
+
+  // 6b. Bölüm başlatma kapısı (§2, C5): 0 canla kart > Oyna → "Canların bitti" paneli, bölüm
+  // başlamaz (Bekle → harita); can gelince (Usta kartıyla ücretsiz +1) bölüm başlar.
+  await page.evaluate(() => window.__fitil.canAyarla(0));
+  await page.waitForTimeout(1200);
+  const kapiBolumu = async () => {
+    await page.locator('.f-dugum[data-id="9"]').click();
+    await bekleKosul(page, () => window.__fitil.ekran() === 'bolumOncesi', null, 10000, 'kapı: bölüm kartı');
+    await page.waitForTimeout(500);
+    await dugme('Oyna').click();
+    await panelAcik();
+  };
+  await kapiBolumu();
+  await page.waitForTimeout(400);
+  const kapiBaslik = await page.evaluate(() => document.querySelector('.f-can-modal .f-serit-metin')?.textContent ?? '');
+  if (kapiBaslik !== 'Canların bitti') hatalar.push(`[${p.ad}] kapı paneli başlığı: "${kapiBaslik}"`);
+  await kare('kapi-can-paneli');
+  await page.locator('.f-can-modal:not(.f-cikis) .f-can-bekle').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 10000, 'kapı: Bekle → harita');
+  if ((await page.evaluate(() => window.__fitil.durum().oturum)) !== 'kapali') hatalar.push(`[${p.ad}] 0 canla bölüm başladı`);
+  await kapiBolumu();
+  await page.locator('.f-can-modal:not(.f-cikis) .f-can-reklam').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'oyun' && window.__fitil.bolum() === 9, null, 15000, 'kapı: can gelince bölüm başlar');
+  if ((await canSayi()) !== 1) hatalar.push(`[${p.ad}] kapı: can ${await canSayi()} (1 bekleniyordu)`);
+  await page.waitForTimeout(600);
+  await dugme('Duraklat').click();
+  await bekleKosul(page, () => window.__fitil.ekran() === 'duraklat', null, 8000, 'kapı: duraklat');
+  await dugme('Haritaya dön').click();
+  // Hamle yapılmadı: çıkış onayı yok, can düşmez.
+  await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 10000, 'kapı: hamlesiz çıkış');
+  if ((await canSayi()) !== 1) hatalar.push(`[${p.ad}] hamlesiz çıkış can düşürdü`);
+
+  // 8. Ölçüm: §8 olayları ve `bolum_bitti.reklam`.
+  const olc = await page.evaluate(() => window.__fitil.olcum());
+  writeFileSync(join(OUT, p.ad, 'olcum.json'), JSON.stringify(olc, null, 1));
+  const adlar = new Set(olc.olaylar.map((x) => x.a));
+  for (const a of ['can_harcandi', 'can_bitti', 'can_doldu', 'reklam_teklif', 'reklam_sonuc', 'satin_alma']) if (!adlar.has(a)) hatalar.push(`[${p.ad}] ölçüm: ${a} yok`);
+  const ozellik = (x) => x.p ?? x;
+  if (!olc.olaylar.some((x) => x.a === 'bolum_bitti' && ozellik(x).reklam === true)) hatalar.push(`[${p.ad}] ölçüm: bolum_bitti.reklam yok`);
+  if (!olc.olaylar.some((x) => x.a === 'reklam_sonuc' && ozellik(x).kart === true)) hatalar.push(`[${p.ad}] ölçüm: Usta kartıyla reklam_sonuc (kart) yok`);
+  not(`[${p.ad}] ölçüm: ${[...adlar].filter((a) => /^(can_|reklam_|satin_)/.test(a)).join(', ')}`);
+
+  // 7a. `?reklam=hata` (aynı kayıt, sayfa yeniden): "+5 hamle" → "Şu an reklam yok", düğme gizlenir.
+  await page.goto(ek(URL, 'gelir=sahte&reklam=hata'));
+  await page.waitForSelector('.f-acilis', { timeout: 20000 });
+  await page.waitForTimeout(1500);
+  await dokun(p.w / 2, p.h * 0.72);
+  await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 20000, 'reklam=hata: harita');
+  // Usta kartı reklamsız ödül verir: hata yolu için kart kaldırılır. Önceki kayıplar (son can,
+  // onaylı çıkış) 10'un serisini Eli eşiğine taşımasın: Eli sunulursa reklam teklifi çıkmaz (§3).
+  await page.evaluate(() => window.__fitil.kayitYama({ gelir: { ustaKarti: false, jetonlar: [] } }));
+  await page.evaluate(() => {
+    const b = window.__fitil.kayit().bolumler['10'];
+    if (b) window.__fitil.kayitYama({ bolumler: { 10: { ...b, basarisizSeri: 0 } } });
+  });
+  await page.evaluate(() => window.__fitil.canAyarla(5));
+  if (await kaybet('b10-reklam-hata')) {
+    await page.locator('.f-kb-reklam').click();
+    await bekleKosul(page, () => window.__fitil.ekran() === 'kaybettin' && !!document.querySelector('.f-kaybettin:not(.f-cikis)'), null, 8000, 'reklam=hata: Kaybettin');
+    await page.waitForTimeout(400);
+    const toast = await page.evaluate(() => [...document.querySelectorAll('.f-toast')].map((e) => e.textContent).join(' | '));
+    if (!toast.includes('Şu an reklam yok')) hatalar.push(`[${p.ad}] reklam hata: bildirim "${toast}"`);
+    if (await page.locator('.f-kaybettin:not(.f-cikis) .f-kb-reklam').count()) hatalar.push(`[${p.ad}] reklam hata: "+5 hamle" düğmesi gizlenmedi`);
+    await kare('reklam-hata');
+    await haritayaDon();
+  }
+
+  // 7. `?gelir` olmadan: can hapı, Mağaza, reklam düğmesi YOK (yeni bağlam, temiz kayıt).
+  const ctx2 = await browser.newContext({ locale: 'tr-TR', viewport: { width: p.w, height: p.h }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  const page2 = await ctx2.newPage();
+  page2.on('pageerror', (e) => hatalar.push(`[${p.ad}/web] pageerror: ${e.message}`));
+  page2.on('console', (m) => {
+    if (m.type() === 'error') hatalar.push(`[${p.ad}/web] console.error: ${m.text()}`);
+  });
+  await page2.goto(URL);
+  await page2.waitForSelector('.f-acilis', { timeout: 20000 });
+  await page2.waitForTimeout(1500);
+  await page2.mouse.click(p.w / 2, p.h * 0.72);
+  await bekleKosul(page2, () => window.__fitil.ekran() === 'oyun', null, 15000, 'web: bölüm 1');
+  await page2.waitForTimeout(800);
+  await page2.getByRole('button', { name: 'Duraklat', exact: true }).first().click();
+  await bekleKosul(page2, () => window.__fitil.ekran() === 'duraklat', null, 8000, 'web: duraklat');
+  await page2.getByRole('button', { name: 'Haritaya dön', exact: true }).first().click();
+  await bekleKosul(page2, () => window.__fitil.ekran() === 'harita', null, 15000, 'web: harita');
+  await page2.waitForTimeout(900);
+  const web = await page2.evaluate(() => ({ gelir: window.__fitil.gelir(), hap: document.querySelectorAll('.f-can-hap').length, canAyarla: window.__fitil.canAyarla(2) }));
+  await page2.getByRole('button', { name: 'Ayarlar', exact: true }).first().click();
+  await page2.waitForTimeout(700);
+  const web2 = await page2.evaluate(() => ({ magaza: document.querySelectorAll('.f-ay-magaza').length, hakkinda: document.querySelector('.f-hakkinda')?.textContent ?? '', kayitCan: 'can' in window.__fitil.kayit() }));
+  if (web.gelir !== null || web.hap || web.canAyarla !== false || web2.magaza || web2.kayitCan || !web2.hakkinda.includes('Can yok, bekleme yok, mağaza yok.')) hatalar.push(`[${p.ad}/web] gelir öğesi: ${JSON.stringify({ ...web, ...web2 })}`);
+  await page2.locator('.f-hakkinda').scrollIntoViewIfNeeded();
+  await page2.waitForTimeout(300);
+  await page2.screenshot({ path: join(OUT, p.ad, '98-web-ayarlar.png') });
+  await page2.keyboard.press('Escape');
+  // Web Kaybettin: can satırı, "+5 hamle", "Can bitti" yok; "Can yok, bekleme yok" notu var.
+  const kb2 = { yildiz: 2, enIyi: 1000, deneme: 1, basarisizSeri: 0, kazanc: 1 };
+  await page2.evaluate((b) => window.__fitil.kayitYama({ bolumler: b, ayarlar: { ipuclari: false } }), Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => [i, kb2])));
+  let webKayip = false;
+  for (let i = 0; i < 6 && !webKayip; i++) {
+    await page2.evaluate(() => window.__fitil.bolumAc(10));
+    await bekleKosul(page2, () => window.__fitil.ekran() === 'oyun' && window.__fitil.bolum() === 10 && window.__fitil.durum().oturum === 'bekliyor', null, 20000, 'web: bölüm 10');
+    await page2.evaluate(() => window.__fitil.hizli(true));
+    for (let j = 0; j < 80; j++) {
+      const e = await page2.evaluate(() => window.__fitil.ekran());
+      if (e === 'kazandin' || e === 'kaybettin') break;
+      if (e !== 'oyun') {
+        await page2.waitForTimeout(150);
+        continue;
+      }
+      await page2.evaluate(() => window.__fitil.botHamle('acemi'));
+    }
+    await bekleKosul(page2, () => ['kazandin', 'kaybettin'].includes(window.__fitil.ekran()), null, 60000, 'web: sonuç');
+    webKayip = (await page2.evaluate(() => window.__fitil.ekran())) === 'kaybettin';
+  }
+  if (webKayip) {
+    await page2.waitForTimeout(2300);
+    const kbWeb = await page2.evaluate(() => ({ gelir: document.querySelectorAll('.f-kb-can, .f-kb-reklam, .f-kb-can-bitti').length, not: !!document.querySelector('.f-kb-ucretsiz') }));
+    if (kbWeb.gelir || !kbWeb.not) hatalar.push(`[${p.ad}/web] Kaybettin: ${JSON.stringify(kbWeb)}`);
+    await page2.screenshot({ path: join(OUT, p.ad, '99-web-kaybettin.png') });
+  } else hatalar.push(`[${p.ad}/web] Acemi 6 denemede kaybetmedi`);
+  await ctx2.close();
 }
 
 const browser = await chromium.launch({ executablePath: exe, args: ['--autoplay-policy=no-user-gesture-required'] });

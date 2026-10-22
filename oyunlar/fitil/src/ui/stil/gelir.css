@@ -1,0 +1,176 @@
+/*
+ * Can, ödüllü reklam ve Mağaza (docs/CAN-REKLAM.md §6). Yalnız gelir
+ * sağlayıcısı varken görünür; "Liste" okunaklılığı: en küçük yazı 16 px,
+ * önemli satır 18–22 px. Mevcut ahşap/pirinç dili.
+ */
+
+/* Girişsiz modal (§13 karar 7): kapanıp hemen yeniden açılan panel yerinde kalır. */
+.f-modal.f-hemen .f-kart, .f-modal.f-hemen .f-perde { transition: none !important; }
+
+.f-fitil-can { overflow: visible; }
+
+/* ─────────────── Harita can hapı (yıldızın yanında) ─────────────── */
+.f-can-hap { pointer-events: auto; padding-right: 14px; }
+.f-can-hap::before { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 48px); height: max(100%, 48px); transform: translate(-50%, -50%); }
+.f-hap-fitil { width: 26px; height: 26px; overflow: visible; }
+.f-can-hap.f-bos .f-can-hap-sayi { color: #FFB08A; }
+/*
+ * Sonraki can: hapın altında küçük künye ("12:31"); üst çubuğun yüksekliği
+ * değişmez. Künye hapın alt kenarına asılır (bandın altına ~10 px taşar):
+ * aşağı sarkarsa varsayılan kaydırmada mahalle tabelasının yazısını örter.
+ */
+.f-can-hap-sure {
+  position: absolute;
+  left: 50%;
+  top: calc(100% - 10px);
+  transform: translateX(-50%);
+  padding: 0 8px 1px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--krem);
+  white-space: nowrap;
+  pointer-events: none;
+  background: linear-gradient(180deg, #3A2416, #1E120A);
+  box-shadow: 0 0 0 1.5px rgba(217, 164, 65, .75), 0 3px 8px rgba(0, 0, 0, .5);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .5);
+}
+.f-can-hap-sure[hidden] { display: none; }
+/* Dar ekran: yıldız + can + nöbet + günlük + yardım tek satıra sığsın (360 px'te 144★, 30 gün dahil). */
+@media (max-width: 400px) {
+  .f-harita-ust.f-ust-sik { gap: 4px; padding-left: calc(var(--guv-sol) + 8px); padding-right: calc(var(--guv-sag) + 8px); }
+  .f-ust-sik .f-harita-ust-sol, .f-ust-sik .f-harita-ust-sag { gap: 5px; }
+  .f-ust-sik .f-harita-hap { gap: 3px; padding: 0 9px 2px 4px; font-size: 18px; }
+  .f-ust-sik .f-hap-ikon { width: 26px; height: 26px; }
+  .f-ust-sik .f-hap-ikon .f-ikon { width: 20px; height: 20px; }
+  .f-ust-sik .f-hap-fitil { width: 24px; height: 24px; }
+  .f-ust-sik .f-hap-alev { width: 20px; height: 24px; }
+  .f-ust-sik .f-gunluk-hap { padding: 0 9px 2px 7px; }
+  .f-ust-sik .f-gunluk-hap .f-ikon { width: 20px; height: 20px; }
+  .f-ust-sik .f-harita-yardim { width: 36px; height: 36px; }
+}
+
+/* ─────────────── Can paneli / Can bitti ─────────────── */
+.f-can-modal .f-kart { width: min(100%, 380px); }
+.f-can { display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
+.f-can-fitiller {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px 8px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .3), rgba(0, 0, 0, .16));
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .4), 0 1px 0 rgba(255, 220, 160, .08);
+}
+.f-can-fitil { width: 46px; height: 46px; overflow: visible; flex: none; }
+.f-can-sayac { display: flex; flex-direction: column; align-items: center; min-height: 40px; justify-content: center; }
+.f-can-sayac-etiket { font-size: 18px; font-weight: 800; color: var(--krem-2); line-height: 1.15; }
+.f-can-sure { font-size: 46px; font-weight: 900; line-height: 1.05; color: #FFF4C2; text-shadow: 0 2px 0 rgba(0, 0, 0, .5), 0 0 20px rgba(255, 170, 60, .35); }
+.f-can-sayac-dolu { font-size: 20px; font-weight: 800; color: var(--basari); }
+.f-can-satirlar { gap: 12px; }
+.f-can-satirlar .f-dg { white-space: normal; text-align: center; }
+.f-can-reklam-kap { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.f-can-hak { font-size: 16px; font-weight: 700; color: var(--krem-2); text-align: center; }
+.f-can-yarin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 14px;
+  border-radius: 18px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--krem-2);
+  background: rgba(0, 0, 0, .22);
+  box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, .25);
+}
+.f-can-yarin .f-ikon { color: var(--pirinc-acik); opacity: .7; }
+
+/* ─────────────── Çıkış onayı ─────────────── */
+.f-cikis-modal .f-kart { width: min(100%, 360px); }
+.f-cikis-modal .f-kart-ic { padding-top: 22px; }
+.f-cikis-onay { display: flex; flex-direction: column; gap: 18px; }
+.f-co-ust { display: flex; align-items: center; gap: 16px; }
+.f-co-simge {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 35%, #5A3A22, #1A0F08);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 160, .25), 0 0 0 2px #D9A441, 0 0 0 3.5px #3A1E08;
+}
+.f-co-fitil { width: 40px; height: 40px; }
+.f-co-simge b {
+  position: absolute;
+  right: -10px;
+  bottom: -6px;
+  padding: 0 7px 1px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.25;
+  color: #FFF3D6;
+  background: linear-gradient(180deg, #FF8A6A, #C4321C);
+  box-shadow: 0 0 0 2px #5A0E06;
+}
+.f-co-metin { font-size: 20px; font-weight: 800; line-height: 1.25; }
+.f-cikis-onay .f-dg { font-size: 18px; white-space: normal; padding-left: 12px; padding-right: 12px; }
+/* Onay düğmesi geniş ("Yeniden başla" 360 px'te tek satır). */
+.f-cikis-onay .f-dg-sira > .f-co-onay { flex-grow: 1.5; }
+
+/* ─────────────── Kaybettin ekleri ─────────────── */
+.f-kb-can { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: -6px; font-size: 19px; font-weight: 800; color: #FFB08A; }
+.f-kb-can-fitil { width: 30px; height: 30px; }
+.f-kb-reklam .f-ikon { color: var(--pirinc-acik); }
+
+/* ─────────────── Mağaza ─────────────── */
+.f-magaza-modal .f-kart-ic { padding-left: 14px; padding-right: 14px; }
+.f-mg { display: flex; flex-direction: column; gap: 12px; }
+.f-mg-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+/* Satır: [simge] ad / tek satır açıklama (tam genişlik: 360 px'te de tek satır) / fiyat düğmesi. */
+.f-mg-urun {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  grid-template-areas: "r a" "d d" "e e";
+  column-gap: 12px;
+  row-gap: 4px;
+  align-items: center;
+  padding: 10px 14px 12px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .3), rgba(0, 0, 0, .16));
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .4), 0 1px 0 rgba(255, 220, 160, .08);
+}
+.f-mg-resim { grid-area: r; width: 48px; height: 48px; }
+.f-mg-resim .f-urun-svg { width: 48px; height: 48px; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .5)); }
+.f-mg-ad { grid-area: a; font-size: 20px; font-weight: 800; line-height: 1.15; }
+.f-mg-aciklama { grid-area: d; font-size: 16px; font-weight: 700; line-height: 1.25; color: var(--krem-2); }
+.f-mg-eylem { grid-area: e; display: flex; flex-direction: column; align-items: stretch; margin-top: 4px; }
+.f-mg-fiyat { min-height: 48px; padding: 4px 18px 6px; font-size: 20px; }
+.f-mg-fiyat:disabled { filter: none; opacity: .7; }
+.f-mg-sende { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; font-size: 19px; font-weight: 800; color: var(--basari); }
+.f-mg-sende .f-ikon { width: 22px; height: 22px; }
+.f-mg-alt { display: flex; justify-content: center; }
+.f-mg-alt:empty { display: none; }
+.f-mg-geri .f-ikon { width: 20px; height: 20px; }
+
+/* Alçak ekran (360×640): üç ürün kaydırmadan sığsın; Kaybettin'de can satırı eklenince
+   (Usta'nın Eli ile en kalabalık hâl) "Haritaya dön" kesilmesin. Sağlayıcısız Kaybettin aynı. */
+@media (max-height: 700px) {
+  .f-kb.f-kb-gelirli { gap: 9px; }
+  .f-kb-gelirli .f-kb-dugmeler { gap: 10px; }
+  .f-kb-gelirli .f-kb-ilerleme { padding: 8px 12px 10px; }
+  .f-kb-gelirli .f-kb-kalan { margin-top: 8px; }
+  .f-kb-gelirli .f-kb-hayalet { min-height: 52px; padding-top: 5px; padding-bottom: 5px; }
+  .f-can { gap: 10px; }
+  .f-can-fitil { width: 40px; height: 40px; }
+  .f-can-sure { font-size: 40px; }
+  .f-mg { gap: 8px; }
+  .f-mg-liste { gap: 8px; }
+  .f-mg-urun { padding: 10px 12px; }
+  .f-mg-eylem { margin-top: 6px; }
+}

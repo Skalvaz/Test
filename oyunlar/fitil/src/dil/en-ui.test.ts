@@ -77,7 +77,7 @@ describe('İngilizce arayüz metinleri (ui)', () => {
   it('kısa etiketler Türkçesinden belirgin uzun değil (yerleşim sığsın)', () => {
     const e = new Map<string, string>();
     const t = new Map<string, string>();
-    for (const k of ['M', 'MK', 'MO', 'MOTIF_ADLARI', 'GUCLENDIRICI_ADLARI', 'NADIRLIK_ADLARI', 'ENGEL_ADLARI', 'SERI_BASAMAKLARI'] as const) {
+    for (const k of ['M', 'MK', 'MO', 'MC', 'URUN_METINLERI', 'MOTIF_ADLARI', 'GUCLENDIRICI_ADLARI', 'NADIRLIK_ADLARI', 'ENGEL_ADLARI', 'SERI_BASAMAKLARI'] as const) {
       topla(en[k], k, e);
       topla(tr[k], k, t);
     }
@@ -154,6 +154,24 @@ describe('İngilizce arayüz metinleri (ui)', () => {
     expect(en.MO.sonBolumler(12)).toBe('Last 12 levels');
     expect(en.MO.kazanildi).toBe('won');
     expect(tr.MO.enCokTakilan).toBe('en çok takılınan bölüm');
+  });
+
+  it('can, reklam ve Mağaza metinleri (CAN-REKLAM §6)', () => {
+    expect(en.MC.canlarBitti).toBe('Out of lives');
+    expect(en.MC.canlarDurum(3, 5)).toBe('Lives 3/5');
+    expect(en.MC.kayipCan(3)).toBe('−1 life · 3 left');
+    expect(tr.MC.kayipCan(3)).toBe('−1 can · 3 kaldı');
+    expect(en.MC.hakKaldi(2)).toBe('2 left today');
+    expect(tr.MC.hakKaldi(2)).toBe('2 hak kaldı');
+    expect(en.MC.hapEtiketi(3, 5, '12:31')).toBe('Lives 3/5, next life 12:31');
+    expect(en.MC.hapEtiketi(5, 5, null)).toBe('Lives 5/5');
+    expect(tr.MC.hapEtiketi(3, 5, '12:31')).toBe('Canlar 3/5, sonraki can 12:31');
+    expect(en.MC.cikisMetni.replace(/ /g, ' ')).toBe('Leaving the level costs 1 life.');
+    expect(en.M.hakkindaMetinGelir).toBe('Relight Lantern Cove’s Festival of Lights. A life refills every 30 minutes; ads only when you ask.');
+    expect(en.M.hakkindaMetin).toBe('Relight Lantern Cove’s Festival of Lights. No lives, no waiting, no shop.');
+    expect(en.URUN_METINLERI.guclendirici_paketi).toEqual({ ad: 'Booster pack', aciklama: '3 Matches, 2 Rocket Molds, 2 Undos' });
+    expect(tr.URUN_METINLERI.usta_karti.ad).toBe('Usta kartı');
+    for (const u of Object.values(en.URUN_METINLERI)) expect(turkceMi(u.ad) || turkceMi(u.aciklama)).toBe(false);
   });
 
   it('paylaşım metni, mühür harfi ve Çarşı mahyası', () => {

@@ -22,6 +22,8 @@ import type { Motif } from '../core/types';
 import { t } from '../platform/dil';
 import { base64Metin, metinBase64 } from './kodlama';
 import { bosKasaba, kancaBirlestir, kandilDokumu, kasabaOnar, toplamMuhur } from './kasaba';
+import { canOnar, gelirOnar } from './can';
+import type { CanKaydi, GelirKaydi } from './can';
 import type { KasabaKaydi } from './kasaba';
 import { MUHUR_ACILIS_BOLUMU, MUHUR_MASKE_TAVANI, MUHUR_PARCA_ESIKLERI, MUHUR_SON_BOLUM } from './muhur';
 import {
@@ -221,6 +223,21 @@ export interface Kayit {
   kasaba: KasabaKaydi;
   /** Şema 3: verilmiş mühür parça ödülleri, `<mahalleId>:<5|10|15>` (KANCALAR §A.6). */
   muhurOdulleri: string[];
+  /**
+   * Aşama 2 (CAN-REKLAM §7; şema 3 kalır): can ve reklam hakkı. İsteğe bağlı:
+   * yoksa `varsayilanCan()` sayılır ve can işlevleri varsayılandan farklı bir
+   * değer yazana dek eklenmez (sağlayıcısız sürümün kaydı değişmez). Varsa
+   * `kayitOnar` onarır (`canOnar`); bulut birleştirmesinde seçilen kaydınki
+   * kalır (`kancaBirlestir`). Sağlayıcı yokken de bulunabilir, anlamı yok sayılır.
+   */
+  can?: CanKaydi;
+  /**
+   * Aşama 2: Usta kartı ve işlenmiş satın alma jetonları. Yoksa
+   * `varsayilanGelir()`. Varsa `kayitOnar` onarır (`gelirOnar`); bulut
+   * birleştirmesinde Usta kartı VEYA, jetonlar birleşimi (`gelirBirlestir`);
+   * ilerlemeyi sıfırlamak onu korur (satın alma ilerleme değildir).
+   */
+  gelir?: GelirKaydi;
 }
 
 // ─────────────────────────── Varsayılan ───────────────────────────
@@ -745,6 +762,11 @@ export function kayitOnar(ham: unknown, yedekTohum = 0): OnarimSonucu {
   v.kasaba = kasabaOnar(o.kasaba, v, not);
   v.muhurOdulleri = kumeFiltre(o.muhurOdulleri, muhurOdulGecerli, 'muhurOdulleri', not);
 
+  // Aşama 2 (CAN-REKLAM §7): isteğe bağlı alanlar. Yoksa eklenmez (varsayılan
+  // sayılır; eksik alan onarım değildir), varsa onarılır (bozuk → varsayılan).
+  if (o.can !== undefined) v.can = canOnar(o.can, not);
+  if (o.gelir !== undefined) v.gelir = gelirOnar(o.gelir, not);
+
   // Tutarlılık: en az bir desen takılı kalır (gökyüzü boş kalmasın); boşsa başlangıç takılıları.
   if (v.koleksiyon.takili.length === 0) {
     v.koleksiyon.takili = [...BASLANGIC_TAKILI];
@@ -1106,10 +1128,24 @@ export function ipuclariniSifirla(k: Kayit): Kayit {
 
 /**
  * İlerlemeyi sıfırla (iki aşamalı onayı arayüz yapar): ayarlar korunur, geri
- * kalan her şey yeni kayıt. `yeniTohum` dışarıdan gelir.
+ * kalan her şey yeni kayıt. `yeniTohum` dışarıdan gelir. Aşama 2: can ve
+ * satın almalar (Usta kartı, işlenmiş jetonlar) da korunur: satın alma
+ * ilerleme değildir, sıfırlama da can doldurma yolu olmasın. Satın alma
+ * yapılmış kayıtta (`gelir` var) güçlendirici stoğu da korunur: satın alınan
+ * paket stoğu kazanılandan ayrı tutulmaz ve jetonu işlenmiş olduğundan
+ * yeniden verilmez (CAN-REKLAM §13; kazanılan stok da kalır). `gelir` yoksa
+ * (sağlayıcısız sürüm) stok eskisi gibi sıfırlanır.
  */
 export function ilerlemeyiSifirla(k: Kayit, yeniTohum: number): Kayit {
   const y = yeniKayit(yeniTohum);
   y.ayarlar = { ...k.ayarlar };
+  if (k.can !== undefined) y.can = canOnar(k.can);
+  if (k.gelir !== undefined) {
+    y.gelir = gelirOnar(k.gelir);
+    for (const id of GUC_IDLERI) {
+      const n = k.guclendiriciler?.[id];
+      y.guclendiriciler[id] = typeof n === 'number' && Number.isFinite(n) ? Math.min(GUCLENDIRICI_STOK_SINIRI, Math.max(0, Math.floor(n))) : 0;
+    }
+  }
   return y;
 }

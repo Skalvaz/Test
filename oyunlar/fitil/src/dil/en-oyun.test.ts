@@ -21,6 +21,9 @@ let uygulama: typeof import('../app/uygulama');
 let cizici: typeof import('../render/oyunCizici');
 let yol: typeof import('../render/yolKatmani');
 let palet: typeof import('../render/palet');
+let gelir: typeof import('../app/gelirAkisi');
+let sahte: typeof import('../platform/gelirSahte');
+let ui: typeof import('../ui/metinler');
 
 beforeAll(async () => {
   gorunum = await import('../app/gorunum');
@@ -29,6 +32,9 @@ beforeAll(async () => {
   cizici = await import('../render/oyunCizici');
   yol = await import('../render/yolKatmani');
   palet = await import('../render/palet');
+  gelir = await import('../app/gelirAkisi');
+  sahte = await import('../platform/gelirSahte');
+  ui = await import('../ui/metinler');
 });
 
 /** Tablodaki metinler; işlevler örnek bağımsız değişkenlerle çağrılır. */
@@ -63,6 +69,18 @@ describe('İngilizce (oyun grubu): metin tabloları', () => {
     denetle('DEFTER_HATA', metinler(uygulama.DEFTER_HATA), 40);
     expect(uygulama.UYGULAMA_METNI.mahalleTamam('Pier')).toBe('Pier complete!');
     expect(uygulama.UYGULAMA_METNI.sonsuzHazirlaniyor(12)).toContain('festival 12');
+  });
+
+  it('gelir akışı: bildirimler kısa (CAN-REKLAM §3–§4)', () => {
+    denetle('GELIR_METNI', metinler(gelir.GELIR_METNI), 32);
+    expect(gelir.GELIR_METNI.reklamYok).toBe('No ad right now');
+  });
+
+  it('sahte sağlayıcı katmanları (?gelir=sahte): kısa; ürün adları Mağaza satırlarıyla aynı', () => {
+    denetle('SAHTE_METNI', metinler(sahte.SAHTE_METNI), 24);
+    denetle('SAHTE_METNI.urun', metinler(sahte.SAHTE_METNI.urun), 24);
+    for (const [id, ad] of Object.entries(sahte.SAHTE_METNI.urun)) expect(ad, id).toBe(ui.URUN_METINLERI[id as keyof typeof ui.URUN_METINLERI].ad);
+    expect(sahte.SAHTE_METNI.urun.usta_karti).toBe('Master’s Card');
   });
 
   it('tuval: reaksiyon yazıları, kombo adları, bilgi yazıları', () => {

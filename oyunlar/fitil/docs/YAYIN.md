@@ -36,6 +36,15 @@ Can ve reklam gelir, ama oyuncuyu yıpratan desenler yine yasak:
    başına bir kez; bugünkü ücretsiz Usta'nın Eli'yle ilişkisi o aşamada
    kararlaştırılır). Satın almalar (küçük): canları doldur, güçlendirici
    paketi, "Usta kartı" (ödüllü reklamların ödülünü reklamsız verir).
+   **Durum (Ekim 2026): uygulandı, sahte sağlayıcıyla denendi.** Şartname
+   ve kararlar `docs/CAN-REKLAM.md` (Usta'nın Eli sunuluyorsa reklam
+   teklifi yok; reklamla +5 hamle Eli kurallarıyla). Web'de deneme:
+   `?gelir=sahte` (ya da cihazda `localStorage` `fitil.gelir` = `sahte`;
+   `?reklam=hizli|yok|hata`, `?satin=iptal|hata`, `?gelir=yok`); oynanış
+   testi `npm run oynanis -- <url> <klasör> gelir`. Sağlayıcı yokken
+   (claude.ai, `fitil.html`) can, reklam ve Mağaza görünmez. Aşama 3'ün
+   işi: `window.FitilYerel.gelir` köprüsü (CAN-REKLAM §5.1), gerçek
+   fiyatlar Play Console'dan.
 3. **Android paketleme:** Capacitor sarmalayıcı (aynı web kodu), AdMob +
    UMP (KVKK/GDPR onayı), Play Billing, Firebase Analytics (ölçüm katmanının
    Android ucu), gizlilik politikası sayfası, uygulama simgesi ve mağaza

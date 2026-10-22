@@ -252,3 +252,152 @@ Varsayılan: `{ sayi: 5, dolumBasi: null, reklamGun: 0, reklamSayisi: 0 }`,
 <klasör> telefon` (web: gelir yok) ve `gelir` profili, `node scripts/dil-tara.mjs`
 (`?gelir=sahte` ekranları dahil, 0 kalıntı), 390×844 ve 360×640 ekran
 görüntüleri (can paneli, Kaybettin, Mağaza, harita hapı).
+
+## 13. Sözleşme (G0)
+
+Derlenen iskelet: imzalar ve JSDoc bağlayıcı, gövdeler `throw` (G1
+`meta/can.ts`, G3 `Arayuz`). Var olan bir adın anlamını değiştirme; eklemek
+serbest.
+
+### Dosyalar ve dışa açık adlar
+
+- **`src/meta/can.ts`** (G1; `meta/index.ts` dışa aktarır: `meta.canDurumu` …)
+  - Sabitler: `CAN_ENCOK` 5, `CAN_DOLUM_MS` 30 dk, `CAN_UCRETSIZ_SON_BOLUM` 5,
+    `REKLAM_CAN_GUNLUK` 3, `GUCLENDIRICI_PAKETI` {kibrit 3, kalip 2, geriSar 2},
+    `JETON_SINIRI` 50.
+  - Türler: `CanKaydi`, `GelirKaydi` (§7), `CanDurumu` {sayi, enCok, sonrakiMs},
+    `CanHarcamaNedeni` ('kayip' | 'cikis'), `SatinAlmaUygulamasi` {kayit, verildi, tekrar}.
+  - Gövdeli: `varsayilanCan()`, `varsayilanGelir()`.
+  - G1: `canDurumu(k, simdi)`, `canGerekirMi(v: {tur, id})`, `canTazele(k, simdi)`,
+    `canHarca(k, simdi, neden)`, `canIade(k, simdi)`, `canEkle(k, simdi, n)`,
+    `canDoldur(k, simdi)`, `reklamCanHakki(k, bugun)`, `reklamCanKullan(k, simdi, bugun)`,
+    `paketSigarMi(k)` (§10'daki `guclendiriciPaketiSigar`),
+    `satinAlmaUygula(k, urun, jeton, simdi)`, `geriYuklemeUygula(k, urunler)`.
+  - G1 ekleri: `canOnar`, `gelirOnar` (alan onarımı), `gelirBirlestir`
+    (bulut birleştirmesi), `jetonGecerli` + `JETON_EN_UZUN` (4096; boş, yalnız
+    boşluk ya da daha uzun jeton geçersiz). Testler `src/meta/can.test.ts`.
+- **`src/meta/kayit.ts`**: `Kayit.can?: CanKaydi`, `Kayit.gelir?: GelirKaydi`
+  (şema 3, `KAYIT_SURUMU` aynı). G1: alan YOKSA eklenmez (varsayılan sayılır;
+  `yeniKayit` ve sağlayıcısız sürümün kaydı değişmez, can işlevleri ancak
+  varsayılandan farklı bir değer yazınca ekler); VARSA `kayitOnar` onarır
+  (bozuk → varsayılan, `sayi` 0..5 tamsayı, can doluyken `dolumBasi` null,
+  jetonlar geçerli + tekrarsız + son 50). `kancaBirlestir`: can seçilen
+  kayıttan, `ustaKarti` VEYA, jetonlar birleşimi (son 50). `ilerlemeyiSifirla`
+  canı ve satın almaları korur.
+- **`src/platform/gelir.ts`** (G2): §5 türleri birebir (`ReklamYeri`,
+  `ReklamSonucu`, `UrunId`, `Urun`, `SatinAlmaSonucu`, `GelirSaglayici`),
+  `URUN_IDLERI` (Mağaza sırası), `URUN_TURLERI` (tuketilir/kalici),
+  `AndroidGelirKoprusu` (§5.1), `gelirSaglayici()` (G0: hep null).
+- **`src/platform/olcum.ts`**: `Window.FitilYerel.gelir?: AndroidGelirKoprusu`;
+  §8: `OlcumGelirOzellikleri`, `OlcumGelirOlayi`, `OLCUM_GELIR_OLAYLARI`,
+  `gelirOlayi(ad, p)` (tür denetimli `olcum.olay`). Sözlük `docs/OLCUM.md`.
+- **`src/ui/tipler.ts`** (G3 çizer, G4 doldurur): `CanSayaciVM` {sayi, enCok,
+  sonrakiMs}, `CanVM` (+ tur, reklam, doldur), `CanPaneliSecimi`,
+  `MagazaUrunVM`, `MagazaVM`, `MagazaSecimi`; `HaritaVM.can?`,
+  `HaritaSecimi` + `{ tur: 'can' }`; `KaybettinVM.can?` / `reklamHamle?` /
+  `canBitti?`; `KaybettinSecimi` + 'reklamHamle' | 'canBitti'.
+- **`src/ui/ekranlar/ayarlar.ts`**: `AyarlarEk.magazaAc?`, `AyarlarEk.gelirVar?`
+  (`Arayuz.ayarlar` ikisini de geçirir).
+- **`src/ui/arayuz.ts`** (G3): `canPaneli(vm, tazele?)`, `magaza(vm, tazele?)`,
+  `cikisOnayi(neden = 'harita')`, `haritaCanGuncelle(can)`.
+- **`src/app/zaman.ts`**: `duvarSaati()` (epoch ms; can işlevlerinin `simdi`'si).
+
+### Kararlar
+
+1. **Zaman:** `simdi` duvar saati (`Date.now()`, epoch ms): uygulama
+   `app/zaman.ts` `duvarSaati()` verir. `zaman.ts` `simdi()` (performance.now,
+   sayfa başına sıfırlanır) KULLANILMAZ: `dolumBasi` kayda yazılır.
+2. **Gün:** reklam hakkının günü yerel takvim günü `yyyymmdd`
+   (`zaman.bugun()`, Günün Şenliği ile aynı), parametreyle gelir; meta `Date`
+   kullanmaz. Bu yüzden `reklamCanHakki(k, bugun)` ve `reklamCanKullan(k,
+   simdi, bugun)` (G0 iş tanımındaki `(k, simdi)`'den sapma); `reklamGun` yyyymmdd.
+3. **Kayıt işlevleri** girdiyi değiştirmez; değişiklik yoksa aynı nesne,
+   varsa yeni kopya (`yeni !== eski` → kaydet). Alan yoksa varsayılan sayılır.
+   Her biri önce tembel dolumu uygular.
+4. **`canTazele`** (iş tanımına ek): tembel dolumu ve saat geri düzeltmesini
+   kayda yazar; açılışta ve harita zamanlayıcısında (`can_doldu` zaman).
+5. **`reklamCanHakki`** can doluluğuna bakmaz (bugün kalan hak). Arayüz:
+   `CanVM.reklam` null = can dolu (satır yok); hak 0 = "Yarın yine"; hak > 0
+   ama hazır değil = satır gizli; Usta kartı aynı hakkı kullanır (C9).
+6. **Satın alma:** `verildi` → kaydı yaz, SONRA `tamamla(jeton)`; `tekrar`
+   → ödül yok, yine `tamamla`; ikisi de false (paket sığmıyor ya da boş jeton)
+   → `tamamla` yok, satın alma `bekleyenler()`'de kalır. Dolu canla
+   `can_doldur` yine verildi sayılır (ödeme alınmıştır). Geri yükleme
+   jetonsuzdur: `geriYuklemeUygula` yalnız kalıcı ürünü verir.
+7. **Modal davranışı:** can paneli ve Mağaza **seçimde kapanır**; uygulama
+   işleyip yeni modelle yeniden açar (döngü, `kasabaAkisi` gibi). 1 sn içinde
+   yeniden açılışta giriş animasyonu yok ("panel yerinde kalır"). `tazele`
+   açıkken saniyede bir çağrılır (sayaç, reklam hazır, fiyatların gelişi).
+   Sahte reklam ve sahte satın alma onayı sağlayıcının kendi katmanıdır (G2),
+   panel kapalıyken görünür.
+8. **Çıkış onayı:** Duraklat kapandıktan sonra `cikisOnayi('harita' |
+   'yeniden')`; false → uygulama Duraklat'ı yeniden açar.
+9. **Can hapı:** `HaritaVM.can` ilk çizim; canlı sayaç `haritaCanGuncelle`
+   (haritayı yeniden çizmez). `harita(vm)`'in "aynı model" denetimi `can`'ı
+   dışarıda bırakır (G3).
+10. **Mağaza durumu:** 'stokDolu' paket için "Stok dolu", `can_doldur` için
+    "Canların dolu"; 'yok' mağaza ürünü sunmuyor. Ürün ad/açıklama metinleri
+    G3'ün `metinler.ts`'inde (iki dil); G4 `MagazaVM`'i oradan doldurur.
+11. **Sağlayıcı:** `gelirSaglayici()` sayfa başına bir kez seçer, hep aynı
+    örneği döndürür; null iken can, reklam, Mağaza ve gelir ölçüm olayları yok.
+
+### G4 (akış) uygulaması
+
+- **`src/app/gelirAkisi.ts`** (yeni): `GelirAkisi` (sağlayıcı varken
+  `Uygulama.gelir`; yoksa null ve hiçbir yeni öğe yok), saf modeller
+  `canSayaciVM`, `canPaneliVM`, `magazaVM`, `kayitKoduGelirKoru`; metinler
+  `GELIR_METNI` ("Şu an reklam yok", "Satın alındı", …). Testler
+  `src/app/gelirAkisi.test.ts`.
+- **Uygulama:** açılışta `baslat()` (tembel dolum kayda, fiyatlar,
+  `bekleyenler()`); harita hapı saniyede bir yalnız harita açıkken
+  (`canTazele` + `haritaCanGuncelle`); bölüm başlatma kapısı bölüm öncesi
+  kartının "Oyna"sından SONRA (0 can → "Canların bitti" paneli; reklam ya
+  da satın alma can verirse bölüm başlar, Bekle → harita); can hapı →
+  can paneli; Ayarlar > Mağaza; Hakkında `gelirVar`. Reklam açıkken
+  `ses.ayarla({ sessiz })` + `cizici.dev.dondur`.
+- **Oturum:** kayıpta `canHarca` (sonuçla birlikte hemen yazılır); aynı
+  denemede devamdan (Eli ya da reklam) sonra ikinci kayıp ve çıkış yeniden
+  düşürmez; devamla kazançta `canIade`. Kaybettin: `can` (−1 can · n
+  kaldı; n güncel can), `reklamHamle` (Eli yoksa, günlük değilse, denemede
+  devam yoksa, reklam hazırsa ya da Usta kartıyla; `yok`/`hata`dan sonra
+  gizli, `iptal`de durur), `canBitti` (can harcayan bölümde 0 can),
+  `gelirVar` her zaman true. Duraklat > Haritaya dön / Yeniden başla:
+  hamle > 0, can harcayan bölüm, bu deneme can ödemediyse ve düşecek can
+  varsa `cikisOnayi`; Vazgeç → Duraklat.
+- **Kayıt kodu içe aktarma** (sağlayıcı varken): can bu cihazda kalır,
+  satın almalar korunur (`kayitKoduGelirKoru`; eski kodla can doldurulamasın).
+- **Test kancası:** `__fitil.gelir()` → `{ saglayici, can, reklamHakki,
+  ustaKarti, stok }` (sağlayıcı yoksa null), `__fitil.canAyarla(n)`
+  (sağlayıcı yoksa false). Oynanış: `npm run oynanis -- <url> <klasör> gelir`.
+- **Sapmalar / ayrıntılar:** reklam ödülünde yalnız `reklamCanKullan`
+  (G1'de +1 canı da verir; ayrıca `canEkle` çağrılırsa can iki artardı).
+  Başarılı satın almada kısa "Satın alındı" bildirimi; geri yüklemede
+  mağaza kalıcı ürün bildirdiyse "Satın alımlar geri yüklendi", yoksa
+  "Geri yüklenecek satın alım yok". Oynanış profili §11'deki "bölüm 9"
+  yerine 10'u (Acemi ~%15–25 kazanır) kaybeder; reklamla devamın kazancı
+  (iade) için 10 → 12 → 13 sırayla denenir. Profil ayrıca kapıyı,
+  `?reklam=hata`yı ve sağlayıcısız Kaybettin'i denetler.
+- **İnceleme düzeltmeleri (G4 sonrası):** kayıt kodu içe aktarılınca
+  `gelir` de yalnız bu cihazdan (koddaki Usta kartı ve jetonlar gelmez;
+  kart yeni cihaza `geriYukle()` ile gelir). Ödül kalıcı yazılamadıysa
+  (salt okunur ya da dolu depo; `Kayitci.hemenYaz()` false) `tamamla` yok.
+  `ilerlemeyiSifirla`, `gelir` varsa güçlendirici stoğunu da korur (satın
+  alınan stok kazanılandan ayrı tutulmaz). Reklamla +5 devamı meta'ya
+  `devam: true` ile gider (Eli gibi aynı deneme). Kapıda Bekle her zaman
+  haritaya döner (`canPaneliAkisi` 'kapat' | 'can'). Android
+  `geriYukle` mağazaya ulaşamazsa reddeder ("Geri yükleme şu an
+  yapılamadı"); reklam/satın alma süre sınırı yalnız sayfa görünürken
+  işler. Sahte reklamda süre dolduktan sonra Esc = `odul`.
+
+### Ürün sahibine (uygulanmadı, rapor)
+
+- C8 + stok sınırı 3: paketteki 3 Kibrit yalnız Kibrit stoğu 0 iken sığar
+  (Kalıp ve Geri Sar ≤ 1); paket çoğu zaman "Stok dolu" görünebilir.
+- §7 "`kancaBirlestir` yeni alanları seçilen kayıttan alır": öbür kayıttaki
+  Usta kartı ve jetonlar düşebilir (Android'de bulut yok; geri yükleme kartı
+  kurtarır). Öneri: `ustaKarti` VEYA, jetonlar birleşimi. (G1 öneriyi
+  uyguladı; can seçilen kayıttan kalır.)
+- Hakkında metni (§6) Türkçede "Canlar 30 dakikada dolar" diyor: bütün
+  canların 30 dk'da dolduğu anlaşılabilir (kural: 30 dk'da +1, 0 → 5
+  2,5 saat). İngilizce "A life refills every 30 minutes" doğru. Öneri:
+  "Her 30 dakikada 1 can dolar; reklam yalnız sen isteyince." (onay bekliyor).

@@ -11,6 +11,7 @@
  *    eklentisi Firebase Analytics'e iletir; web ve claude.ai sürümünde yok).
  */
 import { DIL } from './dil';
+import type { AndroidGelirKoprusu, ReklamSonucu, ReklamYeri, UrunId } from './gelir';
 
 export type OlcumDegeri = string | number | boolean;
 
@@ -45,7 +46,11 @@ interface Depo {
 declare global {
   interface Window {
     /** Android sarmalayıcının yerel köprüsü (Capacitor; yalnız uygulamada). */
-    FitilYerel?: { olay?: (ad: string, ozellik: string) => void };
+    FitilYerel?: {
+      olay?: (ad: string, ozellik: string) => void;
+      /** Ödüllü reklam + satın alma köprüsü (docs/CAN-REKLAM.md §5.1; aşama 3). */
+      gelir?: AndroidGelirKoprusu;
+    };
   }
 }
 
@@ -284,6 +289,44 @@ export const olcum = new Olcum(yerelDepo());
 
 /** Kısa yol: `olcumOlayi('bolum_basla', { id: 3 })`. */
 export function olcumOlayi(ad: string, p?: Record<string, OlcumDegeri>): void {
+  olcum.olay(ad, p);
+}
+
+// ─────────────── Aşama 2: can, reklam, satın alma (docs/CAN-REKLAM.md §8) ───────────────
+
+/**
+ * Gelir olaylarının özellikleri (docs/OLCUM.md "Aşama 2"). Ölçümde kişisel
+ * veri yok: jeton, fiyat ve tutar YAZILMAZ.
+ */
+export interface OlcumGelirOzellikleri {
+  /** `kalan`: harcamadan sonraki can; `bolum`: bölüm kimliği. */
+  can_harcandi: { neden: 'kayip' | 'cikis'; kalan: number; bolum: number };
+  /** 0 canla bölüm başlatılmak istendi ya da kayıpla can 0'a indi. */
+  can_bitti: { bolum: number };
+  /** Can arttı: `zaman` (tembel dolum), `reklam` (+1; Usta kartı da), `satin` (can_doldur), `iade` (devamla kazanç). */
+  can_doldu: { neden: 'zaman' | 'reklam' | 'satin' | 'iade' };
+  /** Reklam (ya da Usta kartı) düğmesi oyuncuya gösterildi. */
+  reklam_teklif: { yer: ReklamYeri };
+  /** `kart`: Usta kartıyla reklamsız verildi (sonuç o zaman 'odul'). */
+  reklam_sonuc: { yer: ReklamYeri; sonuc: ReklamSonucu; kart: boolean };
+  /** `geri_yukle`: geri yüklenen her kalıcı ürün için bir olay. */
+  satin_alma: { urun: UrunId; durum: 'basla' | 'basarili' | 'iptal' | 'beklemede' | 'hata' | 'geri_yukle' };
+}
+
+/** Aşama 2 olay adları. */
+export type OlcumGelirOlayi = keyof OlcumGelirOzellikleri;
+
+export const OLCUM_GELIR_OLAYLARI: readonly OlcumGelirOlayi[] = Object.freeze([
+  'can_harcandi',
+  'can_bitti',
+  'can_doldu',
+  'reklam_teklif',
+  'reklam_sonuc',
+  'satin_alma',
+] as const);
+
+/** Tür denetimli kısa yol: `gelirOlayi('can_harcandi', { neden: 'kayip', kalan: 3, bolum: 9 })`. */
+export function gelirOlayi<A extends OlcumGelirOlayi>(ad: A, p: OlcumGelirOzellikleri[A]): void {
   olcum.olay(ad, p);
 }
 

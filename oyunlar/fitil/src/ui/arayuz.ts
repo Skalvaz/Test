@@ -22,6 +22,7 @@ import './stil/hud.css';
 import './stil/ekranlar.css';
 import './stil/harita.css';
 import './stil/kanca.css';
+import './stil/gelir.css';
 import { h, kare } from './dom';
 import { tanimlariKur, ustaSvg } from './ikonlar';
 import { Baglam } from './cekirdek';
@@ -41,6 +42,8 @@ import { istatistikEkrani } from './ekranlar/istatistik';
 import { oyunOzetiEkrani } from './ekranlar/oyunOzeti';
 import { molaEkrani, defterKartiEkrani, sandikEkrani } from './ekranlar/kucukler';
 import { kasabaEkrani } from './ekranlar/kasaba';
+import { canPaneliEkrani, cikisOnayiEkrani } from './ekranlar/can';
+import { magazaEkrani } from './ekranlar/magaza';
 import { beklemeEkrani, eksenSecici, type BeklemeTutamak } from './ekranlar/ek';
 import type { Eksen } from '../core/types';
 import { muhurUcur, muhurEtiketi } from './kanca';
@@ -53,6 +56,9 @@ import type {
   AyarDegisikligi,
   AyarlarVM,
   BolumOncesiVM,
+  CanPaneliSecimi,
+  CanSayaciVM,
+  CanVM,
   DefterKartiVM,
   DefterVM,
   DuraklatSecimi,
@@ -68,6 +74,8 @@ import type {
   KaybettinSecimi,
   KaybettinVM,
   KazandinVM,
+  MagazaSecimi,
+  MagazaVM,
   MolaSecimi,
   NasilVM,
   OyunOzetiVM,
@@ -127,6 +135,8 @@ export class Arayuz {
   private kisayol: boolean;
   /** (Kancalar §C.3) Süren mühür uçuşlarının iptali (Geri Sar, bölümden çıkış). */
   private muhurIptalci = new AbortController();
+  /** (CAN-REKLAM §13 karar 7) Can paneli ve Mağaza'nın son kapanış anı (performance.now). */
+  private kapanislar = new Map<'can' | 'magaza', number>();
 
   constructor(s: ArayuzSecenek) {
     this.b = new Baglam({ kok: s.kok, ses: s.ses, titresim: s.titresim });
@@ -361,6 +371,8 @@ export class Arayuz {
       ayarlarEkrani(this.b, vm, {
         nasilAc: ek.nasilAc,
         oyunOzetiAc: ek.oyunOzetiAc,
+        magazaAc: ek.magazaAc,
+        gelirVar: ek.gelirVar,
         defterKartiAc: ek.defterKartiAc ?? ((m, tur) => void this.defterKarti({ mahalle: m, oduller: [], tur })),
         yerelUygula,
         dilDegisti: (d) => this.b.geri.dilDegisti?.(d),
@@ -392,6 +404,73 @@ export class Arayuz {
 
   istatistik(vm: IstatistikVM, sekme: 'istatistik' | 'rozetler' = 'istatistik'): Promise<void> {
     return this.ac(istatistikEkrani(this.b, vm, sekme));
+  }
+
+  // ─────────────── Can, reklam, Mağaza (docs/CAN-REKLAM.md §6; gövde G3) ───────────────
+  //
+  // Modal davranışı (G0 kararı, şartname §13): can paneli ve Mağaza bir
+  // SEÇİMDE KAPANIR (Promise çözülür, kart kalkar). Uygulama seçimi işler
+  // (reklam, satın alma, geri yükleme) ve gerekiyorsa yeni modelle yeniden
+  // açar (döngü, `kasabaAkisi` gibi). Kapanıştan sonraki 1 sn içinde aynı ekran
+  // yeniden açılırsa giriş animasyonu oynamaz (panel "yerinde kalmış" görünür;
+  // §3 "iptal → panel yerinde kalır"). `tazele` yalnız AÇIKKEN canlı veri
+  // içindir: ekran saniyede bir çağırıp yeni modeli çizer (sayaç, reklam
+  // hazır, fiyatların gelmesi); verilmezse `sonrakiMs` açılış anından yerelde
+  // geri sayılır. `ekranlariKapat` ile programlı kapanışta 'kapat' / false.
+
+  /**
+   * Can paneli / Can bitti (modal; `ekranlar/can.ts`): başlık, büyük sayaç
+   * "Sonraki can 12:31", satırlar [Reklam izle · +1 can] [Canları doldur ·
+   * fiyat] [Bekle]. Esc ve Bekle → 'kapat'.
+   */
+  canPaneli(vm: CanVM, tazele?: () => CanVM): Promise<CanPaneliSecimi> {
+    const e = canPaneliEkrani(this.b, vm, tazele, { girisYok: this.yenidenAcilis('can') });
+    void e.soz.then(() => this.kapanislar.set('can', performance.now()));
+    return this.ac(e);
+  }
+
+  /**
+   * (§13 karar 7) Aynı panel kapandıktan sonraki 1 sn içinde mi açılıyor:
+   * öyleyse giriş animasyonu oynamaz ve kapanış animasyonundaki eski kart
+   * hemen kalkar (iki perde üst üste koyulaşmasın; panel "yerinde kalır").
+   */
+  private yenidenAcilis(ad: 'can' | 'magaza'): boolean {
+    const t = this.kapanislar.get(ad);
+    if (t === undefined || performance.now() - t > 1000) return false;
+    for (const m of this.b.modalKatmani.querySelectorAll(`.f-${ad}-modal.f-cikis`)) m.remove();
+    return true;
+  }
+
+  /**
+   * Mağaza (modal; `ekranlar/magaza.ts`; Ayarlar'ın üstünde açılır): üç ürün
+   * satırı ve "Satın alımları geri yükle". Seçimde kapanır (yukarıdaki karar);
+   * Esc ve Kapat → `{ tur: 'kapat' }`.
+   */
+  magaza(vm: MagazaVM, tazele?: () => MagazaVM): Promise<MagazaSecimi> {
+    const e = magazaEkrani(this.b, vm, tazele, { girisYok: this.yenidenAcilis('magaza') });
+    void e.soz.then(() => this.kapanislar.set('magaza', performance.now()));
+    return this.ac(e);
+  }
+
+  /**
+   * Bölümden çıkış onayı (sayfa içi kart; `alert/confirm` yok): "Bölümden
+   * çıkarsan 1 can gider." [Çık] [Vazgeç]; `neden` 'yeniden' ise metin ve
+   * düğme yeniden başlamaya göre ("Yeniden başla"). Duraklat kapandıktan
+   * sonra açılır; true = onaylandı (can düşer), false = Vazgeç/Esc (uygulama
+   * Duraklat'ı yeniden açar).
+   */
+  cikisOnayi(neden: 'harita' | 'yeniden' = 'harita'): Promise<boolean> {
+    return this.ac(cikisOnayiEkrani(this.b, neden));
+  }
+
+  /**
+   * Harita can hapını yeniden çizmeden tazeler (sayı, "12:31"); harita hiç
+   * kurulmadıysa bir şey yapmaz. null: hap kalkar; hap yoksa yıldızın yanına
+   * kurulur. Uygulama harita açıkken saniyede bir çağırır (§10 G4); araya
+   * çağrı gelmezse hap son değerden yerelde geri sayar (harita gizliyken durur).
+   */
+  haritaCanGuncelle(can: CanSayaciVM | null): void {
+    this.haritaEkrani.canGuncelle(can);
   }
 
   /** Mola balonu (§11 kanca 30). */

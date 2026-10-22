@@ -11,13 +11,13 @@
  * düğümden yenisine yanarak ilerler.
  */
 import { h, svg } from '../dom';
-import { ikon, alevSvg, kucukYildiz, ustaSvg, kandilSvg } from '../ikonlar';
-import { M, MK, sayi } from '../metinler';
+import { ikon, alevSvg, kucukYildiz, ustaSvg, kandilSvg, fitilCanSvg } from '../ikonlar';
+import { M, MC, MK, geriSayim, sayi } from '../metinler';
 import { t as tt } from '../../platform/dil';
 import { kandilUcur, merkez } from '../kanca';
 import { yildizAlani } from '../sahne';
 import type { Baglam } from '../cekirdek';
-import type { HaritaSecimi, HaritaVM, BolumDugumuVM } from '../tipler';
+import type { CanSayaciVM, HaritaSecimi, HaritaVM, BolumDugumuVM } from '../tipler';
 import { KASABA_ISLERI, MAHALLELER, USTA_BOLUM_IDLERI } from '../../app/katalog';
 import type { Motif } from '../../core/types';
 import {
@@ -75,6 +75,15 @@ export class HaritaEkrani {
   private kutlamaGecikme = 0;
   /** Harita gizlenince (bölüme geçiş) uçan kandil kıvılcımları kalkar, sesleri susar. */
   private ucusIptal = new AbortController();
+  /**
+   * (CAN-REKLAM §6) Can hapı: son bilinen sayaç ve geldiği an (yerel geri
+   * sayım bundan yürür). Zamanlayıcı yalnız harita görünürken ve can < en çok
+   * iken çalışır.
+   */
+  private can: CanSayaciVM | null = null;
+  private canAni = 0;
+  private canHap: HTMLButtonElement | null = null;
+  private canSayac: ReturnType<typeof setInterval> | null = null;
 
   constructor(b: Baglam) {
     this.b = b;
@@ -90,9 +99,12 @@ export class HaritaEkrani {
     const onceki = this.vm;
     const ilk = !this.kok;
     // Aynı model (ör. kasaba kutlamasından sonra döngünün yeniden çağırması): yeniden
-    // çizilmez; süren kutlama, sakin balonu ve kaydırma konumu bozulmasın.
-    if (!ilk && onceki && JSON.stringify(onceki) === JSON.stringify(vm)) {
+    // çizilmez; süren kutlama, sakin balonu ve kaydırma konumu bozulmasın. Can hapı
+    // karşılaştırmaya girmez (saniyelik değişim haritayı yeniden çizdirmesin): yerinde tazelenir.
+    // `this.vm` DEĞİŞMEZ: süren kutlama modelin kimliğiyle denetlenir (`this.vm !== vm` → durur).
+    if (!ilk && onceki && ayniHarita(onceki, vm)) {
       this.kok!.classList.remove('f-gizli-ekran');
+      this.canGuncelle(vm.can ?? null);
       return new Promise((r) => {
         this.coz = (s) => {
           this.coz = null;
@@ -101,6 +113,8 @@ export class HaritaEkrani {
       });
     }
     this.vm = vm;
+    this.can = vm.can ?? null;
+    this.canAni = performance.now();
     if (ilk) this.iskelet();
     const simdiki = simdikiBolum(vm);
     const oncekiSimdiki = onceki ? simdikiBolum(onceki) : null;
@@ -116,6 +130,7 @@ export class HaritaEkrani {
     this.kutlamaGecikme = yeniIsler.size > 0 && !this.b.az() && !!vm.kasaba?.acik ? KIVILCIM_GECIKME : 0;
     const kutlamalar = this.ciz(vm, yeniAcilan, yeniIsler);
     this.kok!.classList.remove('f-gizli-ekran');
+    this.canZamanlayici();
     if (kutlamalar.length) this.kutlamaSozu = this.kutlamalariOynat(kutlamalar, vm);
     else if (ilk || simdiki !== oncekiSimdiki) requestAnimationFrame(() => this.kaydirSimdiye(simdiki, ilk, yeniAcilan !== null));
     return new Promise((r) => {
@@ -143,6 +158,8 @@ export class HaritaEkrani {
     this.balonKapat();
     if (!this.kok) return;
     this.kok.classList.add('f-gizli-ekran');
+    // Harita gizliyken can sayacı durur (bölüm oynanırken boşuna çizim yok).
+    this.canZamanlayici();
   }
 
   yokEt(): void {
@@ -152,6 +169,78 @@ export class HaritaEkrani {
     this.gozcu?.disconnect();
     this.kok?.remove();
     this.kok = null;
+    this.canHap = null;
+    this.canZamanlayici();
+  }
+
+  // ─────────────────────── Can hapı (CAN-REKLAM §6) ───────────────────────
+
+  /**
+   * Can hapını yeniden çizmeden tazeler: sayı, sönük/yanan fitil, altında
+   * "12:31". null: hap kalkar. Hap yoksa (ilk can) yıldızın yanına kurulur;
+   * harita hiç kurulmadıysa yalnız değer saklanır.
+   */
+  canGuncelle(can: CanSayaciVM | null): void {
+    this.can = can;
+    this.canAni = performance.now();
+    const sol = this.ustBar?.querySelector('.f-harita-ust-sol');
+    if (!sol) return;
+    if (!can) {
+      this.canHap?.remove();
+      this.canHap = null;
+    } else if (!this.canHap || !this.canHap.isConnected) {
+      this.canHap = this.canHapKur();
+      const yildiz = sol.querySelector('.f-yildiz-hap');
+      if (yildiz) yildiz.after(this.canHap);
+      else sol.prepend(this.canHap);
+    }
+    this.ustBar?.classList.toggle('f-ust-sik', !!this.canHap);
+    this.canHapCiz();
+    this.canZamanlayici();
+  }
+
+  private canHapKur(): HTMLButtonElement {
+    const d = h(
+      'button',
+      { s: 'f-harita-hap f-can-hap', type: 'button' },
+      h('span', { s: 'f-hap-ikon' }),
+      h('span', { s: 'f-sayi f-can-hap-sayi' }),
+      h('span', { s: 'f-can-hap-sure f-sayi', 'aria-hidden': 'true' }),
+    ) as HTMLButtonElement;
+    d.addEventListener('click', () => this.sec({ tur: 'can' }));
+    return d;
+  }
+
+  /** Hapın şimdiki hâli: son değer + o andan bu yana geçen süre (yerel geri sayım). */
+  private canHapCiz(): void {
+    const d = this.canHap;
+    const c = this.can;
+    if (!d || !c) return;
+    const kalan = c.sonrakiMs === null ? null : Math.max(0, c.sonrakiMs - (performance.now() - this.canAni));
+    const sure = kalan === null ? null : geriSayim(kalan);
+    const yanik = c.sayi > 0;
+    const ikonYeri = d.querySelector('.f-hap-ikon')!;
+    if (ikonYeri.getAttribute('data-yanik') !== String(yanik)) {
+      ikonYeri.setAttribute('data-yanik', String(yanik));
+      ikonYeri.replaceChildren(fitilCanSvg('f-hap-fitil', yanik));
+    }
+    d.querySelector('.f-can-hap-sayi')!.textContent = String(c.sayi);
+    const sureEl = d.querySelector('.f-can-hap-sure') as HTMLElement;
+    sureEl.textContent = sure ?? '';
+    sureEl.hidden = sure === null;
+    d.classList.toggle('f-sureli', sure !== null);
+    d.classList.toggle('f-bos', c.sayi <= 0);
+    d.setAttribute('aria-label', MC.hapEtiketi(c.sayi, c.enCok, sure));
+  }
+
+  /** Saniyelik sayaç yalnız harita görünür, hap var ve can dolmamışken çalışır. */
+  private canZamanlayici(): void {
+    const gerek = this.gorunur && !!this.canHap && !!this.can && this.can.sonrakiMs !== null;
+    if (gerek && !this.canSayac) this.canSayac = setInterval(() => this.canHapCiz(), 1000);
+    else if (!gerek && this.canSayac) {
+      clearInterval(this.canSayac);
+      this.canSayac = null;
+    }
   }
 
   private sec(s: HaritaSecimi): void {
@@ -458,7 +547,12 @@ export class HaritaEkrani {
     gunluk.addEventListener('click', () => (vm.gunluk.acik ? this.sec({ tur: 'gunluk' }) : this.b.toast(M.gunlukKilitli(vm.gunluk.acilisBolumu))));
     const yardim = h('button', { s: 'f-yuvarlak f-harita-yardim', type: 'button', 'aria-label': M.nasilOynanir }, ikon('soru'));
     yardim.addEventListener('click', () => this.sec({ tur: 'nasil' }));
-    bar.replaceChildren(h('div', { s: 'f-harita-ust-sol' }, yildiz, seri), h('div', { s: 'f-harita-ust-sag' }, gunluk, yardim));
+    // (CAN-REKLAM §6) Can hapı yıldızın yanında; yalnız gelir sağlayıcısı varken (vm.can).
+    this.canHap = this.can ? this.canHapKur() : null;
+    bar.replaceChildren(h('div', { s: 'f-harita-ust-sol' }, yildiz, this.canHap, seri), h('div', { s: 'f-harita-ust-sag' }, gunluk, yardim));
+    // Dar ekranda (≤ 400 px) beş hap tek satıra sığsın: can hapı varken haplar sıkışır (gelir.css).
+    bar.classList.toggle('f-ust-sik', !!this.canHap);
+    this.canHapCiz();
   }
 
   private altCubuk(vm: HaritaVM, simdiki: number): void {
@@ -869,6 +963,18 @@ export class HaritaEkrani {
 /** (P5 ek) 40 bölüm bitti ve Sonsuz Şenlik açık: büyük düğme ona gider (§10.7). */
 function sonsuzSirada(vm: HaritaVM): boolean {
   return !!vm.sonsuz?.acik && vm.bolumler.length >= 40 && vm.bolumler.every((x) => x.durum === 'acik');
+}
+
+/**
+ * "Aynı harita" (yeniden çizilmez): can hapı dışında her alan eşit. Can
+ * saniyede değişir; yerinde tazelenir (CAN-REKLAM §13 karar 9).
+ */
+export function ayniHarita(a: HaritaVM, b: HaritaVM): boolean {
+  const canSiz = (x: HaritaVM): Omit<HaritaVM, 'can'> => {
+    const { can: _can, ...geri } = x;
+    return geri;
+  };
+  return JSON.stringify(canSiz(a)) === JSON.stringify(canSiz(b));
 }
 
 /** Şimdiki (oynanacak) bölüm: 'simdiki' durumlu, yoksa son açık + 1. */

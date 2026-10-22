@@ -4,6 +4,9 @@
  * aria-label'larda Türkçe kalıntı arar (Türkçe harfler + sık Türkçe
  * sözcükler; özel adlar beyaz listede).
  *   node scripts/dil-tara.mjs [taban-url] [çıktı-klasörü]
+ * Gelir sağlayıcısıyla (`?gelir=sahte`) gerçek akış da taranır: harita hapı,
+ * can paneli, sahte reklam katmanı (geri sayım ve "Get reward"), sahte satın
+ * alma kartı ve "Purchased" bildirimi (CAN-REKLAM §12).
  * Varsayılan http://localhost:5173, dil-tarama/. Ekran başına görüntü
  * (<ekran>.png) ve rapor.json yazar; kalıntı varsa çıkış kodu 1.
  */
@@ -18,6 +21,9 @@ const EKRANLAR = [
   'acilis', 'harita', 'bolumOncesi', 'bolumOncesi&v=m', 'bolumOncesi&v=mi', 'hud', 'hud&v=muhur', 'ucus', 'kasaba', 'kasaba&ogretim=1', 'haritaBalon',
   'kasabaKarti&m=0', 'kasabaKarti&m=3', 'secim', 'duraklat', 'duraklat&v=m', 'kazandin', 'kazandin&v=m', 'kazandin&v=mt', 'kazandin&v=mk', 'kazandin&v=me',
   'kaybettin', 'ayarlar', 'oyunOzeti', 'oyunOzeti&v=bos', 'nasil', 'defter', 'gunluk', 'istatistik', 'mola', 'defterKarti', 'sandik', 'balon', 'bant', 'kutlama', 'toast',
+  // Can, reklam, Mağaza (CAN-REKLAM §6): yalnız gelir sağlayıcısı varken görünür.
+  'can&v=bitti', 'can&v=durum', 'can&v=kart', 'can&v=hakyok', 'magaza', 'magaza&v=sende', 'magaza&v=stok', 'magaza&v=yok', 'kaybettin&v=can', 'kaybettin&v=can0',
+  'kaybettin&v=kart', 'cikisOnayi', 'cikisOnayi&v=yeniden', 'harita&can=3', 'ayarlar&gelir=1',
 ];
 
 // Türkçe harfler ve harfsiz sık sözcükler (bütün sözcük, büyük/küçük harf duyarsız).
@@ -85,6 +91,37 @@ await tara('oyun-acilis', `${taban}/?dil=en`, 3000);
 await page.mouse.click(195, 600);
 await page.waitForTimeout(3500);
 await tara('oyun-sonrasi', null, 500);
+// Gelir sağlayıcısıyla (sahte; CAN-REKLAM §6): gerçek akışın harita hapı ve can paneli.
+await page.goto(`${taban}/?dil=en&gelir=sahte`);
+await page.waitForTimeout(2500);
+await page.mouse.click(195, 600);
+await page.waitForFunction(() => window.__fitil?.ekran?.() === 'oyun', null, { timeout: 20_000 });
+await page.evaluate(() => {
+  const kb = { yildiz: 2, enIyi: 1000, deneme: 1, basarisizSeri: 0, kazanc: 1 };
+  window.__fitil.kayitYama({ bolumler: Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map((i) => [i, kb])), ayarlar: { ipuclari: false } });
+  window.__fitil.canAyarla(2);
+});
+await page.getByRole('button', { name: 'Pause', exact: true }).first().click();
+await page.waitForTimeout(600);
+await page.getByRole('button', { name: 'Back to map', exact: true }).first().click();
+await page.waitForFunction(() => window.__fitil.ekran() === 'harita', null, { timeout: 20_000 });
+await tara('oyun-gelir-harita', null, 1500);
+await page.locator('.f-can-hap').click();
+await tara('oyun-gelir-can', null, 1500);
+// Sahte sağlayıcının kendi katmanları (CAN-REKLAM §5, §12): reklam (geri sayım, sonra "Ödülü al").
+await page.locator('.f-can-reklam').click();
+await page.waitForSelector('.fs-reklam', { timeout: 10_000 });
+await tara('oyun-gelir-reklam', null, 600);
+await page.waitForSelector('.fs-reklam.fs-hazir', { timeout: 15_000 });
+await tara('oyun-gelir-reklam-hazir', null, 400);
+await page.locator('.fs-al').click();
+await page.waitForSelector('.f-can-doldur', { timeout: 10_000 });
+// Satın alma onay kartı ve "Satın alındı" bildirimi.
+await page.locator('.f-can-doldur').click();
+await page.waitForSelector('.fs-satin', { timeout: 10_000 });
+await tara('oyun-gelir-satin', null, 600);
+await page.locator('.fs-satin .fs-dg-birincil').click();
+await tara('oyun-gelir-satin-bildirim', null, 500);
 
 writeFileSync(`${cikti}/rapor.json`, JSON.stringify(rapor, null, 1));
 await browser.close();

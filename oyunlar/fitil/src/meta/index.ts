@@ -33,6 +33,7 @@
  *  - takvim   yyyymmdd aritmetiği (Date'siz)
  *  - muhur    Bölüm Mühürleri: koşul dili, değerlendirme, maske (KANCALAR §A)
  *  - kasaba   Kasaba İşleri: türetilmiş kandil, iş durumu, iş yapma (KANCALAR §B)
+ *  - can      can, reklam hakkı, satın alma ödülü (CAN-REKLAM §2–§4, §7; gövde G1)
  */
 export * from './sabitler';
 export * from './takvim';
@@ -50,3 +51,4 @@ export * from './harita';
 export * from './mola';
 export * from './muhur';
 export * from './kasaba';
+export * from './can';

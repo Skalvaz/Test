@@ -33,6 +33,12 @@ export interface ModalSecenek {
   etiket?: string;
   /** Açılış sesi (varsayılan yok: düğme tıkı yeter). */
   ses?: ArayuzSesi | null;
+  /**
+   * (CAN-REKLAM §13 karar 7) Giriş animasyonu yok: kart ve perde ilk karede
+   * yerinde (kapanıp hemen yeniden açılan panel "yerinde kalmış" görünür).
+   * Kapanış animasyonu yine oynar.
+   */
+  girisYok?: boolean;
 }
 
 export interface ModalTutamak {
@@ -194,9 +200,12 @@ export class Baglam {
       },
     };
     this.yigin.push({ t, s, onceki });
+    // Girişsiz: geçişler kapalıyken son hâl (f-giris) hemen; bir kare sonra geçişler geri gelir (kapanış animasyonlu).
+    if (s.girisYok) modal.classList.add('f-giris', 'f-hemen');
     this.modalKatmani.appendChild(modal);
     if (s.ses) this.ses(s.ses);
     void kare().then(() => {
+      modal.classList.remove('f-hemen');
       if (kapali) return;
       modal.classList.add('f-giris');
       // Belirtilmiş birincil eylem yoksa kartın kendisi odaklanır (dokunmatikte
