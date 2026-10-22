@@ -177,6 +177,24 @@ describe('Usta\'nın Eli ve Coşku Serisi', () => {
     expect(kaz.istatistik.kayip).toBe(once.kayip - 1);
   });
 
+  it('(CAN-REKLAM §3) reklamla +5 devamı (`devam`) Eli gibi: seri eşiğin altında da aynı deneme', () => {
+    const k0 = ilerlet(8);
+    // İlk kayıp: deneme 1, seri 1 (Eli sunulmaz, reklam teklifi çıkar).
+    const k1 = kaybet(k0, 9, { ist: { toplamPatlama: 100, roket: 4 }, oz: { ...ozetBaslat(), toplamPatlama: 100, roketAtesi: 4 } }).kayit;
+    expect(k1.bolumler['9']).toMatchObject({ deneme: 1, basarisizSeri: 1 });
+    const once = k1.istatistik;
+    // Reklamla +5 hamle, kazandı: özet yalnız devam sonrası (30 patlama, 1 roket).
+    const r = kazan(k1, 9, 3, { ist: { ustaEli: true, toplamPatlama: 130, roket: 5 }, oz: { ...ozetBaslat(), toplamPatlama: 30, roketAtesi: 1 }, devam: true });
+    expect(r.kayit.bolumler['9']).toMatchObject({ deneme: 1, basarisizSeri: 0, kazanc: 1, yildiz: 1 });
+    expect(r.kayit.istatistik).toMatchObject({ oyun: once.oyun, kazanc: once.kazanc + 1, kayip: once.kayip - 1, toplamPatlama: once.toplamPatlama + 30, roket: once.roket + 1 });
+    // Devamdan sonra yine kaybetti: seri, deneme ve kayıp ikinci kez artmaz.
+    const y = kaybet(k1, 9, { ist: { ustaEli: true, toplamPatlama: 120 }, oz: { ...ozetBaslat(), toplamPatlama: 20 }, devam: true });
+    expect(y.kayit.bolumler['9']).toMatchObject({ deneme: 1, basarisizSeri: 1 });
+    expect(y.kayit.istatistik).toMatchObject({ oyun: once.oyun, kayip: once.kayip, toplamPatlama: once.toplamPatlama + 20 });
+    // `devam` olmadan (eski davranış) aynı girdi yeni deneme sayılırdı.
+    expect(kazan(k1, 9, 3, { ist: { ustaEli: true } }).kayit.bolumler['9'].deneme).toBe(2);
+  });
+
   it('üst üste 3 ilk deneme kazancı → hazır roket; kayıp sıfırlar; tekrar oynanış nötr', () => {
     let k = ilerlet(2, 1);
     expect(k.cosku).toBe(2);

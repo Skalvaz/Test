@@ -101,8 +101,8 @@ export class HaritaEkrani {
     // Aynı model (ör. kasaba kutlamasından sonra döngünün yeniden çağırması): yeniden
     // çizilmez; süren kutlama, sakin balonu ve kaydırma konumu bozulmasın. Can hapı
     // karşılaştırmaya girmez (saniyelik değişim haritayı yeniden çizdirmesin): yerinde tazelenir.
+    // `this.vm` DEĞİŞMEZ: süren kutlama modelin kimliğiyle denetlenir (`this.vm !== vm` → durur).
     if (!ilk && onceki && ayniHarita(onceki, vm)) {
-      this.vm = vm;
       this.kok!.classList.remove('f-gizli-ekran');
       this.canGuncelle(vm.can ?? null);
       return new Promise((r) => {

@@ -34,7 +34,7 @@ interface Kayitlar {
 }
 
 /** Sahte sağlayıcı: sonuçlar ayarlanabilir, her çağrı adımlara yazılır. */
-function sahteSaglayici(r: Kayitlar, ayar: { reklam?: ReklamSonucu; hazir?: boolean; satin?: SatinAlmaSonucu | ((id: UrunId) => SatinAlmaSonucu); bekleyen?: { urun: UrunId; jeton: string }[]; geri?: UrunId[] } = {}): GelirSaglayici {
+function sahteSaglayici(r: Kayitlar, ayar: { reklam?: ReklamSonucu; hazir?: boolean; satin?: SatinAlmaSonucu | ((id: UrunId) => SatinAlmaSonucu); bekleyen?: { urun: UrunId; jeton: string }[]; geri?: UrunId[] | 'hata' } = {}): GelirSaglayici {
   let n = 0;
   return {
     ad: 'sahte',
@@ -59,6 +59,7 @@ function sahteSaglayici(r: Kayitlar, ayar: { reklam?: ReklamSonucu; hazir?: bool
       return ayar.bekleyen ?? [];
     },
     async geriYukle() {
+      if (ayar.geri === 'hata') throw new Error('mağazaya ulaşılamadı');
       return ayar.geri ?? [];
     },
   };
@@ -68,6 +69,7 @@ function kur(
   k0: Kayit,
   ayar: Parameters<typeof sahteSaglayici>[1] = {},
   ui: Partial<GelirOrtami['ui']> = {},
+  ek: { yazilamaz?: boolean } = {},
 ): { g: GelirAkisi; r: Kayitlar; kayit: () => Kayit; saat: { t: number } } {
   const r: Kayitlar = { adimlar: [], olaylar: [], bildirimler: [] };
   let k = k0;
@@ -78,6 +80,7 @@ function kur(
     yaz: (y) => {
       k = y;
       r.adimlar.push('yaz');
+      return !ek.yazilamaz;
     },
     degistir: (y) => {
       k = y;
@@ -160,6 +163,17 @@ describe('GelirAkisi: satın alma', () => {
     expect(r.olaylar).toContainEqual({ ad: 'can_doldu', p: { neden: 'satin' } });
     expect(r.bildirimler).toEqual(['Satın alındı']);
   });
+  it('ödül kalıcı yazılamadıysa (salt okunur/dolu depo) tamamla yok: satın alma bekleyenlerde kalır', async () => {
+    const { g, r, kayit } = kur(kayitCanli(2), {}, {}, { yazilamaz: true });
+    await g.urunleriYukle();
+    expect(await g.satinAl('can_doldur')).toBe('verildi');
+    // Ödül bu oturumda bellekte; jeton da (aynı oturumda ikinci kez verilmez).
+    expect(meta.canDurumu(kayit(), T0).sayi).toBe(5);
+    expect(r.adimlar.some((a) => a.startsWith('tamamla'))).toBe(false);
+    const b = kur(kayitCanli(2), { bekleyen: [{ urun: 'can_doldur', jeton: 'b1' }] }, {}, { yazilamaz: true });
+    await b.g.bekleyenleriIsle();
+    expect(b.r.adimlar.some((a) => a.startsWith('tamamla'))).toBe(false);
+  });
   it('stok dolu paket ve dolu can satılmaz (sağlayıcıya gidilmez); Usta kartı sendeyken de', async () => {
     const k = kayitCanli(5, { gelir: { ustaKarti: true, jetonlar: [] } });
     k.guclendiriciler = { kibrit: 1, kalip: 0, geriSar: 0 };
@@ -224,6 +238,13 @@ describe('GelirAkisi: satın alma', () => {
     expect(bos.kayit().gelir).toBeUndefined();
     expect([...r.bildirimler, ...bos.r.bildirimler]).toEqual(['Satın alımlar geri yüklendi', 'Satın alımlar geri yüklendi', 'Geri yüklenecek satın alım yok']);
   });
+  it('geri yükleme yapılamadı (sağlayıcı reddetti): "yok" değil "yapılamadı"; kayıt aynı', async () => {
+    const k = meta.yeniKayit(1);
+    const { g, kayit, r } = kur(k, { geri: 'hata' });
+    expect(await g.geriYukle()).toBe(false);
+    expect(kayit()).toBe(k);
+    expect(r.bildirimler).toEqual(['Geri yükleme şu an yapılamadı']);
+  });
 });
 
 describe('GelirAkisi: can', () => {
@@ -237,6 +258,18 @@ describe('GelirAkisi: can', () => {
     ]);
     expect(g.canHarca({ id: 9 }, 'cikis')).toBeNull();
     expect(meta.canDurumu(kayit(), T0).sayi).toBe(0);
+  });
+  it('can_bitti aynı an için bir kez: son canla çıkışın hemen ardından gelen kapı yeniden yazmaz', () => {
+    const { g, r, saat } = kur(kayitCanli(1));
+    g.canHarca({ id: 9 }, 'cikis');
+    saat.t += 50;
+    g.canBitti({ id: 9 });
+    expect(adlar(r).filter((a) => a === 'can_bitti')).toHaveLength(1);
+    // Sonraki deneme (başka an ya da başka bölüm) yine yazılır.
+    g.canBitti({ id: 9 });
+    saat.t += 60_000;
+    g.canBitti({ id: 10 });
+    expect(adlar(r).filter((a) => a === 'can_bitti')).toHaveLength(3);
   });
   it('tembel dolum: 30 dk sonra +1 kayda yazılır, can_doldu zaman bir kez', () => {
     const { g, r, kayit, saat } = kur(kayitCanli(3));
@@ -337,6 +370,21 @@ describe('GelirAkisi: reklam ve can paneli', () => {
     await b.g.canPaneliAkisi();
     expect(vmler2.map((v) => v.reklam?.hazir)).toEqual([true, false]);
   });
+  it('reklam_teklif aynı teklif için bir kez: iptal ve vazgeçilen satın almadan sonra yeniden sayılmaz', async () => {
+    const secimler: CanPaneliSecimi[] = ['reklam', 'doldur', 'kapat'];
+    const { g, r } = kur(kayitCanli(1), { reklam: 'iptal', satin: { durum: 'iptal' } }, { canPaneli: async () => secimler.shift() ?? 'kapat' });
+    await g.urunleriYukle();
+    await g.canPaneliAkisi();
+    expect(adlar(r).filter((a) => a === 'reklam_teklif')).toHaveLength(1);
+  });
+  it('kapı: Bekle haritaya döner, panel açıkken zamanla can dolmuş olsa da', async () => {
+    const a = kur(kayitCanli(0));
+    a.saat.t = T0 + meta.CAN_DOLUM_MS + 1;
+    expect(await a.g.canPaneliAkisi({ kapi: true })).toBe('kapat');
+    expect(a.g.durum().sayi).toBe(1);
+    const b = kur(kayitCanli(0), {}, { canPaneli: async () => 'reklam' });
+    expect(await b.g.canPaneliAkisi({ kapi: true })).toBe('can');
+  });
   it('kapı: reklam can verince panel kapanır (bölüm başlar)', async () => {
     let acilis = 0;
     const { g } = kur(kayitCanli(0), {}, {
@@ -372,15 +420,24 @@ describe('GelirAkisi: reklam ve can paneli', () => {
 });
 
 describe('kayitKoduGelirKoru', () => {
-  it('can cihazda kalır, Usta kartı VEYA, jetonlar birleşir', () => {
+  it('can ve satın almalar cihazda kalır: kod yalnız ilerlemeyi taşır', () => {
     const eski = kayitCanli(1, { gelir: { ustaKarti: true, jetonlar: ['a'] } });
     const kod = kayitCanli(5, { gelir: { ustaKarti: false, jetonlar: ['b'] } });
     kod.can = { sayi: 5, dolumBasi: null, reklamGun: 0, reklamSayisi: 0 };
     const y = kayitKoduGelirKoru(kod, eski);
     expect(y.can).toEqual(eski.can);
-    expect(y.gelir?.ustaKarti).toBe(true);
-    expect(y.gelir?.jetonlar).toEqual(['a', 'b']);
+    expect(y.gelir).toEqual({ ustaKarti: true, jetonlar: ['a'] });
+    expect(y.gelir).not.toBe(eski.gelir);
     expect(kod.can.sayi).toBe(5);
+  });
+  it('koddaki Usta kartı ve jetonlar bu cihaza geçmez (bedava kart, jeton taşması yok)', () => {
+    const cihazJetonlari = Array.from({ length: 50 }, (_, i) => `c${i}`);
+    const eski = kayitCanli(3, { gelir: { ustaKarti: false, jetonlar: cihazJetonlari } });
+    const kod = kayitCanli(5, { gelir: { ustaKarti: true, jetonlar: Array.from({ length: 50 }, (_, i) => `k${i}`) } });
+    const y = kayitKoduGelirKoru(kod, eski);
+    expect(y.gelir).toEqual({ ustaKarti: false, jetonlar: cihazJetonlari });
+    // Cihazda satın alma yoksa koddan da gelmez.
+    expect(kayitKoduGelirKoru(kod, meta.yeniKayit(2)).gelir).toBeUndefined();
   });
   it('eski kayıtta alan yoksa yeni kayıttan da kalkar', () => {
     const kod = kayitCanli(0, { gelir: { ustaKarti: false, jetonlar: [] } });

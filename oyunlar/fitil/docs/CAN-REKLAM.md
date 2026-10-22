@@ -377,6 +377,17 @@ serbest.
   yerine 10'u (Acemi ~%15–25 kazanır) kaybeder; reklamla devamın kazancı
   (iade) için 10 → 12 → 13 sırayla denenir. Profil ayrıca kapıyı,
   `?reklam=hata`yı ve sağlayıcısız Kaybettin'i denetler.
+- **İnceleme düzeltmeleri (G4 sonrası):** kayıt kodu içe aktarılınca
+  `gelir` de yalnız bu cihazdan (koddaki Usta kartı ve jetonlar gelmez;
+  kart yeni cihaza `geriYukle()` ile gelir). Ödül kalıcı yazılamadıysa
+  (salt okunur ya da dolu depo; `Kayitci.hemenYaz()` false) `tamamla` yok.
+  `ilerlemeyiSifirla`, `gelir` varsa güçlendirici stoğunu da korur (satın
+  alınan stok kazanılandan ayrı tutulmaz). Reklamla +5 devamı meta'ya
+  `devam: true` ile gider (Eli gibi aynı deneme). Kapıda Bekle her zaman
+  haritaya döner (`canPaneliAkisi` 'kapat' | 'can'). Android
+  `geriYukle` mağazaya ulaşamazsa reddeder ("Geri yükleme şu an
+  yapılamadı"); reklam/satın alma süre sınırı yalnız sayfa görünürken
+  işler. Sahte reklamda süre dolduktan sonra Esc = `odul`.
 
 ### Ürün sahibine (uygulanmadı, rapor)
 
@@ -386,3 +397,7 @@ serbest.
   Usta kartı ve jetonlar düşebilir (Android'de bulut yok; geri yükleme kartı
   kurtarır). Öneri: `ustaKarti` VEYA, jetonlar birleşimi. (G1 öneriyi
   uyguladı; can seçilen kayıttan kalır.)
+- Hakkında metni (§6) Türkçede "Canlar 30 dakikada dolar" diyor: bütün
+  canların 30 dk'da dolduğu anlaşılabilir (kural: 30 dk'da +1, 0 → 5
+  2,5 saat). İngilizce "A life refills every 30 minutes" doğru. Öneri:
+  "Her 30 dakikada 1 can dolar; reklam yalnız sen isteyince." (onay bekliyor).

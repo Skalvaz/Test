@@ -989,6 +989,8 @@ export class Oturum {
       motif: kazandi && motifHedef?.tur === 'desen' ? motifHedef.motif : undefined,
       tur: v.tur === 'gunluk' ? 'gunluk' : v.tur === 'sonsuz' ? 'sonsuz' : undefined,
       ...(muhurler ? { muhurler } : {}),
+      // (CAN-REKLAM §3) Reklamla +5 devamı: kayıp işlendi, meta yeni deneme saymasın (Eli gibi).
+      ...(this.devam === 'reklam' ? { devam: true } : {}),
     };
   }
 

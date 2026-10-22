@@ -104,12 +104,18 @@ export class SaveStore<T> {
     }
   }
 
-  save(data: T): void {
+  /**
+   * Kaydeder. true: kayıt kalıcı bir yere gitti (tarayıcı depolaması ya da
+   * bulut kuyruğu); false: yalnız bellekte (salt okunur, depolama dolu/kapalı).
+   */
+  save(data: T): boolean {
     const env: SaveEnvelope<T> = { v: this.version, savedAt: Date.now(), progressScore: this.score(data), data };
     this.memory = env;
-    if (!this.writable()) return;
-    if (!localSet(this.key, JSON.stringify(env)) && this.backend === 'tarayici') this.backend = 'bellek';
+    if (!this.writable()) return false;
+    const yerel = localSet(this.key, JSON.stringify(env));
+    if (!yerel && this.backend === 'tarayici') this.backend = 'bellek';
     this.queue(env);
+    return yerel || !!this.remote;
   }
 
   /**

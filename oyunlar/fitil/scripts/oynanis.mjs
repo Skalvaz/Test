@@ -662,6 +662,8 @@ async function gelirProfili({ page, p, kare, dokun, dugme, botlaBitir, haritayaD
     if ((await canSayi()) !== once - 1) hatalar.push(`[${p.ad}] b${n} kayıpta can ${once} → ${await canSayi()}`);
     if (!(await page.locator('.f-kb-reklam').count())) hatalar.push(`[${p.ad}] b${n} Kaybettin'de "+5 hamle" yok`);
     if (sira === 0) await kare('kaybettin-can-reklam');
+    // Reklamla devam aynı denemedir (Eli gibi): deneme ve başarısızlık serisi devamın sonucuyla artmaz.
+    const kayipKaydi = await page.evaluate((id) => window.__fitil.kayit().bolumler[id], n);
     await page.locator('.f-kb-reklam').click();
     await reklamIzle(sira === 0 ? 'hamle' : '');
     await bekleKosul(page, () => window.__fitil.ekran() === 'oyun' && window.__fitil.durum().oturum === 'bekliyor', null, 15000, 'reklamdan sonra oyun');
@@ -670,6 +672,9 @@ async function gelirProfili({ page, p, kare, dokun, dugme, botlaBitir, haritayaD
     if (sira === 0) await kare('reklam-devam-oyun');
     const s3 = await botlaBitir(`b${n}-reklam-devam`, 'usta');
     const c3 = await canSayi();
+    const devamKaydi = await page.evaluate((id) => window.__fitil.kayit().bolumler[id], n);
+    if (devamKaydi?.deneme !== kayipKaydi?.deneme) hatalar.push(`[${p.ad}] b${n} reklamla devam yeni deneme sayıldı (${kayipKaydi?.deneme} → ${devamKaydi?.deneme})`);
+    if (s3 !== 'kazandin' && devamKaydi?.basarisizSeri !== kayipKaydi?.basarisizSeri) hatalar.push(`[${p.ad}] b${n} devamdan sonraki kayıp seriyi artırdı`);
     not(`[${p.ad}] b${n} reklamla +5 hamle: ${s3}, can ${once} → ${c3}`);
     if (s3 === 'kazandin') {
       // Devamla kazanç: kayıpta giden can geri gelir (C4).
@@ -843,8 +848,13 @@ async function gelirProfili({ page, p, kare, dokun, dugme, botlaBitir, haritayaD
   await page.waitForTimeout(1500);
   await dokun(p.w / 2, p.h * 0.72);
   await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 20000, 'reklam=hata: harita');
-  // Usta kartı reklamsız ödül verir: hata yolu için kart kaldırılır.
+  // Usta kartı reklamsız ödül verir: hata yolu için kart kaldırılır. Önceki kayıplar (son can,
+  // onaylı çıkış) 10'un serisini Eli eşiğine taşımasın: Eli sunulursa reklam teklifi çıkmaz (§3).
   await page.evaluate(() => window.__fitil.kayitYama({ gelir: { ustaKarti: false, jetonlar: [] } }));
+  await page.evaluate(() => {
+    const b = window.__fitil.kayit().bolumler['10'];
+    if (b) window.__fitil.kayitYama({ bolumler: { 10: { ...b, basarisizSeri: 0 } } });
+  });
   await page.evaluate(() => window.__fitil.canAyarla(5));
   if (await kaybet('b10-reklam-hata')) {
     await page.locator('.f-kb-reklam').click();

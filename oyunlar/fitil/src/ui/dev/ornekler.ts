@@ -62,6 +62,7 @@ export function magazaVm(v = '1'): MagazaVM {
       let durum: MagazaUrunVM['durum'] = 'satilik';
       if (v === 'sende' && id === 'usta_karti') durum = 'sende';
       if (v === 'stok' && id !== 'usta_karti') durum = 'stokDolu';
+      if (v === 'yok' && id === 'guclendirici_paketi') durum = 'yok';
       return { id, ad: URUN_METINLERI[id].ad, aciklama: URUN_METINLERI[id].aciklama, fiyat: v === 'bekle' ? null : fiyat[id], durum };
     }),
     geriYukle: true,

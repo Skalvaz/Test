@@ -4,7 +4,8 @@
  * YOK; ağ isteği yok.
  *
  *  - Reklam: tam ekran DOM katmanı ("Deneme reklamı", 5 sn geri sayım, sonra
- *    "Ödülü al" → 'odul'; erken "Kapat" ya da Esc → 'iptal').
+ *    "Ödülü al" → 'odul'; erken "Kapat" ya da Esc → 'iptal'; süre dolduktan
+ *    sonra Esc → 'odul': gerçek reklam gibi, sonuna dek izleyen ödülü alır).
  *  - Mağaza: sabit deneme fiyatları; `satinAl` sayfa içi onay kartı ("Satın
  *    al" → 'basarili', "Vazgeç" / Esc / boşluk → 'iptal'); kalıcı alımlar bu
  *    cihazda `fitil.gelir.sahte.kalici`'de tutulur, `geriYukle` onları verir.
@@ -62,16 +63,32 @@ export function sahteFiyatlar(): Readonly<Record<UrunId, string>> {
   };
 }
 
-/** Onay kartındaki ürün adı (gerçekte mağazanın ürün başlığı; oyunun Mağaza metinleri G3'ün `metinler.ts`'inde). */
+/**
+ * Sahte katmanların metinleri (iki dil; İngilizce testi: src/dil/en-oyun.test.ts).
+ * Ürün adları gerçekte mağazanın ürün başlığıdır; burada oyunun Mağaza
+ * adlarıyla (`ui/metinler.ts` `URUN_METINLERI`) birebir aynı (test denetler).
+ */
+const S = {
+  reklamEtiketi: t('Deneme reklamı', 'Test ad'),
+  kapat: t('Kapat', 'Close'),
+  odulCan: t('Ödül: +1 can', 'Reward: +1 life'),
+  odulHamle: t('Ödül: +5 hamle', 'Reward: +5 moves'),
+  odulAl: t('Ödülü al', 'Get reward'),
+  satinEtiketi: t('Deneme satın alma', 'Test purchase'),
+  odemeYok: t('Ödeme alınmaz.', 'No payment is taken.'),
+  vazgec: t('Vazgeç', 'Cancel'),
+  satinAl: t('Satın al', 'Buy'),
+  urun: {
+    can_doldur: t('Canları doldur', 'Refill lives'),
+    guclendirici_paketi: t('Güçlendirici paketi', 'Booster pack'),
+    usta_karti: t('Usta kartı', 'Master’s Card'),
+  } satisfies Record<UrunId, string>,
+};
+export { S as SAHTE_METNI };
+
+/** Onay kartındaki ürün adı (gerçekte mağazanın ürün başlığı). */
 function urunAdi(id: UrunId): string {
-  switch (id) {
-    case 'can_doldur':
-      return t('Canları doldur', 'Refill lives');
-    case 'guclendirici_paketi':
-      return t('Güçlendirici paketi', 'Booster pack');
-    case 'usta_karti':
-      return t('Usta kartı', 'Master pass');
-  }
+  return S.urun[id];
 }
 
 // ─────────────────────────── Sağlayıcı (DOM'suz çekirdek) ───────────────────────────
@@ -294,24 +311,24 @@ function reklamKatmani(yer: ReklamYeri, sureMs: number): Promise<'odul' | 'iptal
     const kok = oge('div', 'fs-kok fs-reklam');
     kok.setAttribute('role', 'dialog');
     kok.setAttribute('aria-modal', 'true');
-    kok.setAttribute('aria-label', t('Deneme reklamı', 'Test ad'));
+    kok.setAttribute('aria-label', S.reklamEtiketi);
     kok.style.setProperty('--fs-sure', `${Math.max(0, sureMs)}ms`);
 
-    const etiket = oge('span', 'fs-etiket', t('Deneme reklamı', 'Test ad'));
+    const etiket = oge('span', 'fs-etiket', S.reklamEtiketi);
     const kapat = oge('button', 'fs-dg fs-dg-ikincil fs-kapat');
     kapat.type = 'button';
-    kapat.append(svgOge(KAPAT_SVG), oge('span', '', t('Kapat', 'Close')));
+    kapat.append(svgOge(KAPAT_SVG), oge('span', '', S.kapat));
     const ust = oge('div', 'fs-ust');
     ust.append(etiket, kapat);
 
     const sayi = oge('span', 'fs-sayi', String(Math.max(1, Math.ceil(sureMs / 1000))));
     const halka = oge('div', 'fs-halka');
     halka.append(svgOge(HALKA_SVG), sayi, svgOge(TAMAM_SVG));
-    const odul = oge('p', 'fs-odul', yer === 'can' ? t('Ödül: +1 can', 'Reward: +1 life') : t('Ödül: +5 hamle', 'Reward: +5 moves'));
+    const odul = oge('p', 'fs-odul', yer === 'can' ? S.odulCan : S.odulHamle);
     const orta = oge('div', 'fs-orta');
     orta.append(halka, odul);
 
-    const al = oge('button', 'fs-dg fs-dg-birincil fs-al', t('Ödülü al', 'Get reward'));
+    const al = oge('button', 'fs-dg fs-dg-birincil fs-al', S.odulAl);
     al.type = 'button';
     al.disabled = true;
     const alt = oge('div', 'fs-alt');
@@ -320,6 +337,7 @@ function reklamKatmani(yer: ReklamYeri, sureMs: number): Promise<'odul' | 'iptal
     kok.append(ust, orta, alt);
 
     let bitti = false;
+    let hazir = false;
     let zaman: ReturnType<typeof setTimeout> | null = null;
     const bitir = (sonuc: 'odul' | 'iptal') => {
       if (bitti) return;
@@ -329,7 +347,8 @@ function reklamKatmani(yer: ReklamYeri, sureMs: number): Promise<'odul' | 'iptal
       katmanKapat(kok, onceki);
       coz(sonuc);
     };
-    const kaldir = katmanBagla(kok, () => bitir('iptal'));
+    // Esc: süre dolmadan erken kapatma ('iptal'); dolduktan sonra Kapat kilitli, ödül hak edildi.
+    const kaldir = katmanBagla(kok, () => bitir(hazir ? 'odul' : 'iptal'));
     kapat.addEventListener('click', () => bitir('iptal'));
     al.addEventListener('click', () => bitir('odul'));
 
@@ -342,6 +361,7 @@ function reklamKatmani(yer: ReklamYeri, sureMs: number): Promise<'odul' | 'iptal
         return;
       }
       zaman = null;
+      hazir = true;
       kok.classList.add('fs-hazir');
       kapat.disabled = true;
       al.disabled = false;
@@ -362,17 +382,17 @@ function onayKarti(urun: UrunId, fiyat: string): Promise<boolean> {
     const kok = oge('div', 'fs-kok fs-satin');
     kok.setAttribute('role', 'dialog');
     kok.setAttribute('aria-modal', 'true');
-    kok.setAttribute('aria-label', t('Deneme satın alma', 'Test purchase'));
+    kok.setAttribute('aria-label', S.satinEtiketi);
 
     const perde = oge('div', 'fs-perde');
     const kart = oge('div', 'fs-kart');
-    const etiket = oge('span', 'fs-etiket', t('Deneme satın alma', 'Test purchase'));
+    const etiket = oge('span', 'fs-etiket', S.satinEtiketi);
     const ad = oge('p', 'fs-urun', urunAdi(urun));
     const tutar = oge('p', 'fs-fiyat', fiyat);
-    const not = oge('p', 'fs-not', t('Ödeme alınmaz.', 'No payment is taken.'));
-    const vazgec = oge('button', 'fs-dg fs-dg-ikincil', t('Vazgeç', 'Cancel'));
+    const not = oge('p', 'fs-not', S.odemeYok);
+    const vazgec = oge('button', 'fs-dg fs-dg-ikincil', S.vazgec);
     vazgec.type = 'button';
-    const satin = oge('button', 'fs-dg fs-dg-birincil', t('Satın al', 'Buy'));
+    const satin = oge('button', 'fs-dg fs-dg-birincil', S.satinAl);
     satin.type = 'button';
     const sira = oge('div', 'fs-sira');
     sira.append(vazgec, satin);

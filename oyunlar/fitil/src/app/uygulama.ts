@@ -178,7 +178,7 @@ export class Uygulama {
           kayit: () => this.kayitci.kayit,
           yaz: (k) => {
             this.kayitci.degistir(k, 0);
-            this.kayitci.hemenYaz();
+            return this.kayitci.hemenYaz();
           },
           degistir: (k) => this.kayitci.degistir(k),
           ui: this.ui,
@@ -675,12 +675,13 @@ export class Uygulama {
         kart = false;
       }
       // (CAN-REKLAM §2, C5) Bölüm başlatma kapısı: can harcayan bölüm 0 canla başlamaz; can bitti
-      // paneli açılır (reklam/satın alma can verirse bölüm başlar, Bekle → harita).
+      // paneli açılır (reklam/satın alma can verirse bölüm başlar; Bekle → harita, panel açıkken
+      // zamanla can dolmuş olsa da: oyuncu bölüme atılmaz).
       const g = this.gelir;
       if (g && g.canGerekirMi(v) && g.tazele().sayi <= 0) {
         g.canBitti(v);
-        await g.canPaneliAkisi({ kapi: true });
-        if (this.istek || g.durum().sayi <= 0) return 'harita';
+        const r = await g.canPaneliAkisi({ kapi: true });
+        if (this.istek || r !== 'can' || g.durum().sayi <= 0) return 'harita';
       }
       this.ui.haritaGizle();
       this.ciziciAktif = true;

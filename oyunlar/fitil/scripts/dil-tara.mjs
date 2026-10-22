@@ -4,6 +4,9 @@
  * aria-label'larda Türkçe kalıntı arar (Türkçe harfler + sık Türkçe
  * sözcükler; özel adlar beyaz listede).
  *   node scripts/dil-tara.mjs [taban-url] [çıktı-klasörü]
+ * Gelir sağlayıcısıyla (`?gelir=sahte`) gerçek akış da taranır: harita hapı,
+ * can paneli, sahte reklam katmanı (geri sayım ve "Get reward"), sahte satın
+ * alma kartı ve "Purchased" bildirimi (CAN-REKLAM §12).
  * Varsayılan http://localhost:5173, dil-tarama/. Ekran başına görüntü
  * (<ekran>.png) ve rapor.json yazar; kalıntı varsa çıkış kodu 1.
  */
@@ -19,7 +22,7 @@ const EKRANLAR = [
   'kasabaKarti&m=0', 'kasabaKarti&m=3', 'secim', 'duraklat', 'duraklat&v=m', 'kazandin', 'kazandin&v=m', 'kazandin&v=mt', 'kazandin&v=mk', 'kazandin&v=me',
   'kaybettin', 'ayarlar', 'oyunOzeti', 'oyunOzeti&v=bos', 'nasil', 'defter', 'gunluk', 'istatistik', 'mola', 'defterKarti', 'sandik', 'balon', 'bant', 'kutlama', 'toast',
   // Can, reklam, Mağaza (CAN-REKLAM §6): yalnız gelir sağlayıcısı varken görünür.
-  'can&v=bitti', 'can&v=durum', 'can&v=kart', 'can&v=hakyok', 'magaza', 'magaza&v=sende', 'magaza&v=stok', 'kaybettin&v=can', 'kaybettin&v=can0',
+  'can&v=bitti', 'can&v=durum', 'can&v=kart', 'can&v=hakyok', 'magaza', 'magaza&v=sende', 'magaza&v=stok', 'magaza&v=yok', 'kaybettin&v=can', 'kaybettin&v=can0',
   'kaybettin&v=kart', 'cikisOnayi', 'cikisOnayi&v=yeniden', 'harita&can=3', 'ayarlar&gelir=1',
 ];
 
@@ -105,6 +108,20 @@ await page.waitForFunction(() => window.__fitil.ekran() === 'harita', null, { ti
 await tara('oyun-gelir-harita', null, 1500);
 await page.locator('.f-can-hap').click();
 await tara('oyun-gelir-can', null, 1500);
+// Sahte sağlayıcının kendi katmanları (CAN-REKLAM §5, §12): reklam (geri sayım, sonra "Ödülü al").
+await page.locator('.f-can-reklam').click();
+await page.waitForSelector('.fs-reklam', { timeout: 10_000 });
+await tara('oyun-gelir-reklam', null, 600);
+await page.waitForSelector('.fs-reklam.fs-hazir', { timeout: 15_000 });
+await tara('oyun-gelir-reklam-hazir', null, 400);
+await page.locator('.fs-al').click();
+await page.waitForSelector('.f-can-doldur', { timeout: 10_000 });
+// Satın alma onay kartı ve "Satın alındı" bildirimi.
+await page.locator('.f-can-doldur').click();
+await page.waitForSelector('.fs-satin', { timeout: 10_000 });
+await tara('oyun-gelir-satin', null, 600);
+await page.locator('.fs-satin .fs-dg-birincil').click();
+await tara('oyun-gelir-satin-bildirim', null, 500);
 
 writeFileSync(`${cikti}/rapor.json`, JSON.stringify(rapor, null, 1));
 await browser.close();

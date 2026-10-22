@@ -450,6 +450,20 @@ describe('kayıt onarımı ve kopya (§7)', () => {
     expect(s.can).not.toBe(k.can);
     expect('can' in ilerlemeyiSifirla(yeniKayit(1), 5)).toBe(false);
   });
+
+  it('ilerlemeyi sıfırla: satın alma yapılmış kayıtta güçlendirici stoğu korunur, gelirsiz kayıtta sıfırlanır', () => {
+    // Paket satın alındı (3/2/2), kullanılmadan sıfırlandı: jeton işlenmiş olduğundan stok yeniden verilmez.
+    const r = satinAlmaUygula(yeniKayit(1), 'guclendirici_paketi', 'j-paket', T0);
+    expect(r.verildi).toBe(true);
+    const s = ilerlemeyiSifirla(r.kayit, 5);
+    expect(s.guclendiriciler).toEqual({ kibrit: 3, kalip: 2, geriSar: 2 });
+    expect(s.gelir?.jetonlar).toEqual(['j-paket']);
+    expect(satinAlmaUygula(s, 'guclendirici_paketi', 'j-paket', T0).tekrar).toBe(true);
+    // Sağlayıcısız sürümün kaydı (gelir yok): stok eskisi gibi sıfırlanır.
+    const w = yeniKayit(2);
+    w.guclendiriciler = { kibrit: 2, kalip: 1, geriSar: 1 };
+    expect(ilerlemeyiSifirla(w, 5).guclendiriciler).toEqual({ kibrit: 0, kalip: 0, geriSar: 0 });
+  });
 });
 
 describe('bulut + tarayıcı birleştirmesi (kancaBirlestir, §13 öneri)', () => {

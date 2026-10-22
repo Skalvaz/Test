@@ -11,6 +11,8 @@ import {
   type SahteKatmanlar,
 } from './gelirSahte';
 import type { ReklamYeri, UrunId } from './gelir';
+import { SAHTE_METNI } from './gelirSahte';
+import { URUN_METINLERI } from '../ui/metinler';
 
 class Bellek implements SahteDepo {
   m = new Map<string, string>();
@@ -153,5 +155,12 @@ describe('sahte sağlayıcı: mağaza', () => {
     const s = sahteSaglayici(NORMAL, { katmanlar: katmanlar().k, depo: kapali });
     expect(await s.satinAl('usta_karti')).toMatchObject({ durum: 'basarili', urun: 'usta_karti' });
     expect(await s.geriYukle()).toEqual(['usta_karti']);
+  });
+});
+
+describe('sahte katman metinleri', () => {
+  it('onay kartındaki ürün adları Mağaza satırlarıyla birebir (Türkçe)', () => {
+    for (const [id, ad] of Object.entries(SAHTE_METNI.urun)) expect(ad, id).toBe(URUN_METINLERI[id as UrunId].ad);
+    expect(SAHTE_METNI.reklamEtiketi).toBe('Deneme reklamı');
   });
 });

@@ -38,6 +38,7 @@ const G = {
   beklemede: t('Ödeme bekleniyor', 'Payment pending'),
   geriYuklendi: t('Satın alımlar geri yüklendi', 'Purchases restored'),
   geriYukleBos: t('Geri yüklenecek satın alım yok', 'Nothing to restore'),
+  geriYukleHata: t('Geri yükleme şu an yapılamadı', 'Couldn’t restore right now'),
 };
 
 // ─────────────────────────── Görünüm modelleri (saf) ───────────────────────────
@@ -90,14 +91,16 @@ export function magazaVM(k: Kayit, simdi: number, fiyatlar: ReadonlyMap<UrunId, 
 
 /**
  * Kayıt kodu içe aktarılırken (Ayarlar > Kayıt kodu; sağlayıcı varken): can
- * bu cihazın durumudur, koddan gelmez (eski kodla can doldurulamasın); satın
- * almalar korunur (`gelirBirlestir`: Usta kartı VEYA, jetonlar birleşimi).
- * Alan eski kayıtta yoksa yeni kayıttan da kalkar (varsayılan sayılır).
+ * ve satın almalar bu cihazın durumudur, koddan gelmez. Kod yalnız ilerlemeyi
+ * taşır: eski kodla can doldurulamasın, koddaki Usta kartı (başka cihazda
+ * alınmış ya da elle yazılmış) bu cihaza bedava geçmesin, koddaki jetonlar bu
+ * cihazınkileri son 50'den atmasın. Usta kartı yeni cihaza mağazanın
+ * `geriYukle()`'siyle gelir. Alan eski kayıtta yoksa yeni kayıttan da kalkar
+ * (varsayılan sayılır).
  */
 export function kayitKoduGelirKoru(yeni: Kayit, eski: Kayit): Kayit {
   const y = meta.kayitKopyala(yeni);
-  const g = meta.gelirBirlestir(eski, yeni);
-  if (g) y.gelir = g;
+  if (eski.gelir) y.gelir = { ustaKarti: eski.gelir.ustaKarti, jetonlar: [...eski.gelir.jetonlar] };
   else delete y.gelir;
   if (eski.can) y.can = { ...eski.can };
   else delete y.can;
@@ -115,8 +118,11 @@ export interface GelirOrtami {
   saglayici: GelirSaglayici;
   /** Güncel kayıt (`Kayitci.kayit`). */
   kayit(): Kayit;
-  /** Kaydı değiştir ve HEMEN yaz (ödül, can düşüşü). */
-  yaz(k: Kayit): void;
+  /**
+   * Kaydı değiştir ve HEMEN yaz (ödül, can düşüşü). false: kayıt yalnız
+   * bellekte kaldı (depo salt okunur ya da dolu); satın alma tamamlanmaz.
+   */
+  yaz(k: Kayit): boolean;
   /** Kaydı değiştir, gecikmeli yaz (tembel dolum). */
   degistir(k: Kayit): void;
   ui: {
@@ -138,6 +144,9 @@ export interface GelirOrtami {
   olay?: GelirOlayYazici;
 }
 
+/** Can düşüşünün `can_bitti`'si ile kapınınki bu süre içindeyse aynı an sayılır (ms). */
+const BITTI_AYNI_AN_MS = 5000;
+
 /** Satın almanın sonucu (akış içi). */
 export type SatinAlmaAkisSonucu = 'verildi' | 'tekrar' | 'verilemedi' | 'iptal' | 'beklemede' | 'hata' | 'satilmaz';
 
@@ -147,6 +156,11 @@ export class GelirAkisi {
   private urunSozu: Promise<void> | null = null;
   private reklamAcik = false;
   private satinAlimda = false;
+  /**
+   * Can düşüşünün yazdığı son `can_bitti` (bölüm, duvar saati): hemen ardından
+   * gelen kapı (Duraklat > Yeniden başla son canla) aynı anı ikinci kez yazmasın.
+   */
+  private bittiYazilan: { bolum: number; an: number } | null = null;
 
   constructor(private o: GelirOrtami) {}
 
@@ -211,7 +225,10 @@ export class GelirAkisi {
     const kalan = this.durum().sayi;
     if (kalan >= once) return null;
     this.olay('can_harcandi', { neden, kalan, bolum: v.id });
-    if (kalan <= 0) this.olay('can_bitti', { bolum: v.id });
+    if (kalan <= 0) {
+      this.olay('can_bitti', { bolum: v.id });
+      this.bittiYazilan = { bolum: v.id, an: this.o.saat() };
+    }
     return kalan;
   }
 
@@ -225,8 +242,16 @@ export class GelirAkisi {
     if (this.durum().sayi > once) this.olay('can_doldu', { neden: 'iade' });
   }
 
-  /** 0 canla bölüm başlatılmak istendi (kapı; §2 C5). */
+  /**
+   * 0 canla bölüm başlatılmak istendi (kapı; §2 C5). Aynı bölümün son canı
+   * az önce (`BITTI_AYNI_AN_MS` içinde) düştüyse `canHarca` `can_bitti`'yi
+   * yazmıştır: aynı an yeniden yazılmaz.
+   */
   canBitti(v: Pick<BolumVerisi, 'id'>): void {
+    const b = this.bittiYazilan;
+    this.bittiYazilan = null;
+    const fark = b ? this.o.saat() - b.an : Infinity;
+    if (b?.bolum === v.id && fark >= 0 && fark < BITTI_AYNI_AN_MS) return;
     this.olay('can_bitti', { bolum: v.id });
   }
 
@@ -306,31 +331,40 @@ export class GelirAkisi {
   /**
    * Can paneli / Can bitti (§3, §6): seçimde kapanır, işlenip yeniden açılır;
    * 'kapat' (Bekle, Esc, programlı kapanış) ile biter. `kapi` (0 canla bölüm
-   * başlatma): reklam ya da satın alma can verince panel kapanır, bölüm başlar.
+   * başlatma): reklam ya da satın alma can verince panel kapanır ('can': bölüm
+   * başlar). Dönüş 'kapat': oyuncu Bekle dedi (panel açıkken zamanla can
+   * dolmuş olsa da kapı haritaya döner, §13 G4 "Bekle → harita").
    */
-  async canPaneliAkisi(o: { kapi?: boolean } = {}): Promise<void> {
+  async canPaneliAkisi(o: { kapi?: boolean } = {}): Promise<'kapat' | 'can'> {
     const onceki = this.o.ekran?.('canPaneli');
     if (!this.fiyatlar?.size) void this.urunleriYukle();
     // `yok`/`hata`dan sonra reklam satırı bu panel boyunca gizli (§3).
     let gizli = false;
+    // `reklam_teklif` aynı teklif için bir kez: iptal ya da vazgeçilen satın almadan sonra
+    // yerinde yeniden açılan panel yeniden saymaz; ödül alınınca sıradaki reklam yeni tekliftir.
+    let teklifYazildi = false;
     try {
       for (;;) {
         this.o.ekran?.('canPaneli');
         this.tazele();
         const vm = this.canVM(gizli);
-        if (vm.reklam && vm.reklam.hak > 0 && vm.reklam.hazir) this.reklamTeklif('can');
+        if (!teklifYazildi && vm.reklam && vm.reklam.hak > 0 && vm.reklam.hazir) {
+          teklifYazildi = true;
+          this.reklamTeklif('can');
+        }
         const s = await this.o.ui.canPaneli(vm, () => {
           this.tazele();
           return this.canVM(gizli);
         });
-        if (s === 'kapat') return;
+        if (s === 'kapat') return 'kapat';
         const once = this.durum().sayi;
         if (s === 'reklam') {
           const r = await this.reklamCan();
           if (r === 'yok' || r === 'hata') gizli = true;
+          if (r === 'odul') teklifYazildi = false;
         } else if (s === 'doldur') await this.satinAl('can_doldur');
         // Kapı: bölüm 0 canla açılmak istendi; reklam/satın alma can verdiyse bölüm başlasın.
-        if (o.kapi && this.durum().sayi > once) return;
+        if (o.kapi && this.durum().sayi > once) return 'can';
       }
     } finally {
       if (onceki !== undefined) this.o.ekran?.(onceki);
@@ -412,7 +446,9 @@ export class GelirAkisi {
 
   /**
    * Başarılı satın almanın ödülü (§4, §13 karar 6): verildi → kayıt hemen,
-   * SONRA `tamamla`; tekrar (jeton işlenmiş) → ödül yok, yine `tamamla`;
+   * SONRA `tamamla` (kayıt kalıcı yazılamadıysa `tamamla` yok: ödül bu
+   * oturumda bellekte, satın alma bekleyenlerde kalır); tekrar (jeton
+   * işlenmiş) → ödül yok, yine `tamamla`;
    * verilemedi (paket sığmıyor, geçersiz jeton) → `tamamla` yok, satın
    * alma `bekleyenler()`'de kalır.
    */
@@ -420,12 +456,15 @@ export class GelirAkisi {
     const once = this.tazele().sayi;
     const k = this.o.kayit();
     const r = meta.satinAlmaUygula(k, urun, jeton, this.o.saat());
+    // Ödül kalıcı yazılamadıysa (salt okunur ya da dolu depo) `tamamla` yok: satın alma
+    // sağlayıcıda bekler, sonraki açılışta `bekleyenler()` ile yeniden işlenir (ödeme boşa gitmez).
+    let kalici = true;
     if (r.verildi) {
-      this.o.yaz(r.kayit);
+      kalici = this.o.yaz(r.kayit);
       if (urun === 'can_doldur' && this.durum().sayi > once) this.olay('can_doldu', { neden: 'satin' });
       this.o.degisti?.();
     }
-    if (r.verildi || r.tekrar) {
+    if (kalici && (r.verildi || r.tekrar)) {
       try {
         await this.o.saglayici.tamamla(jeton);
       } catch {
@@ -449,13 +488,18 @@ export class GelirAkisi {
     return verilen;
   }
 
-  /** "Satın alımları geri yükle" (§4): kalıcı ürünler (Usta kartı). Kayıt değiştiyse true. */
+  /**
+   * "Satın alımları geri yükle" (§4): kalıcı ürünler (Usta kartı). Kayıt
+   * değiştiyse true. Mağazaya ulaşılamadıysa (sağlayıcı reddetti) "yapılamadı"
+   * der: "geri yüklenecek yok" deyip oyuncuyu yeniden satın almaya itmesin.
+   */
   async geriYukle(): Promise<boolean> {
-    let liste: UrunId[] = [];
+    let liste: UrunId[];
     try {
       liste = await this.o.saglayici.geriYukle();
     } catch {
-      liste = [];
+      this.o.bildir(G.geriYukleHata);
+      return false;
     }
     const k = this.o.kayit();
     const y = meta.geriYuklemeUygula(k, liste);

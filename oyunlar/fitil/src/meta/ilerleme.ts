@@ -123,6 +123,13 @@ export interface BolumSonucGirdisi {
    * ya da 1–5 / 41+ bölümlerde meta yok sayar.
    */
   muhurler?: readonly boolean[];
+  /**
+   * (CAN-REKLAM §3) Bu sonuç, kaybı zaten işlenmiş denemenin devamı:
+   * reklamla (ya da Usta kartıyla) +5 hamle. `istatistik.ustaEli` ile
+   * birlikte Usta'nın Eli devamı gibi işlenir (yeni deneme sayılmaz, kayıp
+   * sayaçları ikinci kez artmaz). Eli'nin kendisi için gerekmez (seri ≥ eşik).
+   */
+  devam?: boolean;
 }
 
 export type RekorAlani = 'bolumPuani' | keyof Rekorlar;
@@ -322,8 +329,9 @@ export function bolumSonucu(kayit: Kayit, g: BolumSonucGirdisi, ayarK?: Partial<
   const anahtar = String(bolumId);
   const tur = g.tur ?? bolumTuru(bolumId, ayar);
   const ist = g.istatistik ?? ({} as BolumIstatistigi);
-  // Usta'nın Eli devamı: yalnız Eli gerçekten sunulmuşsa (4+ başarısızlık) yeni deneme sayılmaz.
-  const ustaEliDevami = ist.ustaEli === true && tur !== 'gunluk' && (k.bolumler[anahtar]?.basarisizSeri ?? 0) >= USTA_ELI_ESIGI;
+  // Usta'nın Eli devamı: yalnız Eli gerçekten sunulmuşsa (4+ başarısızlık) ya da uygulama
+  // reklamla +5 devamını bildirdiyse (`devam`; Eli kurallarıyla, CAN-REKLAM §3) yeni deneme sayılmaz.
+  const ustaEliDevami = ist.ustaEli === true && tur !== 'gunluk' && (g.devam === true || (k.bolumler[anahtar]?.basarisizSeri ?? 0) >= USTA_ELI_ESIGI);
   // Devamda uygulama yalnız Eli'den sonraki olayların özetini verir; denemenin
   // tamamını taşıyan istatistikle tamamlanırsa kayıpta işlenmiş sayaçlar
   // (patlama, roket, görevler) ikinci kez eklenir.

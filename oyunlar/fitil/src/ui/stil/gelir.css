@@ -14,17 +14,21 @@
 .f-can-hap::before { content: ''; position: absolute; left: 50%; top: 50%; width: max(100%, 48px); height: max(100%, 48px); transform: translate(-50%, -50%); }
 .f-hap-fitil { width: 26px; height: 26px; overflow: visible; }
 .f-can-hap.f-bos .f-can-hap-sayi { color: #FFB08A; }
-/* Sonraki can: hapın altında küçük künye ("12:31"); üst çubuğun yüksekliği değişmez. */
+/*
+ * Sonraki can: hapın altında küçük künye ("12:31"); üst çubuğun yüksekliği
+ * değişmez. Künye hapın alt kenarına asılır (bandın altına ~10 px taşar):
+ * aşağı sarkarsa varsayılan kaydırmada mahalle tabelasının yazısını örter.
+ */
 .f-can-hap-sure {
   position: absolute;
   left: 50%;
-  top: calc(100% + 6px);
+  top: calc(100% - 10px);
   transform: translateX(-50%);
-  padding: 1px 9px 2px;
+  padding: 0 8px 1px;
   border-radius: 999px;
   font-size: 16px;
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.1;
   color: var(--krem);
   white-space: nowrap;
   pointer-events: none;

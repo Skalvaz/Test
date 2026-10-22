@@ -6,7 +6,8 @@
  *
  * Türler şartname §5'le birebir (G0). G2: sağlayıcı seçimi
  * (`gelirSaglayici`, sayfa başına bir kez), Android köprü sarmalayıcısı
- * (`androidSaglayici`: JSON çözer, hiçbir durumda fırlatmaz), ölçüm
+ * (`androidSaglayici`: JSON çözer, fırlatmaz; yalnız `geriYukle` mağazaya
+ * ulaşamayınca reddeder, "geri yüklenecek yok"tan ayrılsın), ölçüm
  * sarmalayıcısı (`olculenSaglayici`: `reklam_sonuc`, `satin_alma`). Sahte
  * sağlayıcı (web denemesi, `?gelir=sahte`) `gelirSahte.ts`'te.
  */
@@ -37,7 +38,11 @@ export interface GelirSaglayici {
   tamamla(jeton: string): Promise<void>;
   /** Tamamlanmamış başarılı satın almalar (açılışta yeniden işlenir). */
   bekleyenler(): Promise<{ urun: UrunId; jeton: string }[]>;
-  /** Sahip olunan kalıcı ürünler ("Satın alımları geri yükle"). */
+  /**
+   * Sahip olunan kalıcı ürünler ("Satın alımları geri yükle"). Boş liste
+   * "kalıcı ürün yok" demektir; mağazaya ulaşılamazsa (köprü hatası, zaman
+   * aşımı, bozuk yanıt) REDDEDER, uygulama "yapılamadı" der.
+   */
   geriYukle(): Promise<UrunId[]>;
 }
 
@@ -159,21 +164,43 @@ export function geriYukleCoz(x: unknown): UrunId[] {
 
 // ─────────────────────────── Güvenli çağrı ───────────────────────────
 
+/** Sayfa arka planda mı (Android'de reklam ya da ödeme ekranı WebView'in önündeyken). */
+function sayfaGizli(): boolean {
+  try {
+    return (globalThis as { document?: { hidden?: boolean } }).document?.hidden === true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * `is()`'i çağırır; fırlatırsa, reddederse ya da `ms` içinde bitmezse
  * `yedek` döner. Hiçbir durumda reddetmez. `ms` sonsuzsa süre sınırı yok.
+ * `gorunurde`: süre yalnız sayfa görünürken işler (reklam ya da ödeme ekranı
+ * oyunun önündeyken sayaç durur; uzun izlenen reklamın geç gelen ödülü
+ * yutulmasın, yanıt vermeyen köprü yine de oyunu kilitlemesin).
  */
-function sureli<T>(is: () => T | PromiseLike<T>, ms: number, yedek: T): Promise<T> {
+function sureli<T>(is: () => T | PromiseLike<T>, ms: number, yedek: T, gorunurde = false): Promise<T> {
   return new Promise<T>((coz) => {
     let bitti = false;
     let zaman: ReturnType<typeof setTimeout> | null = null;
+    let aralik: ReturnType<typeof setInterval> | null = null;
     const son = (x: T) => {
       if (bitti) return;
       bitti = true;
       if (zaman !== null) clearTimeout(zaman);
+      if (aralik !== null) clearInterval(aralik);
       coz(x);
     };
-    if (Number.isFinite(ms)) zaman = setTimeout(() => son(yedek), ms);
+    if (Number.isFinite(ms) && !gorunurde) zaman = setTimeout(() => son(yedek), ms);
+    else if (Number.isFinite(ms)) {
+      const adim = Math.max(1, Math.min(1000, ms));
+      let gecen = 0;
+      aralik = setInterval(() => {
+        if (!sayfaGizli()) gecen += adim;
+        if (gecen >= ms) son(yedek);
+      }, adim);
+    }
     try {
       Promise.resolve(is()).then(son, () => son(yedek));
     } catch {
@@ -182,13 +209,19 @@ function sureli<T>(is: () => T | PromiseLike<T>, ms: number, yedek: T): Promise<
   });
 }
 
+/** `sureli`'nin yedeği: köprüye ulaşılamadı (boş yanıttan ayrı). */
+const ULASILAMADI: unique symbol = Symbol('ulasilamadi');
+/** Geri yükleme yapılamadığında reddedilen hatanın iletisi (ölçüm/günlük için; oyuncuya gösterilmez). */
+export const GERI_YUKLEME_HATASI = 'geri yükleme yapılamadı';
+
 // ─────────────────────────── Android köprü sarmalayıcısı (§5.1) ───────────────────────────
 
 /**
  * Köprü çağrılarının süre sınırları (ms). Köprü yanıt vermezse oyun beklemede
- * kalmasın: reklam ve satın alma oyuncunun yerel ekranda geçirdiği süreyi
- * kapsar (sınır aşılınca 'hata'; ödenmiş satın alma onaylanmadığı için
- * sonraki açılışta `bekleyenler()`'den gelir), öbürleri kısa.
+ * kalmasın: reklam ve satın alma sınırı yalnız sayfa GÖRÜNÜRKEN işler
+ * (reklam/ödeme ekranı önündeyken sayaç durur; sınır aşılınca 'hata',
+ * ödenmiş satın alma onaylanmadığı için sonraki açılışta `bekleyenler()`'den
+ * gelir), öbürleri kısa.
  */
 export interface KopruSureleri {
   reklam: number;
@@ -213,14 +246,14 @@ export function androidSaglayici(kopru: AndroidGelirKoprusu, sure: Readonly<Kopr
       }
     },
     async reklamGoster(yer) {
-      return reklamSonucuCoz(await sureli<unknown>(() => kopru.reklamGoster(yer), sure.reklam, 'hata'));
+      return reklamSonucuCoz(await sureli<unknown>(() => kopru.reklamGoster(yer), sure.reklam, 'hata', true));
     },
     async urunler() {
       return urunlerCoz(await sureli<unknown>(() => kopru.urunler(), sure.kisa, undefined));
     },
     async satinAl(id) {
       if (!urunIdMi(id)) return { durum: 'hata' };
-      return satinAlmaCoz(await sureli<unknown>(() => kopru.satinAl(id), sure.satin, undefined));
+      return satinAlmaCoz(await sureli<unknown>(() => kopru.satinAl(id), sure.satin, undefined, true));
     },
     async tamamla(jeton) {
       if (!jetonMu(jeton)) return;
@@ -230,7 +263,10 @@ export function androidSaglayici(kopru: AndroidGelirKoprusu, sure: Readonly<Kopr
       return bekleyenlerCoz(await sureli<unknown>(() => kopru.bekleyenler(), sure.kisa, undefined));
     },
     async geriYukle() {
-      return geriYukleCoz(await sureli<unknown>(() => kopru.geriYukle(), sure.kisa, undefined));
+      // Hata, zaman aşımı ya da dizi olmayan yanıt: reddeder ("geri yüklenecek yok" sanılmasın).
+      const x = await sureli<unknown>(() => kopru.geriYukle(), sure.kisa, ULASILAMADI);
+      if (x === ULASILAMADI || !Array.isArray(jsonCoz(x))) throw new Error(GERI_YUKLEME_HATASI);
+      return geriYukleCoz(x);
     },
   };
 }
@@ -250,8 +286,9 @@ export type GelirOlayYazici = <A extends OlcumGelirOlayi>(ad: A, p: OlcumGelirOz
  * Uygulama (G4) bu olayları YENİDEN yazmaz; `reklam_teklif`, Usta kartıyla
  * reklamsız ödül (`reklam_sonuc` kart: true) ve `can_*` olayları uygulamanın.
  * `bekleyenler()` ölçülmez (her açılışta aynı satın alma yeniden gelebilir).
- * İç sağlayıcı fırlatsa da sarmalayıcı fırlatmaz; yanıtları köprüdeki
- * çözümleyicilerden geçirir (sözleşme dışı değer 'hata' / boş liste).
+ * İç sağlayıcı fırlatsa da sarmalayıcı fırlatmaz (yalnız `geriYukle`
+ * içerideki ret gibi reddeder: "yapılamadı" ile "yok" ayrılsın); yanıtları
+ * köprüdeki çözümleyicilerden geçirir (sözleşme dışı değer 'hata' / boş liste).
  */
 export function olculenSaglayici(s: GelirSaglayici, olay: GelirOlayYazici = gelirOlayi): GelirSaglayici {
   const yaz: GelirOlayYazici = (ad, p) => {
@@ -289,7 +326,9 @@ export function olculenSaglayici(s: GelirSaglayici, olay: GelirOlayYazici = geli
       return bekleyenlerCoz(await sureli<unknown>(() => s.bekleyenler(), Infinity, []));
     },
     async geriYukle() {
-      const liste = geriYukleCoz(await sureli<unknown>(() => s.geriYukle(), Infinity, []));
+      const ham = await sureli<unknown>(() => s.geriYukle(), Infinity, ULASILAMADI);
+      if (ham === ULASILAMADI) throw new Error(GERI_YUKLEME_HATASI);
+      const liste = geriYukleCoz(ham);
       for (const urun of liste) yaz('satin_alma', { urun, durum: 'geri_yukle' });
       return liste;
     },

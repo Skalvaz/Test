@@ -65,6 +65,8 @@ export class Kayitci {
   readonly kaynak: number;
   private zamanlayici: ReturnType<typeof setTimeout> | null = null;
   private bekliyor = false;
+  /** Son yazım kalıcı mıydı (salt okunur ya da dolu depoda false). */
+  private sonYazimKalici = true;
   private bulutSozu: Promise<Kayit | null> | null = null;
   /** Bulut bağlantısı başladığında yerel kayıt (sonra değiştiyse bulut körü körüne ezmesin). */
   private bulutOncesi: Kayit | null = null;
@@ -118,17 +120,23 @@ export class Kayitci {
     this.zamanlayici = setTimeout(() => this.yaz(), gecikme);
   }
 
-  hemenYaz(): void {
-    if (!this.bekliyor) return;
-    this.yaz();
+  /**
+   * Bekleyen yazımı hemen yapar. Dönüş: kayıt kalıcı yazıldı mı (bekleyen
+   * yazım yoksa son yazımın sonucu). false: salt okunur depo ya da
+   * localStorage yazılamadı; kayıt yalnız bellekte (satın alma bunu bilmeli).
+   */
+  hemenYaz(): boolean {
+    if (!this.bekliyor) return this.sonYazimKalici;
+    return this.yaz();
   }
 
-  private yaz(): void {
+  private yaz(): boolean {
     if (this.zamanlayici) clearTimeout(this.zamanlayici);
     this.zamanlayici = null;
     this.bekliyor = false;
+    this.sonYazimKalici = false;
     // Yeni sürümün kaydı görüldüyse yazılmaz (yedekler de kaymaz).
-    if (!this.depo.writable()) return;
+    if (!this.depo.writable()) return false;
     // Yedek döndürme: önceki ana kayıt → yedek1 → yedek2 (§16.7).
     const onceki = okuHam(KAYIT_ANAHTARI);
     if (onceki) {
@@ -137,10 +145,11 @@ export class Kayitci {
       yazHam(KAYIT_YEDEK_ANAHTARLARI[0], onceki);
     }
     try {
-      this.depo.save(this.kayit);
+      this.sonYazimKalici = this.depo.save(this.kayit);
     } catch {
       /* SaveStore kendi içinde yutar; yine de oyun durmasın */
     }
+    return this.sonYazimKalici;
   }
 
   /** Kayıt yalnız bellekte mi (gizli pencere, engelli depolama): sayfa kapanınca kaybolur. */

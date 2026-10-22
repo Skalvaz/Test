@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  GERI_YUKLEME_HATASI,
   androidSaglayici,
   bekleyenlerCoz,
   geriYukleCoz,
@@ -177,7 +178,8 @@ describe('Android köprü sarmalayıcısı (§5.1)', () => {
       expect(await s.satinAl('can_doldur')).toEqual({ durum: 'hata' });
       await expect(s.tamamla('j')).resolves.toBeUndefined();
       expect(await s.bekleyenler()).toEqual([]);
-      expect(await s.geriYukle()).toEqual([]);
+      // Geri yükleme yapılamadı: boş liste ("yok") değil, ret ("yapılamadı").
+      await expect(s.geriYukle()).rejects.toThrow(GERI_YUKLEME_HATASI);
     }
     // Promise yerine düz değer, eksik yöntemler, "true" metni.
     const t = androidSaglayici(kopruKur({ reklamHazir: 'true', reklamGoster: 'iptal', urunler: '[]', satinAl: 42 }), KISA);
@@ -199,7 +201,31 @@ describe('Android köprü sarmalayıcısı (§5.1)', () => {
     expect(await s.satinAl('can_doldur')).toEqual({ durum: 'hata' });
     await expect(s.tamamla('j')).resolves.toBeUndefined();
     expect(await s.bekleyenler()).toEqual([]);
-    expect(await s.geriYukle()).toEqual([]);
+    await expect(s.geriYukle()).rejects.toThrow(GERI_YUKLEME_HATASI);
+    // Bozuk (dizi olmayan) yanıt da "yapılamadı"; boş dizi "yok".
+    await expect(androidSaglayici(kopruKur({ geriYukle: async () => '{}' }), KISA).geriYukle()).rejects.toThrow(GERI_YUKLEME_HATASI);
+    expect(await androidSaglayici(kopruKur({ geriYukle: async () => '[]' }), KISA).geriYukle()).toEqual([]);
+  });
+
+  it('reklam ve satın alma süresi yalnız sayfa görünürken işler (reklam ekranı öndeyken geç sonuç yutulmaz)', async () => {
+    const g = globalThis as { document?: unknown };
+    const onceki = g.document;
+    const belge = { hidden: true };
+    g.document = belge;
+    try {
+      let coz: (x: string) => void = () => undefined;
+      const s = androidSaglayici(kopruKur({ reklamGoster: () => new Promise<string>((r) => (coz = r)) }), KISA);
+      const sonuc = s.reklamGoster('can');
+      // Sayfa gizliyken süre sınırının 4 katı geçer: hâlâ bekler, geç gelen ödül kaybolmaz.
+      await new Promise((r) => setTimeout(r, 200));
+      coz('odul');
+      expect(await sonuc).toBe('odul');
+      // Görünür sayfada yanıt vermeyen köprü yine süre sınırında 'hata'.
+      belge.hidden = false;
+      expect(await androidSaglayici(kopruKur({ reklamGoster: hic, satinAl: hic }), KISA).reklamGoster('can')).toBe('hata');
+    } finally {
+      g.document = onceki;
+    }
   });
 
   it('bilinmeyen ürün ve boş jeton köprüye gitmez', async () => {
@@ -305,7 +331,8 @@ describe('ölçüm sarmalayıcısı (§8)', () => {
     expect(await s.satinAl('usta_karti')).toEqual({ durum: 'hata' });
     await expect(s.tamamla('j')).resolves.toBeUndefined();
     expect(await s.bekleyenler()).toEqual([]);
-    expect(await s.geriYukle()).toEqual([]);
+    // Geri yükleme: içerideki hata "yapılamadı" olarak geçer (ölçüm olayı yok).
+    await expect(s.geriYukle()).rejects.toThrow(GERI_YUKLEME_HATASI);
     expect(olaylar.map(([a]) => a)).toEqual(['reklam_sonuc', 'satin_alma', 'satin_alma']);
 
     const t = olculenSaglayici(ic({ reklamGoster: async () => 'bilinmeyen' as never }), () => {

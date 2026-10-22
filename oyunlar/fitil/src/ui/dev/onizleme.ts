@@ -7,7 +7,7 @@
  * kaybettin, ayarlar, oyunOzeti (v=bos|az), nasil, defter, gunluk, istatistik, mola,
  * defterKarti, sandik, balon, bant, kutlama, secim.
  * Can, reklam, Mağaza (CAN-REKLAM §6): can (v=bitti|durum|kart|hakyok|
- * hazirdegil|dolu), magaza (v=sende|stok|bekle), kaybettin (v=can|can0|
+ * hazirdegil|dolu), magaza (v=sende|stok|bekle|yok), kaybettin (v=can|can0|
  * reklam|kart|canUsta), cikisOnayi (v=yeniden), harita&can=0..5, ayarlar&gelir=1.
  * Parametreler: v (çeşit), w/h (tahta), simdiki (harita), guvenli=47,0,34,0,
  * az=1 (hareketi azalt), palet=renkKoru|yuksekKontrast, panel, sekme, kart.

@@ -73,7 +73,7 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   Coşku Serisi → Cheer Streak, Fener Nöbeti → Lantern Watch. Yeni metin
   eklerken iki dili birlikte yaz. Denetim: `src/dil/*.test.ts` (İngilizce
   tablolarda Türkçe harf yok) ve `node scripts/dil-tara.mjs <url> <klasör>`
-  (55 ekran, 0 kalıntı olmalı). Playwright araçları `locale: 'tr-TR'` ile
+  (60 ekran, `?gelir=sahte` katmanları dahil; 0 kalıntı olmalı). Playwright araçları `locale: 'tr-TR'` ile
   açılır (yoksa cihaz dili İngilizce sayılır).
 - Yayın ve gelir (Ekim 2026 kararı): `docs/YAYIN.md` — Android (Play Store),
   yumuşak can + yalnız istekle ödüllü reklam + küçük satın alma; claude.ai/tek

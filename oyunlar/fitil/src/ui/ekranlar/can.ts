@@ -65,7 +65,11 @@ export function canPaneliEkrani(
       satirAnahtari = sa;
       satirlar.replaceChildren(...satirlariKur(v, secVeKapat));
     }
-    if (seritEl) seritEl.textContent = baslik(v);
+    if (seritEl) {
+      seritEl.textContent = baslik(v);
+      // Panel açıkken can 0 → 1 dolarsa başlık "Canlar 1/5" olur: şerit de "bitti" kırmızısından gece rengine döner.
+      seritEl.parentElement?.classList.toggle('f-serit-gece', v.tur !== 'bitti');
+    }
   };
 
   // İlk çizimde kart henüz yok: şerit modalAc'a başlıkla verilir, sonra yerinde tazelenir.
