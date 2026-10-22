@@ -88,6 +88,12 @@ const CIZGI = {
   cerceve: '<rect x="3.4" y="3.4" width="17.2" height="17.2" rx="1.4"/><rect x="6.8" y="6.8" width="10.4" height="10.4"/><path d="M8.6 15.2l2.4-3 1.8 2 1.6-1.6 1.6 2.6"/>',
   kafes: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9.3 4v16M14.7 4v16M4 12h16"/>',
   deniz: '<path d="M12 2.6v2.4M9 6h6l-1 12h-4z"/><path d="M8.4 10h7.2M7.6 14h8.8M3 20.6c2-1.6 4-1.6 6 0s4 1.6 6 0 4-1.6 6 0"/>',
+  /** (CAN-REKLAM §6) Can: kıvrılan fitil, ucunda dört köşeli kıvılcım. */
+  fitil: '<path d="M4.4 20.2c-.6-3.6 1.6-5.2 4-5.6s4.4-1.8 4.4-4.4 1.6-3.8 3.6-4.2"/><path d="M18.4 2.4l.9 2.7 2.7.9-2.7.9-.9 2.7-.9-2.7-2.7-.9 2.7-.9z" fill="currentColor" stroke-width="1.2"/>',
+  /** (CAN-REKLAM §3) Ödüllü reklam: ekran + oynat üçgeni. */
+  reklam: '<rect x="2.8" y="4.2" width="18.4" height="13.4" rx="3"/><path d="M10.2 8.1v5.6l4.8-2.8z" fill="currentColor" stroke-width="1.4"/><path d="M8.4 20.6h7.2"/>',
+  /** (CAN-REKLAM §4) Mağaza: alışveriş çantası. */
+  canta: '<path d="M5 8.2h14l-1.1 12.2H6.1z"/><path d="M9 10.6V7a3 3 0 0 1 6 0v3.6"/>',
 } as const;
 
 export type IkonAdi = keyof typeof CIZGI;
@@ -146,6 +152,7 @@ export function tanimlariKur(palet: Palet): void {
       <linearGradient id="ftl-ahsap" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6A4428"/><stop offset="1" stop-color="#3A2416"/></linearGradient>
       <radialGradient id="ftl-yuva" cx=".5" cy=".42" r=".6"><stop offset="0" stop-color="#160E08"/><stop offset="1" stop-color="#2E1E12"/></radialGradient>
       <pattern id="ftl-ip" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(52)"><rect width="5" height="5" fill="#9A6A36"/><rect width="2.2" height="5" fill="#D9A86A"/></pattern>
+      <pattern id="ftl-ip-sonuk" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(52)"><rect width="5" height="5" fill="#4E464C"/><rect width="2.2" height="5" fill="#77707A"/></pattern>
       <radialGradient id="ftl-mum" cx=".38" cy=".32" r=".75"><stop offset="0" stop-color="#F0614A"/><stop offset=".45" stop-color="#C4261C"/><stop offset="1" stop-color="#6E0B0B"/></radialGradient>
       <linearGradient id="ftl-kil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E8955A"/><stop offset=".55" stop-color="#B85A2A"/><stop offset="1" stop-color="#6A2E14"/></linearGradient>
     </defs></svg>`);
@@ -782,4 +789,61 @@ export function kandilIsaretleme(yanik = true): string {
 
 export function kandilSvg(sinif = '', yanik = true): SVGSVGElement {
   return svg(`<svg class="f-kandil-svg ${sinif}" viewBox="-16 -15 32 24" aria-hidden="true">${kandilIsaretleme(yanik)}</svg>`);
+}
+
+// ─────────────────────── Can, reklam, Mağaza (CAN-REKLAM §6) ───────────────────────
+
+/** Fitil ipinin yolu (viewBox −16..16): sol alttan yumuşak bir kavisle sağ üstte kıvılcıma varır. */
+const FITIL_YOLU = 'M-12 11.4C-7.6 11.6-6.4 6.6-4 3.4S1.8-1.6 4-4.8 6-7.6 6.6-8.2';
+
+/**
+ * Can simgesi (kalp yerine kıvılcımlı fitil; oyunun dili): örgülü ip
+ * (`ftl-ip`) + ucunda köz ve dört köşeli kıvılcım. `yanik` false: harcanmış
+ * can (gri örgü `ftl-ip-sonuk`, kömürleşmiş uç, ince duman). viewBox −16..16.
+ */
+export function fitilCanIsaretleme(yanik = true): string {
+  if (!yanik)
+    return `<path d="${FITIL_YOLU}" fill="none" stroke="#161014" stroke-width="6.4" stroke-linecap="round"/>
+      <path d="${FITIL_YOLU}" fill="none" stroke="url(#ftl-ip-sonuk)" stroke-width="4.2" stroke-linecap="round"/>
+      <path d="M4.6-5.6 6.6-8.2" stroke="#0E0A0C" stroke-width="4.8" stroke-linecap="round"/>
+      <path d="M7.6-11.4c-1.6-1.8.8-2.8-.4-4.6M10.2-10.2c-1.2-1.4.6-2.2-.2-3.6" fill="none" stroke="#A89EB0" stroke-width="1" stroke-linecap="round" opacity=".7"/>`;
+  return `<circle cx="7.4" cy="-8.6" r="8.6" fill="url(#ftl-koz)"/>
+    <path d="${FITIL_YOLU}" fill="none" stroke="#2A1408" stroke-width="6.4" stroke-linecap="round"/>
+    <path d="${FITIL_YOLU}" fill="none" stroke="url(#ftl-ip)" stroke-width="4.2" stroke-linecap="round"/>
+    <circle cx="6.6" cy="-8.2" r="2.8" fill="#FF7A1A"/>
+    <path d="M7.6-17 9.1-10.6l6.4 1.6-6.4 1.6-1.5 6.4L6.1-7.4-.3-9l6.4-1.6z" fill="#FFF4C2" stroke="#FFB020" stroke-width=".9" stroke-linejoin="round"/>
+    <circle cx="13.8" cy="-1.6" r="1.2" fill="#FFD15C"/><circle cx="1.2" cy="-14.8" r="1" fill="#FFD15C"/>`;
+}
+
+export function fitilCanSvg(sinif = '', yanik = true): SVGSVGElement {
+  return svg(`<svg class="f-fitil-can${yanik ? '' : ' f-sonuk'} ${sinif}" viewBox="-16 -17 32 32" aria-hidden="true">${fitilCanIsaretleme(yanik)}</svg>`);
+}
+
+/** Mağaza ürün resmi (madalyon, viewBox −24..24): can doldur, güçlendirici paketi, Usta kartı. */
+export function urunSvg(id: 'can_doldur' | 'guclendirici_paketi' | 'usta_karti'): SVGSVGElement {
+  let ic = '';
+  switch (id) {
+    case 'can_doldur':
+      ic = madalyon(`<g transform="translate(-.4 1.6) scale(1.06)">${fitilCanIsaretleme(true)}</g>`, '#FF9A3C');
+      break;
+    case 'guclendirici_paketi':
+      ic = madalyon(
+        `<g transform="translate(-7.8 5.6) scale(.5)">${guclendiriciIsaretleme('kibrit')}</g>
+        <g transform="translate(8 5.6) scale(.5)">${guclendiriciIsaretleme('geriSar')}</g>
+        <g transform="translate(0 -6.6) scale(.52)">${guclendiriciIsaretleme('kalip')}</g>`,
+      );
+      break;
+    case 'usta_karti':
+      ic = madalyon(
+        `<g transform="rotate(-8)"><rect x="-10.5" y="-14" width="21" height="28" rx="3.4" fill="url(#ftl-altin)" stroke="#7A3E1C" stroke-width="1.4"/>
+        <rect x="-7.6" y="-11" width="15.2" height="22" rx="2" fill="none" stroke="#9A5A22" stroke-width=".9" opacity=".7"/>
+        <path d="M-7 1c0-6.4 3.2-9.2 7-9.2S7-5.4 7 1c-2.2-1-4.6-1.4-7-1.4S-4.8 0-7 1z" fill="#8A1C1C"/>
+        <path d="M-8.4 1.8c2.6-1.4 5.6-2 8.4-2s5.8.6 8.4 2c-.4.8-.9 1-1.4.8-2.2-.9-4.6-1.2-7-1.2s-4.8.3-7 1.2c-.5.2-1-.1-1.4-.8z" fill="#5A0E0E"/>
+        <circle cx="0" cy="-5.2" r="1.7" fill="url(#ftl-pirinc)"/>
+        <path d="M0 4.4l1.2 3 3 .4-2.3 2 .7 3L0 11.2l-2.6 1.6.7-3-2.3-2 3-.4z" fill="#FFF4C2" stroke="#B8642E" stroke-width=".6"/></g>`,
+        '#FFD15C',
+      );
+      break;
+  }
+  return svg(`<svg class="f-resim f-urun-svg" viewBox="-24 -24 48 48" aria-hidden="true">${ic}</svg>`);
 }

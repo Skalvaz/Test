@@ -18,6 +18,9 @@ const EKRANLAR = [
   'acilis', 'harita', 'bolumOncesi', 'bolumOncesi&v=m', 'bolumOncesi&v=mi', 'hud', 'hud&v=muhur', 'ucus', 'kasaba', 'kasaba&ogretim=1', 'haritaBalon',
   'kasabaKarti&m=0', 'kasabaKarti&m=3', 'secim', 'duraklat', 'duraklat&v=m', 'kazandin', 'kazandin&v=m', 'kazandin&v=mt', 'kazandin&v=mk', 'kazandin&v=me',
   'kaybettin', 'ayarlar', 'oyunOzeti', 'oyunOzeti&v=bos', 'nasil', 'defter', 'gunluk', 'istatistik', 'mola', 'defterKarti', 'sandik', 'balon', 'bant', 'kutlama', 'toast',
+  // Can, reklam, Mağaza (CAN-REKLAM §6): yalnız gelir sağlayıcısı varken görünür.
+  'can&v=bitti', 'can&v=durum', 'can&v=kart', 'can&v=hakyok', 'magaza', 'magaza&v=sende', 'magaza&v=stok', 'kaybettin&v=can', 'kaybettin&v=can0',
+  'kaybettin&v=kart', 'cikisOnayi', 'cikisOnayi&v=yeniden', 'harita&can=3', 'ayarlar&gelir=1',
 ];
 
 // Türkçe harfler ve harfsiz sık sözcükler (bütün sözcük, büyük/küçük harf duyarsız).

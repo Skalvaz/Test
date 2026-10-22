@@ -350,6 +350,13 @@ export interface KaybettinVM {
    * düğmesi (seçim 'canBitti'; uygulama can panelini açar).
    */
   canBitti?: boolean;
+  /**
+   * (G3 eki) Gelir sağlayıcısı var: alttaki "Can yok, bekleme yok: tekrar her
+   * zaman ücretsiz." notu çıkmaz (sağlayıcı varken yanlış olur). `can`,
+   * `reklamHamle` ya da `canBitti` doluysa da çıkmaz; ücretsiz bölümde ve
+   * devamdan sonraki ikinci kayıpta (alanlar boş) uygulama bunu true verir.
+   */
+  gelirVar?: boolean;
 }
 
 export interface DuraklatVM {
@@ -405,14 +412,14 @@ export interface MagazaUrunVM {
   /** Hazır metin (uygulama verir; iki dil). */
   ad: string;
   aciklama: string;
-  /** Mağazanın yerel fiyat metni; null: henüz gelmedi (düğme pasif, "…"). */
+  /** Mağazanın yerel fiyat metni; null: henüz gelmedi (düğme pasif, "—"). */
   fiyat: string | null;
   /**
    *  - 'satilik': fiyat düğmesi (seçim `satinAl`);
    *  - 'sende': kalıcı ürün alınmış ("Sende var", düğme yok);
    *  - 'stokDolu': şu an verilemez: paket stok sınırını aşar ("Stok dolu"),
    *    `can_doldur` canlar doluyken ("Canların dolu");
-   *  - 'yok': mağaza bu ürünü sunmuyor ("Şu an yok", düğme yok).
+   *  - 'yok': mağaza bu ürünü sunmuyor (pasif "Şu an yok").
    */
   durum: 'satilik' | 'sende' | 'stokDolu' | 'yok';
 }
