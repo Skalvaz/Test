@@ -1,0 +1,207 @@
+/*
+ * Sahte gelir sağlayıcısının katmanları (gelirSahte.ts): deneme reklamı ve
+ * sayfa içi satın alma onayı. Oyunun arayüz kökünün (.f-kok) DIŞINDA,
+ * document.body'de en üstte; renkler oyunun gece/ahşap/pirinç dilinden,
+ * değişkenler burada. "Liste" okunaklılığı: en küçük yazı 16 px.
+ */
+.fs-kok {
+  --fs-krem: #FFF3D6;
+  --fs-krem-2: #CDB89A;
+  --fs-pirinc: #D9A441;
+  --fs-pirinc-acik: #F2C66D;
+  --fs-isi: #FF9A3C;
+  --fs-basari: #7CFFB2;
+  --fs-guv-ust: env(safe-area-inset-top, 0px);
+  --fs-guv-sag: env(safe-area-inset-right, 0px);
+  --fs-guv-alt: env(safe-area-inset-bottom, 0px);
+  --fs-guv-sol: env(safe-area-inset-left, 0px);
+  --fs-cikis: cubic-bezier(.22, 1, .36, 1);
+
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  box-sizing: border-box;
+  pointer-events: auto;
+  touch-action: none;
+  overscroll-behavior: contain;
+  font-family: "Nunito", ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.25;
+  color: var(--fs-krem);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+:where(.fs-kok) *, :where(.fs-kok) *::before, :where(.fs-kok) *::after { box-sizing: border-box; }
+.fs-kok.fs-giris { opacity: 1; }
+.fs-kok.fs-cikis { opacity: 0; transition-duration: .16s; pointer-events: none; }
+:where(.fs-kok) p { margin: 0; }
+/* Sıfırlama :where ile (özgüllük 0): düğme sınıfları ezilmesin. */
+:where(.fs-kok) button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  margin: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+:where(.fs-kok) :focus { outline: none; }
+:where(.fs-kok) :focus-visible { outline: 3px solid var(--fs-krem); outline-offset: 3px; }
+.fs-ikon { width: 20px; height: 20px; flex: none; display: block; }
+
+.fs-etiket {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 3px 14px 4px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  color: var(--fs-pirinc-acik);
+  background: rgba(0, 0, 0, .3);
+  box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, .75);
+}
+
+/* ─── Düğmeler (oyunun köz/altın ve ahşap düğmeleriyle aynı dil) ─── */
+.fs-dg {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 6px 22px 8px;
+  border-radius: 18px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.05;
+  white-space: nowrap;
+  transition: transform .14s var(--fs-cikis), opacity .25s ease;
+}
+.fs-dg:active:not(:disabled) { transform: translateY(2px) scale(.97); }
+.fs-dg-birincil {
+  color: #3A1606;
+  background: linear-gradient(180deg, #FFE7A2 0%, #FFC453 34%, #FF9A2C 70%, #E8661A 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 240, .75),
+    inset 0 -4px 0 rgba(160, 60, 10, .45),
+    0 0 0 2px #7A3510,
+    0 5px 0 #4E1E08,
+    0 10px 22px rgba(0, 0, 0, .5),
+    0 0 26px rgba(255, 140, 40, .25);
+  text-shadow: 0 1px 0 rgba(255, 240, 200, .6);
+}
+.fs-dg-ikincil {
+  color: var(--fs-krem);
+  background:
+    repeating-linear-gradient(177deg, rgba(255, 235, 200, .035) 0 2px, transparent 2px 8px),
+    linear-gradient(180deg, #5A3A22 0%, #3A2416 55%, #2A190E 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 160, .28),
+    inset 0 -3px 0 rgba(0, 0, 0, .35),
+    0 0 0 2px var(--fs-pirinc),
+    0 0 0 3.5px #4A2A10,
+    0 4px 0 #160C05,
+    0 8px 16px rgba(0, 0, 0, .45);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .45);
+}
+.fs-dg-ikincil .fs-ikon { color: var(--fs-pirinc-acik); }
+
+/* ─── Deneme reklamı (tam ekran) ─── */
+.fs-reklam {
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--fs-guv-ust) + 14px) calc(var(--fs-guv-sag) + 16px) calc(var(--fs-guv-alt) + 26px) calc(var(--fs-guv-sol) + 16px);
+  background:
+    radial-gradient(90% 55% at 50% 42%, rgba(255, 140, 50, .14), transparent 70%),
+    radial-gradient(120% 80% at 50% 40%, #2A1450 0%, #161040 50%, #0B1030 100%);
+}
+.fs-ust { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+.fs-kapat { min-height: 44px; padding: 4px 16px 6px 12px; font-size: 16px; border-radius: 14px; }
+.fs-orta {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+.fs-halka { position: relative; width: min(52vw, 32vh, 220px); aspect-ratio: 1; display: grid; place-items: center; }
+.fs-halka > * { grid-area: 1 / 1; }
+.fs-halka-svg { width: 100%; height: 100%; overflow: visible; }
+.fs-iz { fill: rgba(0, 0, 0, .25); stroke: rgba(255, 243, 214, .14); stroke-width: 7; }
+/* Yalnız transform/opacity canlanır (oyunun kuralı; ana iş parçacığı meşgulken de akar):
+   geri sayımda kıvılcım sönük izin üstünde bir tur döner, hazır olunca halka yanar. */
+.fs-yay { fill: none; stroke: #FFC453; stroke-width: 7; opacity: 0; transition: opacity .25s ease; }
+.fs-kivilcim { transform-origin: 60px 60px; animation: fs-don var(--fs-sure, 5s) linear forwards; transition: opacity .2s ease; }
+@keyframes fs-don { to { transform: rotate(360deg); } }
+.fs-sayi {
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--fs-krem);
+  text-shadow: 0 3px 0 rgba(0, 0, 0, .45), 0 0 24px rgba(255, 154, 60, .45);
+  transition: opacity .2s ease, transform .2s ease;
+}
+.fs-tamam { width: 44%; height: 44%; color: var(--fs-basari); opacity: 0; transform: scale(.6); transition: opacity .25s ease, transform .35s cubic-bezier(.34, 1.56, .64, 1); }
+.fs-odul { font-size: 22px; font-weight: 800; text-align: center; text-shadow: 0 2px 0 rgba(0, 0, 0, .45); }
+.fs-alt { display: flex; justify-content: center; min-height: 64px; }
+.fs-al { min-height: 60px; width: min(100%, 320px); font-size: 22px; border-radius: 20px; visibility: hidden; opacity: 0; transform: translateY(10px); }
+
+.fs-hazir .fs-sayi { opacity: 0; transform: scale(.6); }
+.fs-hazir .fs-tamam { opacity: 1; transform: none; }
+.fs-hazir .fs-kivilcim { opacity: 0; }
+.fs-hazir .fs-yay { opacity: 1; }
+.fs-hazir .fs-kapat { visibility: hidden; }
+.fs-hazir .fs-al { visibility: visible; opacity: 1; transform: none; }
+
+/* ─── Satın alma onayı (alttan; Play'in ödeme sayfasının yerine) ─── */
+.fs-satin {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: calc(var(--fs-guv-ust) + 16px) calc(var(--fs-guv-sag) + 12px) calc(var(--fs-guv-alt) + 14px) calc(var(--fs-guv-sol) + 12px);
+}
+.fs-perde { position: absolute; inset: 0; background: radial-gradient(120% 90% at 50% 60%, rgba(8, 6, 24, .55), rgba(4, 3, 14, .86)); }
+.fs-kart {
+  position: relative;
+  width: min(100%, 420px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 18px 20px;
+  border-radius: 24px;
+  text-align: center;
+  background:
+    radial-gradient(130% 70% at 50% -10%, rgba(255, 190, 110, .16), transparent 60%),
+    repeating-linear-gradient(176deg, rgba(255, 235, 200, .03) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #43291A 0%, #2E1C10 60%, #24160D 100%);
+  box-shadow: 0 0 0 2px var(--fs-pirinc), 0 0 0 3.5px #3A1C08, 0 -8px 40px rgba(0, 0, 0, .55);
+  transform: translateY(48px);
+  transition: transform .32s var(--fs-cikis);
+}
+.fs-giris .fs-kart { transform: none; }
+.fs-urun { margin-top: 10px; font-size: 22px; font-weight: 800; text-shadow: 0 2px 0 rgba(0, 0, 0, .45); }
+.fs-fiyat { font-size: 28px; font-weight: 800; color: var(--fs-pirinc-acik); font-variant-numeric: tabular-nums; }
+.fs-not { font-size: 16px; color: var(--fs-krem-2); }
+.fs-sira { display: flex; gap: 12px; width: 100%; margin-top: 14px; }
+.fs-sira > .fs-dg { flex: 1 1 0; min-width: 0; }
+.fs-sira > .fs-dg-birincil { flex-grow: 1.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fs-kok, .fs-kart, .fs-dg, .fs-sayi, .fs-tamam, .fs-kivilcim, .fs-yay { transition: none; }
+  .fs-kart { transform: none; }
+  .fs-kivilcim { animation: none; opacity: 0; }
+}
