@@ -10,6 +10,7 @@
 import type { HedefVM, Nadirlik, RozetId, SeriBasamagi, YeniOge, EngelId, BolumTuru, DefterSekmesi } from './tipler';
 import type { GuclendiriciId } from '../app/katalog';
 import type { Motif } from '../core/types';
+import type { UrunId } from '../platform/gelir';
 import { DIL, t, YEREL, buyukHarf } from '../platform/dil';
 
 /** Sayfa İngilizce mi (dilbilgisi yollarını ayırmak için). */
@@ -247,6 +248,11 @@ export const M = {
   hakkindaMetin: t(
     'Fener Koyu’nun Işık Şenliği’ni yeniden yak. Can yok, bekleme yok, mağaza yok.',
     'Relight Lantern Cove’s Festival of Lights. No lives, no waiting, no shop.',
+  ),
+  /** (CAN-REKLAM §6) Gelir sağlayıcısı varken Hakkında metni ("Can yok…" cümlesinin yerine). */
+  hakkindaMetinGelir: t(
+    'Fener Koyu’nun Işık Şenliği’ni yeniden yak. Canlar 30 dakikada dolar; reklam yalnız sen isteyince.',
+    'Relight Lantern Cove’s Festival of Lights. A life refills every 30 minutes; ads only when you ask.',
   ),
   yaziTipi: t('Yazı tipi: Nunito (SIL OFL). Sesler ve görüntüler oyun içinde üretilir.', 'Font: Nunito (SIL OFL). Sounds and pictures are made by the game.'),
   surum: t(
@@ -584,6 +590,86 @@ export const MO = {
     'This summary stays on this device. You can send us a screenshot.',
   ),
 } as const;
+
+/**
+ * (CAN-REKLAM §6) Can, ödüllü reklam ve Mağaza metinleri. Yalnız gelir
+ * sağlayıcısı varken görünür; kısa tutulur ("Liste": satır sayısı artmasın).
+ */
+export const MC = {
+  canlarBitti: t('Canların bitti', 'Out of lives'),
+  /** Can paneli başlığı: "Canlar 3/5". */
+  canlarDurum: t(
+    (n: number, enCok: number) => `Canlar ${n}/${enCok}`,
+    (n: number, enCok: number) => `Lives ${n}/${enCok}`,
+  ),
+  canlarDolu: t('Canların dolu', 'Lives full'),
+  sonrakiCan: t('Sonraki can', 'Next life'),
+  reklamIzle: t('Reklam izle', 'Watch ad'),
+  artiBirCan: t('+1 can', '+1 life'),
+  ucretsizBirCan: t('Ücretsiz +1 can', 'Free +1 life'),
+  /** Reklam satırının altında bugün kalan hak: "2 hak kaldı". */
+  hakKaldi: t(
+    (n: number) => `${n} hak kaldı`,
+    (n: number) => `${n} left today`,
+  ),
+  yarinYine: t('Yarın yine', 'More tomorrow'),
+  canlariDoldur: t('Canları doldur', 'Refill lives'),
+  bekle: t('Bekle', 'Wait'),
+  /** Harita can hapı (ekran okuyucu): "Canlar 3/5, sonraki can 12:31". */
+  hapEtiketi: t(
+    (n: number, enCok: number, sure: string | null) => `Canlar ${n}/${enCok}${sure ? `, sonraki can ${sure}` : ''}`,
+    (n: number, enCok: number, sure: string | null) => `Lives ${n}/${enCok}${sure ? `, next life ${sure}` : ''}`,
+  ),
+  /** Kaybettin başlığının altı: "−1 can · 3 kaldı". */
+  kayipCan: t(
+    (kalan: number) => `−1 can · ${kalan} kaldı`,
+    (kalan: number) => `−1 life · ${kalan} left`,
+  ),
+  artiBesHamle: t('+5 hamle', '+5 moves'),
+  ucretsizBesHamle: t('Ücretsiz +5 hamle', 'Free +5 moves'),
+  /** "+5 hamle" reklam düğmesinin ekran okuyucu adı. */
+  reklamBesHamle: t('Reklam izle: +5 hamle', 'Watch an ad: +5 moves'),
+  /** Kaybettin: can kalmayınca "Tekrar dene"nin yerine. */
+  canBitti: t('Can bitti', 'Out of lives'),
+  // "1 can" bölünmesin (bölünmez boşluk).
+  cikisMetni: t('Bölümden çıkarsan 1 can gider.', 'Leaving the level costs 1 life.'),
+  yenidenMetni: t('Yeniden başlarsan 1 can gider.', 'Restarting costs 1 life.'),
+  cik: t('Çık', 'Leave'),
+  magaza: t('Mağaza', 'Shop'),
+  geriYukle: t('Satın alımları geri yükle', 'Restore purchases'),
+  sendeVar: t('Sende var', 'Owned'),
+  stokDolu: t('Stok dolu', 'Stock full'),
+  suAnYok: t('Şu an yok', 'Unavailable'),
+  /** Fiyat mağazadan henüz gelmedi (düğme pasif). */
+  fiyatYok: '—',
+} as const;
+
+/** (CAN-REKLAM §4) Mağaza ürünlerinin adı ve tek satır açıklaması (G4 `MagazaVM`'i buradan doldurur). */
+export const URUN_METINLERI: Record<UrunId, { ad: string; aciklama: string }> = t<Record<UrunId, { ad: string; aciklama: string }>>(
+  {
+    can_doldur: { ad: 'Canları doldur', aciklama: 'Canlar hemen 5’e dolar' },
+    guclendirici_paketi: { ad: 'Güçlendirici paketi', aciklama: '3 Kibrit, 2 Fişek Kalıbı, 2 Geri Sar' },
+    usta_karti: { ad: 'Usta kartı', aciklama: 'Reklamlı ödüller reklamsız gelir' },
+  },
+  {
+    can_doldur: { ad: 'Refill lives', aciklama: 'Lives refill to 5 at once' },
+    guclendirici_paketi: { ad: 'Booster pack', aciklama: '3 Matches, 2 Rocket Molds, 2 Undos' },
+    usta_karti: { ad: 'Master’s Card', aciklama: 'Ad rewards without the ads' },
+  },
+);
+
+/**
+ * Geri sayım metni ("12:31", bir saati aşarsa "1:05:09"): saniye yukarı
+ * yuvarlanır (son saniyede "0:01"), eksi süre "0:00". Dilden bağımsız.
+ */
+export function geriSayim(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  const sa = Math.floor(s / 3600);
+  const dk = Math.floor((s % 3600) / 60);
+  const sn = s % 60;
+  const iki = (n: number) => String(n).padStart(2, '0');
+  return sa > 0 ? `${sa}:${iki(dk)}:${iki(sn)}` : `${dk}:${iki(sn)}`;
+}
 
 /** Kapsül renk adları (§2.3); küçük harfli, sayılarla kullanılır. */
 export const RENK_ADLARI: readonly string[] = t(['kızıl', 'kehribar', 'zümrüt', 'gök', 'mor', 'gül'], ['red', 'amber', 'emerald', 'sky', 'purple', 'rose']);

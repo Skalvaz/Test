@@ -21,12 +21,54 @@ import type {
 } from '../tipler';
 import { DESENLER, FITILLER, KASABA_ISLERI, MAHALLELER } from '../../app/katalog';
 import type { KasabaIsVM, KasabaVM } from '../tipler';
-import { MK, ROZET_SIRASI, gorevMetni } from '../metinler';
+import { MK, ROZET_SIRASI, URUN_METINLERI, gorevMetni } from '../metinler';
+import type { CanSayaciVM, CanVM, MagazaUrunVM, MagazaVM } from '../tipler';
+import { URUN_IDLERI, type UrunId } from '../../platform/gelir';
 import { DIL, t } from '../../platform/dil';
 import { oyunOzetiVM } from '../../app/oyunOzeti';
 import { olaylardanToplam, type OlcumOlayi } from '../../platform/olcum';
 
-export function haritaVm(simdiki = 14, kasaba: { isler: string[]; kandil: number; yapilabilir: boolean } | null = null): HaritaVM {
+// ─────────────── Can, reklam, Mağaza (CAN-REKLAM §6) ───────────────
+
+/** Örnek "sonraki can" süresi: 12:31. */
+export const ORNEK_SONRAKI_MS = (12 * 60 + 31) * 1000;
+
+/** Harita can hapı: `sayi` 0..5 (5'te sayaç yok). */
+export function canSayaciVm(sayi: number): CanSayaciVM {
+  return { sayi, enCok: 5, sonrakiMs: sayi < 5 ? ORNEK_SONRAKI_MS : null };
+}
+
+/**
+ * Can paneli çeşitleri: bitti (0 can, reklam hazır, 2 hak), durum|kalan (3/5),
+ * kart (Usta kartı: "Ücretsiz +1 can"), hakyok (bugünkü hak bitti: "Yarın
+ * yine"), hazirdegil (reklam yok: satır gizli), dolu (5/5).
+ */
+export function canVm(v = 'bitti'): CanVM {
+  const sayi = v === 'bitti' || v === 'hakyok' || v === 'hazirdegil' ? 0 : v === 'kart' ? 1 : v === 'dolu' ? 5 : 3;
+  const dolu = sayi >= 5;
+  return {
+    ...canSayaciVm(sayi),
+    tur: sayi === 0 ? 'bitti' : 'durum',
+    reklam: dolu ? null : { hak: v === 'hakyok' ? 0 : 2, hazir: v !== 'hazirdegil', kart: v === 'kart' },
+    doldur: dolu ? null : { fiyat: '₺29,99' },
+  };
+}
+
+/** Mağaza çeşitleri: 1 (hepsi satılık), sende (Usta kartı alınmış), stok (paket sığmıyor, canlar dolu), bekle (fiyatlar gelmedi). */
+export function magazaVm(v = '1'): MagazaVM {
+  const fiyat: Record<UrunId, string> = { can_doldur: '₺29,99', guclendirici_paketi: '₺59,99', usta_karti: '₺149,99' };
+  return {
+    urunler: URUN_IDLERI.map((id) => {
+      let durum: MagazaUrunVM['durum'] = 'satilik';
+      if (v === 'sende' && id === 'usta_karti') durum = 'sende';
+      if (v === 'stok' && id !== 'usta_karti') durum = 'stokDolu';
+      return { id, ad: URUN_METINLERI[id].ad, aciklama: URUN_METINLERI[id].aciklama, fiyat: v === 'bekle' ? null : fiyat[id], durum };
+    }),
+    geriYukle: true,
+  };
+}
+
+export function haritaVm(simdiki = 14, kasaba: { isler: string[]; kandil: number; yapilabilir: boolean } | null = null, can: CanSayaciVM | null = null): HaritaVM {
   const yildizlar: Yildiz[] = [3, 3, 2, 3, 1, 2, 3, 3, 2, 1, 3, 2, 3, 3, 2, 3, 2, 1, 3, 3, 2, 3, 3, 2, 1, 3, 3, 2, 3, 3, 2, 3, 3, 3, 2, 3, 2, 3, 3, 3];
   const bolumler: BolumDugumuVM[] = Array.from({ length: 40 }, (_, i) => {
     const id = i + 1;
@@ -45,6 +87,7 @@ export function haritaVm(simdiki = 14, kasaba: { isler: string[]; kandil: number
     gunluk: { acik: simdiki > 14, tamam: 1, toplam: 3, acilisBolumu: 14 },
     defterYeni: true,
     ...(kasaba ? { kasaba: { acik: true, kandil: kasaba.kandil, isler: kasaba.isler, yapilabilir: kasaba.yapilabilir } } : {}),
+    ...(can ? { can } : {}),
   };
 }
 
@@ -236,8 +279,15 @@ export function kaybettinVm(v = '1'): KaybettinVM {
     yuzde: 0.92,
     enZorHedef: hedef({ renk: 0, gerekli: 40, ilerleme: 37 }),
     hayalet: v === 'izlendi' ? 'izlendi' : 'var',
-    ustaEli: v === 'usta' || v === 'izlendi',
+    ustaEli: v === 'usta' || v === 'izlendi' || v === 'canUsta',
     coskuSifirlandi: v === '1',
+    // (CAN-REKLAM §6) can: −1 can + reklamla +5; can0: can bitti; reklam: ücretsiz bölümde
+    // yalnız +5 (can satırı yok); kart: Usta kartıyla ücretsiz +5; canUsta: Eli varken reklam yok.
+    ...(v === 'can' || v === 'kart' || v === 'canUsta' ? { can: { kalan: 3 } } : {}),
+    ...(v === 'can0' ? { can: { kalan: 0 }, canBitti: true } : {}),
+    ...(v === 'can' || v === 'can0' || v === 'reklam' || v === 'canUsta' ? { reklamHamle: { kart: false } } : {}),
+    ...(v === 'kart' ? { reklamHamle: { kart: true } } : {}),
+    ...(v === 'reklam' ? { gelirVar: true } : {}),
   };
 }
 

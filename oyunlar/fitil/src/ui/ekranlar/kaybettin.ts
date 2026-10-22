@@ -4,15 +4,27 @@
  * büyük [Tekrar dene] (< 1 sn), [Haritaya dön]; 4. ve sonraki başarısızlıkta
  * gönüllü Kıvılcım Usta'nın Eli.
  *
+ * (CAN-REKLAM §6) Gelir sağlayıcısı varken: başlığın altında tek satır
+ * "−1 can · 3 kaldı" (`vm.can`); Usta'nın Eli'nin yerinde "+5 hamle" (reklam
+ * simgeli; Usta kartıyla simgesiz "Ücretsiz +5 hamle"; ikisi birlikte olmaz);
+ * can kalmadıysa "Tekrar dene" yerine "Can bitti" (seçim 'canBitti'). "Can
+ * yok, bekleme yok" notu sağlayıcı varken çıkmaz (yanlış olur). Sağlayıcı
+ * yokken ekran eskisiyle birebir.
+ *
  * 'hayalet' seçilince kart kapanır; entegratör hayaleti tahtada 2 kez
  * oynatır ve kartı `hayalet: 'izlendi'` ile yeniden açar.
  */
 import { h } from '../dom';
-import { hedefIkonu, ustaSvg } from '../ikonlar';
-import { M, kalanMetni, kayipBasligi, yuzde } from '../metinler';
+import { fitilCanSvg, hedefIkonu, ustaSvg } from '../ikonlar';
+import { M, MC, kalanMetni, kayipBasligi, yuzde } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import type { KaybettinSecimi, KaybettinVM } from '../tipler';
 import { ikon } from '../ikonlar';
+
+/** Sağlayıcı var mı: açık bayrak ya da can/reklam alanlarından biri dolu. */
+export function kaybettinGelirli(vm: KaybettinVM): boolean {
+  return !!vm.gelirVar || vm.can != null || vm.reklamHamle != null || !!vm.canBitti;
+}
 
 export function kaybettinEkrani(b: Baglam, vm: KaybettinVM): { soz: Promise<KaybettinSecimi>; kapat: () => void } {
   const { soz, sec } = secimSozu<KaybettinSecimi>();
@@ -32,7 +44,15 @@ export function kaybettinEkrani(b: Baglam, vm: KaybettinVM): { soz: Promise<Kayb
     : null;
   const ilerleme = h('div', { s: 'f-kb-ilerleme', role: 'img', 'aria-label': `${yuzde(o)}${vm.enZorHedef ? `, ${kalanMetni(vm.enZorHedef)}` : ''}` }, cubuk, kalan);
 
-  const icerik = h('div', { s: 'f-kb' }, h('h2', { s: 'f-baslik f-kb-baslik', t: kayipBasligi(o) }), ilerleme);
+  const icerik = h(
+    'div',
+    // f-kb-gelirli: alçak ekranda (360×640) can satırı eklenince düğmeler kaydırmasız sığsın (gelir.css).
+    { s: kaybettinGelirli(vm) ? 'f-kb f-kb-gelirli' : 'f-kb' },
+    h('h2', { s: 'f-baslik f-kb-baslik', t: kayipBasligi(o) }),
+    // (CAN-REKLAM §2) Kayıpta düşen can: başlığın hemen altında tek satır.
+    vm.can ? h('p', { s: 'f-kb-can', role: 'status' }, fitilCanSvg('f-kb-can-fitil', false), h('span', { s: 'f-sayi', t: MC.kayipCan(vm.can.kalan) })) : null,
+    ilerleme,
+  );
 
   if (vm.hayalet !== 'yok') {
     const izlendi = vm.hayalet === 'izlendi';
@@ -46,17 +66,28 @@ export function kaybettinEkrani(b: Baglam, vm: KaybettinVM): { soz: Promise<Kayb
     icerik.appendChild(hd);
   }
 
+  // Usta'nın Eli sunuluyorsa reklam teklifi yok (C7); "+5 hamle" Eli'nin yerinde.
+  const reklam = !vm.ustaEli && vm.reklamHamle ? vm.reklamHamle : null;
   icerik.appendChild(
     h(
       'div',
       { s: 'f-dg-sutun f-kb-dugmeler' },
-      dugme(M.tekrarDene, 'birincil', () => secVeKapat('tekrar'), { buyuk: true, odak: true, ikon: 'tekrar' }),
+      vm.canBitti
+        ? dugme(MC.canBitti, 'birincil', () => secVeKapat('canBitti'), { buyuk: true, odak: true, ikon: 'fitil', sinif: 'f-kb-can-bitti' })
+        : dugme(M.tekrarDene, 'birincil', () => secVeKapat('tekrar'), { buyuk: true, odak: true, ikon: 'tekrar' }),
       vm.ustaEli ? ustaEliPaneli(() => secVeKapat('ustaEli')) : null,
+      reklam
+        ? dugme(reklam.kart ? MC.ucretsizBesHamle : MC.artiBesHamle, 'ikincil', () => secVeKapat('reklamHamle'), {
+            ikon: reklam.kart ? undefined : 'reklam',
+            sinif: 'f-kb-reklam',
+            etiket: reklam.kart ? undefined : MC.reklamBesHamle,
+          })
+        : null,
       dugme(M.haritayaDon, 'ikincil', () => secVeKapat('harita'), { ikon: 'harita' }),
     ),
   );
   if (vm.coskuSifirlandi) icerik.appendChild(h('p', { s: 'f-not', t: M.coskuSifirlandi }));
-  icerik.appendChild(h('p', { s: 'f-not f-kb-ucretsiz', t: M.ucretsizTekrar }));
+  if (!kaybettinGelirli(vm)) icerik.appendChild(h('p', { s: 'f-not f-kb-ucretsiz', t: M.ucretsizTekrar }));
 
   const t = b.modalAc({
     icerik,

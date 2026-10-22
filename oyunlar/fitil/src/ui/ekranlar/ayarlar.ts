@@ -5,7 +5,7 @@
  */
 import { h, panoyaKopyala, metniSec, sistemAzHareket } from '../dom';
 import { ikon, kapsulSvg, tanimlariKur } from '../ikonlar';
-import { M, MK, MO, DEFTER_KARTLARI } from '../metinler';
+import { M, MC, MK, MO, DEFTER_KARTLARI } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { satir, kasabaKartSatirlari } from './ortak';
 import { MAHALLELER } from '../../app/katalog';
@@ -232,12 +232,26 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
     'section',
     { s: 'f-ay-bolum f-hakkinda' },
     h('h3', { s: 'f-etiket', t: M.hakkinda }),
-    h('p', { s: 'f-govde', t: M.hakkindaMetin }),
+    // (CAN-REKLAM §6) Sağlayıcı varken "Can yok, bekleme yok, mağaza yok." yanlış olur.
+    h('p', { s: 'f-govde', t: ek.gelirVar ? M.hakkindaMetinGelir : M.hakkindaMetin }),
     h('p', { s: 'f-not', t: M.yaziTipi }),
     h('p', { s: 'f-not', t: M.surum(d.surum) }),
   );
 
-  const icerik = h('div', { s: 'f-ay' }, ses, gorunum, yardim, saglik, kayit, kartlar, oyunOzeti, hakkinda);
+  // (CAN-REKLAM §4) Mağaza: yalnız gelir sağlayıcısı varken; Oyun özeti'nin üstünde, aynı satır biçimi.
+  let magaza: HTMLElement | null = null;
+  if (ek.magazaAc) {
+    magaza = h(
+      'button',
+      { s: 'f-kart-satir f-ay-oyun-ozeti f-ay-magaza', type: 'button' },
+      h('span', { s: 'f-satir-ikon' }, ikon('canta')),
+      h('span', null, h('strong', { t: MC.magaza })),
+      ikon('ileri'),
+    );
+    magaza.addEventListener('click', () => ek.magazaAc?.());
+  }
+
+  const icerik = h('div', { s: 'f-ay' }, ses, gorunum, yardim, saglik, kayit, kartlar, magaza, oyunOzeti, hakkinda);
   const kapat = () => {
     if (sec()) t.kapat(true);
   };

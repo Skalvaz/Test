@@ -6,6 +6,9 @@
  * Ekranlar: acilis, harita, bolumOncesi, hud, duraklat, kazandin,
  * kaybettin, ayarlar, oyunOzeti (v=bos|az), nasil, defter, gunluk, istatistik, mola,
  * defterKarti, sandik, balon, bant, kutlama, secim.
+ * Can, reklam, Mağaza (CAN-REKLAM §6): can (v=bitti|durum|kart|hakyok|
+ * hazirdegil|dolu), magaza (v=sende|stok|bekle), kaybettin (v=can|can0|
+ * reklam|kart|canUsta), cikisOnayi (v=yeniden), harita&can=0..5, ayarlar&gelir=1.
  * Parametreler: v (çeşit), w/h (tahta), simdiki (harita), guvenli=47,0,34,0,
  * az=1 (hareketi azalt), palet=renkKoru|yuksekKontrast, panel, sekme, kart.
  */
@@ -16,7 +19,7 @@ import { Rng } from '../../platform/rng';
 import * as O from './ornekler';
 import { KASABA_ISLERI } from '../../app/katalog';
 import type { Kenarlar, Yerlesim } from '../yerlesim';
-import type { HaritaSecimi, Palet } from '../tipler';
+import type { CanVM, HaritaSecimi, MagazaVM, Palet } from '../tipler';
 import { M, MK, tarihKisa } from '../metinler';
 import { t } from '../../platform/dil';
 
@@ -213,12 +216,72 @@ async function oyunSahnesi(varyant = ''): Promise<void> {
   ui.yerlesimDinle((y) => sahneCiz(y));
 }
 
-async function haritaSahnesi(): Promise<void> {
+async function haritaSahnesi(canSayisi: number | null = p.get('can') === null ? null : Number(p.get('can'))): Promise<void> {
   tahtaGoster = false;
   sahneCiz(ui.yerlesim());
   const kasaba = p.get('kasaba');
-  const s: HaritaSecimi = await ui.harita(O.haritaVm(Number(p.get('simdiki') ?? 14), kasaba ? { kandil: 7, isler: kasaba === 'bos' ? [] : KASABA_ISLERI.filter((x) => x.mahalle === 0 || x.id === 'carsi.dukkanKandilleri').map((x) => x.id), yapilabilir: kasaba !== 'yok' } : null));
-  log('harita seçimi', s);
+  let vm = O.haritaVm(Number(p.get('simdiki') ?? 14), kasaba ? { kandil: 7, isler: kasaba === 'bos' ? [] : KASABA_ISLERI.filter((x) => x.mahalle === 0 || x.id === 'carsi.dukkanKandilleri').map((x) => x.id), yapilabilir: kasaba !== 'yok' } : null, canSayisi === null ? null : O.canSayaciVm(canSayisi));
+  // Üst çubuk sığma denetimi: yildiz=<toplam ★>, seri=<gün>.
+  if (p.get('yildiz')) vm = { ...vm, toplamYildiz: Number(p.get('yildiz')) };
+  if (p.get('seri')) vm = { ...vm, seri: { ...vm.seri, gun: Number(p.get('seri')) } };
+  for (;;) {
+    const s: HaritaSecimi = await ui.harita(vm);
+    log('harita seçimi', s);
+    // (CAN-REKLAM §6) Can hapı: uygulamanın yapacağı gibi can panelini açar, kapanınca haritaya döner.
+    if (s.tur !== 'can' || canSayisi === null) return;
+    canSayisi = await canPaneliDongusu(canVmSayidan(canSayisi));
+    vm = { ...vm, can: O.canSayaciVm(canSayisi) };
+  }
+}
+
+function canVmSayidan(sayi: number): CanVM {
+  const c = O.canSayaciVm(sayi);
+  const dolu = sayi >= c.enCok;
+  return { ...c, tur: sayi <= 0 ? 'bitti' : 'durum', reklam: dolu ? null : { hak: 2, hazir: true, kart: false }, doldur: dolu ? null : { fiyat: '₺29,99' } };
+}
+
+/**
+ * (CAN-REKLAM §13 karar 7) Uygulamanın can paneli döngüsünü taklit eder:
+ * seçimde kapanır, sahte reklam/satın alma (300 ms) işlenir, yeni modelle
+ * yeniden açılır (1 sn içinde: giriş animasyonsuz). Son can sayısını döndürür.
+ */
+async function canPaneliDongusu(ilk: CanVM): Promise<number> {
+  let vm = ilk;
+  for (;;) {
+    const bas = performance.now();
+    const temel = vm;
+    const s = await ui.canPaneli(vm, () => ({ ...temel, sonrakiMs: temel.sonrakiMs === null ? null : Math.max(0, temel.sonrakiMs - (performance.now() - bas)) }));
+    log('can paneli', s);
+    if (s === 'kapat') return vm.sayi;
+    await new Promise((r) => setTimeout(r, 300));
+    const sayi = s === 'doldur' ? vm.enCok : Math.min(vm.enCok, vm.sayi + 1);
+    const dolu = sayi >= vm.enCok;
+    vm = {
+      ...vm,
+      sayi,
+      tur: sayi <= 0 ? 'bitti' : 'durum',
+      sonrakiMs: dolu ? null : vm.sonrakiMs,
+      reklam: dolu || !vm.reklam ? null : { ...vm.reklam, hak: s === 'reklam' ? vm.reklam.hak - 1 : vm.reklam.hak },
+      doldur: dolu ? null : vm.doldur,
+    };
+    ui.haritaCanGuncelle(O.canSayaciVm(sayi));
+  }
+}
+
+/** (CAN-REKLAM §4) Mağaza döngüsü: satın alınca kapanır, işlenir, yeniden açılır. */
+async function magazaDongusu(ilk: MagazaVM): Promise<void> {
+  let vm = ilk;
+  for (;;) {
+    const s = await ui.magaza(vm);
+    log('mağaza', s);
+    if (s.tur === 'kapat') return;
+    await new Promise((r) => setTimeout(r, 300));
+    const sende = s.tur === 'geriYukle' ? 'usta_karti' : s.id === 'usta_karti' ? 'usta_karti' : null;
+    vm = {
+      ...vm,
+      urunler: vm.urunler.map((u) => (u.id === sende ? { ...u, durum: 'sende' as const } : s.tur === 'satinAl' && s.id === 'can_doldur' && u.id === 'can_doldur' ? { ...u, durum: 'stokDolu' as const } : u)),
+    };
+  }
 }
 
 async function duraklatAc(): Promise<void> {
@@ -289,9 +352,35 @@ async function calistir(): Promise<void> {
       await oyunSahnesi('son1');
       log('kaybettin', await ui.kaybettin(O.kaybettinVm(v)));
       break;
-    case 'ayarlar':
-      void haritaSahnesi();
-      await ui.ayarlar(O.ayarlarVm(), { nasilAc: () => void ui.nasilOynanir({ acikEngeller: ['kafes', 'islak', 'doseme', 'fener', 'kaya'] }), oyunOzetiAc: () => void ui.oyunOzeti(O.oyunOzetiVm()) });
+    case 'ayarlar': {
+      // gelir=1: sağlayıcı varken (Mağaza satırı, Hakkında'da can cümlesi).
+      const gelir = p.get('gelir') === '1';
+      void haritaSahnesi(gelir ? 3 : null);
+      await ui.ayarlar(O.ayarlarVm(), {
+        nasilAc: () => void ui.nasilOynanir({ acikEngeller: ['kafes', 'islak', 'doseme', 'fener', 'kaya'] }),
+        oyunOzetiAc: () => void ui.oyunOzeti(O.oyunOzetiVm()),
+        ...(gelir ? { magazaAc: () => void magazaDongusu(O.magazaVm()), gelirVar: true } : {}),
+      });
+      break;
+    }
+    // ─────────────── Can, reklam, Mağaza (CAN-REKLAM §6) ───────────────
+    case 'can': {
+      // v=bitti | durum (kalan) | kart | hakyok | hazirdegil | dolu; panel seçimde kapanır, döngü yeniden açar.
+      const vm = O.canVm(v === 'kalan' ? 'durum' : v === '1' ? 'bitti' : v);
+      void haritaSahnesi(vm.sayi);
+      await canPaneliDongusu(vm);
+      break;
+    }
+    case 'magaza':
+      // Ayarlar'ın üstünde (gerçek akış); v=1 | sende | stok | bekle.
+      void haritaSahnesi(3);
+      void ui.ayarlar(O.ayarlarVm(), { magazaAc: () => void magazaDongusu(O.magazaVm(v)), gelirVar: true });
+      await magazaDongusu(O.magazaVm(v));
+      break;
+    case 'cikisOnayi':
+      // v=yeniden: "Yeniden başlarsan 1 can gider."
+      await oyunSahnesi();
+      log('çıkış onayı', await ui.cikisOnayi(v === 'yeniden' ? 'yeniden' : 'harita'));
       break;
     case 'oyunOzeti':
       // Ayarlar'ın üstünde (gerçek akış); v=bos | az | 1.

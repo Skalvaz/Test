@@ -22,6 +22,7 @@ import './stil/hud.css';
 import './stil/ekranlar.css';
 import './stil/harita.css';
 import './stil/kanca.css';
+import './stil/gelir.css';
 import { h, kare } from './dom';
 import { tanimlariKur, ustaSvg } from './ikonlar';
 import { Baglam } from './cekirdek';
@@ -41,6 +42,8 @@ import { istatistikEkrani } from './ekranlar/istatistik';
 import { oyunOzetiEkrani } from './ekranlar/oyunOzeti';
 import { molaEkrani, defterKartiEkrani, sandikEkrani } from './ekranlar/kucukler';
 import { kasabaEkrani } from './ekranlar/kasaba';
+import { canPaneliEkrani, cikisOnayiEkrani } from './ekranlar/can';
+import { magazaEkrani } from './ekranlar/magaza';
 import { beklemeEkrani, eksenSecici, type BeklemeTutamak } from './ekranlar/ek';
 import type { Eksen } from '../core/types';
 import { muhurUcur, muhurEtiketi } from './kanca';
@@ -102,11 +105,6 @@ export interface ArayuzSecenek {
   guvenliAlan?: Kenarlar;
 }
 
-/** G0 iskeleti: G3 gövdeyi yazana kadar çağrılırsa hata. Bağımsız değişkenler yalnız imzayı korur. */
-function g3(ad: string, ..._girdi: unknown[]): Error {
-  return new Error(`G3: Arayuz.${ad} henüz yazılmadı`);
-}
-
 const KUTLAMA: Record<ReaksiyonKademesi, { metin: string; boy: number; parilti: string }> = {
   guzel: { metin: tt('Güzel!', 'Nice!'), boy: 44, parilti: 'rgba(255,200,90,.8)' },
   harika: { metin: tt('Harika!', 'Great!'), boy: 50, parilti: 'rgba(255,150,40,.85)' },
@@ -137,6 +135,8 @@ export class Arayuz {
   private kisayol: boolean;
   /** (Kancalar §C.3) Süren mühür uçuşlarının iptali (Geri Sar, bölümden çıkış). */
   private muhurIptalci = new AbortController();
+  /** (CAN-REKLAM §13 karar 7) Can paneli ve Mağaza'nın son kapanış anı (performance.now). */
+  private kapanislar = new Map<'can' | 'magaza', number>();
 
   constructor(s: ArayuzSecenek) {
     this.b = new Baglam({ kok: s.kok, ses: s.ses, titresim: s.titresim });
@@ -424,7 +424,21 @@ export class Arayuz {
    * fiyat] [Bekle]. Esc ve Bekle → 'kapat'.
    */
   canPaneli(vm: CanVM, tazele?: () => CanVM): Promise<CanPaneliSecimi> {
-    throw g3('canPaneli', vm, tazele);
+    const e = canPaneliEkrani(this.b, vm, tazele, { girisYok: this.yenidenAcilis('can') });
+    void e.soz.then(() => this.kapanislar.set('can', performance.now()));
+    return this.ac(e);
+  }
+
+  /**
+   * (§13 karar 7) Aynı panel kapandıktan sonraki 1 sn içinde mi açılıyor:
+   * öyleyse giriş animasyonu oynamaz ve kapanış animasyonundaki eski kart
+   * hemen kalkar (iki perde üst üste koyulaşmasın; panel "yerinde kalır").
+   */
+  private yenidenAcilis(ad: 'can' | 'magaza'): boolean {
+    const t = this.kapanislar.get(ad);
+    if (t === undefined || performance.now() - t > 1000) return false;
+    for (const m of this.b.modalKatmani.querySelectorAll(`.f-${ad}-modal.f-cikis`)) m.remove();
+    return true;
   }
 
   /**
@@ -433,7 +447,9 @@ export class Arayuz {
    * Esc ve Kapat → `{ tur: 'kapat' }`.
    */
   magaza(vm: MagazaVM, tazele?: () => MagazaVM): Promise<MagazaSecimi> {
-    throw g3('magaza', vm, tazele);
+    const e = magazaEkrani(this.b, vm, tazele, { girisYok: this.yenidenAcilis('magaza') });
+    void e.soz.then(() => this.kapanislar.set('magaza', performance.now()));
+    return this.ac(e);
   }
 
   /**
@@ -444,16 +460,17 @@ export class Arayuz {
    * Duraklat'ı yeniden açar).
    */
   cikisOnayi(neden: 'harita' | 'yeniden' = 'harita'): Promise<boolean> {
-    throw g3('cikisOnayi', neden);
+    return this.ac(cikisOnayiEkrani(this.b, neden));
   }
 
   /**
-   * Harita can hapını yeniden çizmeden tazeler (sayı, "12:31"); harita açık
-   * değilse ya da hap yoksa bir şey yapmaz. null: hap kalkar. Uygulama harita
-   * açıkken saniyede bir çağırır (§10 G4).
+   * Harita can hapını yeniden çizmeden tazeler (sayı, "12:31"); harita hiç
+   * kurulmadıysa bir şey yapmaz. null: hap kalkar; hap yoksa yıldızın yanına
+   * kurulur. Uygulama harita açıkken saniyede bir çağırır (§10 G4); araya
+   * çağrı gelmezse hap son değerden yerelde geri sayar (harita gizliyken durur).
    */
   haritaCanGuncelle(can: CanSayaciVM | null): void {
-    throw g3('haritaCanGuncelle', can);
+    this.haritaEkrani.canGuncelle(can);
   }
 
   /** Mola balonu (§11 kanca 30). */
