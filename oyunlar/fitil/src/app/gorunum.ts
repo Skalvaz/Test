@@ -374,8 +374,10 @@ export function kazandinKancalari(
   const o = sonuc.oduller;
   let muhurler: KazandinVM['muhurler'] = null;
   const satir = muhurVMleri(v, k);
-  if (satir) {
-    const mo = o.find((x): x is Extract<meta.Odul, { tur: 'muhur' }> => x.tur === 'muhur');
+  const mo = o.find((x): x is Extract<meta.Odul, { tur: 'muhur' }> => x.tur === 'muhur');
+  // Tanıtım kazancında (6. bölüm) hiçbir mühür basılmadıysa satır yok: açıklamasız üç boş
+  // mühür ilk oturumda gürültü (ilk dakikalar denetimi); mühürleri 7. bölüm kartı anlatır.
+  if (satir && !(mo?.tanitim && !mo.yeni.length)) {
     const yeni = new Set(mo?.yeni ?? []);
     const I = meta.KANCA_IPUCU;
     muhurler = {

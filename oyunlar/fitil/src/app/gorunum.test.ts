@@ -198,6 +198,8 @@ describe('(Kancalar) mühür, kasaba ve Kazandın eşlemeleri', () => {
     expect(k3.kandil).toMatchObject({ onceki: 0, yeni: 7, tanitim: true });
     expect(k3.muhurler).toBeNull();
     expect(k3.kasabaHazir).toBe(false);
+    // Tanıtım kazancında mühür basılmadıysa satır yok (7. bölüm kartı anlatır).
+    expect(kazandinKancalari(v6, kazan(ilerlet(5, 3), 6, 3, { muhurler: [false, false, false] }), []).muhurler).toBeNull();
     // Sancak (3/3)
     const k7 = ilerlet(7, 2);
     k7.bolumler['7'].muhur = 0b011;

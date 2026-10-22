@@ -81,6 +81,9 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   isteği yok; yerel halka günlük `fitil.olcum.v1`, Android'de
   `window.FitilYerel.olay` köprüsü), olay sözlüğü `docs/OLCUM.md`, test kancası
   `__fitil.olcum()` (olaylar + özet: bölüm hunisi, ilk oturum, günler).
+  İlk dakikalar denetimi: `node scripts/ilk-dakikalar.mjs <url> <klasör> [son]`
+  (yeni oyuncu, gerçek hız; araya giren her balon/modal/bant metni, kelime,
+  süre tahmini → `rapor.md`). Sonuçlar `docs/YAYIN.md` "Aşama 1 denetimi".
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).

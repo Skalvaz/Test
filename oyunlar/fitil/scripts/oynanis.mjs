@@ -380,9 +380,11 @@ async function profilKos(browser, p) {
       continue;
     }
     if (s === 'kazandin' && n === 6) {
-      // (Kancalar §C.5) Mühürlerin tanıtımı: yıldızlardan sonra mühür satırı + Kıvılcım Usta ipucu.
+      // (Kancalar §C.5) Mühürlerin tanıtımı: basılan mühür varsa yıldızlardan sonra mühür satırı;
+      // hiçbiri basılmadıysa satır yok (açıklama 7. bölüm kartında).
       await page.waitForTimeout(1500);
-      if (!(await page.locator('.f-kz-muhurler').count())) hatalar.push(`[${p.ad}] b6 Kazandın'da mühür satırı yok`);
+      const basilan = await page.evaluate(() => window.__fitil.kayit().bolumler['6']?.muhur ?? 0);
+      if (!!basilan !== (await page.locator('.f-kz-muhurler').count()) > 0) hatalar.push(`[${p.ad}] b6 Kazandın mühür satırı (basılan maske ${basilan})`);
       await kare('b6-muhur-tanitim');
     }
     if (s === 'kazandin' && n === 3) {

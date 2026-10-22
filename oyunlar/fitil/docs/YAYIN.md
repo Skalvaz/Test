@@ -44,3 +44,25 @@ Can ve reklam gelir, ama oyuncuyu yıpratan desenler yine yasak:
    göstergelere bak → düzelt → açık test → yayın.
 5. **EBRULİ:** aynı katmanlar (ölçüm, can/reklam) + içerik (60+ bölüm,
    ilerleme sistemi) + Android.
+
+## Aşama 1 denetimi: ilk oturum (22 Ekim 2026)
+
+`scripts/ilk-dakikalar.mjs` (390×844, Türkçe, yeni kayıt; Acemi bot ilk
+denemede 1–10'un hepsini kazandı). Gerçek süre tahmini hamle başına 4 sn
+düşünme + 2 kelime/sn okumayla:
+
+- Bölüm 5'e ~6 dk, bölüm 10'a ~22 dk (164 hamle). İlk oturumda bölüm 5
+  hedefi rahat.
+- Araya giren 42 öğe (13 Usta balonu, 22 modal/ekran, 5 bant, 2 harita
+  balonu), ~630 okunacak kelime; her bölüm iki dokunuş (Kazandın "Devam",
+  bölüm kartı "Oyna").
+- Oyun kavramları GDD §15'e uygun: bölüm başına bir kavram, balonlar kısa.
+- Yük bölüm 5–10'da: meta sistemler üst üste geliyor — kandil + Kasaba (3),
+  sandık + defter kartı (5, 47 kelimelik kart), Kibrit + hediye + mühürler
+  (6), mühür anlatımı (7, 27 kelime), Usta Bölümü (8), Günün Şenliği (10).
+- Düzeltildi: 6. bölüm Kazandın'da hiç mühür basılmadıysa açıklamasız üç boş
+  mühür (Ç K U) gösterilmiyor; mühürleri 7. bölüm kartı anlatır.
+- Kullanıcı kararı bekleyen: meta tanıtımlarını yaymak (ör. Usta Bölümü ve
+  Günün Şenliği 12–15'e); claude.ai sürümünde ölçüm özetini (kişisel veri
+  yok) bulut kaydının yanına yazıp aile testinden huniyi görmek.
+
