@@ -391,13 +391,18 @@ export class HaritaEkrani {
       const sira = USTA_BOLUM_IDLERI.indexOf(u.id as (typeof USTA_BOLUM_IDLERI)[number]) + 1;
       if (sira <= 0) return;
       const k = ustaKonumu(sira);
+      // Kilit nedeni: yıldız eksikse etikette ★N; yıldız yetiyor da yalnız bölüm kapısı (12) kaldıysa "12. bölümden sonra".
+      const yildizEksik = (u.eksikYildiz ?? 1) > 0;
+      const kapi = u.kapiBolumu;
+      const kilitMetni = yildizEksik ? (kapi ? M.kilitliUstaIkisi(u.gerekenYildiz, kapi) : M.kilitliUsta(u.gerekenYildiz)) : kapi ? M.kilitliUstaBolum(kapi) : M.kilitliUsta(u.gerekenYildiz);
+      const kilitEtiketi = !yildizEksik && kapi ? h('small', { s: 'f-usta-kapi' }, ...M.ustaKapiEtiket(kapi).map((x) => h('span', { t: x }))) : h('small', { s: 'f-sayi' }, ikon('yildizDolu'), h('span', { t: String(u.gerekenYildiz) }));
       const dg = h(
         'button',
         {
           s: `f-usta-dugum${u.acik ? ' f-acik' : ''}`,
           type: 'button',
           css: { left: yuzdeX(k.x), top: yuzdeY(k.y) },
-          'aria-label': `${M.usta} ${sira}${u.acik ? '' : `, ${M.kilitliUsta(u.gerekenYildiz)}`}`,
+          'aria-label': `${M.usta} ${sira}${u.acik ? '' : `, ${kilitMetni}`}`,
         },
         svg(`<svg class="f-usta-fener" viewBox="-20 -40 40 56" aria-hidden="true">
           ${u.acik ? '<circle cx="0" cy="-24" r="18" fill="url(#ftl-koz)"/>' : ''}
@@ -406,11 +411,11 @@ export class HaritaEkrani {
           <path d="M-6.4-4h12.6M-5.6-14h11.4" stroke="${u.acik ? '#B8381C' : '#3A3040'}" stroke-width="4"/>
           <rect x="-6" y="-31" width="12" height="9" rx="2" fill="${u.acik ? '#FFF4C2' : '#2A2232'}"/>
           <path d="M-8-31 0-38 8-31z" fill="#3A2416"/></svg>`),
-        h('span', { s: 'f-usta-etiket' }, h('span', { t: `${M.ustaKisa}${sira}` }), u.acik ? h('span', { s: 'f-usta-yildiz' }, [0, 1, 2].map((i) => kucukYildiz(i < u.yildiz))) : h('small', { s: 'f-sayi' }, ikon('yildizDolu'), h('span', { t: String(u.gerekenYildiz) }))),
+        h('span', { s: 'f-usta-etiket' }, h('span', { t: `${M.ustaKisa}${sira}` }), u.acik ? h('span', { s: 'f-usta-yildiz' }, [0, 1, 2].map((i) => kucukYildiz(i < u.yildiz))) : kilitEtiketi),
       );
       dg.addEventListener('click', () => {
         if (!u.acik) {
-          this.b.toast(M.kilitliUsta(u.gerekenYildiz));
+          this.b.toast(kilitMetni);
           return;
         }
         this.sec({ tur: 'usta', id: u.id });
@@ -450,7 +455,7 @@ export class HaritaEkrani {
       ikon('takvim'),
       h('span', { s: 'f-sayi', t: vm.gunluk.acik ? `${vm.gunluk.tamam}/${vm.gunluk.toplam}` : '' }),
     );
-    gunluk.addEventListener('click', () => (vm.gunluk.acik ? this.sec({ tur: 'gunluk' }) : this.b.toast(M.gunlukKilitli)));
+    gunluk.addEventListener('click', () => (vm.gunluk.acik ? this.sec({ tur: 'gunluk' }) : this.b.toast(M.gunlukKilitli(vm.gunluk.acilisBolumu))));
     const yardim = h('button', { s: 'f-yuvarlak f-harita-yardim', type: 'button', 'aria-label': M.nasilOynanir }, ikon('soru'));
     yardim.addEventListener('click', () => this.sec({ tur: 'nasil' }));
     bar.replaceChildren(h('div', { s: 'f-harita-ust-sol' }, yildiz, seri), h('div', { s: 'f-harita-ust-sag' }, gunluk, yardim));
@@ -459,7 +464,7 @@ export class HaritaEkrani {
   private altCubuk(vm: HaritaVM, simdiki: number): void {
     const alt = this.kok!.querySelector('.f-harita-alt')!;
     alt.replaceChildren(
-      this.sekme(M.gununSenligi, 'takvim', { tur: 'gunluk' }, vm.gunluk.acik && vm.gunluk.tamam < vm.gunluk.toplam, !vm.gunluk.acik),
+      this.sekme(M.gununSenligi, 'takvim', { tur: 'gunluk' }, vm.gunluk.acik && vm.gunluk.tamam < vm.gunluk.toplam, !vm.gunluk.acik, M.gunlukKilitli(vm.gunluk.acilisBolumu)),
       this.sekme(M.fisekDefteri, 'defter', { tur: 'defter' }, !!vm.defterYeni),
       // Bildirim noktası yalnız oyuncuyu bir yere çağıran şeyde (günlük, defter); yeni rozet nokta çıkarmaz.
       this.sekme(M.istatistik, 'kupa', { tur: 'istatistik' }),
@@ -486,14 +491,14 @@ export class HaritaEkrani {
     this.oynaDg!.replaceChildren(ikon('oynat'), h('span', { t: etiket }));
   }
 
-  private sekme(ad: string, ik: Parameters<typeof ikon>[0], secim: HaritaSecimi, nokta = false, kilitli = false): HTMLElement {
+  private sekme(ad: string, ik: Parameters<typeof ikon>[0], secim: HaritaSecimi, nokta = false, kilitli = false, kilitMetni = ''): HTMLElement {
     const d = h(
       'button',
       { s: `f-harita-sekme${kilitli ? ' f-kilitli' : ''}`, type: 'button' },
       h('span', { s: 'f-harita-sekme-ikon' }, ikon(ik), nokta ? h('span', { s: 'f-nokta' }) : null),
       h('span', { s: 'f-harita-sekme-ad', t: ad }),
     );
-    d.addEventListener('click', () => (kilitli ? this.b.toast(M.gunlukKilitli) : this.sec(secim)));
+    d.addEventListener('click', () => (kilitli ? this.b.toast(kilitMetni) : this.sec(secim)));
     return d;
   }
 

@@ -62,7 +62,10 @@ düşünme + 2 kelime/sn okumayla:
   (6), mühür anlatımı (7, 27 kelime), Usta Bölümü (8), Günün Şenliği (10).
 - Düzeltildi: 6. bölüm Kazandın'da hiç mühür basılmadıysa açıklamasız üç boş
   mühür (Ç K U) gösterilmiyor; mühürleri 7. bölüm kartı anlatır.
-- Kullanıcı kararı bekleyen: meta tanıtımlarını yaymak (ör. Usta Bölümü ve
-  Günün Şenliği 12–15'e); claude.ai sürümünde ölçüm özetini (kişisel veri
+- Yapıldı (22 Ekim 2026, ürün sahibi onayı): meta tanıtımları yayıldı — Usta
+  Bölümleri 12. bölüm kazanılınca (yıldız eşiğiyle birlikte), Günün Şenliği
+  14. bölümden sonra; günlük geçmişi olan ya da Usta oynamış eski kayıtta
+  açık kalır (GDD K25, §10.2, §10.5).
+- Kullanıcı kararı bekleyen: claude.ai sürümünde ölçüm özetini (kişisel veri
   yok) bulut kaydının yanına yazıp aile testinden huniyi görmek.
 

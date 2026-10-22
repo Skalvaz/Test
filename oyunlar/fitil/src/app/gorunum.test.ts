@@ -35,6 +35,21 @@ describe('harita eşlemesi', () => {
     expect(vm.kasaba).toEqual({ acik: true, kandil: meta.kandilBakiyesi(k), isler: ['iskele.kayikFenerleri'], yapilabilir: true });
   });
 
+  it('Usta ve Günün Şenliği kilitleri: yıldız açığı, 12. bölüm kapısı, 14. bölüm', () => {
+    let k = ilerlet(11, 3); // 33★, 12 kazanılmadı
+    let vm = haritaVM(k, { parca: 0, rozet: 0 });
+    expect(vm.ustalar[0]).toEqual({ id: 101, acik: false, yildiz: 0, gerekenYildiz: 15, eksikYildiz: 0, kapiBolumu: 12 });
+    expect(vm.ustalar[2]).toMatchObject({ acik: false, eksikYildiz: 12, kapiBolumu: 12 });
+    expect(vm.gunluk).toEqual({ acik: false, tamam: 0, toplam: 0, acilisBolumu: 14 });
+    k = kazan(k, 12, 1).kayit;
+    vm = haritaVM(k, { parca: 0, rozet: 0 });
+    expect(vm.ustalar.slice(0, 3).map((u) => u.acik)).toEqual([true, true, false]);
+    expect(vm.ustalar[0].kapiBolumu).toBeUndefined();
+    expect(vm.ustalar[2]).toMatchObject({ eksikYildiz: 11 });
+    k = kazan(kazan(k, 13, 1).kayit, 14, 1, { tarih: 20261014 }).kayit;
+    expect(haritaVM(k, { parca: 0, rozet: 0 }).gunluk).toMatchObject({ acik: true, toplam: 3 });
+  });
+
   it('yenilik noktaları görülen sayılara göre', () => {
     const k = meta.yeniKayit(1);
     const vm = haritaVM(k, { parca: k.koleksiyon.parcalar.length - 1, rozet: 0 });
@@ -101,7 +116,7 @@ describe('ödüller', () => {
 
 describe('günlük ve nasıl oynanır', () => {
   it('günlük: bugünün sonucu paylaşım verisine, arşiv 7 güne', () => {
-    let k = ilerlet(10, 1);
+    let k = ilerlet(14, 1);
     const bugun = meta.tarihYyyymmdd(2026, 10, 14);
     k = meta.gunGiris(k, bugun).kayit;
     k = meta.bolumSonucu(k, { bolumId: bugun, kazandi: true, puan: 5000, yildiz: 2, istatistik: { ...bolumuYukle(bolumGetir(1)!, 0).istatistik, reaksiyonlar: [3, 9, 20] }, tarih: bugun, kalanHamle: 4, toplamHamle: 20 }).kayit;

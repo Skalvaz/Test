@@ -82,10 +82,10 @@ function vm(isler: string[]): HaritaVM {
   return {
     toplamYildiz: toplam,
     bolumler,
-    ustalar: Array.from({ length: 8 }, (_, i) => ({ id: 101 + i, acik: toplam >= (i + 1) * 15, yildiz: 0 as Yildiz, gerekenYildiz: (i + 1) * 15 })),
+    ustalar: Array.from({ length: 8 }, (_, i) => ({ id: 101 + i, acik: toplam >= (i + 1) * 15 && simdiki > 12, yildiz: 0 as Yildiz, gerekenYildiz: (i + 1) * 15, eksikYildiz: Math.max(0, (i + 1) * 15 - toplam), ...(simdiki > 12 ? {} : { kapiBolumu: 12 }) })),
     motifler: [],
     seri: { gun: 5, basamak: 'cira' },
-    gunluk: { acik: true, tamam: 1, toplam: 3 },
+    gunluk: { acik: true, tamam: 1, toplam: 3, acilisBolumu: 14 },
     sonsuz: { acik: false, siradaki: 1 },
     kasaba: { acik: true, kandil: 7, isler, yapilabilir: true },
   };

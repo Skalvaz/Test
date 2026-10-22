@@ -17,9 +17,9 @@
  *  1. Günlük görevlerin günü tazelenir, Fener Nöbeti bugünü sayar.
  *  2. Bölüm kaydı: deneme, başarısız seri, en iyi puan, yıldız rekoru.
  *  3. Coşku Serisi (ana, Usta, sonsuz; günlük nötr).
- *  4. Kilitler: sonraki bölüm, Günün Şenliği (10), Sonsuz Şenlik (40),
+ *  4. Kilitler: sonraki bölüm, Günün Şenliği (14), Sonsuz Şenlik (40),
  *     güçlendirici açılış hediyeleri, mahalle tamamlama, efsane kartı,
- *     motif, Usta Bölümleri (her 15★).
+ *     motif, Usta Bölümleri (her 15★, 12. bölüm kazanıldıktan sonra).
  *  5. Toplam istatistik ve rekorlar ("YENİ REKOR!").
  *  6. Gece Tablosu (kazanç).
  *  7. Günün Şenliği sonucu ve ilk kazanç sandığı; görev ilerlemesi.
@@ -80,6 +80,7 @@ import {
   SERI_BASAMAKLARI,
   SONSUZ_TABANI,
   TOZ_PARCA_BEDELI,
+  USTA_ACILIS_BOLUMU,
   USTA_ELI_ESIGI,
   bolumMahallesi,
   bolumTuru,
@@ -221,6 +222,45 @@ export function ustaGerekenYildiz(ustaNo: number, ayar: MetaAyar): number {
   return ustaNo * ayar.ustaYildizAdimi;
 }
 
+/** Usta Bölümünün kilit durumu (harita, bölüm açıklığı ve ödül aynı kuraldan). */
+export interface UstaKilidi {
+  acik: boolean;
+  gerekenYildiz: number;
+  /** Ana yıldız açığı (0 = yıldız yetiyor). */
+  eksikYildiz: number;
+  /** `USTA_ACILIS_BOLUMU` kapısı henüz geçilmedi (bölüm kazanılmadı, eski kayıt izi yok). */
+  bolumKapisi: boolean;
+}
+
+/** Usta Bölümü bu kayıtta oynanmış mı (eski kayıt izi: deneme ya da yıldız). */
+function ustaOynandi(k: Kayit, id: number): boolean {
+  const b = k.bolumler[String(id)];
+  return !!b && (b.deneme > 0 || b.yildiz > 0);
+}
+
+/**
+ * Usta n (1 tabanlı) açık ⇔ ana yıldız ≥ `ustaGerekenYildiz(n)` VE
+ * `USTA_ACILIS_BOLUMU` (12) kazanıldı (§10.2; Ekim 2026). Eski kayıt koruması
+ * (göç değişmedi): bir Usta Bölümü oynamış oyuncuda kapı geçilmiş sayılır
+ * (yıldızı yeten bütün Ustalar açık), oynanmış Usta her durumda açık kalır.
+ * Eski kuralla açılıp hiç oynanmamış Usta 12 kazanılana dek yeniden kilitlenir
+ * (kayıtta açılış izi yok; GDD K25 "bilinen bedel").
+ */
+export function ustaKilidi(k: Kayit, ustaNo: number, ayarK?: Partial<MetaAyar>): UstaKilidi {
+  const ayar = metaAyar(ayarK);
+  const gerek = ustaGerekenYildiz(ustaNo, ayar);
+  const eksik = Math.max(0, gerek - anaYildiz(k, ayar));
+  const kapi = !bolumKazanildi(k, Math.min(USTA_ACILIS_BOLUMU, ayar.anaBolumSayisi)) && !ayar.ustaIdleri.some((id) => ustaOynandi(k, id));
+  const id = ayar.ustaIdleri[ustaNo - 1];
+  const acik = (eksik === 0 && !kapi) || (id !== undefined && ustaOynandi(k, id));
+  return { acik, gerekenYildiz: gerek, eksikYildiz: eksik, bolumKapisi: kapi };
+}
+
+/** Usta n (1 tabanlı) oynanabilir mi (`ustaKilidi(...).acik`). */
+export function ustaAcikMi(k: Kayit, ustaNo: number, ayarK?: Partial<MetaAyar>): boolean {
+  return ustaKilidi(k, ustaNo, ayarK).acik;
+}
+
 /** Bölüm oynanabilir mi. Günlük için `bugun` gerekir (bugün ya da arşiv). */
 export function bolumAcikMi(k: Kayit, bolumId: number, bugun?: number, ayarK?: Partial<MetaAyar>): boolean {
   const ayar = metaAyar(ayarK);
@@ -228,7 +268,7 @@ export function bolumAcikMi(k: Kayit, bolumId: number, bugun?: number, ayarK?: P
     case 'ana':
       return bolumId <= acikEnYuksek(k, ayar);
     case 'usta':
-      return anaYildiz(k, ayar) >= ustaGerekenYildiz(ayar.ustaIdleri.indexOf(bolumId) + 1, ayar);
+      return ustaAcikMi(k, ayar.ustaIdleri.indexOf(bolumId) + 1, ayar);
     case 'gunluk':
       return gunlukAcik(k) && bugun !== undefined && (bolumId === bugun || arsivdeMi(bolumId, bugun));
     case 'sonsuz':
@@ -295,7 +335,7 @@ export function bolumSonucu(kayit: Kayit, g: BolumSonucGirdisi, ayarK?: Partial<
   const kalanHamle = g.kalanHamle === undefined ? null : tamsayi(g.kalanHamle);
 
   const oncekiAcik = acikEnYuksek(k, ayar);
-  const oncekiAnaYildiz = anaYildiz(k, ayar);
+  const oncekiUstaAcik = ayar.ustaIdleri.map((_, i) => ustaAcikMi(k, i + 1, ayar));
   const oncekiGunlukAcik = gunlukAcik(k);
   const oncekiSonsuzAcik = sonsuzAcikMi(k, ayar);
 
@@ -397,11 +437,13 @@ export function bolumSonucu(kayit: Kayit, g: BolumSonucGirdisi, ayarK?: Partial<
     k.koleksiyon.motifler.push(g.motif);
     oduller.push({ tur: 'motif', motif: g.motif });
   }
-  const yeniAnaYildiz = anaYildiz(k, ayar);
-  ayar.ustaIdleri.forEach((id, i) => {
-    const gerek = ustaGerekenYildiz(i + 1, ayar);
-    if (oncekiAnaYildiz < gerek && yeniAnaYildiz >= gerek) oduller.push({ tur: 'ustaAcildi', bolumId: id, ustaNo: i + 1, yildiz: gerek });
-  });
+  // Usta Bölümleri: birleşik koşulun (yıldız + 12. bölüm) geçişi. 12. bölümün
+  // kazancında yıldızı zaten yeten birden çok Usta birlikte açılabilir. Yalnız
+  // ana kazanç açar (Usta'nın kendi kaydı eski kayıt izidir, açılış değil).
+  if (kazandi && tur === 'ana')
+    ayar.ustaIdleri.forEach((id, i) => {
+      if (!oncekiUstaAcik[i] && ustaAcikMi(k, i + 1, ayar)) oduller.push({ tur: 'ustaAcildi', bolumId: id, ustaNo: i + 1, yildiz: ustaGerekenYildiz(i + 1, ayar) });
+    });
 
   // 5. İstatistik ve rekorlar.
   const s = k.istatistik;

@@ -63,6 +63,19 @@ describe('görev şablonları ve seçim (§10.5)', () => {
     }
   });
 
+  it("eski kayıt: günlüğü 11–13. bölümde açık oyuncuya da \"Günün Şenliği'ni kazan\" (17) gelir", () => {
+    // Görevler yalnız günlük açıkken seçilir; 17'nin kapısı günlüğün kendisi
+    // (açılış 10 → 14 sonrası 15'e kaymamalı).
+    let gun = 0;
+    for (let i = 0; i < 365; i++) {
+      const tarih = tarihEkle(BUGUN, i);
+      if (!gunlukGorevSec(tarih, 40).some((g) => g.sablon === 17)) continue;
+      gun++;
+      for (const acik of [12, 13, 14]) expect(gunlukGorevSec(tarih, acik).map((g) => g.sablon)).toContain(17);
+    }
+    expect(gun).toBeGreaterThan(10);
+  });
+
   it('renk görevi tohumdan renk alır (0..4) ve hedefleri şablondan', () => {
     for (let i = 0; i < 400; i++) {
       for (const g of gunlukGorevSec(tarihEkle(BUGUN, i), 40)) {

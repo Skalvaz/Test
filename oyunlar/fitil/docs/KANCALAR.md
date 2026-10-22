@@ -340,9 +340,13 @@ oyuncunun gördüğü hiçbir şey sönmez).
 ### B.4 Ekonomi simülasyonu
 Model: oyuncu bölümleri sırayla bitirir; ilk kazançta yıldız (öğretim 1–3:
 %15/60/25 1★/2★/3★, sonra profile göre), mühür olasılıkları, sonradan tekrar
-(son 10 bölümden birinde +1★ ya da +1 mühür), Usta Bölümü (her 15★'da, %80
-oynanır), günlük 3/3 (her 5 bölümde bir gün, 10'dan sonra). Kandil yeten en
-ucuz açık iş hemen yapılır. 600 tohum.
+(son 10 bölümden birinde +1★ ya da +1 mühür), Usta Bölümü (her 15★'da, 12.
+bölümden sonra, %80 oynanır), günlük 3/3 (her 5 bölümde bir gün, 14'ten
+sonra). Kandil yeten en ucuz açık iş hemen yapılır. 600 tohum. (22 Ekim
+2026, GDD K25: Usta 12. bölüm kapısı ve günlük 14 eklendi, tablo yeniden
+koşuldu; eskiden Usta yalnız 15★'a, günlük 10'a bağlıydı. Tipik oyuncu 8–11.
+bölümde ~1 kandil geride, 12'den sonra fark ≤ 0,4; günlük günleri 15, 20, …
+aynı.)
 
 | Profil | ★ / bölüm (40'ta, tekrarlarla) | İlk kazançta mühür (Ç/K/U) | Tekrar / bölüm | Günlük 3/3 | Toplam mühür (40'ta) |
 |---|---|---|---|---|---|
@@ -357,16 +361,16 @@ ucuz açık iş hemen yapılır. 600 tohum.
 | 3 | 7 | 3,5 | 2,0 | 0,6 |
 | 4 | 9 | 4,2 | 2,2 | 1,0 |
 | 5 | 14 | 5,7 | 1,6 | 1,2 |
-| 6 | 17 | 7,4 | 1,8 | 0,6 |
-| 8 | 25 | 9,9 | 2,4 | 1,4 |
-| 10 | 36 | 13,1 | 2,0 | 1,0 |
-| 12 | 43 | 15,3 | 2,4 | 1,4 |
-| 15 | 58 | 19,7 | 2,3 | 1,1 |
-| 20 | 81 | 25,7 | 2,3 | 1,5 |
+| 6 | 17 | 7,3 | 1,8 | 0,7 |
+| 8 | 24 | 9,7 | 2,4 | 1,2 |
+| 10 | 34 | 12,7 | 1,9 | 1,0 |
+| 12 | 42 | 15,2 | 2,5 | 1,4 |
+| 15 | 58 | 19,7 | 2,2 | 1,2 |
+| 20 | 81 | 25,7 | 2,4 | 1,4 |
 | 25 | 104 | 31,2 | 2,6 | 1,5 |
 | 30 | 127 | 36,3 | 2,7 | 1,8 |
-| 35 | 149 | 41,1 | 2,9 | 1,8 |
-| 40 | 172 | 45,5 | 3,6 | 2,5 |
+| 35 | 149 | 41,1 | 3,0 | 1,8 |
+| 40 | 172 | 45,5 | 3,7 | 2,5 |
 
 İş yapılan bölümler arası ortalama **1,18** (p90 2): "1–2 bölümde bir iş" ✓.
 Sıradaki işe hep **2–3 kandil** eksik (≈ bir bölüm): "hep yapılacak bir

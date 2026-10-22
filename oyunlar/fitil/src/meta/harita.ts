@@ -12,7 +12,7 @@ import { fnv1a } from '../core/rng';
 import { t } from '../platform/dil';
 import type { Motif } from '../core/types';
 import { gunlukAcik, sonrakiBasamak } from './gunluk';
-import { coskuAktif, ustaGerekenYildiz } from './ilerleme';
+import { coskuAktif, ustaKilidi } from './ilerleme';
 import { acikEnYuksek, anaYildiz, bolumKaydi, seriBasamakIndeksi, sonsuzAcikMi, toplamYildiz } from './kayit';
 import type { Kayit, Nadirlik, Yildiz } from './kayit';
 import { SERI_BASAMAKLARI, mahalleBolumleri, mahalleSayisi, metaAyar } from './sabitler';
@@ -66,6 +66,8 @@ export interface HaritaUstaDugumu {
   yildiz: Yildiz;
   gerekenYildiz: number;
   eksikYildiz: number;
+  /** Usta kapısı (`USTA_ACILIS_BOLUMU`) henüz geçilmedi (`ustaKilidi`). */
+  bolumKapisi: boolean;
   tohum: number;
 }
 
@@ -208,7 +210,7 @@ export function haritaVerisi(k: Kayit, secenek: { ayar?: Partial<MetaAyar>; moti
     if (ustaId !== undefined) {
       const ub = bolumKaydi(k, ustaId);
       const uy = (ub?.yildiz ?? 0) as Yildiz;
-      const gerek = ustaGerekenYildiz(m + 1, ayar);
+      const kilit = ustaKilidi(k, m + 1, ayar);
       const u = USTA_BOLUMLERI[m] ?? { ad: t(`Usta ${m + 1}`, `Master ${m + 1}`), kural: '' };
       dugumler.push({
         tur: 'usta',
@@ -218,10 +220,11 @@ export function haritaVerisi(k: Kayit, secenek: { ayar?: Partial<MetaAyar>; moti
         kural: u.kural,
         mahalle: m,
         yolSirasi: yol++,
-        durum: durum(ana >= gerek, uy >= 1),
+        durum: durum(kilit.acik, uy >= 1),
         yildiz: uy,
-        gerekenYildiz: gerek,
-        eksikYildiz: Math.max(0, gerek - ana),
+        gerekenYildiz: kilit.gerekenYildiz,
+        eksikYildiz: kilit.eksikYildiz,
+        bolumKapisi: kilit.bolumKapisi,
         tohum: fnv1a(`usta:${ustaId}`),
       });
     }

@@ -110,10 +110,18 @@ describe('harita görünüm verisi', () => {
     expect(b(6)).toMatchObject({ yildiz: 1, siradaki: false });
     expect(b(7)).toMatchObject({ durum: 'acik', siradaki: true });
     expect(h.siradaki).toBe(7);
+    // Usta: 15★ yetiyor ama 12. bölüm kazanılmadı → kilitli, yalnız bölüm kapısı.
     const u1 = h.dugumler.find((d) => d.tur === 'usta' && d.ustaNo === 1)!;
-    expect(u1).toMatchObject({ durum: 'acik', gerekenYildiz: 15, eksikYildiz: 0 });
+    expect(u1).toMatchObject({ durum: 'kilitli', gerekenYildiz: 15, eksikYildiz: 0, bolumKapisi: true });
     const u2 = h.dugumler.find((d) => d.tur === 'usta' && d.ustaNo === 2)!;
-    expect(u2).toMatchObject({ durum: 'kilitli', gerekenYildiz: 30, eksikYildiz: 15 });
+    expect(u2).toMatchObject({ durum: 'kilitli', gerekenYildiz: 30, eksikYildiz: 15, bolumKapisi: true });
+    // 12. bölüm kazanılınca kapı geçilir: U1 açık, U2 yıldız bekler.
+    let k12 = k;
+    for (let id = 7; id <= 12; id++) k12 = kazan(k12, id, 1).kayit;
+    const h12 = haritaVerisi(k12);
+    const u = (n: number) => h12.dugumler.find((d) => d.tur === 'usta' && d.ustaNo === n)!;
+    expect(u(1)).toMatchObject({ durum: 'acik', eksikYildiz: 0, bolumKapisi: false });
+    expect(u(2)).toMatchObject({ durum: 'kilitli', eksikYildiz: 9, bolumKapisi: false });
     expect(h.mahalleler[0]).toMatchObject({ tamam: true, ucYildiz: false, yildiz: 14, enFazlaYildiz: 15, defterKarti: true });
     expect(h.mahalleler[1]).toMatchObject({ acik: true, tamam: false });
     expect(h.mahalleler[2].acik).toBe(false);

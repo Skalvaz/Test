@@ -117,7 +117,14 @@ npm run oynanis -- http://127.0.0.1:5185/ playtest-output goc,goc600   # şema 2
 Oynanış testi (`scripts/oynanis.mjs`) dev sunucusuna ya da `file://…/fitil.html`'e
 karşı koşar: açılış → bölüm 1 (zorunlu ilk hamle gerçek dokunmatik sürüklemeyle)
 → bot ile 1–6 ve 10 → kazandın/kaybettin (Tekrar dene < 1 sn ölçülür) → harita →
-ayarlar → defter → Günün Şenliği; pageerror/console.error başarısızlıktır.
+ayarlar → defter → Günün Şenliği (14'ten önce kilit metni; 11–14 `kayitYama` ile
+kazanılınca açılır); pageerror/console.error başarısızlıktır.
+Meta açılışları (Ekim 2026, GDD K25): Günün Şenliği 14. bölümden sonra
+(`GUNLUK_ACILIS_BOLUMU`), Usta n = 15·n★ VE 12. bölüm (`USTA_ACILIS_BOLUMU`,
+`ustaKilidi`/`ustaAcikMi`); eski kayıt koruması `gunlukGecmisiVar` (görev günü,
+sonuç, istatistik; Fener Nöbeti sayılmaz) ve oynanmış Usta kaydı. Göç yok;
+eski kuralla açılıp oynanmamış Usta 12'ye dek yeniden kilitlenir (K25). Görev
+17'nin (Günün Şenliği'ni kazan) kapısı günlüğün kendisi (`acilis: 1`).
 Kanca adımları: 3. bölümden sonra ilk kandil balonu → Kasaba paneli → ilk iş
 (kıvılcım, ışıklar, sakin); 6. bölüm Kazandın'da mühür tanıtımı; 7. bölüm
 kartında mühür bloğu, oyunda rozet ve "tuttu" uçuşu. `goc`/`goc600` profilleri

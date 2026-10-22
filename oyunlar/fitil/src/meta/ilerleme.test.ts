@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { bolumAcikMi, bolumSonucu, coskuAktif, gunGiris, siradakiDenemeNo, ustaEliSunulur, yildizHesapla, yildizSiniri } from './ilerleme';
+import { bolumAcikMi, bolumSonucu, coskuAktif, gunGiris, siradakiDenemeNo, ustaAcikMi, ustaEliSunulur, ustaKilidi, yildizHesapla, yildizSiniri } from './ilerleme';
+import { gunlukAcik, gunlukGorevSec } from './gunluk';
+import { GUNLUK_ACILIS_BOLUMU, USTA_ACILIS_BOLUMU } from './sabitler';
 import type { Odul } from './ilerleme';
 import { acikEnYuksek, anaYildiz, desenTamam, fitilAcik, yeniKayit } from './kayit';
 import type { Kayit } from './kayit';
@@ -198,7 +200,7 @@ describe('Usta\'nın Eli ve Coşku Serisi', () => {
   });
 
   it('günlük bölüm Coşku\'ya dokunmaz', () => {
-    let k = ilerlet(10, 1, yeniKayit(1), { tarih: BUGUN });
+    let k = ilerlet(14, 1, yeniKayit(1), { tarih: BUGUN });
     const c = k.cosku;
     k = kaybet(k, BUGUN, { tarih: BUGUN }).kayit;
     expect(k.cosku).toBe(c);
@@ -276,14 +278,17 @@ describe('açılışlar ve hediyeler', () => {
     expect(tur(r.oduller, 'rozet').map((x) => x.rozet)).toContain('ustaCirak');
   });
 
-  it('Usta Bölümleri her 15★ (ana yıldız)', () => {
-    let k = ilerlet(4, 3); // 12★
-    let r = kazan(k, 5, 3); // 15★
+  it('Usta Bölümleri her 15★ (ana yıldız), 12. bölüm kazanıldıktan sonra', () => {
+    expect(USTA_ACILIS_BOLUMU).toBe(12);
+    let k = ilerlet(12, 1); // 12★, kapı geçildi
+    let r = kazan(k, 13, 3); // 15★
     expect(tur(r.oduller, 'ustaAcildi')).toEqual([{ tur: 'ustaAcildi', bolumId: 101, ustaNo: 1, yildiz: 15 }]);
     expect(bolumAcikMi(r.kayit, 101)).toBe(true);
     expect(bolumAcikMi(r.kayit, 102)).toBe(false);
-    k = ilerlet(10, 3, r.kayit);
-    expect(anaYildiz(k)).toBe(30);
+    k = r.kayit;
+    for (let id = 1; id <= 12; id++) k = kazan(k, id, 3).kayit; // 39★
+    for (let id = 14; id <= 15; id++) k = kazan(k, id, 1).kayit; // 41★ (30'u 1–12'nin tekrarı geçti)
+    expect(anaYildiz(k)).toBe(41);
     expect(bolumAcikMi(k, 102)).toBe(true);
     // Usta kazancı Usta kilidini etkilemez
     r = kazan(k, 101, 3);
@@ -291,9 +296,60 @@ describe('açılışlar ve hediyeler', () => {
     expect(r.kayit.bolumler['101'].yildiz).toBe(3);
   });
 
-  it('Günün Şenliği 10. bölümle, Sonsuz Şenlik 40. bölümle açılır', () => {
-    const r = kazan(ilerlet(9), 10, 1, { tarih: BUGUN });
+  it('Usta: 11 bölüm + 30★ kapalı; 12 kazancıyla yıldızı yeten U1 ve U2 birlikte açılır', () => {
+    let k = ilerlet(8, 3); // 24★
+    for (let id = 9; id <= 11; id++) k = kazan(k, id, 2).kayit; // 30★
+    expect(anaYildiz(k)).toBe(30);
+    expect(bolumAcikMi(k, 101)).toBe(false);
+    expect(bolumAcikMi(k, 102)).toBe(false);
+    expect(ustaKilidi(k, 1)).toEqual({ acik: false, gerekenYildiz: 15, eksikYildiz: 0, bolumKapisi: true });
+    expect(ustaKilidi(k, 3)).toEqual({ acik: false, gerekenYildiz: 45, eksikYildiz: 15, bolumKapisi: true });
+    // 12'de kayıp açmaz
+    expect(tur(kaybet(k, 12).oduller, 'ustaAcildi')).toEqual([]);
+    const r = kazan(k, 12, 1); // 31★
+    expect(tur(r.oduller, 'ustaAcildi')).toEqual([
+      { tur: 'ustaAcildi', bolumId: 101, ustaNo: 1, yildiz: 15 },
+      { tur: 'ustaAcildi', bolumId: 102, ustaNo: 2, yildiz: 30 },
+    ]);
+    expect([101, 102, 103].map((id) => bolumAcikMi(r.kayit, id))).toEqual([true, true, false]);
+    expect(ustaAcikMi(r.kayit, 3)).toBe(false);
+    expect(ustaKilidi(r.kayit, 3)).toMatchObject({ eksikYildiz: 14, bolumKapisi: false });
+  });
+
+  it('eski kayıt: daha önce 101\'i oynamış 9. bölümdeki oyuncuda U1 açık kalır', () => {
+    const k = ilerlet(9, 2); // 18★, 12 kazanılmadı
+    expect(bolumAcikMi(k, 101)).toBe(false);
+    // Eski kuralla (15★) açılmış ve oynanmış (kayıp da iz bırakır).
+    const eski = kaybet(k, 101).kayit;
+    expect(eski.bolumler['101'].deneme).toBe(1);
+    expect(bolumAcikMi(eski, 101)).toBe(true);
+    expect(ustaKilidi(eski, 1)).toMatchObject({ acik: true, bolumKapisi: false });
+    expect(bolumAcikMi(eski, 102)).toBe(false); // 30★ yetmiyor
+    // Kapı geçilmiş sayılır: yıldızı yeten sonraki Usta da açılır, ödülü ana kazançla gelir.
+    let y = eski;
+    for (let id = 1; id <= 8; id++) y = kazan(y, id, 3).kayit; // 26★
+    expect(anaYildiz(y)).toBe(26);
+    const r = kazan(y, 10, 3); // 29★
+    expect(tur(r.oduller, 'ustaAcildi')).toEqual([]);
+    const r2 = kazan(r.kayit, 9, 3); // 30★
+    expect(tur(r2.oduller, 'ustaAcildi')).toEqual([{ tur: 'ustaAcildi', bolumId: 102, ustaNo: 2, yildiz: 30 }]);
+    expect(bolumAcikMi(r2.kayit, 102)).toBe(true);
+    // Usta'nın kendi sonucu "açıldı" ödülü üretmez.
+    expect(tur(kazan(k, 101, 2).oduller, 'ustaAcildi')).toEqual([]);
+  });
+
+  it('Günün Şenliği 14. bölümle (13\'te kapalı), Sonsuz Şenlik 40. bölümle açılır', () => {
+    expect(GUNLUK_ACILIS_BOLUMU).toBe(14);
+    const k13 = ilerlet(13, 1, yeniKayit(7), { tarih: BUGUN });
+    expect(gunlukAcik(k13)).toBe(false);
+    expect(bolumAcikMi(k13, BUGUN, BUGUN)).toBe(false);
+    expect(k13.gunluk.tarih).toBe(0);
+    expect(k13.gunluk.gorevler).toEqual([]);
+    expect(k13.gunluk.seri).toBe(1); // Fener Nöbeti her bölümde sayılır, günlük izi değildir
+    expect(gunGiris(k13, BUGUN).degisti).toBe(false);
+    const r = kazan(k13, 14, 1, { tarih: BUGUN });
     expect(tur(r.oduller, 'gunlukAcildi').length).toBe(1);
+    expect(bolumAcikMi(r.kayit, BUGUN, BUGUN)).toBe(true);
     expect(r.kayit.gunluk.tarih).toBe(BUGUN);
     expect(r.kayit.gunluk.gorevler.length).toBe(3);
     const k40 = ilerlet(39);
@@ -381,10 +437,32 @@ describe('Gece Tablosu saklama', () => {
 });
 
 describe('Günün Şenliği, görevler, Fener Nöbeti', () => {
-  const k10 = () => ilerlet(10, 1, yeniKayit(5), { tarih: BUGUN });
+  const k14 = () => ilerlet(14, 1, yeniKayit(5), { tarih: BUGUN });
+
+  it('eski kayıt: günlük geçmişi olan 11. bölümdeki oyuncuda Günün Şenliği açık kalır', () => {
+    const k = ilerlet(11, 1, yeniKayit(5), { tarih: BUGUN });
+    expect(gunlukAcik(k)).toBe(false);
+    // Eski kuralla (10. bölüm) açılmış günlük: görev günü ve görevler yazılmış.
+    const eski: Kayit = { ...k, gunluk: { ...k.gunluk, tarih: BUGUN, gorevler: gunlukGorevSec(BUGUN, 12) } };
+    expect(gunlukAcik(eski)).toBe(true);
+    expect(bolumAcikMi(eski, BUGUN, BUGUN)).toBe(true);
+    expect(bolumAcikMi(eski, tarihEkle(BUGUN, -1), BUGUN)).toBe(true); // arşiv de
+    // Ertesi gün görevler yenilenir; günlük kazancı sayılır, "açıldı" ödülü yok.
+    const yarin = tarihEkle(BUGUN, 1);
+    const g = gunGiris(eski, yarin);
+    expect(g.kayit.gunluk.tarih).toBe(yarin);
+    expect(g.kayit.gunluk.gorevler.length).toBe(3);
+    const r = kazan(g.kayit, yarin, 2, { tarih: yarin });
+    expect(r.kayit.istatistik.gunlukKazanc).toBe(1);
+    expect(tur(kazan(r.kayit, 12, 1, { tarih: yarin }).oduller, 'gunlukAcildi')).toEqual([]);
+    // Görev izi olmasa da günlük sonucu ya da istatistiği yeter (tek başına).
+    expect(gunlukAcik({ ...k, gunluk: { ...k.gunluk, enIyi: { [String(BUGUN)]: { puan: 1, yildiz: 1, kazandi: true, kullanilan: 1, toplam: 20, enBuyuk: 3, izgara: '●', deneme: 1 } } } })).toBe(true);
+    expect(gunlukAcik({ ...k, istatistik: { ...k.istatistik, gunlukKazanc: 2 } })).toBe(true);
+    expect(gunlukAcik({ ...k, gunluk: { ...k.gunluk, ilkKazanc: BUGUN } })).toBe(true);
+  });
 
   it('ilk kazanç sandığı günde 1; 3★ ise parlak; arşiv sandık vermez ama en iyi skoru tutar', () => {
-    const k = k10();
+    const k = k14();
     const r = kazan(k, BUGUN, 3, { tarih: BUGUN, kalanHamle: 4, toplamHamle: 22, oz: oz({ reaksiyonlar: [1, 9, 16], enBuyukReaksiyon: 16 }) });
     const s = tur(r.oduller, 'sandik').filter((x) => x.sandik.neden === 'gunluk');
     expect(s.map((x) => x.sandik.tur)).toEqual(['parlak']);
@@ -409,7 +487,8 @@ describe('Günün Şenliği, görevler, Fener Nöbeti', () => {
   });
 
   it('görev tamamlanınca sandık; üçü de tamamlanınca sonuncusu parlak (günde bir kez)', () => {
-    let k = k10();
+    let k = k14();
+    expect(k.gunluk.gorevler.length).toBe(3);
     // Bütün görevleri tek oyunda tamamlayacak bir özet
     const hepsi = oz({
       halka: 9,
@@ -450,14 +529,14 @@ describe('Günün Şenliği, görevler, Fener Nöbeti', () => {
   });
 
   it('gün değişince görevler yenilenir (gunGiris); Fener Nöbeti oynanınca sayılır', () => {
-    const k = k10();
+    const k = k14();
     expect(k.gunluk.seri).toBe(1);
     const yarin = tarihEkle(BUGUN, 1);
     const g = gunGiris(k, yarin);
     expect(g.degisti).toBe(true);
     expect(g.kayit.gunluk.tarih).toBe(yarin);
     expect(g.kayit.gunluk.seri).toBe(1); // giriş seriyi saymaz
-    const r = kaybet(g.kayit, 11, { tarih: yarin });
+    const r = kaybet(g.kayit, 15, { tarih: yarin });
     expect(r.kayit.gunluk.seri).toBe(2);
     expect(tur(r.oduller, 'seri')[0].sonuc).toMatchObject({ onceki: 1, seri: 2 });
     expect(gunGiris(g.kayit, yarin).degisti).toBe(false);

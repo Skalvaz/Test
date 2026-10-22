@@ -69,7 +69,9 @@ export const GOREV_SABLONLARI: readonly GorevSablonu[] = [
   { no: 14, hedef: 10, acilis: 13, olc: (b) => b.ozet.kayaYokEdilen },
   { no: 15, hedef: 2, acilis: 11, olc: (b) => b.ozet.fenerToplanan },
   { no: 16, hedef: 1, acilis: 5, olc: (b) => evet(b.ozet.finalRoket >= 5) },
-  { no: 17, hedef: 1, acilis: GUNLUK_ACILIS_BOLUMU + 1, olc: (b) => evet(b.gununSenligi && b.kazandi) },
+  // 17'nin mekaniği günlüğün kendisi: görevler yalnız günlük açıkken seçilir
+  // (`gunlukTazele_yerinde` → `gunlukAcik`), eski kayıt korumasıyla 11–13. bölümde de.
+  { no: 17, hedef: 1, acilis: 1, olc: (b) => evet(b.gununSenligi && b.kazandi) },
   { no: 18, hedef: 1, acilis: 3, olc: (b) => evet(b.ozet.enCokNesil >= 2) },
   { no: 19, hedef: 30, acilis: 3, olc: (b) => b.ozet.isiPatlamasi },
   { no: 20, hedef: 1, acilis: 1, olc: (b) => evet(b.kazandi && b.ilkDeneme) },
@@ -166,13 +168,27 @@ export function gorevIlerlet(gorevler: readonly GorevDurumu[], b: GorevBaglami):
   return { gorevler: yeni, tamamlanan };
 }
 
+/**
+ * Günün Şenliği açık mı: `GUNLUK_ACILIS_BOLUMU` (14) kazanıldı ya da kayıtta
+ * günlük geçmişi var. Eski kayıt koruması (Ekim 2026, açılış 10 → 14): eski
+ * kuralla açılmış günlük, oyuncu 11–13. bölümdeyken kapanmasın. Günlük yalnız
+ * açıkken iz bırakır (görev günü/görevler `gunlukTazele_yerinde`, sonuçlar ve
+ * ilk kazanç günlük bölüm oynanınca); Fener Nöbeti (`seri`, `sonGun`) her
+ * bölümde ilerlediği için iz sayılmaz. Göç değişmedi.
+ */
 export function gunlukAcik(k: Kayit): boolean {
-  return bolumKazanildi(k, GUNLUK_ACILIS_BOLUMU);
+  return bolumKazanildi(k, GUNLUK_ACILIS_BOLUMU) || gunlukGecmisiVar(k);
+}
+
+/** Kayıtta Günün Şenliği açıkken bırakılmış iz var mı (eski kayıt koruması). */
+export function gunlukGecmisiVar(k: Kayit): boolean {
+  const g = k.gunluk;
+  return g.tarih !== 0 || g.gorevler.length > 0 || Object.keys(g.enIyi).length > 0 || g.ilkKazanc !== 0 || k.istatistik.gunlukKazanc > 0 || k.rekorlar.enIyiGunluk > 0;
 }
 
 /**
  * Gün değiştiyse görevleri yeniler ve eski günlük sonuçları budar (yerinde).
- * Günlük kapalıysa (10. bölüm kazanılmadı) görev seçilmez.
+ * Günlük kapalıysa (`GUNLUK_ACILIS_BOLUMU` kazanılmadı) görev seçilmez.
  */
 export function gunlukTazele_yerinde(k: Kayit, bugun: number, acikBolum: number): boolean {
   if (!tarihGecerli(bugun)) return false;

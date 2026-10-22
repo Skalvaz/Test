@@ -45,7 +45,7 @@ export const MAHALLELER: readonly Mahalle[] = [
 
 export const BOLUM_PER_MAHALLE = 5;
 export const ANA_BOLUM_SAYISI = 40;
-/** Usta bölümleri: id 101..108, her 15★'da bir açılır. */
+/** Usta bölümleri: id 101..108, her 15★'da bir açılır (12. bölüm kazanıldıktan sonra; meta `USTA_ACILIS_BOLUMU`). */
 export const USTA_BOLUM_IDLERI = [101, 102, 103, 104, 105, 106, 107, 108] as const;
 export const USTA_YILDIZ_ADIMI = 15;
 
