@@ -19,6 +19,7 @@
  * tahta `sonraki` ile karşılaştırılır (geliştirme kipinde fark varsa
  * console.error) ve eşitlenir.
  */
+import { t } from '../platform/dil';
 import type { CiziciSecenek, Dikdortgen, OyunCizici, TahtaGeometrisi } from '../app/sozlesme';
 import type { BolumVerisi, Hamle, Hedef, KomboTuru, Konum, Olay, Onizleme, OyunDurumu, Renk } from '../core/types';
 import { ATOLYELER, PALET } from '../app/katalog';
@@ -44,9 +45,12 @@ const KUYRUK = 160;
 const IPUCU_SOLMA = 300;
 const simdiMs = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
-export const KADEME_METNI: Record<string, string> = { guzel: 'Güzel', nefis: 'Nefis', harika: 'Harika', saheser: 'Şaheser!' };
+export const KADEME_METNI: Record<string, string> = t(
+  { guzel: 'Güzel', nefis: 'Nefis', harika: 'Harika', saheser: 'Şaheser!' },
+  { guzel: 'Nice', nefis: 'Lovely', harika: 'Great', saheser: 'Masterpiece!' },
+);
 
-export const KOMBO_ADLARI: Record<KomboTuru, string> = {
+export const KOMBO_ADLARI: Record<KomboTuru, string> = t<Record<KomboTuru, string>>({
   tarakTarak: 'Tarak + Tarak: artı',
   tarakGirdap: 'Tarak + Girdap: üç hat',
   girdapGirdap: 'Girdap + Girdap: büyük baklava',
@@ -57,7 +61,18 @@ export const KOMBO_ADLARI: Record<KomboTuru, string> = {
   murekkepGirdap: 'Mürekkep + Girdap: geniş baklava',
   murekkepLale: 'Mürekkep + Lale: ham boyalar',
   murekkepMurekkep: 'Mürekkep + Mürekkep: büyük patlama',
-};
+}, {
+  tarakTarak: 'Comb + Comb: cross',
+  tarakGirdap: 'Comb + Swirl: three lines',
+  girdapGirdap: 'Swirl + Swirl: big diamond',
+  laleTarak: 'Tulip + Comb: combs',
+  laleGirdap: 'Tulip + Swirl: swirls',
+  laleLale: 'Tulip + Tulip: whole tray',
+  murekkepTarak: 'Ink + Comb: thick comb',
+  murekkepGirdap: 'Ink + Swirl: wide diamond',
+  murekkepLale: 'Ink + Tulip: base paints',
+  murekkepMurekkep: 'Ink + Ink: big burst',
+});
 
 /** Anında bitirmede bile bildirilen (durum taşıyan) olaylar. */
 const DURUM_OLAYLARI = new Set(['hedefIlerledi', 'puanEklendi', 'bolumBitti', 'hamleOzeti', 'solenBasladi', 'temizlendi', 'kaskat']);
@@ -946,7 +961,7 @@ class OyunCiziciSinifi implements OyunCiziciTam {
         this.gt.uygula(o);
         const x = this.geo.x + (this.geo.w * h) / 2;
         const y = this.geo.y + (this.geo.h * h) / 2;
-        this.bilgi.goster('Tekne çalkalanıyor…', 'bilgi', x, y, Math.max(18, Math.min(26, this.st.width * 0.055)), 500);
+        this.bilgi.goster(t('Tekne çalkalanıyor…', 'Stirring the tray…'), 'bilgi', x, y, Math.max(18, Math.min(26, this.st.width * 0.055)), 500);
         for (let i = 0; i < 3; i++) this.halka(x, y, h * 0.5, h * (2.5 + i), 0.3, 700, 0, i * 120);
         break;
       }
@@ -978,7 +993,7 @@ class OyunCiziciSinifi implements OyunCiziciTam {
         this.gt.uygula(o);
         const x = this.geo.x + (this.geo.w * h) / 2;
         const y = this.geo.y + this.geo.h * h * 0.42;
-        this.yazi.goster('Ebru Şöleni!', 'solen', x, y, Math.max(40, Math.min(62, this.st.width * 0.12)), 900);
+        this.yazi.goster(t('Ebru Şöleni!', 'Marbling Feast!'), 'solen', x, y, Math.max(40, Math.min(62, this.st.width * 0.12)), 900);
         this.altinTozu(x, y, 30);
         break;
       }

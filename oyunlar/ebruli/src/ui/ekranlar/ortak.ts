@@ -2,11 +2,12 @@
  * Ekranların ortak parçaları: düğmeler, yıldız sırası, hedef simgesi,
  * kâğıt kart, tablo küçük resmi.
  */
+import { t } from '../../platform/dil';
 import { h, svg } from '../dom';
 import { IKON, KARANFIL, LALE, YILDIZ_BOS, YILDIZ_DOLU } from '../ikonlar';
 import { damlaResmi, desenResmi, img, kagitResmi } from '../gorsel';
 import type { HedefVM } from '../tipler';
-import { renkAdi, sayi } from '../metinler';
+import { renkAdi, sayi, yildizEtiketi } from '../metinler';
 
 export type DugmeTuru = 'ana' | 'ikincil' | 'hayalet' | 'yuvarlak';
 
@@ -39,7 +40,7 @@ export function dugmeSesiAyarla(fn: () => void): void {
 }
 
 export function yildizSirasi(n: number, sinif = 'e-yildizlar'): HTMLElement {
-  const k = h('div', { s: sinif, 'aria-label': `${n} yıldız` });
+  const k = h('div', { s: sinif, 'aria-label': yildizEtiketi(n) });
   for (let i = 0; i < 3; i++) {
     const y = svg(i < n ? YILDIZ_DOLU : YILDIZ_BOS);
     y.classList.add(i < n ? 'dolu' : 'bos');
@@ -52,7 +53,7 @@ export function yildizSirasi(n: number, sinif = 'e-yildizlar'): HTMLElement {
 export function hedefIkonu(hd: HedefVM, boyut: number): HTMLElement {
   const kap = h('span', { s: 'e-hedef-ikon', css: { width: `${boyut}px`, height: `${boyut}px` } });
   if (hd.tur === 'topla' && hd.renk) kap.appendChild(img(damlaResmi(hd.renk, boyut), boyut, '', renkAdi(hd.renk)));
-  else if (hd.tur === 'kagit') kap.appendChild(img(kagitResmi(boyut), boyut, '', 'kâğıt'));
+  else if (hd.tur === 'kagit') kap.appendChild(img(kagitResmi(boyut), boyut, '', t('kâğıt', 'paper')));
   else if (hd.tur === 'desen') {
     const m = svg(hd.motif === 'karanfil' ? KARANFIL : LALE);
     m.classList.add('e-motif', hd.motif === 'karanfil' ? 'karanfil' : 'lale');
@@ -73,13 +74,13 @@ export function hedefKalan(hd: HedefVM): number {
 export function hedefMetni(hd: HedefVM): string {
   switch (hd.tur) {
     case 'topla':
-      return `${hd.gerekli} ${renkAdi(hd.renk ?? 0)} topla`;
+      return t(`${hd.gerekli} ${renkAdi(hd.renk ?? 0)} topla`, `Collect ${hd.gerekli} ${renkAdi(hd.renk ?? 0)}`);
     case 'kagit':
-      return 'Bütün kâğıtları al';
+      return t('Bütün kâğıtları al', 'Lift all the papers');
     case 'desen':
-      return hd.motif === 'karanfil' ? 'Karanfil desenini boya' : 'Lale desenini boya';
+      return hd.motif === 'karanfil' ? t('Karanfil desenini boya', 'Paint the carnation pattern') : t('Lale desenini boya', 'Paint the tulip pattern');
     case 'puan':
-      return `${sayi(hd.gerekli)} puan`;
+      return t(`${sayi(hd.gerekli)} puan`, `${sayi(hd.gerekli)} points`);
   }
 }
 

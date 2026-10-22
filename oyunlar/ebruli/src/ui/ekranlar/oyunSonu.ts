@@ -13,6 +13,7 @@
  * ve [Haritaya dön]. Tahtada "Bu hamle kazandırırdı" hayaleti oynarken
  * üstte şerit görünür. 3. ardışık kayıpta Usta'nın Eli şeridi.
  */
+import { t } from '../../platform/dil';
 import { bekle, h, sayarakYaz, svg } from '../dom';
 import { YILDIZ_BOS, YILDIZ_DOLU } from '../ikonlar';
 import { M, sayi } from '../metinler';
@@ -140,7 +141,7 @@ export interface KaybettinKontrol {
 export function kaybettinEkrani(y: EkranYoneticisi, vm: KaybettinVM, yer: Yerlesim, kontrol: Partial<KaybettinKontrol>): Promise<KaybettinSecimi> {
   return y.ac<KaybettinSecimi>({ sinif: `e-kaybettin ${yer.kip}`, geri: 'harita' }, (bitir) => {
     const yuzde = Math.round(vm.yuzde * 100);
-    const cubuk = h('div', { s: 'e-kb-cubuk', role: 'progressbar', 'aria-valuenow': String(yuzde), 'aria-valuemin': '0', 'aria-valuemax': '100' }, h('i', { css: { '--o': String(vm.yuzde) } }), h('b', { t: `%${yuzde}` }));
+    const cubuk = h('div', { s: 'e-kb-cubuk', role: 'progressbar', 'aria-valuenow': String(yuzde), 'aria-valuemin': '0', 'aria-valuemax': '100' }, h('i', { css: { '--o': String(vm.yuzde) } }), h('b', { t: t(`%${yuzde}`, `${yuzde}%`) }));
     const bilgi = h('div', { s: 'e-kb-bilgi' }, h('h2', { t: vm.yuzde >= 0.7 ? M.azKaldi : M.hamleBitti }), cubuk, vm.eksik ? h('p', { s: 'e-kb-eksik', t: vm.eksik }) : null);
     const ust = h('div', { s: 'e-kb-ust' });
     if (vm.yarimTablo) {

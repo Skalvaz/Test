@@ -11,9 +11,12 @@ import { dugme } from './ortak';
 import type { EkranYoneticisi } from './cekirdek';
 import type { AyarlarVM } from '../tipler';
 import type { Ayarlar } from '../../meta/kayit';
+import { DIL, type Dil } from '../../platform/dil';
 
 export interface AyarlarGeri {
   degisti(yama: Partial<Ayarlar>): void;
+  /** Dil seçildi: uygulama kaydı yazar, seçimi cihaza yazar ve sayfayı yeniden yükler. */
+  dil?(d: Dil): void;
   nasil(): void;
   sifirla(): void;
 }
@@ -106,6 +109,8 @@ export function ayarlarEkrani(y: EkranYoneticisi, vm: AyarlarVM, geri: AyarlarGe
       h(
         'div',
         { s: 'e-ayar-listesi' },
+        // Dil adları kendi dillerinde (oyuncu kendi dilini tanısın).
+        satir('dil', M.dil, segment<Dil>(M.dil, [['tr', 'Türkçe'], ['en', 'English']], DIL, (v) => v !== DIL && geri.dil?.(v))),
         satir('ses', M.efektSesi, kaydirici(M.efektSesi, vm.sfx, (v) => d({ sfx: v }))),
         satir('muzik', M.muzik, kaydirici(M.muzik, vm.muzik, (v) => d({ muzik: v }))),
         satir('dalga', M.ortam, anahtar(M.ortam, vm.ortam, (v) => d({ ortam: v }))),

@@ -54,7 +54,7 @@ async function bekleKosul(page, fn, arg, sure = 30000, aciklama = '') {
 const ekran = (page) => page.evaluate(() => window.__ebruli?.ekran?.() ?? 'yok');
 
 async function profilKos(browser, p) {
-  const ctx = await browser.newContext({ viewport: { width: p.w, height: p.h }, deviceScaleFactor: 2, isMobile: p.dokunmatik, hasTouch: p.dokunmatik });
+  const ctx = await browser.newContext({ locale: 'tr-TR', viewport: { width: p.w, height: p.h }, deviceScaleFactor: 2, isMobile: p.dokunmatik, hasTouch: p.dokunmatik });
   const page = await ctx.newPage();
   const dir = join(OUT, p.ad);
   mkdirSync(dir, { recursive: true });

@@ -8,6 +8,8 @@
  * oynanabilir bir ilk sürümdür).
  */
 import type { BolumVerisi } from '../core/types';
+// Sayfa İngilizceyse ad, tanıtım ve ipuçları `metin.en.json`'dan (src/levels/metin.ts).
+import { bolumMetniUygula } from './metin';
 import b001 from './veri/b001.json';
 import b002 from './veri/b002.json';
 import b003 from './veri/b003.json';
@@ -50,7 +52,7 @@ export const BOLUMLER: readonly BolumVerisi[] = [
   b018,
   b019,
   b020,
-] as unknown as BolumVerisi[];
+].map((v) => bolumMetniUygula(v as unknown as BolumVerisi));
 
 /** Deneme sürümünün son bölümü (Bölüm 20 kazanılınca "Devamı yakında", §12.3). */
 export const SON_BOLUM = 20;

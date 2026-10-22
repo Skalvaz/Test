@@ -3,10 +3,11 @@
  * Atölye sekmeleri; 4 sütunlu kartlar; kazanılmış kart dokununca tam boy +
  * künye (teknikler, nadirlik). Kilitli kartlar suda silik damla.
  */
+import { t } from '../../platform/dil';
 import { h, svg } from '../dom';
 import { RUMI, SILUET, YILDIZ_DOLU } from '../ikonlar';
 import { damlaResmi, img } from '../gorsel';
-import { M, sayi } from '../metinler';
+import { M, bolumEtiketi, sayi } from '../metinler';
 import { NADIRLIK, TEKNIKLER } from '../../app/katalog';
 import { dugme, kart, tabloResmi, yildizSirasi } from './ortak';
 import type { EkranYoneticisi } from './cekirdek';
@@ -39,7 +40,7 @@ export function tabloBuyukEkrani(y: EkranYoneticisi, k: GaleriKartVM, atolyeAd: 
       h('div', { s: `e-tb-cerceve n${k.nadirlik}` }, tabloResmi(k.ciz!, tw, th, 'e-tb-tablo')),
       kart(
         'e-tb-kunye',
-        h('div', { s: 'e-ust-bilgi', t: `${atolyeAd} · Bölüm ${k.id} · ${NADIRLIK[k.nadirlik] ?? ''}` }),
+        h('div', { s: 'e-ust-bilgi', t: `${atolyeAd} · ${bolumEtiketi(k.id)} · ${NADIRLIK[k.nadirlik] ?? ''}` }),
         h('h3', { t: k.ad }),
         h('div', { s: 'e-tb-satir' }, yildizSirasi(k.yildiz), h('span', { t: `${sayi(k.puan)} ${M.puan}` })),
         teknikler,
@@ -62,7 +63,7 @@ export function galeriEkrani(y: EkranYoneticisi, vm: GaleriVM, W: number, H: num
       const kh = Math.round(kw * 1.5);
       let n = 0;
       for (const k of secili.kartlar) {
-        const el = h('button', { s: `e-gkart${k.ciz ? ' dolu' : ''} n${k.nadirlik}`, type: 'button', 'aria-label': k.ciz ? `Bölüm ${k.id}: ${k.ad}` : `Bölüm ${k.id}: henüz tablo yok` });
+        const el = h('button', { s: `e-gkart${k.ciz ? ' dolu' : ''} n${k.nadirlik}`, type: 'button', 'aria-label': k.ciz ? `${bolumEtiketi(k.id)}: ${k.ad}` : `${bolumEtiketi(k.id)}: ${t('henüz tablo yok', 'no painting yet')}` });
         if (k.ciz) {
           n++;
           el.appendChild(tabloResmi(k.ciz, kw, kh, 'e-gkart-tablo'));

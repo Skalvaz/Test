@@ -1,120 +1,128 @@
 /**
- * Arayüz metinleri (GDD §12). Türkçe; balonlar ≤ 6 kelime, tek satır
+ * Arayüz metinleri (GDD §12). Türkçe + İngilizce (`t(tr, en)`, sayfa dili
+ * açılışta bir kez belirlenir: platform/dil.ts); balonlar ≤ 6 kelime, tek satır
  * (bölüm verisindeki `ipuclari` dışındaki sabit metinler burada).
  */
 import type { HamleHatasi, KarisikRenk } from '../core/types';
 import { RENK_TANIMLARI } from '../app/katalog';
+import { DIL, t } from '../platform/dil';
 
 export const M = {
-  oyunAdi: 'Ebruli',
-  slogan: 'Ham boyaları karıştır, aynı renkleri buluştur, kendi ebru tablonu kâğıda al.',
-  altBaslik: 'Ebru atölyesi',
-  dokun: 'Dokun ve başla',
-  deneme: 'Deneme sürümü',
+  oyunAdi: t('Ebruli', 'Ebruli'),
+  slogan: t('Ham boyaları karıştır, aynı renkleri buluştur, kendi ebru tablonu kâğıda al.', 'Mix the base paints, match the colors, pull your own marbled painting.'),
+  altBaslik: t('Ebru atölyesi', 'Marbling workshop'),
+  dokun: t('Dokun ve başla', 'Tap to start'),
+  deneme: t('Deneme sürümü', 'Trial version'),
 
   // Harita
-  galeri: 'Galeri',
-  ayarlar: 'Ayarlar',
-  nasil: 'Nasıl oynanır',
-  devamiYakinda: 'Devamı yakında',
-  devamiAlt: 'Kapadokya · Ege · Saray',
-  kilitli: 'Kilitli',
-  siradaki: 'Sıradaki',
+  galeri: t('Galeri', 'Gallery'),
+  ayarlar: t('Ayarlar', 'Settings'),
+  nasil: t('Nasıl oynanır', 'How to play'),
+  devamiYakinda: t('Devamı yakında', 'Coming soon'),
+  devamiAlt: t('Kapadokya · Ege · Saray', 'Cappadocia · Aegean · Palace'),
+  kilitli: t('Kilitli', 'Locked'),
+  siradaki: t('Sıradaki', 'Next'),
 
   // Bölüm öncesi
-  basla: 'Başla',
-  oyna: 'Oyna',
-  geri: 'Geri',
-  hamle: 'hamle',
-  enIyi: 'En iyi',
-  yeni: 'Yeni',
-  hedefler: 'Hedefler',
+  basla: t('Başla', 'Start'),
+  oyna: t('Oyna', 'Play'),
+  geri: t('Geri', 'Back'),
+  hamle: t('hamle', 'moves'),
+  enIyi: t('En iyi', 'Best'),
+  yeni: t('Yeni', 'New'),
+  hedefler: t('Hedefler', 'Goals'),
 
   // HUD
-  duraklat: 'Duraklat',
-  tarifler: 'Tarifler',
+  duraklat: t('Duraklat', 'Pause'),
+  tarifler: t('Tarifler', 'Recipes'),
 
   // Duraklat
-  duraklatildi: 'Duraklatıldı',
-  devam: 'Devam',
-  yenidenBasla: 'Yeniden başla',
-  haritayaDon: 'Haritaya dön',
+  duraklatildi: t('Duraklatıldı', 'Paused'),
+  devam: t('Devam', 'Continue'),
+  yenidenBasla: t('Yeniden başla', 'Restart'),
+  haritayaDon: t('Haritaya dön', 'Back to map'),
 
   // Kazandın
-  kazandin: 'Tablo tamam!',
-  galeriyeEklendi: 'Galeriye eklendi',
-  ilkTablo: 'Bu tablo senin. Galerine eklendi.',
-  buTablo: 'Bunu sakla',
-  eskiTablo: 'Eskisini koru',
-  tekrarOyna: 'Tekrar oyna',
-  puan: 'puan',
+  kazandin: t('Tablo tamam!', 'Painting complete!'),
+  galeriyeEklendi: t('Galeriye eklendi', 'Added to gallery'),
+  ilkTablo: t('Bu tablo senin. Galerine eklendi.', 'This painting is yours. Added to your gallery.'),
+  buTablo: t('Bunu sakla', 'Keep this one'),
+  eskiTablo: t('Eskisini koru', 'Keep the old one'),
+  tekrarOyna: t('Tekrar oyna', 'Play again'),
+  puan: t('puan', 'points'),
 
   // Kaybettin
-  azKaldi: 'Az kaldı!',
-  hamleBitti: 'Hamleler bitti',
-  tekrarDene: 'Tekrar dene',
-  kazandirirdi: 'Bu hamle kazandırırdı',
-  ustaEli: "Usta'nın Eli",
-  ustaEliMetin: '+5 hamleyle devam et (en fazla 1 yıldız)',
-  ustaEliDugme: 'Devam et',
+  azKaldi: t('Az kaldı!', 'So close!'),
+  hamleBitti: t('Hamleler bitti', 'Out of moves'),
+  tekrarDene: t('Tekrar dene', 'Try again'),
+  kazandirirdi: t('Bu hamle kazandırırdı', 'This move would have won'),
+  ustaEli: t("Usta'nın Eli", 'Master\'s Hand'),
+  ustaEliMetin: t('+5 hamleyle devam et (en fazla 1 yıldız)', 'Continue with +5 moves (1 star at most)'),
+  ustaEliDugme: t('Devam et', 'Continue'),
 
   // Galeri
-  ebruDefteri: 'Ebru Defteri',
-  galeriBos: 'Bölüm kazandıkça tablolar buraya gelir.',
-  kapat: 'Kapat',
+  ebruDefteri: t('Ebru Defteri', 'Marbling Album'),
+  galeriBos: t('Bölüm kazandıkça tablolar buraya gelir.', 'Win levels to fill this album with paintings.'),
+  kapat: t('Kapat', 'Close'),
 
   // Ayarlar
-  efektSesi: 'Efekt sesi',
-  muzik: 'Müzik',
-  ortam: 'Ortam sesi',
-  titresim: 'Titreşim',
-  hareketiAzalt: 'Hareketi azalt',
-  hiz: 'Hız',
-  hizNormal: 'Normal',
-  hizHizli: 'Hızlı',
-  palet: 'Renkler',
-  paletStandart: 'Standart',
-  paletRenkKoru: 'Renk körü',
-  motifler: 'Renk motifleri',
-  tarifSeridi: 'Tarif şeridi',
-  tarifHer: 'Her zaman',
-  tarifIlk: 'İlk bölümlerde',
-  ipuclari: 'İpuçları',
-  sifirla: 'İlerlemeyi sıfırla',
-  sifirlaEmin: 'Emin misin? Bütün yıldızlar ve tablolar silinir.',
-  sifirlaEvet: 'Evet, sıfırla',
-  sifirlaVazgec: 'Vazgeç',
-  sifirlandi: 'İlerleme sıfırlandı.',
-  hakkinda: 'Hakkında',
-  hakkindaMetin:
+  dil: t('Dil', 'Language'),
+  efektSesi: t('Efekt sesi', 'Sound effects'),
+  muzik: t('Müzik', 'Music'),
+  ortam: t('Ortam sesi', 'Ambience'),
+  titresim: t('Titreşim', 'Vibration'),
+  hareketiAzalt: t('Hareketi azalt', 'Reduce motion'),
+  hiz: t('Hız', 'Speed'),
+  hizNormal: t('Normal', 'Normal'),
+  hizHizli: t('Hızlı', 'Fast'),
+  palet: t('Renkler', 'Colors'),
+  paletStandart: t('Standart', 'Standard'),
+  paletRenkKoru: t('Renk körü', 'Colorblind'),
+  motifler: t('Renk motifleri', 'Color symbols'),
+  tarifSeridi: t('Tarif şeridi', 'Recipe strip'),
+  tarifHer: t('Her zaman', 'Always'),
+  tarifIlk: t('İlk bölümlerde', 'Early levels'),
+  ipuclari: t('İpuçları', 'Hints'),
+  sifirla: t('İlerlemeyi sıfırla', 'Reset progress'),
+  sifirlaEmin: t('Emin misin? Bütün yıldızlar ve tablolar silinir.', 'Are you sure? All stars and paintings will be deleted.'),
+  sifirlaEvet: t('Evet, sıfırla', 'Yes, reset'),
+  sifirlaVazgec: t('Vazgeç', 'Cancel'),
+  sifirlandi: t('İlerleme sıfırlandı.', 'Progress reset.'),
+  hakkinda: t('Hakkında', 'About'),
+  hakkindaMetin: t(
     'Ebruli bir deneme sürümüdür: 20 bölüm, 2 atölye. Usta kurgusaldır, gerçek bir kişiyi temsil etmez. Bütün sesler ve tablolar kodla üretilir. Yazı tipleri: Cormorant Garamond ve Alegreya Sans (SIL Open Font License 1.1).',
-  kayitBellek: 'Kayıt bu tarayıcıda tutulamıyor; sayfa kapanınca ilerleme kaybolur.',
+    'Ebruli is a trial version: 20 levels, 2 workshops. The master is fictional and does not represent a real person. All sounds and paintings are generated by code. Fonts: Cormorant Garamond and Alegreya Sans (SIL Open Font License 1.1).',
+  ),
+  kayitBellek: t('Kayıt bu tarayıcıda tutulamıyor; sayfa kapanınca ilerleme kaybolur.', 'Progress can’t be saved in this browser; it is lost when the page closes.'),
 
   // Nasıl oynanır
-  comert: 'Tekne cömerttir: her zaman hazır bir karışım vardır.',
+  comert: t('Tekne cömerttir: her zaman hazır bir karışım vardır.', 'The tray is generous: a mix is always ready somewhere.'),
 
   // Devamı yakında
-  devamiBaslik: 'Devamı yakında',
-  devamiMetin: 'Kapadokya, Ege ve Saray atölyeleri hazırlanıyor.',
-  galeriyiAc: 'Galeriyi aç',
+  devamiBaslik: t('Devamı yakında', 'Coming soon'),
+  devamiMetin: t('Kapadokya, Ege ve Saray atölyeleri hazırlanıyor.', 'The Cappadocia, Aegean and Palace workshops are on their way.'),
+  galeriyiAc: t('Galeriyi aç', 'Open gallery'),
 
   // Oyun içi
-  hamleKaldi: (n: number) => (n === 1 ? 'Son hamle!' : `${n} hamle kaldı`),
-} as const;
+  hamleKaldi: t(
+    (n: number) => (n === 1 ? 'Son hamle!' : `${n} hamle kaldı`),
+    (n: number) => (n === 1 ? 'Last move!' : `${n} moves left`),
+  ),
+};
 
 /** Geçersiz bırakma balonu (öğretim ve ilk karşılaşma; GDD §12.1). */
 export function hataMetni(h: HamleHatasi): string | null {
   switch (h) {
     case 'ayniRenk':
-      return 'Aynı renk karışmaz.';
+      return t('Aynı renk karışmaz.', 'Same colors don’t mix.');
     case 'ortakBilesen':
-      return 'Ortak rengi olanlar karışmaz.';
+      return t('Ortak rengi olanlar karışmaz.', 'Colors with a shared base don’t mix.');
     case 'karisikKarisik':
-      return 'İki karışık renk karışmaz.';
+      return t('İki karışık renk karışmaz.', 'Two mixed colors don’t mix.');
     case 'murekkepKapali':
-      return 'Önce ham boyaları karıştır.';
+      return t('Önce ham boyaları karıştır.', 'Mix the base paints first.');
     case 'yag':
-      return 'Yağlı damla karışmaz.';
+      return t('Yağlı damla karışmaz.', 'Oily drops don’t mix.');
     default:
       return null;
   }
@@ -125,39 +133,47 @@ export const renkAdi = (r: number): string => RENK_TANIMLARI[r as KarisikRenk]?.
 /** Kaybettin: eksik hedef metni ("2 Mor eksikti"). */
 export function eksikMetni(eksikler: { tur: string; renk?: number; kalan: number }[]): string {
   const p: string[] = [];
+  const en = DIL === 'en';
+  const cogul = (n: number, tek: string, cok: string) => `${n} ${n === 1 ? tek : cok}`;
   for (const e of eksikler) {
     if (e.kalan <= 0) continue;
     if (e.tur === 'topla') p.push(`${e.kalan} ${renkAdi(e.renk ?? 0)}`);
-    else if (e.tur === 'kagit') p.push(`${e.kalan} kâğıt`);
-    else if (e.tur === 'desen') p.push(`${e.kalan} desen hücresi`);
-    else if (e.tur === 'puan') p.push(`${e.kalan} puan`);
+    else if (e.tur === 'kagit') p.push(en ? cogul(e.kalan, 'paper', 'papers') : `${e.kalan} kâğıt`);
+    else if (e.tur === 'desen') p.push(en ? cogul(e.kalan, 'pattern cell', 'pattern cells') : `${e.kalan} desen hücresi`);
+    else if (e.tur === 'puan') p.push(en ? `${e.kalan} points` : `${e.kalan} puan`);
   }
   if (!p.length) return '';
-  return `${p.join(' ve ')} eksikti`;
+  return en ? `${p.join(' and ')} still needed` : `${p.join(' ve ')} eksikti`;
 }
+
+/** "Bölüm 4" / "Level 4". */
+export const bolumEtiketi = (id: number): string => t(`Bölüm ${id}`, `Level ${id}`);
+
+/** Yıldız sayısı (ekran okuyucu): "2 yıldız" / "2 stars". */
+export const yildizEtiketi = (n: number): string => t(`${n} yıldız`, n === 1 ? '1 star' : `${n} stars`);
 
 /** Atölye adıyla bölüm künyesi: "Üsküdar · 4 · Kâğıda Al". */
 export function kunye(atolye: string, id: number, ad: string): string {
   return `${atolye} · ${id} · ${ad}`;
 }
 
-/** Bin ayraçlı sayı (1.250). */
+/** Bin ayraçlı sayı (Türkçe 1.250, İngilizce 1,250). */
 export function sayi(n: number): string {
   const s = String(Math.max(0, Math.round(n)));
-  return s.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return s.replace(/\B(?=(\d{3})+(?!\d))/g, DIL === 'en' ? ',' : '.');
 }
 
 /** Yeni öğe tanıtımları (bölüm öncesi kartı; GDD §12.2). */
 export const YENI_OGE: Record<number, { ad: string; metin: string; ikon: 'karisim' | 'mavi' | 'tarak' | 'kagit' | 'girdap' | 'lale' | 'mermer' | 'desen' | 'murekkep' | 'yag' | 'kit' }> = {
-  1: { ad: 'Karışım', metin: 'İki boyayı birbirine sürükle, yeni renk olsun.', ikon: 'karisim' },
-  2: { ad: 'Mavi boya', metin: 'Üç ham boya, üç karışık renk.', ikon: 'mavi' },
-  3: { ad: 'Tarak', metin: 'Dört damla bir arada: satırı ya da sütunu tarar.', ikon: 'tarak' },
-  4: { ad: 'Kâğıt', metin: 'Kâğıdın üstünde eşleştir, boya kâğıda geçsin.', ikon: 'kagit' },
-  5: { ad: 'Girdap', metin: 'Beş damla: çevresini yutar.', ikon: 'girdap' },
-  7: { ad: 'Lale', metin: 'Altı damla: bir rengin hepsini alır.', ikon: 'lale' },
-  8: { ad: 'Mermer', metin: 'Yanındaki eşleşmeyle çatlar.', ikon: 'mermer' },
-  9: { ad: 'Desen', metin: 'Her desen hücresi kendi rengini ister.', ikon: 'desen' },
-  11: { ad: 'Mürekkep', metin: 'Karışık + eksik ham boya: Mürekkep. Yanında eşleşme olunca patlar.', ikon: 'murekkep' },
-  13: { ad: 'Yağ', metin: 'Yağlı damla karışmaz. Üstünü temizle.', ikon: 'yag' },
-  16: { ad: 'Kıt renk', metin: 'Sarı yağmıyor. Elindekini iyi kullan.', ikon: 'kit' },
+  1: { ad: t('Karışım', 'Mix'), metin: t('İki boyayı birbirine sürükle, yeni renk olsun.', 'Drag one paint onto another: a new color appears.'), ikon: 'karisim' },
+  2: { ad: t('Mavi boya', 'Blue paint'), metin: t('Üç ham boya, üç karışık renk.', 'Three base paints, three mixed colors.'), ikon: 'mavi' },
+  3: { ad: t('Tarak', 'Comb'), metin: t('Dört damla bir arada: satırı ya da sütunu tarar.', 'Four drops together: combs a row or a column.'), ikon: 'tarak' },
+  4: { ad: t('Kâğıt', 'Paper'), metin: t('Kâğıdın üstünde eşleştir, boya kâğıda geçsin.', 'Match on the paper so the paint transfers.'), ikon: 'kagit' },
+  5: { ad: t('Girdap', 'Swirl'), metin: t('Beş damla: çevresini yutar.', 'Five drops: swallows its surroundings.'), ikon: 'girdap' },
+  7: { ad: t('Lale', 'Tulip'), metin: t('Altı damla: bir rengin hepsini alır.', 'Six drops: takes every drop of one color.'), ikon: 'lale' },
+  8: { ad: t('Mermer', 'Marble'), metin: t('Yanındaki eşleşmeyle çatlar.', 'Cracks when a match happens next to it.'), ikon: 'mermer' },
+  9: { ad: t('Desen', 'Pattern'), metin: t('Her desen hücresi kendi rengini ister.', 'Each pattern cell wants its own color.'), ikon: 'desen' },
+  11: { ad: t('Mürekkep', 'Ink'), metin: t('Karışık + eksik ham boya: Mürekkep. Yanında eşleşme olunca patlar.', 'Mixed + its missing base paint: Ink. Pops when a match happens next to it.'), ikon: 'murekkep' },
+  13: { ad: t('Yağ', 'Oil'), metin: t('Yağlı damla karışmaz. Üstünü temizle.', 'Oily drops don’t mix. Clear the drops around them.'), ikon: 'yag' },
+  16: { ad: t('Kıt renk', 'Scarce color'), metin: t('Sarı yağmıyor. Elindekini iyi kullan.', 'No yellow falls here. Use what you have wisely.'), ikon: 'kit' },
 };

@@ -5,10 +5,11 @@
  * üste binmez: `puanCubugu.ts`), tarif şeridi (dokununca açılır/katlanır),
  * Duraklat. Dikey telefonda üst/alt bant; masaüstünde sağ panel.
  */
+import { t as dilT } from '../platform/dil';
 import { h, svg } from './dom';
 import { IKON, YILDIZ_DOLU } from './ikonlar';
 import { damlaResmi, img } from './gorsel';
-import { M, renkAdi, sayi } from './metinler';
+import { M, bolumEtiketi, renkAdi, sayi } from './metinler';
 import { dugme, hedefIkonu, hedefKalan } from './ekranlar/ortak';
 import { puanOrani, yildizKonumlari } from './puanCubugu';
 import type { HedefVM, HudVM } from './tipler';
@@ -86,7 +87,7 @@ export class Hud {
     const ad = `${vm.atolyeAd} · ${vm.bolumId} · ${vm.ad}`;
     this.ad.textContent = ad;
     this.panelAd.textContent = '';
-    this.panelAd.append(h('small', { t: `${vm.atolyeAd} · Bölüm ${vm.bolumId}` }), h('b', { t: vm.ad }));
+    this.panelAd.append(h('small', { t: `${vm.atolyeAd} · ${bolumEtiketi(vm.bolumId)}` }), h('b', { t: vm.ad }));
     const [a, b, c] = yildizKonumlari(vm.esikler);
     [a, b, c].forEach((x, i) => this.isaretler[i].style.setProperty('--x', String(x)));
     this.puanDeger = vm.puan;
@@ -95,7 +96,7 @@ export class Hud {
     // Tarifler.
     this.tarifIc.textContent = '';
     for (const t of vm.tarifler) {
-      const cip = h('div', { s: 'e-cip', 'aria-label': `${renkAdi(t.a)} artı ${renkAdi(t.b)} eşittir ${renkAdi(t.sonuc)}` });
+      const cip = h('div', { s: 'e-cip', 'aria-label': dilT(`${renkAdi(t.a)} artı ${renkAdi(t.b)} eşittir ${renkAdi(t.sonuc)}`, `${renkAdi(t.a)} plus ${renkAdi(t.b)} makes ${renkAdi(t.sonuc)}`) });
       cip.append(img(damlaResmi(t.a, 20), 20), h('span', { s: 'e-arti', t: '+' }), img(damlaResmi(t.b, 20), 20), h('span', { s: 'e-esit', t: '=' }), img(damlaResmi(t.sonuc, 22), 22));
       this.tarifIc.appendChild(cip);
     }
@@ -112,10 +113,10 @@ export class Hud {
 
   private kartEtiketi(hd: HedefVM): string {
     const k = hedefKalan(hd);
-    if (hd.tur === 'topla') return `${k} ${renkAdi(hd.renk ?? 0)} kaldı`;
-    if (hd.tur === 'kagit') return `${k} kâğıt kaldı`;
-    if (hd.tur === 'desen') return `${k} desen hücresi kaldı`;
-    return `${k} puan kaldı`;
+    if (hd.tur === 'topla') return dilT(`${k} ${renkAdi(hd.renk ?? 0)} kaldı`, `${k} ${renkAdi(hd.renk ?? 0)} left`);
+    if (hd.tur === 'kagit') return dilT(`${k} kâğıt kaldı`, k === 1 ? '1 paper left' : `${k} papers left`);
+    if (hd.tur === 'desen') return dilT(`${k} desen hücresi kaldı`, k === 1 ? '1 pattern cell left' : `${k} pattern cells left`);
+    return dilT(`${k} puan kaldı`, `${k} points left`);
   }
 
   tarifAc(ac: boolean, anim = true): void {

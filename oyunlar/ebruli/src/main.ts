@@ -7,6 +7,7 @@ import './style.css';
 import { yaziTipiniGom } from './ui/yazitipi';
 import { bootWithHot } from './platform/hot';
 import { Uygulama } from './app/uygulama';
+import { DIL } from './platform/dil';
 
 declare global {
   interface Window {
@@ -19,6 +20,8 @@ declare global {
 }
 
 window.__ebruliAcildi = true;
+// Dil: CSS büyük harfi (i → İ / I) ve ekran okuyucu için.
+document.documentElement.lang = DIL;
 
 // Gömülü yazı tipi ilk çizimden önce (GDD §11.5: çalışma anında ağ isteği yok).
 const yaziHazir = yaziTipiniGom();

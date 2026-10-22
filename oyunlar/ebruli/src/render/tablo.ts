@@ -14,6 +14,7 @@
  * yuvası (Girdap: iç içe damlalar + girdap), çiçek ebrusu (Lale ya da desen
  * hedefi: lale / karanfil, biz çekmeyle), is serpintisi (Mürekkep).
  */
+import { t } from '../platform/dil';
 import type { TabloCizici, TabloIstegi, TabloSonucu } from '../app/sozlesme';
 import type { Renk, Teknik, TemizlikKaydi } from '../core/types';
 import { ATOLYELER, PALET, TEKNIKLER } from '../app/katalog';
@@ -233,7 +234,7 @@ export function tabloPlani(istek: TabloIstegi): TabloPlani {
   const oncelik: Teknik[] = ['sal', 'cicek', 'bulbulYuvasi', 'tarakli', 'gelgit', 'battal'];
   const bas = oncelik.find((t) => teknik.has(t)) ?? 'battal';
   const ad = TEKNIKLER.find((t) => t.id === bas)!.ad;
-  const kunye = `${atolye.ad} · Bölüm ${istek.bolumId} · ${ad}`;
+  const kunye = `${atolye.ad} · ${t(`Bölüm ${istek.bolumId}`, `Level ${istek.bolumId}`)} · ${ad}`;
   return { islemler, teknikler, nadirlik, zemin, kunye, tohum: istek.tohum };
 }
 

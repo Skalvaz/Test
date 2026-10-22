@@ -16,10 +16,11 @@
 /* Yedek ekran: oyunun kodu hiç çalışmazsa (dosya önizleyicileri, Android
    "HTML Görüntüleyici") ya da 5 sn içinde açılamazsa görünür (FİTİL dersi 2). */
 #jsyok{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:#0B2B2E;color:#1E1A16;font:500 17px/1.45 "Segoe UI",system-ui,sans-serif;padding:max(24px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));text-align:left;-webkit-user-select:text;user-select:text}
-#jsyok>div{max-width:30em;background:#F3E9D2;border:2px solid #C9A227;border-radius:10px;padding:20px 22px;box-shadow:0 0 0 6px #3B2416}
+#jsyok>div{max-width:30em;max-height:100%;overflow:auto;background:#F3E9D2;border:2px solid #C9A227;border-radius:10px;padding:20px 22px;box-shadow:0 0 0 6px #3B2416}
 #jsyok h1{margin:0 0 .3em;font:700 40px/1.1 "Iowan Old Style","Palatino Linotype",Georgia,serif;letter-spacing:.02em;color:#3B2416}
 #jsyok p{margin:.6em 0}
 #jsyok b{color:#8A6D12}
+#jsyok hr{border:0;border-top:1px solid #C9A227;margin:1em 0}
 .js #jsyok{display:none}
 </style>
 <script>
@@ -33,6 +34,12 @@ setTimeout(function(){if(!window.__ebruliAcildi)document.documentElement.classLi
 <p>Oyun bu ekranda açılamadı. Dosya büyük ihtimalle bir <b>önizleme</b> ekranında açıldı; önizlemeler oyunun kodunu çalıştırmaz.</p>
 <p><b>Android:</b> dosyaya dokun, «Birlikte aç» de ve <b>Chrome</b>'u seç. Dosya indirildiyse Dosyalar uygulamasında uzun bas, «Birlikte aç → Chrome».</p>
 <p><b>iPhone:</b> dosya önizlemesinde çalışmaz. Bu bağlantıyı Safari'de aç:<br><a href="https://claude.ai/artifact/6MV9JE4wa3u1ChCCkS7wma">https://claude.ai/artifact/6MV9JE4wa3u1ChCCkS7wma</a></p>
+<hr>
+<div lang="en">
+<p>The game couldn’t open here. The file was most likely opened in a <b>preview</b> screen; previews don’t run the game.</p>
+<p><b>Android:</b> tap the file, choose «Open with» and pick <b>Chrome</b>. If it was downloaded, long-press it in the Files app, then «Open with → Chrome».</p>
+<p><b>iPhone:</b> it won’t run in a file preview. Open the link above in Safari.</p>
+</div>
 </div></div>
 <div id="app"></div>
 <script type="module" src="./src/main.ts"></script>

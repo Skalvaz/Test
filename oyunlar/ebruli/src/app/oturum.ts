@@ -37,7 +37,7 @@ import { titresimDeseni } from '../input/titresim';
 import type { Stage } from '../render/stage';
 import type { Arayuz, HedefVM, HudVM, KaybettinKontrol } from '../ui/arayuz';
 import { yerlesimHesapla, type Yerlesim } from '../ui/yerlesim';
-import { eksikMetni, hataMetni, M } from '../ui/metinler';
+import { bolumEtiketi, eksikMetni, hataMetni, M } from '../ui/metinler';
 import { ATOLYELER, TARIFLER, tabloTohumu } from './katalog';
 import type { TabloIstegi } from './sozlesme';
 import { balonGoruldu, bolumBitti, bolumKaydi, gunlukKodla, tabloSakla, ustaEliOnerilir, type TabloKaydi } from '../meta/index';
@@ -541,7 +541,7 @@ export class Oturum {
     b.ui.balonKapat();
     b.girdi.sifirla();
     b.ekran('duraklat');
-    const s = await b.ui.duraklat(`${ATOLYELER.find((a) => a.id === this.v!.atolye)?.ad ?? ''} · Bölüm ${this.v!.id}`);
+    const s = await b.ui.duraklat(`${ATOLYELER.find((a) => a.id === this.v!.atolye)?.ad ?? ''} · ${bolumEtiketi(this.v!.id)}`);
     if (n !== this.nesil) return;
     b.ekran('oyun');
     if (s === 'ayarlar') {

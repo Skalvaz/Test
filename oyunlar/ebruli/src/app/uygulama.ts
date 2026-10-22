@@ -11,6 +11,7 @@
  *
  * Test kancası `window.__ebruli` (GDD §13.6) `testKancasi()`'nda.
  */
+import { dilKaydet } from '../platform/dil';
 import { Stage } from '../render/stage';
 import { oyunCiziciOlustur, type OyunCiziciTam } from '../render/oyunCizici';
 import { tabloCiziciOlustur, type TabloCiziciTam } from '../render/tablo';
@@ -21,7 +22,7 @@ import { prefGet } from '../platform/storage';
 import { bolumuYukle, type BolumVerisi, type Renk } from '../core/index';
 import { Arayuz, type AyarlarVM, type BolumOncesiVM, type GaleriVM, type HaritaVM, type HedefVM } from '../ui/arayuz';
 import { gorselAyarla } from '../ui/gorsel';
-import { YENI_OGE } from '../ui/metinler';
+import { M, YENI_OGE } from '../ui/metinler';
 import { bekle } from '../ui/dom';
 import { yerlesimHesapla } from '../ui/yerlesim';
 import { BOLUMLER, bolumBul, SON_BOLUM } from '../levels/index';
@@ -213,7 +214,7 @@ export class Uygulama {
     await this.ui.acilis(() => this.sesAc());
     if (!this.bellekUyarildi && this.kayitci.arka === 'bellek') {
       this.bellekUyarildi = true;
-      setTimeout(() => this.ui.bilgi(this.kayitci.arka === 'bellek' ? 'Kayıt bu tarayıcıda tutulamıyor; ilerleme sayfa kapanınca kaybolur.' : '', 4200), 1200);
+      setTimeout(() => this.ui.bilgi(this.kayitci.arka === 'bellek' ? M.kayitBellek : '', 4200), 1200);
     }
     const ilk: Hedef = meta.ilkOturum(this.kayit) ? { tur: 'bolum', id: 1 } : { tur: 'harita', odak: meta.siradakiBolum(this.kayit) };
     void this.akis(ilk);
@@ -414,6 +415,16 @@ export class Uygulama {
     return this.katman('ayarlar', () =>
       this.ui.ayarlar(this.ayarlarVM(), {
         degisti: (y) => this.ayarUygula(y),
+        dil: (d) => {
+          // Bütün metinler sayfa açılırken kurulur: kaydı hemen yaz, seçimi cihaza yaz, yeniden yükle.
+          this.kayitci.yaz();
+          dilKaydet(d);
+          try {
+            window.location.reload();
+          } catch {
+            /* yeniden yükleme engelli: seçim bir sonraki açılışta geçerli */
+          }
+        },
         nasil: () => void this.nasilAc(),
         sifirla: () => {
           this.kayitci.degistir(meta.ilerlemeSifirla(this.kayit, meta.varsayilanKayit()), true);

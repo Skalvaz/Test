@@ -1,0 +1,125 @@
+{
+ "1": {
+  "ad": "First Drop",
+  "sonrakiTanitim": "Next: Blue paint!",
+  "ipuclari": [
+   "Drag red onto yellow.",
+   "When 3 of a color touch, it goes onto the paper!",
+   "Drag the glowing drop onto its neighbor.",
+   "This painting is yours. Added to your gallery."
+  ]
+ },
+ "2": {
+  "ad": "Color Wheel",
+  "sonrakiTanitim": "Next: Comb!",
+  "ipuclari": [
+   "Blue is here: three recipes, three colors.",
+   "Green = Yellow + Blue.",
+   "Drag the glowing drop onto its neighbor."
+  ]
+ },
+ "3": {
+  "ad": "Comb",
+  "sonrakiTanitim": "Next: Paper!",
+  "ipuclari": [
+   "Four drops: a COMB is born.",
+   "The drop above slides into the gap.",
+   "Drag the comb onto a neighbor."
+  ]
+ },
+ "4": {
+  "ad": "Onto the Paper",
+  "sonrakiTanitim": "Next: Swirl!",
+  "ipuclari": [
+   "Match on the paper so the paint transfers."
+  ]
+ },
+ "5": {
+  "ad": "Swirl",
+  "sonrakiTanitim": "Next: Double paper!",
+  "ipuclari": [
+   "Five drops: SWIRL. It swallows its surroundings.",
+   "Drag the swirl onto a neighbor."
+  ]
+ },
+ "6": {
+  "ad": "Two Layers",
+  "sonrakiTanitim": "Next: Tulip!"
+ },
+ "7": {
+  "ad": "Tulip",
+  "sonrakiTanitim": "Next: Marble!",
+  "ipuclari": [
+   "Six drops: TULIP. It takes every drop of one color.",
+   "Drag two special pieces onto each other!"
+  ]
+ },
+ "8": {
+  "ad": "Marble",
+  "sonrakiTanitim": "Next: Tulip pattern!",
+  "ipuclari": [
+   "Marble cracks when a match happens next to it."
+  ]
+ },
+ "9": {
+  "ad": "Tulip Pattern",
+  "sonrakiTanitim": "Next: Üsküdar Tulip!",
+  "ipuclari": [
+   "Each pattern cell wants its own color."
+  ]
+ },
+ "10": {
+  "ad": "Üsküdar Tulip",
+  "sonrakiTanitim": "Next: Bursa, the silk inn!"
+ },
+ "11": {
+  "ad": "Black Ink",
+  "sonrakiTanitim": "Next: Silk Road",
+  "ipuclari": [
+   "When all three colors meet: Ink.",
+   "It pops when a match happens next to it."
+  ]
+ },
+ "12": {
+  "ad": "Silk Road",
+  "sonrakiTanitim": "Next: Oil stain!"
+ },
+ "13": {
+  "ad": "Oil Stain",
+  "sonrakiTanitim": "Next: Soap Inn",
+  "ipuclari": [
+   "Oily drops don’t mix. Clear the drops around them."
+  ]
+ },
+ "14": {
+  "ad": "Soap Inn",
+  "sonrakiTanitim": "Next: Cocoon"
+ },
+ "15": {
+  "ad": "Cocoon",
+  "sonrakiTanitim": "Next: No yellow falls!"
+ },
+ "16": {
+  "ad": "No Yellow Falls",
+  "sonrakiTanitim": "Next: Carnation pattern!",
+  "ipuclari": [
+   "No yellow falls. Use what you have wisely."
+  ]
+ },
+ "17": {
+  "ad": "Carnation",
+  "sonrakiTanitim": "Next: Master’s Work"
+ },
+ "18": {
+  "ad": "Master’s Work",
+  "sonrakiTanitim": "Next: Shawl"
+ },
+ "19": {
+  "ad": "Shawl",
+  "sonrakiTanitim": "Next: Bursa Carnation"
+ },
+ "20": {
+  "ad": "Bursa Carnation",
+  "sonrakiTanitim": "The Cappadocia, Aegean and Palace workshops are on their way."
+ }
+}

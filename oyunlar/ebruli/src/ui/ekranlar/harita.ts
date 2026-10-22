@@ -9,10 +9,11 @@
  * Düğüme dokunmak bölüm öncesi kartını haritanın üstünde açar; harita
  * yalnız "Başla" ile çözülür (galeri/ayarlar da harita açıkken üstte açılır).
  */
+import { t } from '../../platform/dil';
 import { h, svg } from '../dom';
 import { IKON, KARANFIL, LALE, RUMI, SILUET, YILDIZ_DOLU } from '../ikonlar';
 import { damlaResmi, img } from '../gorsel';
-import { M } from '../metinler';
+import { M, bolumEtiketi, yildizEtiketi } from '../metinler';
 import { dugme, tabloResmi, yildizSirasi } from './ortak';
 import type { EkranYoneticisi } from './cekirdek';
 import type { HaritaAtolyeVM, HaritaBolumVM, HaritaVM } from '../tipler';
@@ -60,7 +61,7 @@ function dugum(b: HaritaBolumVM, k: { x: number; y: number }, sec: (id: number) 
     s: sinif,
     type: 'button',
     'data-id': String(b.id),
-    'aria-label': b.acik ? `Bölüm ${b.id}: ${b.ad}${b.kazanildi ? `, ${b.yildiz} yıldız` : ''}` : `Bölüm ${b.id}: ${M.kilitli}`,
+    'aria-label': b.acik ? `${bolumEtiketi(b.id)}: ${b.ad}${b.kazanildi ? `, ${yildizEtiketi(b.yildiz)}` : ''}` : `${bolumEtiketi(b.id)}: ${M.kilitli}`,
     css: { left: `${k.x}%`, top: `${k.y}px` },
   });
   el.appendChild(img(damlaResmi(b.renk, 76, 'yok', 'yatay', true), 76, 'e-dugum-damla'));
@@ -91,7 +92,7 @@ function sayfa(a: HaritaAtolyeVM, sec: (id: number) => void): HTMLElement {
   motif2.classList.add('e-sayfa-motif', 'sag');
   const rumi = svg(RUMI);
   rumi.classList.add('e-rumi');
-  const serit = h('div', { s: 'e-serit', 'aria-label': `${a.ad} tabloları` });
+  const serit = h('div', { s: 'e-serit', 'aria-label': t(`${a.ad} tabloları`, `${a.ad} paintings`) });
   const kazanilan = new Map(a.tablolar.map((t) => [t.id, t]));
   for (const b of a.bolumler) {
     const t = kazanilan.get(b.id);
@@ -151,7 +152,7 @@ export function haritaEkrani(y: EkranYoneticisi, vm: HaritaVM, geri: HaritaGeri)
       'header',
       { s: 'e-harita-ust' },
       h('div', { s: 'e-logo', t: M.oyunAdi }),
-      h('div', { s: 'e-toplam', 'aria-label': `${vm.toplamYildiz} yıldız` }, yildiz, h('b', { t: String(vm.toplamYildiz) }), h('small', { t: `/ ${vm.enCokYildiz}` })),
+      h('div', { s: 'e-toplam', 'aria-label': yildizEtiketi(vm.toplamYildiz) }, yildiz, h('b', { t: String(vm.toplamYildiz) }), h('small', { t: `/ ${vm.enCokYildiz}` })),
     );
     const rulo = h('div', { s: 'e-rulo' });
     for (const a of vm.atolyeler) rulo.appendChild(sayfa(a, (id) => void sec(id)));

@@ -3,6 +3,7 @@
  * Yön, Özel taşlar, Engeller (açılmış olanlar). Altta: "Tekne cömerttir".
  * Canlandırmalar CSS (transform/opacity); damlalar oyunun çizim tarifinden.
  */
+import { t } from '../../platform/dil';
 import { h, svg } from '../dom';
 import { RUMI } from '../ikonlar';
 import { damlaResmi, desenResmi, img, kagitResmi, mermerResmi, yagResmi, type Resim } from '../gorsel';
@@ -36,32 +37,32 @@ export function nasilEkrani(y: EkranYoneticisi, vm: NasilVM): Promise<void> {
     for (const t of TARIFLER) tarifler.appendChild(h('span', { s: 'e-cip' }, img(damlaResmi(t.a, 20), 20), h('i', { t: '+' }), img(damlaResmi(t.b, 20), 20), h('i', { t: '=' }), img(damlaResmi(t.sonuc, 22), 22)));
     const ring = (): HTMLElement => h('i', { s: 'e-n-halka' });
     const kartlar: [string, string, HTMLElement, HTMLElement | null][] = [
-      ['Karıştır', 'Bir ham boyayı farklı bir ham boyaya sürükle: yeni renk hedefte doğar.', sahne('karistir', dimg(1, 'a'), dimg(2, 'b'), dimg(3, 'c'), ring()), tarifler],
-      ['Eşleştir', 'Aynı karışık renkten 3 damla değince boya suya açılır ve kâğıda geçer. Ham boyalar eşleşmez.', sahne('eslestir', dimg(3, 'a'), dimg(3, 'b'), dimg(3, 'c'), ring(), ring(), ring()), null],
-      ['Yön', 'Sonuç hedefte doğar; kaynak boşalır, üstündeki damlalar bir hücre iner.', sahne('yon', dimg(5, 'u1'), dimg(4, 'u2'), dimg(1, 'k'), dimg(2, 'h'), dimg(3, 's')), null],
+      [t('Karıştır', 'Mix'), t('Bir ham boyayı farklı bir ham boyaya sürükle: yeni renk hedefte doğar.', 'Drag a base paint onto a different base paint: the new color appears where you drop it.'), sahne('karistir', dimg(1, 'a'), dimg(2, 'b'), dimg(3, 'c'), ring()), tarifler],
+      [t('Eşleştir', 'Match'), t('Aynı karışık renkten 3 damla değince boya suya açılır ve kâğıda geçer. Ham boyalar eşleşmez.', 'When 3 drops of the same mixed color touch, the paint spreads on the water and transfers to the paper. Base paints don’t match.'), sahne('eslestir', dimg(3, 'a'), dimg(3, 'b'), dimg(3, 'c'), ring(), ring(), ring()), null],
+      [t('Yön', 'Direction'), t('Sonuç hedefte doğar; kaynak boşalır, üstündeki damlalar bir hücre iner.', 'The result appears at the target; the source empties and the drops above it slide down one cell.'), sahne('yon', dimg(5, 'u1'), dimg(4, 'u2'), dimg(1, 'k'), dimg(2, 'h'), dimg(3, 's')), null],
       [
-        'Özel taşlar',
-        '4 damla Tarak, 5 damla Girdap, 6 damla Lale doğurur. Özel taşı bir komşuya sürükle; iki özel taşı birbirine sürükle!',
+        t('Özel taşlar', 'Special pieces'),
+        t('4 damla Tarak, 5 damla Girdap, 6 damla Lale doğurur. Özel taşı bir komşuya sürükle; iki özel taşı birbirine sürükle!', '4 drops make a Comb, 5 a Swirl, 6 a Tulip. Drag a special piece onto a neighbor, or two special pieces onto each other!'),
         h(
           'div',
           { s: 'e-n-ogeler' },
-          oge(damlaResmi(5, D, 'tarak'), '4: Tarak', true),
-          oge(damlaResmi(6, D, 'girdap'), '5: Girdap', vm.acik.has('girdap')),
-          oge(damlaResmi(0, D, 'lale'), '6: Lale', vm.acik.has('lale')),
-          oge(damlaResmi(7, D, 'murekkep'), 'Mürekkep', vm.acik.has('murekkep')),
+          oge(damlaResmi(5, D, 'tarak'), t('4: Tarak', '4: Comb'), true),
+          oge(damlaResmi(6, D, 'girdap'), t('5: Girdap', '5: Swirl'), vm.acik.has('girdap')),
+          oge(damlaResmi(0, D, 'lale'), t('6: Lale', '6: Tulip'), vm.acik.has('lale')),
+          oge(damlaResmi(7, D, 'murekkep'), t('Mürekkep', 'Ink'), vm.acik.has('murekkep')),
         ),
         null,
       ],
       [
-        'Engeller',
-        'Kâğıdın üstünde eşleştir; mermer yanındaki eşleşmeyle çatlar; yağlı damla karışmaz; desen hücresi kendi rengini ister.',
+        t('Engeller', 'Obstacles'),
+        t('Kâğıdın üstünde eşleştir; mermer yanındaki eşleşmeyle çatlar; yağlı damla karışmaz; desen hücresi kendi rengini ister.', 'Match on the paper; marble cracks when a match happens next to it; oily drops don’t mix; a pattern cell wants its own color.'),
         h(
           'div',
           { s: 'e-n-ogeler' },
-          oge(kagitResmi(D), 'Kâğıt', vm.acik.has('kagit')),
-          oge(mermerResmi(D, 2), 'Mermer', vm.acik.has('mermer')),
-          oge(yagResmi(D), 'Yağ', vm.acik.has('yag')),
-          oge(desenResmi(D, 5), 'Desen', vm.acik.has('desen')),
+          oge(kagitResmi(D), t('Kâğıt', 'Paper'), vm.acik.has('kagit')),
+          oge(mermerResmi(D, 2), t('Mermer', 'Marble'), vm.acik.has('mermer')),
+          oge(yagResmi(D), t('Yağ', 'Oil'), vm.acik.has('yag')),
+          oge(desenResmi(D, 5), t('Desen', 'Pattern'), vm.acik.has('desen')),
         ),
         null,
       ],

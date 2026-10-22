@@ -24,6 +24,7 @@ export const IKON = {
   titresim: C('<rect x="8" y="4" width="8" height="16" rx="2"/><path d="M4.5 9v6M19.5 9v6"/>'),
   hareket: C('<path d="M4 12h10M4 7h6M4 17h8"/><path d="M17 8l4 4-4 4"/>'),
   hiz: C('<path d="M5 6l6 6-6 6M12 6l6 6-6 6"/>'),
+  dil: C('<circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2M12 3.4c2.4 2.4 3.4 5.4 3.4 8.6s-1 6.2-3.4 8.6c-2.4-2.4-3.4-5.4-3.4-8.6s1-6.2 3.4-8.6z"/>'),
   palet: C('<path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.4 0 1.9-1 1.5-2.1-.5-1.3.4-2.4 1.8-2.4H17a3.5 3.5 0 0 0 3.5-3.5C20.5 7.2 16.7 3.5 12 3.5z"/><circle cx="8" cy="10.5" r="1.2" fill="currentColor"/><circle cx="11.5" cy="7.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="9" r="1.2" fill="currentColor"/>'),
   motif: C('<circle cx="7" cy="8" r="1.8" fill="currentColor"/><circle cx="17" cy="8" r="3"/><path d="M4 17c1.6-1.4 3.2-1.4 4.8 0s3.2 1.4 4.8 0 3.2-1.4 4.8 0"/>'),
   ipucu: C('<path d="M9 17h6M10 20h4"/><path d="M12 3.5a5.5 5.5 0 0 0-3.2 10c.6.5 1 1.1 1 1.8v.2h4.4v-.2c0-.7.4-1.3 1-1.8A5.5 5.5 0 0 0 12 3.5z"/>'),

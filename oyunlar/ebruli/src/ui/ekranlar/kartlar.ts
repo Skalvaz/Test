@@ -1,10 +1,11 @@
 /**
  * Kart ekranları: bölüm öncesi (GDD §12.3 #3), duraklat (#5), bilgi kartı.
  */
+import { t } from '../../platform/dil';
 import { h, svg } from '../dom';
 import { RUMI } from '../ikonlar';
 import { damlaResmi, desenResmi, img, kagitResmi, mermerResmi, yagResmi, type Resim } from '../gorsel';
-import { M, sayi } from '../metinler';
+import { M, bolumEtiketi, sayi } from '../metinler';
 import { dugme, hedefIkonu, hedefMetni, kart, tabloResmi, yildizSirasi } from './ortak';
 import type { EkranYoneticisi } from './cekirdek';
 import type { BolumOncesiVM, DuraklatSecimi } from '../tipler';
@@ -82,7 +83,7 @@ export function bolumOncesiEkrani(y: EkranYoneticisi, vm: BolumOncesiVM): Promis
     return kart(
       'e-bo-kart',
       kapat,
-      h('div', { s: 'e-ust-bilgi', t: `${vm.atolyeAd} · Bölüm ${vm.id}${vm.tur === 'zor' ? ' · zor' : ''}` }),
+      h('div', { s: 'e-ust-bilgi', t: `${vm.atolyeAd} · ${bolumEtiketi(vm.id)}${vm.tur === 'zor' ? ` · ${t('zor', 'hard')}` : ''}` }),
       h('h2', { t: vm.ad }),
       rumi(),
       govde,

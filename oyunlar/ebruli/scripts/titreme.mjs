@@ -775,7 +775,7 @@ async function ciziciYakala(page) {
 async function profilKos(browser, p) {
   const dir = join(OUT, p.ad);
   mkdirSync(dir, { recursive: true });
-  const ctx = await browser.newContext({ viewport: { width: p.w, height: p.h }, deviceScaleFactor: p.dpr, isMobile: p.mobil, hasTouch: true, userAgent: p.ua });
+  const ctx = await browser.newContext({ locale: 'tr-TR', viewport: { width: p.w, height: p.h }, deviceScaleFactor: p.dpr, isMobile: p.mobil, hasTouch: true, userAgent: p.ua });
   const page = await ctx.newPage();
   const hatalar = [];
   page.on('pageerror', (e) => hatalar.push(`pageerror: ${e.message}`));

@@ -5,8 +5,24 @@ bulmaca, **deneme sürümü** (20 bölüm, 2 atölye). Asıl ürün FİTİL'dir
 (`oyunlar/fitil`, ona DOKUNMA; örnek olarak okunabilir). Canvas 2D + DOM +
 TypeScript + Vite, kendi package.json'ı. Kök CLAUDE.md'deki turbofan maddeleri
 burada geçerli değil; dil ve commit kuralları geçerli: kullanıcıyla, kod
-yorumlarında, commit mesajlarında ve arayüz metinlerinde Türkçe. Emoji yok;
-ikonlar satır içi SVG.
+yorumlarında ve commit mesajlarında Türkçe. Emoji yok; ikonlar satır içi SVG.
+
+- Dil (Ekim 2026, FİTİL'le aynı altyapı): arayüz Türkçe + İngilizce.
+  `src/platform/dil.ts` sayfa dilini açılışta BİR KEZ belirler (`?dil=`,
+  cihazda `ebruli-dil`; yoksa kaydı olan eski oyuncu Türkçe, yeni oyuncu
+  cihaz dili) ve yazar; Ayarlar > Dil değişince kayıt yazılır, sayfa yeniden
+  yüklenir. Metinler yerinde `t('Türkçe', 'English')`; Türkçe çıktı birebir
+  korunur. Bölüm metinleri `src/levels/metin.en.json` (`levels/metin.ts`).
+  Terimler: ebru → marbling, tablo → painting, ham boya → base paint,
+  karışık → mixed, Tarak/Girdap/Lale/Mürekkep → Comb/Swirl/Tulip/Ink,
+  Ebru Defteri → Marbling Album, Usta'nın Eli → Master's Hand. Yeni metni
+  iki dilde yaz. Denetim: `src/dil/en.test.ts`, `node scripts/dil-tara.mjs
+  <url> <klasör>` (oyunu ?dil=en ile gezer, 0 kalıntı). Playwright araçları
+  `locale: 'tr-TR'` ile açılır.
+- Okunaklılık (Ekim 2026, FİTİL kuralı): en küçük oyuncu yazısı ~15 px,
+  önemli satır 17–22 px (`stil/arayuz.css` sonundaki blok). Bölüm kartı:
+  hedefler + hamle büyük yazılı tek liste, tek büyük Oyna, köşede X (Geri
+  yok). HUD hamle mührü yalnız sayı.
 
 - Tasarım belgesi: `docs/GDD.md` (bağlayıcı; § numaralarıyla atıf yap). §0
   karar günlüğü ve kural simülasyonu: kuralı değiştirmeden önce oku.
