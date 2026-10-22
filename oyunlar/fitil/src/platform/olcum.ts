@@ -85,6 +85,11 @@ export class Olcum {
     return this.k.olaylar;
   }
 
+  /** İlk açılış zamanı (ms; halka günlükten düşen olaylardan bağımsız). */
+  ilkAcilis(): number {
+    return this.k.ilk;
+  }
+
   /** Bekleyen yazımı hemen yap (sayfa kapanırken). */
   yaz(): void {
     if (this.yazZamanlayici) clearTimeout(this.yazZamanlayici);

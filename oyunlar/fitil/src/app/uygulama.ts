@@ -17,6 +17,7 @@
  * harita ilk kazancın ödülü olarak, fitil 2. bölüme yanarak açılır.
  */
 import { olcum, olcumOlayi, olcumOzeti } from '../platform/olcum';
+import { oyunOzetiVM } from './oyunOzeti';
 import { dilKaydet, t } from '../platform/dil';
 import { Stage } from '../render/stage';
 import { oyunCiziciOlustur, type OyunCiziciTam } from '../render/oyunCizici';
@@ -455,6 +456,9 @@ export class Uygulama {
       case 'ayarlar':
         await this.ayarlarAc();
         return;
+      case 'oyunOzeti':
+        await this.ayarlarAc(true);
+        return;
       case 'nasil':
         this.ekranAdi = 'nasil';
         await this.ui.nasilOynanir(nasilVM(this.kayit));
@@ -773,13 +777,25 @@ export class Uygulama {
     await this.ui.defter(defterVM(this.kayit, 'desenler'));
   }
 
-  async ayarlarAc(): Promise<void> {
+  /** Ayarlar (haritadan ya da Duraklat'tan). `ozetle`: üstünde Oyun özeti de açılır (test kancası). */
+  async ayarlarAc(ozetle = false): Promise<void> {
     const onceki = this.ekranAdi;
     this.ekranAdi = 'ayarlar';
-    await this.ui.ayarlar(ayarlarVM(this.kayit, this.kayitci.depo.backend, sistemAzHareket(), SURUM), {
+    let acik = true;
+    // Oyun özeti Ayarlar'ın üstünde açılır; kapanınca Ayarlar'a döner (Ayarlar programlı kapandıysa dönmez).
+    const ozetAc = async () => {
+      this.ekranAdi = 'oyunOzeti';
+      await this.ui.oyunOzeti(oyunOzetiVM(olcum.olaylar(), Date.now(), olcum.ilkAcilis()));
+      if (acik) this.ekranAdi = 'ayarlar';
+    };
+    const p = this.ui.ayarlar(ayarlarVM(this.kayit, this.kayitci.depo.backend, sistemAzHareket(), SURUM), {
       nasilAc: () => void this.ui.nasilOynanir(nasilVM(this.kayit)),
       defterKartiAc: (m, tur) => void this.ui.defterKarti({ mahalle: m, oduller: [], tur }),
+      oyunOzetiAc: () => void ozetAc(),
     });
+    if (ozetle) void ozetAc();
+    await p;
+    acik = false;
     this.ekranAdi = onceki;
   }
 
@@ -1043,7 +1059,7 @@ export class Uygulama {
         const tohum = (d: OyunDurumu) => (d.hamleNo * 2654435761) >>> 0;
         return this.oturum.botHamlesi((d, izin) => (tur === 'acemi' ? acemiSec(d, tohum(d), { izin }) : ustaSec(d, tohum(d), { izin, tamCozum: 24 })));
       },
-      /** Ekranı kilitlerden bağımsız aç (test): 'gunluk' | 'defter' | 'ayarlar' | 'istatistik' | 'nasil' | 'sonsuz'. */
+      /** Ekranı kilitlerden bağımsız aç (test): 'gunluk' | 'defter' | 'ayarlar' | 'istatistik' | 'nasil' | 'sonsuz' | 'kasaba' | 'oyunOzeti' (Ayarlar + üstünde özet). */
       ac: (ekran: string) => {
         this.istek = { tur: 'ekran', ekran: { tur: ekran } as HaritaSecimi };
         this.oturum.cik();

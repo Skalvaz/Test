@@ -17,7 +17,7 @@ mkdirSync(cikti, { recursive: true });
 const EKRANLAR = [
   'acilis', 'harita', 'bolumOncesi', 'bolumOncesi&v=m', 'bolumOncesi&v=mi', 'hud', 'hud&v=muhur', 'ucus', 'kasaba', 'kasaba&ogretim=1', 'haritaBalon',
   'kasabaKarti&m=0', 'kasabaKarti&m=3', 'secim', 'duraklat', 'duraklat&v=m', 'kazandin', 'kazandin&v=m', 'kazandin&v=mt', 'kazandin&v=mk', 'kazandin&v=me',
-  'kaybettin', 'ayarlar', 'nasil', 'defter', 'gunluk', 'istatistik', 'mola', 'defterKarti', 'sandik', 'balon', 'bant', 'kutlama', 'toast',
+  'kaybettin', 'ayarlar', 'oyunOzeti', 'oyunOzeti&v=bos', 'nasil', 'defter', 'gunluk', 'istatistik', 'mola', 'defterKarti', 'sandik', 'balon', 'bant', 'kutlama', 'toast',
 ];
 
 // Türkçe harfler ve harfsiz sık sözcükler (bütün sözcük, büyük/küçük harf duyarsız).

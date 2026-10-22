@@ -38,6 +38,7 @@ import { nasilEkrani } from './ekranlar/nasil';
 import { defterEkrani } from './ekranlar/defter';
 import { gunlukEkrani } from './ekranlar/gunluk';
 import { istatistikEkrani } from './ekranlar/istatistik';
+import { oyunOzetiEkrani } from './ekranlar/oyunOzeti';
 import { molaEkrani, defterKartiEkrani, sandikEkrani } from './ekranlar/kucukler';
 import { kasabaEkrani } from './ekranlar/kasaba';
 import { beklemeEkrani, eksenSecici, type BeklemeTutamak } from './ekranlar/ek';
@@ -69,6 +70,7 @@ import type {
   KazandinVM,
   MolaSecimi,
   NasilVM,
+  OyunOzetiVM,
   Palet,
   ReaksiyonKademesi,
   SandikVM,
@@ -358,11 +360,17 @@ export class Arayuz {
     return this.ac(
       ayarlarEkrani(this.b, vm, {
         nasilAc: ek.nasilAc,
+        oyunOzetiAc: ek.oyunOzetiAc,
         defterKartiAc: ek.defterKartiAc ?? ((m, tur) => void this.defterKarti({ mahalle: m, oduller: [], tur })),
         yerelUygula,
         dilDegisti: (d) => this.b.geri.dilDegisti?.(d),
       }),
     );
+  }
+
+  /** Oyun özeti (Ayarlar > Oyun özeti): Ayarlar'ın üstünde açılır, Kapat/Esc ile Ayarlar'a döner. */
+  oyunOzeti(vm: OyunOzetiVM): Promise<void> {
+    return this.ac(oyunOzetiEkrani(this.b, vm));
   }
 
   nasilOynanir(vm: NasilVM): Promise<void> {

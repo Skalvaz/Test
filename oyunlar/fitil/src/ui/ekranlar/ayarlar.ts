@@ -5,7 +5,7 @@
  */
 import { h, panoyaKopyala, metniSec, sistemAzHareket } from '../dom';
 import { ikon, kapsulSvg, tanimlariKur } from '../ikonlar';
-import { M, MK, DEFTER_KARTLARI } from '../metinler';
+import { M, MK, MO, DEFTER_KARTLARI } from '../metinler';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { satir, kasabaKartSatirlari } from './ortak';
 import { MAHALLELER } from '../../app/katalog';
@@ -14,6 +14,8 @@ import { DIL, DILLER, t as tt, type Dil } from '../../platform/dil';
 
 export interface AyarlarEk {
   nasilAc?: () => void;
+  /** Ayarlar > Oyun özeti (ölçüm günlüğünden; ekran görüntüsü için). */
+  oyunOzetiAc?: () => void;
   defterKartiAc?: (mahalle: number, tur?: 'defter' | 'kasaba') => void;
   /** Palet/hareket önizlemesini Arayuz'a anında uygula. */
   yerelUygula?: (d: AyarDegisikligi) => void;
@@ -202,6 +204,19 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
     ),
   );
 
+  // ── Oyun özeti (Hakkında'nın hemen üstünde; aile testi: ekran görüntüsü)
+  let oyunOzeti: HTMLElement | null = null;
+  if (ek.oyunOzetiAc) {
+    oyunOzeti = h(
+      'button',
+      { s: 'f-kart-satir f-ay-oyun-ozeti', type: 'button' },
+      h('span', { s: 'f-satir-ikon' }, ikon('grafik')),
+      h('span', null, h('strong', { t: MO.baslik })),
+      ikon('ileri'),
+    );
+    oyunOzeti.addEventListener('click', () => ek.oyunOzetiAc?.());
+  }
+
   const hakkinda = h(
     'section',
     { s: 'f-ay-bolum f-hakkinda' },
@@ -211,7 +226,7 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
     h('p', { s: 'f-not', t: M.surum(d.surum) }),
   );
 
-  const icerik = h('div', { s: 'f-ay' }, ses, gorunum, yardim, saglik, kayit, kartlar, hakkinda);
+  const icerik = h('div', { s: 'f-ay' }, ses, gorunum, yardim, saglik, kayit, kartlar, oyunOzeti, hakkinda);
   const kapat = () => {
     if (sec()) t.kapat(true);
   };

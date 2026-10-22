@@ -525,6 +525,53 @@ export const MK = {
   ),
 } as const;
 
+/**
+ * Oyun özeti ekranı (Ayarlar > Oyun özeti; aile testi: oyuncu ekran
+ * görüntüsünü gönderir). Sütun adları kısa: tablo 360 px'te sığsın.
+ */
+export const MO = {
+  baslik: t('Oyun özeti', 'Game summary'),
+  ilkAcilis: t('İlk açılış', 'First opened'),
+  /** İlk açılıştan bu yana gün: "Bugün", "Dün", "5 gün önce". */
+  gunOnce: t(
+    (n: number) => (n <= 0 ? 'Bugün' : n === 1 ? 'Dün' : `${n} gün önce`),
+    (n: number) => (n <= 0 ? 'Today' : n === 1 ? 'Yesterday' : `${n} days ago`),
+  ),
+  oturum: t('Oturum', 'Sessions'),
+  oynananGun: t('Oynanan gün', 'Days played'),
+  enYuksek: t('En yüksek bölüm', 'Highest level'),
+  oyunSuresi: t('Oyun süresi', 'Play time'),
+  saatDakika: t(
+    (sa: number, dk: number) => `${sa} sa ${dk} dk`,
+    (sa: number, dk: number) => `${sa} h ${dk} min`,
+  ),
+  surum: t('Sürüm', 'Version'),
+  bolumler: t('Bölümler', 'Levels'),
+  sonBolumler: t(
+    (n: number) => `Son ${n} bölüm`,
+    (n: number) => `Last ${n} levels`,
+  ),
+  bolum: t('Bölüm', 'Level'),
+  deneme: t('Deneme', 'Tries'),
+  kayip: t('Kayıp', 'Losses'),
+  birakma: t('Bırakma', 'Quits'),
+  sure: t('Süre', 'Time'),
+  /** Ekran okuyucu: satır özeti. */
+  satirEtiketi: t(
+    (id: number, deneme: number, kayip: number, birakma: number, sure: string, kazanildi: boolean) =>
+      `Bölüm ${id}${kazanildi ? ', kazanıldı' : ''}: ${deneme} deneme, ${kayip} kayıp, ${birakma} bırakma, ortalama ${sure}`,
+    (id: number, deneme: number, kayip: number, birakma: number, sure: string, kazanildi: boolean) =>
+      `Level ${id}${kazanildi ? ', won' : ''}: ${deneme} ${cogul(deneme, 'try', 'tries')}, ${kayip} ${cogul(kayip, 'loss', 'losses')}, ${birakma} ${cogul(birakma, 'quit', 'quits')}, average ${sure}`,
+  ),
+  enCokTakilan: t('En çok takılınan bölüm', 'Hardest level so far'),
+  bos: t('Henüz oyun kaydı yok. Bir bölüm oynayınca burada görünür.', 'Nothing played yet. Play a level and it shows up here.'),
+  bolumYok: t('Henüz bölüm oynanmadı.', 'No levels played yet.'),
+  not: t(
+    'Bu özet yalnız bu cihazda tutulur. Ekran görüntüsünü bize gönderebilirsin.',
+    'This summary stays on this device. You can send us a screenshot.',
+  ),
+} as const;
+
 /** Kapsül renk adları (§2.3); küçük harfli, sayılarla kullanılır. */
 export const RENK_ADLARI: readonly string[] = t(['kızıl', 'kehribar', 'zümrüt', 'gök', 'mor', 'gül'], ['red', 'amber', 'emerald', 'sky', 'purple', 'rose']);
 export const RENK_ADLARI_BUYUK: readonly string[] = t(['Kızıl', 'Kehribar', 'Zümrüt', 'Gök', 'Mor', 'Gül'], ['Red', 'Amber', 'Emerald', 'Sky', 'Purple', 'Rose']);

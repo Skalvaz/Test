@@ -22,7 +22,9 @@ import type {
 import { DESENLER, FITILLER, KASABA_ISLERI, MAHALLELER } from '../../app/katalog';
 import type { KasabaIsVM, KasabaVM } from '../tipler';
 import { MK, ROZET_SIRASI, gorevMetni } from '../metinler';
-import { t } from '../../platform/dil';
+import { DIL, t } from '../../platform/dil';
+import { oyunOzetiVM } from '../../app/oyunOzeti';
+import type { OlcumOlayi } from '../../platform/olcum';
 
 export function haritaVm(simdiki = 14, kasaba: { isler: string[]; kandil: number; yapilabilir: boolean } | null = null): HaritaVM {
   const yildizlar: Yildiz[] = [3, 3, 2, 3, 1, 2, 3, 3, 2, 1, 3, 2, 3, 3, 2, 3, 2, 1, 3, 3, 2, 3, 3, 2, 1, 3, 3, 2, 3, 3, 2, 3, 3, 3, 2, 3, 2, 3, 3, 3];
@@ -307,4 +309,38 @@ export function istatistikVm(): IstatistikVM {
     ],
     rozetler: ROZET_SIRASI.map((id, i) => ({ id, acik: [0, 3, 4, 6, 9, 10, 14].includes(i) })),
   };
+}
+
+/**
+ * Oyun özeti: gerçek eşleme (`oyunOzetiVM`) sahte ölçüm olaylarıyla.
+ * v=bos: boş günlük; v=az: yalnız açılış (bölüm yok); v=1: 3 gün, 15 bölüm,
+ * 9. bölümde takılma.
+ */
+export function oyunOzetiVm(v = '1'): ReturnType<typeof oyunOzetiVM> {
+  const GUN = 86_400_000;
+  const t0 = Date.UTC(2026, 9, 18, 17, 0, 0);
+  const olaylar: OlcumOlayi[] = [];
+  let t = t0;
+  const ekle = (a: string, gun: number, oturum: number, p?: OlcumOlayi['p'], sn = 5) => {
+    t = Math.max(t + sn * 1000, t0 + gun * GUN);
+    olaylar.push({ a, t, g: gun, o: oturum, ...(p ? { p } : {}) });
+  };
+  if (v === 'bos') return oyunOzetiVM([], t0, t0);
+  ekle('oturum_basla', 0, 1, { dil: DIL, surum: '1.0', ana: 1 });
+  if (v !== 'az') {
+    const oyna = (id: number, gun: number, oturum: number, sonuc: 'kazanc' | 'kayip' | 'cikis', sure: number) => {
+      ekle('bolum_basla', gun, oturum, { id, tur: 'ana', deneme: 0 });
+      ekle('bolum_bitti', gun, oturum, { id, tur: 'ana', sonuc, sure }, sure);
+    };
+    for (let id = 1; id <= 7; id++) oyna(id, 0, 1, id === 5 ? 'kayip' : 'kazanc', 60 + id * 9);
+    oyna(5, 0, 1, 'kazanc', 104);
+    ekle('oturum_basla', 1, 2, { dil: DIL, surum: '1.0', ana: 8 });
+    for (const [id, s] of [[8, 'kazanc'], [9, 'kayip'], [9, 'kayip'], [9, 'cikis'], [9, 'kayip'], [9, 'kazanc'], [10, 'kazanc'], [11, 'kayip'], [11, 'kazanc']] as const) oyna(id, 1, 2, s, 95 + id * 4);
+    ekle('oturum_basla', 3, 3, { dil: DIL, surum: '1.0', ana: 12 });
+    for (const id of [12, 13, 14]) oyna(id, 3, 3, 'kazanc', 110 + id);
+    oyna(15, 3, 3, 'kayip', 168);
+    ekle('bolum_basla', 3, 3, { id: 15, tur: 'ana', deneme: 1 });
+    ekle('oturum_basla', 4, 4, { dil: DIL, surum: '1.0', ana: 15 });
+  }
+  return oyunOzetiVM(olaylar, t0 + 4 * GUN + 600_000, t0);
 }
