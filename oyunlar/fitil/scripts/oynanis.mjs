@@ -34,7 +34,7 @@
  *
  * Test kancası: window.__fitil (src/app/uygulama.ts testKancasi).
  */
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright';
 
@@ -515,6 +515,14 @@ async function profilKos(browser, p) {
   await dugme('Haritaya dön').click();
   await bekleKosul(page, () => window.__fitil.ekran() === 'gunluk' || window.__fitil.ekran() === 'harita', null, 10000, 'duraklat → harita');
   await page.waitForTimeout(500);
+  // Ölçüm (docs/OLCUM.md): oturumun olayları ve özeti; bölüm olayları eşleşmeli.
+  const olc = await page.evaluate(() => window.__fitil.olcum());
+  writeFileSync(`${dir}/olcum.json`, JSON.stringify(olc, null, 1));
+  const basla = olc.olaylar.filter((x) => x.a === 'bolum_basla').length;
+  const bitti = olc.olaylar.filter((x) => x.a === 'bolum_bitti').length;
+  if (!olc.olaylar.some((x) => x.a === 'oturum_basla')) hatalar.push(`[${p.ad}] ölçüm: oturum_basla yok`);
+  if (basla === 0 || bitti === 0) hatalar.push(`[${p.ad}] ölçüm: bölüm olayları eksik (başla ${basla}, bitti ${bitti})`);
+  console.log(`[${p.ad}] ölçüm: ${olc.olaylar.length} olay, bölüm başla ${basla} / bitti ${bitti}, ekranlar ${Object.keys(olc.ozet.ekranlar).length}`);
   await ctx.close();
 }
 

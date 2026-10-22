@@ -75,6 +75,12 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   tablolarda Türkçe harf yok) ve `node scripts/dil-tara.mjs <url> <klasör>`
   (37 ekran, 0 kalıntı olmalı). Playwright araçları `locale: 'tr-TR'` ile
   açılır (yoksa cihaz dili İngilizce sayılır).
+- Yayın ve gelir (Ekim 2026 kararı): `docs/YAYIN.md` — Android (Play Store),
+  yumuşak can + yalnız istekle ödüllü reklam + küçük satın alma; claude.ai/tek
+  dosya sürümünde yok. Ölçüm: `src/platform/olcum.ts` (kişisel veri yok, ağ
+  isteği yok; yerel halka günlük `fitil.olcum.v1`, Android'de
+  `window.FitilYerel.olay` köprüsü), olay sözlüğü `docs/OLCUM.md`, test kancası
+  `__fitil.olcum()` (olaylar + özet: bölüm hunisi, ilk oturum, günler).
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).

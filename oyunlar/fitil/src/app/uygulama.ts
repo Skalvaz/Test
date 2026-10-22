@@ -16,6 +16,7 @@
  * okutmak yerine "Dokun ve başla" doğrudan Bölüm 1'in el animasyonuna gider;
  * harita ilk kazancın ödülü olarak, fitil 2. bölüme yanarak açılır.
  */
+import { olcum, olcumOlayi, olcumOzeti } from '../platform/olcum';
 import { dilKaydet, t } from '../platform/dil';
 import { Stage } from '../render/stage';
 import { oyunCiziciOlustur, type OyunCiziciTam } from '../render/oyunCizici';
@@ -100,8 +101,15 @@ export class Uygulama {
   readonly kayitci: Kayitci;
   readonly uretici = new BolumUretici();
   readonly oturum: Oturum;
-  /** Test/inceleme için güncel ekran adı. */
-  ekranAdi = 'acilis';
+  private ekranAdi_ = 'acilis';
+  /** Güncel ekran adı (test/inceleme); değişince ölçüme `ekran` olayı yazılır. */
+  get ekranAdi(): string {
+    return this.ekranAdi_;
+  }
+  set ekranAdi(ad: string) {
+    if (ad !== this.ekranAdi_) olcumOlayi('ekran', { ad });
+    this.ekranAdi_ = ad;
+  }
   private ciziciAktif = false;
   private sonKare = 0;
   /** Önceki karede çizici çalışıyor muydu (durunca fişek tuvali boşalır). */
@@ -235,6 +243,16 @@ export class Uygulama {
   // ─────────────────────────── Ana akış ───────────────────────────
 
   async calistir(veri: SicakVeri): Promise<void> {
+    // (Ölçüm, docs/OLCUM.md) Oturum başı; sayfa gizlenince bekleyen olaylar yazılır.
+    olcum.basla({ surum: SURUM, ana: meta.acikEnYuksek(this.kayit) });
+    try {
+      window.addEventListener('pagehide', () => olcum.yaz());
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') olcum.yaz();
+      });
+    } catch {
+      /* olay dinleyicisi yok */
+    }
     this.ekranAdi = 'acilis';
     void this.onIsinma(veri);
     await this.ui.acilis(() => this.sesAc());
@@ -466,6 +484,7 @@ export class Uygulama {
       const s = await this.ui.kasaba(kasabaVM(this.kayit));
       if (s.tur !== 'yap') return;
       const r = meta.kasabaIsYap(this.kayit, s.id);
+      olcumOlayi('kasaba_is', { id: s.id });
       if (!r.tamam) {
         this.bildir(U.isYapilamiyor);
         return;
@@ -819,6 +838,8 @@ export class Uygulama {
       dilDegisti: (d) => {
         // Bütün metin tabloları sayfa açılırken kurulur: kaydı hemen yaz, seçimi cihaza yaz, yeniden yükle.
         this.kayitci.hemenYaz();
+        olcumOlayi('dil', { d });
+        olcum.yaz();
         dilKaydet(d);
         try {
           window.location.reload();
@@ -1007,6 +1028,8 @@ export class Uygulama {
       durum: () => ({ ekran: this.ekranAdi, ...this.oturum.ozet(), oynuyor: this.cizici.dev.oynuyor(), modal: this.ui.modalAcik, depo: this.kayitci.depo.backend, bulut: this.bulutGeldi, uretim: this.uretici.durum(), kalite: this.cizici.dev.sayac().kalite }),
       bolum: () => this.oturum.aktifBolum(),
       ekran: () => this.ekranAdi,
+      /** Ölçüm günlüğü ve özeti (docs/OLCUM.md). */
+      olcum: () => ({ olaylar: olcum.olaylar(), ozet: olcumOzeti(olcum.olaylar()) }),
       bolumAc: (id: number) => {
         const v = this.kaynakBolum(id);
         if (!v) return false;

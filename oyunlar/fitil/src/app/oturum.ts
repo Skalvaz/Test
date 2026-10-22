@@ -20,6 +20,7 @@
  *    hücre seçimine açıktır; menü/oynatma/bitiş anında klavye ve dokunuş
  *    tahtaya gitmez (HUD kısayollarıyla çakışmaz).
  */
+import { olcumOlayi } from '../platform/olcum';
 import {
   durumKopyala,
   finalGosterisi,
@@ -107,6 +108,11 @@ function ipucuId(v: BolumVerisi, tetik: string, i: number): string {
   return `b${v.id}:${tetik}:${i}`;
 }
 
+/** Ölçümde bölüm türü: ana yol, Usta, günlük, sonsuz. */
+function olcumTuru(v: BolumVerisi): string {
+  return v.tur === 'gunluk' || v.tur === 'sonsuz' ? v.tur : v.id > 100 ? 'usta' : 'ana';
+}
+
 export class Oturum {
   durum: OturumDurumu = 'kapali';
   v: BolumVerisi | null = null;
@@ -120,6 +126,8 @@ export class Oturum {
    */
   private ozHud: OyunOzeti = this.oz;
   private denemeNo = 0;
+  /** Bölümün başladığı an (ölçüm süresi; ms). */
+  private olcumBaslangic = 0;
   private jeton = 0;
   private coz: ((s: OturumSonucu) => void) | null = null;
   /** Bu denemede yapılan eylem sayısı (öğretim için). */
@@ -209,6 +217,8 @@ export class Oturum {
     this.ozHud = this.oz;
     this.denemeNo = denemeNo;
     this.hamleSayisi = 0;
+    this.olcumBaslangic = Date.now();
+    olcumOlayi('bolum_basla', { id: v.id, tur: olcumTuru(v), deneme: denemeNo });
     this.geriSarAnlik = null;
     this.sonHamleOncesi = null;
     this.secimTuru = null;
@@ -670,6 +680,7 @@ export class Oturum {
         return;
       }
       const k = meta.guclendiriciKullan(this.kayit, 'kibrit');
+    olcumOlayi('guclendirici', { id: 'kibrit', bolum: this.v?.id ?? 0 });
       if (!k) {
         ui.toast(BILDIRIM.stokYok);
         return;
@@ -696,6 +707,7 @@ export class Oturum {
       return;
     }
     const k = meta.guclendiriciKullan(this.kayit, 'kalip');
+    olcumOlayi('guclendirici', { id: 'kalip', bolum: this.v?.id ?? 0 });
     if (!k) {
       ui.toast(BILDIRIM.stokYok);
       this.secimBitir();
@@ -714,6 +726,7 @@ export class Oturum {
       return;
     }
     const k = meta.guclendiriciKullan(this.kayit, 'geriSar');
+    olcumOlayi('guclendirici', { id: 'geriSar', bolum: this.v?.id ?? 0 });
     if (!k) {
       this.o.ui.toast(BILDIRIM.stokYok);
       return;
@@ -857,11 +870,29 @@ export class Oturum {
       return;
     }
     // Yeniden başlamak ve haritaya dönmek kayıp sayılır (§14.5; Coşku bozulur) — hamle yapıldıysa.
-    if (this.hamleSayisi > 0) this.sonucKaydet(false);
+    if (this.hamleSayisi > 0) this.sonucKaydet(false, undefined, undefined, true);
+    else this.olcumBitti('cikis');
     this.bitir({ tur: secim === 'yeniden' ? 'tekrar' : 'harita' });
   }
 
   // ─────────────────────────── Sonuç ───────────────────────────
+
+  /** (Ölçüm, docs/OLCUM.md) Bölüm bitti: sonuç, yıldız, kalan hamle, yapılan hamle, süre, Usta'nın Eli. */
+  private olcumBitti(sonuc: 'kazanc' | 'kayip' | 'cikis', yildiz = 0, kalanHamle = this.d?.kalanHamle ?? 0): void {
+    const v = this.v;
+    if (!v) return;
+    olcumOlayi('bolum_bitti', {
+      id: v.id,
+      tur: olcumTuru(v),
+      sonuc,
+      yildiz,
+      kalan: kalanHamle,
+      hamle: this.hamleSayisi,
+      sure: Math.round((Date.now() - this.olcumBaslangic) / 1000),
+      deneme: this.denemeNo,
+      eli: !!this.d?.istatistik.ustaEli,
+    });
+  }
 
   private sonucGirdisi(kazandi: boolean, kalanHamle: number, muhurler?: readonly boolean[]): meta.BolumSonucGirdisi {
     const v = this.v!;
@@ -884,9 +915,11 @@ export class Oturum {
     };
   }
 
-  private sonucKaydet(kazandi: boolean, kalanHamle = this.d?.kalanHamle ?? 0, muhurler?: readonly boolean[]): { sonuc: meta.BolumSonucCiktisi; onceki: Kayit } {
+  private sonucKaydet(kazandi: boolean, kalanHamle = this.d?.kalanHamle ?? 0, muhurler?: readonly boolean[], cikis = false): { sonuc: meta.BolumSonucCiktisi; onceki: Kayit } {
     const onceki = this.kayit;
-    const sonuc = meta.bolumSonucu(onceki, this.sonucGirdisi(kazandi, kalanHamle, muhurler));
+    const girdi = this.sonucGirdisi(kazandi, kalanHamle, muhurler);
+    this.olcumBitti(kazandi ? 'kazanc' : cikis ? 'cikis' : 'kayip', girdi.yildiz, kalanHamle);
+    const sonuc = meta.bolumSonucu(onceki, girdi);
     this.o.kayitci.degistir(sonuc.kayit, 500);
     this.sonucYazildi = true;
     return { sonuc, onceki };
