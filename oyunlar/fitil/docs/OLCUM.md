@@ -46,6 +46,14 @@ fiyat ve tutar ölçüme YAZILMAZ.
 Eli `eli`'den ayrı). Geri yüklemede her kalıcı ürün için bir `satin_alma`
 (`durum: geri_yukle`).
 
+Kim yazar: `reklam_sonuc` (`kart: false`) ve `satin_alma`'yı sağlayıcının
+ölçüm sarmalayıcısı yazar (`olculenSaglayici`, `src/platform/gelir.ts`;
+`gelirSaglayici()` sarmalı döndürür): her `reklamGoster` sonu, `satinAl`
+başı (`basla`) ve sonucu, `geriYukle`'nin her kalıcı ürünü. Uygulama bunları
+yeniden yazmaz; `reklam_teklif`, Usta kartıyla reklamsız ödül
+(`reklam_sonuc` `kart: true`, `sonuc: odul`) ve `can_*` olayları uygulamanın.
+`bekleyenler()` ölçülmez (aynı satın alma her açılışta yeniden gelebilir).
+
 ## Göstergeler (özet: `olcumOzeti`, test kancası `__fitil.olcum()`)
 
 - Bölüm hunisi: bölüm başına başlama, kazanç, kayıp, çıkış, ilk kazanca kadar
