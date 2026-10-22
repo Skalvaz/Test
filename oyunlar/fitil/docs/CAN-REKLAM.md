@@ -159,6 +159,9 @@ export function gelirSaglayici(): GelirSaglayici | null;
   alımları geri yükle". Usta kartı alınmışsa satırı "Sende var" der.
 - **Sahte reklam katmanı** sağlayıcının içindedir (arayüz değil); görünüşü
   sade, "DENEME" etiketli.
+- **Hakkında metni** bugün "Can yok, bekleme yok, mağaza yok." diyor:
+  sağlayıcı varken bu cümle yerine "Canlar 30 dakikada dolar; reklam yalnız
+  sen isteyince." (iki dil) gösterilir; sağlayıcı yokken metin aynen kalır.
 
 ## 7. Kayıt (`src/meta/kayit.ts`)
 
