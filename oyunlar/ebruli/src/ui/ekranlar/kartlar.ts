@@ -60,31 +60,34 @@ export function yeniOgeIkonu(ikon: string, boyut: number): HTMLElement {
   return k;
 }
 
+/**
+ * Bölüm öncesi (Ekim 2026, FİTİL'in "Liste" düzeni): hedefler ve hamle büyük
+ * yazılı tek liste; en iyi puan tek satır; tek büyük [Oyna], geri dönüş köşedeki
+ * X (ve perde/Esc). Her yaştan oyuncu okusun: en küçük yazı ~15 px.
+ */
 export function bolumOncesiEkrani(y: EkranYoneticisi, vm: BolumOncesiVM): Promise<'basla' | 'geri'> {
   return y.ac<'basla' | 'geri'>({ sinif: 'e-bolum-oncesi', geri: 'geri', perde: true, perdeKapatir: true }, (bitir) => {
-    const hedefler = h('ul', { s: 'e-hedef-listesi' });
+    const hedefler = h('ul', { s: 'e-hedef-listesi', 'aria-label': M.hedefler });
     for (const hd of vm.hedefler) hedefler.appendChild(h('li', null, hedefIkonu(hd, 34), h('span', { t: hedefMetni(hd) })));
-    const bilgi = h(
-      'div',
-      { s: 'e-bo-bilgi' },
-      h('div', { s: 'e-bo-hamle' }, h('b', { t: String(vm.hamle) }), h('small', { t: M.hamle })),
-      vm.enIyi > 0 ? h('div', { s: 'e-bo-eniyi' }, h('small', { t: M.enIyi }), h('b', { t: sayi(vm.enIyi) }), yildizSirasi(vm.yildiz)) : null,
-    );
-    const govde = h('div', { s: 'e-bo-govde' }, h('div', { s: 'e-bo-sol' }, h('h3', { t: M.hedefler }), hedefler, bilgi));
+    hedefler.appendChild(h('li', { s: 'e-bo-hamle-satir' }, h('span', { s: 'e-bo-hamle' }, h('b', { t: String(vm.hamle) })), h('span', { t: M.hamle })));
+    const bilgi = vm.enIyi > 0 ? h('div', { s: 'e-bo-bilgi' }, h('div', { s: 'e-bo-eniyi' }, h('small', { t: M.enIyi }), h('b', { t: sayi(vm.enIyi) }), yildizSirasi(vm.yildiz))) : null;
+    const govde = h('div', { s: 'e-bo-govde' }, h('div', { s: 'e-bo-sol' }, hedefler, bilgi));
     if (vm.tablo) govde.appendChild(h('div', { s: 'e-bo-tablo' }, tabloResmi(vm.tablo, 84, 126)));
     const yeni = vm.yeni
       ? h('div', { s: 'e-bo-yeni' }, yeniOgeIkonu(vm.yeni.ikon, 44), h('div', null, h('small', { t: `${M.yeni}: ${vm.yeni.ad}` }), h('p', { t: vm.yeni.metin })))
       : null;
-    const basla = dugme(M.basla, { tur: 'ana', ikon: 'oynat', on: () => bitir('basla') });
+    const basla = dugme(M.oyna, { tur: 'ana', ikon: 'oynat', sinif: 'e-buyuk', on: () => bitir('basla') });
     basla.setAttribute('data-odak', '');
+    const kapat = dugme('', { tur: 'yuvarlak', ikon: 'kapat', ad: M.kapat, sinif: 'e-kose-kapat', on: () => bitir('geri') });
     return kart(
       'e-bo-kart',
+      kapat,
       h('div', { s: 'e-ust-bilgi', t: `${vm.atolyeAd} · Bölüm ${vm.id}${vm.tur === 'zor' ? ' · zor' : ''}` }),
       h('h2', { t: vm.ad }),
       rumi(),
       govde,
       yeni,
-      h('div', { s: 'e-dugmeler' }, dugme(M.geri, { tur: 'ikincil', on: () => bitir('geri') }), basla),
+      h('div', { s: 'e-dugmeler' }, basla),
     );
   });
 }

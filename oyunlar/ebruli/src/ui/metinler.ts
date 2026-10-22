@@ -23,6 +23,7 @@ export const M = {
 
   // Bölüm öncesi
   basla: 'Başla',
+  oyna: 'Oyna',
   geri: 'Geri',
   hamle: 'hamle',
   enIyi: 'En iyi',

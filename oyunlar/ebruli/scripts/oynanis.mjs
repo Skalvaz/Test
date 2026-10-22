@@ -193,7 +193,7 @@ async function profilKos(browser, p) {
     await bekleKosul(page, () => window.__ebruli.ekran() === 'bolumOncesi', null, 15000, 'harita + bölüm 2 kartı');
     await page.waitForTimeout(700);
     await kare('bolum2-karti');
-    await dugme('Geri').click();
+    await dugme('Kapat').click();
     await page.waitForTimeout(700);
     await kare('harita');
   }
@@ -257,7 +257,7 @@ async function profilKos(browser, p) {
     if (s === 'kazandin') await dugme('Devam').click();
     else await dugme('Haritaya dön').click();
     await bekleKosul(page, () => ['harita', 'bolumOncesi', 'devami'].includes(window.__ebruli.ekran()), null, 20000, 'harita');
-    if ((await ekran(page)) === 'bolumOncesi') await dugme('Geri').click();
+    if ((await ekran(page)) === 'bolumOncesi') await dugme('Kapat').click();
     await page.waitForTimeout(500);
   }
 

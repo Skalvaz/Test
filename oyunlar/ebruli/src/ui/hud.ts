@@ -44,7 +44,8 @@ export class Hud {
 
   constructor(ebeveyn: HTMLElement, geri: HudGeri) {
     this.kok = h('div', { s: 'e-hud gizli', 'data-kip': 'dikey' });
-    this.hamleEl.append(this.hamleSayi, h('small', { t: M.hamle }));
+    // Yalnız sayı (Ekim 2026): "18" yeterince anlaşılır, "HAMLE" etiketi 9 px'te okunmuyordu.
+    this.hamleEl.append(this.hamleSayi);
     const cubuk = h('div', { s: 'e-cubuk' }, this.dolgu);
     for (let i = 0; i < 3; i++) {
       const s = h('span', { s: 'e-isaret' });

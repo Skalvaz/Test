@@ -1072,3 +1072,59 @@ svg.bos { color: rgba(90, 78, 63, 0.45); }
   .e-siluetler.dalgali .e-siluet,
   .e-n-oge .e-resim { animation: none !important; }
 }
+
+/* ─── Okunaklılık (Ekim 2026; FİTİL'deki kural: her yaştan oyuncu okusun) ───
+   En küçük oyuncu yazısı ~15 px, önemli satır 17–22 px; büyük harfli küçük
+   etiketlerde harf aralığı azaltıldı. Bölüm kartı "Liste" düzeni. */
+.e-seg { font-size: 16px; }
+.e-tarif-baslik { font-size: 15px; }
+.e-cip { font-size: 15px; }
+.e-hud-ad { font-size: 16px; }
+.e-panel-ad small { font-size: 14px; letter-spacing: 0.08em; }
+.e-bilgi { font-size: 16px; }
+.e-ust-bilgi { font-size: 15px; letter-spacing: 0.06em; }
+.e-acilis-alt { font-size: 17px; }
+.e-acilis-surum { font-size: 13px; }
+.e-toplam small { font-size: 14px; }
+.e-sayfa-ad p { font-size: 15px; letter-spacing: 0.08em; }
+.e-dugum-zor { font-size: 13px; }
+.e-siluet figcaption { font-size: 14px; }
+.e-kz-baslik small { font-size: 16px; }
+.e-kz-puan small { font-size: 15px; letter-spacing: 0.06em; }
+.e-nadirlik { font-size: 15px; }
+.e-kz-galeri { font-size: 16px; }
+.e-kz-secim .e-seg { font-size: 16px; }
+.e-kb-cubuk b { font-size: 15px; }
+.e-kb-eksik { font-size: 18px; }
+.e-kb-alt .e-ikincil { font-size: 16px; white-space: nowrap; padding: 0 12px; flex: none; }
+.e-kb-hayalet { font-size: 16px; }
+.e-kb-usta small { font-size: 15px; }
+.e-not { font-size: 16px; }
+.e-galeri-sayac { font-size: 15px; }
+.e-gkart-alt b { font-size: 14px; }
+.e-tb-satir { font-size: 16px; }
+.e-teknikler { font-size: 15px; }
+.e-ayar .e-seg { font-size: 15px; }
+.e-sifir-soru { font-size: 16px; }
+.e-hakkinda { font-size: 15px; }
+.e-hakkinda summary { font-size: 16px; }
+.e-n-kart p { font-size: 16px; }
+.e-n-oge figcaption { font-size: 14px; }
+
+/* HUD hamle mührü: yalnız sayı, büyük. */
+.e-hamle b { font-size: 32px; margin-top: 0; }
+
+/* Bölüm kartı: hedefler + hamle tek büyük liste, tek büyük Oyna, köşede X. */
+.e-bo-kart { position: relative; }
+.e-bo-kart h2 { padding: 0 40px; }
+.e-hedef-listesi { gap: 8px; }
+.e-hedef-listesi li { font-size: 20px; }
+.e-bo-hamle-satir .e-bo-hamle { width: 34px; height: 34px; box-shadow: 0 0 0 1.5px var(--altin), 0 0 0 3px var(--ceviz-koyu); }
+.e-bo-hamle-satir .e-bo-hamle b { font-size: 16px; }
+.e-bo-bilgi { margin-top: 12px; }
+.e-bo-eniyi { flex-direction: row; align-items: center; gap: 8px; }
+.e-bo-eniyi small { font-size: 15px; letter-spacing: 0.04em; text-transform: none; }
+.e-bo-eniyi b { font-size: 19px; }
+.e-bo-yeni small { font-size: 15px; letter-spacing: 0.04em; text-transform: none; }
+.e-bo-yeni p { font-size: 16px; }
+.e-bo-kart .e-dugmeler .e-dugme { flex: 1; min-height: 56px; font-size: 20px; }
