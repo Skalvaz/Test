@@ -273,9 +273,17 @@ serbest.
     `canDoldur(k, simdi)`, `reklamCanHakki(k, bugun)`, `reklamCanKullan(k, simdi, bugun)`,
     `paketSigarMi(k)` (§10'daki `guclendiriciPaketiSigar`),
     `satinAlmaUygula(k, urun, jeton, simdi)`, `geriYuklemeUygula(k, urunler)`.
+  - G1 ekleri: `canOnar`, `gelirOnar` (alan onarımı), `gelirBirlestir`
+    (bulut birleştirmesi), `jetonGecerli` + `JETON_EN_UZUN` (4096; boş, yalnız
+    boşluk ya da daha uzun jeton geçersiz). Testler `src/meta/can.test.ts`.
 - **`src/meta/kayit.ts`**: `Kayit.can?: CanKaydi`, `Kayit.gelir?: GelirKaydi`
-  (şema 3, `KAYIT_SURUMU` aynı). `kayitOnar` bugün bu alanları DÜŞÜRÜR (yeni
-  kayıttan kurar): onarımı, `kancaBirlestir`'i ve testlerini G1 ekler.
+  (şema 3, `KAYIT_SURUMU` aynı). G1: alan YOKSA eklenmez (varsayılan sayılır;
+  `yeniKayit` ve sağlayıcısız sürümün kaydı değişmez, can işlevleri ancak
+  varsayılandan farklı bir değer yazınca ekler); VARSA `kayitOnar` onarır
+  (bozuk → varsayılan, `sayi` 0..5 tamsayı, can doluyken `dolumBasi` null,
+  jetonlar geçerli + tekrarsız + son 50). `kancaBirlestir`: can seçilen
+  kayıttan, `ustaKarti` VEYA, jetonlar birleşimi (son 50). `ilerlemeyiSifirla`
+  canı ve satın almaları korur.
 - **`src/platform/gelir.ts`** (G2): §5 türleri birebir (`ReklamYeri`,
   `ReklamSonucu`, `UrunId`, `Urun`, `SatinAlmaSonucu`, `GelirSaglayici`),
   `URUN_IDLERI` (Mağaza sırası), `URUN_TURLERI` (tuketilir/kalici),
@@ -339,4 +347,5 @@ serbest.
   (Kalıp ve Geri Sar ≤ 1); paket çoğu zaman "Stok dolu" görünebilir.
 - §7 "`kancaBirlestir` yeni alanları seçilen kayıttan alır": öbür kayıttaki
   Usta kartı ve jetonlar düşebilir (Android'de bulut yok; geri yükleme kartı
-  kurtarır). Öneri: `ustaKarti` VEYA, jetonlar birleşimi.
+  kurtarır). Öneri: `ustaKarti` VEYA, jetonlar birleşimi. (G1 öneriyi
+  uyguladı; can seçilen kayıttan kalır.)

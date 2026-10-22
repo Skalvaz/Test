@@ -20,6 +20,7 @@
  */
 import { KASABA_ISLERI, KASABA_IS_PER_MAHALLE, MAHALLELER } from '../app/katalog';
 import type { KasabaIsi } from '../app/katalog';
+import { gelirBirlestir } from './can';
 import type { Kayit } from './kayit';
 import { MUHUR_ACILIS_BOLUMU, MUHUR_MASKE_TAVANI, MUHUR_SON_BOLUM, muhurSayisi } from './muhur';
 import { bolumTuru, mahalleBolumleri, mahalleSayisi, metaAyar } from './sabitler';
@@ -436,9 +437,12 @@ export function kasabaOnar(ham: unknown, k: Pick<Kayit, 'bolumler'>, not: (yol: 
  *    sırasıyla eklenir; kurallara ya da bütçeye uymayan atılır (`kasabaOnar`);
  *  - günlük kandil: kazanılan günlerin küme birleşimi + tarihsiz kısmın
  *    büyüğü (ortak geçmiş iki kez sayılmaz, ayrı günlerde kazanılan kaybolmaz);
- *  - uyarılan işler birleşimi; süslenmiş mahallenin `kasaba:` kartı.
+ *  - uyarılan işler birleşimi; süslenmiş mahallenin `kasaba:` kartı;
+ *  - aşama 2 satın almaları (CAN-REKLAM §7, §13): Usta kartı VEYA, işlenmiş
+ *    jetonlar birleşimi, son JETON_SINIRI (`gelirBirlestir`; çifte verme
+ *    koruması ve kalıcı ürün kaybolmasın). Can kazananınkidir (birleştirilmez).
  * Yıldız, rozet, koleksiyon ve mühür ödülleri kazananınkidir (bu birleştirme
- * yalnız kandili ve işleri korur). Girdiler onarılmış kayıtlar olmalı; saf.
+ * yalnız kandili, işleri ve satın almaları korur). Girdiler onarılmış kayıtlar olmalı; saf.
  */
 export function kancaBirlestir(kazanan: Kayit, diger: Kayit, ayarK?: Partial<MetaAyar>): Kayit {
   const ayar = metaAyar(ayarK);
@@ -460,5 +464,7 @@ export function kancaBirlestir(kazanan: Kayit, diger: Kayit, ayarK?: Partial<Met
     const kart = `${KASABA_KART_ONEKI}${MAHALLELER[m].id}`;
     if (mahalleSuslendi(y, m) && !y.koleksiyon.kartlar.includes(kart)) y.koleksiyon.kartlar.push(kart);
   }
+  const gelir = gelirBirlestir(kazanan, diger);
+  if (gelir) y.gelir = gelir;
   return y;
 }
