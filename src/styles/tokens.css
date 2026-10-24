@@ -25,8 +25,54 @@
   --red: #ff4d3d;
   --green: #3ddc84;
   --magenta: #ff5cf0;
+  /* Renk kanalları: rgba(var(--x-rgb), a) için; üstteki renklerle aynı */
+  --white-rgb: 255, 255, 255;
+  --black-rgb: 0, 0, 0;
+  --bg-rgb: 6, 9, 13;
+  --panel-rgb: 11, 15, 21;
+  --panel-solid-rgb: 12, 17, 24;
+  --panel-hover-rgb: 16, 24, 32;
+  --line-hi-rgb: 200, 220, 240;
+  --accent-rgb: 46, 230, 214;
+  --amber-rgb: 255, 176, 32;
+  --red-rgb: 255, 77, 61;
+  --green-rgb: 61, 220, 132;
+  /* Tek kullanımlık renkler (bileşen dosyalarından taşındı) */
+  --ink-strong: #fff;
+  --accent-hi: #59f0e2;
+  --on-accent: #042421;
+  --on-green: #032010;
+  --on-amber: #201400;
+  --on-red: #1a0000;
+  --red-soft: #ff8a7a;
+  --warning-bg: #1a0b0a;
+  --lamp-off: #1c242d;
+  --throttle-track: #020304;
+  --throttle-hi: #3b4652;
+  --throttle-lo: #232b34;
+  /* Art yakıcı (gaz kolu bölgesi) */
+  --ab: #ff8a2a;
+  --ab-ink: #ffab5e;
+  --ab-rgb: 255, 128, 40;
+  --ab-detent-rgb: 255, 150, 60;
+  --loader-hi: #10161d;
+  --loader-lo: #05070a;
+  /* Köşe yarıçapları (Dalga 0'da bileşen dosyalarındaki sabitlerden; değerler
+     bugünkü, adlar ölçek: 1C K-03'te "4 px köşe" için yalnız burayı değiştirir) */
   --radius: 10px;
   --radius-sm: 6px;
+  --radius-1: 1px;
+  --radius-2: 2px;
+  --radius-3: 3px;
+  --radius-4: 4px;
+  --radius-5: 5px;
+  --radius-8: 8px;
+  --radius-12: 12px;
+  --radius-13: 13px;
+  --radius-16: 16px;
+  --radius-pill: 99px;
+  /* Çizgi kalınlığı (bileşenlerdeki `1px solid`) */
+  --line-w: 1px;
   --font: Inter, 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
   --mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Mono', Consolas, 'Roboto Mono', ui-monospace, monospace;
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.5);

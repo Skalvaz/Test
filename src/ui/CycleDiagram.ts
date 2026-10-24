@@ -6,6 +6,7 @@
  * basınç eğrisi boyunca ısı ekler; türbin ve lüle (4→9) genişletir.
  */
 
+import { DIAGRAM, FONT, rgbText, TEMP_RAMP } from './palette';
 import type { EngineTraits } from '../design/traits';
 import type { PartId } from '../engine/visual';
 import { AIR, GAS, type SimSnapshot, type StationId } from '../sim';
@@ -104,26 +105,18 @@ export function stationIds(t: DiagramTraits, bypass: boolean): StationId[] {
 
 /** Sıcaklıktan renge: soğuk mavi → camgöbeği → sarı → turuncu → kırmızı */
 export function tempColor(t: number): string {
-  const stops: [number, [number, number, number]][] = [
-    [250, [40, 90, 190]],
-    [330, [40, 170, 200]],
-    [500, [110, 200, 150]],
-    [750, [235, 205, 70]],
-    [1100, [245, 130, 40]],
-    [1500, [235, 60, 40]],
-    [1900, [255, 220, 200]],
-  ];
-  if (t <= stops[0][0]) return `rgb(${stops[0][1].join(',')})`;
+  const stops = TEMP_RAMP;
+  if (t <= stops[0][0]) return rgbText(stops[0][1]);
   for (let i = 1; i < stops.length; i++) {
     if (t <= stops[i][0]) {
       const [t0, c0] = stops[i - 1];
       const [t1, c1] = stops[i];
       const f = (t - t0) / (t1 - t0);
       const c = c0.map((v, j) => Math.round(v + (c1[j] - v) * f));
-      return `rgb(${c.join(',')})`;
+      return rgbText(c);
     }
   }
-  return `rgb(${stops[stops.length - 1][1].join(',')})`;
+  return rgbText(stops[stops.length - 1][1]);
 }
 
 interface Region {
@@ -187,23 +180,23 @@ export class CycleDiagram {
     svg.setAttribute('aria-label', 'Motor istasyonları ve sıcaklıklar');
 
     const axis = document.createElementNS(SVG_NS, 'line');
-    Object.entries({ x1: '4', y1: '112', x2: '316', y2: '112', stroke: 'rgba(200,220,240,0.35)', 'stroke-dasharray': '4 3' })
+    Object.entries({ x1: '4', y1: '112', x2: '316', y2: '112', stroke: DIAGRAM.axisDash, 'stroke-dasharray': '4 3' })
       .forEach(([k, v]) => axis.setAttribute(k, v));
     svg.append(axis);
 
     for (const r of REGIONS) {
       const p = document.createElementNS(SVG_NS, 'path');
       p.setAttribute('d', r.path);
-      p.setAttribute('stroke', 'rgba(10,14,20,0.9)');
+      p.setAttribute('stroke', DIAGRAM.regionStroke);
       p.setAttribute('stroke-width', '1.2');
       p.style.cursor = 'help';
       p.addEventListener('mouseenter', () => {
-        p.setAttribute('stroke', '#2ee6d6');
+        p.setAttribute('stroke', DIAGRAM.regionHover);
         p.setAttribute('stroke-width', '2');
         cb.onHoverPart?.(r.part);
       });
       p.addEventListener('mouseleave', () => {
-        p.setAttribute('stroke', 'rgba(10,14,20,0.9)');
+        p.setAttribute('stroke', DIAGRAM.regionStroke);
         p.setAttribute('stroke-width', '1.2');
         cb.onHoverPart?.(null);
       });
@@ -213,10 +206,10 @@ export class CycleDiagram {
     for (const m of MARKERS) {
       const g = document.createElementNS(SVG_NS, 'g');
       const c = document.createElementNS(SVG_NS, 'circle');
-      Object.entries({ cx: String(m.x), cy: String(m.y), r: '6.5', fill: '#0b1017', stroke: 'rgba(230,240,250,0.7)' })
+      Object.entries({ cx: String(m.x), cy: String(m.y), r: '6.5', fill: DIAGRAM.markerFill, stroke: DIAGRAM.markerStroke })
         .forEach(([k, v]) => c.setAttribute(k, v));
       const t = document.createElementNS(SVG_NS, 'text');
-      Object.entries({ x: String(m.x), y: String(m.y + 2.6), 'text-anchor': 'middle', 'font-size': '7', fill: '#e8eef4', 'font-family': 'ui-monospace, monospace' })
+      Object.entries({ x: String(m.x), y: String(m.y + 2.6), 'text-anchor': 'middle', 'font-size': '7', fill: DIAGRAM.markerText, 'font-family': FONT.mono })
         .forEach(([k, v]) => t.setAttribute(k, v));
       t.textContent = m.id;
       g.append(c, t);
@@ -344,20 +337,20 @@ export class CycleDiagram {
     const Y = (tv: number) => hgt - B - ((tv - tMin) / (tMax - tMin)) * (hgt - T - B);
 
     // Eksenler
-    ctx.strokeStyle = 'rgba(160,185,210,0.25)';
+    ctx.strokeStyle = DIAGRAM.axis;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(L, T);
     ctx.lineTo(L, hgt - B);
     ctx.lineTo(w - R, hgt - B);
     ctx.stroke();
-    ctx.fillStyle = '#7b8a99';
-    ctx.font = '10px ui-monospace, monospace';
+    ctx.fillStyle = DIAGRAM.label;
+    ctx.font = `10px ${FONT.mono}`;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     for (let t = 400; t < tMax; t += 400) {
       ctx.fillText(String(t), L - 4, Y(t));
-      ctx.strokeStyle = 'rgba(160,185,210,0.07)';
+      ctx.strokeStyle = DIAGRAM.grid;
       ctx.beginPath();
       ctx.moveTo(L, Y(t));
       ctx.lineTo(w - R, Y(t));
@@ -394,11 +387,11 @@ export class CycleDiagram {
         ctx.fillText(label, X(sl) - 2, Y(tl) - 7);
       }
     };
-    isobar(P0, AIR, 'rgba(120,170,230,0.45)', 'P0');
-    if (st['3'].P > P0 * 1.5) isobar(st['3'].P, AIR, 'rgba(255,176,32,0.45)', 'P3');
+    isobar(P0, AIR, DIAGRAM.isobarP0, 'P0');
+    if (st['3'].P > P0 * 1.5) isobar(st['3'].P, AIR, DIAGRAM.isobarP3, 'P3');
 
     // Baypas yolu
-    ctx.strokeStyle = 'rgba(80,170,255,0.8)';
+    ctx.strokeStyle = DIAGRAM.bypass;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     if (bpts.length) bpts.forEach((p, i) => (i ? ctx.lineTo(X(p.s), Y(p.T)) : ctx.moveTo(X(p.s), Y(p.T))));
@@ -413,17 +406,17 @@ export class CycleDiagram {
       for (let i = a + 1; i <= b; i++) ctx.lineTo(X(pts[i].s), Y(pts[i].T));
       ctx.stroke();
     };
-    seg(0, 3, '#2ee6d6'); // sıkıştırma
-    seg(3, 4, '#ff7a2a'); // yanma
-    seg(4, 7, '#ffb020'); // genişleme
+    seg(0, 3, DIAGRAM.compression); // sıkıştırma
+    seg(3, 4, DIAGRAM.combustion); // yanma
+    seg(4, 7, DIAGRAM.expansion); // genişleme
 
-    ctx.font = '600 9.5px ui-monospace, monospace';
+    ctx.font = `600 9.5px ${FONT.mono}`;
     for (const p of pts.slice(1)) {
       ctx.fillStyle = tempColor(p.T);
       ctx.beginPath();
       ctx.arc(X(p.s), Y(p.T), 3.2, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#e8eef4';
+      ctx.fillStyle = DIAGRAM.pointLabel;
       ctx.textAlign = 'left';
       ctx.fillText(p.id, X(p.s) + 5, Y(p.T) - 5);
     }

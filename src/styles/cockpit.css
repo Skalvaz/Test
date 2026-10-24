@@ -12,8 +12,8 @@
   align-items: center;
   gap: 14px;
   padding: 0 14px 0 18px;
-  background: linear-gradient(to bottom, rgba(6, 9, 13, 0.92), rgba(6, 9, 13, 0.55));
-  border-bottom: 1px solid var(--line);
+  background: linear-gradient(to bottom, rgba(var(--bg-rgb), 0.92), rgba(var(--bg-rgb), 0.55));
+  border-bottom: var(--line-w) solid var(--line);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   z-index: 20;
@@ -36,8 +36,8 @@
   font-size: 10px;
   letter-spacing: 0.14em;
   padding: 3px 8px;
-  border-radius: 99px;
-  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  border: var(--line-w) solid var(--line-strong);
   color: var(--ink-2);
   text-transform: uppercase;
 }
@@ -78,14 +78,14 @@
   flex-direction: column;
   gap: 5px;
   padding: 8px 9px 9px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.025);
+  border-radius: var(--radius-8);
+  border: var(--line-w) solid var(--line);
+  background: rgba(var(--white-rgb), 0.025);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
   text-align: left;
 }
-.sw:hover { border-color: var(--line-strong); background: rgba(255, 255, 255, 0.05); }
+.sw:hover { border-color: var(--line-strong); background: rgba(var(--white-rgb), 0.05); }
 .sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .sw-label {
   font-family: var(--mono);
@@ -98,13 +98,13 @@
 .lamp {
   width: 10px;
   height: 10px;
-  border-radius: 2px;
-  background: #1c242d;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-2);
+  background: var(--lamp-off);
+  box-shadow: inset 0 0 0 1px rgba(var(--white-rgb), 0.08);
 }
-.lamp.on { background: var(--green); box-shadow: 0 0 10px rgba(61, 220, 132, 0.8); }
-.lamp.amber { background: var(--amber); box-shadow: 0 0 10px rgba(255, 176, 32, 0.8); }
-.lamp.red { background: var(--red); box-shadow: 0 0 10px rgba(255, 77, 61, 0.8); }
+.lamp.on { background: var(--green); box-shadow: 0 0 10px rgba(var(--green-rgb), 0.8); }
+.lamp.amber { background: var(--amber); box-shadow: 0 0 10px rgba(var(--amber-rgb), 0.8); }
+.lamp.red { background: var(--red); box-shadow: 0 0 10px rgba(var(--red-rgb), 0.8); }
 .sw.guarded .sw-value::before { content: '⛨ '; color: var(--red); }
 .sw.flash { animation: swflash 1s ease-in-out infinite; }
 @keyframes swflash {
@@ -136,9 +136,9 @@
   position: relative;
   flex: 1;
   width: 64px;
-  border-radius: 8px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
-  border: 1px solid var(--line);
+  border-radius: var(--radius-8);
+  background: linear-gradient(to bottom, rgba(var(--white-rgb), 0.05), rgba(var(--white-rgb), 0.015));
+  border: var(--line-w) solid var(--line);
   cursor: ns-resize;
   touch-action: none;
 }
@@ -149,9 +149,9 @@
   bottom: 10px;
   width: 6px;
   margin-left: -3px;
-  border-radius: 3px;
-  background: #020304;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+  border-radius: var(--radius-3);
+  background: var(--throttle-track);
+  box-shadow: inset 0 1px 2px rgba(var(--black-rgb), 0.8);
 }
 .throttle-detent {
   position: absolute;
@@ -175,10 +175,10 @@
   right: 6px;
   height: 26px;
   margin-top: -13px;
-  border-radius: 6px;
-  background: linear-gradient(to bottom, #3b4652, #232b34);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(to bottom, var(--throttle-hi), var(--throttle-lo));
+  border: var(--line-w) solid rgba(var(--white-rgb), 0.22);
+  box-shadow: 0 6px 14px rgba(var(--black-rgb), 0.6), inset 0 1px 0 rgba(var(--white-rgb), 0.15);
   pointer-events: none;
 }
 .throttle-handle::after {
@@ -189,7 +189,7 @@
   top: 12px;
   height: 2px;
   background: var(--accent);
-  border-radius: 2px;
+  border-radius: var(--radius-2);
 }
 .throttle-readout { font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
 /* Art yakıcı bölgesi: MIL kademesinin üstü turuncu */
@@ -200,13 +200,13 @@
   right: 4px;
   top: 10px;
   height: calc((100% - 20px) * 0.2308);
-  border-radius: 4px 4px 0 0;
-  background: linear-gradient(to bottom, rgba(255, 128, 40, 0.28), rgba(255, 128, 40, 0.06));
+  border-radius: var(--radius-4) var(--radius-4) 0 0;
+  background: linear-gradient(to bottom, rgba(var(--ab-rgb), 0.28), rgba(var(--ab-rgb), 0.06));
   pointer-events: none;
 }
-.throttle-detent.ab { background: rgba(255, 150, 60, 0.7); }
-.throttle-detent.ab span { color: #ffab5e; }
-.throttle-handle.ab::after { background: #ff8a2a; box-shadow: 0 0 8px #ff8a2a; }
+.throttle-detent.ab { background: rgba(var(--ab-detent-rgb), 0.7); }
+.throttle-detent.ab span { color: var(--ab-ink); }
+.throttle-handle.ab::after { background: var(--ab); box-shadow: 0 0 8px var(--ab); }
 .throttle.locked .throttle-track { opacity: 0.45; cursor: not-allowed; }
 
 /* ---------------- motor seçici (test hücresi) ---------------- */
@@ -218,7 +218,7 @@
 .engine-grid .btn.sel {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(46, 230, 214, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 .engine-summary { font-size: 12px; margin: 8px 0 2px; }
 

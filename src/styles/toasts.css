@@ -19,9 +19,9 @@
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-8);
   background: var(--panel-solid);
-  border: 1px solid var(--line-strong);
+  border: var(--line-w) solid var(--line-strong);
   box-shadow: var(--shadow);
   font-size: 13px;
   animation: toastin 0.25s ease-out;
@@ -40,18 +40,18 @@
   line-height: 1.45;
   color: var(--muted);
 }
-.toast.caution { border-color: rgba(255, 176, 32, 0.6); }
-.toast.warning { border-color: rgba(255, 77, 61, 0.7); background: #1a0b0a; }
+.toast.caution { border-color: rgba(var(--amber-rgb), 0.6); }
+.toast.warning { border-color: rgba(var(--red-rgb), 0.7); background: var(--warning-bg); }
 .toast .tag {
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.12em;
   padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-4);
+  background: rgba(var(--white-rgb), 0.08);
 }
-.toast.caution .tag { background: var(--amber); color: #201400; }
-.toast.warning .tag { background: var(--red); color: #1a0000; }
+.toast.caution .tag { background: var(--amber); color: var(--on-amber); }
+.toast.warning .tag { background: var(--red); color: var(--on-red); }
 .toast.out { animation: toastout 0.3s ease-in forwards; }
 @keyframes toastin { from { opacity: 0; transform: translateY(-8px); } }
 @keyframes toastout { to { opacity: 0; transform: translateY(-8px); } }
