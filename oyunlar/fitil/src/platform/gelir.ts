@@ -221,14 +221,20 @@ export const GERI_YUKLEME_HATASI = 'geri yükleme yapılamadı';
  * kalmasın: reklam ve satın alma sınırı yalnız sayfa GÖRÜNÜRKEN işler
  * (reklam/ödeme ekranı önündeyken sayaç durur; sınır aşılınca 'hata',
  * ödenmiş satın alma onaylanmadığı için sonraki açılışta `bekleyenler()`'den
- * gelir), öbürleri kısa.
+ * gelir), öbürleri kısa. `sorgu` (`bekleyenler`, `geriYukle`): Android
+ * köprüsü Play çağrılarını tek kuyrukta sıralar (`platform/android/satin.ts`,
+ * iş başına en çok `KUYRUK_SURELERI.kisa` = 30 sn); sınır kuyrukta önde
+ * bekleyen bir işi (açılışta fiyatlar) ve kendisini kapsar. Daha kısa olsaydı
+ * köprü işi az sonra bitirse de sonuç atılırdı (bekleyen alım işlenmez,
+ * geri yükleme "yapılamadı").
  */
 export interface KopruSureleri {
   reklam: number;
   satin: number;
   kisa: number;
+  sorgu: number;
 }
-export const KOPRU_SURELERI: Readonly<KopruSureleri> = Object.freeze({ reklam: 3 * 60_000, satin: 10 * 60_000, kisa: 15_000 });
+export const KOPRU_SURELERI: Readonly<KopruSureleri> = Object.freeze({ reklam: 3 * 60_000, satin: 10 * 60_000, kisa: 15_000, sorgu: 60_000 });
 
 /**
  * Android köprüsünü (`window.FitilYerel.gelir`) `GelirSaglayici`'ya çevirir:
@@ -260,11 +266,11 @@ export function androidSaglayici(kopru: AndroidGelirKoprusu, sure: Readonly<Kopr
       await sureli<unknown>(() => kopru.tamamla(jeton), sure.kisa, undefined);
     },
     async bekleyenler() {
-      return bekleyenlerCoz(await sureli<unknown>(() => kopru.bekleyenler(), sure.kisa, undefined));
+      return bekleyenlerCoz(await sureli<unknown>(() => kopru.bekleyenler(), sure.sorgu, undefined));
     },
     async geriYukle() {
       // Hata, zaman aşımı ya da dizi olmayan yanıt: reddeder ("geri yüklenecek yok" sanılmasın).
-      const x = await sureli<unknown>(() => kopru.geriYukle(), sure.kisa, ULASILAMADI);
+      const x = await sureli<unknown>(() => kopru.geriYukle(), sure.sorgu, ULASILAMADI);
       if (x === ULASILAMADI || !Array.isArray(jsonCoz(x))) throw new Error(GERI_YUKLEME_HATASI);
       return geriYukleCoz(x);
     },

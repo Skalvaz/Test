@@ -1,0 +1,17 @@
+# FİTİL Android (docs/ANDROID.md §2): Vite çıktısı ve yerel gizli ayarlar
+dist-android/
+.env.android.local
+
+# Android projesi: derleme çıktıları, yerel SDK yolu / AdMob kimliği, imza anahtarları.
+# (android/.gitignore'u Capacitor üretir; bunlar onun üstüne güvence.)
+android/.gradle/
+android/build/
+android/app/build/
+android/app/release/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+android/.idea/
+android/**/*.keystore
+android/**/*.jks
+*.keystore
+*.jks

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <!-- Oyun teması. Pencere zemini gece mavisi: WebView'ın çubuk/klavye için
+         kaydırıldığı eski WebView'larda (< 140) açıkta kalan şerit beyaz görünmesin. -->
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <item name="android:windowBackground">@color/fitil_gece</item>
+    </style>
+
+
+    <!-- Açılış perdesi (Android 12 SplashScreen API + uyumluluk kitaplığı):
+         gece mavisi zemin + kıvılcımlı fitil; köprü SplashScreen.hide() çağırır.
+         windowSplashScreenAnimatedIcon verilmezse core-splashscreen'in
+         Theme.SplashScreen'i genel Android simgesini (sym_def_app_icon) koyar;
+         splash_simge 288 dp tuvalde simgenin ön katmanıdır (2/3 dairede kalır).
+         android:background düz renk: tam ekran splash.png API 24–30'da ekran
+         oranına göre gerilirdi (docs/ANDROID.md §4). splash.png yalnız
+         eklentinin eski yolu / SplashScreen.show() için (CENTER_CROP). -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">@color/fitil_gece</item>
+        <item name="windowSplashScreenBackground">@color/fitil_gece</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_simge</item>
+    </style>
+</resources>

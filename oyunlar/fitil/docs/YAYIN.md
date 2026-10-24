@@ -49,6 +49,11 @@ Can ve reklam gelir, ama oyuncuyu yıpratan desenler yine yasak:
    UMP (KVKK/GDPR onayı), Play Billing, Firebase Analytics (ölçüm katmanının
    Android ucu), gizlilik politikası sayfası, uygulama simgesi ve mağaza
    görselleri, yaş derecelendirmesi.
+   **Durum (24 Ekim 2026): A1–A4 yapıldı** (`docs/ANDROID.md`; Capacitor 8,
+   köprü, simge/açılış/Play görselleri, gizlilik politikası, ürün sahibi
+   rehberi `docs/PLAY-KONSOL.md`). Firebase ertelendi (A8). APK bulut
+   ortamında derlenemedi (dl.google.com kapalı): ilk derleme ve cihaz
+   denemesi Android Studio'da.
 4. **Kapalı test** (Play Console iç/kapalı test kanalı: aile, tanıdıklar) →
    göstergelere bak → düzelt → açık test → yayın.
 5. **EBRULİ:** aynı katmanlar (ölçüm, can/reklam) + içerik (60+ bölüm,

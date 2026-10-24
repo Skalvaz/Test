@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FİTİL tam simge (Play 512×512 ve önizleme): simge-arka.svg + simge-on.svg,
+  108 dp tuvalin başlatıcıda görünen ortadaki 72 dp'si. ÜRETİLİR:
+  node scripts/magaza-gorselleri.mjs play — katman dosyalarını düzenle.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 18 72 72" width="512" height="512">
+  <g id="arka">
+  <defs>
+    <linearGradient id="a-gok" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0B1030"/>
+      <stop offset=".55" stop-color="#1A1240"/>
+      <stop offset="1" stop-color="#2A1450"/>
+    </linearGradient>
+    <radialGradient id="a-isik" cx="59" cy="46" r="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF9A3C" stop-opacity=".30"/>
+      <stop offset=".45" stop-color="#B8642E" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#B8642E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="108" height="108" fill="url(#a-gok)"/>
+  <rect width="108" height="108" fill="url(#a-isik)"/>
+  <g fill="#FFF3D6">
+    <circle cx="30" cy="31" r=".9" opacity=".75"/>
+    <circle cx="41" cy="24.5" r=".6" opacity=".55"/>
+    <circle cx="25" cy="47" r=".6" opacity=".5"/>
+    <circle cx="84" cy="66" r=".8" opacity=".6"/>
+    <circle cx="76" cy="80" r=".6" opacity=".45"/>
+    <circle cx="51" cy="84" r=".55" opacity=".4"/>
+    <circle cx="86" cy="29" r=".55" opacity=".5"/>
+  </g>
+</g>
+  <g id="on">
+  <defs>
+    <radialGradient id="o-hale" cx="64" cy="42" r="19" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF4C2" stop-opacity=".95"/>
+      <stop offset=".3" stop-color="#FFB020" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#FF7A1A" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="o-koz" cx=".4" cy=".36" r=".64">
+      <stop offset="0" stop-color="#FFFBE6"/>
+      <stop offset=".4" stop-color="#FFD15C"/>
+      <stop offset=".8" stop-color="#FF7A1A"/>
+      <stop offset="1" stop-color="#E8561A"/>
+    </radialGradient>
+    
+    <pattern id="o-ip" width="4.4" height="4.4" patternUnits="userSpaceOnUse" patternTransform="rotate(52)">
+      <rect width="4.4" height="4.4" fill="#A8743C"/>
+      <rect width="1.7" height="4.4" fill="#E8BC82"/>
+      <rect x="3.6" width=".8" height="4.4" fill="#7A4E26"/>
+    </pattern>
+    
+    <linearGradient id="o-kor" gradientUnits="userSpaceOnUse" x1="53" y1="55" x2="62" y2="45">
+      <stop offset="0" stop-color="#2A1408" stop-opacity="0"/>
+      <stop offset=".55" stop-color="#2A1408" stop-opacity=".85"/>
+      <stop offset="1" stop-color="#7A2E10" stop-opacity="1"/>
+    </linearGradient>
+  </defs>
+
+  
+  <g transform="translate(54 54) scale(.84) translate(-58.5 -51)">
+  
+  <circle cx="64" cy="42" r="19" fill="url(#o-hale)"/>
+
+  
+  <path d="M35 76C40.5 78.5 45.5 72 46 65S53.5 54 62.6 43.6" fill="none" stroke="#2A1408" stroke-width="9.6" stroke-linecap="round"/>
+  <path d="M35 76C40.5 78.5 45.5 72 46 65S53.5 54 62.6 43.6" fill="none" stroke="url(#o-ip)" stroke-width="6.2" stroke-linecap="round"/>
+  <path d="M35 76C40.5 78.5 45.5 72 46 65S53.5 54 62.6 43.6" fill="none" stroke="url(#o-kor)" stroke-width="6.4" stroke-linecap="round"/>
+
+  
+  <g stroke-linecap="round" fill="none">
+    <path d="M70.5 35.5 77 29" stroke="#FFD15C" stroke-width="2.2"/>
+    <path d="M73 43.6 81.6 45" stroke="#FFB020" stroke-width="2"/>
+    <path d="M64.8 33 65.6 24.4" stroke="#FFE08A" stroke-width="1.8"/>
+    <path d="M57 35.6 51.6 30.2" stroke="#FFB020" stroke-width="1.7"/>
+    <path d="M70.4 49.6 75.6 55.4" stroke="#FFD15C" stroke-width="1.7"/>
+  </g>
+  <g>
+    <circle cx="80.4" cy="26" r="1.5" fill="#FFF4C2"/>
+    <circle cx="84.6" cy="45.4" r="1.2" fill="#FFD15C"/>
+    <circle cx="49" cy="27.6" r="1.1" fill="#FFD15C"/>
+    <circle cx="77.8" cy="58" r="1.1" fill="#FFB020"/>
+    <circle cx="66" cy="21.2" r="1" fill="#FFE08A"/>
+  </g>
+
+  
+  <circle cx="63.6" cy="42.6" r="5" fill="url(#o-koz)"/>
+  <path d="M64 30.4 65.5 40.6 74.6 42.2 65.5 43.8 64 54 62.5 43.8 53.4 42.2 62.5 40.6z" fill="#FFF4C2" stroke="#FFB020" stroke-width="1" stroke-linejoin="round"/>
+  <circle cx="64" cy="42.2" r="2" fill="#FFFFFF"/>
+  </g>
+</g>
+</svg>

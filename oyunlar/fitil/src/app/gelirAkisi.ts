@@ -156,6 +156,10 @@ export class GelirAkisi {
   private urunSozu: Promise<void> | null = null;
   private reklamAcik = false;
   private satinAlimda = false;
+  /** Süren bekleyen alım işlemi (açılış ve ön plana dönüş aynı anda sormasın). */
+  private bekleyenSozu: Promise<number> | null = null;
+  /** `baslat` çağrıldı (kayıt hazır; ön plana dönüş ancak bundan sonra sorar). */
+  private basladi = false;
   /**
    * Can düşüşünün yazdığı son `can_bitti` (bölüm, duvar saati): hemen ardından
    * gelen kapı (Duraklat > Yeniden başla son canla) aynı anı ikinci kez yazmasın.
@@ -474,8 +478,34 @@ export class GelirAkisi {
     return r.verildi ? 'verildi' : r.tekrar ? 'tekrar' : 'verilemedi';
   }
 
-  /** Açılışta: tamamlanmamış satın almalar yeniden işlenir (§4). Ödül verildiyse kısa bildirim. */
-  async bekleyenleriIsle(): Promise<number> {
+  /**
+   * Açılışta ve ön plana dönüşte: tamamlanmamış satın almalar yeniden
+   * işlenir (§4). Ödül verildiyse kısa bildirim. Sürerken yeniden çağrılırsa
+   * aynı işlemi döndürür (jeton zaten çifte vermeyi önler; çift `tamamla` olmasın).
+   */
+  bekleyenleriIsle(): Promise<number> {
+    if (!this.bekleyenSozu) {
+      this.bekleyenSozu = this.bekleyenleriSor().finally(() => {
+        this.bekleyenSozu = null;
+      });
+    }
+    return this.bekleyenSozu;
+  }
+
+  /**
+   * (Android) Uygulama ön plana döndü: bekleyen alımlar yeniden sorulur.
+   * Gecikmeli ödeme uygulama arkadayken tamamlanabilir; köprü her çağrıdan
+   * sonra Play bağlantısını kapattığı için alım güncellemesini dinleyen yok
+   * (Google `onResume`'da sormayı önerir; onaylanmayan alım 3 günde iade
+   * edilir). Satın alma akışı sürerken sorulmaz (ödeme ekranı kapanınca da
+   * dönüş olayı gelir; o alımı akış kendisi işler).
+   */
+  onPlanaDondu(): void {
+    if (!this.basladi || this.satinAlimda) return;
+    void this.bekleyenleriIsle();
+  }
+
+  private async bekleyenleriSor(): Promise<number> {
     let verilen = 0;
     let liste: { urun: UrunId; jeton: string }[] = [];
     try {
@@ -516,6 +546,7 @@ export class GelirAkisi {
 
   /** Açılış: tembel dolum kayda, fiyatlar ve tamamlanmamış satın almalar arka planda. */
   baslat(): void {
+    this.basladi = true;
     this.tazele();
     void this.urunleriYukle();
     void this.bekleyenleriIsle();

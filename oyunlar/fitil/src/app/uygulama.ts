@@ -56,6 +56,7 @@ import {
 } from './gorunum';
 import { bekle, bugun, duvarSaati, rastgeleTohum, simdi } from './zaman';
 import { gelirSaglayici } from '../platform/gelir';
+import { geriTusunuDinle, gizlilikPolitikasi, gizlilikSecenekleri, yasamDinle, yerelHazir } from '../platform/yerel';
 import { GelirAkisi, kayitKoduGelirKoru } from './gelirAkisi';
 
 const SURUM = '1.0';
@@ -142,6 +143,8 @@ export class Uygulama {
   private sonKazanc: meta.Odul[] | null = null;
   /** Kasaba kutlaması sürerken haritada yapılan seçim (kaybolmasın). */
   private bekleyenHaritaSecimi: HaritaSecimi | null = null;
+  /** (Android) Köprü uygulamanın ön planda olmadığını bildirdi (`platform/yerel.ts` `yasamDinle`). */
+  private yerelArkada = false;
 
   constructor(private host: HTMLElement) {
     this.stage = new Stage(host, 2);
@@ -244,11 +247,17 @@ export class Uygulama {
     });
     this.ui.yerlesimDinle(() => this.yerlesimTazele());
     this.oturum.olcumDurak('gizli', document.hidden);
-    document.addEventListener('visibilitychange', () => {
-      this.ses.askiya(document.hidden);
-      this.oturum.olcumDurak('gizli', document.hidden);
-      this.molaIlerle();
+    document.addEventListener('visibilitychange', () => this.gorunurlukUygula());
+    // (docs/ANDROID.md §3) Android köprüsü: uygulama ön plandan çıktı/döndü (visibilitychange
+    // her WebView'da gelmeyebilir; ikisi birlikte zararsız) ve geri tuşu. Web'de olay gelmez.
+    yasamDinle((aktif) => {
+      const arkadaydi = this.yerelArkada;
+      this.yerelArkada = !aktif;
+      this.gorunurlukUygula();
+      // Arkadayken tamamlanan gecikmeli ödeme (docs/ANDROID.md §3): bekleyen alımlar yeniden sorulur.
+      if (aktif && arkadaydi) this.gelir?.onPlanaDondu();
     });
+    geriTusunuDinle(() => this.geriTusu());
     setInterval(() => this.molaIlerle(), 5000);
     // (CAN-REKLAM §10 G4) Can hapı: yalnız harita açıkken saniyede bir (tembel dolum kayda, hap tazelenir).
     if (this.gelir) setInterval(() => this.canSaniyesi(), 1000);
@@ -293,7 +302,10 @@ export class Uygulama {
     }
     this.ekranAdi = 'acilis';
     void this.onIsinma(veri);
-    await this.ui.acilis(() => this.sesAc());
+    const acilis = this.ui.acilis(() => this.sesAc());
+    // (docs/ANDROID.md §3) Açılış ekranı DOM'da: Android açılış perdesi kalkar (web'de etkisiz).
+    yerelHazir();
+    await acilis;
     // Bulut bağlantısı açılışta başladı; ilk açılış kararı (öğretim mi harita mı) ondan sonra,
     // en fazla 1,5 sn beklenir. Geç gelirse oturum dışındayken uygulanır.
     const bulut = await Promise.race([this.kayitci.bulutaBaglan(), bekle(1500).then(() => undefined)]);
@@ -406,6 +418,38 @@ export class Uygulama {
     if (!g || !this.haritaAcik || this.oturum.durum !== 'kapali') return;
     g.tazele();
     this.ui.haritaCanGuncelle(g.canSayaci());
+  }
+
+  /**
+   * Sayfa gizlendi/göründü (`visibilitychange`) ya da Android uygulaması ön
+   * plandan çıktı/döndü: ses askıya, deneme süresi durur, mola sayacı.
+   */
+  private gorunurlukUygula(): void {
+    const gizli = document.hidden || this.yerelArkada;
+    this.ses.askiya(gizli);
+    this.oturum.olcumDurak('gizli', gizli);
+    this.molaIlerle();
+  }
+
+  /**
+   * (Android geri tuşu, docs/ANDROID.md §3) true: işlendi. Açık pencere varsa
+   * Esc yolu (en üstteki pencerenin vazgeç seçimi; vazgeçi olmayan pencerede
+   * bir şey olmaz); oyunda Duraklat (Fişek Kalıbı yön seçicisi açıksa önce o
+   * kapanır). Haritada ve açılışta false: köprü uygulamayı arka plana alır.
+   */
+  geriTusu(): boolean {
+    // Esc yalnız document'a (kabarmadan): pencereler (Baglam) ve yön seçici document'ı dinler;
+    // tahtanın klavye girdisi (YolCizici, window) Esc'i yol iptali sayıp tüketirdi, oyunda Duraklat açılmazdı.
+    const esc = () => !document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: false, cancelable: true }));
+    if (this.ui.modalAcik) {
+      esc();
+      return true;
+    }
+    if (this.oturum.durum !== 'kapali') {
+      if (!esc()) void this.oturum.duraklat();
+      return true;
+    }
+    return false;
   }
 
   /** (CAN-REKLAM §3) Reklam açıkken oyun sesi kısılır, çizici durur. */
@@ -858,12 +902,23 @@ export class Uygulama {
       if (acik) this.ekranAdi = 'ayarlar';
     };
     const g = this.gelir;
+    // (docs/ANDROID.md §3) Reklam gizlilik seçenekleri: yalnız Android köprüsü UMP giriş noktası istediğini bildirirse.
+    const gizlilikAc = gizlilikSecenekleri();
+    // (docs/ANDROID.md §5) Pakete gömülü gizlilik politikası: yalnız Android; Ayarlar'ın üstünde açılır.
+    const politika = gizlilikPolitikasi();
+    const politikaAc = async (html: string) => {
+      this.ekranAdi = 'politika';
+      await this.ui.politika(html);
+      if (acik) this.ekranAdi = 'ayarlar';
+    };
     const p = this.ui.ayarlar(ayarlarVM(this.kayit, this.kayitci.depo.backend, sistemAzHareket(), SURUM), {
       nasilAc: () => void this.ui.nasilOynanir(nasilVM(this.kayit)),
       defterKartiAc: (m, tur) => void this.ui.defterKarti({ mahalle: m, oduller: [], tur }),
       oyunOzetiAc: () => void ozetAc(),
       // (CAN-REKLAM §4, §6) Mağaza satırı ve Hakkında metni yalnız sağlayıcı varken.
       ...(g ? { magazaAc: () => void g.magazaAkisi(), gelirVar: true } : {}),
+      ...(gizlilikAc ? { gizlilikAc } : {}),
+      ...(politika ? { politikaAc: () => void politikaAc(politika) } : {}),
     });
     if (ozetle) void ozetAc();
     await p;
@@ -1069,7 +1124,7 @@ export class Uygulama {
   }
 
   private molaIlerle(): void {
-    const r = meta.molaIlerle(this.molaD, simdi(), { dakika: this.kayit.ayarlar.mola, gorunur: document.visibilityState !== 'hidden' });
+    const r = meta.molaIlerle(this.molaD, simdi(), { dakika: this.kayit.ayarlar.mola, gorunur: document.visibilityState !== 'hidden' && !this.yerelArkada });
     this.molaD = r.durum;
     if (r.goster) this.molaBekliyor = true;
     this.molaGosterBekliyorsa();

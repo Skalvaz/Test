@@ -1,0 +1,129 @@
+apply plugin: 'com.android.application'
+
+// AdMob uygulama kimliği (docs/ANDROID.md A7). Gerçek kimlik depoya girmez:
+// git'e girmeyen android/local.properties'e ADMOB_APP_ID=ca-app-pub-...~... yaz.
+// Yoksa Google'ın herkese açık TEST uygulama kimliği kullanılır.
+def yerelAyarlar = new Properties()
+def yerelAyarDosyasi = rootProject.file('local.properties')
+if (yerelAyarDosyasi.exists()) {
+    yerelAyarDosyasi.withInputStream { yerelAyarlar.load(it) }
+}
+def admobUygulamaKimligi = yerelAyarlar.getProperty('ADMOB_APP_ID', '').trim()
+if (admobUygulamaKimligi.isEmpty()) {
+    admobUygulamaKimligi = 'ca-app-pub-3940256099942544~3347511713'
+    logger.lifecycle('Fitil: ADMOB_APP_ID yok (android/local.properties); AdMob TEST uygulama kimligi kullaniliyor.')
+}
+
+// Yayın paketi (assembleRelease / bundleRelease; Android Studio "Generate Signed App
+// Bundle") Google'ın TEST reklam kimlikleriyle sessizce üretilmesin (A7, PLAY-KONSOL.md §8):
+// AdMob uygulama kimliği (local.properties ADMOB_APP_ID) ve pakete giren web kodundaki
+// ödüllü birim (.env.android.local VITE_ADMOB_ODULLU → npm run build:android →
+// src/main/assets/public) gerçek ve aynı yayıncının olmalı (yoksa reklam isteği eşleşmez).
+// Web kodunda test birimi her zaman yedek olarak durur; gerçek birim ondan AYRICA aranır.
+// Pakete gömülü gizlilik politikasında (Ayarlar > Hakkında) yer tutucu e-posta kalmamalı.
+// Bilerek test kimlikleriyle yayın paketi gerekiyorsa: ./gradlew bundleRelease -PfitilTestReklam
+def admobTestYayinci = '3940256099942544'
+def webVarliklari = file('src/main/assets/public')
+def testReklamIzni = project.hasProperty('fitilTestReklam')
+def reklamKimligiDenetimi = tasks.register('fitilReklamKimligiDenetimi') {
+    group = 'verification'
+    description = 'Yayin paketinde AdMob kimlikleri gercek mi (test degil, ayni yayinci), gizlilik politikasi yer tutucusuz mu.'
+    doLast {
+        def sorunlar = []
+        def eslesme = (admobUygulamaKimligi =~ /^ca-app-pub-(\d+)~\d+$/)
+        def uygulamaYayinci = eslesme.find() ? eslesme.group(1) : null
+        if (uygulamaYayinci == null) {
+            sorunlar << "ADMOB_APP_ID bicimi taninmadi (ca-app-pub-...~...): ${admobUygulamaKimligi}"
+        } else if (uygulamaYayinci == admobTestYayinci) {
+            sorunlar << 'android/local.properties ADMOB_APP_ID yok: AdMob TEST uygulama kimligi'
+        }
+        def birimYayincilari = [] as Set
+        def politikaYerTutucu = false
+        if (webVarliklari.exists()) {
+            webVarliklari.eachFileRecurse { f ->
+                if (f.isFile() && f.name.endsWith('.js')) {
+                    def metin = f.getText('UTF-8')
+                    (metin =~ /ca-app-pub-(\d+)\/\d+/).each { birimYayincilari << it[1] }
+                    if (metin.contains('iletisim@ornek.com')) politikaYerTutucu = true
+                }
+            }
+        }
+        if (politikaYerTutucu) {
+            sorunlar << 'docs/gizlilik.html yer tutuculari degismemis (iletisim@ornek.com): uygulama ici politika da onu gosterir'
+        }
+        def gercekBirimler = birimYayincilari - [admobTestYayinci]
+        if (birimYayincilari.isEmpty()) {
+            sorunlar << 'Web varliklarinda odullu birim yok: once npm run build:android'
+        } else if (gercekBirimler.isEmpty()) {
+            sorunlar << '.env.android.local VITE_ADMOB_ODULLU yok: odullu reklam TEST birimi'
+        } else if (uygulamaYayinci != null && uygulamaYayinci != admobTestYayinci && !gercekBirimler.contains(uygulamaYayinci)) {
+            sorunlar << "Odullu birim (yayinci ${gercekBirimler.join(', ')}) ile ADMOB_APP_ID (yayinci ${uygulamaYayinci}) ayni AdMob hesabinin degil"
+        }
+        if (!sorunlar.isEmpty()) {
+            def ileti = 'Fitil: yayin paketi uretilmez (docs/PLAY-KONSOL.md bolum 3, 8, 9):\n - ' +
+                sorunlar.join('\n - ') + '\nBilerek (or. AdMob kurulmadan ilk ic test paketi) derlemek icin: -PfitilTestReklam'
+            if (testReklamIzni) {
+                logger.warn(ileti)
+            } else {
+                throw new GradleException(ileti)
+            }
+        }
+    }
+}
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach { dependsOn reklamKimligiDenetimi }
+
+android {
+    namespace = "com.fenerkoyu.fitil"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.fenerkoyu.fitil"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        manifestPlaceholders = [admobAppId: admobUygulamaKimligi]
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    // MainActivity: EdgeToEdge.enable (appcompat da getirir; sürüm variables.gradle'dan açık).
+    implementation "androidx.activity:activity:$androidxActivityVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
