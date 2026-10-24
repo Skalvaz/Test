@@ -216,8 +216,9 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
    denetim: galeri → 8 uzman (grafik, sanat, arayüz, oynanış,
    fizik/eğitim, ses, teknik, rakip araştırması) → sentez → eleştirmen →
    dalga planı + kullanıcı kararları; M5a P11 plana dahil. ⏸ Kullanıcı
-   isteğiyle galeri aşamasında durduruldu: `capture-output/denetim/`
-   (86 PNG; eksik: gece/hücre ortamları, test hücresinin kalanı, atölye,
-   GIF'ler, ölçümler, GALERI.md), çekim betikleri
-   `scripts/denetim-*.tmp.mjs` (gitignore'da).
+   isteğiyle bölündü. ✅ Galeri tamam: `capture-output/denetim/GALERI.md`
+   (109 PNG + 4 GIF, ölçümler, "göze çarpanlar" tablosu; gitignore'da).
+   ⏳ Uzman aşaması kullanıcı kararıyla 5 sa penceresi sıfırlanınca
+   (24 Ekim 18:00 sonrası); iş akışı betiği oturum dizininde
+   `workflows/scripts/cila-denetim-inceleme.js` (galerisiz sürüm).
 3. M5b, M5c (`docs/ATOLYE.md`).
