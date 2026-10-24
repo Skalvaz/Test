@@ -10,7 +10,7 @@
   "hamle": 30,
   "tohum": 3734763604,
   "yardim": 3,
-  "ozelEsikleri": [6, 9, 12],
+  "ozelEsikleri": [6, 9, 14],
   "hedefler": [{ "tur": "topla", "renk": 1, "adet": 36 }, { "tur": "topla", "renk": 4, "adet": 30 }],
   "duzen": [
     ". . . . . . .",
@@ -34,9 +34,9 @@
   ],
   "korukKapasitesi": 12,
   "ipuclari": [{ "tetik": "baslangic", "metin": "Isıyla patlayanlar Körük'ü doldurur. Dolunca dokun, nereyi istersen ısıt." }],
-  "kurallar": { "soguma": 2, "caprazSiniri": 5 },
+  "kurallar": { "soguma": 2 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [6500, 10500],
+  "yildizEsikleri": [6500, 11000],
   "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Su Kovası!",
   "muhurler": [
