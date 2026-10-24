@@ -15,7 +15,8 @@
  ],
  "fov": 40,
  "cut": 1,
- "setup": "a.sim.reset(); a.beginAutoStart(); a.advanceUntil(() => sim.N2 >= sim.limits.fuelOnMinN2 + 0.007, 60);",
+ "setup": "a.sim.reset(); a.beginAutoStart(); if (a.advanceUntil) a.advanceUntil(() => sim.N2 >= sim.limits.fuelOnMinN2 + 0.00724, 60); else a.advance(20.5);",
+ "aciklama": "Yakıttan hemen önce (N2 yakıt eşiğinin 0,724 puan üstü): bugünkü kalibrasyonda 615. adım = 20,5 s, Dalga 0 öncesindeki a.advance(20.5) ile aynı kare. advanceUntil olmayan eski commit'lerde sabit süre (src/app/recordScenes.test.ts).",
  "frames": 56,
  "dt": 0.2
 }

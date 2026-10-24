@@ -369,10 +369,14 @@ if (want('sandbox')) {
 console.log('\nTest hücresi');
 await page.evaluate(() => window.__app.showMenu());
 await page.click('.menu-item:has-text("Test hücresi")');
+const t0 = await page.evaluate(() => window.__app.sim.time);
 await page.click('button:has-text("Tam güç")');
-// Kalkış gücüne oturdu (eskiden sabit 12 s)
-await until(() => window.__app.sim.N1 > 0.95, null, 30, 0.5);
-await advance(2);
+// Kalkış gücüne ulaştı (N1 > %95, tam güçten ~4,6 s sonra; henüz oturmadı),
+// sonra Dalga 0 öncesindeki sabit 12 s'ye tamamlanır: motor oturur ve görsel
+// metal sıcaklığı (τ ≈ 5 s, simülasyondan yavaş) ısınır, 09 karesi eskisiyle
+// aynı anı (~14 s) gösterir
+check(await until(() => window.__app.sim.N1 > 0.95, null, 30, 0.5), 'kalkış gücüne ulaştı (N1 > %95)');
+await advance(Math.max(0, 12 - (await page.evaluate((t) => window.__app.sim.time - t, t0))));
 await page.keyboard.press('c');
 await advance(2);
 await shot('09-sandbox-cutaway-takeoff');
