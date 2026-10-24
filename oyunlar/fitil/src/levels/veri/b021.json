@@ -10,7 +10,7 @@
   "hamle": 30,
   "tohum": 2780662908,
   "yardim": 0,
-  "ozelEsikleri": [6, 9, 12],
+  "ozelEsikleri": [7, 11, 14],
   "hedefler": [{ "tur": "aydinlat" }, { "tur": "topla", "renk": 0, "adet": 50 }],
   "duzen": [
     ". . . . . . .",
@@ -42,14 +42,13 @@
   },
   "korukKapasitesi": 20,
   "ipuclari": [{ "tetik": "baslangic", "metin": "Barut izine değen patlama bütün izi tutuşturur." }],
-  "kurallar": { "caprazSiniri": 3 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [12800, 17400],
+  "yildizEsikleri": [13200, 17700],
   "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Altı Renk!",
   "muhurler": [
     {"olcu": "doseme", "kapsam": "hamle", "enAz": 10},
-    {"olcu": "R", "kapsam": "hamle", "enAz": 24, "eylem": "koruk", "sans": true},
+    {"olcu": "R", "kapsam": "hamle", "enAz": 20, "eylem": "koruk", "sans": true},
     {"olcu": "halka", "kapsam": "oyun", "enAz": 4}
   ]
 }
