@@ -274,15 +274,21 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
      yeni iş akışı yok. Ölçüm: dalga 1 düzeltmesi (12 ajan) ≈ 5 sa
      sınırının %27'si, haftalığın %4'ü.
    - Paket portları: Pn → 518n (P4b 5194), önizleme 418n; 5173/4173 ana.
-2. **Üst seviye planı** (kullanıcı, 24 Ekim: "tüm sistemleri, oynanışı,
-   grafikleri, tasarımı, menüyü ve art style'ı geliştirelim, farklı
-   açılardan yaklaşıp her şeyi üst seviyeye taşıyalım"). Önce bütünsel
-   denetim: galeri → 8 uzman (grafik, sanat, arayüz, oynanış,
-   fizik/eğitim, ses, teknik, rakip araştırması) → sentez → eleştirmen →
-   dalga planı + kullanıcı kararları; M5a P11 plana dahil. ⏸ Kullanıcı
-   isteğiyle bölündü. ✅ Galeri tamam: `capture-output/denetim/GALERI.md`
-   (109 PNG + 4 GIF, ölçümler, "göze çarpanlar" tablosu; gitignore'da).
-   ⏳ Uzman aşaması kullanıcı kararıyla 5 sa penceresi sıfırlanınca
-   (24 Ekim 18:00 sonrası); iş akışı betiği oturum dizininde
-   `workflows/scripts/cila-denetim-inceleme.js` (galerisiz sürüm).
+2. **Üst seviye planı** (`docs/UST-SEVIYE-PLANI.md`; ham raporlar
+   `docs/denetim/`; galeri `capture-output/denetim/GALERI.md`). Kullanıcı
+   kararları: K2 teknik çizim + müze kesiti, K1 önce cila (Dalga 0→1→2→3→Y,
+   sonra Dalga 4 = M5b), K7 AKADEMİ şemsiyesi (1C üç logo adayı üretir,
+   kullanıcı seçer), K3 açık gri tarama, K0 TFM lüle kilitli + kuru TJ
+   "aynı çekirdekte". Her dalgadan önce maliyet tahmini; haftalık %80'de dur.
+   - ⏳ Dalga 0 (sözleşmeler, ölçüm araçları; davranış değişmez):
+     uygulandı ve kabul kanıtlandı (`0c43ada`…`e444d72`; 1166 test). İki
+     denetçi 24 bulgu verdi (sözleşme 20, davranış 4); düzeltme ajanı
+     çoğunu commit etmişken kullanıcı isteğiyle durduruldu. Bulgular:
+     oturum günlüğü `subagents/workflows/wf_d48d80ca-eb8/journal.jsonl`
+     (D0-denetim-*). Devam: kalan bulguları (özellikle 1H sahiplik
+     listesi, FFT/speküler ölçütlerinin ayırt ediciliği, ayar ekleme
+     sözleşmesi, 1C'nin kapsamı, safeRect ≠ motor dikdörtgeni, ortak belge
+     sahipliği) düzelt → planın Dalga 1 tablosunu bu düzeltmelere göre
+     güncelle → Dalga 1 (9 paket, `vitrin/*` dalları, portlar 52WN,
+     birleşme sırası 1A→1F→1C→1D→1I→1E→1H→1G→1B).
 3. M5b, M5c (`docs/ATOLYE.md`).
