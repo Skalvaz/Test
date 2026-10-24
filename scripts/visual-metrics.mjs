@@ -26,7 +26,8 @@
  * --compare: ROI başına ve bütün kare SSIM'i (parlaklık, 7×7 kutu pencere),
  * ortalama/en büyük mutlak fark, değişen piksel oranı.
  * --gate: herhangi bir ROI SSIM'i (arayüz kümesinde bütün kare) eşiğin
- * altındaysa çıkış kodu 1.
+ * altındaysa çıkış kodu 1. Karşılaştırılamayan kare de (referansta olup
+ * kümede olmayan ya da tersi, boyut farklı; `summary.errors`) kapıdan geçemez.
  * --overlay: ROI'leri kare üstüne çizip <klasör>/<GxY>/<sahne>.png yazar
  * (ROI yerleşimini göz ile doğrulamak için).
  */
@@ -464,13 +465,31 @@ export async function measureSet(root, { ref = null, overlay = null, only = null
       frames[`${size}/${id}`] = rec;
     }
   }
+  // Referansta olup kümede olmayan kareler (kayıt yarıda kaldı, sahne
+  // düştü): kapı bunları sessizce geçmesin
+  if (ref) {
+    for (const size of sizeDirs(ref)) {
+      if (sizes && !sizes.includes(size)) continue;
+      for (const f of listPng(path.join(ref, size))) {
+        const id = f.slice(0, -4);
+        if (only && !only.some((o) => id === o || id.startsWith(`${o}-`))) continue;
+        if (!frames[`${size}/${id}`]) frames[`${size}/${id}`] = { size, ssim: { hata: 'kümede kare yok' } };
+      }
+    }
+  }
   // Arayüz kümesi: yalnız karşılaştırma
   const ui = {};
   if (ref) {
-    for (const size of sizeDirs(path.join(root, 'arayuz'))) {
+    for (const size of new Set([...sizeDirs(path.join(ref, 'arayuz')), ...sizeDirs(path.join(root, 'arayuz'))])) {
+      for (const f of listPng(path.join(ref, 'arayuz', size))) {
+        if (!fs.existsSync(path.join(root, 'arayuz', size, f))) ui[`${size}/${f.slice(0, -4)}`] = { hata: 'kümede kare yok' };
+      }
       for (const f of listPng(path.join(root, 'arayuz', size))) {
         const rf = path.join(ref, 'arayuz', size, f);
-        if (!fs.existsSync(rf)) continue;
+        if (!fs.existsSync(rf)) {
+          ui[`${size}/${f.slice(0, -4)}`] = { hata: 'referans kare yok' };
+          continue;
+        }
         const a = await readImage(rf);
         const b = await readImage(path.join(root, 'arayuz', size, f));
         if (a.w !== b.w || a.h !== b.h) {
@@ -496,7 +515,17 @@ function summarize({ frames, ui }) {
     .map(([k, v]) => ({ kare: k, ssim: v.ssim, changed: v.diff.changed }))
     .sort((a, b) => a.ssim - b.ssim);
   const nan = Object.entries(frames).map(([k, r]) => [k, r.nan]);
+  // Karşılaştırılamayan kareler (eksik, boyut farklı): kapıdan geçemez
+  const errors = [
+    ...Object.entries(frames)
+      .filter(([, r]) => r.ssim?.hata)
+      .map(([k, r]) => `${k}: ${r.ssim.hata}`),
+    ...Object.entries(ui)
+      .filter(([, v]) => v.hata)
+      .map(([k, v]) => `arayuz/${k}: ${v.hata}`),
+  ];
   return {
+    errors,
     minRoiSsim: rows.length ? rows[0].ssim : null,
     worstRoi: rows.slice(0, 8),
     minUiSsim: uiRows.length ? uiRows[0].ssim : null,
@@ -537,7 +566,15 @@ if (isMain) {
   const gate = opt('--gate');
   if (gate) {
     const g = Number(gate);
-    const bad = (summary.minRoiSsim !== null && summary.minRoiSsim < g) || (summary.minUiSsim !== null && summary.minUiSsim < g);
+    if (!opt('--compare') || summary.minRoiSsim === null) {
+      console.error('EŞİK: --gate için --compare <referans> ve en az bir ortak kare gerekir');
+      process.exit(1);
+    }
+    if (summary.errors.length) {
+      console.error(`EŞİK: ${summary.errors.length} kare karşılaştırılamadı:\n  ${summary.errors.slice(0, 20).join('\n  ')}`);
+      process.exit(1);
+    }
+    const bad = summary.minRoiSsim < g || (summary.minUiSsim !== null && summary.minUiSsim < g);
     if (bad) {
       console.error(`EŞİK: en düşük SSIM ${summary.minRoiSsim} / arayüz ${summary.minUiSsim} < ${g}`);
       process.exit(1);
