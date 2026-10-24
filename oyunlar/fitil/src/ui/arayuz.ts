@@ -373,6 +373,7 @@ export class Arayuz {
         oyunOzetiAc: ek.oyunOzetiAc,
         magazaAc: ek.magazaAc,
         gelirVar: ek.gelirVar,
+        gizlilikAc: ek.gizlilikAc,
         defterKartiAc: ek.defterKartiAc ?? ((m, tur) => void this.defterKarti({ mahalle: m, oduller: [], tur })),
         yerelUygula,
         dilDegisti: (d) => this.b.geri.dilDegisti?.(d),

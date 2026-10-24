@@ -50,6 +50,14 @@ declare global {
       olay?: (ad: string, ozellik: string) => void;
       /** Ödüllü reklam + satın alma köprüsü (docs/CAN-REKLAM.md §5.1; aşama 3). */
       gelir?: AndroidGelirKoprusu;
+      /**
+       * (docs/ANDROID.md §3) Reklam gizlilik seçenekleri (UMP): `gerekli()`
+       * giriş noktası isteniyorsa true; `ac()` formu gösterir. Uygulama
+       * `platform/yerel.ts` `gizlilikSecenekleri()` ile okur.
+       */
+      gizlilik?: { gerekli(): boolean; ac(): Promise<void> };
+      /** (docs/ANDROID.md §3) Açılış ekranı kuruldu: yerel açılış perdesi kalkar (`yerelHazir()`). */
+      hazir?: () => void;
     };
   }
 }

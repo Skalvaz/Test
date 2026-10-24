@@ -636,6 +636,8 @@ export const MC = {
   yenidenMetni: t('Yeniden başlarsan 1 can gider.', 'Restarting costs 1 life.'),
   cik: t('Çık', 'Leave'),
   magaza: t('Mağaza', 'Shop'),
+  /** (docs/ANDROID.md §3) Ayarlar satırı: UMP gizlilik seçenekleri formu (yalnız Android, gerektiğinde). */
+  gizlilik: t('Reklam gizlilik seçenekleri', 'Ad privacy options'),
   geriYukle: t('Satın alımları geri yükle', 'Restore purchases'),
   sendeVar: t('Sende var', 'Owned'),
   stokDolu: t('Stok dolu', 'Stock full'),

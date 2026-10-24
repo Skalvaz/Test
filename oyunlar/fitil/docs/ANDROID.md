@@ -82,6 +82,39 @@ kodu web derlemesine GİRMEZ).
   (`res/values/colors.xml` `fitil_gece`): eski WebView'da açıkta kalan
   şerit de gece mavisi. Doğrulama telefonda: çentikli/hareketli gezinmeli
   cihazda HUD ve alt düğmeler çubuklara binmemeli, aradaki boşluk tek kat.
+- **A2 uygulaması** (`src/platform/android/`; uygulama tarafı Capacitor'süz
+  `src/platform/yerel.ts`):
+  - `androidKur` `window.FitilYerel`'i (`gelir`, `olay`, `gizlilik`,
+    `hazir`) eşzamanlı kurar ve hemen döner; onay, reklam ve dinleyiciler
+    arkada. Hata oyunu durdurmaz.
+  - Reklam (`reklam.ts`): eklentinin `showRewardVideoAd`'i yalnız ödülde
+    çözülür (ödülsüz kapanışta hiç, gösterim hatasında da reddetmez); sonuç
+    `Rewarded` / `Dismissed` / `FailedToShow` olaylarından: ödül + kapanış
+    `odul`, ödülsüz kapanış 1 sn payla `iptal`, gösterim hatası `hata`.
+    Yükleme hatasında 30 sn, 2 dk, 5 dk (sonra 5 dk) yeniden deneme; yüklü
+    reklam 55 dk'dan eskiyse yenilenir. `initialize`: çocuk/rıza yaşı
+    etiketleri false, `maxAdContentRating: ParentalGuidance` (A9), test
+    cihazı kaydı yok. Onay formu açılış perdesi kalktıktan sonra;
+    `requestConsentInfo` / form hatası ya da `canRequestAds` false → bu
+    oturumda reklam yok (`yok`).
+  - Satın alma (`satin.ts`): eklentinin her çağrısı yeni BillingClient
+    kurup öncekini kapattığı için bütün çağrılar tek kuyrukta (yanıtsız
+    çağrıda süre sınırıyla ilerler). `autoFinishTransactions: false`
+    (`capacitor.config.ts` + açılışta `configure`): yoksa `restorePurchases`
+    ödülü verilmemiş alımları da onaylardı. Bekleyen = SATIN ALINDI
+    durumunda, tüketilir üründe tüketilmemiş (onaylı olsa da), kalıcıda
+    onaylanmamış; ödemesi bekleyen ("2") verilmez. `ITEM_ALREADY_OWNED`
+    (ör. yeniden kurulumdan sonra Usta kartı) mağazadaki alımla `basarili`
+    döner (jeton çifte vermeyi önler). Fatura desteklenmiyorsa `urunler` boş.
+  - Geri tuşu: açık pencere → Esc yolu (`document`'a kabarmadan gönderilir;
+    tahtanın klavye girdisi Esc'i tüketmesin), oyunda Duraklat, harita ve
+    açılışta `App.minimizeApp()`. Yaşam döngüsü: `appStateChange` → ölçüm
+    yazılır, uygulamaya `fitil-yasam` (ses askıya, deneme süresi ve mola
+    durur; `visibilitychange` ile birlikte zararsız).
+  - Açılış perdesi: açılış ekranı DOM'a girince `yerelHazir()` → iki kare
+    sonra `SplashScreen.hide()`; uygulama hazır demezse 8 sn sonra.
+  - Ayarlar "Reklam gizlilik seçenekleri" (Mağaza'nın altında) yalnız UMP
+    `privacyOptionsRequirementStatus` REQUIRED iken; `showPrivacyOptionsForm`.
 
 ## 4. Görseller ve mağaza
 
@@ -90,6 +123,51 @@ kodu web derlemesine GİRMEZ).
 - Öne çıkan görsel 1024×500; telefon ekran görüntüleri (TR ve EN, en az 4,
   1080×1920 dolayı), 7"/10" tablet görüntüleri isteğe bağlı.
 - Üretim betiği `scripts/magaza-gorselleri.mjs` (Playwright; SVG'den PNG).
+
+**A3 uygulaması (24 Ekim 2026):**
+
+- Kaynaklar `magaza/kaynak/`: `simge-arka.svg` (gece göğü #0B1030 →
+  #2A1450, kıvılcımın altında sıcak ışık, seyrek yıldız), `simge-on.svg`
+  (örgülü ip yumuşak S ile yükselir, ucu kömürleşir; köz, krem dört köşeli
+  kıvılcım, fişek gibi saçılan ışınlar; can simgesi `fitilCanIsaretleme`
+  dili), `simge-tekrenk.svg` (Android 13+ temalı simge), `one-cikan.svg`
+  (1024×500; açılış logosu, slogan, yanan fitille bağlı kapsüller, havai
+  fişekler, açılış ekranının kasabası; `.tr`/`.en` grupları, İngilizcede
+  noktasız "FITIL"). `simge-tam.svg` katmanlardan ÜRETİLİR (elle düzenlenmez).
+  Ön katmanın en uzak parçası merkezden 32,9 dp (güvenli daire 33 dp):
+  başlatıcı maskeleri ve açılış perdesinin 2/3 dairesi hiçbir şeyi kesmez.
+- `node scripts/magaza-gorselleri.mjs` (sunucusuz): `mipmap-*/`
+  `ic_launcher_background|foreground|monochrome.png` (108 dp),
+  `ic_launcher.png` (API 24–25: 48 dp'de 2 dp pay, yuvarlak kare),
+  `ic_launcher_round.png` (daire), `mipmap-anydpi-v26/ic_launcher(_round).xml`
+  (arka + ön + tek renk), `drawable-*/splash_simge.png` (288 dp),
+  `drawable(-port|-land)-*/splash.png` (şablon boyutları; düz gece mavisi +
+  ortada ön katman, kısa kenarın %80'i tuval), `magaza/play/simge-512.png`
+  (RGB, saydamlık yok), `one-cikan-1024x500(_en).png` (RGB). Capacitor
+  şablonunun kullanılmayan simge parçaları (yeşil ızgara, robot,
+  `values/ic_launcher_background.xml`) silinir.
+- **Açılış perdesi kararı:** `Theme.SplashScreen` (core-splashscreen 1.2.0)
+  `windowSplashScreenAnimatedIcon` verilmezse genel Android simgesini
+  (`sym_def_app_icon`) koyar (AAR'ın `values.xml`'i incelendi; uyumluluk
+  yolu API 24–30'da da aynı özniteliği okur). Bu yüzden açılış temasına
+  `windowSplashScreenAnimatedIcon = @drawable/splash_simge` eklendi; her
+  API'de görünüm aynı: düz #0B1030 + kıvılcımlı fitil. Temanın
+  `android:background`'ı `@drawable/splash` yerine `@color/fitil_gece`: tam
+  ekran bitmap API 24–30'da ekran oranına göre gerilirdi. `splash.png`
+  yalnız eklentinin eski yolu ve `SplashScreen.show()` için;
+  `capacitor.config.ts` `androidScaleType: 'CENTER_CROP'` (varsayılan
+  FIT_XY simgeyi basardı).
+- Telefon ekran görüntüleri: `node scripts/magaza-gorselleri.mjs ekran <url>
+  [tr|en] [sahne,…]` (dev sunucusu; 360×640, DPR 3 → 1080×1920, RGB).
+  Altı sahne, her biri temiz bağlamda, `?gelir=sahte` (can hapı Android'deki
+  gibi görünür) ve `kayitYama` ile: açılış, öğretim (el ipucu sürüklemenin
+  ortasında dondurulur), büyük reaksiyon (16. bölüm, Usta botu; ilk
+  "Muhteşem!"/"ŞENLİK!" anında dondurulup oyun zamanı 620 ms ilerletilir:
+  yazının yayı oturmuş, solmamış), süslü kasaba haritası (13 bölüm, 16 iş),
+  Kazandın (9. bölüm ilk kazanç, 3★ gelene dek kayıttaki deneme sayısıyla
+  tahta tohumu değiştirilir), Kasaba paneli.
+- Denetim: `node scripts/magaza-gorselleri.mjs onizleme <klasör>` (simge
+  dört maske × dört boy, temalı simge, Android 12 perde benzetimi).
 
 ## 5. Belgeler
 
@@ -102,6 +180,13 @@ kodu web derlemesine GİRMEZ).
   içi ürünler (`can_doldur`, `guclendirici_paketi`, `usta_karti`), lisans
   test kullanıcıları, AdMob uygulama + ödüllü birim + gizlilik mesajları,
   Veri güvenliği formu yanıtları, içerik derecelendirmesi (IARC), hedef kitle.
+- A3 (24 Ekim 2026): ikisi de yazıldı. Gizlilik politikası yürürlük tarihi
+  24 Ekim 2026; yer tutucular `[Geliştirici adı]` ve `iletisim@ornek.com`
+  yayından önce değişir, sayfa herkese açık bir adreste yayımlanır
+  (PLAY-KONSOL.md §9). Politika bugünkü durumu anlatır (analitik SDK'sı yok);
+  AdMob'un açılışta reklamı önden yüklediği ve UMP'nin açılışta Google'a
+  sorduğu da yazılı. PLAY-KONSOL.md mağaza metinleri: TR kısa 78 / tam
+  1377, EN kısa 77 / tam 1487 karakter.
 
 ## 6. Bu ortamın sınırı
 

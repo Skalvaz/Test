@@ -102,6 +102,26 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   kancası `__fitil.gelir()`, `__fitil.canAyarla(n)`; oynanış profili
   `gelir` (yalnız adıyla; §11 adımları), gelirsiz profiller can hapı/Mağaza/
   reklam düğmesi YOK denetler.
+- Android (aşama 3, `docs/ANDROID.md`): kipler — web `build` / `build:single`
+  (Capacitor kodu GİRMEZ; `fitil.html`'de `Capacitor`, `admob` geçmemeli),
+  Android `npm run build:android` (`--mode android` → `dist-android/` + `cap sync
+  android`; `main.ts` `platform/android/index.ts` `androidKur()`'u bekler).
+  Köprü `src/platform/android/`: `index.ts` (`window.FitilYerel` eşzamanlı:
+  `gelir`, `olay` boş (Firebase ertelendi), `gizlilik`, `hazir`), `reklam.ts`
+  (UMP onay → initialize → ödüllü ön yükleme; sonuç olaylardan), `satin.ts`
+  (Play Billing tek kuyrukta, elle tüket/onayla), `kopru.ts` (JSON biçimi),
+  `yasam.ts` (açılış perdesi, geri tuşu, appStateChange). Uygulama tarafı
+  Capacitor'süz `platform/yerel.ts` (`fitil-geri`/`fitil-yasam` olayları,
+  `yerelHazir`, `gizlilikSecenekleri`). Testler eklentileri `vi.mock` ile
+  taklit eder. Kimlikler: geliştirmede Google TEST (`.env.android`); gerçekleri
+  git'e girmeyen `android/local.properties` `ADMOB_APP_ID` ve
+  `.env.android.local` `VITE_ADMOB_ODULLU`. Bu ortamda APK derlenmez;
+  `npx vite preview --mode android` köprüyü eklentilerin web yedekleriyle açar.
+- Android simgesi, açılış perdesi ve Play görselleri (aşama 3, `docs/ANDROID.md`
+  §4): kaynak `magaza/kaynak/*.svg`, üretim `node scripts/magaza-gorselleri.mjs`
+  (`simge`, `play`, `ekran <url> [tr|en] [sahne,…]`, `onizleme <klasör>`);
+  çıktılar `android/app/src/main/res/` ve `magaza/play/`. Ürün sahibinin
+  Play Console/AdMob rehberi `docs/PLAY-KONSOL.md`, gizlilik `docs/gizlilik.html`.
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).

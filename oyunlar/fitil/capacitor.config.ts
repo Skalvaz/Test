@@ -39,11 +39,21 @@ const config: CapacitorConfig = {
       style: 'DARK',
     },
     SplashScreen: {
-      // Açılış ekranı hazır olunca köprü (A2) SplashScreen.hide() çağırır.
+      // Açılış ekranı hazır olunca köprü (A2, platform/android/yasam.ts) SplashScreen.hide()
+      // çağırır; uygulama hazır demezse 8 sn sonra yine kaldırır.
       launchAutoHide: false,
       launchFadeOutDuration: 250,
       backgroundColor: GECE,
       showSpinner: false,
+      // Eklentinin eski yolu (Android 12 API'si başarısızsa) ve SplashScreen.show():
+      // splash.png (düz zemin + ortada simge) gerilmeden kırpılır; varsayılan FIT_XY
+      // simgeyi ekran oranına göre basardı (docs/ANDROID.md §4).
+      androidScaleType: 'CENTER_CROP',
+    },
+    NativePurchases: {
+      // Elle tamamlama (A2, platform/android/satin.ts): oyun ödülü kayda yazdıktan sonra
+      // tüketir/onaylar. Açıkken restorePurchases ödülü verilmemiş alımları da onaylardı.
+      autoFinishTransactions: false,
     },
   },
 };
