@@ -29,6 +29,7 @@ function setDetail(q: Settings['quality']) {
   setDetailTag(q);
 }
 import { setCutPlane } from '../materials/engine';
+import { getExposure } from '../core/exposure';
 import { Rain } from '../core/rain';
 import { updateWeather } from '../core/weather';
 import { loadScans } from '../materials/scans.js';
@@ -242,6 +243,7 @@ export class App {
 
     await step(onProgress, 'Gökyüzü ve ortam ışığı hesaplanıyor…');
     this.environment.create(materials);
+    this.environment.lights.add('cutFill', this.cutFill);
 
     await this.environment.loadCell(loadStep);
     await this.environment.loadAirfield(loadStep, scans, this.rig.camera);
@@ -526,7 +528,7 @@ export class App {
    * böylece motorun etrafında dönerken iç kısım her açıdan görünür.
    */
   private aimCutaway() {
-    this.cutFill.intensity = App.CUT_FILL / Math.max(this.renderer.toneMappingExposure, 0.05);
+    this.cutFill.intensity = App.CUT_FILL / Math.max(getExposure(this.renderer), 0.05);
     const c = this.rig.camera.position;
     const len = Math.hypot(c.x, c.y);
     if (len < 0.3) return; // tam eksenden bakarken son yön korunur

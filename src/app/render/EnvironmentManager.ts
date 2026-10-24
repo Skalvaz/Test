@@ -19,6 +19,8 @@ import { createNoiseTexture } from '../../materials/textures.js';
 import { weather, wetUniforms } from '../../core/weather';
 import type { createMaterials } from '../../materials/library.js';
 import type { CameraRig } from '../CameraRig';
+import { CELL_LIGHTS, cellLightLevel, LightRig } from '../../core/lightRig';
+import { CELL_EXPOSURE, cellExposure, setExposure } from '../../core/exposure';
 
 /** Blender'da pişirilmiş kapalı test hücresi ortamının adı */
 export const TEST_CELL = 'Test hücresi';
@@ -48,6 +50,8 @@ export type LoadStep = (stage: 'cell' | 'cellProps' | 'airfield', label: string)
 
 export class EnvironmentManager {
   env!: SceneEnvironment;
+  /** Sabit ışık takımı (src/core/lightRig.ts); App kesit dolgu ışığını ekler */
+  lights!: LightRig;
   cell: TestCell | null = null;
   airfield: Airfield | null = null;
   /** Seçili ortamın adı */
@@ -74,7 +78,16 @@ export class EnvironmentManager {
 
   /** Gökyüzü, ışıklar ve prosedürel zemin */
   create(materials: Materials) {
-    this.env = createEnvironment(this.host.renderer, this.host.scene, materials);
+    const env = createEnvironment(this.host.renderer, this.host.scene, materials);
+    this.env = env;
+    this.lights = new LightRig({
+      sun: env.sun,
+      ambient: env.ambient,
+      keyPanel: env.keyPanel,
+      rimPanel: env.rimPanel,
+      rampA: env.rampLightA,
+      rampB: env.rampLightB,
+    });
   }
 
   /** Test hücresi ve hücre donanımı (yüklenemezse açık hava kullanılır) */
@@ -191,20 +204,8 @@ export class EnvironmentManager {
     if (scene.fog) (scene.fog as THREE.FogExp2).density = 0;
     // Tavandaki armatür sırasının hemen altından, hafif önden gelen ana ışık (gölgeli)
     env.sun.visible = true;
-    env.sun.color.setHex(0xfff3e6);
-    env.sun.intensity = 2.4;
-    env.sun.position.set(2.5, 14, -3.5);
-    env.sun.target.position.set(0, 0, 0.3);
-    env.ambient.intensity = 0.12;
-    env.keyPanel.color.setHex(0xf2f5ff);
-    env.keyPanel.intensity = 2.2;
-    env.keyPanel.position.set(-4.5, 7.6, -1.5);
-    env.keyPanel.lookAt(0, 0, 0.3);
-    env.rimPanel.color.setHex(0xfff0e0);
-    env.rimPanel.intensity = 1.6;
-    env.rimPanel.position.set(4.5, 7.6, 3);
-    env.rimPanel.lookAt(0, 0, 0.5);
-    host.renderer.toneMappingExposure = 0.95;
+    this.lights.apply(CELL_LIGHTS);
+    setExposure(host.renderer, CELL_EXPOSURE);
     this.setLights(this.lightLevel);
     this.precompile();
   }
@@ -216,16 +217,12 @@ export class EnvironmentManager {
   setLights(level: number) {
     this.lightLevel = level;
     if (!this.cell || this.name !== TEST_CELL) return;
-    const env = this.env;
     const k = Math.max(0, Math.min(1, level));
     setCellLights(this.cell, k);
-    env.sun.intensity = 2.4 * k;
-    env.keyPanel.intensity = 2.2 * k;
-    env.rimPanel.intensity = 1.6 * k;
-    env.ambient.intensity = 0.12 * k + 0.015;
+    this.lights.apply(cellLightLevel(k));
     this.host.scene.environmentIntensity = 0.06 + 0.94 * k;
     // Karanlıkta göz uyum sağlar: pozlama biraz artar
-    this.host.renderer.toneMappingExposure = 0.95 * (1 + 0.6 * (1 - k));
+    setExposure(this.host.renderer, cellExposure(k));
   }
 
   /** Sahnedeki tüm görünür malzemeleri derler; bitene kadar çizim bekler */
