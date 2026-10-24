@@ -15,7 +15,7 @@
  ],
  "fov": 40,
  "cut": 1,
- "setup": "a.sim.reset(); a.beginAutoStart(); a.advance(20.5);",
+ "setup": "a.sim.reset(); a.beginAutoStart(); a.advanceUntil(() => sim.N2 >= sim.limits.fuelOnMinN2 + 0.007, 60);",
  "frames": 56,
  "dt": 0.2
 }

@@ -35,6 +35,9 @@ import { updateWeather } from '../core/weather';
 import { loadScans } from '../materials/scans.js';
 import { loadPanelDetails } from '../materials/textures.js';
 import { EngineSim, type SimEvent } from '../sim';
+import { AutoStart, type AutoStartStep } from '../sim/autostart';
+import { EventBus, type AppEventType, type GameEventListener, type GameEventType } from './events';
+import { advanceUntil, type WaitResult, type WaitTarget } from './waitFor';
 import { Cockpit, type SwitchId } from '../ui/Cockpit';
 import { CycleDiagram } from '../ui/CycleDiagram';
 import { h, icon } from '../ui/dom';
@@ -76,6 +79,12 @@ export interface WorkshopHook {
 
 const ALL_SWITCHES: SwitchId[] = ['apuBleed', 'starter', 'ignition', 'fuelRun', 'fadec'];
 const DEFAULT_SWITCHES: SwitchId[] = ['apuBleed', 'starter', 'ignition', 'fuelRun'];
+/** Otomatik çalıştırma adımı → oyun olayı */
+const AUTOSTART_EVENTS: Record<AutoStartStep, [AppEventType, string]> = {
+  fuel: ['autoStartFuel', 'Otomatik çalıştırma: yakıt verildi.'],
+  done: ['autoStartDone', 'Otomatik çalıştırma bitti: APU BLEED ve ateşleme kapandı.'],
+  abort: ['autoStartAbort', 'Otomatik çalıştırma bırakıldı: motor yanmadı.'],
+};
 /** Uyarıdaki "Parçayı göster" vurgusunun süresi [ms] */
 const WS_SHOW_PART_MS = 2500;
 
@@ -174,7 +183,17 @@ export class App {
   private pickMode = false;
   private stickyHighlight: PartId | null = null;
   private stepHighlight: PartId | null = null;
-  private autoStart = false;
+  /** Otomatik çalıştırma sırası (src/sim/autostart.ts) */
+  private autoStarter = new AutoStart();
+  /** Otomatik çalıştırma sürüyor mu (kayıt betikleri `app.autoStart = false` ile keser) */
+  get autoStart(): boolean {
+    return this.autoStarter.active;
+  }
+  set autoStart(v: boolean) {
+    this.autoStarter.active = v;
+  }
+  /** Oyun olayı akışı: sim olayları + uygulama olayları (`onSimEvent`) */
+  private bus = new EventBus();
   private settings: Settings;
   /**
    * Ortam değişiminde yeni shader'lar derlenirken true: bu sürede kare
@@ -256,7 +275,7 @@ export class App {
 
     await step(onProgress, 'Termodinamik model dengeleniyor…');
     this.sim.trim(0);
-    this.sim.on((e) => this.onSimEvent(e));
+    this.sim.on((e) => this.handleSimEvent(e));
 
     await step(onProgress, 'Görüntü işleme zinciri kuruluyor…');
     this.fx = this.pipeline.createPost(this.scene, this.rig.camera);
@@ -1464,8 +1483,19 @@ export class App {
   /* Simülasyon olayları                                              */
   /* ================================================================ */
 
-  private onSimEvent(e: SimEvent) {
+  /**
+   * Oyun olaylarını dinler: simülasyon olayları (surge, lightoff, idle…) ve
+   * uygulama olayları (autoStartFuel, autoStartDone…; src/app/events.ts).
+   * Dalga 1+ paketleri App.ts'e dokunmadan bağlanır; dönen işlev aboneliği
+   * kaldırır.
+   */
+  onSimEvent(fn: GameEventListener): () => void {
+    return this.bus.on(fn);
+  }
+
+  private handleSimEvent(e: SimEvent) {
     this.runner?.onEvent(e);
+    this.bus.emit(e);
     if (e.type === 'surge') this.audio.bang(1);
     if (e.type === 'torching') this.audio.whoomp(1.2);
     if (e.type === 'lightoff') this.audio.whoomp(0.35);
@@ -1479,33 +1509,21 @@ export class App {
 
   private beginAutoStart() {
     this.audio.resume();
-    if (this.sim.lit) {
+    if (!this.autoStarter.begin(this.sim)) {
       this.toasts.show('Motor zaten çalışıyor.', 'info');
       return;
     }
-    Object.assign(this.sim.controls, {
-      apuBleed: true,
-      ignition: true,
-      starter: true,
-      fuelRun: false,
-      fadec: 'normal',
-      throttle: 0,
-    });
-    this.autoStart = true;
+    this.emitAppEvent('autoStartBegin', 'Otomatik çalıştırma başladı.');
     this.toasts.show('Otomatik çalıştırma: APU BLEED, ateşleme ve marş açıldı; %22 N2\'de yakıt verilecek.', 'info', 5000);
   }
 
   private updateAutoStart() {
-    if (!this.autoStart) return;
-    const c = this.sim.controls;
-    const L = this.sim.limits;
-    if (!c.fuelRun && this.sim.N2 >= L.fuelOnMinN2 + 0.02) c.fuelRun = true;
-    if (this.sim.phase === 'running' && this.sim.N2 > L.idleN2 - 0.02) {
-      c.apuBleed = false;
-      c.ignition = false;
-      this.autoStart = false;
-    }
-    if (!c.starter && !this.sim.lit && this.sim.N2 < 0.3) this.autoStart = false;
+    this.autoStarter.update(this.sim, (s) => this.emitAppEvent(...AUTOSTART_EVENTS[s]));
+  }
+
+  /** Uygulama olayı (simülasyon saatiyle) */
+  private emitAppEvent(type: AppEventType, message: string) {
+    this.bus.emit({ type, time: this.sim.time, severity: 'info', message });
   }
 
   /* ================================================================ */
@@ -1641,15 +1659,35 @@ export class App {
    * kareleri beklemeden ders akışlarını doğrulamak için kullanır.
    */
   advance(seconds: number, dt = 1 / 30) {
-    for (let t = 0; t < seconds; t += dt) {
-      this.sim.step(dt * (this.mode === 'sandbox' ? this.timeScale : 1));
-      this.updateAutoStart();
-      const snap = this.sim.snapshot();
-      this.visual.update(snap, dt, this.rig.camera);
-      this.runner?.update(dt, snap);
-      this.rig.update(dt, 0);
-      if (this.cutaway) this.aimCutaway();
-    }
+    for (let t = 0; t < seconds; t += dt) this.advanceStep(dt);
+    this.afterAdvance();
+  }
+
+  /**
+   * Test kancası (T-20): `advance` gibi ilerletir, ama sabit süre yerine
+   * olay ya da koşul gelene kadar: `app.advanceUntil('lightoff', 40)`,
+   * `app.advanceUntil(() => app.sim.N1 > 0.95)`. Olay geldiği adımın
+   * sonunda durur; süre dolarsa `ok: false` (src/app/waitFor.ts).
+   */
+  advanceUntil(target: WaitTarget<GameEventType>, maxSeconds = 120, dt = 1 / 30): WaitResult {
+    const r = advanceUntil({ step: (d) => this.advanceStep(d), subscribe: (fn) => this.bus.on(fn), target, maxSeconds, dt });
+    this.afterAdvance();
+    return r;
+  }
+
+  /** advance'ın bir adımı (çizimsiz) */
+  private advanceStep(dt: number) {
+    this.sim.step(dt * (this.mode === 'sandbox' ? this.timeScale : 1));
+    this.updateAutoStart();
+    const snap = this.sim.snapshot();
+    this.visual.update(snap, dt, this.rig.camera);
+    this.runner?.update(dt, snap);
+    this.rig.update(dt, 0);
+    if (this.cutaway) this.aimCutaway();
+  }
+
+  /** İleri sarmanın sonunda kokpit ve diyagram güncel değerleri gösterir */
+  private afterAdvance() {
     const snap = this.sim.snapshot();
     if (this.consoleVisible) this.cockpit.update(snap);
     if (this.diagramVisible) this.diagram.update(snap, 0, true);

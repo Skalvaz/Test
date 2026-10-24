@@ -19,6 +19,7 @@ import { FAKE_DEPS, memoryStorage } from '../workshop/testing';
 import { Toasts } from '../ui/Toasts';
 import { App } from './App';
 import { ModeController } from './modes/ModeController';
+import { AutoStart } from '../sim/autostart';
 
 // Özel alanlara erişim: yarım kurulum taklitleri
 type AnyApp = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -60,6 +61,7 @@ function rig(o: { cancel?: boolean } = {}): Rig {
   Object.assign(app, {
     // Kip ModeController'da (app.mode erişimcisi ona yazar)
     modes: new ModeController('workshop'),
+    autoStarter: new AutoStart(),
     overlay: null,
     wsStore: store,
     wsHandles: handles,

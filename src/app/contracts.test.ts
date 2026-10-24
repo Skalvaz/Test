@@ -1,0 +1,128 @@
+/**
+ * Dalga 0 sözleşmeleri: olay akışı ve olay bekleme (T-20), otomatik
+ * çalıştırma sırası, sim durumu yakalama imzası (gövde 2H), kip
+ * denetleyicisi. Dalga 1 paketleri bu API'lere dayanır. (Kamera ve ışık: camera/camera.test.ts)
+ */
+import { describe, expect, it, vi } from 'vitest';
+import { EngineSim, type SimEvent } from '../sim';
+import { AutoStart, type AutoStartStep } from '../sim/autostart';
+import { EventBus, type GameEvent } from './events';
+import { advanceUntil, waitForSim } from './waitFor';
+import { ModeController } from './modes/ModeController';
+
+describe('olay bekleme (T-20)', () => {
+  /** Otomatik çalıştırma App'teki gibi: her sim adımından sonra */
+  function autoRig() {
+    const sim = new EngineSim();
+    const auto = new AutoStart();
+    const steps: AutoStartStep[] = [];
+    const after = (s: EngineSim) => auto.update(s, (x) => steps.push(x));
+    return { sim, auto, steps, after };
+  }
+
+  it('otomatik çalıştırma: yakıt → light-off → rölanti → sıra biter (süre değil olay)', () => {
+    const { sim, auto, steps, after } = autoRig();
+    expect(auto.begin(sim)).toBe(true);
+    const lo = waitForSim(sim, 'lightoff', { maxSeconds: 90, after });
+    expect(lo.ok).toBe(true);
+    expect(lo.event?.type).toBe('lightoff');
+    expect(steps).toEqual(['fuel']);
+    expect(sim.lit).toBe(true);
+    const idle = waitForSim(sim, 'idle', { maxSeconds: 90, after });
+    expect(idle.ok).toBe(true);
+    const done = waitForSim(sim, () => !auto.active, { maxSeconds: 90, after });
+    expect(done.ok).toBe(true);
+    expect(steps).toEqual(['fuel', 'done']);
+    expect(sim.controls.apuBleed).toBe(false);
+    expect(sim.controls.ignition).toBe(false);
+  });
+
+  it('motor yanıyorsa otomatik çalıştırma başlamaz', () => {
+    const { sim, auto } = autoRig();
+    sim.trim(0, 5);
+    expect(auto.begin(sim)).toBe(false);
+    expect(auto.active).toBe(false);
+  });
+
+  it('marş kapanıp motor yanmazsa sıra bırakılır (abort bir kez)', () => {
+    const { sim, auto, steps, after } = autoRig();
+    auto.begin(sim);
+    sim.controls.starter = false;
+    waitForSim(sim, () => !auto.active, { maxSeconds: 5, after });
+    expect(auto.active).toBe(false);
+    expect(steps).toEqual(['abort']);
+  });
+
+  it('süre dolarsa ok false döner (atmaz); koşul baştan doğruysa 0 s', () => {
+    const sim = new EngineSim();
+    const r = waitForSim(sim, 'surge', { maxSeconds: 0.5 });
+    expect(r.ok).toBe(false);
+    expect(r.event).toBe(null);
+    expect(r.seconds).toBeGreaterThanOrEqual(0.5 - 1e-6);
+    expect(waitForSim(sim, () => true).seconds).toBe(0);
+  });
+
+  it('advanceUntil: olay geldiği adımda durur, abonelik bırakılır', () => {
+    const bus = new EventBus();
+    let t = 0;
+    const r = advanceUntil<GameEvent>({
+      step: (dt) => {
+        t += dt;
+        if (t > 1) bus.emit({ type: 'autoStartFuel', time: t, severity: 'info', message: '' });
+      },
+      subscribe: (fn) => bus.on(fn),
+      target: 'autoStartFuel',
+      dt: 0.25,
+    });
+    expect(r.ok).toBe(true);
+    expect(r.seconds).toBeCloseTo(1.25, 9);
+    expect(bus.size).toBe(0);
+  });
+
+  it('olay akışı: dinleyici hatası öbürlerini kesmez, abonelik kaldırılır', () => {
+    const bus = new EventBus();
+    const got: string[] = [];
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    bus.on(() => {
+      throw new Error('x');
+    });
+    const off = bus.on((e) => got.push(e.type));
+    const e: SimEvent = { type: 'surge', time: 0, severity: 'warning', message: '' };
+    bus.emit(e);
+    off();
+    bus.emit(e);
+    expect(got).toEqual(['surge']);
+    expect(err).toHaveBeenCalled();
+    err.mockRestore();
+  });
+});
+
+describe('sim durumu yakalama (imza Dalga 0, gövde 2H)', () => {
+  it('captureState / restore var ve gövde gelene kadar açıkça atar', () => {
+    const sim = new EngineSim();
+    expect(typeof sim.captureState).toBe('function');
+    expect(typeof sim.restore).toBe('function');
+    expect(() => sim.captureState()).toThrow(/2H/);
+    expect(() => sim.restore({ version: 1, kind: 'turbofan', time: 0 })).toThrow(/2H/);
+  });
+});
+
+describe('kip denetleyicisi', () => {
+  it('değişimi bildirir, aynı kip sessiz, dinleyici hatası yalıtılır', () => {
+    const m = new ModeController('menu');
+    const seen: string[] = [];
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    m.onChange(() => {
+      throw new Error('x');
+    });
+    const off = m.onChange(({ from, to }) => seen.push(`${from}>${to}`));
+    m.set('sandbox');
+    m.set('sandbox');
+    m.set('workshop');
+    off();
+    m.set('menu');
+    expect(seen).toEqual(['menu>sandbox', 'sandbox>workshop']);
+    expect(m.current).toBe('menu');
+    err.mockRestore();
+  });
+});

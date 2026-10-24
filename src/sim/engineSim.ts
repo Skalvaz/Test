@@ -202,6 +202,22 @@ export interface SimSnapshot {
   thrustFrac: number;
 }
 
+/**
+ * Simülasyonun tam durumu (Dalga 0 imzası, gövde 2H'de): `captureState()`
+ * → istenen kadar ilerlet → `restore(durum)` → aynı girdilerle ilerletince
+ * bit düzeyinde aynı durum (2H kabul testi: yakala → 10 s → geri dön →
+ * 10 s). Olay kamerası ve anlık tekrar (3D), fotoğraf kipinin dondurması
+ * (3A) kullanır. Tasarım (`eng`) ve dinleyiciler durumun parçası değildir:
+ * restore aynı tasarımda çağrılır. `snapshot()` (SimSnapshot) görüntü
+ * özetidir, durum değildir; ad çakışmasın diye yakalama `captureState`.
+ */
+export interface SimState {
+  readonly version: 1;
+  readonly kind: EngineKind;
+  /** Simülasyon zamanı [s] */
+  readonly time: number;
+}
+
 type Listener = (e: SimEvent) => void;
 
 export class EngineSim {
@@ -913,6 +929,16 @@ export class EngineSim {
     this.flags.clear();
     this.surgeCount = 0;
     this.listeners = saved;
+  }
+
+  /** Tam durumu yakalar (gövde Dalga 2H'de; bkz. SimState) */
+  captureState(): SimState {
+    throw new Error("EngineSim.captureState: gövde Dalga 2H'de (snapshot() görüntü özetidir, durum değil)");
+  }
+
+  /** Yakalanan duruma döner (gövde Dalga 2H'de; bkz. SimState) */
+  restore(_state: SimState): void {
+    throw new Error("EngineSim.restore: gövde Dalga 2H'de");
   }
 
   snapshot(): SimSnapshot {
