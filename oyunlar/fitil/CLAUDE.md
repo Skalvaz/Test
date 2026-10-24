@@ -116,7 +116,13 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   taklit eder. Kimlikler: geliştirmede Google TEST (`.env.android`); gerçekleri
   git'e girmeyen `android/local.properties` `ADMOB_APP_ID` ve
   `.env.android.local` `VITE_ADMOB_ODULLU`. Bu ortamda APK derlenmez;
-  `npx vite preview --mode android` köprüyü eklentilerin web yedekleriyle açar.
+  `npm run build:android` sonrası `npx vite preview --mode android` köprüyü
+  eklentilerin web yedekleriyle açar (A4'te denendi: hata yok; AdMob yedeği
+  onay "gerekli" der → Ayarlar'da gizlilik satırı görünür, kapanış olayı
+  olmadığı için reklam 60 sn sonra `odul`; fatura yok → Mağaza "Şu an yok";
+  native-purchases yedeği her çağrıda `console.error` yazar, beklenen).
+  Köprünün dinleyicileri tarayıcıda `Capacitor.Plugins.App.notifyListeners
+  ('backButton' | 'appStateChange', …)` ile tetiklenebilir.
 - Android simgesi, açılış perdesi ve Play görselleri (aşama 3, `docs/ANDROID.md`
   §4): kaynak `magaza/kaynak/*.svg`, üretim `node scripts/magaza-gorselleri.mjs`
   (`simge`, `play`, `ekran <url> [tr|en] [sahne,…]`, `onizleme <klasör>`);
@@ -138,6 +144,7 @@ npm run dev                 # http://localhost:5173 (telefondan aynı ağda IP:5
 npm test                    # vitest
 npm run typecheck
 npm run build:single        # → fitil.html + dist-single/artifact.html
+npm run build:android       # → dist-android/ + cap sync android (docs/ANDROID.md §2; APK Android Studio'da)
 npm run bot -- --bolum 12 --tohum 200 --bot usta
 npm run dogrula             # bölüm doğrulama (bot bantları)
 npm run dogrula -- --bolum 11-15 --tohum 30          # --tohum: tohum SAYISI

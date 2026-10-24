@@ -51,7 +51,7 @@ npm run android:ac                # android\ klasörünü Android Studio'da aça
 **İlk denemede bak:**
 
 - Açılış perdesi gece mavisi, ortada kıvılcımlı fitil; sonra oyunun açılış ekranı.
-- Haritada can hapı (fitil simgesi + sayı); 6. bölümden sonra kaybedince can düşer.
+- Haritada can hapı (fitil simgesi + sayı); 6. bölümden itibaren kaybedince can düşer.
 - "Reklam izle" düğmesine basınca **deneme reklamı** açılır (köşesinde
   "Test Ad" yazar). Gerçek kimlikler girilmedikçe uygulama Google'ın herkese
   açık deneme kimliklerini kullanır (A7); bu normaldir.
@@ -59,6 +59,8 @@ npm run android:ac                # android\ klasörünü Android Studio'da aça
   oluşturulana kadar çalışmaz (§6, §7).
 - Çentikli / hareketli gezinmeli telefonda HUD ve alt düğmeler çubukların
   altına girmemeli (ANDROID.md §3).
+- Geri tuşu: açık pencereyi kapatır, oyunda Duraklat'ı açar; haritada ve
+  açılış ekranında uygulamayı arka plana alır (çıkış onayı yok).
 
 ## 3. Yükleme anahtarı (upload key) ve Play App Signing
 
@@ -230,7 +232,8 @@ kullanımları).
   (çocuklara uygun reklam düzeni, ek denetimler). Fitil her yaştan
   yetişkinin (aile içi) oynadığı sakin bir bulmaca; reklam yalnız istekle ve
   ödüllü, satın alma ekranında baskı yok. AdMob isteklerinde
-  `tagForChildDirectedTreatment: false` ve `maxAdContentRating: 'PG'`.
+  `tagForChildDirectedTreatment: false` ve en çok PG içerik
+  (`MaxAdContentRating.ParentalGuidance`).
 - "Uygulamanız istemeden çocukların ilgisini çekebilir mi?" sorusunu dürüst
   yanıtla: renkli ve sevimli görseller nedeniyle Google inceleme sonrası
   "çocuklara da hitap ediyor" diyebilir. O durumda iki yol var: mağaza

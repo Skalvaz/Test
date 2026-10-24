@@ -18,7 +18,7 @@ kodu web derlemesine GİRMEZ).
 | A6 | Hedef SDK | Capacitor 8 varsayılanı (compile/target 36: Play 31 Ağustos 2026'dan beri API 36 istiyor), minSdk Capacitor varsayılanı |
 | A7 | Reklam kimlikleri | Geliştirmede Google'ın herkese açık TEST kimlikleri (uygulama `ca-app-pub-3940256099942544~3347511713`, ödüllü `ca-app-pub-3940256099942544/5224354917`). Gerçek kimlikler depoya girmez: AdMob uygulama kimliği `android/gradle.properties`'te değil, git'e girmeyen `android/local.properties` → `manifestPlaceholders`; ödüllü birim kimliği `.env.android.local` (`VITE_ADMOB_ODULLU`). Yoksa test kimliği kullanılır. |
 | A8 | Ölçüm (Firebase Analytics) | Ertelendi: Firebase projesi ve `google-services.json` olmadan eklenmez. Köprü `FitilYerel.olay` şimdilik olayı yalnız yerel günlükte bırakır; Oyun özeti Android'de de çalışır. |
-| A9 | Hedef kitle | Önerilen Play "Hedef kitle": 13 yaş ve üstü (Aileler politikası ve çocuklara yönelik reklam kısıtları devreye girmez). AdMob isteğinde `tagForChildDirectedTreatment: false`, `maxAdContentRating: 'PG'` (aile dostu reklam). |
+| A9 | Hedef kitle | Önerilen Play "Hedef kitle": 13 yaş ve üstü (Aileler politikası ve çocuklara yönelik reklam kısıtları devreye girmez). AdMob isteğinde `tagForChildDirectedTreatment: false`, `maxAdContentRating: MaxAdContentRating.ParentalGuidance` (aile dostu reklam; eklenti `'ParentalGuidance'` metnini Google'ın `MAX_AD_CONTENT_RATING_PG`'sine çevirir, düz `'PG'` tanınmaz ve sınırsız kalırdı). |
 | A10 | Yön | Kilitlenmez (tablette yatay da çalışır; oyun yatay yerleşimi destekliyor). |
 
 ## 2. Derleme kipleri
@@ -51,9 +51,10 @@ kodu web derlemesine GİRMEZ).
     autoAcknowledgePurchases: false })`; jeton = `purchaseToken`; oyun
     ödülü kayda yazdıktan sonra `tamamla(jeton)` → tüketilir ürün
     (`can_doldur`, `guclendirici_paketi`) `consumePurchase`, kalıcı
-    (`usta_karti`) `acknowledgePurchase`. `bekleyenler()` onaylanmamış
-    alımlar (`getPurchases`), `geriYukle()` `restorePurchases` + kalıcı
-    sahiplik. Fiyatlar `getProducts` (yerel biçimli).
+    (`usta_karti`) `acknowledgePurchase`. `bekleyenler()` tamamlanmamış
+    alımlar (`getPurchases`: tüketilir üründe tüketilmemiş, kalıcıda
+    onaylanmamış; aşağıda "A2 uygulaması"), `geriYukle()`
+    `restorePurchases` + kalıcı sahiplik. Fiyatlar `getProducts` (yerel biçimli).
 - Onay (UMP): açılışta `requestConsentInfo` → gerekiyorsa `showConsentForm`;
   sonra `initialize`. Gizlilik seçenekleri gerekiyorsa (`privacyOptions
   RequirementStatus`) Ayarlar'da "Reklam gizlilik seçenekleri" satırı.
@@ -195,3 +196,22 @@ burada indirilemez, APK burada derlenmez. Doğrulama: tsc, vitest (köprü
 eklenti taklitleriyle), web derlemesinin değişmediği, `npx cap sync
 android`'in geçtiği, Gradle dosyalarının elle denetimi. Asıl derleme ürün
 sahibinin Windows makinesinde Android Studio ile (PLAY-KONSOL.md).
+
+**A4 birleştirme ve denetim (24 Ekim 2026, dal `fitil/a4-android`):** A2
+(köprü) ve A3 (görseller, belgeler) A1 üstünde birleşti; tek çakışma
+`CLAUDE.md` notlarıydı. Denetlenen: tsc, vitest, `build:android` (+ `cap
+sync`: 4 eklenti), `build:single` çıktısında Capacitor/AdMob/
+native-purchases izi yok (yalnız Capacitor'süz `FitilYerel?.` okumaları),
+web oynanış testi (`telefon`, `gelir`) değişmedi, web kipinde Capacitor
+modülü hiç istenmiyor. Köprü tarayıcıda (`vite preview --mode android`,
+eklentilerin web yedekleri) hatasız: `FitilYerel` kuruluyor, geri tuşu
+(açılış/harita işlenmez, oyunda Duraklat, pencere kapanır), yaşam olayı,
+Ayarlar gizlilik satırı ve Mağaza ("Şu an yok") çalışıyor. Elle okunan
+Android dosyaları tutarlı: `namespace`/`applicationId`/test paket adı
+`com.fenerkoyu.fitil`, `manifestPlaceholders.admobAppId` ↔ manifest
+`APPLICATION_ID` meta-data, `mipmap-anydpi-v26` XML'lerinin andığı üç
+katman her yoğunlukta var (108 dp; API 24–25 simgesi 48 dp), `splash_simge`
+(288 dp) ve şablon boyutlu `splash.png`'ler, silinen şablon kaynaklarına
+atıf kalmadı; `node scripts/magaza-gorselleri.mjs` birleşik dalda aynı
+dosyaları baytı baytına yeniden üretiyor. Gradle/aapt2 bu ortamda
+koşmadığı için kaynak derlemesi ilk kez Android Studio'da sınanır.
