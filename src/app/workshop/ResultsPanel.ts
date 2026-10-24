@@ -96,6 +96,14 @@ export class ResultsPanel {
   private detailsBody: HTMLDivElement;
   private body: HTMLDivElement;
   private foot: HTMLDivElement;
+  /**
+   * Eylem satırı ("Test hücresinde çalıştır"): 1H'nin "Hızlı test" ve "Kabul
+   * testi" düğmeleri buraya eklenir (src/app/workshop/TestReport.ts; App
+   * kanca isteğiyle bağlar). Satır düzenleme evresinde görünür.
+   */
+  get actionRow(): HTMLDivElement {
+    return this.foot;
+  }
   /** Önceki güncellemedeki Uzman kipi: Ayrıntılar yalnız kipe geçişte açılır */
   private expertWas = false;
   /** "Neden?" açıklamasının kıyas çifti (tasarım değişince yeniden yazılır) */

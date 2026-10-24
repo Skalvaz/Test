@@ -153,7 +153,8 @@ const clickPart = async (part) => {
 };
 
 await page.goto(URL, { waitUntil: 'load' });
-await page.waitForFunction(() => !document.getElementById('loading'), null, { timeout: 300000 });
+// Hazır (sözleşme `window.__loadReady`) ve yükleme ekranı kalktı (T-04'te ilk tam karede)
+await page.waitForFunction(() => ('__loadReady' in window ? window.__loadReady === true : true) && !document.getElementById('loading'), null, { timeout: 300000 });
 await shot('01-menu');
 
 /* ------------------------------------------------------------------ */

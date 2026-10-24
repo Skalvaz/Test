@@ -56,7 +56,8 @@ export async function openPage(browser, url, { quality = 'high', w = 960, h = 54
     quality,
   );
   await page.goto(url, { waitUntil: 'load' });
-  await page.waitForFunction(() => !document.getElementById('loading'), null, { timeout: 300000 });
+  // Hazır (sözleşme `window.__loadReady`; eski commit'lerde yok) ve yükleme ekranı kalktı
+  await page.waitForFunction(() => ('__loadReady' in window ? window.__loadReady === true : true) && !document.getElementById('loading'), null, { timeout: 300000 });
   await page.evaluate(() => {
     window.__app.openSandbox();
     document.body.classList.add('ui-hidden');
