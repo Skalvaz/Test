@@ -82,6 +82,39 @@ kodu web derlemesine GİRMEZ).
   (`res/values/colors.xml` `fitil_gece`): eski WebView'da açıkta kalan
   şerit de gece mavisi. Doğrulama telefonda: çentikli/hareketli gezinmeli
   cihazda HUD ve alt düğmeler çubuklara binmemeli, aradaki boşluk tek kat.
+- **A2 uygulaması** (`src/platform/android/`; uygulama tarafı Capacitor'süz
+  `src/platform/yerel.ts`):
+  - `androidKur` `window.FitilYerel`'i (`gelir`, `olay`, `gizlilik`,
+    `hazir`) eşzamanlı kurar ve hemen döner; onay, reklam ve dinleyiciler
+    arkada. Hata oyunu durdurmaz.
+  - Reklam (`reklam.ts`): eklentinin `showRewardVideoAd`'i yalnız ödülde
+    çözülür (ödülsüz kapanışta hiç, gösterim hatasında da reddetmez); sonuç
+    `Rewarded` / `Dismissed` / `FailedToShow` olaylarından: ödül + kapanış
+    `odul`, ödülsüz kapanış 1 sn payla `iptal`, gösterim hatası `hata`.
+    Yükleme hatasında 30 sn, 2 dk, 5 dk (sonra 5 dk) yeniden deneme; yüklü
+    reklam 55 dk'dan eskiyse yenilenir. `initialize`: çocuk/rıza yaşı
+    etiketleri false, `maxAdContentRating: ParentalGuidance` (A9), test
+    cihazı kaydı yok. Onay formu açılış perdesi kalktıktan sonra;
+    `requestConsentInfo` / form hatası ya da `canRequestAds` false → bu
+    oturumda reklam yok (`yok`).
+  - Satın alma (`satin.ts`): eklentinin her çağrısı yeni BillingClient
+    kurup öncekini kapattığı için bütün çağrılar tek kuyrukta (yanıtsız
+    çağrıda süre sınırıyla ilerler). `autoFinishTransactions: false`
+    (`capacitor.config.ts` + açılışta `configure`): yoksa `restorePurchases`
+    ödülü verilmemiş alımları da onaylardı. Bekleyen = SATIN ALINDI
+    durumunda, tüketilir üründe tüketilmemiş (onaylı olsa da), kalıcıda
+    onaylanmamış; ödemesi bekleyen ("2") verilmez. `ITEM_ALREADY_OWNED`
+    (ör. yeniden kurulumdan sonra Usta kartı) mağazadaki alımla `basarili`
+    döner (jeton çifte vermeyi önler). Fatura desteklenmiyorsa `urunler` boş.
+  - Geri tuşu: açık pencere → Esc yolu (`document`'a kabarmadan gönderilir;
+    tahtanın klavye girdisi Esc'i tüketmesin), oyunda Duraklat, harita ve
+    açılışta `App.minimizeApp()`. Yaşam döngüsü: `appStateChange` → ölçüm
+    yazılır, uygulamaya `fitil-yasam` (ses askıya, deneme süresi ve mola
+    durur; `visibilitychange` ile birlikte zararsız).
+  - Açılış perdesi: açılış ekranı DOM'a girince `yerelHazir()` → iki kare
+    sonra `SplashScreen.hide()`; uygulama hazır demezse 8 sn sonra.
+  - Ayarlar "Reklam gizlilik seçenekleri" (Mağaza'nın altında) yalnız UMP
+    `privacyOptionsRequirementStatus` REQUIRED iken; `showPrivacyOptionsForm`.
 
 ## 4. Görseller ve mağaza
 

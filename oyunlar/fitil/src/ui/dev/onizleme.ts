@@ -8,7 +8,8 @@
  * defterKarti, sandik, balon, bant, kutlama, secim.
  * Can, reklam, Mağaza (CAN-REKLAM §6): can (v=bitti|durum|kart|hakyok|
  * hazirdegil|dolu), magaza (v=sende|stok|bekle|yok), kaybettin (v=can|can0|
- * reklam|kart|canUsta), cikisOnayi (v=yeniden), harita&can=0..5, ayarlar&gelir=1.
+ * reklam|kart|canUsta), cikisOnayi (v=yeniden), harita&can=0..5, ayarlar&gelir=1
+ * (&gizlilik=1: Android UMP "Reklam gizlilik seçenekleri" satırı).
  * Parametreler: v (çeşit), w/h (tahta), simdiki (harita), guvenli=47,0,34,0,
  * az=1 (hareketi azalt), palet=renkKoru|yuksekKontrast, panel, sekme, kart.
  */
@@ -354,12 +355,15 @@ async function calistir(): Promise<void> {
       break;
     case 'ayarlar': {
       // gelir=1: sağlayıcı varken (Mağaza satırı, Hakkında'da can cümlesi).
+      // gizlilik=1: Android köprüsü UMP gizlilik seçenekleri istiyor (Mağaza'nın altında satır).
       const gelir = p.get('gelir') === '1';
+      const gizlilik = p.get('gizlilik') === '1';
       void haritaSahnesi(gelir ? 3 : null);
       await ui.ayarlar(O.ayarlarVm(), {
         nasilAc: () => void ui.nasilOynanir({ acikEngeller: ['kafes', 'islak', 'doseme', 'fener', 'kaya'] }),
         oyunOzetiAc: () => void ui.oyunOzeti(O.oyunOzetiVm()),
         ...(gelir ? { magazaAc: () => void magazaDongusu(O.magazaVm()), gelirVar: true } : {}),
+        ...(gizlilik ? { gizlilikAc: () => log('gizlilik seçenekleri') } : {}),
       });
       break;
     }

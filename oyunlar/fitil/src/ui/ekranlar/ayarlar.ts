@@ -32,6 +32,12 @@ export interface AyarlarEk {
    * sen isteyince." Yoksa metin aynen kalır.
    */
   gelirVar?: boolean;
+  /**
+   * (docs/ANDROID.md §3) "Reklam gizlilik seçenekleri" satırı (Mağaza'nın
+   * altında): yalnız verilince görünür (Android köprüsü UMP giriş noktası
+   * istediğini bildirince). Ayarlar açık kalır, form üstünde açılır.
+   */
+  gizlilikAc?: () => void;
 }
 
 /** Dil adları kendi dillerinde (oyuncu kendi dilini tanısın). */
@@ -251,7 +257,20 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
     magaza.addEventListener('click', () => ek.magazaAc?.());
   }
 
-  const icerik = h('div', { s: 'f-ay' }, ses, gorunum, yardim, saglik, kayit, kartlar, magaza, oyunOzeti, hakkinda);
+  // (docs/ANDROID.md §3) Reklam gizlilik seçenekleri (UMP): yalnız Android köprüsü istediğinde; Mağaza'nın altında.
+  let gizlilik: HTMLElement | null = null;
+  if (ek.gizlilikAc) {
+    gizlilik = h(
+      'button',
+      { s: 'f-kart-satir f-ay-oyun-ozeti f-ay-gizlilik', type: 'button' },
+      h('span', { s: 'f-satir-ikon' }, ikon('kilit')),
+      h('span', null, h('strong', { t: MC.gizlilik })),
+      ikon('ileri'),
+    );
+    gizlilik.addEventListener('click', () => ek.gizlilikAc?.());
+  }
+
+  const icerik = h('div', { s: 'f-ay' }, ses, gorunum, yardim, saglik, kayit, kartlar, magaza, gizlilik, oyunOzeti, hakkinda);
   const kapat = () => {
     if (sec()) t.kapat(true);
   };

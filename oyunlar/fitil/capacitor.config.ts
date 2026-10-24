@@ -39,11 +39,17 @@ const config: CapacitorConfig = {
       style: 'DARK',
     },
     SplashScreen: {
-      // Açılış ekranı hazır olunca köprü (A2) SplashScreen.hide() çağırır.
+      // Açılış ekranı hazır olunca köprü (A2, platform/android/yasam.ts) SplashScreen.hide()
+      // çağırır; uygulama hazır demezse 8 sn sonra yine kaldırır.
       launchAutoHide: false,
       launchFadeOutDuration: 250,
       backgroundColor: GECE,
       showSpinner: false,
+    },
+    NativePurchases: {
+      // Elle tamamlama (A2, platform/android/satin.ts): oyun ödülü kayda yazdıktan sonra
+      // tüketir/onaylar. Açıkken restorePurchases ödülü verilmemiş alımları da onaylardı.
+      autoFinishTransactions: false,
     },
   },
 };
