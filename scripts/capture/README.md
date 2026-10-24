@@ -87,3 +87,37 @@ node scripts/capture/compare.mjs capture-output/before/surge capture-output/afte
 Seçenekler: `--headed` (pencereli), `--swiftshader` (yazılımsal çizim,
 GPU'suz sunucu), `--fresh-profile` (shader önbelleğini sil). Başka bir Chromium için `CAPTURE_CHROMIUM` ortam
 değişkenine yolunu yazın.
+
+## Vitrin kadraj seti (Dalga 0, T-19)
+
+Bundan sonraki bütün önce/sonra karşılaştırmaları bu seti kullanır:
+`scenes/vitrin/` altında 12 sahne (galerideki 010, 314, 322, 326, 352, 353,
+360, 401, 404, 405, 411, 511 kadrajları; 322 ve 411'de rölanti, 352'de kuru
+varyant), her biri 1280×720 ve 2560×1440, ROI tanımlarıyla.
+
+```sh
+node scripts/capture/vitrin.mjs http://localhost:5201/ capture-output/vitrin/once            # vitrin seti
+node scripts/capture/vitrin.mjs http://localhost:5201/ capture-output/vitrin/once --set hepsi # + arayüz seti
+node scripts/visual-metrics.mjs capture-output/vitrin/sonra --compare capture-output/vitrin/once --gate 0.995
+node scripts/visual-metrics.mjs capture-output/vitrin/once --overlay capture-output/vitrin/roi  # ROI'leri karede göster
+```
+
+Kayıt belirlenimlidir: sayfa açılır açılmaz App donar (kare yalnız
+istenince), `Math.random` tohumlu, `performance.now` yalnız çizilen karelerle
+ilerleyen sanal saat; ikisi de sahne başında sıfırlanır, ses kapalıdır. Aynı
+koddan iki kayıt bütün karelerde piksel piksel aynıdır (SSIM 1,000). Yan
+dosyadaki NaN sayısı (kayan noktalı okuma) koşudan koşuya ±%3 oynar; görüntü
+oynamaz. Set hep `index.json` sırasıyla ve boyut başına yeni sayfada
+kaydedilir (rüzgâr tulumu gibi kapalı saatler sıraya bağlı). `--only` yalnız
+hata ayıklama içindir.
+
+ROI şekilleri normalize koordinattadır (0..1, sol üst köşe): dikdörtgen
+`[x0, y0, x1, y1]`, `{ "type": "poly", "pts": [[x, y], …] }`,
+`{ "type": "ellipse", cx, cy, rx, ry, rot }` (rx genişliğin, ry yüksekliğin
+oranı), `{ "type": "ring", …, r0, r1 }` (halka; `blades` alanı varsa polar
+FFT), `exclude: [şekil, …]`. Arayüzün kadrajı değiştirdiği sahnelerde (menü,
+atölye) `roiBySize["2560x1440"]` ayrı tanımlıdır.
+
+`--set arayuz` menü, ders seçimi, bilgi bankası, ayarlar, ders 2, test
+hücresi (açı 1 ve kesit), atölye başlangıç/düzenleme/mimari ekranlarını
+1440×810, 1280×720, 960×600 ve 700×900'de kaydeder (CSS kırılım noktaları).

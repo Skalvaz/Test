@@ -1,0 +1,55 @@
+{
+  "id": "353-art-yakici-arkadan",
+  "desc": "Test hücresi, askeri turbofan art yakıcı, alev çekirdeği arkadan-yandan (şok elmasları, zonlar), arayüz gizli",
+  "galeri": "353-art-yakici-arkadan.png",
+  "kind": "militaryTurbofan",
+  "env": "Test hücresi",
+  "ui": "hidden",
+  "cam": [
+    1.6,
+    0.25,
+    7.6
+  ],
+  "tgt": [
+    0,
+    -0.05,
+    3.2
+  ],
+  "fov": 40,
+  "cut": 0,
+  "setup": "sim.trim(1, 20); sim.controls.reheat = 1; a.advance(4);",
+  "warm": 3,
+  "roi": {
+    "alev": {
+      "type": "ellipse",
+      "cx": 0.422,
+      "cy": 0.493,
+      "rx": 0.133,
+      "ry": 0.118
+    },
+    "merdiven": [
+      0.39,
+      0.58,
+      0.5,
+      0.8
+    ],
+    "duvar": [
+      0.72,
+      0.05,
+      0.98,
+      0.5
+    ],
+    "duvarSol": [
+      0.02,
+      0.05,
+      0.3,
+      0.3
+    ],
+    "zemin": [
+      0.7,
+      0.8,
+      0.98,
+      0.98
+    ]
+  }
+}

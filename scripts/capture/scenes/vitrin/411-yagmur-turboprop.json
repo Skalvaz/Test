@@ -1,0 +1,59 @@
+{
+  "id": "411-yagmur-turboprop",
+  "desc": "Havaalanı — yağmur: turboprop tam güç (rain.json kadrajı): yağmur, ıslak zemin, pervane; rölanti varyantı pervane diski FFT kıyası için (1I)",
+  "galeri": "411-yagmur-turboprop.png",
+  "kind": "turboprop",
+  "env": "Havaalanı — yağmur",
+  "ui": "hidden",
+  "cam": [
+    5.5,
+    -1.2,
+    -6.5
+  ],
+  "tgt": [
+    0,
+    -0.6,
+    -1.5
+  ],
+  "fov": 50,
+  "cut": 0,
+  "blades": 6,
+  "setup": "sim.trim(1, 20); a.advance(8);",
+  "warm": 3,
+  "variants": [
+    {
+      "suffix": "-rolanti",
+      "desc": "Aynı kadraj, rölanti",
+      "setup": "sim.trim(0, 20); a.advance(8);"
+    }
+  ],
+  "roi": {
+    "pervane": {
+      "type": "ring",
+      "cx": 0.513,
+      "cy": 0.403,
+      "rx": 0.107,
+      "ry": 0.294,
+      "r0": 0.3,
+      "r1": 0.9
+    },
+    "zemin": [
+      0.05,
+      0.8,
+      0.45,
+      0.98
+    ],
+    "gokyuzu": [
+      0.0,
+      0.0,
+      0.4,
+      0.25
+    ],
+    "hangar": [
+      0.62,
+      0.4,
+      0.98,
+      0.58
+    ]
+  }
+}

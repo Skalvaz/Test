@@ -1,0 +1,48 @@
+{
+  "id": "326-kesit",
+  "desc": "Test hücresi, yolcu turbofanı tam güç, açı 7 (kesit), arayüz gizli: kesit kapağı ve iç parçalar",
+  "galeri": "326-aci-7.png",
+  "kind": "turbofan",
+  "env": "Test hücresi",
+  "ui": "hidden",
+  "cam": [
+    8.6,
+    1.4,
+    1.3
+  ],
+  "tgt": [
+    0,
+    0,
+    1.5
+  ],
+  "fov": 28,
+  "cut": 1,
+  "setup": "sim.trim(1, 30); a.advance(8);",
+  "warm": 3,
+  "roi": {
+    "kesitKapagi": [
+      0.08,
+      0.42,
+      0.24,
+      0.57
+    ],
+    "kizillik": [
+      0.27,
+      0.32,
+      0.37,
+      0.65
+    ],
+    "ic": [
+      0.48,
+      0.35,
+      0.58,
+      0.45
+    ],
+    "duvar": [
+      0.0,
+      0.0,
+      0.3,
+      0.22
+    ]
+  }
+}
