@@ -15,7 +15,8 @@
  *             (ortam derlemesi bitti ve kare çizildi), bu sürede uzun görevler
  *   ortam     geçiş başına duvar saati, en uzun görev, uzun görev toplamı
  *             (PerformanceObserver longtask)
- *   kare      gerçek zamanlı döngüde App.frame'in CPU süresi (p50/p95),
+ *   kare      gerçek zamanlı döngüde App.frame'in CPU süresi (p50/p95; 3
+ *             pencerenin en düşük p50'lisi, --windows),
  *             kare aralığı, karedeki toplam çizim çağrısı ve üçgen (bütün
  *             geçişler: renderer.info.autoReset kapalı), karede kullanılan
  *             program sayısı (gl.useProgram, durum önbelleği sıfırlanarak)
@@ -33,7 +34,7 @@ import { launchBrowser } from './capture/common.mjs';
 const SETTINGS_KEY = 'turbofan-akademi:settings:v1';
 
 const args = process.argv.slice(2);
-const valued = new Set(['--out', '--compare', '--tol', '--quality', '--frames']);
+const valued = new Set(['--out', '--compare', '--tol', '--quality', '--frames', '--windows']);
 const opt = (n) => {
   const i = args.indexOf(n);
   return i >= 0 ? args[i + 1] : null;
@@ -45,7 +46,7 @@ if (!url) {
   process.exit(1);
 }
 const quality = opt('--quality') ?? 'high';
-const FRAMES = Number(opt('--frames') ?? 300);
+const FRAMES = Number(opt('--frames') ?? 200);
 const t0 = Date.now();
 const secs = () => `${((Date.now() - t0) / 1000).toFixed(0)} s`;
 const log = (...a) => console.log(`[${secs()}]`, ...a);
@@ -137,7 +138,7 @@ const load = await page.evaluate(() => {
 log('yükleme', JSON.stringify(load));
 
 /** Gerçek zamanlı döngüde n kare: CPU süresi, aralık, çizim, kullanılan program */
-async function frames(n) {
+async function frameWindow(n) {
   return page.evaluate(async (N) => {
     const a = window.__app;
     const r = a.renderer;
@@ -213,6 +214,22 @@ async function switchEnv(name) {
       programs: window.__app.renderer.info.programs?.length ?? null,
     };
   }, tStart);
+}
+
+/**
+ * Kare ölçümü: WINDOWS pencere × n kare, aralarında kısa bekleme. Rapor en
+ * düşük CPU p50'li pencere (geçici GC/ısıl sıçramalara karşı); bütün
+ * pencerelerin p50'leri `frameCpuP50s`'te.
+ */
+const WINDOWS = Number(opt('--windows') ?? 3);
+async function frames(n) {
+  const all = [];
+  for (let i = 0; i < WINDOWS; i++) {
+    if (i) await page.waitForTimeout(300);
+    all.push(await frameWindow(n));
+  }
+  const best = all.reduce((b, w) => (w.frameCpuMs.p50 < b.frameCpuMs.p50 ? w : b));
+  return { ...best, frameCpuP50s: all.map((w) => w.frameCpuMs.p50) };
 }
 
 const settle = (ms) => page.waitForTimeout(ms);

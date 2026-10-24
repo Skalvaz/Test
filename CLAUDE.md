@@ -42,7 +42,14 @@ npm run build:single        # → turbofan.html (tek dosya, çift tıkla açıl�
 npm run capture -- http://localhost:5173/ capture-output/after surge rain
 npm run capture:compare -- capture-output/before/surge capture-output/after/surge cmp.gif "surge"
 node scripts/playtest.mjs playtest-output   # vite preview --port 4173 açıkken
+node scripts/capture/vitrin.mjs http://localhost:5173/ capture-output/vitrin/sonra [--set hepsi]
+node scripts/visual-metrics.mjs capture-output/vitrin/sonra --compare capture-output/vitrin/once --gate 0.995
+node scripts/perf-smoke.mjs http://localhost:4173/ --compare scripts/referans/perf-smoke.json
 ```
+
+Vitrin kadraj seti (`scripts/capture/scenes/vitrin/`, 12 sahne × 1280×720 ve
+2560×1440, ROI'li) bütün önce/sonra karşılaştırmalarının ortak setidir;
+referans değerler `scripts/referans/`.
 
 Önce/sonra için eski commit'i `git worktree add ../turbofan-once <commit>` ile
 ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
@@ -57,8 +64,24 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   tasarım + 3B yerleşim; `overrideGraph` ile çalışma anında değiştirilir,
   `window.__design`). Dört motor da grafikten; `flowpath.ts`'te ortak
   `computeGasPath` + yerleşimler (çıplak jet / turboprop / turbofan).
-- `src/app/App.ts` — ana döngü; test kancaları: `advance(s)`, `fixedDt` /
-  `pendingSteps` / `framesRendered` (belirlenimli kare kaydı), `window.__app`.
+- `src/app/App.ts` — ana döngü; test kancaları: `advance(s)`,
+  `advanceUntil(olay | koşul, maks)` (T-20), `fixedDt` / `pendingSteps` /
+  `framesRendered` (belirlenimli kare kaydı), `window.__app`. Paketler
+  App.ts'e dokunmaz; kanca noktaları: `onSimEvent(fn)` (sim + uygulama
+  olayları, `src/app/events.ts`), `modes.onChange` (`app/modes/ModeController.ts`),
+  `frameHooks`, `keyHooks`, `advanceHooks`, `clock` (`app/simClock.ts`:
+  duraklatma/tek adım), `pipeline.onContextRestored`.
+- `src/app/render/` — `RenderPipeline` (renderer, post zinciri, kalite,
+  ön-derleme, ısı pusu), `EnvironmentManager` (ortam yükleme ve geçişi,
+  hücre ışığı, `pending`/`serial` = `app.envPending`/`envSerial`),
+  `quality.ts`. `src/app/loadProgress.ts`: yükleme olayı (App yayar, yükleme
+  ekranı çizer). `src/sim/autostart.ts`: otomatik çalıştırma sırası.
+- `src/app/camera/` — `viewport.ts` (setViewOffset, `safeRect()`),
+  `shots.ts` (açılar, geçiş), `shake.ts`, `freecam.ts`; `CameraRig.ts` ince
+  kabuk. `src/core/exposure.ts` pozlamanın tek yazıcısı, `src/core/lightRig.ts`
+  sabit ışık takımı sözleşmesi.
+- `src/styles/` — bileşen CSS'leri; sıra `index.css`'te (lesson, cockpit'ten
+  önce). Her paket yalnız kendi dosyasını değiştirir.
 - `src/engine/visual.ts` — modeli simülasyona bağlar: lüle, termal kızıllık
   (`thermal` + `glow()`), yanma odası noktaları, surge.
 - `src/engine/*.js` — prosedürel motor parçaları (stages, combustor, nozzle…).
@@ -164,9 +187,38 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   yoksa kesitte arka yüzler kırmızı boyanır.
 - PowerShell'de `node … | Select-Object -First N` boruyu kapatınca node 255
   ile çıkar; hata sanma.
+- Testler, kayıt sahneleri ve oynanış testi sabit süre değil olay bekler
+  (T-20): `a.advanceUntil('lightoff', 40)`, `a.advanceUntil('autoStartFuel')`,
+  `a.advanceUntil(() => sim.N2 >= …)`; vitest'te `waitForSim(sim, 'idle')`.
+  Oynanış testinde sayfa gerçek zamanlı da döndüğünden `waitFor(olay, maks,
+  zatenOlduMu)`. Kalibrasyonu değiştiren paket (1B, 2H) yine de bu
+  bölümdeki zamanlamaları günceller.
+- Vitrin kaydı belirlenimlidir: sayfa açılır açılmaz App donar, Math.random
+  tohumlu, performance.now sanal saat (yalnız çizilen karelerle ilerler; zemin
+  girdabı duvar saatine bağlıydı), ses kapalı. Aynı koddan iki kayıt piksel
+  piksel aynı; NaN sayısı (kayan noktalı okuma) ±%3 oynar. Set hep tamamı ve
+  `index.json` sırasıyla kaydedilir (rüzgâr tulumu gibi kapalı saatler).
+- perf-smoke'ta çizim ve program sayıları belirlenimli; havaalanında kare CPU
+  süresi arka arkaya iki soğuk koşuda %27–30 oynadı (GPU'ya bağlı, ısıl
+  durum). Kare süresi kıyası iki yapıyı dönüşümlü koşarak (önce, sonra,
+  önce, sonra) yapılır.
+- CSS sırası bağlayıcı: `.step-body.engine-summary` (test hücresi motor
+  özeti) iki dosyanın kuralını taşır; lesson.css cockpit.css'ten önce.
+- App'i `Object.create(App.prototype)` ile yarım kuran testler yeni alanları
+  da taklit etmeli: `modes` (ModeController), `environment`, `autoStarter`,
+  `keyHooks` (App.workshop.test).
 
 ## Sıradaki işler
 
+0. **Üst seviye planı** (`docs/UST-SEVIYE-PLANI.md`; K1: önce cila,
+   Dalga 0→1→2→3→Y, sonra M5b). ✅ Dalga 0 sözleşmeleri (`0c43ada`…):
+   vitrin seti + visual-metrics + perf-smoke (referanslar
+   `scripts/referans/`), CSS bölmesi, App.ts'ten RenderPipeline /
+   EnvironmentManager / ModeController, CameraRig alt modülleri, exposure ve
+   lightRig, olay sözleşmesi ve `advanceUntil`, autostart.ts, loadProgress,
+   kanca noktaları. Davranış aynı (vitrin ve arayüz setleri piksel piksel).
+   Sırada Dalga 1 (9 paket, birleşme sırası 1A → 1F → 1C → 1D → 1I → 1E →
+   1H → 1G → 1B; portlar 52WN/42WN).
 1. **M5a sürüyor** — şartname `docs/M5A-SPEC.md` (iş paketleri §7, oynanış
    senaryosu §8). Kullanıcı §9.2 S1–S11 varsayılanlarının hepsini onayladı.
    Kullanıcı çok ajanlı iş akışıyla (ultracode) ilerlemeyi istedi; her
