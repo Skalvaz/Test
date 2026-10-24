@@ -3,7 +3,7 @@
  * geçişleri ve kare bütçesi tek betikte, JSON çıktılı.
  *
  *   node scripts/perf-smoke.mjs <url> [--out sonuç.json] [--compare scripts/referans/perf-smoke.json]
- *        [--tol 0.05] [--warm] [--first-visit] [--quality high] [--headed]
+ *        [--tol 0.05] [--gate-frame] [--warm] [--first-visit] [--quality high] [--headed]
  *
  * Varsayılan soğuk profildir (her koşuda silinir): GPU shader önbelleği boş,
  * ilk ziyaretçinin derleme süreleri. --warm profili korur (sıcak ölçüm).
@@ -22,8 +22,11 @@
  *             program sayısı (gl.useProgram, durum önbelleği sıfırlanarak)
  *   program   derlenen (renderer.info.programs), oturumda en az bir kez
  *             kullanılan ve kullanılmayan oranı
- * --compare: kare CPU p50 ve program sayıları referansın ±tol'u içinde mi
- * (dışındaysa çıkış kodu 1). Yük ve derleme süreleri bilgi amaçlıdır.
+ * --compare: çizim ve program sayıları referansın ±tol'u içinde mi
+ * (dışındaysa çıkış kodu 1). Kare CPU p50 burada bilgi amaçlıdır (tek soğuk
+ * koşu ısıl duruma göre %5'ten çok oynar; --gate-frame ile kapıya girer):
+ * kare süresi kapısı dönüşümlü koşuların çiftli kıyasıdır
+ * (scripts/perf-compare.mjs). Yük ve derleme süreleri bilgi amaçlıdır.
  */
 
 import fs from 'node:fs';
@@ -314,7 +317,9 @@ if (opt('--compare')) {
     const p = result.phases[k];
     const q = ref.phases?.[k];
     if (!q) continue;
-    cmp(`${k} kare CPU p50 [ms]`, p.frameCpuMs.p50, q.frameCpuMs.p50);
+    // Tek koşunun kare süresi ısıl duruma göre %5'ten çok oynar: kapı çiftli
+    // kıyastadır (scripts/perf-compare.mjs); burada --gate-frame ile
+    cmp(`${k} kare CPU p50 [ms]`, p.frameCpuMs.p50, q.frameCpuMs.p50, flags.has('--gate-frame'));
     cmp(`${k} çizim/kare`, p.draws, q.draws);
     cmp(`${k} karede program`, p.programsUsedInFrame, q.programsUsedInFrame);
     cmp(`${k} derlenen program`, p.programsCompiled, q.programsCompiled);

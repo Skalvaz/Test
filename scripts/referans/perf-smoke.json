@@ -1,34 +1,34 @@
 {
   "tool": "perf-smoke",
   "version": 1,
-  "when": "2026-10-24T17:47:54.821Z",
-  "url": "http://localhost:4201/",
+  "when": "2026-10-24T20:27:00.649Z",
+  "url": "http://localhost:4202/",
   "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Laptop GPU (0x00002860) Direct3D11 vs_5_0 ps_5_0, D3D11)",
   "profile": "cold",
   "quality": "high",
   "viewport": "1440x810",
   "load": {
-    "menuMs": 10941,
-    "firstFrameMs": 26895,
-    "longestTaskMs": 11466,
-    "longTaskTotalMs": 15895,
+    "menuMs": 11027,
+    "firstFrameMs": 27059,
+    "longestTaskMs": 10966,
+    "longTaskTotalMs": 14974,
     "programs": 227
   },
   "env": {
     "ogle": {
-      "wallS": 58.35,
-      "longestTaskMs": 28098,
-      "longTaskTotalMs": 50079,
+      "wallS": 56.099,
+      "longestTaskMs": 27637,
+      "longTaskTotalMs": 48446,
       "programs": 478
     },
     "gece": {
-      "wallS": 18.654,
-      "longestTaskMs": 91,
-      "longTaskTotalMs": 91,
+      "wallS": 18.628,
+      "longestTaskMs": 96,
+      "longTaskTotalMs": 96,
       "programs": 534
     },
     "hucreDonus": {
-      "wallS": 0.028,
+      "wallS": 0.034,
       "longestTaskMs": 0,
       "longTaskTotalMs": 0,
       "programs": 534
@@ -37,91 +37,111 @@
   "phases": {
     "menu": {
       "frameCpuMs": {
-        "n": 185,
-        "avg": 3.142,
-        "p50": 3.1,
+        "n": 180,
+        "avg": 3.077,
+        "p50": 3,
         "p95": 3.8,
-        "max": 5.5
+        "max": 4.6
       },
       "intervalMs": {
-        "n": 184,
-        "avg": 6.06,
-        "p50": 6.1,
-        "p95": 6.2,
-        "max": 9.2
+        "n": 179,
+        "avg": 7.763,
+        "p50": 7.9,
+        "p95": 8.2,
+        "max": 8.6
       },
       "draws": 270,
       "triangles": 5639568,
       "programsUsedInFrame": 60,
       "programsCompiled": 227,
       "geometries": 95,
-      "textures": 82
+      "textures": 82,
+      "frameCpuP50s": [
+        3.2,
+        3.2,
+        3
+      ]
     },
     "hucre": {
       "frameCpuMs": {
-        "n": 301,
-        "avg": 3.518,
+        "n": 202,
+        "avg": 3.578,
         "p50": 3.4,
-        "p95": 4.2,
-        "max": 13.9
+        "p95": 4.7,
+        "max": 5.5
       },
       "intervalMs": {
-        "n": 300,
-        "avg": 6.081,
-        "p50": 6.1,
-        "p95": 6.2,
-        "max": 14.2
+        "n": 201,
+        "avg": 7.699,
+        "p50": 7.6,
+        "p95": 8.4,
+        "max": 11
       },
-      "draws": 277,
-      "triangles": 5659866,
-      "programsUsedInFrame": 61,
+      "draws": 278,
+      "triangles": 5659882,
+      "programsUsedInFrame": 62,
       "programsCompiled": 229,
       "geometries": 97,
-      "textures": 83
+      "textures": 83,
+      "frameCpuP50s": [
+        3.6,
+        3.5,
+        3.4
+      ]
     },
     "ogle": {
       "frameCpuMs": {
-        "n": 301,
-        "avg": 8.857,
-        "p50": 8.7,
-        "p95": 10.2,
-        "max": 12
+        "n": 202,
+        "avg": 10.543,
+        "p50": 10.4,
+        "p95": 12.2,
+        "max": 14.1
       },
       "intervalMs": {
-        "n": 300,
-        "avg": 9.217,
-        "p50": 9.1,
-        "p95": 10.7,
-        "max": 12.3
+        "n": 201,
+        "avg": 11.046,
+        "p50": 10.9,
+        "p95": 13.1,
+        "max": 15.8
       },
       "draws": 1558,
-      "triangles": 11259325,
+      "triangles": 11259317,
       "programsUsedInFrame": 102,
       "programsCompiled": 478,
       "geometries": 408,
-      "textures": 244
+      "textures": 244,
+      "frameCpuP50s": [
+        10.6,
+        10.4,
+        10.5
+      ]
     },
     "gece": {
       "frameCpuMs": {
-        "n": 301,
-        "avg": 8.549,
-        "p50": 8.2,
-        "p95": 11.4,
-        "max": 14
+        "n": 201,
+        "avg": 9.716,
+        "p50": 9.6,
+        "p95": 10.9,
+        "max": 16.3
       },
       "intervalMs": {
-        "n": 300,
-        "avg": 8.914,
-        "p50": 8.5,
-        "p95": 11.7,
-        "max": 14.4
+        "n": 200,
+        "avg": 10.216,
+        "p50": 10.1,
+        "p95": 12.1,
+        "max": 16.7
       },
       "draws": 1186,
-      "triangles": 10538967,
+      "triangles": 10538969,
       "programsUsedInFrame": 103,
       "programsCompiled": 534,
       "geometries": 408,
-      "textures": 245
+      "textures": 245,
+      "frameCpuP50s": [
+        9.7,
+        9.9,
+        9.6
+      ]
     }
   },
   "programs": {
@@ -130,6 +150,6 @@
     "unused": 263,
     "unusedRatio": 0.493
   },
-  "heapMB": 130.6,
+  "heapMB": 128.6,
   "errors": []
 }
