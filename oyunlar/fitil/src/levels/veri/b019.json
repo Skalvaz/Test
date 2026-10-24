@@ -5,12 +5,13 @@
   "tur": "rahatlama",
   "w": 8,
   "h": 9,
-  "renkSayisi": 5,
+  "renkSayisi": 6,
   "esik": 3,
   "hamle": 30,
   "tohum": 3777863748,
   "yardim": 3,
-  "ozelEsikleri": [7, 9, 12],
+  "ozelEsikleri": [6, 9, 12],
+  "dogumAgirliklari": [4, 4, 4, 4, 4, 1],
   "hedefler": [{ "tur": "zincirleme", "esik": 15, "adet": 7 }],
   "duzen": [
     ". . . . . . . .",
@@ -27,12 +28,12 @@
   "ipuclari": [{ "tetik": "baslangic", "metin": "Kuru gece: kapsüller iki közle kızar, çabuk tutuşur!" }],
   "bayram": true,
   "botBandi": [90, 100],
-  "yildizEsikleri": [19500, 22600],
+  "yildizEsikleri": [21600, 25100],
   "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Gece Yarısı!",
   "muhurler": [
     {"olcu": "R", "kapsam": "hamle", "enAz": 18, "eylem": "koruk"},
-    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 21},
-    {"olcu": "halka", "kapsam": "oyun", "enAz": 4}
+    {"olcu": "kalanHamle", "kapsam": "son", "enAz": 18},
+    {"olcu": "halka", "kapsam": "oyun", "enAz": 6}
   ]
 }
