@@ -44,7 +44,8 @@ npm run capture:compare -- capture-output/before/surge capture-output/after/surg
 node scripts/playtest.mjs playtest-output   # vite preview --port 4173 açıkken
 node scripts/capture/vitrin.mjs http://localhost:5173/ capture-output/vitrin/sonra [--set hepsi]
 node scripts/visual-metrics.mjs capture-output/vitrin/sonra --compare capture-output/vitrin/once --gate 0.995
-node scripts/perf-smoke.mjs http://localhost:4173/ --compare scripts/referans/perf-smoke.json
+node scripts/perf-smoke.mjs http://localhost:4173/ --compare scripts/referans/perf-smoke.json   # sayımlar
+node scripts/perf-compare.mjs --once o1.json,o2.json --sonra s1.json,s2.json                   # kare süresi (dönüşümlü koşular)
 ```
 
 Vitrin kadraj seti (`scripts/capture/scenes/vitrin/`, 12 sahne × 1280×720 ve
@@ -198,10 +199,19 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   girdabı duvar saatine bağlıydı), ses kapalı. Aynı koddan iki kayıt piksel
   piksel aynı; NaN sayısı (kayan noktalı okuma) ±%3 oynar. Set hep tamamı ve
   `index.json` sırasıyla kaydedilir (rüzgâr tulumu gibi kapalı saatler).
-- perf-smoke'ta çizim ve program sayıları belirlenimli; havaalanında kare CPU
-  süresi arka arkaya iki soğuk koşuda %27–30 oynadı (GPU'ya bağlı, ısıl
-  durum). Kare süresi kıyası iki yapıyı dönüşümlü koşarak (önce, sonra,
-  önce, sonra) yapılır.
+- perf-smoke'ta çizim ve program sayıları belirlenimli (ölçüm penceresine
+  bağlı: yöntem değişince referansı yenile); kare CPU süresi aynı kodda
+  koşudan koşuya %3–6, gün içinde %20–30 oynar (ısıl durum). Kare süresi
+  kapısı iki yapıyı dönüşümlü koşup (önce, sonra, önce, sonra)
+  `perf-compare.mjs` ile medyan kıyaslamaktır; `--compare` tek koşuda yalnız
+  sayımları kapıya sokar. Yığın değeri GC zamanına bağlı (%10 oynar).
+  Önce yapısı: `git worktree add --detach ../turbofan-once <commit>`,
+  `node_modules` bağlantısı (junction), orada `npx vite build`, sonra ana
+  kopyadan `npx vite preview ..\turbofan-once --port 4202`. Dikkat: iki dev
+  sunucusu aynı `node_modules/.vite`'ı paylaşır ("Re-optimizing
+  dependencies"); aynı anda ikisinde kayıt alma. Kaldırırken önce
+  bağlantıyı sil (`cmd /c rmdir ..\turbofan-once\node_modules`), sonra
+  `git worktree remove --force ..\turbofan-once`.
 - CSS sırası bağlayıcı: `.step-body.engine-summary` (test hücresi motor
   özeti) iki dosyanın kuralını taşır; lesson.css cockpit.css'ten önce.
 - App'i `Object.create(App.prototype)` ile yarım kuran testler yeni alanları
@@ -216,9 +226,11 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
    `scripts/referans/`), CSS bölmesi, App.ts'ten RenderPipeline /
    EnvironmentManager / ModeController, CameraRig alt modülleri, exposure ve
    lightRig, olay sözleşmesi ve `advanceUntil`, autostart.ts, loadProgress,
-   kanca noktaları. Davranış aynı (vitrin ve arayüz setleri piksel piksel).
-   Sırada Dalga 1 (9 paket, birleşme sırası 1A → 1F → 1C → 1D → 1I → 1E →
-   1H → 1G → 1B; portlar 52WN/42WN).
+   kanca noktaları. Kabul: vitrin seti 30 karede piksel piksel aynı (ROI SSIM
+   1,000), arayüz seti 40 karede gürültü tabanında; perf çiftli kıyas ±%2 ve
+   sayımlar aynı; oynanış 1, 2, sandbox geçti; 1120 test. Sırada Dalga 1
+   (9 paket, birleşme sırası 1A → 1F → 1C → 1D → 1I → 1E → 1H → 1G → 1B;
+   portlar 52WN/42WN).
 1. **M5a sürüyor** — şartname `docs/M5A-SPEC.md` (iş paketleri §7, oynanış
    senaryosu §8). Kullanıcı §9.2 S1–S11 varsayılanlarının hepsini onayladı.
    Kullanıcı çok ajanlı iş akışıyla (ultracode) ilerlemeyi istedi; her
