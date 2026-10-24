@@ -2,7 +2,7 @@
  * Turbofan Akademi — giriş noktası.
  */
 
-import './styles.css';
+import './styles/index.css';
 import { App } from './app/App';
 import { weather } from './core/weather';
 import { ENGINE_GRAPHS, TEMPLATES, builtEngine, builtFor, designFor, overrideGraph, setSlotGraph } from './design/catalog';

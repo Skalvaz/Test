@@ -1,0 +1,101 @@
+/* Ders paneli: adım, hedefler, quiz, geri bildirim. Sahibi: 1D. */
+
+/* ---------------- ders paneli ---------------- */
+.lesson-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.progress-dots { display: flex; gap: 4px; flex-wrap: wrap; }
+.progress-dots i {
+  width: 16px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.progress-dots i.done { background: var(--accent); opacity: 0.55; }
+.progress-dots i.now { background: var(--accent); }
+.step-title { font-size: 19px; font-weight: 620; margin: 2px 0 10px; letter-spacing: -0.01em; }
+.step-body { color: var(--ink-2); font-size: 14px; }
+.step-body p { margin: 0 0 10px; }
+.step-body ul { margin: 0 0 10px; padding-left: 18px; }
+.step-body li { margin-bottom: 4px; }
+.callout {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-dim);
+  border-radius: 0 6px 6px 0;
+  color: var(--ink);
+  font-size: 13px;
+}
+.callout.warn { border-color: var(--amber); background: rgba(255, 176, 32, 0.1); }
+.objectives { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.objective {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 13px;
+}
+.objective .box {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border-radius: 4px;
+  border: 1.5px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}
+.objective.done { border-color: rgba(61, 220, 132, 0.4); background: rgba(61, 220, 132, 0.07); }
+.objective.done .box { border-color: var(--green); background: var(--green); color: #032010; }
+.objective.active { border-color: var(--accent); }
+.objective .hold {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+}
+.quiz { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.quiz-q { font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.quiz-opt {
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  line-height: 1.35;
+}
+.quiz-opt:hover { border-color: var(--accent); }
+.quiz-opt.right { border-color: var(--green); background: rgba(61, 220, 132, 0.12); }
+.quiz-opt.wrong { border-color: var(--red); background: rgba(255, 77, 61, 0.1); }
+.quiz-opt:disabled { cursor: default; }
+.feedback { margin-top: 10px; padding: 10px 12px; border-radius: 8px; font-size: 13px; }
+.feedback.ok { background: rgba(61, 220, 132, 0.1); border: 1px solid rgba(61, 220, 132, 0.35); }
+.feedback.bad { background: rgba(255, 77, 61, 0.1); border: 1px solid rgba(255, 77, 61, 0.35); }
+.feedback.info { background: var(--accent-dim); border: 1px solid rgba(46, 230, 214, 0.35); }
+.pick-prompt {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px dashed var(--accent);
+  color: var(--accent);
+  font-size: 13px;
+}
+.lesson-foot {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+}
+.lesson-foot .spacer { flex: 1; }

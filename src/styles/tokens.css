@@ -1,0 +1,48 @@
+/* Tasarım belirteçleri: renkler, yazı tipleri, ölçüler (CSS değişkenleri).
+   Sahibi: 1C (kimlik çekirdeği). Dar ekran ölçüleri de burada; bileşen
+   kuralları kendi dosyalarında. */
+
+/* =====================================================================
+   Turbofan Akademi — arayüz tasarım sistemi
+   Aviyonik estetik: koyu cam paneller, EICAS renk kodları
+   (beyaz = normal, amber = dikkat, kırmızı = limit, magenta = hedef,
+   camgöbeği = etkileşim/vurgu).
+   ===================================================================== */
+
+:root {
+  --bg: #06090d;
+  --panel: rgba(11, 15, 21, 0.84);
+  --panel-solid: #0c1118;
+  --panel-2: rgba(22, 29, 38, 0.9);
+  --line: rgba(160, 185, 210, 0.14);
+  --line-strong: rgba(160, 185, 210, 0.28);
+  --ink: #e8eef4;
+  --ink-2: #b7c3cf;
+  --muted: #7b8a99;
+  --accent: #2ee6d6;
+  --accent-dim: rgba(46, 230, 214, 0.14);
+  --amber: #ffb020;
+  --red: #ff4d3d;
+  --green: #3ddc84;
+  --magenta: #ff5cf0;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --font: Inter, 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Mono', Consolas, 'Roboto Mono', ui-monospace, monospace;
+  --shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
+  --topbar-h: 52px;
+  --console-h: 214px;
+  --left-w: 372px;
+  --right-w: 344px;
+}
+
+/* ---------------- dar ekranlar ---------------- */
+@media (max-width: 1280px) {
+  :root { --left-w: 320px; --right-w: 300px; --console-h: 200px; }
+}
+@media (max-width: 1000px) {
+  :root { --console-h: 188px; }
+}
+@media (max-width: 720px) {
+  :root { --left-w: calc(100vw - 24px); }
+}

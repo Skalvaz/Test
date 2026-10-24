@@ -25,7 +25,7 @@ export const OVERLAY_ORDER = 990;
 
 const Z = new THREE.Vector3(0, 0, 1);
 
-/** styles.css değişkeninden renk (tarayıcı dışında ya da boşsa yedek) */
+/** CSS değişkeninden renk (src/styles/tokens.css) (tarayıcı dışında ya da boşsa yedek) */
 export function cssColor(name: string, fallback: string): THREE.Color {
   let v = '';
   try {
