@@ -3,6 +3,12 @@
  * kancasıyla başlar (`bootWithHot`): sayfa yeni sürümle yeniden yüklenirse
  * süren bölüm anlık görüntüden sürdürülür. Bağımsız dosyada (file://)
  * doğrudan başlar.
+ *
+ * Android derlemesinde (`vite build --mode android`, docs/ANDROID.md §2) önce
+ * `platform/android` dinamik içe aktarılır ve `androidKur()` beklenir
+ * (`window.FitilYerel` uygulama kurulmadan hazır olmalı: `gelirSaglayici()`
+ * sayfa başına bir kez seçer). Web derlemelerinde `import.meta.env.MODE`
+ * derleme anında sabittir; Android dalı ölü kod olarak atılır.
  */
 import './style.css';
 import { yaziTipiniGom } from './ui/yazitipi';
@@ -27,16 +33,33 @@ yaziTipiniGom();
 
 let uygulama: Uygulama | null = null;
 
-bootWithHot(
-  (veri) => {
-    const host = document.getElementById('app');
-    if (!host || uygulama) return;
-    uygulama = new Uygulama(host);
-    window.__fitil = uygulama.testKancasi();
-    const sicak = (veri && typeof veri === 'object' ? veri : {}) as SicakVeri;
-    void uygulama.calistir(sicak).catch((e) => {
-      console.error('[fitil] akış hatası', e);
-    });
-  },
-  () => uygulama?.anlik() ?? {},
-);
+function baslat(): void {
+  bootWithHot(
+    (veri) => {
+      const host = document.getElementById('app');
+      if (!host || uygulama) return;
+      uygulama = new Uygulama(host);
+      window.__fitil = uygulama.testKancasi();
+      const sicak = (veri && typeof veri === 'object' ? veri : {}) as SicakVeri;
+      void uygulama.calistir(sicak).catch((e) => {
+        console.error('[fitil] akış hatası', e);
+      });
+    },
+    () => uygulama?.anlik() ?? {},
+  );
+}
+
+/** Android: yerel köprüyü kur, sonra başlat. Kurulum hatası oyunu durdurmaz (köprüsüz başlar). */
+async function androidIleBaslat(): Promise<void> {
+  try {
+    const { androidKur } = await import('./platform/android/index');
+    await androidKur();
+  } catch (e) {
+    console.error('[fitil] Android kurulumu başarısız', e);
+  }
+  baslat();
+}
+
+// Üst düzey await yok: tek dosya kipi IIFE'dir.
+if (import.meta.env.MODE === 'android') void androidIleBaslat();
+else baslat();

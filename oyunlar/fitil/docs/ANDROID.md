@@ -31,6 +31,14 @@ kodu web derlemesine GİRMEZ).
   kod olarak atılır (denetim: `fitil.html` içinde `Capacitor` geçmez).
 - Android projesi `oyunlar/fitil/android/` (git'te; derleme çıktıları ve
   `local.properties` hariç).
+- A1 kurulumu: `npm run build:android` (Vite + `cap sync android`; ilk
+  açılıştan önce de çalıştır: Cordova eklenti klasörü ve web varlıkları
+  git'te değil), `npm run android:ac` (Android Studio'da açar). Ödüllü
+  birim kimliği `.env.android` (test) / `.env.android.local` (gerçek);
+  AdMob uygulama kimliği `android/local.properties` `ADMOB_APP_ID`
+  (`app/build.gradle` → `manifestPlaceholders.admobAppId`). Capacitor CLI
+  `capacitor.config.ts`'i TypeScript 7'de Node'un tür ayıklamasıyla okur:
+  Node ≥ 22.18 gerekir.
 
 ## 3. Köprü (`src/platform/android/`)
 
@@ -56,6 +64,24 @@ kodu web derlemesine GİRMEZ).
 - Açılış perdesi (splash): koyu gece mavisi + simge; açılış ekranı hazır olunca gizlenir.
 - Güvenli alan: Capacitor 8 SystemBars ayarı oyunun `env(safe-area-inset-*)`
   paylarıyla çift pay vermeyecek biçimde seçilir (gerekçe belgeye).
+  **Karar (A1):** `capacitor.config.ts` → `SystemBars: { insetsHandling:
+  'native', initialViewportFitValueHint: 'cover', style: 'DARK' }` +
+  `MainActivity`'de `EdgeToEdge.enable` (saydam çubuk, açık simge).
+  Gerekçe: oyun payları yalnız `env(safe-area-inset-*)`'ten alır
+  (`ui/stil/temel.css` `--guv-*`, `gelirSahte.css`) ve `index.html`'de
+  `viewport-fit=cover` var. WebView ≥ 140'ta `native` sayfayı kenardan
+  kenara çizer, `env()` gerçek çubuk/çentik payını verir; daha eski
+  WebView'da Capacitor WebView'ı çubukların içine yerleştirir ve `env()` 0
+  olur. İki durumda da pay tek yerden gelir, çubuk içeriği örtmez.
+  `css` (varsayılan) ek olarak `--safe-area-inset-*` yazar; oyun bunları
+  okumadığı için gereksiz. `disable` eski WebView'da içeriği çubukların
+  altına bırakırdı. Kenardan kenara çağrısı Android 15+'ta zaten zorunlu;
+  7–14'te aynı görünüm için Capacitor belgesi önerir (Capacitor 9'da
+  kendiliğinden). `style: 'DARK'`: gece zemininde açık renkli simgeler
+  (cihaz açık temada da). Pencere ve açılış perdesi zemini `#0B1030`
+  (`res/values/colors.xml` `fitil_gece`): eski WebView'da açıkta kalan
+  şerit de gece mavisi. Doğrulama telefonda: çentikli/hareketli gezinmeli
+  cihazda HUD ve alt düğmeler çubuklara binmemeli, aradaki boşluk tek kat.
 
 ## 4. Görseller ve mağaza
 
