@@ -210,4 +210,14 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
      yeni iş akışı yok. Ölçüm: dalga 1 düzeltmesi (12 ajan) ≈ 5 sa
      sınırının %27'si, haftalığın %4'ü.
    - Paket portları: Pn → 518n (P4b 5194), önizleme 418n; 5173/4173 ana.
-2. M5b, M5c (`docs/ATOLYE.md`).
+2. **Üst seviye planı** (kullanıcı, 24 Ekim: "tüm sistemleri, oynanışı,
+   grafikleri, tasarımı, menüyü ve art style'ı geliştirelim, farklı
+   açılardan yaklaşıp her şeyi üst seviyeye taşıyalım"). Önce bütünsel
+   denetim: galeri → 8 uzman (grafik, sanat, arayüz, oynanış,
+   fizik/eğitim, ses, teknik, rakip araştırması) → sentez → eleştirmen →
+   dalga planı + kullanıcı kararları; M5a P11 plana dahil. ⏸ Kullanıcı
+   isteğiyle galeri aşamasında durduruldu: `capture-output/denetim/`
+   (86 PNG; eksik: gece/hücre ortamları, test hücresinin kalanı, atölye,
+   GIF'ler, ölçümler, GALERI.md), çekim betikleri
+   `scripts/denetim-*.tmp.mjs` (gitignore'da).
+3. M5b, M5c (`docs/ATOLYE.md`).
