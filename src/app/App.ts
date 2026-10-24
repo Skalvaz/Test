@@ -66,6 +66,7 @@ import { RenderPipeline, type PostFx } from './render/RenderPipeline';
 import { EnvironmentManager, TEST_CELL, type LoadStep } from './render/EnvironmentManager';
 import { QUALITY } from './render/quality';
 import { ModeController, type Mode } from './modes/ModeController';
+import { emitLoadProgress, type LoadStage } from './loadProgress';
 
 /** Atölye test kancası (M5A-SPEC §6.10) */
 export interface WorkshopHook {
@@ -88,9 +89,11 @@ const AUTOSTART_EVENTS: Record<AutoStartStep, [AppEventType, string]> = {
 /** Uyarıdaki "Parçayı göster" vurgusunun süresi [ms] */
 const WS_SHOW_PART_MS = 2500;
 
-const step = (onText: (t: string) => void, text: string) =>
+/** Yükleme aşaması: metin + loadProgress olayı, sonra iki kare bekler (ekran güncellensin) */
+const step = (onText: (t: string) => void, text: string, stage: LoadStage) =>
   new Promise<void>((resolve) => {
     onText(text);
+    emitLoadProgress(stage, text);
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
   });
 
@@ -219,7 +222,12 @@ export class App {
     };
   }
 
-  async init(onProgress: (t: string) => void) {
+  /**
+   * Yükler ve ilk kareyi ister. İlerleme `loadProgress` olayıyla yayılır
+   * (src/app/loadProgress.ts; yükleme ekranı onu çizer); `onProgress`
+   * yalnız metni isteyenler için.
+   */
+  async init(onProgress: (t: string) => void = () => {}) {
     /* ---------------- renderer ---------------- */
     this.pipeline = new RenderPipeline(this.container);
     const renderer = this.pipeline.renderer;
@@ -239,20 +247,20 @@ export class App {
       },
       this.settings.environment,
     );
-    const loadStep: LoadStep = (_stage, label) => step(onProgress, label);
+    const loadStep: LoadStep = (stage, label) => step(onProgress, label, stage);
 
-    await step(onProgress, 'Yüzey dokuları üretiliyor…');
+    await step(onProgress, 'Yüzey dokuları üretiliyor…', 'textures');
     const details = await loadPanelDetails().catch((err) => {
       console.error('Panel detay dokuları yüklenemedi', err);
       return null;
     });
-    await step(onProgress, 'Donanım parçaları yükleniyor…');
+    await step(onProgress, 'Donanım parçaları yükleniyor…', 'kit');
     setDetail(this.settings.quality);
     const kitTex = await loadKit(renderer).catch((err) => {
       console.error('Kit parçaları yüklenemedi', err);
       return null;
     });
-    await step(onProgress, 'Malzeme taramaları yükleniyor…');
+    await step(onProgress, 'Malzeme taramaları yükleniyor…', 'scans');
     const scans = await loadScans(renderer).catch((err) => {
       console.error('Malzeme taramaları yüklenemedi', err);
       return null;
@@ -260,24 +268,24 @@ export class App {
     const materials = createMaterials(renderer, details, kitTex, scans);
     this.materials = materials;
 
-    await step(onProgress, 'Gökyüzü ve ortam ışığı hesaplanıyor…');
+    await step(onProgress, 'Gökyüzü ve ortam ışığı hesaplanıyor…', 'environment');
     this.environment.create(materials);
     this.environment.lights.add('cutFill', this.cutFill);
 
     await this.environment.loadCell(loadStep);
     await this.environment.loadAirfield(loadStep, scans, this.rig.camera);
 
-    await step(onProgress, 'Motor geometrisi oluşturuluyor…');
+    await step(onProgress, 'Motor geometrisi oluşturuluyor…', 'engine');
     this.visual = new EngineVisual(materials, visualSourceFor(this.slot));
     this.scene.add(this.visual.root);
     this.scene.add(this.cutFill);
     this.scene.add(this.rain.mesh);
 
-    await step(onProgress, 'Termodinamik model dengeleniyor…');
+    await step(onProgress, 'Termodinamik model dengeleniyor…', 'sim');
     this.sim.trim(0);
     this.sim.on((e) => this.handleSimEvent(e));
 
-    await step(onProgress, 'Görüntü işleme zinciri kuruluyor…');
+    await step(onProgress, 'Görüntü işleme zinciri kuruluyor…', 'post');
     this.fx = this.pipeline.createPost(this.scene, this.rig.camera);
 
     this.picker = new Picker(renderer.domElement, this.rig.camera, this.visual);
@@ -305,6 +313,7 @@ export class App {
     this.showMenu(true);
     this.frame = this.frame.bind(this);
     requestAnimationFrame(this.frame);
+    emitLoadProgress('ready', 'Hazır');
   }
 
   /* ================================================================ */
@@ -1787,10 +1796,16 @@ export class App {
     this.pipeline.updateHaze(snap, this.rig.camera, this.visual.exhaustExit, dt);
     if (!this.envPending) {
       this.pipeline.render(dt);
+      if (!this.firstFrameDone) {
+        this.firstFrameDone = true;
+        emitLoadProgress('firstFrame', 'İlk kare çizildi');
+      }
       // Yeni model çizildi: eski modeller artık güvenle atılabilir
       if (this.disposeQueue.length) for (const v of this.disposeQueue.splice(0)) v.dispose();
     }
     this.framesRendered++;
   }
   private disposeQueue: EngineVisual[] = [];
+  /** İlk tam kare çizildi mi (loadProgress 'firstFrame' bir kez) */
+  private firstFrameDone = false;
 }

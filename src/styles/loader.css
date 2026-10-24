@@ -27,3 +27,9 @@
   animation: spin 1s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* İlerleme çubuğu iskeleti: --load (0..1) main.ts'ten, loadProgress olayıyla.
+   Bugün `hidden`; 1C görünür yapar ve çizer (istasyon çizgisi motifi). */
+.loading-progress { width: 220px; height: 2px; border-radius: 1px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.loading-progress[hidden] { display: none; }
+.loading-progress-fill { height: 100%; width: calc(var(--load, 0) * 100%); background: var(--accent); transition: width 0.3s ease; }

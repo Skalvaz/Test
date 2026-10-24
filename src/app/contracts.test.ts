@@ -1,14 +1,15 @@
 /**
  * Dalga 0 sözleşmeleri: olay akışı ve olay bekleme (T-20), otomatik
  * çalıştırma sırası, sim durumu yakalama imzası (gövde 2H), kip
- * denetleyicisi. Dalga 1 paketleri bu API'lere dayanır. (Kamera ve ışık: camera/camera.test.ts)
+ * denetleyicisi, yükleme olayı. Dalga 1 paketleri bu API'lere dayanır. (Kamera ve ışık: camera/camera.test.ts)
  */
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EngineSim, type SimEvent } from '../sim';
 import { AutoStart, type AutoStartStep } from '../sim/autostart';
 import { EventBus, type GameEvent } from './events';
 import { advanceUntil, waitForSim } from './waitFor';
 import { ModeController } from './modes/ModeController';
+import { emitLoadProgress, LOAD_WEIGHTS, onLoadProgress, resetLoadProgress, stageFraction, type LoadProgress } from './loadProgress';
 
 describe('olay bekleme (T-20)', () => {
   /** Otomatik çalıştırma App'teki gibi: her sim adımından sonra */
@@ -124,5 +125,35 @@ describe('kip denetleyicisi', () => {
     expect(seen).toEqual(['menu>sandbox', 'sandbox>workshop']);
     expect(m.current).toBe('menu');
     err.mockRestore();
+  });
+});
+
+describe('yükleme olayı', () => {
+  afterEach(() => resetLoadProgress());
+
+  it('ağırlıklar toplamı 1, ilerleme azalmaz, ready = 1', () => {
+    const sum = Object.values(LOAD_WEIGHTS).reduce((a, b) => a + b, 0);
+    expect(sum).toBeCloseTo(1, 9);
+    const stages = Object.keys(LOAD_WEIGHTS) as (keyof typeof LOAD_WEIGHTS)[];
+    let prev = -1;
+    for (const s of stages) {
+      expect(stageFraction(s)).toBeGreaterThan(prev);
+      prev = stageFraction(s);
+    }
+    expect(stageFraction('ready')).toBe(1);
+  });
+
+  it('dinleyiciler sırayla alır, son olay geç abone olana da gelir', () => {
+    const got: LoadProgress[] = [];
+    onLoadProgress((p) => got.push(p));
+    emitLoadProgress('textures', 'Yüzey dokuları üretiliyor…');
+    emitLoadProgress('airfield', 'Havaalanı yükleniyor…');
+    emitLoadProgress('ready', 'Hazır');
+    expect(got.map((p) => p.stage)).toEqual(['textures', 'airfield', 'ready']);
+    expect(got[2].done).toBe(true);
+    expect(got[1].fraction).toBeGreaterThan(got[0].fraction);
+    const late: LoadProgress[] = [];
+    onLoadProgress((p) => late.push(p));
+    expect(late.map((p) => p.stage)).toEqual(['ready']);
   });
 });
