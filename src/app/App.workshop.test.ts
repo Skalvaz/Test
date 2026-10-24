@@ -18,6 +18,7 @@ import { WorkshopStore } from '../workshop/store';
 import { FAKE_DEPS, memoryStorage } from '../workshop/testing';
 import { Toasts } from '../ui/Toasts';
 import { App } from './App';
+import { ModeController } from './modes/ModeController';
 
 // Özel alanlara erişim: yarım kurulum taklitleri
 type AnyApp = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -57,7 +58,8 @@ function rig(o: { cancel?: boolean } = {}): Rig {
     realFlush();
   };
   Object.assign(app, {
-    mode: 'workshop',
+    // Kip ModeController'da (app.mode erişimcisi ona yazar)
+    modes: new ModeController('workshop'),
     overlay: null,
     wsStore: store,
     wsHandles: handles,
@@ -352,7 +354,7 @@ describe('mod değişince bildirimler temizlenir', () => {
       catalogSlot: 'turbofan',
       cockpit: { flash() {} },
       sim: { reset() {} },
-      envName: 'Test hücresi',
+      environment: { inCell: true, cell: null },
       cutaway: false,
       mirrorWorkshopViews() {},
       enterWorkshopScene() {},

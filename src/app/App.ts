@@ -5,12 +5,7 @@
 
 import * as THREE from 'three';
 import { EngineAudio, type AudioEngine } from '../audio/EngineAudio';
-import { createEnvironment, HDRI_PRESETS, PRESETS } from '../core/environment.js';
-import { createComposer } from '../core/postfx.js';
-import { CELL_BOUNDS, loadTestCell, setCellLights, type TestCell } from '../core/testCell';
-import { loadCellProps } from '../core/cellProps';
-import { loadAirfield, type Airfield } from '../core/airfield';
-import { createNoiseTexture } from '../materials/textures.js';
+import { CELL_BOUNDS } from '../core/testCell';
 import { EngineVisual, type PartId } from '../engine/visual';
 import { LessonRunner, type LessonResult } from '../game/LessonRunner';
 import { LESSONS } from '../game/lessons';
@@ -35,7 +30,7 @@ function setDetail(q: Settings['quality']) {
 }
 import { setCutPlane } from '../materials/engine';
 import { Rain } from '../core/rain';
-import { updateWeather, weather, wetUniforms } from '../core/weather';
+import { updateWeather } from '../core/weather';
 import { loadScans } from '../materials/scans.js';
 import { loadPanelDetails } from '../materials/textures.js';
 import { EngineSim, type SimEvent } from '../sim';
@@ -63,8 +58,10 @@ import { ScaleFigure } from './workshop/ScaleFigure';
 import { EnvelopeBox } from './workshop/EnvelopeBox';
 import type { Evaluation } from '../design/evaluate';
 import type { HandleScreen } from './workshop/Handles';
-
-type Mode = 'menu' | 'lesson' | 'sandbox' | 'workshop';
+import { RenderPipeline, type PostFx } from './render/RenderPipeline';
+import { EnvironmentManager, TEST_CELL, type LoadStep } from './render/EnvironmentManager';
+import { QUALITY } from './render/quality';
+import { ModeController, type Mode } from './modes/ModeController';
 
 /** Atölye test kancası (M5A-SPEC §6.10) */
 export interface WorkshopHook {
@@ -78,18 +75,8 @@ export interface WorkshopHook {
 
 const ALL_SWITCHES: SwitchId[] = ['apuBleed', 'starter', 'ignition', 'fuelRun', 'fadec'];
 const DEFAULT_SWITCHES: SwitchId[] = ['apuBleed', 'starter', 'ignition', 'fuelRun'];
-const QUALITY = {
-  low: { pixelRatio: 1, shadow: 1024, gtao: false, bloom: false },
-  medium: { pixelRatio: 1.5, shadow: 2048, gtao: true, bloom: true },
-  high: { pixelRatio: 2, shadow: 4096, gtao: true, bloom: true },
-} as const;
-
-/** Blender'da pişirilmiş kapalı test hücresi ortamının adı */
-const TEST_CELL = 'Test hücresi';
 /** Uyarıdaki "Parçayı göster" vurgusunun süresi [ms] */
 const WS_SHOW_PART_MS = 2500;
-const AIRFIELD_DEFAULT = 'Havaalanı — öğle';
-const AIRFIELD_NIGHT = 'Havaalanı — gece';
 
 const step = (onText: (t: string) => void, text: string) =>
   new Promise<void>((resolve) => {
@@ -99,6 +86,12 @@ const step = (onText: (t: string) => void, text: string) =>
 
 export class App {
   renderer!: THREE.WebGLRenderer;
+  /** Çizim hattı: renderer, post zinciri, kalite, ön-derleme (src/app/render) */
+  pipeline!: RenderPipeline;
+  /** Ortamlar: gökyüzü/ışık, test hücresi, havaalanı, geçişler (src/app/render) */
+  environment!: EnvironmentManager;
+  /** Kip ve kip değişimi bildirimi (`modes.onChange`) */
+  readonly modes = new ModeController('menu');
   scene = new THREE.Scene();
   rig!: CameraRig;
   sim = new EngineSim();
@@ -106,7 +99,12 @@ export class App {
   slot: SlotId = 'turbofan';
   visual!: EngineVisual;
   audio = new EngineAudio();
-  mode: Mode = 'menu';
+  get mode(): Mode {
+    return this.modes.current;
+  }
+  set mode(m: Mode) {
+    this.modes.set(m);
+  }
   /** Sahnedeki motorun kaynağı: katalog (kind yuvası) ya da atölye tasarımı */
   source: 'catalog' | 'workshop' = 'catalog';
   timeScale = 1;
@@ -133,10 +131,9 @@ export class App {
   private returnTo: 'workshop' | null = null;
   private wsHook = (dt: number) => this.workshopFrame(dt);
 
-  private env!: ReturnType<typeof createEnvironment>;
   private materials!: ReturnType<typeof createMaterials>;
-  private cell: TestCell | null = null;
-  private fx!: ReturnType<typeof createComposer>;
+  /** Post zinciri (pipeline.fx; kayıt betikleri `app.fx` okur) */
+  private fx!: PostFx;
   private picker!: Picker;
   private cockpit!: Cockpit;
   private eicas!: Eicas;
@@ -165,7 +162,9 @@ export class App {
   private cutFill = new THREE.PointLight(0xfff4e8, 0, 14, 1.6);
   private static readonly CUT_FILL = 2;
   /** Test hücresi ışık seviyesi: 1 açık, 0.35 loş, 0 gece */
-  lightLevel = 1;
+  get lightLevel(): number {
+    return this.environment.lightLevel;
+  }
   private cutaway = false;
   private lastZoneEvents = 0;
   private rain = new Rain();
@@ -176,17 +175,17 @@ export class App {
   private stepHighlight: PartId | null = null;
   private autoStart = false;
   private settings: Settings;
-  private envName = TEST_CELL;
-  private airfield: Airfield | null = null;
   /**
    * Ortam değişiminde yeni shader'lar derlenirken true: bu sürede kare
-   * çizilmez, ekranda önceki kare kalır. (Paralel derlemede hazır olmayan
-   * nesneler atlanır; yoksa bir an apron yerine altındaki çimen görünür.)
+   * çizilmez, ekranda önceki kare kalır (EnvironmentManager.pending).
    */
-  envPending = false;
-  private envSerial = 0;
-  /** Zemin yüksekliği (ortama bağlı; efektler kullanır) */
-  private floorY = -3.35;
+  get envPending(): boolean {
+    return this.environment?.pending ?? false;
+  }
+  /** Ortam derleme sıra numarası (kayıt araçları artışını bekler) */
+  get envSerial(): number {
+    return this.environment?.serial ?? 0;
+  }
   private last = performance.now();
   private sandboxAcc = 0;
 
@@ -198,27 +197,29 @@ export class App {
       muted: s.muted ?? false,
       environment: s.environment ?? TEST_CELL,
     };
-    this.envName = this.settings.environment;
   }
 
   async init(onProgress: (t: string) => void) {
     /* ---------------- renderer ---------------- */
-    const renderer = new THREE.WebGLRenderer({
-      antialias: false,
-      powerPreference: 'high-performance',
-      preserveDrawingBuffer: true,
-      stencil: false,
-    });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.toneMapping = THREE.AgXToneMapping;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFShadowMap;
-    renderer.localClippingEnabled = true;
-    this.container.append(renderer.domElement);
+    this.pipeline = new RenderPipeline(this.container);
+    const renderer = this.pipeline.renderer;
     this.renderer = renderer;
 
     this.rig = new CameraRig(renderer.domElement);
     this.rig.onCutaway = (on) => this.setCutaway(on);
+    this.environment = new EnvironmentManager(
+      {
+        scene: this.scene,
+        renderer,
+        rig: this.rig,
+        visualRoot: () => this.visual.root,
+        setGround: (y, inCell) => this.visual.setGround(y, inCell),
+        setAoScale: (inCell) => this.pipeline.setAoScale(inCell),
+        compile: () => this.pipeline.compile(this.scene, this.rig.camera),
+      },
+      this.settings.environment,
+    );
+    const loadStep: LoadStep = (_stage, label) => step(onProgress, label);
 
     await step(onProgress, 'Yüzey dokuları üretiliyor…');
     const details = await loadPanelDetails().catch((err) => {
@@ -240,36 +241,10 @@ export class App {
     this.materials = materials;
 
     await step(onProgress, 'Gökyüzü ve ortam ışığı hesaplanıyor…');
-    this.env = createEnvironment(renderer, this.scene, materials);
+    this.environment.create(materials);
 
-    await step(onProgress, 'Test hücresi yükleniyor…');
-    try {
-      this.cell = await loadTestCell(renderer);
-      this.scene.add(this.cell.root);
-      await step(onProgress, 'Hücre donanımı yükleniyor…');
-      // Gerçek modeller (Poly Haven): yüklenemezse hücre yine çalışır
-      const props = await loadCellProps().catch((err) => {
-        console.error('Hücre modelleri yüklenemedi', err);
-        return null;
-      });
-      if (props) this.cell.root.add(props);
-    } catch (err) {
-      console.error('Test hücresi yüklenemedi, açık hava ortamı kullanılacak', err);
-      this.cell = null;
-    }
-
-    await step(onProgress, 'Havaalanı yükleniyor…');
-    try {
-      this.airfield = await loadAirfield(scans, createNoiseTexture(256, 4242), renderer);
-      this.scene.add(this.airfield.root);
-      // Shader'ları önceden derle: yoksa ilk karelerde apron çizilmez ve
-      // altındaki çimen görünür (paralel derleme bitene kadar)
-      await renderer.compileAsync(this.airfield.root, this.rig.camera, this.scene).catch(() => undefined);
-      this.airfield.root.visible = false;
-    } catch (err) {
-      console.error('Havaalanı yüklenemedi, prosedürel zemin kullanılacak', err);
-      this.airfield = null;
-    }
+    await this.environment.loadCell(loadStep);
+    await this.environment.loadAirfield(loadStep, scans, this.rig.camera);
 
     await step(onProgress, 'Motor geometrisi oluşturuluyor…');
     this.visual = new EngineVisual(materials, visualSourceFor(this.slot));
@@ -282,7 +257,7 @@ export class App {
     this.sim.on((e) => this.onSimEvent(e));
 
     await step(onProgress, 'Görüntü işleme zinciri kuruluyor…');
-    this.fx = createComposer(renderer, this.scene, this.rig.camera);
+    this.fx = this.pipeline.createPost(this.scene, this.rig.camera);
 
     this.picker = new Picker(renderer.domElement, this.rig.camera, this.visual);
     this.picker.onPick = (p) => this.onPick(p);
@@ -294,7 +269,7 @@ export class App {
     };
 
     this.buildUi();
-    this.applyEnvironment(this.envName);
+    this.applyEnvironment(this.environment.name);
     this.applyQuality(this.settings.quality);
     this.audio.volume = this.settings.volume;
     this.audio.muted = this.settings.muted;
@@ -771,7 +746,7 @@ export class App {
     this.consoleVisible = false;
     this.diagramVisible = false;
     this.sim.reset();
-    if (this.envName !== TEST_CELL && this.cell) this.applyEnvironment(TEST_CELL);
+    if (!this.environment.inCell && this.environment.cell) this.applyEnvironment(TEST_CELL);
     const cut = this.cutaway;
     this.mirrorWorkshopViews();
     if (!wasWorkshop) this.rig.go('front');
@@ -932,7 +907,7 @@ export class App {
   private placeWorkshopHelpers() {
     const last = this.wsStore.state.last;
     if (!last) return;
-    this.wsFigure?.place(last.built, this.floorY);
+    this.wsFigure?.place(last.built, this.environment.floorY);
     this.wsBox?.set(this.wsStore.state.project.goal?.require ?? null, last.built);
   }
 
@@ -1312,7 +1287,7 @@ export class App {
     this.visual = next;
     this.visualEffects = opts.effects;
     this.visualDraft = draft;
-    this.visual.setGround(this.floorY, this.envName === TEST_CELL);
+    this.visual.setGround(this.environment.floorY, this.environment.inCell);
     this.scene.add(this.visual.root);
     this.picker.visual = this.visual;
     if (this.cutaway) this.setCutaway(true);
@@ -1364,8 +1339,8 @@ export class App {
     this.openOverlay(
       settingsModal(
         this.settings,
-        this.environmentNames(),
-        this.envName,
+        this.environment.names(),
+        this.environment.name,
         {
           onQuality: (q) => {
             this.settings.quality = q;
@@ -1400,114 +1375,17 @@ export class App {
     );
   }
 
-  private environmentNames(): string[] {
-    const outdoor = this.airfield ? [...Object.keys(HDRI_PRESETS), AIRFIELD_NIGHT] : Object.keys(PRESETS);
-    return [...(this.cell ? [TEST_CELL] : []), ...outdoor];
+  /**
+   * Ortamı değiştirir (EnvironmentManager.apply). Kayıt ve ölçüm betikleri
+   * çağırır; derleme bitene kadar `envPending` true kalır.
+   */
+  applyEnvironment(name: string) {
+    this.environment.apply(name);
   }
 
-  /**
-   * Ortamı değiştirir. Test hücresinde gökyüzü, zemin ve sis kapanır; motoru
-   * aydınlatan çalışma zamanı ışıkları hücrenin pişirilmiş ışığına uyacak
-   * şekilde tavan armatürlerinin altına taşınır; yansımalar hücreden gelir.
-   * Havaalanında gökyüzü HDRI'dan (gece: fiziksel gökyüzü modeli), zemin ve
-   * binalar 3B'dir; yansıma haritası gökyüzü + havaalanından yakalanır.
-   */
-  private applyEnvironment(name: string) {
-    const env = this.env;
-    const inCell = name === TEST_CELL && !!this.cell;
-    const hasAirfield = !!this.airfield;
-    const sky = !inCell && hasAirfield && name in HDRI_PRESETS;
-    const night = !inCell && hasAirfield && name === AIRFIELD_NIGHT;
-    const legacy = !inCell && !hasAirfield && name in PRESETS;
-    this.envName = inCell || sky || night || legacy ? name : hasAirfield ? AIRFIELD_DEFAULT : 'Altın saat';
-    // Yağmur yalnız açık havada ve yağmurlu ortamda
-    weather.rain = sky ? ((HDRI_PRESETS as Record<string, { rain?: number }>)[this.envName]?.rain ?? 0) : 0;
-    // Ortam seçilince zemin hemen o havaya uygun (ıslak/kuru) başlar
-    wetUniforms.uWet.value = weather.rain;
-    const outdoorAirfield = !inCell && hasAirfield;
-    if (this.cell) this.cell.root.visible = inCell;
-    if (this.airfield) {
-      this.airfield.root.visible = outdoorAirfield;
-      this.airfield.setNight(this.envName === AIRFIELD_NIGHT);
-    }
-    env.sky.visible = !inCell && !(outdoorAirfield && this.envName !== AIRFIELD_NIGHT);
-    env.ground.visible = !inCell && !outdoorAirfield;
-    this.rig.bounds = inCell ? CELL_BOUNDS : null;
-    this.rig.controls.maxDistance = inCell ? 18 : 40;
-    this.floorY = outdoorAirfield ? this.airfield!.floorY : -3.35;
-    this.visual.setGround(this.floorY, inCell);
-    // Ortam kapanması yarıçapı: hücrede motor ayrıntısı, dışarıda yapılar ve donanım
-    this.fx?.gtao.updateGtaoMaterial({ radius: inCell ? 0.32 : 0.75, thickness: inCell ? 0.6 : 1.2 });
-    const capture = () => env.captureEnvironment([this.visual.root]);
-    if (outdoorAirfield && this.envName !== AIRFIELD_NIGHT) {
-      this.scene.environmentIntensity = 1;
-      // Gökyüzü yüklenirken de ortam hazır değil (yarım ortam çizilmesin;
-      // kayıt araçları envPending'i bekler). Eski bir derlemenin bitişi
-      // bayrağı erken indirmesin diye sıra numarası da ilerler.
-      this.envSerial++;
-      this.envPending = true;
-      env
-        .setHdri(this.envName)
-        .then((ok: boolean) => {
-          if (ok) capture();
-          this.precompile();
-        })
-        .catch((err: unknown) => {
-          console.error('Gökyüzü yüklenemedi', err);
-          this.applyEnvironment(AIRFIELD_NIGHT);
-        });
-      return;
-    }
-    env.clearHdri();
-    if (!inCell) {
-      // Hücre ışığı kısılmışsa açık hava ortam ışığı etkilenmesin
-      this.scene.environmentIntensity = 1;
-      env.setPreset(this.envName === AIRFIELD_NIGHT ? 'Gece apronu' : this.envName);
-      if (outdoorAirfield) capture();
-      this.precompile();
-      return;
-    }
-    const cell = this.cell!;
-    this.scene.environment = cell.envMap;
-    this.scene.background = new THREE.Color(0x040506);
-    if (this.scene.fog) (this.scene.fog as THREE.FogExp2).density = 0;
-    // Tavandaki armatür sırasının hemen altından, hafif önden gelen ana ışık (gölgeli)
-    env.sun.visible = true;
-    env.sun.color.setHex(0xfff3e6);
-    env.sun.intensity = 2.4;
-    env.sun.position.set(2.5, 14, -3.5);
-    env.sun.target.position.set(0, 0, 0.3);
-    env.ambient.intensity = 0.12;
-    env.keyPanel.color.setHex(0xf2f5ff);
-    env.keyPanel.intensity = 2.2;
-    env.keyPanel.position.set(-4.5, 7.6, -1.5);
-    env.keyPanel.lookAt(0, 0, 0.3);
-    env.rimPanel.color.setHex(0xfff0e0);
-    env.rimPanel.intensity = 1.6;
-    env.rimPanel.position.set(4.5, 7.6, 3);
-    env.rimPanel.lookAt(0, 0, 0.5);
-    this.renderer.toneMappingExposure = 0.95;
-    this.setLights(this.lightLevel);
-    this.precompile();
-  }
-
-  /**
-   * Hücre ışıklarını kısar ya da kapatır. Gece modunda motoru aydınlatan
-   * yalnızca kendi kor parçaları, alevi ve kontrol odası ışığıdır.
-   */
+  /** Hücre ışıklarını kısar ya da kapatır (1 açık, 0.35 loş, 0 gece) */
   setLights(level: number) {
-    this.lightLevel = level;
-    if (!this.cell || this.envName !== TEST_CELL) return;
-    const env = this.env;
-    const k = Math.max(0, Math.min(1, level));
-    setCellLights(this.cell, k);
-    env.sun.intensity = 2.4 * k;
-    env.keyPanel.intensity = 2.2 * k;
-    env.rimPanel.intensity = 1.6 * k;
-    env.ambient.intensity = 0.12 * k + 0.015;
-    this.scene.environmentIntensity = 0.06 + 0.94 * k;
-    // Karanlıkta göz uyum sağlar: pozlama biraz artar
-    this.renderer.toneMappingExposure = 0.95 * (1 + 0.6 * (1 - k));
+    this.environment.setLights(level);
   }
 
   private afterModal() {
@@ -1738,27 +1616,15 @@ export class App {
   /* ================================================================ */
 
   applyQuality(q: Settings['quality']) {
-    const p = QUALITY[q];
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, p.pixelRatio));
-    const sun = this.env.sun;
-    if (sun.shadow.mapSize.x !== p.shadow) {
-      sun.shadow.mapSize.set(p.shadow, p.shadow);
-      sun.shadow.map?.dispose();
-      (sun.shadow as unknown as { map: THREE.WebGLRenderTarget | null }).map = null;
-    }
-    this.fx.gtao.enabled = p.gtao;
+    this.pipeline.applyQuality(QUALITY[q], this.environment.env.sun);
     this.rain.setDensity(q === 'low' ? 0.35 : q === 'medium' ? 0.65 : 1);
-    this.fx.bloom.enabled = p.bloom;
     this.resize();
   }
 
   private resize() {
     const w = window.innerWidth;
     const hgt = window.innerHeight;
-    this.renderer.setSize(w, hgt);
-    this.fx.composer.setPixelRatio(this.renderer.getPixelRatio());
-    this.fx.composer.setSize(w, hgt);
-    this.fx.grade.uniforms.uAspect.value = w / hgt;
+    this.pipeline.resize(w, hgt);
     this.rig.resize(w, hgt);
     this.layout();
   }
@@ -1872,65 +1738,19 @@ export class App {
     this.lastZoneEvents = ze;
 
     this.picker.update();
-    if (this.airfield?.root.visible) this.airfield.update(dt);
+    this.environment.update(dt);
     this.rig.update(dt, this.visual.shake);
     updateWeather(simDt);
-    this.rain.update(simDt, this.rig.camera, this.floorY);
+    this.rain.update(simDt, this.rig.camera, this.environment.floorY);
     if (this.cutaway) this.aimCutaway();
     for (const f of this.frameHooks) f(dt);
-    this.updateHaze(snap, dt);
+    this.pipeline.updateHaze(snap, this.rig.camera, this.visual.exhaustExit, dt);
     if (!this.envPending) {
-      this.fx.composer.render(dt);
+      this.pipeline.render(dt);
       // Yeni model çizildi: eski modeller artık güvenle atılabilir
       if (this.disposeQueue.length) for (const v of this.disposeQueue.splice(0)) v.dispose();
     }
     this.framesRendered++;
   }
   private disposeQueue: EngineVisual[] = [];
-
-  /** Sahnedeki tüm görünür malzemeleri derler; bitene kadar çizim bekler */
-  private precompile() {
-    const serial = ++this.envSerial;
-    this.envPending = true;
-    const done = () => {
-      if (serial === this.envSerial) this.envPending = false;
-    };
-    this.renderer.compileAsync(this.scene, this.rig.camera).then(done, done);
-  }
-
-  private updateHaze(snap: ReturnType<EngineSim['snapshot']>, dt: number) {
-    const cam = this.rig.camera;
-    const ex = this.visual.exhaustExit;
-    const u = this.fx.grade.uniforms;
-    // Sıcak jet boyu ve genişlemesi: kuru jet ~12 lüle yarıçapı, art
-    // yakıcıda çok daha uzun; karışma katmanı ~0,1 eğimle genişler
-    const len = ex.radius * (12 + 16 * snap.abLevel);
-    const a = new THREE.Vector3(0, 0, ex.z);
-    const b = new THREE.Vector3(0, 0, ex.z + len);
-    // Kameranın arkasına düşen uç, izdüşüm ters dönmesin diye kırpılır
-    const toCam = (v: THREE.Vector3) => v.clone().applyMatrix4(cam.matrixWorldInverse).z;
-    const near = -cam.near * 4;
-    if (toCam(a) > near) {
-      u.uHaze.value = 0;
-      u.uTime.value += dt;
-      return;
-    }
-    const zb = toCam(b);
-    if (zb > near) {
-      const za = toCam(a);
-      b.lerpVectors(a, b, (za - near) / (za - zb));
-    }
-    const rB = ex.radius * (1.15 + (0.1 * a.distanceTo(b)) / ex.radius / 1.2);
-    const pxR = (r: number, v: THREE.Vector3) => r / (2 * Math.max(0.05, -toCam(v)) * Math.tan(THREE.MathUtils.degToRad(cam.fov) / 2));
-    u.uHazeWA.value = pxR(ex.radius * 1.15, a);
-    u.uHazeWB.value = pxR(rB * (1 + 0.5 * snap.abLevel), b);
-    const pa = a.clone().project(cam);
-    const pb = b.clone().project(cam);
-    u.uHazeA.value.set(pa.x * 0.5 + 0.5, pa.y * 0.5 + 0.5);
-    u.uHazeB.value.set(pb.x * 0.5 + 0.5, pb.y * 0.5 + 0.5);
-    const hot = snap.cycle.stations['7'].T - snap.amb.T0;
-    // Art yakıcıda kırılma alevin çevresinde çok daha güçlü
-    u.uHaze.value = snap.lit ? THREE.MathUtils.smoothstep(hot, 80, 480) + 1.1 * snap.abLevel : 0;
-    u.uTime.value += dt;
-  }
 }
