@@ -91,6 +91,51 @@ kodu web derlemesine GİRMEZ).
   1080×1920 dolayı), 7"/10" tablet görüntüleri isteğe bağlı.
 - Üretim betiği `scripts/magaza-gorselleri.mjs` (Playwright; SVG'den PNG).
 
+**A3 uygulaması (24 Ekim 2026):**
+
+- Kaynaklar `magaza/kaynak/`: `simge-arka.svg` (gece göğü #0B1030 →
+  #2A1450, kıvılcımın altında sıcak ışık, seyrek yıldız), `simge-on.svg`
+  (örgülü ip yumuşak S ile yükselir, ucu kömürleşir; köz, krem dört köşeli
+  kıvılcım, fişek gibi saçılan ışınlar; can simgesi `fitilCanIsaretleme`
+  dili), `simge-tekrenk.svg` (Android 13+ temalı simge), `one-cikan.svg`
+  (1024×500; açılış logosu, slogan, yanan fitille bağlı kapsüller, havai
+  fişekler, açılış ekranının kasabası; `.tr`/`.en` grupları, İngilizcede
+  noktasız "FITIL"). `simge-tam.svg` katmanlardan ÜRETİLİR (elle düzenlenmez).
+  Ön katmanın en uzak parçası merkezden 32,9 dp (güvenli daire 33 dp):
+  başlatıcı maskeleri ve açılış perdesinin 2/3 dairesi hiçbir şeyi kesmez.
+- `node scripts/magaza-gorselleri.mjs` (sunucusuz): `mipmap-*/`
+  `ic_launcher_background|foreground|monochrome.png` (108 dp),
+  `ic_launcher.png` (API 24–25: 48 dp'de 2 dp pay, yuvarlak kare),
+  `ic_launcher_round.png` (daire), `mipmap-anydpi-v26/ic_launcher(_round).xml`
+  (arka + ön + tek renk), `drawable-*/splash_simge.png` (288 dp),
+  `drawable(-port|-land)-*/splash.png` (şablon boyutları; düz gece mavisi +
+  ortada ön katman, kısa kenarın %80'i tuval), `magaza/play/simge-512.png`
+  (RGB, saydamlık yok), `one-cikan-1024x500(_en).png` (RGB). Capacitor
+  şablonunun kullanılmayan simge parçaları (yeşil ızgara, robot,
+  `values/ic_launcher_background.xml`) silinir.
+- **Açılış perdesi kararı:** `Theme.SplashScreen` (core-splashscreen 1.2.0)
+  `windowSplashScreenAnimatedIcon` verilmezse genel Android simgesini
+  (`sym_def_app_icon`) koyar (AAR'ın `values.xml`'i incelendi; uyumluluk
+  yolu API 24–30'da da aynı özniteliği okur). Bu yüzden açılış temasına
+  `windowSplashScreenAnimatedIcon = @drawable/splash_simge` eklendi; her
+  API'de görünüm aynı: düz #0B1030 + kıvılcımlı fitil. Temanın
+  `android:background`'ı `@drawable/splash` yerine `@color/fitil_gece`: tam
+  ekran bitmap API 24–30'da ekran oranına göre gerilirdi. `splash.png`
+  yalnız eklentinin eski yolu ve `SplashScreen.show()` için;
+  `capacitor.config.ts` `androidScaleType: 'CENTER_CROP'` (varsayılan
+  FIT_XY simgeyi basardı).
+- Telefon ekran görüntüleri: `node scripts/magaza-gorselleri.mjs ekran <url>
+  [tr|en] [sahne,…]` (dev sunucusu; 360×640, DPR 3 → 1080×1920, RGB).
+  Altı sahne, her biri temiz bağlamda, `?gelir=sahte` (can hapı Android'deki
+  gibi görünür) ve `kayitYama` ile: açılış, öğretim (el ipucu sürüklemenin
+  ortasında dondurulur), büyük reaksiyon (16. bölüm, Usta botu; ilk
+  "Muhteşem!"/"ŞENLİK!" anında dondurulup oyun zamanı 620 ms ilerletilir:
+  yazının yayı oturmuş, solmamış), süslü kasaba haritası (13 bölüm, 16 iş),
+  Kazandın (9. bölüm ilk kazanç, 3★ gelene dek kayıttaki deneme sayısıyla
+  tahta tohumu değiştirilir), Kasaba paneli.
+- Denetim: `node scripts/magaza-gorselleri.mjs onizleme <klasör>` (simge
+  dört maske × dört boy, temalı simge, Android 12 perde benzetimi).
+
 ## 5. Belgeler
 
 - Gizlilik politikası `docs/gizlilik.html` (TR + EN; AdMob reklam kimliği,
@@ -102,6 +147,13 @@ kodu web derlemesine GİRMEZ).
   içi ürünler (`can_doldur`, `guclendirici_paketi`, `usta_karti`), lisans
   test kullanıcıları, AdMob uygulama + ödüllü birim + gizlilik mesajları,
   Veri güvenliği formu yanıtları, içerik derecelendirmesi (IARC), hedef kitle.
+- A3 (24 Ekim 2026): ikisi de yazıldı. Gizlilik politikası yürürlük tarihi
+  24 Ekim 2026; yer tutucular `[Geliştirici adı]` ve `iletisim@ornek.com`
+  yayından önce değişir, sayfa herkese açık bir adreste yayımlanır
+  (PLAY-KONSOL.md §9). Politika bugünkü durumu anlatır (analitik SDK'sı yok);
+  AdMob'un açılışta reklamı önden yüklediği ve UMP'nin açılışta Google'a
+  sorduğu da yazılı. PLAY-KONSOL.md mağaza metinleri: TR kısa 78 / tam
+  1377, EN kısa 77 / tam 1487 karakter.
 
 ## 6. Bu ortamın sınırı
 

@@ -44,6 +44,10 @@ const config: CapacitorConfig = {
       launchFadeOutDuration: 250,
       backgroundColor: GECE,
       showSpinner: false,
+      // Eklentinin eski yolu (Android 12 API'si başarısızsa) ve SplashScreen.show():
+      // splash.png (düz zemin + ortada simge) gerilmeden kırpılır; varsayılan FIT_XY
+      // simgeyi ekran oranına göre basardı (docs/ANDROID.md §4).
+      androidScaleType: 'CENTER_CROP',
     },
   },
 };

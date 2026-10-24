@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FİTİL uygulama simgesi — TEK RENK katman (Android 13+ temalı simge,
+  <monochrome>). Sistem yalnız alfayı kullanır ve kendi rengiyle boyar.
+  Ön katmanla aynı çizim (simge-on.svg), hale ve örgü yok; yıldızın
+  çevresinde ince boşluk (maske) var ki ip ile yıldız tek leke olmasın.
+  Kimlikler "t-" önekli.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <defs>
+    <!-- Maske ipin yerel koordinatlarında (ipi taşıyan grubun dönüşümüyle). -->
+    <mask id="t-bosluk" maskUnits="userSpaceOnUse" x="-20" y="-20" width="160" height="160">
+      <rect x="-20" y="-20" width="160" height="160" fill="#fff"/>
+      <path d="M64 30.4 65.5 40.6 74.6 42.2 65.5 43.8 64 54 62.5 43.8 53.4 42.2 62.5 40.6z" fill="#000" stroke="#000" stroke-width="3.4" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <g transform="translate(54 54) scale(.84) translate(-58.5 -51)" fill="#FFFFFF">
+    <path mask="url(#t-bosluk)" d="M35 76C40.5 78.5 45.5 72 46 65S53.5 54 62.6 43.6" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+    <g stroke="#FFFFFF" stroke-linecap="round" fill="none">
+      <path d="M70.5 35.5 77 29" stroke-width="2.4"/>
+      <path d="M73 43.6 81.6 45" stroke-width="2.2"/>
+      <path d="M64.8 33 65.6 24.4" stroke-width="2"/>
+      <path d="M57 35.6 51.6 30.2" stroke-width="2"/>
+      <path d="M70.4 49.6 75.6 55.4" stroke-width="2"/>
+    </g>
+    <circle cx="80.4" cy="26" r="1.7"/>
+    <circle cx="84.6" cy="45.4" r="1.4"/>
+    <circle cx="49" cy="27.6" r="1.3"/>
+    <circle cx="77.8" cy="58" r="1.3"/>
+    <path d="M64 30.4 65.5 40.6 74.6 42.2 65.5 43.8 64 54 62.5 43.8 53.4 42.2 62.5 40.6z" stroke="#FFFFFF" stroke-width="1" stroke-linejoin="round"/>
+  </g>
+</svg>
