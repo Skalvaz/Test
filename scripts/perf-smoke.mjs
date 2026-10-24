@@ -3,16 +3,29 @@
  * geçişleri ve kare bütçesi tek betikte, JSON çıktılı.
  *
  *   node scripts/perf-smoke.mjs <url> [--out sonuç.json] [--compare scripts/referans/perf-smoke.json]
- *        [--tol 0.05] [--gate-frame] [--warm] [--first-visit] [--quality high] [--headed]
+ *        [--tol 0.05] [--gate-frame] [--warm] [--first-visit] [--quality high] [--headed] [--load-runs N]
  *
- * Varsayılan soğuk profildir (her koşuda silinir): GPU shader önbelleği boş,
- * ilk ziyaretçinin derleme süreleri. --warm profili korur (sıcak ölçüm).
- * --first-visit ayar yazmaz (oyunun varsayılan kalitesi); yoksa --quality
- * (varsayılan high, denetim ölçümleriyle aynı).
+ * Varsayılan soğuk profildir (her koşuda silinir): tarayıcının GPU ve shader
+ * önbellekleri (profildeki GPUCache, ShaderCache, GrShaderCache) boş. Ekran
+ * kartı sürücüsünün kendi shader önbelleği (Windows'ta NVIDIA DXCache /
+ * D3DSCache, %LOCALAPPDATA% altında) profil dışındadır ve silinmez: "soğuk"
+ * = tarayıcı soğuk, sürücü büyük olasılıkla sıcak. Gerçek ilk ziyaretçi
+ * (sürücü de soğuk) daha yavaştır; aynı makinede tekrarlanabilen tek tanım
+ * budur. --warm profili korur (sıcak ölçüm). --first-visit ayar yazmaz
+ * (oyunun varsayılan kalitesi); yoksa --quality (varsayılan high, denetim
+ * ölçümleriyle aynı).
+ *
+ * --load-runs N: yükleme N kez ölçülür (her biri yeni soğuk profil ve
+ * tarayıcı); `load` alanları medyandır, `loadWorst` en kötüsü, `loadRuns`
+ * hepsi. Tek soğuk yükleme koşudan koşuya 2 kat oynar (Dalga 0: ilk kare
+ * 14,5–27 s): yükleme ölçütleri (1A) en az 5 koşunun medyanıyla yazılır.
+ * Kare ve ortam evreleri son koşunun sayfasında ölçülür.
  *
  * Ölçülenler (WebGL sarmalayıcısı sayfa betiklerinden önce kurulur):
- *   yükleme   menü tıklanabilir (yükleme ekranı kalktı), ilk tam kare
- *             (ortam derlemesi bitti ve kare çizildi), bu sürede uzun görevler
+ *   yükleme   menü (yükleme ekranı kalktı), hazır (`loadProgress` 'ready':
+ *             menü tıklanabilir; plandaki "canlı menü"), ilk tam kare (ortam
+ *             derlemesi bitti ve kare çizildi), bu sürede uzun görevler;
+ *             aşama zamanları `stages` (loadProgress olayları)
  *   ortam     geçiş başına duvar saati, en uzun görev, uzun görev toplamı
  *             (PerformanceObserver longtask)
  *   kare      gerçek zamanlı döngüde App.frame'in CPU süresi (p50/p95; 3
@@ -23,7 +36,9 @@
  *   program   derlenen (renderer.info.programs), oturumda en az bir kez
  *             kullanılan ve kullanılmayan oranı
  * --compare: çizim ve program sayıları referansın ±tol'u içinde mi
- * (dışındaysa çıkış kodu 1). Kare CPU p50 burada bilgi amaçlıdır (tek soğuk
+ * (dışındaysa çıkış kodu 1). --compare ile --expect beklenti.json: kıyas
+ * perf-compare'in beklenti kurallarıyla yapılır (paketin bilerek
+ * değiştirdiği ölçüler: yön ve mutlak sınır; scripts/perf-compare.mjs). Kare CPU p50 burada bilgi amaçlıdır (tek soğuk
  * koşu ısıl duruma göre %5'ten çok oynar; --gate-frame ile kapıya girer):
  * kare süresi kapısı dönüşümlü koşuların çiftli kıyasıdır
  * (scripts/perf-compare.mjs). Yük ve derleme süreleri bilgi amaçlıdır.
@@ -33,11 +48,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchBrowser } from './capture/common.mjs';
+import { compareRuns } from './perf-compare.mjs';
 
 const SETTINGS_KEY = 'turbofan-akademi:settings:v1';
 
 const args = process.argv.slice(2);
-const valued = new Set(['--out', '--compare', '--tol', '--quality', '--frames', '--windows']);
+const valued = new Set(['--out', '--compare', '--tol', '--quality', '--frames', '--windows', '--load-runs', '--expect']);
 const opt = (n) => {
   const i = args.indexOf(n);
   return i >= 0 ? args[i + 1] : null;
@@ -54,91 +70,122 @@ const t0 = Date.now();
 const secs = () => `${((Date.now() - t0) / 1000).toFixed(0)} s`;
 const log = (...a) => console.log(`[${secs()}]`, ...a);
 
-if (!flags.has('--warm')) fs.rmSync(path.resolve('node_modules', '.cache', 'perf-smoke-profile'), { recursive: true, force: true });
-const browser = await launchBrowser(flags, { profile: 'perf-smoke-profile', args: ['--enable-precise-memory-info'] });
-const page = await browser.newPage();
-await page.setViewportSize({ width: 1440, height: 810 });
+const LOAD_RUNS = Math.max(1, Number(opt('--load-runs') ?? 1));
 const errs = [];
-page.on('pageerror', (e) => errs.push(String(e)));
-page.on('console', (m) => m.type() === 'error' && errs.push(m.text().slice(0, 300)));
 
-await page.addInitScript(
-  ([firstVisit, q, key]) => {
-    try {
-      localStorage.clear();
-      if (!firstVisit) localStorage.setItem(key, JSON.stringify({ quality: q, muted: true, volume: 0 }));
-    } catch {
-      /* özel kip */
-    }
-    // Uzun görevler
-    window.__lt = [];
-    try {
-      new PerformanceObserver((l) => {
-        for (const e of l.getEntries()) window.__lt.push([e.startTime, e.duration]);
-      }).observe({ type: 'longtask', buffered: true });
-    } catch {
-      /* desteklenmiyor */
-    }
-    // Oturumda kullanılan programlar ve kare başına sayım
-    const used = new WeakSet();
-    let everUsed = 0;
-    let frameSet = null;
-    const wrap = (proto) => {
-      const orig = proto.useProgram;
-      proto.useProgram = function (p) {
-        if (p && !used.has(p)) {
-          used.add(p);
-          everUsed++;
-        }
-        if (frameSet && p) frameSet.add(p);
-        return orig.call(this, p);
+/** Yeni (soğuk) tarayıcıda sayfayı açar ve yüklemeyi ölçer */
+async function openAndLoad() {
+  if (!flags.has('--warm')) fs.rmSync(path.resolve('node_modules', '.cache', 'perf-smoke-profile'), { recursive: true, force: true });
+  const browser = await launchBrowser(flags, { profile: 'perf-smoke-profile', args: ['--enable-precise-memory-info'] });
+  const page = await browser.newPage();
+  await page.setViewportSize({ width: 1440, height: 810 });
+  page.on('pageerror', (e) => errs.push(String(e)));
+  page.on('console', (m) => m.type() === 'error' && errs.push(m.text().slice(0, 300)));
+  await page.addInitScript(
+    ([firstVisit, q, key]) => {
+      try {
+        localStorage.clear();
+        if (!firstVisit) localStorage.setItem(key, JSON.stringify({ quality: q, muted: true, volume: 0 }));
+      } catch {
+        /* özel kip */
+      }
+      // Uzun görevler
+      window.__lt = [];
+      try {
+        new PerformanceObserver((l) => {
+          for (const e of l.getEntries()) window.__lt.push([e.startTime, e.duration]);
+        }).observe({ type: 'longtask', buffered: true });
+      } catch {
+        /* desteklenmiyor */
+      }
+      // Oturumda kullanılan programlar ve kare başına sayım
+      const used = new WeakSet();
+      let everUsed = 0;
+      let frameSet = null;
+      const wrap = (proto) => {
+        const orig = proto.useProgram;
+        proto.useProgram = function (p) {
+          if (p && !used.has(p)) {
+            used.add(p);
+            everUsed++;
+          }
+          if (frameSet && p) frameSet.add(p);
+          return orig.call(this, p);
+        };
       };
+      wrap(WebGL2RenderingContext.prototype);
+      window.__perf = {
+        used,
+        everUsed: () => everUsed,
+        beginFrameSet: () => (frameSet = new Set()),
+        endFrameSet: () => {
+          const n = frameSet ? frameSet.size : 0;
+          frameSet = null;
+          return n;
+        },
+      };
+      // Yükleme zaman çizelgesi: yükleme olayları (sözleşme) + eski sezgiler
+      window.__load = { stages: {} };
+      window.addEventListener('loadProgress', (e) => {
+        const st = e.detail?.stage;
+        if (st && window.__load.stages[st] === undefined) window.__load.stages[st] = performance.now();
+      });
+      const tick = () => {
+        const a = window.__app;
+        const now = performance.now();
+        if (!window.__load.menu && document.readyState !== 'loading' && !document.getElementById('loading')) window.__load.menu = now;
+        if (!window.__load.firstFrame && a && !a.envPending && a.framesRendered > 1 && !document.getElementById('loading')) window.__load.firstFrame = now;
+        if (!window.__load.firstFrame) setTimeout(tick, 16);
+      };
+      tick();
+    },
+    [flags.has('--first-visit'), quality, SETTINGS_KEY],
+  );
+  const gpu = await page.evaluate(() => {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    const ext = gl?.getExtension('WEBGL_debug_renderer_info');
+    return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'bilinmiyor';
+  });
+  await page.goto(url, { waitUntil: 'load' });
+  await page.waitForFunction(() => window.__load.firstFrame, null, { timeout: 600000 });
+  const load = await page.evaluate(() => {
+    const lt = window.__lt.filter(([s]) => s <= window.__load.firstFrame);
+    const st = window.__load.stages;
+    return {
+      menuMs: Math.round(window.__load.menu),
+      readyMs: st.ready !== undefined ? Math.round(st.ready) : null,
+      firstFrameMs: Math.round(window.__load.firstFrame),
+      longestTaskMs: Math.round(Math.max(0, ...lt.map((x) => x[1]))),
+      longTaskTotalMs: Math.round(lt.reduce((s, x) => s + x[1], 0)),
+      programs: window.__app.renderer.info.programs?.length ?? null,
+      stages: Object.fromEntries(Object.entries(st).map(([k, v]) => [k, Math.round(v)])),
     };
-    wrap(WebGL2RenderingContext.prototype);
-    window.__perf = {
-      used,
-      everUsed: () => everUsed,
-      beginFrameSet: () => (frameSet = new Set()),
-      endFrameSet: () => {
-        const n = frameSet ? frameSet.size : 0;
-        frameSet = null;
-        return n;
-      },
-    };
-    // Yükleme zaman çizelgesi
-    window.__load = {};
-    const tick = () => {
-      const a = window.__app;
-      const now = performance.now();
-      if (!window.__load.menu && document.readyState !== 'loading' && !document.getElementById('loading')) window.__load.menu = now;
-      if (!window.__load.firstFrame && a && !a.envPending && a.framesRendered > 1 && !document.getElementById('loading')) window.__load.firstFrame = now;
-      if (!window.__load.firstFrame) setTimeout(tick, 16);
-    };
-    tick();
-  },
-  [flags.has('--first-visit'), quality, SETTINGS_KEY],
-);
-
-const gpu = await page.evaluate(() => {
-  const gl = document.createElement('canvas').getContext('webgl2');
-  const ext = gl?.getExtension('WEBGL_debug_renderer_info');
-  return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'bilinmiyor';
-});
+  });
+  return { browser, page, gpu, load };
+}
 
 /* ------------------------------ yükleme ------------------------------ */
-await page.goto(url, { waitUntil: 'load' });
-await page.waitForFunction(() => window.__load.firstFrame, null, { timeout: 600000 });
-const load = await page.evaluate(() => {
-  const lt = window.__lt.filter(([s]) => s <= window.__load.firstFrame);
-  return {
-    menuMs: Math.round(window.__load.menu),
-    firstFrameMs: Math.round(window.__load.firstFrame),
-    longestTaskMs: Math.round(Math.max(0, ...lt.map((x) => x[1]))),
-    longTaskTotalMs: Math.round(lt.reduce((s, x) => s + x[1], 0)),
-    programs: window.__app.renderer.info.programs?.length ?? null,
-  };
-});
-log('yükleme', JSON.stringify(load));
+const loadRuns = [];
+let browser;
+let page;
+let gpu;
+for (let i = 0; i < LOAD_RUNS; i++) {
+  const r = await openAndLoad();
+  loadRuns.push(r.load);
+  log(`yükleme${LOAD_RUNS > 1 ? ` ${i + 1}/${LOAD_RUNS}` : ''}`, JSON.stringify(r.load));
+  if (i < LOAD_RUNS - 1) await r.browser.close();
+  else ({ browser, page, gpu } = r);
+}
+const LOAD_KEYS = ['menuMs', 'readyMs', 'firstFrameMs', 'longestTaskMs', 'longTaskTotalMs'];
+const med = (xs) => {
+  const a = xs.filter((x) => typeof x === 'number').sort((p, q) => p - q);
+  if (!a.length) return null;
+  const m = a.length >> 1;
+  return a.length % 2 ? a[m] : Math.round((a[m - 1] + a[m]) / 2);
+};
+const load = { ...loadRuns[loadRuns.length - 1], ...Object.fromEntries(LOAD_KEYS.map((k) => [k, med(loadRuns.map((r) => r[k]))])), runs: LOAD_RUNS };
+const loadWorst = Object.fromEntries(LOAD_KEYS.map((k) => [k, Math.max(...loadRuns.map((r) => r[k] ?? -Infinity))]));
+if (LOAD_RUNS > 1) log('yükleme medyanı', JSON.stringify(load), 'en kötü', JSON.stringify(loadWorst));
 
 /** Gerçek zamanlı döngüde n kare: CPU süresi, aralık, çizim, kullanılan program */
 async function frameWindow(n) {
@@ -288,6 +335,8 @@ const result = {
   quality: flags.has('--first-visit') ? 'varsayılan (ilk ziyaret)' : quality,
   viewport: '1440x810',
   load,
+  loadWorst,
+  loadRuns,
   env,
   phases,
   programs,
@@ -302,7 +351,14 @@ if (opt('--out')) {
 
 /* ------------------------------ kıyas ------------------------------ */
 let fail = 0;
-if (opt('--compare')) {
+if (opt('--compare') && opt('--expect')) {
+  const ref = JSON.parse(fs.readFileSync(opt('--compare'), 'utf8'));
+  const expect = JSON.parse(fs.readFileSync(opt('--expect'), 'utf8'));
+  const r = compareRuns([ref], [result], { tol: Number(opt('--tol') ?? 0.05), expect });
+  fail = r.fail;
+  console.log(`\nKıyas (beklenti ${opt('--expect')}):\n${r.rows.join('\n')}`);
+  console.log(fail ? `\n${fail} ölçüt sınır dışında` : '\nBütün ölçütler sınır içinde');
+} else if (opt('--compare')) {
   const ref = JSON.parse(fs.readFileSync(opt('--compare'), 'utf8'));
   const tol = Number(opt('--tol') ?? 0.05);
   const rows = [];

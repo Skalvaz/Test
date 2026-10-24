@@ -1,6 +1,6 @@
 {
   "id": "411-yagmur-turboprop",
-  "desc": "Havaalanı — yağmur: turboprop tam güç (rain.json kadrajı): yağmur, ıslak zemin, pervane; rölanti varyantı pervane diski FFT kıyası için (1I)",
+  "desc": "Havaalanı — yağmur: turboprop tam güç (rain.json kadrajı): yağmur, ıslak zemin, pervane; rölanti varyantı pervane diski FFT kıyası için (1I). pervaneDisk: pervane düzlemi (z −2,04 m) izdüşümlü disk; gövde ve sehpa ayakları dışlanır",
   "galeri": "411-yagmur-turboprop.png",
   "kind": "turboprop",
   "env": "Havaalanı — yağmur",
@@ -35,7 +35,23 @@
       "rx": 0.107,
       "ry": 0.294,
       "r0": 0.3,
-      "r1": 0.9
+      "r1": 0.9,
+      "exclude": [
+        {
+          "type": "rect",
+          "x0": 0.4,
+          "y0": 0.38,
+          "x1": 0.535,
+          "y1": 0.5
+        },
+        {
+          "type": "rect",
+          "x0": 0.4,
+          "y0": 0.5,
+          "x1": 0.535,
+          "y1": 0.76
+        }
+      ]
     },
     "zemin": [
       0.05,
@@ -54,6 +70,37 @@
       0.4,
       0.98,
       0.58
-    ]
+    ],
+    "pervaneDisk": {
+      "type": "disk",
+      "center": [
+        0,
+        0,
+        -2.04
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "r0": 0.45,
+      "r1": 1.85,
+      "exclude": [
+        {
+          "type": "rect",
+          "x0": 0.4,
+          "y0": 0.38,
+          "x1": 0.535,
+          "y1": 0.5
+        },
+        {
+          "type": "rect",
+          "x0": 0.4,
+          "y0": 0.5,
+          "x1": 0.535,
+          "y1": 0.76
+        }
+      ]
+    }
   }
 }

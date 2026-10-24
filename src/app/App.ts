@@ -28,7 +28,7 @@ function setDetail(q: Settings['quality']) {
   setBladeQuality(q);
   setDetailTag(q);
 }
-import { setCutPlane } from '../materials/engine';
+import { cutUniforms, setCutPlane } from '../materials/engine';
 import { getExposure } from '../core/exposure';
 import { Rain } from '../core/rain';
 import { updateWeather } from '../core/weather';
@@ -1792,6 +1792,24 @@ export class App {
     this.pipeline.resetClocks();
     this.rain.resetClock();
   }
+
+  /**
+   * Test kancası (vitrin kapak maskesi): kesit kapağını düz bir anahtar
+   * renginde gösterir (null: asıl renk). Ölçüm, aynı karenin anahtar renkli
+   * eşinden kapak piksellerini çıkarır (visual-metrics `maskFrom`). 1F kapağı
+   * gri taramaya çevirse de bu kanca düz rengi uygulamaya devam etmelidir.
+   */
+  setCutCapColor(color: number | null) {
+    const u = cutUniforms.uCapColor.value;
+    if (color === null) {
+      if (this.capColorSaved) u.copy(this.capColorSaved);
+      this.capColorSaved = null;
+      return;
+    }
+    if (!this.capColorSaved) this.capColorSaved = u.clone();
+    u.setHex(color);
+  }
+  private capColorSaved: THREE.Color | null = null;
 
   /** advance'ın bir adımı (çizimsiz) */
   private advanceStep(dt: number) {

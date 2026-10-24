@@ -1,0 +1,7 @@
+{
+  "id": "326-kesit-kapak",
+  "extends": "326-kesit",
+  "desc": "326 aynısı, kesit kapağı düz yeşil anahtar renginde (app.setCutCapColor): kapak piksel maskesi (visual-metrics maskFrom; 1F kapak doygunluğu ve kızıllık ROI'si bununla)",
+  "setup": "sim.trim(1, 30); a.advance(8); if (a.setCutCapColor) a.setCutCapColor(0x00ff00);",
+  "cleanup": "if (a.setCutCapColor) a.setCutCapColor(null);"
+}

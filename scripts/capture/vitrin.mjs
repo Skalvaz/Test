@@ -9,9 +9,16 @@
  *   node scripts/visual-metrics.mjs capture-output/vitrin/sonra --compare capture-output/vitrin/once
  *
  * Çıktı: <kök>/<GxY>/<sahne>.png ve yanında <sahne>.json (NaN/Inf/negatif
- * piksel sayısı, sim durumu, kamera). `--set arayuz` menü, ders, test hücresi
- * ve atölye arayüzünü dört ekran genişliğinde kaydeder (CSS bölme denetimi):
- * <kök>/arayuz/<GxY>/<ad>.png.
+ * piksel sayısı, sim durumu, kamera), kötü piksel varsa maskesi
+ * <kök>/<GxY>/_nan/<sahne>.png (beyaz = NaN/sonsuz/negatif; visual-metrics
+ * --exclude-nan). `--set arayuz` menü, ders, test hücresi (FADEC manuel
+ * dahil) ve atölye arayüzünü (koçluk balonu açık başlangıç dahil) dört ekran
+ * genişliğinde kaydeder: <kök>/arayuz/<GxY>/<ad>.png.
+ *
+ * Uygulama API'leri (Dalga 0 sözleşmesi; 1A post zincirini yeniden düzenlese
+ * de araç bozulmaz): hazır olma `window.__loadReady`, saatler
+ * `app.resetClocks()`, NaN bekçisi `app.pipeline.probeNonFinite({ runs })`.
+ * Bunlar olmayan eski commit'lerde (önce kümesi) eski yollar kullanılır.
  *
  * Belirlenimlilik: sayfa açılır açılmaz App donar (fixedDt, kare yalnız
  * istenince çizilir), Math.random tohumlu bir üreteçle, performance.now
@@ -24,14 +31,20 @@
  *
  * Sahne alanları: id, desc, kind, env, ui (hidden | menu | workshop), cam,
  * tgt, fov, cut, lights (hücre ışığı 0..1), setup (js; `a` App, `sim`),
- * warm (yakalamadan önce çizilen kare), variants [{ suffix, setup, … }],
+ * cleanup (js, yakalamadan sonra: kurulumun sahneye kalıcı etkisini geri
+ * alır), warm (yakalamadan önce çizilen kare), variants [{ suffix, setup,
+ * roi?, … }], extends (başka sahnenin alanlarını devralır; ölçüm tabanları),
  * blades (FFT), roi { ad: şekil }, roiBySize { "GxY": { ad: şekil } }.
+ * Şekiller: rect [x0,y0,x1,y1], ellipse, ring, poly, disk (dünya uzayında
+ * daire: center, axis, r0, r1 [m]; kamerayla izdüşürülür) ve exclude.
+ * Yeni sahne index.json'da EN SONA eklenir (sıraya bağlı saatler).
  * Atölye sahnesi: template, module, drag { handle, dx, dy, steps, hold }.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import sharp from 'sharp';
 import { launchBrowser } from './common.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -40,10 +53,18 @@ const SETTINGS_KEY = 'turbofan-akademi:settings:v1';
 const COACH_KEY = 'turbofan-akademi:workshop:coach';
 const SEED = 20261024;
 
+/** Sahne tanımı; `extends` başka sahnenin alanlarını devralır (id, açıklama, varyantlar hariç) */
+export function readScene(id) {
+  const sc = JSON.parse(fs.readFileSync(path.join(VITRIN_DIR, `${id}.json`), 'utf8'));
+  if (!sc.extends) return sc;
+  const { variants: _v, desc: _d, galeri: _g, ...inherit } = readScene(sc.extends);
+  return { ...inherit, ...sc };
+}
+
 /** index.json + sahne tanımları (variants açılmış: her biri ayrı kare) */
 export function loadVitrin() {
   const index = JSON.parse(fs.readFileSync(path.join(VITRIN_DIR, 'index.json'), 'utf8'));
-  const scenes = index.sahneler.map((id) => JSON.parse(fs.readFileSync(path.join(VITRIN_DIR, `${id}.json`), 'utf8')));
+  const scenes = index.sahneler.map((id) => readScene(id));
   return { index, scenes };
 }
 
@@ -56,8 +77,8 @@ export function shotsOf(scene) {
 
 const secs = (t) => `${((Date.now() - t) / 1000).toFixed(1)} s`;
 
-/** Donmuş, tohumlu sayfa */
-async function openFrozenPage(browser, url, { w, h, quality = 'high' }) {
+/** Donmuş, tohumlu sayfa (`coach`: atölye koçluk balonları baştan açık) */
+async function openFrozenPage(browser, url, { w, h, quality = 'high', coach = false }) {
   const page = await browser.newPage();
   await page.setViewportSize({ width: w, height: h });
   page.errs = [];
@@ -66,7 +87,7 @@ async function openFrozenPage(browser, url, { w, h, quality = 'high' }) {
     if (m.type() === 'error') page.errs.push(m.text().slice(0, 300));
   });
   await page.addInitScript(
-    ({ q, seed, settingsKey, coachKey }) => {
+    ({ q, seed, settingsKey, coachKey, coach }) => {
       // mulberry32: aynı tohum → aynı dizi
       let s = seed | 0;
       Math.random = () => {
@@ -87,7 +108,7 @@ async function openFrozenPage(browser, url, { w, h, quality = 'high' }) {
       try {
         localStorage.clear();
         localStorage.setItem(settingsKey, JSON.stringify({ quality: q, muted: true, volume: 0 }));
-        localStorage.setItem(coachKey, '99');
+        localStorage.setItem(coachKey, coach ? '0' : '99');
       } catch {
         /* özel kip */
       }
@@ -120,8 +141,10 @@ async function openFrozenPage(browser, url, { w, h, quality = 'high' }) {
        * noktalı hedefe yeniden çizer ve okur. Sim ilerlemez (yalnız
        * composer.render); tuvaldeki kare değişmez.
        */
-      window.__vitrinNan = () => {
+      window.__vitrinNan = (withRuns = false) => {
         const a = window.__app;
+        // Sözleşme (Dalga 0 düzeltmesi): uygulama kendi bekçisini verir
+        if (a.pipeline?.probeNonFinite) return a.pipeline.probeNonFinite({ runs: withRuns });
         const comp = a.fx.composer;
         const r = a.renderer;
         const gl = r.getContext();
@@ -148,6 +171,7 @@ async function openFrozenPage(browser, url, { w, h, quality = 'high' }) {
         let nan = 0;
         let inf = 0;
         let neg = 0;
+        const runs = [];
         for (let i = 0; i < w * h; i++) {
           let bn = false;
           let bi = false;
@@ -170,16 +194,43 @@ async function openFrozenPage(browser, url, { w, h, quality = 'high' }) {
           if (bn) nan++;
           if (bi) inf++;
           if (bg) neg++;
+          if (withRuns && (bn || bi || bg)) {
+            // GL satırı alttan üste: görüntü sırasına çevir
+            const p = (h - 1 - Math.floor(i / w)) * w + (i % w);
+            runs.push([p, 1]);
+          }
+        }
+        if (withRuns) {
+          runs.sort((x, y) => x[0] - y[0]);
+          const merged = [];
+          for (const r of runs) {
+            const l = merged[merged.length - 1];
+            if (l && l[0] + l[1] === r[0]) l[1]++;
+            else merged.push(r);
+          }
+          return { nan, inf, neg, w, h, half, runs: merged };
         }
         return { nan, inf, neg, w, h, half };
       };
     },
-    { q: quality, seed: SEED, settingsKey: SETTINGS_KEY, coachKey: COACH_KEY },
+    { q: quality, seed: SEED, settingsKey: SETTINGS_KEY, coachKey: COACH_KEY, coach },
   );
   await page.goto(url, { waitUntil: 'load' });
-  await page.waitForFunction(() => window.__app && !document.getElementById('loading') && !window.__app.envPending, null, {
-    timeout: 600000,
-  });
+  // Hazır: sözleşme `window.__loadReady` (yükleme ekranı ilk tam kareye
+  // bağlanınca donmuş sayfada kalkmaz, T-04); eski commit'lerde yükleme
+  // ekranının kalkması
+  await page.waitForFunction(
+    () => window.__app && ('__loadReady' in window ? window.__loadReady === true : !document.getElementById('loading')) && !window.__app.envPending,
+    null,
+    { timeout: 600000 },
+  );
+  // Yükleme ekranı kare çizilince kalkıyorsa (T-04) iki kare çiz ve kalkmasını bekle
+  if (await page.evaluate(() => !!document.getElementById('loading'))) {
+    await page.evaluate(() => window.__vitrinRender(2));
+    await page.waitForFunction(() => !document.getElementById('loading'), null, { timeout: 60000 }).catch(() => {
+      throw new Error('yükleme ekranı hazır olduktan ve iki kare çizildikten sonra 60 s içinde kalkmadı');
+    });
+  }
   await page.evaluate(() => {
     const a = window.__app;
     // Ses kapalı: AudioContext kurulmasın, rastgele çağrı yapmasın
@@ -230,14 +281,29 @@ async function resetScene(page, shot) {
   );
 }
 
-/** Tohum ve birikimli saatler */
+/** Tohum ve birikimli saatler (sözleşme: app.resetClocks; eski commit'lerde doğrudan) */
 const reseed = (page) =>
   page.evaluate((seed) => {
     const a = window.__app;
     window.__vitrinSeed(seed);
-    a.fx.grade.uniforms.uTime.value = 0;
-    if (a.rain?.material?.uniforms?.uTime) a.rain.material.uniforms.uTime.value = 0;
+    if (typeof a.resetClocks === 'function') a.resetClocks();
+    else {
+      a.fx.grade.uniforms.uTime.value = 0;
+      if (a.rain?.material?.uniforms?.uTime) a.rain.material.uniforms.uTime.value = 0;
+    }
   }, SEED);
+
+/** NaN/sonsuz/negatif piksel maskesi (beyaz = kötü); kötü piksel yoksa eski dosya silinir */
+async function writeNanMask(file, probe) {
+  if (!probe.runs?.length) {
+    fs.rmSync(file, { force: true });
+    return;
+  }
+  const m = Buffer.alloc(probe.w * probe.h);
+  for (const [start, len] of probe.runs) m.fill(255, start, start + len);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  await sharp(m, { raw: { width: probe.w, height: probe.h, channels: 1 } }).png().toFile(file);
+}
 
 /** Sahne durumu + kadraj (hidden/menu) */
 async function stageShot(page, shot) {
@@ -334,15 +400,23 @@ async function captureShot(page, shot, dir) {
     const s = a.sim.snapshot();
     const c = a.rig.camera;
     return {
-      nan: window.__vitrinNan(),
+      nan: window.__vitrinNan(true),
       sim: { kind: s.kind, N1: +s.N1.toFixed(4), N2: +s.N2.toFixed(4), egt: +s.egt.toFixed(1), lit: s.lit, abLevel: +s.abLevel.toFixed(3), time: +s.time.toFixed(3) },
-      camera: { position: c.position.toArray().map((v) => +v.toFixed(4)), fov: c.fov },
+      camera: { position: c.position.toArray().map((v) => +v.toFixed(4)), quaternion: c.quaternion.toArray().map((v) => +v.toFixed(6)), fov: c.fov },
       mode: a.mode,
       framesRendered: a.framesRendered,
     };
   });
   if (release) await release();
-  const meta = { id: shot.id, scene: shot.scene ?? shot.id, env: shot.env ?? 'Test hücresi', ...probe, nan: probe.nan.nan, inf: probe.nan.inf, neg: probe.nan.neg, readback: probe.nan };
+  if (shot.cleanup) await page.evaluate((js) => {
+    const a = window.__app;
+    // eslint-disable-next-line no-unused-vars
+    const sim = a.sim;
+    eval(js);
+  }, shot.cleanup);
+  await writeNanMask(path.join(dir, '_nan', `${shot.id}.png`), probe.nan);
+  const { runs: _runs, ...readback } = probe.nan;
+  const meta = { id: shot.id, scene: shot.scene ?? shot.id, env: shot.env ?? 'Test hücresi', ...probe, nan: probe.nan.nan, inf: probe.nan.inf, neg: probe.nan.neg, readback };
   fs.writeFileSync(path.join(dir, `${shot.id}.json`), JSON.stringify(meta, null, 2));
   console.log(`  ${shot.id}: ${secs(t0)} (NaN ${meta.nan}, negatif ${meta.neg})`);
   return meta;
@@ -418,6 +492,39 @@ const UI_SHOTS = [
       await page.click('.ws-tab:has-text("Mimari")');
     },
   ],
+  // Dalga 0 denetimi: CSS bölmesi manuel yakıt kaydırıcısının rengini
+  // değiştirmişti ve hiçbir karede görünmüyordu. Sona eklendi (öncekiler aynı)
+  [
+    'hucre-fadec-manuel',
+    async (page) => {
+      await page.evaluate(() => {
+        const a = window.__app;
+        a.openSandbox();
+        a.toasts?.clear?.();
+        a.sim.trim(0.6, 20);
+        a.advance(1);
+        a.rig.go('front', true);
+        // FADEC anahtarının kendisi gibi: valf o anki akışa
+        const c = a.sim.controls;
+        c.manualFuel = Math.min(1, a.sim.wf / (a.sim.eng.ref.Wf * 1.15));
+        c.fadec = 'manual';
+        const inp = document.querySelector('.manual-fuel input');
+        if (inp) inp.value = String(c.manualFuel);
+        a.advance(0.5);
+        a.toasts?.clear?.();
+      });
+    },
+  ],
+];
+/** Ayrı sayfada (koçluk baştan açık): atölye başlangıcı ve koçluk balonu (1G: 7. kart + ipucu) */
+const UI_COACH_SHOTS = [
+  [
+    'atolye-baslangic-kocluk',
+    async (page) => {
+      await page.evaluate(() => window.__app.openWorkshop());
+      await page.waitForSelector('[data-start]', { timeout: 30000 });
+    },
+  ],
 ];
 const UI_SIZES = ['1440x810', '1280x720', '960x600', '700x900'];
 
@@ -428,19 +535,24 @@ async function captureUi(browser, url, outRoot, sizes) {
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(dir, { recursive: true });
     const t0 = Date.now();
-    const page = await openFrozenPage(browser, url, { w, h });
-    await page.evaluate(() => window.__vitrinRender(2));
-    for (const [name, fn] of UI_SHOTS) {
-      await reseed(page);
-      await fn(page);
-      await page.evaluate(() => window.__vitrinRender(3));
-      // Menü/modal ve bildirim animasyonları (gerçek zaman) bitsin
-      await page.waitForTimeout(900);
-      await page.screenshot({ path: path.join(dir, `${name}.png`), timeout: 300000 });
+    for (const [shots, coach] of [
+      [UI_SHOTS, false],
+      [UI_COACH_SHOTS, true],
+    ]) {
+      const page = await openFrozenPage(browser, url, { w, h, coach });
+      await page.evaluate(() => window.__vitrinRender(2));
+      for (const [name, fn] of shots) {
+        await reseed(page);
+        await fn(page);
+        await page.evaluate(() => window.__vitrinRender(3));
+        // Menü/modal ve bildirim animasyonları (gerçek zaman) bitsin
+        await page.waitForTimeout(900);
+        await page.screenshot({ path: path.join(dir, `${name}.png`), timeout: 300000 });
+      }
+      if (page.errs.length) console.warn('Sayfa hataları:', page.errs.slice(0, 5));
+      await page.close();
     }
-    console.log(`arayüz ${size}: ${UI_SHOTS.length} kare, ${secs(t0)}`);
-    if (page.errs.length) console.warn('Sayfa hataları:', page.errs.slice(0, 5));
-    await page.close();
+    console.log(`arayüz ${size}: ${UI_SHOTS.length + UI_COACH_SHOTS.length} kare, ${secs(t0)}`);
   }
 }
 

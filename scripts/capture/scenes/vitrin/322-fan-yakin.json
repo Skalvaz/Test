@@ -1,6 +1,6 @@
 {
   "id": "322-fan-yakin",
-  "desc": "Test hücresi, yolcu turbofanı tam güç, açı 3 (fan yakın; görüş açısı 62°: galerideki panel boşluklu kadraj gibi bütün disk görünür), arayüz gizli; rölanti varyantı fan diski FFT kıyası için (1I)",
+  "desc": "Test hücresi, yolcu turbofanı tam güç, açı 3 (fan yakın; görüş açısı 62°: galerideki panel boşluklu kadraj gibi bütün disk görünür), arayüz gizli; rölanti varyantı fan diski FFT kıyası için (1I). fanDisk: rotor düzlemi (kanat hücum kenarı, z −0,52 m) kamerayla izdüşürülmüş disk, FFT ölçütü bununla; göbek (kapak) dışlanır",
   "galeri": "322-aci-3.png",
   "kind": "turbofan",
   "env": "Test hücresi",
@@ -35,7 +35,16 @@
       "rx": 0.236,
       "ry": 0.4375,
       "r0": 0.45,
-      "r1": 0.92
+      "r1": 0.92,
+      "exclude": [
+        {
+          "type": "ellipse",
+          "cx": 0.54,
+          "cy": 0.535,
+          "rx": 0.09,
+          "ry": 0.17
+        }
+      ]
     },
     "kapak": {
       "type": "ellipse",
@@ -43,6 +52,30 @@
       "cy": 0.535,
       "rx": 0.09,
       "ry": 0.17
+    },
+    "fanDisk": {
+      "type": "disk",
+      "center": [
+        0,
+        0,
+        -0.52
+      ],
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "r0": 0.56,
+      "r1": 1.33,
+      "exclude": [
+        {
+          "type": "ellipse",
+          "cx": 0.54,
+          "cy": 0.535,
+          "rx": 0.09,
+          "ry": 0.17
+        }
+      ]
     }
   }
 }
