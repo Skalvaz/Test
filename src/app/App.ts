@@ -67,6 +67,7 @@ import { EnvironmentManager, TEST_CELL, type LoadStep } from './render/Environme
 import { QUALITY } from './render/quality';
 import { ModeController, type Mode } from './modes/ModeController';
 import { emitLoadProgress, type LoadStage } from './loadProgress';
+import { SimClock } from './simClock';
 
 /** Atölye test kancası (M5A-SPEC §6.10) */
 export interface WorkshopHook {
@@ -121,6 +122,22 @@ export class App {
   /** Sahnedeki motorun kaynağı: katalog (kind yuvası) ya da atölye tasarımı */
   source: 'catalog' | 'workshop' = 'catalog';
   timeScale = 1;
+  /**
+   * Simülasyon saati (kanca: 1D duraklatma/tek adım, 1E duraklamada ses).
+   * Kare süresi → sim adımı; duraklatılmamışken dt × timeScale (eskisi gibi).
+   */
+  readonly clock = new SimClock();
+  /**
+   * Tuş kancaları (1D tuş tablosu): metin kutusu dışındaki her tuş önce
+   * bunlara gider; true dönen tuş yutulur (varsayılanı engellenir). Atölye
+   * tutamaç sürüklemesi sürerken çağrılmaz.
+   */
+  readonly keyHooks = new Set<(e: KeyboardEvent) => boolean>();
+  /**
+   * İleri sarma kancaları (1G: `advance()` sonunda panel güncellemesi):
+   * advance / advanceUntil bitince geçen simülasyon süresiyle çağrılır.
+   */
+  readonly advanceHooks = new Set<(seconds: number) => void>();
 
   /* ---- Atölye (M5a P10) ---- */
   private wsStore!: WorkshopStore;
@@ -272,8 +289,7 @@ export class App {
     this.environment.create(materials);
     this.environment.lights.add('cutFill', this.cutFill);
 
-    await this.environment.loadCell(loadStep);
-    await this.environment.loadAirfield(loadStep, scans, this.rig.camera);
+    await this.environment.load(loadStep, scans, this.rig.camera);
 
     await step(onProgress, 'Motor geometrisi oluşturuluyor…', 'engine');
     this.visual = new EngineVisual(materials, visualSourceFor(this.slot));
@@ -287,6 +303,7 @@ export class App {
 
     await step(onProgress, 'Görüntü işleme zinciri kuruluyor…', 'post');
     this.fx = this.pipeline.createPost(this.scene, this.rig.camera);
+    this.pipeline.onContextRestored = () => this.applyEnvironment(this.environment.name);
 
     this.picker = new Picker(renderer.domElement, this.rig.camera, this.visual);
     this.picker.onPick = (p) => this.onPick(p);
@@ -1344,6 +1361,7 @@ export class App {
       fanBlades: shaft ? gas.hpc.blades[0] : d.fanBlades,
       fanDiameter: shaft ? 2 * gas.hpc.tip[0] : d.fanDiameter,
       turbineBlades: gas.lpt.blades[1],
+      hpcBlades: gas.hpc.blades[0],
     };
     // Atölyede açılar aynı sunum tipinin şablon motorundan ölçeklenir ve
     // test hücresine sığdırılır (büyük motor: yakın kamera, geniş açı)
@@ -1556,6 +1574,12 @@ export class App {
       if (e.key === 'Escape') target.blur();
       return;
     }
+    for (const hook of this.keyHooks) {
+      if (hook(e)) {
+        e.preventDefault();
+        return;
+      }
+    }
     if (e.key === 'Escape') {
       if (this.overlay && this.mode === 'workshop' && this.overlay === this.wsStartEl) this.closeWorkshopStart();
       else if (this.overlay && this.mode !== 'menu') this.closeOverlay();
@@ -1668,8 +1692,9 @@ export class App {
    * kareleri beklemeden ders akışlarını doğrulamak için kullanır.
    */
   advance(seconds: number, dt = 1 / 30) {
-    for (let t = 0; t < seconds; t += dt) this.advanceStep(dt);
-    this.afterAdvance();
+    let t = 0;
+    for (; t < seconds; t += dt) this.advanceStep(dt);
+    this.afterAdvance(t);
   }
 
   /**
@@ -1680,7 +1705,7 @@ export class App {
    */
   advanceUntil(target: WaitTarget<GameEventType>, maxSeconds = 120, dt = 1 / 30): WaitResult {
     const r = advanceUntil({ step: (d) => this.advanceStep(d), subscribe: (fn) => this.bus.on(fn), target, maxSeconds, dt });
-    this.afterAdvance();
+    this.afterAdvance(r.seconds);
     return r;
   }
 
@@ -1695,11 +1720,12 @@ export class App {
     if (this.cutaway) this.aimCutaway();
   }
 
-  /** İleri sarmanın sonunda kokpit ve diyagram güncel değerleri gösterir */
-  private afterAdvance() {
+  /** İleri sarmanın sonunda kokpit ve diyagram güncel değerleri gösterir; kancalar */
+  private afterAdvance(seconds: number) {
     const snap = this.sim.snapshot();
     if (this.consoleVisible) this.cockpit.update(snap);
     if (this.diagramVisible) this.diagram.update(snap, 0, true);
+    for (const hook of this.advanceHooks) hook(seconds);
   }
 
   /**
@@ -1727,7 +1753,7 @@ export class App {
       this.pendingSteps--;
       dt = this.fixedDt;
     }
-    const simDt = dt * (this.mode === 'sandbox' ? this.timeScale : 1);
+    const simDt = this.clock.simDt(dt, this.mode === 'sandbox' ? this.timeScale : 1);
 
     this.sim.step(simDt);
     this.updateAutoStart();

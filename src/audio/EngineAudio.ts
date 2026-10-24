@@ -26,6 +26,8 @@ export interface AudioEngine {
   fanDiameter: number;
   /** Güç türbininin son kademe kanat sayısı (turboşaft ıslığı) */
   turbineBlades?: number;
+  /** HPC 1. kademe kanat sayısı (Dalga 0 kancası; 1E: HPC BPF tasarımı izlesin) */
+  hpcBlades?: number;
 }
 
 /** Bir sesin hedef kazancı ve (varsa) frekansı / süzgeç frekansı */

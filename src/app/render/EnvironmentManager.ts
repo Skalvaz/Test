@@ -90,6 +90,15 @@ export class EnvironmentManager {
     });
   }
 
+  /**
+   * Bütün ortam varlıkları (App.init çağırır): hücre, donanımı, havaalanı.
+   * Sıra ve erteleme bu sınıfındır (1A, T-04: havaalanı ilk kareden sonra).
+   */
+  async load(step: LoadStep, scans: Parameters<typeof loadAirfield>[0], camera: THREE.Camera) {
+    await this.loadCell(step);
+    await this.loadAirfield(step, scans, camera);
+  }
+
   /** Test hücresi ve hücre donanımı (yüklenemezse açık hava kullanılır) */
   async loadCell(step: LoadStep) {
     await step('cell', 'Test hücresi yükleniyor…');

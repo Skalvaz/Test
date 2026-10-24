@@ -1,7 +1,8 @@
 /**
  * Dalga 0 sözleşmeleri: olay akışı ve olay bekleme (T-20), otomatik
  * çalıştırma sırası, sim durumu yakalama imzası (gövde 2H), kip
- * denetleyicisi, yükleme olayı. Dalga 1 paketleri bu API'lere dayanır. (Kamera ve ışık: camera/camera.test.ts)
+ * denetleyicisi, simülasyon saati, yükleme olayı. Dalga 1 paketleri bu
+ * API'lere dayanır. (Kamera ve ışık: camera/camera.test.ts)
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EngineSim, type SimEvent } from '../sim';
@@ -9,6 +10,7 @@ import { AutoStart, type AutoStartStep } from '../sim/autostart';
 import { EventBus, type GameEvent } from './events';
 import { advanceUntil, waitForSim } from './waitFor';
 import { ModeController } from './modes/ModeController';
+import { SimClock } from './simClock';
 import { emitLoadProgress, LOAD_WEIGHTS, onLoadProgress, resetLoadProgress, stageFraction, type LoadProgress } from './loadProgress';
 
 describe('olay bekleme (T-20)', () => {
@@ -125,6 +127,22 @@ describe('kip denetleyicisi', () => {
     expect(seen).toEqual(['menu>sandbox', 'sandbox>workshop']);
     expect(m.current).toBe('menu');
     err.mockRestore();
+  });
+});
+
+describe('simülasyon saati', () => {
+  it('duraklatılmamışken dt × ölçek (eski davranış); duraklatınca 0, tek adım bir kare', () => {
+    const c = new SimClock();
+    expect(c.simDt(1 / 60, 2)).toBe((1 / 60) * 2);
+    const seen: boolean[] = [];
+    c.onChange((p) => seen.push(p));
+    c.toggle();
+    expect(c.simDt(1 / 60)).toBe(0);
+    c.stepOnce();
+    expect(c.simDt(1 / 60)).toBe(1 / 60);
+    expect(c.simDt(1 / 60)).toBe(0);
+    c.setPaused(false);
+    expect(seen).toEqual([true, false]);
   });
 });
 

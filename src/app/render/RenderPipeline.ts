@@ -27,6 +27,11 @@ export class RenderPipeline {
   readonly renderer: THREE.WebGLRenderer;
   /** Post-process zinciri (createPost'tan sonra) */
   fx!: PostFx;
+  /**
+   * WebGL bağlamı geri gelince (kanca; App ortamı yeniden kurar). Bugün
+   * çağrılmıyor: `webglcontextrestored` dinleyicisini 1A ekler (T-13).
+   */
+  onContextRestored?: () => void;
 
   constructor(container: HTMLElement) {
     const renderer = new THREE.WebGLRenderer({
