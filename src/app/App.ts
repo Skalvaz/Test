@@ -193,7 +193,7 @@ export class App {
   private static readonly CUT_FILL = 2;
   /** Test hücresi ışık seviyesi: 1 açık, 0.35 loş, 0 gece */
   get lightLevel(): number {
-    return this.environment.lightLevel;
+    return this.environment?.lightLevel ?? 1;
   }
   private cutaway = false;
   private lastZoneEvents = 0;
