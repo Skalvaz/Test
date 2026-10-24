@@ -244,14 +244,16 @@ describe('(Kancalar) mühür, kasaba ve Kazandın eşlemeleri', () => {
     ];
     const oz = { ...meta.ozetBaslat(), hamleIzleri: [...iz(true, 4), ...iz(true, 7)] };
     const m = muhurVMleri(v21, k, { oz, d: d0 })!;
-    // Çırak "Tek hamlede 10 döşeme": en iyi 7/10; Usta "4 halka çiz": 2/4.
+    // Çırak "Tek hamlede 10 döşeme": en iyi 7/10; Usta "N halka çiz": 2/N
+    // (N bölüm verisinden: mühür eşiği yeniden ölçülünce test değişmesin).
+    const halkaEsik = v21.muhurler![2].enAz!;
     expect(m[0].durum).toBe('bekliyor');
     expect(m[0].ilerleme).toEqual({ deger: 7, hedef: 10, tek: true });
-    expect(m[2].ilerleme).toEqual({ deger: 2, hedef: 4, tek: false });
+    expect(m[2].ilerleme).toEqual({ deger: 2, hedef: halkaEsik, tek: false });
     // Bölüm öncesi (özetsiz) satırlarda ilerleme yok.
     expect(muhurVMleri(v21, k)!.every((x) => x.ilerleme === undefined)).toBe(true);
     // Tutunca ilerleme yazısı kalkar.
-    const tam = { ...meta.ozetBaslat(), hamleIzleri: [...iz(true, 10), ...iz(true, 0), ...iz(true, 0), ...iz(true, 0)] };
+    const tam = { ...meta.ozetBaslat(), hamleIzleri: [...iz(true, 10), ...Array.from({ length: halkaEsik - 1 }, () => iz(true, 0)).flat()] };
     const m2 = muhurVMleri(v21, k, { oz: tam, d: d0 })!;
     expect(m2[0].durum).toBe('tuttu');
     expect(m2[0].ilerleme).toBeUndefined();
