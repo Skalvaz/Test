@@ -638,6 +638,8 @@ export const MC = {
   magaza: t('Mağaza', 'Shop'),
   /** (docs/ANDROID.md §3) Ayarlar satırı: UMP gizlilik seçenekleri formu (yalnız Android, gerektiğinde). */
   gizlilik: t('Reklam gizlilik seçenekleri', 'Ad privacy options'),
+  /** (docs/ANDROID.md §5) Ayarlar > Hakkında: pakete gömülü gizlilik politikası (yalnız Android). */
+  politika: t('Gizlilik politikası', 'Privacy policy'),
   geriYukle: t('Satın alımları geri yükle', 'Restore purchases'),
   sendeVar: t('Sende var', 'Owned'),
   stokDolu: t('Stok dolu', 'Stock full'),

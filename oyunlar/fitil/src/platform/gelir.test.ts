@@ -39,7 +39,7 @@ function kopruKur(y: Partial<Record<keyof AndroidGelirKoprusu, unknown>>): Andro
   };
 }
 
-const KISA = { reklam: 50, satin: 50, kisa: 50 };
+const KISA = { reklam: 50, satin: 50, kisa: 50, sorgu: 50 };
 const hic = () => new Promise<never>(() => {});
 
 describe('sağlayıcı seçimi (§5)', () => {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { geriTusuBildir, geriTusunuDinle, gizlilikSecenekleri, yasamBildir, yasamDinle, yerelHazir } from './yerel';
+import { geriTusuBildir, geriTusunuDinle, gizlilikPolitikasi, gizlilikSecenekleri, yasamBildir, yasamDinle, yerelHazir } from './yerel';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -48,6 +48,22 @@ describe('köprü erişimi', () => {
     vi.stubGlobal('window', {});
     expect(() => yerelHazir()).not.toThrow();
     expect(gizlilikSecenekleri()).toBeNull();
+    expect(gizlilikPolitikasi()).toBeNull();
+  });
+
+  it('gizlilik politikası: köprünün gömdüğü metin; boş ya da fırlatan köprü null', () => {
+    vi.stubGlobal('window', { FitilYerel: { politika: () => '<section lang="tr"><p>x</p></section>' } });
+    expect(gizlilikPolitikasi()).toBe('<section lang="tr"><p>x</p></section>');
+    vi.stubGlobal('window', { FitilYerel: { politika: () => '  ' } });
+    expect(gizlilikPolitikasi()).toBeNull();
+    vi.stubGlobal('window', {
+      FitilYerel: {
+        politika: () => {
+          throw new Error('x');
+        },
+      },
+    });
+    expect(gizlilikPolitikasi()).toBeNull();
   });
 
   it('hazır köprüye iletilir; köprü fırlatırsa yutulur', () => {

@@ -1,11 +1,13 @@
 /**
  * Açılış perdesi, geri tuşu ve yaşam döngüsü — docs/ANDROID.md §3.
  *
- *  - Perde (`@capacitor/splash-screen`, `launchAutoHide: false`): uygulama
- *    açılış ekranını kurunca `FitilYerel.hazir()` → iki kare sonra (ekran
- *    çizilmiş olsun) `SplashScreen.hide()`. Uygulama hiç hazır demezse
- *    (başlatma hatası) `PERDE_EN_GEC_MS` sonra yine kalkar: oyuncu perdede
- *    kalmasın, index.html'in yedek ekranı görünsün.
+ *  - Perde (`@capacitor/splash-screen`): uygulama açılış ekranını kurunca
+ *    `FitilYerel.hazir()` → iki kare sonra (ekran çizilmiş olsun)
+ *    `SplashScreen.hide()`. Uygulama hiç hazır demezse (başlatma hatası)
+ *    `PERDE_EN_GEC_MS` sonra yine kalkar: oyuncu perdede kalmasın,
+ *    index.html'in yedek ekranı görünsün. Aynı süre yerelde de var
+ *    (`capacitor.config.ts` `launchAutoHide: true`, `launchShowDuration`):
+ *    JS hiç çalışmazsa ya da bu modül yüklenemezse de perde kalkar.
  *  - Geri tuşu (`@capacitor/app` `backButton`; dinleyici varken Capacitor
  *    varsayılan davranışı kapatır): uygulama işlediyse (açık pencere Esc
  *    yolundan kapandı, oyun duraklatıldı; `platform/yerel.ts`) bir şey

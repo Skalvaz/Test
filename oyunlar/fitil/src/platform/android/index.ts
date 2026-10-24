@@ -15,6 +15,7 @@
  * `kopru.ts` (`FitilYerel.gelir` JSON biçimi), `yasam.ts` (açılış perdesi,
  * geri tuşu, yaşam döngüsü). Uygulama tarafı `platform/yerel.ts`.
  */
+import politikaHtml from '../../../docs/gizlilik.html?raw';
 import { gelirKoprusu } from './kopru';
 import { reklamKur, TEST_ODULLU } from './reklam';
 import { satinAlmaKur } from './satin';
@@ -45,6 +46,8 @@ export async function androidKur(): Promise<void> {
     gelir: gelirKoprusu(reklam, satin),
     gizlilik: { gerekli: () => reklam.gizlilikGerekli(), ac: () => reklam.gizlilikAc() },
     hazir: () => perde.hazir(),
+    // Play Kullanıcı Verileri politikası: gizlilik politikası uygulamanın içinde de (Ayarlar > Hakkında).
+    politika: () => politikaHtml,
   };
   void yasamKur().catch((e: unknown) => console.error('[fitil] geri tuşu / yaşam döngüsü kurulamadı', e));
   void reklam.baslat();

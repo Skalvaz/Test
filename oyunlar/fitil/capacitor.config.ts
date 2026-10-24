@@ -40,8 +40,12 @@ const config: CapacitorConfig = {
     },
     SplashScreen: {
       // Açılış ekranı hazır olunca köprü (A2, platform/android/yasam.ts) SplashScreen.hide()
-      // çağırır; uygulama hazır demezse 8 sn sonra yine kaldırır.
-      launchAutoHide: false,
+      // çağırır (erken çağrı yerel zamanlayıcıdan önce perdeyi kaldırır). Yerel süre sınırı
+      // yedektir: JS hiç çalışmazsa (eski WebView paketi ayrıştıramaz, köprü modülü
+      // yüklenemez) perde 8 sn sonra yine kalkar ve index.html'in yedek ekranı ya da oyun
+      // görünür. launchAutoHide false olsaydı perdeyi kaldıracak tek şey JS olurdu.
+      launchAutoHide: true,
+      launchShowDuration: 8000,
       launchFadeOutDuration: 250,
       backgroundColor: GECE,
       showSpinner: false,

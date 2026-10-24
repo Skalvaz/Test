@@ -16,7 +16,7 @@ kodu web derlemesine GİRMEZ).
 | A4 | Reklam + onay | `@capacitor-community/admob` 8.2.1 (ödüllü reklam, UMP onay formu) |
 | A5 | Satın alma | `@capgo/native-purchases` 8.9.2 (Play Billing 9.x; Play 31 Ağustos 2026'dan beri ≥ 8 istiyor) |
 | A6 | Hedef SDK | Capacitor 8 varsayılanı (compile/target 36: Play 31 Ağustos 2026'dan beri API 36 istiyor), minSdk Capacitor varsayılanı |
-| A7 | Reklam kimlikleri | Geliştirmede Google'ın herkese açık TEST kimlikleri (uygulama `ca-app-pub-3940256099942544~3347511713`, ödüllü `ca-app-pub-3940256099942544/5224354917`). Gerçek kimlikler depoya girmez: AdMob uygulama kimliği `android/gradle.properties`'te değil, git'e girmeyen `android/local.properties` → `manifestPlaceholders`; ödüllü birim kimliği `.env.android.local` (`VITE_ADMOB_ODULLU`). Yoksa test kimliği kullanılır. |
+| A7 | Reklam kimlikleri | Geliştirmede Google'ın herkese açık TEST kimlikleri (uygulama `ca-app-pub-3940256099942544~3347511713`, ödüllü `ca-app-pub-3940256099942544/5224354917`). Gerçek kimlikler depoya girmez: AdMob uygulama kimliği `android/gradle.properties`'te değil, git'e girmeyen `android/local.properties` → `manifestPlaceholders`; ödüllü birim kimliği `.env.android.local` (`VITE_ADMOB_ODULLU`). Yoksa test kimliği kullanılır; yayın derlemesi (`bundleRelease`/`assembleRelease`) ise test ya da farklı hesaplı kimlikle DURUR (`app/build.gradle` `fitilReklamKimligiDenetimi`; bilerek: `-PfitilTestReklam`). |
 | A8 | Ölçüm (Firebase Analytics) | Ertelendi: Firebase projesi ve `google-services.json` olmadan eklenmez. Köprü `FitilYerel.olay` şimdilik olayı yalnız yerel günlükte bırakır; Oyun özeti Android'de de çalışır. |
 | A9 | Hedef kitle | Önerilen Play "Hedef kitle": 13 yaş ve üstü (Aileler politikası ve çocuklara yönelik reklam kısıtları devreye girmez). AdMob isteğinde `tagForChildDirectedTreatment: false`, `maxAdContentRating: MaxAdContentRating.ParentalGuidance` (aile dostu reklam; eklenti `'ParentalGuidance'` metnini Google'ın `MAX_AD_CONTENT_RATING_PG`'sine çevirir, düz `'PG'` tanınmaz ve sınırsız kalırdı). |
 | A10 | Yön | Kilitlenmez (tablette yatay da çalışır; oyun yatay yerleşimi destekliyor). |
@@ -44,7 +44,7 @@ kodu web derlemesine GİRMEZ).
 
 - `FitilYerel.gelir` (`AndroidGelirKoprusu`, CAN-REKLAM §5.1):
   - Reklam: açılışta (onaydan sonra) ödüllü reklam önden yüklenir;
-    `reklamHazir` yüklüyken true; gösterim sonrası yeniden yüklenir. Ödül
+    `reklamHazir` yüklüyken true; reklam ekranı kapanınca yeniden yüklenir. Ödül
     olayı gelmeden kapanırsa `iptal`; yükleme/gösterim hatası `hata`;
     yüklü değilse `yok`.
   - Satın alma: `purchaseProduct({ productIdentifier, productType: inapp,
@@ -53,8 +53,8 @@ kodu web derlemesine GİRMEZ).
     (`can_doldur`, `guclendirici_paketi`) `consumePurchase`, kalıcı
     (`usta_karti`) `acknowledgePurchase`. `bekleyenler()` tamamlanmamış
     alımlar (`getPurchases`: tüketilir üründe tüketilmemiş, kalıcıda
-    onaylanmamış; aşağıda "A2 uygulaması"), `geriYukle()`
-    `restorePurchases` + kalıcı sahiplik. Fiyatlar `getProducts` (yerel biçimli).
+    onaylanmamış; aşağıda "A2 uygulaması"), `geriYukle()` kalıcı sahiplik
+    (`getPurchases`). Fiyatlar `getProducts` (yerel biçimli).
 - Onay (UMP): açılışta `requestConsentInfo` → gerekiyorsa `showConsentForm`;
   sonra `initialize`. Gizlilik seçenekleri gerekiyorsa (`privacyOptions
   RequirementStatus`) Ayarlar'da "Reklam gizlilik seçenekleri" satırı.
@@ -91,7 +91,11 @@ kodu web derlemesine GİRMEZ).
   - Reklam (`reklam.ts`): eklentinin `showRewardVideoAd`'i yalnız ödülde
     çözülür (ödülsüz kapanışta hiç, gösterim hatasında da reddetmez); sonuç
     `Rewarded` / `Dismissed` / `FailedToShow` olaylarından: ödül + kapanış
-    `odul`, ödülsüz kapanış 1 sn payla `iptal`, gösterim hatası `hata`.
+    `odul`, ödülsüz kapanış 1 sn payla `iptal`, gösterim hatası `hata`;
+    ödül gelip kapanış 60 sn gelmezse yine `odul`. Yeni reklam ancak reklam
+    ekranı kapanınca yüklenir (kapanış olayı hiç gelmezse 10 dk sonra):
+    eklenti reklamı birim kimliği anahtarıyla saklar, gösterilen reklam
+    kapanınca o anahtarı siler; ekran açıkken yüklenen yeni reklam silinirdi.
     Yükleme hatasında 30 sn, 2 dk, 5 dk (sonra 5 dk) yeniden deneme; yüklü
     reklam 55 dk'dan eskiyse yenilenir. `initialize`: çocuk/rıza yaşı
     etiketleri false, `maxAdContentRating: ParentalGuidance` (A9), test
@@ -106,14 +110,39 @@ kodu web derlemesine GİRMEZ).
     durumunda, tüketilir üründe tüketilmemiş (onaylı olsa da), kalıcıda
     onaylanmamış; ödemesi bekleyen ("2") verilmez. `ITEM_ALREADY_OWNED`
     (ör. yeniden kurulumdan sonra Usta kartı) mağazadaki alımla `basarili`
-    döner (jeton çifte vermeyi önler). Fatura desteklenmiyorsa `urunler` boş.
+    döner (jeton çifte vermeyi önler); aynı ürünün ödemesi bekleyen alımı
+    varsa `beklemede`. Fatura desteklenmiyorsa `urunler` boş. `geriYukle`
+    yalnız `getPurchases` (eklentinin `restorePurchases`'ı elle tamamlama
+    kipinde iş yapmaz, yalnız ayrı bağlantıyla kuyruğu uzatırdı). Sarmalayıcı
+    (`platform/gelir.ts`) `bekleyenler` ve `geriYukle` için 60 sn bekler
+    (`KOPRU_SURELERI.sorgu`): kuyrukta önde bir iş (açılışta fiyatlar, iş
+    başına en çok 30 sn) + kendisi. Bekleyen alımlar açılışta VE uygulama
+    ön plana dönünce sorulur (`GelirAkisi.onPlanaDondu`; satın alma akışı
+    sürerken değil): gecikmeli ödeme uygulama arkadayken tamamlanabilir,
+    köprü Play bağlantısını her çağrıdan sonra kapattığı için dinleyen yok.
   - Geri tuşu: açık pencere → Esc yolu (`document`'a kabarmadan gönderilir;
     tahtanın klavye girdisi Esc'i tüketmesin), oyunda Duraklat, harita ve
     açılışta `App.minimizeApp()`. Yaşam döngüsü: `appStateChange` → ölçüm
     yazılır, uygulamaya `fitil-yasam` (ses askıya, deneme süresi ve mola
     durur; `visibilitychange` ile birlikte zararsız).
   - Açılış perdesi: açılış ekranı DOM'a girince `yerelHazir()` → iki kare
-    sonra `SplashScreen.hide()`; uygulama hazır demezse 8 sn sonra.
+    sonra `SplashScreen.hide()`; uygulama hazır demezse 8 sn sonra. Yerel
+    yedek: `capacitor.config.ts` `launchAutoHide: true`, `launchShowDuration:
+    8000` (JS hiç çalışmazsa, ör. eski WebView paketi ayrıştıramazsa, perde
+    yine kalkar; erken `hide()` yerel zamanlayıcıyı bekletmez). Köprü modülü
+    yüklenemezse `main.ts` perdeyi `Capacitor.nativePromise('SplashScreen',
+    'hide')` ile hemen kaldırır, oyun köprüsüz başlar.
+  - Yedekleme: `AndroidManifest.xml` `allowBackup="false"`. WebView verisi
+    (ilerleme, satın alma jetonları, ölçüm günlüğü) Google Drive yedeğine
+    gitmez, uygulama kaldırılınca silinir (gizlilik politikası §3 böyle
+    söyler; PLAY-KONSOL §7'deki "sil, kur, geri yükle" denemesi de ancak
+    böyle anlamlı). Android 12+ kullanıcının başlattığı cihazdan cihaza
+    aktarım yine çalışır (oyuncunun yeni telefonu).
+  - Gizlilik politikası uygulamanın içinde (Play Kullanıcı Verileri
+    politikası): köprü `docs/gizlilik.html`'i pakete gömer
+    (`FitilYerel.politika`); Ayarlar > Hakkında > "Gizlilik politikası"
+    oyuncunun dilindeki bölümü modalda gösterir (`ui/ekranlar/politika.ts`;
+    dış bağlantılar sistem tarayıcısında). Web'de satır yok.
   - Ayarlar "Reklam gizlilik seçenekleri" (Mağaza'nın altında) yalnız UMP
     `privacyOptionsRequirementStatus` REQUIRED iken; `showPrivacyOptionsForm`.
 
@@ -144,7 +173,9 @@ kodu web derlemesine GİRMEZ).
   (arka + ön + tek renk), `drawable-*/splash_simge.png` (288 dp),
   `drawable(-port|-land)-*/splash.png` (şablon boyutları; düz gece mavisi +
   ortada ön katman, kısa kenarın %80'i tuval), `magaza/play/simge-512.png`
-  (RGB, saydamlık yok), `one-cikan-1024x500(_en).png` (RGB). Capacitor
+  (32 bit RGBA, alfa her yerde 255: Play simge şartı "32-bit PNG (with
+  alpha)"; Chromium opak karede alfayı attığı için tuvalden yeniden
+  kodlanır), `one-cikan-1024x500(_en).png` (24 bit RGB). Capacitor
   şablonunun kullanılmayan simge parçaları (yeşil ızgara, robot,
   `values/ic_launcher_background.xml`) silinir.
 - **Açılış perdesi kararı:** `Theme.SplashScreen` (core-splashscreen 1.2.0)
@@ -185,8 +216,10 @@ kodu web derlemesine GİRMEZ).
   24 Ekim 2026; yer tutucular `[Geliştirici adı]` ve `iletisim@ornek.com`
   yayından önce değişir, sayfa herkese açık bir adreste yayımlanır
   (PLAY-KONSOL.md §9). Politika bugünkü durumu anlatır (analitik SDK'sı yok);
-  AdMob'un açılışta reklamı önden yüklediği ve UMP'nin açılışta Google'a
-  sorduğu da yazılı. PLAY-KONSOL.md mağaza metinleri: TR kısa 78 / tam
+  AdMob'un açılışta reklamı önden yüklediği ve UMP'nin her açılışta, her
+  ülkede Google'a sorduğu da yazılı (§4; A4 incelemesinde eklendi). Metin
+  pakete de gömülür (Ayarlar > Hakkında, §3); yer tutucu e-posta kalırsa
+  yayın derlemesi durur. PLAY-KONSOL.md mağaza metinleri: TR kısa 78 / tam
   1377, EN kısa 77 / tam 1487 karakter.
 
 ## 6. Bu ortamın sınırı
@@ -215,3 +248,19 @@ katman her yoğunlukta var (108 dp; API 24–25 simgesi 48 dp), `splash_simge`
 atıf kalmadı; `node scripts/magaza-gorselleri.mjs` birleşik dalda aynı
 dosyaları baytı baytına yeniden üretiyor. Gradle/aapt2 bu ortamda
 koşmadığı için kaynak derlemesi ilk kez Android Studio'da sınanır.
+
+**A4 inceleme düzeltmeleri (24 Ekim 2026):** 13 bulgu doğrulandı ve
+düzeltildi: açılış perdesinin yerel süre sınırı ve köprüsüz başlangıçta
+perdenin kaldırılması (§3), reklam ekranı kapanmadan yeni reklam
+yüklenmemesi, `geriYukle`'den `restorePurchases`'ın çıkması ve sarmalayıcı
+sorgu süresinin kuyrukla uyumu, bekleyen ödemede `ITEM_ALREADY_OWNED` →
+`beklemede`, ön plana dönüşte bekleyen alımların sorulması, uygulama içi
+gizlilik politikası, `allowBackup="false"`, politikada UMP isteği, yayın
+derlemesinin test kimliği/yer tutucu denetimi (§1 A7), Play simgesinin 32
+bit RGBA olması (§4), PLAY-KONSOL'a ödeme profili (§6) ve AdMob'un mağaza
+bağlantısı + incelemesi (§8 adım 9). Bu bulut ortamında `/opt/android-sdk` ve
+Gradle önbelleği var: `ANDROID_HOME` = `/opt/android-sdk` iken `android`
+klasöründe `./gradlew --offline :app:fitilReklamKimligiDenetimi` (ve
+`bundleRelease --dry-run` ile görev sırası) denendi; test kimlikleriyle durur, `-PfitilTestReklam`
+ile uyarıp geçer, aynı yayıncılı gerçek biçimli kimliklerle geçer, farklı
+yayıncıda durur. Paket derlemesi (assemble/bundle) denenmedi.

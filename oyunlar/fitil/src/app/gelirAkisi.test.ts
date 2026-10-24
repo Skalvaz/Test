@@ -226,6 +226,52 @@ describe('GelirAkisi: satın alma', () => {
     expect(kayit().guclendiriciler.kibrit).toBe(7);
     expect(r.bildirimler).toEqual(['Satın alındı']);
   });
+  it('ön plana dönüş (Android): baslat sonrası bekleyenler yeniden sorulur; satın alma sürerken sorulmaz; eş zamanlı çağrı tek işlem', async () => {
+    const ayar: { bekleyen: { urun: UrunId; jeton: string }[] } = { bekleyen: [] };
+    const { g, r, kayit } = kur(kayitCanli(2), ayar);
+    // Kayıt hazır değilken (baslat öncesi) sorulmaz.
+    ayar.bekleyen.push({ urun: 'can_doldur', jeton: 'gec1' });
+    g.onPlanaDondu();
+    await Promise.resolve();
+    expect(r.adimlar.some((a) => a.startsWith('tamamla'))).toBe(false);
+    // baslat + aynı anda dönüş: tek bekleyenler işlemi (çift tamamla yok).
+    g.baslat();
+    g.onPlanaDondu();
+    await g.bekleyenleriIsle();
+    expect(r.adimlar.filter((a) => a.startsWith('tamamla'))).toEqual(['tamamla:gec1']);
+    expect(meta.canDurumu(kayit(), T0).sayi).toBe(5);
+    // Uygulama arkadayken tamamlanan gecikmeli ödeme: dönüşte verilir ve tamamlanır.
+    ayar.bekleyen = [{ urun: 'guclendirici_paketi', jeton: 'gec2' }];
+    g.onPlanaDondu();
+    await g.bekleyenleriIsle();
+    expect(r.adimlar.filter((a) => a.startsWith('tamamla'))).toEqual(['tamamla:gec1', 'tamamla:gec2']);
+    expect(kayit().guclendiriciler).toEqual(meta.GUCLENDIRICI_PAKETI);
+  });
+  it('ön plana dönüş satın alma akışı sürerken bekleyenleri sormaz', async () => {
+    let bitir!: (s: SatinAlmaSonucu) => void;
+    const ayar = { bekleyen: [{ urun: 'guclendirici_paketi' as UrunId, jeton: 'x1' }] };
+    const { g, r } = kur(kayitCanli(2), ayar);
+    g.baslat();
+    await g.bekleyenleriIsle();
+    const once = r.adimlar.length;
+    await g.urunleriYukle();
+    // Ödeme ekranı açık: satinAl çözülmeden dönüş olayı gelir.
+    const o = (g as unknown as { o: GelirOrtami }).o;
+    const asil = o.saglayici.satinAl;
+    o.saglayici.satinAl = (id) => {
+      r.adimlar.push(`satinAl:${id}`);
+      return new Promise<SatinAlmaSonucu>((c) => (bitir = c));
+    };
+    const s = g.satinAl('can_doldur');
+    await Promise.resolve();
+    ayar.bekleyen = [{ urun: 'guclendirici_paketi', jeton: 'x2' }];
+    g.onPlanaDondu();
+    await Promise.resolve();
+    bitir({ durum: 'iptal' });
+    expect(await s).toBe('iptal');
+    expect(r.adimlar.slice(once)).toEqual(['satinAl:can_doldur']);
+    o.saglayici.satinAl = asil;
+  });
   it('geri yükleme yalnız kalıcı ürünü verir; zaten sendeyse kayıt aynı; boş liste ayrı bildirim', async () => {
     const { g, kayit, r } = kur(meta.yeniKayit(1), { geri: ['usta_karti'] });
     expect(await g.geriYukle()).toBe(true);

@@ -20,7 +20,10 @@
  * olaylar dinlenir): ödül olayı (ya da sözün çözülmesi) + kapanış → 'odul';
  * ödülsüz kapanış → 'iptal' (geç gelen ödül için `ODUL_PAYI_MS` beklenir);
  * gösterim hatası / sözün reddi → 'hata'; yüklü reklam yoksa 'yok'. Her
- * gösterimden sonra yeni reklam yüklenir.
+ * gösterimden sonra, reklam ekranı KAPANINCA yeni reklam yüklenir: eklenti
+ * yüklenen reklamı birim kimliği anahtarıyla saklar ve gösterilen reklam
+ * kapanınca o anahtarı siler; ekran açıkken yüklenen yeni reklam silinir,
+ * köprü onu "hazır" sanırdı (sonraki gösterim 'hata').
  */
 import {
   AdMob,
@@ -41,6 +44,12 @@ export const REKLAM_OMRU_MS = 55 * 60_000;
 export const ODUL_PAYI_MS = 1000;
 /** Ödül geldi ama kapanış olayı hiç gelmezse bu süre sonra 'odul' (ms; ödül yutulmasın). */
 export const KAPANIS_BEKLEME_MS = 60_000;
+/**
+ * 'odul' kapanışsız verildiyse (oyuncu son kartta kaldı) yeni reklam kapanış
+ * olayında yüklenir; kapanış hiç gelmezse bu kadar sonra yine yüklenir (ms;
+ * reklam bu oturumda kalıcı olarak kaybolmasın).
+ */
+export const KAPANIS_EN_GEC_MS = 10 * 60_000;
 
 /**
  * - `baslamadi`: `baslat` çağrılmadı;
@@ -196,6 +205,8 @@ export function reklamKur(ayar: ReklamAyari): Reklam {
     durum = 'gosteriliyor';
     const birim = yuklenen ?? ayar.birim;
     yuklenen = null;
+    /** Reklam ekranı kapandı (kapanış ya da gösterim hatası olayı / reddi geldi). */
+    let ekranKapandi = false;
     const sonuc = await new Promise<ReklamSonucu>((coz) => {
       let odul = false;
       let bitti = false;
@@ -206,7 +217,6 @@ export function reklamKur(ayar: ReklamAyari): Reklam {
         bitti = true;
         if (pay !== null) clearTimeout(pay);
         if (kapanisSure !== null) clearTimeout(kapanisSure);
-        gosterim = null;
         coz(s);
       };
       const g = {
@@ -218,11 +228,13 @@ export function reklamKur(ayar: ReklamAyari): Reklam {
           else if (kapanisSure === null) kapanisSure = setTimeout(() => bitir('odul'), KAPANIS_BEKLEME_MS);
         },
         kapandi() {
+          ekranKapandi = true;
           if (bitti) return;
           if (odul) bitir('odul');
           else if (pay === null) pay = setTimeout(() => bitir('iptal'), ODUL_PAYI_MS);
         },
         hata() {
+          ekranKapandi = true;
           bitir(odul ? 'odul' : 'hata');
         },
       };
@@ -236,8 +248,20 @@ export function reklamKur(ayar: ReklamAyari): Reklam {
         g.hata();
       }
     });
-    durum = 'bekliyor';
-    yukle();
+    let enGec: ReturnType<typeof setTimeout> | null = null;
+    const ekranBitti = () => {
+      if (enGec !== null) clearTimeout(enGec);
+      gosterim = null;
+      durum = 'bekliyor';
+      yukle();
+    };
+    if (ekranKapandi) ekranBitti();
+    else {
+      // Ödül verildi ama reklam ekranı hâlâ açık olabilir: yeni reklam kapanışta (durum
+      // 'gosteriliyor' kalır, `hazirMi` false: düğme görünmez, ikinci gösterim 'yok').
+      gosterim = { odul: () => undefined, kapandi: ekranBitti, hata: ekranBitti };
+      enGec = setTimeout(ekranBitti, KAPANIS_EN_GEC_MS);
+    }
     return sonuc;
   }
 

@@ -56,7 +56,7 @@ import {
 } from './gorunum';
 import { bekle, bugun, duvarSaati, rastgeleTohum, simdi } from './zaman';
 import { gelirSaglayici } from '../platform/gelir';
-import { geriTusunuDinle, gizlilikSecenekleri, yasamDinle, yerelHazir } from '../platform/yerel';
+import { geriTusunuDinle, gizlilikPolitikasi, gizlilikSecenekleri, yasamDinle, yerelHazir } from '../platform/yerel';
 import { GelirAkisi, kayitKoduGelirKoru } from './gelirAkisi';
 
 const SURUM = '1.0';
@@ -251,8 +251,11 @@ export class Uygulama {
     // (docs/ANDROID.md §3) Android köprüsü: uygulama ön plandan çıktı/döndü (visibilitychange
     // her WebView'da gelmeyebilir; ikisi birlikte zararsız) ve geri tuşu. Web'de olay gelmez.
     yasamDinle((aktif) => {
+      const arkadaydi = this.yerelArkada;
       this.yerelArkada = !aktif;
       this.gorunurlukUygula();
+      // Arkadayken tamamlanan gecikmeli ödeme (docs/ANDROID.md §3): bekleyen alımlar yeniden sorulur.
+      if (aktif && arkadaydi) this.gelir?.onPlanaDondu();
     });
     geriTusunuDinle(() => this.geriTusu());
     setInterval(() => this.molaIlerle(), 5000);
@@ -901,6 +904,13 @@ export class Uygulama {
     const g = this.gelir;
     // (docs/ANDROID.md §3) Reklam gizlilik seçenekleri: yalnız Android köprüsü UMP giriş noktası istediğini bildirirse.
     const gizlilikAc = gizlilikSecenekleri();
+    // (docs/ANDROID.md §5) Pakete gömülü gizlilik politikası: yalnız Android; Ayarlar'ın üstünde açılır.
+    const politika = gizlilikPolitikasi();
+    const politikaAc = async (html: string) => {
+      this.ekranAdi = 'politika';
+      await this.ui.politika(html);
+      if (acik) this.ekranAdi = 'ayarlar';
+    };
     const p = this.ui.ayarlar(ayarlarVM(this.kayit, this.kayitci.depo.backend, sistemAzHareket(), SURUM), {
       nasilAc: () => void this.ui.nasilOynanir(nasilVM(this.kayit)),
       defterKartiAc: (m, tur) => void this.ui.defterKarti({ mahalle: m, oduller: [], tur }),
@@ -908,6 +918,7 @@ export class Uygulama {
       // (CAN-REKLAM §4, §6) Mağaza satırı ve Hakkında metni yalnız sağlayıcı varken.
       ...(g ? { magazaAc: () => void g.magazaAkisi(), gelirVar: true } : {}),
       ...(gizlilikAc ? { gizlilikAc } : {}),
+      ...(politika ? { politikaAc: () => void politikaAc(politika) } : {}),
     });
     if (ozetle) void ozetAc();
     await p;

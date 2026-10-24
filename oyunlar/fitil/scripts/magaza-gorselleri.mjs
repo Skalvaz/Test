@@ -97,17 +97,60 @@ class Cizer {
   async kapat() {
     await this.tarayici?.close();
   }
-  /** HTML'i w×h piksele çizip PNG yazar; `saydam` false ise zemin opak olmalı (RGB). */
-  async ciz(html, w, h, yol, { saydam = false, serbest = false } = {}) {
+  /**
+   * HTML'i w×h piksele çizip PNG yazar; `saydam` false ise zemin opak olmalı
+   * (RGB). `alfa`: opak içerik ama 32 bit RGBA (Play simgesi "32-bit PNG (with
+   * alpha)" ister). Chromium'un ekran görüntüsü opak karede alfa kanalını
+   * atar; kare tuvalden yeniden kodlanır (tuvalin PNG'si hep RGBA) ve her
+   * pikselde alfanın 255 olduğu denetlenir.
+   */
+  async ciz(html, w, h, yol, { saydam = false, serbest = false, alfa = false } = {}) {
     await this.sayfa.setViewportSize({ width: w, height: h });
     await this.sayfa.setContent(html, { waitUntil: 'load' });
     await this.sayfa.evaluate(() => document.fonts.ready);
     mkdirSync(dirname(yol), { recursive: true });
-    await this.sayfa.locator('#s').screenshot({ path: yol, omitBackground: saydam });
+    const kare = await this.sayfa.locator('#s').screenshot({ omitBackground: saydam });
+    writeFileSync(yol, alfa ? await this.rgbaKodla(kare) : kare);
     const b = pngBilgi(yol);
     if (!serbest && (b.w !== w || b.h !== h)) throw new Error(`${yol}: ${b.w}×${b.h}, beklenen ${w}×${h}`);
-    if (!saydam && b.renkTuru !== 2) throw new Error(`${yol}: opak beklenirken renk türü ${b.renkTuru}`);
+    if (alfa) {
+      if (b.renkTuru !== 6) throw new Error(`${yol}: 32 bit RGBA beklenirken renk türü ${b.renkTuru}`);
+      const enAz = await this.enAzAlfa(yol);
+      if (enAz !== 255) throw new Error(`${yol}: saydam piksel var (en düşük alfa ${enAz})`);
+    } else if (!saydam && b.renkTuru !== 2) throw new Error(`${yol}: opak beklenirken renk türü ${b.renkTuru}`);
     return b;
+  }
+  /** PNG'yi tarayıcının tuvalinden RGBA PNG olarak yeniden kodlar (piksel değerleri aynı). */
+  async rgbaKodla(png) {
+    const b64 = await this.sayfa.evaluate(async (veri) => {
+      const r = new Image();
+      r.src = `data:image/png;base64,${veri}`;
+      await r.decode();
+      const t = document.createElement('canvas');
+      t.width = r.naturalWidth;
+      t.height = r.naturalHeight;
+      t.getContext('2d').drawImage(r, 0, 0);
+      return t.toDataURL('image/png').split(',')[1];
+    }, png.toString('base64'));
+    return Buffer.from(b64, 'base64');
+  }
+  /** PNG'nin en düşük alfa değeri (tarayıcıda çözülür). */
+  async enAzAlfa(yol) {
+    const b64 = readFileSync(yol).toString('base64');
+    return this.sayfa.evaluate(async (veri) => {
+      const r = new Image();
+      r.src = `data:image/png;base64,${veri}`;
+      await r.decode();
+      const t = document.createElement('canvas');
+      t.width = r.naturalWidth;
+      t.height = r.naturalHeight;
+      const g = t.getContext('2d');
+      g.drawImage(r, 0, 0);
+      const d = g.getImageData(0, 0, t.width, t.height).data;
+      let enAz = 255;
+      for (let i = 3; i < d.length; i += 4) if (d[i] < enAz) enAz = d[i];
+      return enAz;
+    }, b64);
   }
 }
 
@@ -270,13 +313,18 @@ async function onizleme(c, klasor) {
 
 // ─────────────────────────── Play mağaza görselleri ───────────────────────────
 
-/** Play simgesi 512×512: tam kare, saydamlık yok (Play köşeleri kendi yuvarlar). */
+/**
+ * Play simgesi 512×512: tam kare, saydam piksel yok (Play köşeleri kendi
+ * yuvarlar) ama dosya 32 bit RGBA: Play Console'un simge şartı "32-bit PNG
+ * (with alpha)"; 24 bit RGB yükleme reddedilebilir. Öne çıkan görsel ve ekran
+ * görüntüleri 24 bit RGB kalır (onların şartı "JPEG ya da 24-bit PNG (alfa yok)").
+ */
 async function playGorselleri(c) {
   const tam = tamSimgeSvg();
   yaz(join(KAYNAK, 'simge-tam.svg'), tam);
   const yazilan = [join(KAYNAK, 'simge-tam.svg')];
   const ic = tam.replace(/<\?xml[^>]*\?>/, '').replace(/<!--[\s\S]*?-->/g, '').trim();
-  await c.ciz(sayfa(512, 512, [ic], { zemin: GECE }), 512, 512, join(PLAY, 'simge-512.png'));
+  await c.ciz(sayfa(512, 512, [ic], { zemin: GECE }), 512, 512, join(PLAY, 'simge-512.png'), { alfa: true });
   yazilan.push(join(PLAY, 'simge-512.png'));
 
   // Öne çıkan görsel 1024×500 (24 bit, saydamlık yok): Türkçe ve İngilizce.

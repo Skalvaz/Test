@@ -92,6 +92,17 @@ New-Item -ItemType Directory -Force "$HOME\fitil-anahtar" | Out-Null
    *release* > *Create*.
 4. Çıktı: `android\app\release\app-release.aab` (git'e girmez).
 
+**Yayın denetimi:** release derlemesi (`bundleRelease`, `assembleRelease`)
+şu durumlarda **durur** ve nedenini yazar: AdMob uygulama kimliği ya da
+ödüllü birim Google'ın test kimliği (§8 adım 3 yapılmamış), ikisi farklı
+AdMob hesabının, gizlilik politikasında yer tutucu e-posta kalmış (§9).
+AdMob kurulmadan önceki **ilk iç test paketi** (§5–§7 için) bilerek test
+kimlikleriyle üretilir: Android Studio'da *Settings > Build, Execution,
+Deployment > Compiler > Command-line Options* alanına `-PfitilTestReklam`
+yaz, paketi üret, sonra alanı **boşalt** (ya da PowerShell'de
+`cd android; .\gradlew bundleRelease -PfitilTestReklam`). Üretime giden
+pakette bu bayrak olmaz.
+
 ## 4. Play Console: uygulamayı oluştur
 
 <https://play.google.com/console> > **Uygulama oluştur**:
@@ -122,9 +133,19 @@ New-Item -ItemType Directory -Force "$HOME\fitil-anahtar" | Out-Null
 
 ## 6. Uygulama içi ürünler
 
-Ürünler, faturalandırma kitaplığını içeren bir AAB herhangi bir kanala
-yüklendikten sonra açılır. *Para kazanma > Ürünler > Uygulama içi ürünler*
-(yeni konsolda "Tek seferlik ürünler"):
+İki ön koşul:
+
+1. **Ödeme profili (satıcı hesabı):** Play Console > *Ayarlar > Ödeme
+   profili* (ya da *Para kazanma kurulumu*) > ödeme profili oluştur ya da
+   var olanı bağla: yasal ad, adres, banka hesabı, vergi bilgileri. Profil
+   bağlanmadan konsol ücretli ürün oluşturmaya izin vermez. Google'ın
+   doğrulaması birkaç gün sürebilir; erken başla. (AdMob'un ödeme profili
+   ayrıdır, §8 adım 8.)
+2. Faturalandırma kitaplığını içeren bir AAB herhangi bir kanala yüklenmiş
+   olmalı (§5).
+
+Sonra *Para kazanma > Ürünler > Uygulama içi ürünler* (yeni konsolda
+"Tek seferlik ürünler"):
 
 | Ürün kimliği (kodla aynı) | Ad (TR / EN) | Açıklama (TR / EN) | Önerilen fiyat |
 |---|---|---|---|
@@ -151,15 +172,18 @@ yüklendikten sonra açılır. *Para kazanma > Ürünler > Uygulama içi ürünl
    para çekilmez. "Test kartı, her zaman reddeder" ile hata yolu da denenir.
 4. Dene: üç ürünü al; tüketilir ürün tekrar alınabilmeli; Usta kartıyla
    reklamlı ödül reklamsız gelmeli; uygulamayı silip kurunca Mağaza >
-   "Satın alımları geri yükle" Usta kartını geri getirmeli.
+   "Satın alımları geri yükle" Usta kartını geri getirmeli (Android
+   yedeklemesi kapalı, ANDROID.md §3: silince kayıt da gider, kart yalnız
+   geri yüklemeyle gelir).
 
 ## 8. AdMob
 
 <https://admob.google.com>:
 
 1. **Uygulama ekle** > Android > (Play'de yayımlandıysa mağazadan seç, henüz
-   değilse "listelenmemiş" olarak ekle) > ad: Fitil. Çıkan **uygulama
-   kimliği**: `ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY`.
+   değilse "listelenmemiş" olarak ekle; o zaman adım 9 yayından sonra
+   zorunlu) > ad: Fitil. Çıkan **uygulama kimliği**:
+   `ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY`.
 2. **Reklam birimi ekle** > **Ödüllü** > ad: "Fitil ödüllü". Ödül ayarı
    önemli değil (oyun ödülü kendisi verir). Çıkan **birim kimliği**:
    `ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ`.
@@ -173,8 +197,9 @@ yüklendikten sonra açılır. *Para kazanma > Ürünler > Uygulama içi ürünl
    npm run build:android
    ```
 
-   Dosyalar yoksa uygulama deneme kimliklerini kullanır. İkisi de
-   `.gitignore`'da; commit'e girmediğini `git status` ile doğrula.
+   Dosyalar yoksa uygulama deneme kimliklerini kullanır (hata ayıklama
+   derlemesinde; yayın derlemesi durur, §3). İkisi de `.gitignore`'da;
+   commit'e girmediğini `git status` ile doğrula.
 4. **Test cihazı:** gerçek kimliklerle geliştirirken kendi telefonunu
    *Ayarlar > Test cihazları*'na ekle (telefonun reklam kimliği: *Ayarlar >
    Google > Reklamlar*). Kendi gerçek reklamına dokunmak hesabı askıya
@@ -191,6 +216,14 @@ yüklendikten sonra açılır. *Para kazanma > Ürünler > Uygulama içi ürünl
    verirsen, AdMob'un gösterdiği satırı o sitenin kökünde `app-ads.txt`
    dosyasına koy (reklam doluluğunu korur).
 8. Ödeme almak için *Ödemeler* bölümünde ödeme profilini tamamla.
+9. **Mağazaya bağla ve incelemeyi bekle** (uygulama "listelenmemiş"
+   eklendiyse): Fitil Play'de herkese görününce (üretim ya da açık test)
+   AdMob > *Uygulamalar > Fitil > Uygulama ayarları > Uygulama mağazası
+   ayrıntıları* > **Ekle** > Google Play'de Fitil'i seç. AdMob ardından
+   uygulamayı inceler; durum **Hazır** olana dek reklam sunumu sınırlıdır.
+   Bu adım atlanırsa gerçek oyuncularda ödüllü reklam yüklenmez: "Reklam
+   izle" düğmesi görünmez ya da "Şu an reklam yok" çıkar (+1 can ve +5
+   hamle ödülleri çalışmaz). Durumu AdMob ana sayfasındaki uyarılardan izle.
 
 ## 9. Gizlilik politikası URL'si
 
@@ -203,9 +236,16 @@ Play ve AdMob, **herkese açık** bir gizlilik politikası adresi ister.
    yüklemez.
 3. Adresi Play Console *Uygulama içeriği > Gizlilik politikası* alanına ve
    AdMob GDPR mesajına yaz.
-4. Politika bugünkü durumu anlatır: oyunda hesap ve sunucu yok, ilerleme ve
-   ölçüm günlüğü yalnız cihazda, AdMob ve Play Billing Google'ın
-   politikalarıyla. Oyuna veri toplayan yeni bir şey eklenirse (ör. analitik
+4. **Uygulamanın içinde:** Play, politikanın uygulamada da yayımlanmasını
+   ister. `docs\gizlilik.html` pakete gömülür ve oyunda *Ayarlar > Hakkında
+   > Gizlilik politikası*'nda açılır (ağ gerekmez). Yer tutucuları
+   değiştirdikten sonra `npm run build:android` çalıştır; yer tutucu kalırsa
+   yayın derlemesi durur (§3). Politikayı her değiştirdiğinde yayımlanan
+   sayfayı da aynı dosyayla güncelle.
+5. Politika bugünkü durumu anlatır: oyunda hesap ve sunucu yok, ilerleme ve
+   ölçüm günlüğü yalnız cihazda (Android yedeklemesi kapalı), AdMob ve Play
+   Billing Google'ın politikalarıyla; UMP onay isteği her açılışta her
+   ülkede gider. Oyuna veri toplayan yeni bir şey eklenirse (ör. analitik
    SDK'sı) politika ve Veri güvenliği formu birlikte güncellenir.
 
 ## 10. Uygulama içeriği beyanları (Play Console > Politika > Uygulama içeriği)
@@ -306,7 +346,7 @@ Devlet uygulaması, finansal özellikler, sağlık, haber: **Hayır**.
 
   | Alan | Türkçe giriş | İngilizce giriş |
   |---|---|---|
-  | Uygulama simgesi (512×512) | `simge-512.png` | aynı dosya |
+  | Uygulama simgesi (512×512, 32 bit PNG, alfa kanallı ama saydam piksel yok) | `simge-512.png` | aynı dosya |
   | Öne çıkan görsel (1024×500) | `one-cikan-1024x500.png` | `one-cikan-1024x500_en.png` |
   | Telefon ekran görüntüleri (1080×1920) | `ekran-tr-01.png` … `ekran-tr-06.png` | `ekran-en-01.png` … `ekran-en-06.png` |
 
@@ -399,11 +439,13 @@ geçiş anında mı).
 
 ## 13. Yayın öncesi kontrol listesi
 
+- [ ] Ödeme profili (satıcı hesabı) Play Console'a bağlı (§6).
 - [ ] Gerçek AdMob kimlikleri `android\local.properties` ve `.env.android.local`'da; `git status` temiz.
-- [ ] `versionCode` artırıldı; `npm run build:android`; imzalı AAB.
-- [ ] Gizlilik politikası yayında; yer tutucular değişti; URL Play ve AdMob'da.
+- [ ] `versionCode` artırıldı; `npm run build:android`; imzalı AAB `-PfitilTestReklam` OLMADAN üretildi (yayın denetimi geçti, §3).
+- [ ] Gizlilik politikası yayında; yer tutucular değişti; URL Play ve AdMob'da; oyunda Ayarlar > Hakkında > Gizlilik politikası açılıyor.
 - [ ] Uygulama içerik beyanları (reklamlar, reklam kimliği, hedef kitle 13+, IARC, veri güvenliği) tamam.
 - [ ] Üç ürün etkin; lisans testçisiyle satın alma ve geri yükleme denendi.
 - [ ] GDPR mesajı yayında; AEA dışında da reklam açılıyor.
+- [ ] Yayından sonra: AdMob uygulaması Google Play girişine bağlandı ve durumu **Hazır** (§8 adım 9).
 - [ ] İç testte en az bir cihazda: açılış perdesi, güvenli alan, geri tuşu, ses, reklam, satın alma.
 - [ ] Mağaza girişi TR + EN metinler ve görseller yüklendi.

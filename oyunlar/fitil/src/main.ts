@@ -49,6 +49,22 @@ function baslat(): void {
   );
 }
 
+/**
+ * Köprü kurulamadıysa açılış perdesini doğrudan yerel köprüyle kaldırır.
+ * Perdeyi kaldıran `perdeKur` köprü modülünün içinde; modül yüklenemediyse
+ * oyun perdenin arkasında görünmez kalırdı (yerel süre sınırı da 8 sn sonra
+ * kaldırır, capacitor.config.ts). Capacitor'ün sayfaya enjekte ettiği
+ * `nativePromise` eklenti modülünü içe aktarmadan çağrılır.
+ */
+function perdeyiYerelKaldir(): void {
+  try {
+    const cap = (window as { Capacitor?: { nativePromise?: (eklenti: string, yontem: string, secenek: object) => Promise<unknown> } }).Capacitor;
+    void cap?.nativePromise?.('SplashScreen', 'hide', {})?.catch(() => undefined);
+  } catch {
+    /* köprü yok: yerel süre sınırı perdeyi kaldırır */
+  }
+}
+
 /** Android: yerel köprüyü kur, sonra başlat. Kurulum hatası oyunu durdurmaz (köprüsüz başlar). */
 async function androidIleBaslat(): Promise<void> {
   try {
@@ -56,6 +72,7 @@ async function androidIleBaslat(): Promise<void> {
     await androidKur();
   } catch (e) {
     console.error('[fitil] Android kurulumu başarısız', e);
+    perdeyiYerelKaldir();
   }
   baslat();
 }

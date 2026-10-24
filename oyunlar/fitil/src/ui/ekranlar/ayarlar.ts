@@ -38,6 +38,12 @@ export interface AyarlarEk {
    * istediğini bildirince). Ayarlar açık kalır, form üstünde açılır.
    */
   gizlilikAc?: () => void;
+  /**
+   * (docs/ANDROID.md §5) Hakkında'daki "Gizlilik politikası" satırı: yalnız
+   * verilince görünür (Android köprüsü politikayı pakete gömdüyse). Ayarlar
+   * açık kalır, politika üstünde açılır.
+   */
+  politikaAc?: () => void;
 }
 
 /** Dil adları kendi dillerinde (oyuncu kendi dilini tanısın). */
@@ -234,12 +240,26 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
     oyunOzeti.addEventListener('click', () => ek.oyunOzetiAc?.());
   }
 
+  // (docs/ANDROID.md §5) Gizlilik politikası: Play politikası uygulamanın içinde de ister (yalnız Android).
+  let politika: HTMLElement | null = null;
+  if (ek.politikaAc) {
+    politika = h(
+      'button',
+      { s: 'f-kart-satir f-ay-oyun-ozeti f-ay-politika', type: 'button' },
+      h('span', { s: 'f-satir-ikon' }, ikon('bilgi')),
+      h('span', null, h('strong', { t: MC.politika })),
+      ikon('ileri'),
+    );
+    politika.addEventListener('click', () => ek.politikaAc?.());
+  }
+
   const hakkinda = h(
     'section',
     { s: 'f-ay-bolum f-hakkinda' },
     h('h3', { s: 'f-etiket', t: M.hakkinda }),
     // (CAN-REKLAM §6) Sağlayıcı varken "Can yok, bekleme yok, mağaza yok." yanlış olur.
     h('p', { s: 'f-govde', t: ek.gelirVar ? M.hakkindaMetinGelir : M.hakkindaMetin }),
+    politika,
     h('p', { s: 'f-not', t: M.yaziTipi }),
     h('p', { s: 'f-not', t: M.surum(d.surum) }),
   );

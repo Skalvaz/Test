@@ -45,6 +45,7 @@ import { kasabaEkrani } from './ekranlar/kasaba';
 import { canPaneliEkrani, cikisOnayiEkrani } from './ekranlar/can';
 import { magazaEkrani } from './ekranlar/magaza';
 import { beklemeEkrani, eksenSecici, type BeklemeTutamak } from './ekranlar/ek';
+import { politikaEkrani } from './ekranlar/politika';
 import type { Eksen } from '../core/types';
 import { muhurUcur, muhurEtiketi } from './kanca';
 import { M, MK } from './metinler';
@@ -374,11 +375,17 @@ export class Arayuz {
         magazaAc: ek.magazaAc,
         gelirVar: ek.gelirVar,
         gizlilikAc: ek.gizlilikAc,
+        politikaAc: ek.politikaAc,
         defterKartiAc: ek.defterKartiAc ?? ((m, tur) => void this.defterKarti({ mahalle: m, oduller: [], tur })),
         yerelUygula,
         dilDegisti: (d) => this.b.geri.dilDegisti?.(d),
       }),
     );
+  }
+
+  /** Gizlilik politikası (Ayarlar > Hakkında; yalnız Android): Ayarlar'ın üstünde açılır, Kapat/Esc ile Ayarlar'a döner. */
+  politika(html: string): Promise<void> {
+    return this.ac(politikaEkrani(this.b, html));
   }
 
   /** Oyun özeti (Ayarlar > Oyun özeti): Ayarlar'ın üstünde açılır, Kapat/Esc ile Ayarlar'a döner. */

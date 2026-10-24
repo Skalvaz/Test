@@ -13,6 +13,7 @@
  *    gelmeyebilir; ikisi birlikte de zararsız).
  *  - Açılış perdesi: uygulama açılış ekranını kurunca `yerelHazir()`.
  *  - Reklam gizlilik seçenekleri (UMP): `gizlilikSecenekleri()`.
+ *  - Pakete gömülü gizlilik politikası: `gizlilikPolitikasi()`.
  */
 
 /** Geri tuşu olayı (window, iptal edilebilir: `preventDefault` = işlendi). */
@@ -83,6 +84,20 @@ export function yerelHazir(): void {
     if (typeof window !== 'undefined') window.FitilYerel?.hazir?.();
   } catch {
     /* köprü hatası oyunu durdurmaz (köprünün güvenlik zamanlayıcısı perdeyi yine kaldırır) */
+  }
+}
+
+/**
+ * (Uygulama) Pakete gömülü gizlilik politikası (HTML, `docs/gizlilik.html`).
+ * Yalnız Android köprüsü verir (Play: politika uygulamanın içinde de
+ * yayımlanır); köprü yoksa (web, claude.ai) null: Ayarlar'da satır yok.
+ */
+export function gizlilikPolitikasi(): string | null {
+  try {
+    const p = typeof window !== 'undefined' ? window.FitilYerel?.politika?.() : undefined;
+    return typeof p === 'string' && p.trim() ? p : null;
+  } catch {
+    return null;
   }
 }
 

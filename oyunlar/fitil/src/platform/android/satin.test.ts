@@ -24,7 +24,8 @@ vi.mock('@capgo/native-purchases', async (asil) => ({
   NativePurchases: h.np,
 }));
 
-import { alimlarCevir, bekliyorMu, satinAlmaKur, satinHatasiCevir, urunlerCevir, SATIN_ALINDI } from './satin';
+import { alimlarCevir, bekliyorMu, satinAlmaKur, satinHatasiCevir, urunlerCevir, KUYRUK_SURELERI, SATIN_ALINDI } from './satin';
+import { KOPRU_SURELERI } from '../gelir';
 
 /** Capacitor'ün reddi gibi: ileti + kod. */
 function eklentiHatasi(ileti: string, kod?: string): Error {
@@ -198,6 +199,19 @@ describe('satinAlmaKur', () => {
     expect(await s.satinAl('usta_karti')).toEqual({ durum: 'hata' });
   });
 
+  it('satinAl: zaten sahip olunan ürünün ödemesi bekliyorsa (Play bekleyeni de sahip sayar) beklemede', async () => {
+    const s = satinAlmaKur();
+    h.np.purchaseProduct.mockRejectedValue(eklentiHatasi('Purchase is not purchased', 'ITEM_ALREADY_OWNED'));
+    h.np.getPurchases.mockResolvedValueOnce({ purchases: [islem('can_doldur', 'bekleyen', { durum: '2' })] });
+    expect(await s.satinAl('can_doldur')).toEqual({ durum: 'beklemede' });
+    // Başka ürünün bekleyen ödemesi bu ürünü 'beklemede' yapmaz.
+    h.np.getPurchases.mockResolvedValueOnce({ purchases: [islem('guclendirici_paketi', 'bekleyen', { durum: '2' })] });
+    expect(await s.satinAl('can_doldur')).toEqual({ durum: 'hata' });
+    // Satın alınmış alım bekleyenden önce gelir (ödül verilir).
+    h.np.getPurchases.mockResolvedValueOnce({ purchases: [islem('can_doldur', 'b2', { durum: '2' }), islem('can_doldur', 'tamam')] });
+    expect(await s.satinAl('can_doldur')).toEqual({ durum: 'basarili', urun: 'can_doldur', jeton: 'tamam' });
+  });
+
   it('tamamla: tüketilir ürün tüketilir, kalıcı onaylanır (eşleme bellekte)', async () => {
     const s = satinAlmaKur();
     h.np.purchaseProduct.mockResolvedValueOnce(islem('guclendirici_paketi', 'p1'));
@@ -260,16 +274,14 @@ describe('satinAlmaKur', () => {
     await expect(satinAlmaKur().bekleyenler()).rejects.toThrow();
   });
 
-  it('geriYukle: restorePurchases + getPurchases; yalnız kalıcı ürünler (onaylı ya da değil)', async () => {
+  it('geriYukle: yalnız getPurchases (restorePurchases ayrı bağlantı açardı); yalnız kalıcı ürünler (onaylı ya da değil)', async () => {
     const s = satinAlmaKur();
     h.np.getPurchases.mockResolvedValueOnce({ purchases: [islem('can_doldur', 'a'), islem('usta_karti', 'k', { onayli: true }), islem('usta_karti', 'k2')] });
     expect(await s.geriYukle()).toEqual(['usta_karti']);
-    expect(h.np.restorePurchases.mock.invocationCallOrder[0]).toBeLessThan(h.np.getPurchases.mock.invocationCallOrder[0]);
     h.np.getPurchases.mockResolvedValueOnce({ purchases: [islem('can_doldur', 'a')] });
     expect(await s.geriYukle()).toEqual([]);
-    h.np.restorePurchases.mockRejectedValueOnce(new Error('x'));
-    h.np.getPurchases.mockResolvedValueOnce({ purchases: [islem('usta_karti', 'k')] });
-    expect(await s.geriYukle()).toEqual(['usta_karti']);
+    expect(h.np.getPurchases).toHaveBeenCalledTimes(2);
+    expect(h.np.restorePurchases).not.toHaveBeenCalled();
     h.np.getPurchases.mockRejectedValueOnce(new Error('QUERY_PURCHASES_FAILED'));
     await expect(s.geriYukle()).rejects.toThrow();
   });
@@ -287,6 +299,11 @@ describe('satinAlmaKur', () => {
     expect(await a).toEqual([{ id: 'can_doldur', fiyat: '₺29,99' }]);
     expect(await b).toEqual([]);
     expect(h.np.getPurchases).toHaveBeenCalledTimes(1);
+  });
+
+  it('sarmalayıcının sorgu sınırı kuyrukta önde bekleyen bir işi ve kendisini kapsar', () => {
+    // Açılışta urunler() + bekleyenler() birlikte; geri yükleme fiyat isteğinin arkasında kalabilir.
+    expect(KOPRU_SURELERI.sorgu).toBeGreaterThanOrEqual(2 * KUYRUK_SURELERI.kisa);
   });
 
   it('kuyruk: yanıt vermeyen çağrıdan sonra süre sınırında ilerler', async () => {

@@ -31,7 +31,7 @@ vi.mock('@capacitor-community/admob', async (asil) => ({
   AdMob: h.admob,
 }));
 
-import { KAPANIS_BEKLEME_MS, ODUL_PAYI_MS, REKLAM_OMRU_MS, YENIDEN_DENEME_MS, reklamIstenebilir, reklamKur } from './reklam';
+import { KAPANIS_BEKLEME_MS, KAPANIS_EN_GEC_MS, ODUL_PAYI_MS, REKLAM_OMRU_MS, YENIDEN_DENEME_MS, reklamIstenebilir, reklamKur } from './reklam';
 
 const BIRIM = 'ca-app-pub-test/odullu';
 const ODUL = 'onRewardedVideoAdReward';
@@ -252,6 +252,37 @@ describe('gösterim sonuçları', () => {
     expect(sonuc).toBeNull();
     await vi.advanceTimersByTimeAsync(1);
     expect(sonuc).toBe('odul');
+    // Reklam ekranı hâlâ açık olabilir: yeni reklam kapanışa dek yüklenmez (eklenti aynı
+    // birim anahtarındaki yeni reklamı, gösterilen reklam kapanınca silerdi).
+    expect(h.admob.prepareRewardVideoAd).toHaveBeenCalledTimes(1);
+    expect(r.hazirMi()).toBe(false);
+    expect(await r.goster()).toBe('yok');
+    expect(h.admob.showRewardVideoAd).toHaveBeenCalledTimes(1);
+    h.yay(ODUL, { type: 'coin', amount: 1 });
+    await akit();
+    expect(h.admob.prepareRewardVideoAd).toHaveBeenCalledTimes(1);
+    h.yay(KAPANDI);
+    await akit();
+    expect(h.admob.prepareRewardVideoAd).toHaveBeenCalledTimes(2);
+    expect(r.hazirMi()).toBe(true);
+  });
+
+  it('kapanışsız odul sonrası kapanış hiç gelmezse yeni reklam en geç süre sonunda yüklenir', async () => {
+    const r = await hazir();
+    const s = r.goster();
+    await akit();
+    h.yay(ODUL, { type: 'coin', amount: 1 });
+    await vi.advanceTimersByTimeAsync(KAPANIS_BEKLEME_MS);
+    expect(await s).toBe('odul');
+    await vi.advanceTimersByTimeAsync(KAPANIS_EN_GEC_MS - 1);
+    expect(h.admob.prepareRewardVideoAd).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(h.admob.prepareRewardVideoAd).toHaveBeenCalledTimes(2);
+    expect(r.hazirMi()).toBe(true);
+    // Geç gelen kapanış yeni gösterim yokken yok sayılır.
+    h.yay(KAPANDI);
+    await akit();
+    expect(h.admob.prepareRewardVideoAd).toHaveBeenCalledTimes(2);
   });
 
   it('yüklü değilken ve gösterim sürerken "yok"', async () => {

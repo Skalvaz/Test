@@ -23,13 +23,19 @@
  *  - "Zaten sahipsin" (`ITEM_ALREADY_OWNED`, ör. yeniden kurulumdan sonra
  *    Usta kartı): sahip olunan alım `getPurchases`'tan bulunur ve başarılı
  *    satın alma olarak döner (oyun jetonla çifte vermeyi önler; ödenmiş ürün
- *    "hata" denip kaybolmasın).
+ *    "hata" denip kaybolmasın). Aynı ürünün ödemesi bekleyen ("2") alımı
+ *    varsa (Play onu da sahip olunmuş sayar) 'beklemede'.
+ *  - Geri yükleme yalnız `getPurchases` sorar: eklentinin `restorePurchases`'ı
+ *    `autoFinishTransactions: false` iken hiçbir şey yapmaz, yalnız ayrı bir
+ *    BillingClient bağlantısıyla kuyruğu uzatırdı.
  */
 import { NativePurchases, PURCHASE_TYPE, type Product, type Transaction } from '@capgo/native-purchases';
 import { URUN_IDLERI, URUN_TURLERI, urunIdMi, type SatinAlmaSonucu, type Urun, type UrunId } from '../gelir';
 
 /** Play `Purchase.PurchaseState.PURCHASED` (eklenti metin olarak verir). */
 export const SATIN_ALINDI = '1';
+/** Play `Purchase.PurchaseState.PENDING`: ödeme bekleniyor (ödül verilmez). */
+export const ODEME_BEKLIYOR = '2';
 
 /**
  * Kuyruğun süre sınırları (ms): satın alma (ödeme ekranı) uzun, öbürleri
@@ -120,6 +126,11 @@ export function alimlarCevir(liste: readonly Partial<Transaction>[] | null | und
   return sonuc;
 }
 
+/** `getPurchases` listesinde bu ürünün ödemesi bekleyen ("2") alımı var mı. */
+export function odemesiBekliyorMu(liste: readonly Partial<Transaction>[] | null | undefined, id: UrunId): boolean {
+  return (liste ?? []).some((t) => !!t && t.purchaseState === ODEME_BEKLIYOR && t.productIdentifier === id);
+}
+
 /** Tamamlanmamış mı: tüketilir ürün tüketilene dek (onaylı olsa da), kalıcı onaylanana dek. */
 export function bekliyorMu(a: Alim): boolean {
   return URUN_TURLERI[a.urun] === 'tuketilir' || !a.onayli;
@@ -150,12 +161,22 @@ export function satinAlmaKur(sure: Readonly<{ satin: number; kisa: number }> = K
     return sonuc;
   }
 
-  /** `getPurchases` (inapp): eşlemeyi tazeler. Mağazaya ulaşılamazsa reddeder. Kuyruğun İÇİNDEN çağrılır. */
-  async function alimlariOku(): Promise<Alim[]> {
+  /** `getPurchases` (inapp) ham listesi. Mağazaya ulaşılamazsa reddeder. Kuyruğun İÇİNDEN çağrılır. */
+  async function hamAlimlar(): Promise<readonly Partial<Transaction>[]> {
     const r = await NativePurchases.getPurchases({ productType: PURCHASE_TYPE.INAPP });
-    const liste = alimlarCevir(r?.purchases);
+    return r?.purchases ?? [];
+  }
+
+  /** Satın alınmış alımlar; eşlemeyi tazeler. */
+  function eslemeyeYaz(ham: readonly Partial<Transaction>[]): Alim[] {
+    const liste = alimlarCevir(ham);
     for (const a of liste) jetonlar.set(a.jeton, a);
     return liste;
+  }
+
+  /** `getPurchases` (inapp): eşlemeyi tazeler. Mağazaya ulaşılamazsa reddeder. Kuyruğun İÇİNDEN çağrılır. */
+  async function alimlariOku(): Promise<Alim[]> {
+    return eslemeyeYaz(await hamAlimlar());
   }
 
   // Elle tamamlama: kurtarma akışı (restorePurchases) da hiçbir alımı kendiliğinden onaylamasın.
@@ -202,8 +223,11 @@ export function satinAlmaKur(sure: Readonly<{ satin: number; kisa: number }> = K
         } catch (e) {
           if (hataKodu(e) === 'ITEM_ALREADY_OWNED') {
             try {
-              const sahip = (await alimlariOku()).find((a) => a.urun === id);
+              const ham = await hamAlimlar();
+              const sahip = eslemeyeYaz(ham).find((a) => a.urun === id);
               if (sahip) return { durum: 'basarili', urun: sahip.urun, jeton: sahip.jeton };
+              // Play ödemesi bekleyen alımı da sahip olunmuş sayar: oyuncu "Ödeme bekleniyor" görsün.
+              if (odemesiBekliyorMu(ham, id)) return { durum: 'beklemede' };
             } catch {
               /* sahiplik okunamadı */
             }
@@ -232,13 +256,9 @@ export function satinAlmaKur(sure: Readonly<{ satin: number; kisa: number }> = K
     bekleyenler: () =>
       sirala(async () => (await alimlariOku()).filter(bekliyorMu).map(({ urun, jeton }) => ({ urun, jeton })), sure.kisa),
 
+    // Yalnız getPurchases (Play'in sahiplik listesi); mağazaya ulaşılamazsa reddeder.
     geriYukle: () =>
       sirala(async () => {
-        try {
-          await NativePurchases.restorePurchases();
-        } catch {
-          /* karar aşağıdaki sorgunun: mağazaya ulaşılamıyorsa o da reddeder */
-        }
         const kume = new Set<UrunId>();
         for (const a of await alimlariOku()) if (URUN_TURLERI[a.urun] === 'kalici') kume.add(a.urun);
         return URUN_IDLERI.filter((id) => kume.has(id));

@@ -115,6 +115,10 @@ describe('androidKur', () => {
     expect(window.FitilYerel?.olay).toBeTypeOf('function');
     expect(window.FitilYerel?.gizlilik).toBeDefined();
     expect(window.FitilYerel?.hazir).toBeTypeOf('function');
+    // Gizlilik politikası pakete gömülü (docs/gizlilik.html; Ayarlar > Hakkında), iki dil bölümüyle.
+    const politika = window.FitilYerel?.politika?.() ?? '';
+    expect(politika).toContain('<section id="tr" lang="tr">');
+    expect(politika).toContain('<section id="en" lang="en">');
     expect(() => window.FitilYerel!.olay!('bolum_basla', '{}')).not.toThrow();
     await soz;
   });

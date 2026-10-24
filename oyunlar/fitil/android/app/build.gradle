@@ -14,6 +14,64 @@ if (admobUygulamaKimligi.isEmpty()) {
     logger.lifecycle('Fitil: ADMOB_APP_ID yok (android/local.properties); AdMob TEST uygulama kimligi kullaniliyor.')
 }
 
+// Yayın paketi (assembleRelease / bundleRelease; Android Studio "Generate Signed App
+// Bundle") Google'ın TEST reklam kimlikleriyle sessizce üretilmesin (A7, PLAY-KONSOL.md §8):
+// AdMob uygulama kimliği (local.properties ADMOB_APP_ID) ve pakete giren web kodundaki
+// ödüllü birim (.env.android.local VITE_ADMOB_ODULLU → npm run build:android →
+// src/main/assets/public) gerçek ve aynı yayıncının olmalı (yoksa reklam isteği eşleşmez).
+// Web kodunda test birimi her zaman yedek olarak durur; gerçek birim ondan AYRICA aranır.
+// Pakete gömülü gizlilik politikasında (Ayarlar > Hakkında) yer tutucu e-posta kalmamalı.
+// Bilerek test kimlikleriyle yayın paketi gerekiyorsa: ./gradlew bundleRelease -PfitilTestReklam
+def admobTestYayinci = '3940256099942544'
+def webVarliklari = file('src/main/assets/public')
+def testReklamIzni = project.hasProperty('fitilTestReklam')
+def reklamKimligiDenetimi = tasks.register('fitilReklamKimligiDenetimi') {
+    group = 'verification'
+    description = 'Yayin paketinde AdMob kimlikleri gercek mi (test degil, ayni yayinci), gizlilik politikasi yer tutucusuz mu.'
+    doLast {
+        def sorunlar = []
+        def eslesme = (admobUygulamaKimligi =~ /^ca-app-pub-(\d+)~\d+$/)
+        def uygulamaYayinci = eslesme.find() ? eslesme.group(1) : null
+        if (uygulamaYayinci == null) {
+            sorunlar << "ADMOB_APP_ID bicimi taninmadi (ca-app-pub-...~...): ${admobUygulamaKimligi}"
+        } else if (uygulamaYayinci == admobTestYayinci) {
+            sorunlar << 'android/local.properties ADMOB_APP_ID yok: AdMob TEST uygulama kimligi'
+        }
+        def birimYayincilari = [] as Set
+        def politikaYerTutucu = false
+        if (webVarliklari.exists()) {
+            webVarliklari.eachFileRecurse { f ->
+                if (f.isFile() && f.name.endsWith('.js')) {
+                    def metin = f.getText('UTF-8')
+                    (metin =~ /ca-app-pub-(\d+)\/\d+/).each { birimYayincilari << it[1] }
+                    if (metin.contains('iletisim@ornek.com')) politikaYerTutucu = true
+                }
+            }
+        }
+        if (politikaYerTutucu) {
+            sorunlar << 'docs/gizlilik.html yer tutuculari degismemis (iletisim@ornek.com): uygulama ici politika da onu gosterir'
+        }
+        def gercekBirimler = birimYayincilari - [admobTestYayinci]
+        if (birimYayincilari.isEmpty()) {
+            sorunlar << 'Web varliklarinda odullu birim yok: once npm run build:android'
+        } else if (gercekBirimler.isEmpty()) {
+            sorunlar << '.env.android.local VITE_ADMOB_ODULLU yok: odullu reklam TEST birimi'
+        } else if (uygulamaYayinci != null && uygulamaYayinci != admobTestYayinci && !gercekBirimler.contains(uygulamaYayinci)) {
+            sorunlar << "Odullu birim (yayinci ${gercekBirimler.join(', ')}) ile ADMOB_APP_ID (yayinci ${uygulamaYayinci}) ayni AdMob hesabinin degil"
+        }
+        if (!sorunlar.isEmpty()) {
+            def ileti = 'Fitil: yayin paketi uretilmez (docs/PLAY-KONSOL.md bolum 3, 8, 9):\n - ' +
+                sorunlar.join('\n - ') + '\nBilerek (or. AdMob kurulmadan ilk ic test paketi) derlemek icin: -PfitilTestReklam'
+            if (testReklamIzni) {
+                logger.warn(ileti)
+            } else {
+                throw new GradleException(ileti)
+            }
+        }
+    }
+}
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach { dependsOn reklamKimligiDenetimi }
+
 android {
     namespace = "com.fenerkoyu.fitil"
     compileSdk = rootProject.ext.compileSdkVersion

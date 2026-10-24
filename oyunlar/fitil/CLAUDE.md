@@ -107,7 +107,9 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   Android `npm run build:android` (`--mode android` → `dist-android/` + `cap sync
   android`; `main.ts` `platform/android/index.ts` `androidKur()`'u bekler).
   Köprü `src/platform/android/`: `index.ts` (`window.FitilYerel` eşzamanlı:
-  `gelir`, `olay` boş (Firebase ertelendi), `gizlilik`, `hazir`), `reklam.ts`
+  `gelir`, `olay` boş (Firebase ertelendi), `gizlilik`, `hazir`, `politika`:
+  gömülü `docs/gizlilik.html` → Ayarlar > Hakkında > Gizlilik politikası,
+  `ui/ekranlar/politika.ts`), `reklam.ts`
   (UMP onay → initialize → ödüllü ön yükleme; sonuç olaylardan), `satin.ts`
   (Play Billing tek kuyrukta, elle tüket/onayla), `kopru.ts` (JSON biçimi),
   `yasam.ts` (açılış perdesi, geri tuşu, appStateChange). Uygulama tarafı
@@ -115,11 +117,15 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   `yerelHazir`, `gizlilikSecenekleri`). Testler eklentileri `vi.mock` ile
   taklit eder. Kimlikler: geliştirmede Google TEST (`.env.android`); gerçekleri
   git'e girmeyen `android/local.properties` `ADMOB_APP_ID` ve
-  `.env.android.local` `VITE_ADMOB_ODULLU`. Bu ortamda APK derlenmez;
+  `.env.android.local` `VITE_ADMOB_ODULLU`; yayın derlemesi test/eşleşmeyen
+  kimlik ya da politikada yer tutucuyla durur (`app/build.gradle`
+  `fitilReklamKimligiDenetimi`, bilerek `-PfitilTestReklam`).
+  `allowBackup="false"` (politika: veri yalnız cihazda). Bu ortamda APK derlenmez;
   `npm run build:android` sonrası `npx vite preview --mode android` köprüyü
   eklentilerin web yedekleriyle açar (A4'te denendi: hata yok; AdMob yedeği
   onay "gerekli" der → Ayarlar'da gizlilik satırı görünür, kapanış olayı
-  olmadığı için reklam 60 sn sonra `odul`; fatura yok → Mağaza "Şu an yok";
+  olmadığı için reklam 60 sn sonra `odul` ve yeni reklam ancak 10 dk sonra
+  yüklenir (gerçekte kapanışta); fatura yok → Mağaza "Şu an yok";
   native-purchases yedeği her çağrıda `console.error` yazar, beklenen).
   Köprünün dinleyicileri tarayıcıda `Capacitor.Plugins.App.notifyListeners
   ('backButton' | 'appStateChange', …)` ile tetiklenebilir.
