@@ -63,6 +63,7 @@ function rig(o: { cancel?: boolean } = {}): Rig {
     modes: new ModeController('workshop'),
     autoStarter: new AutoStart(),
     keyHooks: new Set(),
+    priorityKeyHooks: new Set(),
     overlay: null,
     wsStore: store,
     wsHandles: handles,

@@ -17,7 +17,7 @@ import { loadKit, setKitQuality } from '../engine/kit.js';
 import { setBladeQuality } from '../engine/blades.js';
 import { retainDetails, setDetailTag } from '../engine/buildCache.js';
 import { builtFor, designFor, setSlotBuilt, setSlotGraph, type SlotId } from '../design/catalog';
-import { focusOnCanvas, keyOwnedByTarget, plainKey } from './workshop/keys';
+import { focusOnCanvas, isTextEntry, keyOwnedByTarget, plainKey } from './workshop/keys';
 import { isBuiltEngine, type BuildOptions, type BuiltEngine } from '../design/graph';
 import type { EngineGraph } from '../design/types';
 import { visualSourceFor, type VisualSource } from '../engine/models';
@@ -35,7 +35,8 @@ import { updateWeather } from '../core/weather';
 import { loadScans } from '../materials/scans.js';
 import { loadPanelDetails } from '../materials/textures.js';
 import { EngineSim, type SimEvent } from '../sim';
-import { AutoStart, type AutoStartStep } from '../sim/autostart';
+import { AutoStart, type AutoStartInfo, type AutoStartStep } from '../sim/autostart';
+import type { Severity } from '../sim';
 import { EventBus, type AppEventType, type GameEventListener, type GameEventType } from './events';
 import { advanceUntil, type WaitResult, type WaitTarget } from './waitFor';
 import { Cockpit, type SwitchId } from '../ui/Cockpit';
@@ -68,6 +69,7 @@ import { QUALITY } from './render/quality';
 import { ModeController, type Mode } from './modes/ModeController';
 import { emitLoadProgress, type LoadStage } from './loadProgress';
 import { SimClock } from './simClock';
+import { bindSettingsStore } from './settingsRegistry';
 
 /** Atölye test kancası (M5A-SPEC §6.10) */
 export interface WorkshopHook {
@@ -81,12 +83,27 @@ export interface WorkshopHook {
 
 const ALL_SWITCHES: SwitchId[] = ['apuBleed', 'starter', 'ignition', 'fuelRun', 'fadec'];
 const DEFAULT_SWITCHES: SwitchId[] = ['apuBleed', 'starter', 'ignition', 'fuelRun'];
-/** Otomatik çalıştırma adımı → oyun olayı */
-const AUTOSTART_EVENTS: Record<AutoStartStep, [AppEventType, string]> = {
-  fuel: ['autoStartFuel', 'Otomatik çalıştırma: yakıt verildi.'],
-  done: ['autoStartDone', 'Otomatik çalıştırma bitti: APU BLEED ve ateşleme kapandı.'],
-  abort: ['autoStartAbort', 'Otomatik çalıştırma bırakıldı: motor yanmadı.'],
+/** Otomatik çalıştırma adımı → oyun olayı (ileti, önem ve neden adımın bilgisinden: src/sim/autostart.ts) */
+const AUTOSTART_EVENTS: Record<AutoStartStep, AppEventType> = {
+  fuel: 'autoStartFuel',
+  done: 'autoStartDone',
+  abort: 'autoStartAbort',
 };
+
+/**
+ * Motorun dünya sınır kutusu: motor parçaları (stand, egzoz akışı,
+ * parçacıklar hariç). Kesit kırpması ve motorun ekran dikdörtgeni
+ * (camera/viewport.ts engineRect) kullanır.
+ */
+function engineBox(root: THREE.Object3D): THREE.Box3 {
+  const box = new THREE.Box3();
+  root.updateMatrixWorld();
+  root.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.isMesh && !o.userData.noClip && o.userData.part && o.userData.part !== 'stand') box.expandByObject(m);
+  });
+  return box;
+}
 /** Uyarıdaki "Parçayı göster" vurgusunun süresi [ms] */
 const WS_SHOW_PART_MS = 2500;
 
@@ -133,6 +150,18 @@ export class App {
    * tutamaç sürüklemesi sürerken çağrılmaz.
    */
   readonly keyHooks = new Set<(e: KeyboardEvent) => boolean>();
+  /**
+   * Öncelikli tuş kancaları (1D: Boşluk duraklat, nokta tek adım): odak bir
+   * düğmede, onay kutusunda ya da kaydırıcıdayken de çağrılır (odaktaki
+   * öğenin tuş sahipliğinden ve `keyHooks`'tan önce); yalnız metin
+   * girişinde (metin/sayı kutusu, çok satırlı alan, açılır liste) ve atölye
+   * tutamaç sürüklemesinde çağrılmaz. true dönen tuş yutulur: keydown'ın ve
+   * aynı tuşun keyup'ının varsayılanı engellenir (odaktaki düğme Boşlukla
+   * yeniden basılmaz).
+   */
+  readonly priorityKeyHooks = new Set<(e: KeyboardEvent) => boolean>();
+  /** Öncelikli kancanın yuttuğu tuş: keyup'ı da engellenir */
+  private swallowKeyUp: string | null = null;
   /**
    * İleri sarma kancaları (1G: `advance()` sonunda panel güncellemesi):
    * advance / advanceUntil bitince geçen simülasyon süresiyle çağrılır.
@@ -229,6 +258,13 @@ export class App {
   private last = performance.now();
   private sandboxAcc = 0;
 
+  /**
+   * init bitince (menü tıklanabilir, `loadProgress` 'ready') çözülür. Araçlar
+   * yükleme ekranını değil bunu ya da `window.__loadReady`'yi bekler.
+   */
+  readonly ready: Promise<void>;
+  private resolveReady!: () => void;
+
   constructor(private container: HTMLElement) {
     const s = loadSettings();
     this.settings = {
@@ -236,7 +272,17 @@ export class App {
       volume: s.volume ?? 0.7,
       muted: s.muted ?? false,
       environment: s.environment ?? TEST_CELL,
+      extra: s.extra && typeof s.extra === 'object' ? s.extra : {},
     };
+    // Paketlerin kayıtlı ayarları (src/app/settingsRegistry.ts) settings.extra'da
+    bindSettingsStore(this.settings.extra!, () => saveSettings(this.settings));
+    this.ready = new Promise((res) => (this.resolveReady = res));
+    this.wireClock();
+  }
+
+  /** Duraklamada ses kısılır (A-21 / S-19): 1D duraklatır, ses taslağı (EngineAudio.setPaused) kısar */
+  private wireClock() {
+    this.clock.onChange((paused) => this.audio.setPaused(paused));
   }
 
   /**
@@ -252,6 +298,8 @@ export class App {
 
     this.rig = new CameraRig(renderer.domElement);
     this.rig.onCutaway = (on) => this.setCutaway(on);
+    // Motorun ekran dikdörtgeni (bildirimler bunu örtmez; camera/viewport.ts)
+    this.rig.viewport.setEngineBounds(() => this.engineBounds());
     this.environment = new EnvironmentManager(
       {
         scene: this.scene,
@@ -322,6 +370,7 @@ export class App {
 
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('keydown', (e) => this.onKey(e));
+    window.addEventListener('keyup', (e) => this.onKeyUp(e));
     const unlock = () => this.audio.resume();
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
@@ -331,6 +380,7 @@ export class App {
     this.frame = this.frame.bind(this);
     requestAnimationFrame(this.frame);
     emitLoadProgress('ready', 'Hazır');
+    this.resolveReady();
   }
 
   /* ================================================================ */
@@ -539,11 +589,7 @@ export class App {
     const nm = this.fx.gtao.normalMaterial as THREE.MeshNormalMaterial;
     if (on) {
       // Sınır kutusu: motor parçaları (stand, egzoz akışı, parçacıklar hariç)
-      const box = new THREE.Box3();
-      this.visual.root.traverse((o) => {
-        const m = o as THREE.Mesh;
-        if (m.isMesh && !o.userData.noClip && o.userData.part && o.userData.part !== 'stand') box.expandByObject(m);
-      });
+      const box = engineBox(this.visual.root);
       box.expandByScalar(0.05);
       nm.clippingPlanes = [
         this.clipPlane,
@@ -1545,12 +1591,14 @@ export class App {
   }
 
   private updateAutoStart() {
-    this.autoStarter.update(this.sim, (s) => this.emitAppEvent(...AUTOSTART_EVENTS[s]));
+    this.autoStarter.update(this.sim, (s: AutoStartStep, info: AutoStartInfo) =>
+      this.emitAppEvent(AUTOSTART_EVENTS[s], info.message, info.severity, info.reason),
+    );
   }
 
   /** Uygulama olayı (simülasyon saatiyle) */
-  private emitAppEvent(type: AppEventType, message: string) {
-    this.bus.emit({ type, time: this.sim.time, severity: 'info', message });
+  private emitAppEvent(type: AppEventType, message: string, severity: Severity = 'info', reason?: string) {
+    this.bus.emit({ type, time: this.sim.time, severity, message, ...(reason ? { reason } : {}) });
   }
 
   /* ================================================================ */
@@ -1567,6 +1615,16 @@ export class App {
       e.preventDefault();
       e.stopPropagation();
       return;
+    }
+    // Öncelikli kısayollar (Boşluk duraklat…): düğme odağında da; metin girişinde değil
+    if (!isTextEntry(target as HTMLInputElement | null)) {
+      for (const hook of this.priorityKeyHooks) {
+        if (hook(e)) {
+          e.preventDefault();
+          this.swallowKeyUp = e.key;
+          return;
+        }
+      }
     }
     // Metin kutusu/açılır liste tuşları kendisinin (Esc odağı bırakır);
     // kaydırıcıda yalnız gezinme tuşları (keys.ts)
@@ -1664,6 +1722,23 @@ export class App {
     e.preventDefault();
   }
 
+  /** Öncelikli kancanın yuttuğu tuşun keyup'ı: düğme Boşlukla basılmasın */
+  private onKeyUp(e: KeyboardEvent) {
+    if (this.swallowKeyUp !== null && e.key === this.swallowKeyUp) {
+      e.preventDefault();
+      this.swallowKeyUp = null;
+    }
+  }
+
+  /** Motorun dünya sınır kutusu, model başına önbellekli (engineRect) */
+  private engineBounds(): THREE.Box3 | null {
+    const root = this.visual?.root;
+    if (!root) return null;
+    if (this.boundsCache?.root !== root) this.boundsCache = { root, box: engineBox(root) };
+    return this.boundsCache.box.isEmpty() ? null : this.boundsCache.box;
+  }
+  private boundsCache: { root: THREE.Object3D; box: THREE.Box3 } | null = null;
+
   /* ================================================================ */
   /* Kalite ve boyut                                                  */
   /* ================================================================ */
@@ -1707,6 +1782,15 @@ export class App {
     const r = advanceUntil({ step: (d) => this.advanceStep(d), subscribe: (fn) => this.bus.on(fn), target, maxSeconds, dt });
     this.afterAdvance(r.seconds);
     return r;
+  }
+
+  /**
+   * Birikimli saatleri sıfırlar (post zinciri: gren, ısı pusu; yağmur).
+   * Belirlenimli kayıt sahne başında çağırır (scripts/capture/vitrin.mjs).
+   */
+  resetClocks() {
+    this.pipeline.resetClocks();
+    this.rain.resetClock();
   }
 
   /** advance'ın bir adımı (çizimsiz) */
@@ -1753,14 +1837,7 @@ export class App {
       this.pendingSteps--;
       dt = this.fixedDt;
     }
-    const simDt = this.clock.simDt(dt, this.mode === 'sandbox' ? this.timeScale : 1);
-
-    this.sim.step(simDt);
-    this.updateAutoStart();
-    const snap = this.sim.snapshot();
-
-    this.visual.update(snap, simDt, this.rig.camera);
-    this.runner?.update(dt, snap);
+    const { simDt, snap } = this.simFrame(dt);
 
     // Vurgulama önceliği: seçme modunda fare altındaki parça, sonra ders, sonra kullanıcı seçimi
     const hl = this.pickMode
@@ -1814,7 +1891,13 @@ export class App {
 
     this.picker.update();
     this.environment.update(dt);
-    this.rig.update(dt, this.visual.shake);
+    this.rig.update(dt, {
+      amount: this.visual.shake,
+      dt: simDt,
+      thrustFrac: snap.thrustFrac,
+      proximity: THREE.MathUtils.clamp(1 - (dist - 3) / 16, 0, 1),
+      impulse: 0,
+    });
     updateWeather(simDt);
     this.rain.update(simDt, this.rig.camera, this.environment.floorY);
     if (this.cutaway) this.aimCutaway();
@@ -1830,6 +1913,21 @@ export class App {
       if (this.disposeQueue.length) for (const v of this.disposeQueue.splice(0)) v.dispose();
     }
     this.framesRendered++;
+  }
+  /**
+   * Karenin simülasyon ve ders adımı: saat (duraklatma, zaman ölçeği), sim,
+   * otomatik çalıştırma, görsel ve ders koşucusu. Ders koşucusu simülasyon
+   * süresini alır: duraklamada ders hedefleri, süre ve "tut" sayaçları da
+   * durur (A-21).
+   */
+  private simFrame(dt: number): { simDt: number; snap: ReturnType<EngineSim['snapshot']> } {
+    const simDt = this.clock.simDt(dt, this.mode === 'sandbox' ? this.timeScale : 1);
+    this.sim.step(simDt);
+    this.updateAutoStart();
+    const snap = this.sim.snapshot();
+    this.visual.update(snap, simDt, this.rig.camera);
+    this.runner?.update(simDt, snap);
+    return { simDt, snap };
   }
   private disposeQueue: EngineVisual[] = [];
   /** İlk tam kare çizildi mi (loadProgress 'firstFrame' bir kez) */

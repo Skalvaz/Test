@@ -37,6 +37,11 @@ export interface Settings {
   volume: number;
   muted: boolean;
   environment: string;
+  /**
+   * Paketlerin kayıtlı ayarları (src/app/settingsRegistry.ts): anahtar →
+   * değer. Yeni ayar için bu arayüze alan eklenmez; kayıt defteri kullanılır.
+   */
+  extra?: Record<string, unknown>;
 }
 
 export function loadSettings(): Partial<Settings> {

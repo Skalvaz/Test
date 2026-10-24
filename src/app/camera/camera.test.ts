@@ -6,7 +6,7 @@
  */
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { safeRect, setActiveViewport, Viewport } from './viewport';
+import { engineRect, projectBox, safeRect, setActiveViewport, Viewport } from './viewport';
 import { CELL_LIGHTS, cellLightLevel, LIGHT_SLOTS, LightRig } from '../../core/lightRig';
 import { CELL_EXPOSURE, cellExposure, hdriExposure } from '../../core/exposure';
 
@@ -31,6 +31,63 @@ describe('görüntü alanı', () => {
     const k = Math.min(1.8, Math.sqrt((1440 * 810) / ((1440 - 384 - 356) * (810 - 52 - 226))));
     expect(cam.view!.width).toBeCloseTo(1440 * k, 6);
     expect(cam.view!.offsetX).toBeCloseTo(720 - (720 + (384 - 356) / 2) * k, 6);
+  });
+});
+
+describe('motorun ekran dikdörtgeni (1D bildirim konumu, A-03)', () => {
+  /** Motoru önden gören kamera: kutu merkezde, safeRect'ten küçük */
+  function rig(insets = { left: 0, right: 0, top: 0, bottom: 0 }) {
+    const v = new Viewport();
+    const cam = new THREE.PerspectiveCamera(40, 1280 / 720, 0.1, 100);
+    cam.position.set(0, 0, -10);
+    cam.lookAt(0, 0, 0);
+    v.setSize(1280, 720);
+    v.setInsets(insets);
+    v.setCamera(cam);
+    v.apply(cam, true);
+    cam.updateMatrixWorld();
+    const box = new THREE.Box3(new THREE.Vector3(-1, -1, -2), new THREE.Vector3(1, 1, 2));
+    let calls = 0;
+    v.setEngineBounds(() => {
+      calls++;
+      return box;
+    });
+    return { v, cam, box, calls: () => calls };
+  }
+
+  it('sınır kutusunun izdüşümü: merkezde, simetrik; safeRect serbest alanın tamamı', () => {
+    const { v } = rig();
+    const r = v.engineRect()!;
+    expect(r.x + r.width / 2).toBeCloseTo(640, 6);
+    expect(r.y + r.height / 2).toBeCloseTo(360, 6);
+    // Yakın yüz (z = −2, kameraya 8 m): yarı yükseklik 1 m → tan(20°)·8 m'lik yarım görüntüye oranı
+    const half = 360 * (1 / (8 * Math.tan(THREE.MathUtils.degToRad(20))));
+    expect(r.height / 2).toBeCloseTo(half, 4);
+    expect(r.width).toBeLessThan(v.safeRect().width);
+  });
+
+  it('panel kaydırması izdüşüme girer (setViewOffset); kare başına bir kez hesaplanır', () => {
+    const { v, calls } = rig({ left: 400, right: 0, top: 0, bottom: 0 });
+    const r = v.engineRect()!;
+    // Motor, panelin kapatmadığı alanın ortasına kayar
+    const free = v.safeRect();
+    expect(r.x + r.width / 2).toBeCloseTo(free.x + free.width / 2, 0);
+    v.engineRect();
+    expect(calls()).toBe(1);
+    v.nextFrame();
+    v.engineRect();
+    expect(calls()).toBe(2);
+    setActiveViewport(v);
+    expect(engineRect()).toEqual(v.engineRect());
+    setActiveViewport(null);
+    expect(engineRect()).toBe(null);
+  });
+
+  it('kameranın arkasına taşan kutu: bütün görüntü (temkinli); boş kutu: boş', () => {
+    const { cam } = rig();
+    const around = new THREE.Box3(new THREE.Vector3(-1, -1, -20), new THREE.Vector3(1, 1, 2));
+    expect(projectBox(cam, around, 1280, 720)).toEqual({ x: 0, y: 0, width: 1280, height: 720 });
+    expect(projectBox(cam, new THREE.Box3(), 1280, 720).width).toBe(0);
   });
 });
 

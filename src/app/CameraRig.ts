@@ -14,7 +14,7 @@
 import * as THREE from 'three';
 import type { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { clampToBounds, createOrbit, stepOrbit } from './camera/freecam';
-import { CameraShake } from './camera/shake';
+import { CameraShake, type ShakeInput } from './camera/shake';
 import { ShotPlayer, VIEWS, type CameraView, type ShotState, type ViewName } from './camera/shots';
 import { setActiveViewport, Viewport, type ScreenInsets, type ScreenRect } from './camera/viewport';
 
@@ -33,6 +33,7 @@ export {
   type ViewSet,
 } from './camera/shots';
 export type { ScreenInsets, ScreenRect } from './camera/viewport';
+export type { ShakeInput } from './camera/shake';
 
 export class CameraRig {
   readonly camera: THREE.PerspectiveCamera;
@@ -53,6 +54,7 @@ export class CameraRig {
   constructor(dom: HTMLElement) {
     this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 14000);
     this.controls = createOrbit(this.camera, dom, VIEWS.front.position, VIEWS.front.target);
+    this.viewport.setCamera(this.camera);
     setActiveViewport(this.viewport);
   }
 
@@ -72,9 +74,14 @@ export class CameraRig {
     this.viewport.setInsets(insets);
   }
 
-  /** Panellerin kapatmadığı ekran dikdörtgeni (motorun güvenli alanı) */
+  /** Panellerin kapatmadığı ekran dikdörtgeni (serbest 3B alanı; camera/viewport.ts) */
   safeRect(): ScreenRect {
     return this.viewport.safeRect();
+  }
+
+  /** Motorun ekrandaki dikdörtgeni (bildirimler bunu örtmez; camera/viewport.ts) */
+  engineRect(): ScreenRect | null {
+    return this.viewport.engineRect();
   }
 
   go(name: ViewName, immediate = false) {
@@ -108,7 +115,12 @@ export class CameraRig {
     return this.shots.active;
   }
 
-  update(dt: number, shake: number) {
+  /**
+   * Kare güncellemesi. `shake`: sarsıntı girdisi (App her kare doldurur:
+   * genlik, dt, itki oranı, yakınlık, darbe; camera/shake.ts) ya da yalnız
+   * genlik (ileri sarma: 0). Dalga 1'de bu yöntemin sahibi 1I'dir (O-10).
+   */
+  update(dt: number, shake: number | ShakeInput) {
     // Sarsıntıyı geri al (kontroller temiz konumla çalışsın)
     this.shake.remove(this.camera);
     this.shots.step(dt, this.camera, this.controls.target);
@@ -116,5 +128,6 @@ export class CameraRig {
     clampToBounds(this.camera, this.bounds);
     this.viewport.apply(this.camera);
     this.shake.apply(this.camera, shake);
+    this.viewport.nextFrame();
   }
 }

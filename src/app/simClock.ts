@@ -5,8 +5,19 @@
  * duraklatılmışken tek adım. Bugün kimse duraklatmaz: davranış eskisiyle
  * aynıdır (simDt = dt × ölçek).
  *
- * 1D: Boşluk → `toggle()`, nokta → `stepOnce()` (tuş tablosu `app.keyHooks`
- * ile bağlanır). 1E: `onChange` ile duraklamada sesi kısar.
+ * Duraklama yalnız simülasyon adımını keser; öbür saatler şöyle bağlıdır:
+ * - Ders koşucusu (hedefler, ders süresi, "tut" sayaçları) simDt alır
+ *   (App.simFrame): duraklamada durur.
+ * - Görsel (dönme, ısıl, efektler) ve hava/yağmur simDt alır: donar.
+ * - Ses: App `onChange`'i `audio.setPaused`'a bağlar (ses kısılır; 1E
+ *   gövdeyi geliştirir).
+ * - Kamera, ortam geçişi, post zinciri ve arayüz animasyonları gerçek dt
+ *   alır: kamera serbest kalır.
+ * - Bildirim süreleri (Toasts) bugün duvar saatiyle; 1D (A-03 "simülasyon
+ *   saati") onları buna bağlar.
+ *
+ * 1D: Boşluk → `toggle()`, nokta → `stepOnce()` (tuş tablosu
+ * `app.priorityKeyHooks` ile: odak bir düğmedeyken de çalışır).
  */
 
 export class SimClock {

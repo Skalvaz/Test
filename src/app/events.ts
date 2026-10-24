@@ -22,7 +22,7 @@ export type AppEventType =
   | 'autoStartFuel'
   /** Otomatik çalıştırma bitti: rölanti, APU BLEED ve ateşleme kapandı (~40 s) */
   | 'autoStartDone'
-  /** Otomatik çalıştırma yarıda kaldı (marş kapandı, motor yanmadı) */
+  /** Otomatik çalıştırma yarıda kaldı; neden `reason`'da (bugün yalnız `noLightoff`: marş kapandı, motor yanmadı) */
   | 'autoStartAbort';
 
 export interface AppEvent {
@@ -31,6 +31,11 @@ export interface AppEvent {
   time: number;
   severity: Severity;
   message: string;
+  /**
+   * Olayın nedeni (otomatik çalıştırmada `AutoStartReason`: 'noLightoff',
+   * 1B'nin 'wetStart' / 'hotStart' …); yoksa undefined
+   */
+  reason?: string;
 }
 
 export type GameEvent = SimEvent | AppEvent;

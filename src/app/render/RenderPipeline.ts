@@ -17,6 +17,22 @@ import type { QualityPreset } from './quality';
 
 export type PostFx = ReturnType<typeof createComposer>;
 
+/**
+ * Son karedeki sonlu olmayan ve negatif pikseller (NaN bekçisi, T-05).
+ * `runs`: kötü piksellerin görüntü sırasındaki (sol üstten, satır satır)
+ * [başlangıç, uzunluk] dizileri; vitrin kaydı maske PNG'si yazar.
+ */
+export interface NonFiniteProbe {
+  nan: number;
+  inf: number;
+  neg: number;
+  w: number;
+  h: number;
+  /** Yarım kayan nokta okundu (sürücü FLOAT okumayı reddetti) */
+  half: boolean;
+  runs?: [number, number][];
+}
+
 /** Isı pusu için lülenin ekran izdüşümü (EngineVisual.exhaustExit) */
 export interface HazeSource {
   z: number;
@@ -90,6 +106,86 @@ export class RenderPipeline {
   /** Bir kare: bütün post zinciri ekrana */
   render(dt: number) {
     this.fx.composer.render(dt);
+  }
+
+  /**
+   * Post zincirinin birikimli saatlerini sıfırlar (gren, ısı pusu gürültüsü).
+   * Belirlenimli kayıt sahne başında çağırır (scripts/capture/vitrin.mjs):
+   * 1A/2A geçişleri yeniden düzenleyince yeni saatleri de buraya ekler.
+   */
+  resetClocks() {
+    this.fx.grade.uniforms.uTime.value = 0;
+  }
+
+  /**
+   * NaN bekçisi (T-05; sözleşme, sahibi 1A): son kareyi ekrana değil kayan
+   * noktalı hedefe yeniden çizer ve sonlu olmayan/negatif pikselleri sayar.
+   * Sim ilerlemez (yalnız post zinciri); tuvaldeki kare değişmez. Zincir
+   * yeniden düzenlenince (T-05: SMAA → gren sırası) bu yöntem son geçişin
+   * çıktısını okumaya devam etmelidir; vitrin kaydı yalnız bunu çağırır.
+   */
+  probeNonFinite(opts: { runs?: boolean } = {}): NonFiniteProbe {
+    const comp = this.fx.composer;
+    const r = this.renderer;
+    const gl = r.getContext() as WebGL2RenderingContext;
+    comp.renderToScreen = false;
+    try {
+      comp.render(0);
+    } finally {
+      comp.renderToScreen = true;
+    }
+    const rt = comp.readBuffer;
+    const w = rt.width;
+    const h = rt.height;
+    r.setRenderTarget(rt);
+    let buf: Float32Array | Uint16Array = new Float32Array(w * h * 4);
+    let half = false;
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.FLOAT, buf);
+    if (gl.getError() !== gl.NO_ERROR) {
+      buf = new Uint16Array(w * h * 4);
+      half = true;
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.HALF_FLOAT, buf);
+    }
+    r.setRenderTarget(null);
+    let nan = 0;
+    let inf = 0;
+    let neg = 0;
+    const runs: [number, number][] = [];
+    // GL satırları alttan üste: görüntü sırası için ters gezilir
+    for (let yi = 0; yi < h; yi++) {
+      const y = h - 1 - yi;
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        let bn = false;
+        let bi = false;
+        let bg = false;
+        for (let c = 0; c < 3; c++) {
+          const k = i * 4 + c;
+          if (half) {
+            const v = buf[k];
+            if ((v & 0x7c00) === 0x7c00) {
+              if (v & 0x03ff) bn = true;
+              else bi = true;
+            } else if (v & 0x8000 && v & 0x7fff) bg = true;
+          } else {
+            const v = buf[k];
+            if (v !== v) bn = true;
+            else if (!Number.isFinite(v)) bi = true;
+            else if (v < 0) bg = true;
+          }
+        }
+        if (bn) nan++;
+        if (bi) inf++;
+        if (bg) neg++;
+        if (opts.runs && (bn || bi || bg)) {
+          const p = yi * w + x;
+          const lastRun = runs[runs.length - 1];
+          if (lastRun && lastRun[0] + lastRun[1] === p) lastRun[1]++;
+          else runs.push([p, 1]);
+        }
+      }
+    }
+    return { nan, inf, neg, w, h, half, ...(opts.runs ? { runs } : {}) };
   }
 
   /**
