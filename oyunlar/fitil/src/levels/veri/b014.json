@@ -13,7 +13,7 @@
   "ozelEsikleri": [6, 9, 12],
   "hedefler": [{ "tur": "kaya" }, { "tur": "topla", "renk": 2, "adet": 30 }],
   "duzen": [
-    ". . . . . . .",
+    ". . . K1 . . .",
     ". . . K1 . . .",
     ". K1 . . . K1 .",
     ". . . K2 . . .",
@@ -30,14 +30,14 @@
   "ipuclari": [
     { "tetik": "baslangic", "metin": "İki özel taşı aynı fitile kat: birleşirler!", "el": [[1, 7], [2, 7], [3, 7], [4, 7]] }
   ],
-  "kurallar": { "soguma": 2, "caprazSiniri": 3 },
+  "kurallar": { "soguma": 1 },
   "botBandi": [92, 100],
-  "yildizEsikleri": [6600, 9900],
+  "yildizEsikleri": [6700, 11300],
   "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Liman Fırtınası!",
   "muhurler": [
     {"olcu": "kombo", "kapsam": "oyun", "enAz": 1},
-    {"olcu": "olusum", "kapsam": "oyun", "enAz": 5, "ozel": "roket"},
-    {"olcu": "ozelAtes", "kapsam": "hamle", "enAz": 3}
+    {"olcu": "olusum", "kapsam": "oyun", "enAz": 4, "ozel": "roket"},
+    {"olcu": "ozelAtes", "kapsam": "hamle", "enAz": 4}
   ]
 }
