@@ -34,7 +34,7 @@
   background: var(--handle, var(--accent));
   border: 2px solid rgba(var(--bg-rgb), 0.9);
   box-shadow: 0 0 0 1px rgba(var(--white-rgb), 0.55), 0 0 10px 1px var(--accent-dim), 0 1px 4px rgba(var(--black-rgb), 0.6);
-  transition: width 0.12s, height 0.12s, opacity 0.15s, background-color 0.15s;
+  transition: width var(--dur-handle) var(--ease-hover), height var(--dur-handle) var(--ease-hover), opacity var(--dur-hover) var(--ease-hover), background-color var(--dur-hover) var(--ease-hover);
 }
 .ws-handle.is-active { --hs: 18px; }
 .ws-handle.is-dragging { cursor: grabbing; }
@@ -78,7 +78,7 @@ body.mode-workshop .side-right { bottom: 12px; }
 .ws-sec.sel { border-color: rgba(var(--accent-rgb), 0.55); box-shadow: inset 3px 0 0 var(--accent); }
 .ws-sec-head { width: 100%; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border: none; background: transparent; color: var(--ink); font: 600 13px var(--font); cursor: pointer; text-align: left; }
 .ws-sec-head:hover { background: rgba(var(--white-rgb), 0.04); }
-.ws-caret { color: var(--muted); transition: transform 0.15s; display: inline-block; width: 10px; }
+.ws-caret { color: var(--muted); transition: transform var(--dur-hover) var(--ease-hover); display: inline-block; width: 10px; }
 .ws-sec.open .ws-caret { transform: rotate(90deg); color: var(--accent); }
 .ws-sec-name { flex: 1; }
 .ws-sec-sum { font-size: 11.5px; color: var(--muted); font-weight: 400; }
@@ -107,7 +107,7 @@ body.mode-workshop .side-right { bottom: 12px; }
   mask: linear-gradient(to right, black var(--ok-lo), transparent var(--ok-lo), transparent var(--ok-hi), black var(--ok-hi)); }
 /* Eski tasarımın yasak bölgesi: yeniden hesap sırada, kısmaz (soluk) */
 .ws-rail.has-bad.is-stale::before { opacity: 0.35; }
-.ws-rail.is-flash { animation: ws-flash 0.6s ease-out; }
+.ws-rail.is-flash { animation: ws-flash var(--dur-flash) var(--ease-enter); }
 @keyframes ws-flash { 0%, 40% { box-shadow: 0 0 0 1px var(--red), 0 0 12px rgba(var(--red-rgb), 0.6); } 100% { box-shadow: none; } }
 .ws-slider { width: 100%; accent-color: var(--accent); margin: 0; position: relative; z-index: 1; }
 .ws-knob.is-error .ws-rail, .ws-knob.is-error .ws-num { box-shadow: 0 0 0 1px var(--red); border-radius: var(--radius-5); }
@@ -139,7 +139,7 @@ body.mode-workshop .side-right { bottom: 12px; }
 .ws-live.is-error { color: var(--red); border-color: rgba(var(--red-rgb), 0.4); background: rgba(var(--red-rgb), 0.08); }
 
 /* Kartlar (.lesson-card görünümü; ders listesi seçicileriyle karışmasın diye ayrı sınıf) */
-.ws-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: var(--radius-12); border: var(--line-w) solid var(--line-strong); background: rgba(var(--white-rgb), 0.025); cursor: pointer; color: var(--ink); font: inherit; text-align: left; transition: border-color 0.15s, background 0.15s; }
+.ws-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: var(--radius-12); border: var(--line-w) solid var(--line-strong); background: rgba(var(--white-rgb), 0.025); cursor: pointer; color: var(--ink); font: inherit; text-align: left; transition: border-color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover); }
 .ws-card:hover { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.05); }
 .ws-card .t { font-weight: 620; font-size: 16px; }
 .ws-card .d { color: var(--ink-2); font-size: 13px; flex: 1; }

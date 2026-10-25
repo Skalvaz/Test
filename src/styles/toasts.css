@@ -24,7 +24,7 @@
   border: var(--line-w) solid var(--line-strong);
   box-shadow: var(--shadow);
   font-size: 13px;
-  animation: toastin 0.25s ease-out;
+  animation: toastin var(--dur-toast-in) var(--ease-enter);
   max-width: 100%;
 }
 /* Ayrıntılı bildirim (atölye mimari notları): tıklanabilir, açıklama kapalı başlar */
@@ -52,6 +52,6 @@
 }
 .toast.caution .tag { background: var(--amber); color: var(--on-amber); }
 .toast.warning .tag { background: var(--red); color: var(--on-red); }
-.toast.out { animation: toastout 0.3s ease-in forwards; }
+.toast.out { animation: toastout var(--dur-toast-out) var(--ease-exit) forwards; }
 @keyframes toastin { from { opacity: 0; transform: translateY(-8px); } }
 @keyframes toastout { to { opacity: 0; transform: translateY(-8px); } }

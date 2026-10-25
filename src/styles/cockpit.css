@@ -82,7 +82,7 @@
   border: var(--line-w) solid var(--line);
   background: rgba(var(--white-rgb), 0.025);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color var(--dur-hover) var(--ease-hover), background var(--dur-hover) var(--ease-hover);
   text-align: left;
 }
 .sw:hover { border-color: var(--line-strong); background: rgba(var(--white-rgb), 0.05); }
@@ -106,7 +106,7 @@
 .lamp.amber { background: var(--amber); box-shadow: 0 0 10px rgba(var(--amber-rgb), 0.8); }
 .lamp.red { background: var(--red); box-shadow: 0 0 10px rgba(var(--red-rgb), 0.8); }
 .sw.guarded .sw-value::before { content: '⛨ '; color: var(--red); }
-.sw.flash { animation: swflash 1s ease-in-out infinite; }
+.sw.flash { animation: swflash var(--dur-blink) var(--ease-blink) infinite; }
 @keyframes swflash {
   0%, 100% { border-color: var(--line); }
   50% { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }

@@ -49,7 +49,7 @@ kbd {
   background: rgba(var(--white-rgb), 0.04);
   color: var(--ink);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.08s;
+  transition: background var(--dur-hover) var(--ease-hover), border-color var(--dur-hover) var(--ease-hover), transform var(--dur-press) var(--ease-hover);
   white-space: nowrap;
 }
 .btn:hover { background: rgba(var(--white-rgb), 0.09); border-color: rgba(var(--line-hi-rgb), 0.4); }

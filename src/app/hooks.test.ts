@@ -10,7 +10,7 @@
  */
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { App } from './App';
+import { App, engineBox } from './App';
 import { ModeController } from './modes/ModeController';
 import { SimClock } from './simClock';
 import { EngineAudio, dbToGain, gainToDb, masterTarget, MIN_DB } from '../audio/EngineAudio';
@@ -293,5 +293,29 @@ describe('ayar kayıt defteri', () => {
     } finally {
       restore();
     }
+  });
+});
+
+describe('motorun ekran dikdörtgeni kutusu (1D, A-03)', () => {
+  const part = (name: string, size: number, z: number, tag: string) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(size, size, size));
+    m.name = name;
+    m.position.z = z;
+    m.userData.part = tag;
+    return m;
+  };
+  it('gizli parça (kanat kesiti) yalnız kesit kırpmasının kutusuna girer', () => {
+    const root = new THREE.Group();
+    root.add(part('fan-cowl', 2, 0, 'nacelle'));
+    const wing = new THREE.Group();
+    wing.visible = false;
+    wing.add(part('wing', 6, 3, 'wing'));
+    root.add(wing);
+    root.add(part('stand', 8, 0, 'stand'));
+    const all = engineBox(root);
+    const shown = engineBox(root, { visibleOnly: true });
+    expect(all.max.z).toBeCloseTo(6);
+    expect(shown.min.toArray()).toEqual([-1, -1, -1]);
+    expect(shown.max.toArray()).toEqual([1, 1, 1]);
   });
 });
