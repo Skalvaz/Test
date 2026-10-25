@@ -7,13 +7,13 @@
   "h": 9,
   "renkSayisi": 5,
   "esik": 4,
-  "hamle": 27,
+  "hamle": 30,
   "tohum": 2615,
   "yardim": 0,
   "ozelEsikleri": [
     6,
     9,
-    12
+    0
   ],
   "hedefler": [
     {
@@ -196,7 +196,7 @@
       ]
     }
   },
-  "korukKapasitesi": 20,
+  "korukKapasitesi": 8,
   "ipuclari": [
     {
       "tetik": "baslangic",
@@ -230,25 +230,23 @@
     }
   ],
   "botBandi": [
-    85,
-    90
+    92,
+    100
   ],
-  "yildizEsikleri": [9700, 15100],
+  "yildizEsikleri": [11600, 17400],
   "esikKurali": "k24",
   "sonrakiTanitim": "Sıradaki: Nemli Gece!",
   "dogumAgirliklari": [
-    3,
-    1,
-    3,
-    1,
-    1
+    5,
+    2,
+    5,
+    2,
+    2
   ],
-  "kurallar": {
-    "caprazSiniri": 3
-  },
+  "onIsi": [[1, 1, 2], [5, 1, 2], [3, 4, 1], [1, 5, 2], [3, 5, 1], [5, 5, 2], [2, 6, 1], [3, 6, 1], [4, 6, 1], [3, 7, 1]],
   "muhurler": [
     {"olcu": "desen", "kapsam": "hamle", "enAz": 5},
-    {"olcu": "ozelAtes", "kapsam": "oyun", "enAz": 6},
+    {"olcu": "ozelAtes", "kapsam": "oyun", "enAz": 7},
     {"olcu": "desen", "kapsam": "hamle", "enAz": 8}
   ]
 }
