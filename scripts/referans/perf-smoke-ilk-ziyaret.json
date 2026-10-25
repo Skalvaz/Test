@@ -1,0 +1,290 @@
+{
+  "tool": "perf-smoke",
+  "version": 1,
+  "when": "2026-10-25T10:49:40.361Z",
+  "url": "http://localhost:4201/",
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Laptop GPU (0x00002860) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "profile": "cold",
+  "quality": "varsayılan (ilk ziyaret)",
+  "viewport": "1440x810",
+  "load": {
+    "menuMs": 9224,
+    "readyMs": 8500,
+    "firstFrameMs": 25063,
+    "longestTaskMs": 10727,
+    "longTaskTotalMs": 14432,
+    "programs": 227,
+    "stages": {
+      "textures": 100,
+      "kit": 123,
+      "scans": 179,
+      "environment": 1762,
+      "cell": 2281,
+      "cellProps": 2453,
+      "airfield": 2565,
+      "engine": 7528,
+      "sim": 7925,
+      "post": 8122,
+      "ready": 8892,
+      "firstFrame": 25095
+    },
+    "runs": 5
+  },
+  "loadWorst": {
+    "menuMs": 9621,
+    "readyMs": 8892,
+    "firstFrameMs": 25103,
+    "longestTaskMs": 10767,
+    "longTaskTotalMs": 14690
+  },
+  "loadRuns": [
+    {
+      "menuMs": 9196,
+      "readyMs": 8468,
+      "firstFrameMs": 14271,
+      "longestTaskMs": 1507,
+      "longTaskTotalMs": 3662,
+      "programs": 227,
+      "stages": {
+        "textures": 90,
+        "kit": 115,
+        "scans": 175,
+        "environment": 1765,
+        "cell": 2292,
+        "cellProps": 2451,
+        "airfield": 2570,
+        "engine": 7557,
+        "sim": 7968,
+        "post": 8162,
+        "ready": 8468,
+        "firstFrame": 24996
+      }
+    },
+    {
+      "menuMs": 9159,
+      "readyMs": 8435,
+      "firstFrameMs": 24956,
+      "longestTaskMs": 10697,
+      "longTaskTotalMs": 14690,
+      "programs": 227,
+      "stages": {
+        "textures": 93,
+        "kit": 116,
+        "scans": 181,
+        "environment": 1764,
+        "cell": 2283,
+        "cellProps": 2443,
+        "airfield": 2561,
+        "engine": 7521,
+        "sim": 7918,
+        "post": 8129,
+        "ready": 8435,
+        "firstFrame": 24947
+      }
+    },
+    {
+      "menuMs": 9514,
+      "readyMs": 8784,
+      "firstFrameMs": 25063,
+      "longestTaskMs": 10767,
+      "longTaskTotalMs": 14432,
+      "programs": 227,
+      "stages": {
+        "textures": 95,
+        "kit": 116,
+        "scans": 174,
+        "environment": 1790,
+        "cell": 2313,
+        "cellProps": 2484,
+        "airfield": 2597,
+        "engine": 7628,
+        "sim": 8012,
+        "post": 8203,
+        "ready": 8784,
+        "firstFrame": 25054
+      }
+    },
+    {
+      "menuMs": 9224,
+      "readyMs": 8500,
+      "firstFrameMs": 25086,
+      "longestTaskMs": 10727,
+      "longTaskTotalMs": 14147,
+      "programs": 227,
+      "stages": {
+        "textures": 99,
+        "kit": 122,
+        "scans": 179,
+        "environment": 1771,
+        "cell": 2296,
+        "cellProps": 2462,
+        "airfield": 2583,
+        "engine": 7563,
+        "sim": 7957,
+        "post": 8161,
+        "ready": 8500,
+        "firstFrame": 25078
+      }
+    },
+    {
+      "menuMs": 9621,
+      "readyMs": 8892,
+      "firstFrameMs": 25103,
+      "longestTaskMs": 10748,
+      "longTaskTotalMs": 14486,
+      "programs": 227,
+      "stages": {
+        "textures": 100,
+        "kit": 123,
+        "scans": 179,
+        "environment": 1762,
+        "cell": 2281,
+        "cellProps": 2453,
+        "airfield": 2565,
+        "engine": 7528,
+        "sim": 7925,
+        "post": 8122,
+        "ready": 8892,
+        "firstFrame": 25095
+      }
+    }
+  ],
+  "env": {
+    "ogle": {
+      "wallS": 55.959,
+      "longestTaskMs": 27337,
+      "longTaskTotalMs": 50396,
+      "programs": 478
+    },
+    "gece": {
+      "wallS": 18.472,
+      "longestTaskMs": 99,
+      "longTaskTotalMs": 99,
+      "programs": 534
+    },
+    "hucreDonus": {
+      "wallS": 0.037,
+      "longestTaskMs": 0,
+      "longTaskTotalMs": 0,
+      "programs": 534
+    }
+  },
+  "phases": {
+    "menu": {
+      "frameCpuMs": {
+        "n": 186,
+        "avg": 3.102,
+        "p50": 3,
+        "p95": 4,
+        "max": 8.2
+      },
+      "intervalMs": {
+        "n": 185,
+        "avg": 7.861,
+        "p50": 8,
+        "p95": 8.2,
+        "max": 8.7
+      },
+      "draws": 270,
+      "triangles": 4543448,
+      "programsUsedInFrame": 60,
+      "programsCompiled": 227,
+      "geometries": 95,
+      "textures": 82,
+      "frameCpuP50s": [
+        3.1,
+        3,
+        3
+      ]
+    },
+    "hucre": {
+      "frameCpuMs": {
+        "n": 202,
+        "avg": 3.605,
+        "p50": 3.5,
+        "p95": 4.6,
+        "max": 5.8
+      },
+      "intervalMs": {
+        "n": 201,
+        "avg": 7.69,
+        "p50": 7.6,
+        "p95": 8.2,
+        "max": 8.7
+      },
+      "draws": 278,
+      "triangles": 4563778,
+      "programsUsedInFrame": 62,
+      "programsCompiled": 229,
+      "geometries": 97,
+      "textures": 83,
+      "frameCpuP50s": [
+        3.6,
+        3.5,
+        3.5
+      ]
+    },
+    "ogle": {
+      "frameCpuMs": {
+        "n": 202,
+        "avg": 10.522,
+        "p50": 10.5,
+        "p95": 12.1,
+        "max": 13.2
+      },
+      "intervalMs": {
+        "n": 201,
+        "avg": 11.025,
+        "p50": 10.9,
+        "p95": 13,
+        "max": 16.9
+      },
+      "draws": 1558,
+      "triangles": 9691881,
+      "programsUsedInFrame": 102,
+      "programsCompiled": 478,
+      "geometries": 408,
+      "textures": 244,
+      "frameCpuP50s": [
+        10.5,
+        10.5,
+        10.6
+      ]
+    },
+    "gece": {
+      "frameCpuMs": {
+        "n": 203,
+        "avg": 9.771,
+        "p50": 9.7,
+        "p95": 11.2,
+        "max": 15.3
+      },
+      "intervalMs": {
+        "n": 202,
+        "avg": 10.281,
+        "p50": 10.1,
+        "p95": 12.1,
+        "max": 15.6
+      },
+      "draws": 1186,
+      "triangles": 8971521,
+      "programsUsedInFrame": 103,
+      "programsCompiled": 534,
+      "geometries": 408,
+      "textures": 245,
+      "frameCpuP50s": [
+        9.8,
+        9.8,
+        9.7
+      ]
+    }
+  },
+  "programs": {
+    "compiled": 534,
+    "everUsed": 275,
+    "unused": 263,
+    "unusedRatio": 0.493
+  },
+  "heapMB": 145.3,
+  "errors": []
+}
