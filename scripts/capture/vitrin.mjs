@@ -78,7 +78,7 @@ export function shotsOf(scene) {
 const secs = (t) => `${((Date.now() - t) / 1000).toFixed(1)} s`;
 
 /** Donmuş, tohumlu sayfa (`coach`: atölye koçluk balonları baştan açık) */
-async function openFrozenPage(browser, url, { w, h, quality = 'high', coach = false }) {
+export async function openFrozenPage(browser, url, { w, h, quality = 'high', coach = false }) {
   const page = await browser.newPage();
   await page.setViewportSize({ width: w, height: h });
   page.errs = [];
@@ -224,8 +224,19 @@ async function openFrozenPage(browser, url, { w, h, quality = 'high', coach = fa
     null,
     { timeout: 600000 },
   );
-  // Yükleme ekranı kare çizilince kalkıyorsa (T-04) iki kare çiz ve kalkmasını bekle
-  if (await page.evaluate(() => !!document.getElementById('loading'))) {
+  // Yükleme ekranı: bugün init bittikten 700 ms sonra zamanla kalkar (main.ts);
+  // T-04 onu ilk tam kareye bağlarsa donmuş sayfada hiç kalkmaz. Önce kare
+  // ÇİZMEDEN bekle: çizilen kare sayısı zamanlamaya bağlı olmasın (Dalga 0
+  // sonrası düzeltme: hazır bayrağı ile kalkış arasındaki yarış sıcak
+  // önbellekli sayfalarda 2 fazla kare çizdiriyor, arayüz karelerini
+  // kaydırıyordu). Kalkmazsa (kareye bağlı yükleme ekranı) iki kare çiz.
+  const goneByItself = await page
+    .waitForFunction(() => !document.getElementById('loading'), null, { timeout: 5000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  if (!goneByItself) {
     await page.evaluate(() => window.__vitrinRender(2));
     await page.waitForFunction(() => !document.getElementById('loading'), null, { timeout: 60000 }).catch(() => {
       throw new Error('yükleme ekranı hazır olduktan ve iki kare çizildikten sonra 60 s içinde kalkmadı');
@@ -377,7 +388,7 @@ async function stageWorkshop(page, shot) {
 }
 
 /** Bir kare: kur, çiz, yakala, NaN say, yan dosya */
-async function captureShot(page, shot, dir) {
+export async function captureShot(page, shot, dir) {
   const t0 = Date.now();
   await resetScene(page, shot);
   await applyEnv(page, shot.env ?? 'Test hücresi');

@@ -1,0 +1,10 @@
+{
+  "aciklama": "1I Tam güç tekmesi (docs/UST-SEVIYE-PLANI.md §5 Dalga 1): analitik fan/pervane diski yeni çizim ve program ekleyebilir (sınırlı), kare süresi her evrede en çok +0,3 ms.",
+  "kurallar": {
+    "*.frameCpuP50": "+0.3 ms",
+    "*.draws": "+4",
+    "*.programsUsedInFrame": "+2",
+    "*.programsCompiled": "+2",
+    "oturum.programsCompiled": "+2"
+  }
+}

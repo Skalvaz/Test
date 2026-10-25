@@ -7,13 +7,16 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   dilate,
   diskProjector,
+  changedRowsOf,
   luma,
+  measureSet,
   peakExcess,
   pixelDiff,
   polarFft,
@@ -172,6 +175,37 @@ describe('kare karşılaştırma (yalnız renk, NaN maskesi)', () => {
   });
 });
 
+describe('değişen piksel kapısı', () => {
+  it('--set: yalnız arayüz ya da yalnız vitrin kıyaslanır; öbür kümenin yokluğu hata sayılmaz', async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vm-set-'));
+    const png = async (file, v) => {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      await sharp(Buffer.alloc(16 * 16 * 3, v), { raw: { width: 16, height: 16, channels: 3 } }).png().toFile(file);
+    };
+    await png(path.join(tmp, 'ref', '1280x720', 'x.png'), 10);
+    await png(path.join(tmp, 'ref', 'arayuz', '1280x720', 'menu.png'), 10);
+    await png(path.join(tmp, 'set', 'arayuz', '1280x720', 'menu.png'), 10);
+    const ref = path.join(tmp, 'ref');
+    const ui = await measureSet(path.join(tmp, 'set'), { ref, part: 'arayuz' });
+    expect(Object.keys(ui.frames)).toEqual([]);
+    expect(ui.ui['1280x720/menu'].diff.changedPx).toBe(0);
+    const both = await measureSet(path.join(tmp, 'set'), { ref });
+    expect(both.frames['1280x720/x'].ssim.hata).toBe('kümede kare yok');
+    const vit = await measureSet(path.join(tmp, 'set'), { ref, part: 'vitrin' });
+    expect(Object.keys(vit.ui)).toEqual([]);
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it('changedRowsOf bütün kareleri sayar (özetteki ilk 8 sınırı kapıyı etkilemez)', () => {
+    const frames = Object.fromEntries(Array.from({ length: 10 }, (_, i) => [`k${i}`, { diff: { changedPx: i + 1, maxAbs: 0.1 } }]));
+    const ui = { 'a/b': { diff: { changedPx: 0, maxAbs: 0 } } };
+    const rows = changedRowsOf({ frames, ui });
+    expect(rows).toHaveLength(11);
+    expect(rows.filter((r) => r.changedPx > 0)).toHaveLength(10);
+    expect(rows[0]).toEqual({ kare: 'k9', changedPx: 10, maxAbs: 0.1 });
+  });
+});
+
 describe('perf-compare beklenti kuralları', () => {
   it('kural sözdizimi', () => {
     expect(parseRule('=')).toEqual({ op: 'eq' });
@@ -203,5 +237,18 @@ describe('perf-compare beklenti kuralları', () => {
     const bad = compareRuns(once, sonra, { expect: { kurallar: { 'ogle.yok': '≤' } } });
     expect(bad.unknown).toEqual(['ogle.yok']);
     expect(bad.fail).toBeGreaterThan(0);
+  });
+
+  it('paket beklenti dosyaları (scripts/referans/beklenti): kurallar ayrışır, anahtarlar referans koşusunda var', () => {
+    const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'referans');
+    const ref = JSON.parse(fs.readFileSync(path.join(dir, 'perf-smoke.json'), 'utf8'));
+    const files = fs.readdirSync(path.join(dir, 'beklenti')).filter((f) => f.endsWith('.json'));
+    expect(files.length).toBeGreaterThanOrEqual(3);
+    for (const f of files) {
+      const exp = JSON.parse(fs.readFileSync(path.join(dir, 'beklenti', f), 'utf8'));
+      expect(typeof exp.aciklama, f).toBe('string');
+      for (const r of Object.values(exp.kurallar)) expect(() => parseRule(r), `${f}: ${r}`).not.toThrow();
+      expect(compareRuns([ref], [ref], { expect: exp }).unknown, f).toEqual([]);
+    }
   });
 });

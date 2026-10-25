@@ -1,0 +1,9 @@
+{
+  "aciklama": "1F Malzeme ve siluet düzeltmeleri (docs/UST-SEVIYE-PLANI.md §5 Dalga 1): program sayısı artmaz (dudak anizotropisi sahnedeki tek anizotropi, T-11 bütçesi), çizim sayısı artmaz (chevron tek bant), kare süresi ±%5.",
+  "kurallar": {
+    "*.draws": "≤",
+    "*.programsUsedInFrame": "≤",
+    "*.programsCompiled": "≤",
+    "oturum.programsCompiled": "≤"
+  }
+}
