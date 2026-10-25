@@ -1,0 +1,155 @@
+{
+  "tool": "perf-smoke",
+  "version": 1,
+  "when": "2026-10-24T20:27:00.649Z",
+  "url": "http://localhost:4202/",
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Laptop GPU (0x00002860) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "profile": "cold",
+  "quality": "high",
+  "viewport": "1440x810",
+  "load": {
+    "menuMs": 11027,
+    "firstFrameMs": 27059,
+    "longestTaskMs": 10966,
+    "longTaskTotalMs": 14974,
+    "programs": 227
+  },
+  "env": {
+    "ogle": {
+      "wallS": 56.099,
+      "longestTaskMs": 27637,
+      "longTaskTotalMs": 48446,
+      "programs": 478
+    },
+    "gece": {
+      "wallS": 18.628,
+      "longestTaskMs": 96,
+      "longTaskTotalMs": 96,
+      "programs": 534
+    },
+    "hucreDonus": {
+      "wallS": 0.034,
+      "longestTaskMs": 0,
+      "longTaskTotalMs": 0,
+      "programs": 534
+    }
+  },
+  "phases": {
+    "menu": {
+      "frameCpuMs": {
+        "n": 180,
+        "avg": 3.077,
+        "p50": 3,
+        "p95": 3.8,
+        "max": 4.6
+      },
+      "intervalMs": {
+        "n": 179,
+        "avg": 7.763,
+        "p50": 7.9,
+        "p95": 8.2,
+        "max": 8.6
+      },
+      "draws": 270,
+      "triangles": 5639568,
+      "programsUsedInFrame": 60,
+      "programsCompiled": 227,
+      "geometries": 95,
+      "textures": 82,
+      "frameCpuP50s": [
+        3.2,
+        3.2,
+        3
+      ]
+    },
+    "hucre": {
+      "frameCpuMs": {
+        "n": 202,
+        "avg": 3.578,
+        "p50": 3.4,
+        "p95": 4.7,
+        "max": 5.5
+      },
+      "intervalMs": {
+        "n": 201,
+        "avg": 7.699,
+        "p50": 7.6,
+        "p95": 8.4,
+        "max": 11
+      },
+      "draws": 278,
+      "triangles": 5659882,
+      "programsUsedInFrame": 62,
+      "programsCompiled": 229,
+      "geometries": 97,
+      "textures": 83,
+      "frameCpuP50s": [
+        3.6,
+        3.5,
+        3.4
+      ]
+    },
+    "ogle": {
+      "frameCpuMs": {
+        "n": 202,
+        "avg": 10.543,
+        "p50": 10.4,
+        "p95": 12.2,
+        "max": 14.1
+      },
+      "intervalMs": {
+        "n": 201,
+        "avg": 11.046,
+        "p50": 10.9,
+        "p95": 13.1,
+        "max": 15.8
+      },
+      "draws": 1558,
+      "triangles": 11259317,
+      "programsUsedInFrame": 102,
+      "programsCompiled": 478,
+      "geometries": 408,
+      "textures": 244,
+      "frameCpuP50s": [
+        10.6,
+        10.4,
+        10.5
+      ]
+    },
+    "gece": {
+      "frameCpuMs": {
+        "n": 201,
+        "avg": 9.716,
+        "p50": 9.6,
+        "p95": 10.9,
+        "max": 16.3
+      },
+      "intervalMs": {
+        "n": 200,
+        "avg": 10.216,
+        "p50": 10.1,
+        "p95": 12.1,
+        "max": 16.7
+      },
+      "draws": 1186,
+      "triangles": 10538969,
+      "programsUsedInFrame": 103,
+      "programsCompiled": 534,
+      "geometries": 408,
+      "textures": 245,
+      "frameCpuP50s": [
+        9.7,
+        9.9,
+        9.6
+      ]
+    }
+  },
+  "programs": {
+    "compiled": 534,
+    "everUsed": 275,
+    "unused": 263,
+    "unusedRatio": 0.493
+  },
+  "heapMB": 128.6,
+  "errors": []
+}

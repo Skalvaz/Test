@@ -747,6 +747,21 @@ export class EngineVisual {
     this.plume.mesh.visible = v;
   }
 
+  /**
+   * Ölçüm tabanı (vitrin `*-taban` sahneleri; 1I'nin FFT ölçütü): fanın ve
+   * pervanenin kanatlarını ve dönme bulanıklığı diskini gizler, göbek,
+   * kaporta ve gövde görünür kalır. Dönme bölümünün parçası: 1I analitik
+   * diski eklerse onu da burada gizler.
+   */
+  setRotorBladesHidden(hidden: boolean) {
+    this.rotorBladesHidden = hidden;
+    this.root.traverse((o) => {
+      if (o.name === 'fan-blades' || (o.userData.part === 'propeller' && o.parent?.name === 'propeller')) o.visible = !hidden;
+    });
+    if (hidden && this.model.blurDisc) this.model.blurDisc.visible = false;
+  }
+  private rotorBladesHidden = false;
+
   /* ---------------------------------------------------------------- */
 
   update(snap: SimSnapshot, dt: number, camera?: THREE.Camera) {
@@ -786,7 +801,7 @@ export class EngineVisual {
     // Hareket bulanıklığı diski
     if (m.blurDisc && m.blurMat) {
       const blur = this.motionBlur ? THREE.MathUtils.smoothstep(blurSpeed, 0.25, 0.7) : 0;
-      m.blurDisc.visible = blur > 0.01;
+      m.blurDisc.visible = blur > 0.01 && !this.rotorBladesHidden;
       m.blurMat.opacity = blur * (m.propeller ? 0.95 : 0.85);
       m.blurDisc.rotation.z = (m.propeller ? this.propAngle : this.lpAngle) * 0.35;
     }

@@ -1,0 +1,63 @@
+{
+  "id": "360-termal-gece-kesit",
+  "desc": "Test hücresi ışıkları gece, turbojet tam güçten kapatıldı +1,7 s, kesit: türbin ve lüle termal kızıllığı (shutdown.json kadrajı)",
+  "galeri": "360-termal-kizillik-gece-kesit.png",
+  "kind": "turbojet",
+  "env": "Test hücresi",
+  "ui": "hidden",
+  "cam": [
+    1.15,
+    0.5,
+    1.25
+  ],
+  "tgt": [
+    0,
+    -0.02,
+    0.2
+  ],
+  "fov": 34,
+  "cut": 1,
+  "lights": 0,
+  "setup": "sim.trim(1, 40); a.advance(20); sim.controls.fuelRun = false; sim.controls.throttle = 0; a.advance(1.6);",
+  "warm": 3,
+  "roi": {
+    "kizillikTurbin": {
+      "shape": [
+        0.33,
+        0.1,
+        0.55,
+        0.3
+      ],
+      "exclude": [
+        {
+          "type": "maskFrom",
+          "frame": "360-termal-gece-kesit-kapak"
+        }
+      ]
+    },
+    "kizillikLule": {
+      "shape": [
+        0.0,
+        0.35,
+        0.3,
+        0.75
+      ],
+      "exclude": [
+        {
+          "type": "maskFrom",
+          "frame": "360-termal-gece-kesit-kapak"
+        }
+      ]
+    },
+    "karanlik": [
+      0.6,
+      0.85,
+      0.98,
+      0.98
+    ],
+    "kapak": {
+      "type": "maskFrom",
+      "frame": "360-termal-gece-kesit-kapak"
+    }
+  }
+}

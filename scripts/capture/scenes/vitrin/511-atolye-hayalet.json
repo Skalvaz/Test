@@ -1,0 +1,72 @@
+{
+  "id": "511-atolye-hayalet",
+  "desc": "Atölye, sade turbojet şablonu, HPC seçili; ön uç tutamacı yukarı sürüklenirken (yolun %75'i) hayalet meridyen ve okuma kutusu; arayüz açık",
+  "galeri": "511-surukleme-hayalet.png",
+  "kind": "turbojet",
+  "env": "Test hücresi",
+  "ui": "workshop",
+  "template": "turbojetDry",
+  "module": "hpc",
+  "drag": {
+    "handle": "frontTip",
+    "dx": 0,
+    "dy": -50,
+    "steps": 12,
+    "hold": 0.75
+  },
+  "warm": 3,
+  "roi": {
+    "hayalet": [
+      0.3,
+      0.42,
+      0.56,
+      0.8
+    ],
+    "figur": [
+      0.64,
+      0.36,
+      0.68,
+      0.6
+    ],
+    "solPanel": [
+      0.01,
+      0.09,
+      0.25,
+      0.98
+    ],
+    "sonucPanel": [
+      0.76,
+      0.09,
+      0.99,
+      0.98
+    ]
+  },
+  "roiBySize": {
+    "2560x1440": {
+      "hayalet": [
+        0.21,
+        0.37,
+        0.68,
+        0.82
+      ],
+      "figur": [
+        0.67,
+        0.32,
+        0.72,
+        0.58
+      ],
+      "solPanel": [
+        0.005,
+        0.045,
+        0.15,
+        0.99
+      ],
+      "sonucPanel": [
+        0.86,
+        0.045,
+        0.995,
+        0.99
+      ]
+    }
+  }
+}

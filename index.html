@@ -15,9 +15,14 @@
   </head>
   <body>
     <div id="app"></div>
-    <div id="loading">
+    <!-- Yükleme ekranı: src/app/loadProgress.ts olaylarıyla beslenir (main.ts);
+         çubuk iskeleti gizli, çizimi 1C'nin (src/styles/loader.css) -->
+    <div id="loading" data-stage="">
       <div class="spinner"></div>
       <div id="loading-text">Başlatılıyor…</div>
+      <div id="loading-progress" class="loading-progress" role="progressbar" aria-label="Yükleniyor" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
+        <div class="loading-progress-fill"></div>
+      </div>
     </div>
     <script type="module" src="./src/main.ts"></script>
   </body>

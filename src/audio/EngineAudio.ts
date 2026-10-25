@@ -26,6 +26,8 @@ export interface AudioEngine {
   fanDiameter: number;
   /** Güç türbininin son kademe kanat sayısı (turboşaft ıslığı) */
   turbineBlades?: number;
+  /** HPC 1. kademe kanat sayısı (Dalga 0 kancası; 1E: HPC BPF tasarımı izlesin) */
+  hpcBlades?: number;
 }
 
 /** Bir sesin hedef kazancı ve (varsa) frekansı / süzgeç frekansı */
@@ -154,6 +156,38 @@ interface Voice {
   filter?: BiquadFilterNode;
 }
 
+/* ------------------------------------------------------------------ */
+/* Dalga 0 ses arayüzü taslağı (S-19): 1D duraklatmayı ve ayar          */
+/* sürgülerini buna yazar, 1E gövdeyi doldurur (veri yolları, dB        */
+/* eğrisi). İmzalar sabittir; bugünkü davranış aynıdır (bütün sesler    */
+/* tek ana kazançtan geçer, kimse duraklatmaz).                         */
+/* ------------------------------------------------------------------ */
+
+/** Ses veri yolları (1E her sesi birine bağlar; bugün hepsi 'engine') */
+export type AudioBusId = 'engine' | 'ui' | 'ambience';
+export const AUDIO_BUSES: readonly AudioBusId[] = ['engine', 'ui', 'ambience'];
+/** dB alt sınırı: bunun altı sessiz (kazanç 0) */
+export const MIN_DB = -60;
+
+/** dB → doğrusal kazanç (MIN_DB ve altı 0) */
+export function dbToGain(db: number): number {
+  return db <= MIN_DB ? 0 : Math.pow(10, db / 20);
+}
+/** Doğrusal kazanç → dB (0 → MIN_DB) */
+export function gainToDb(g: number): number {
+  return g <= 0 ? MIN_DB : Math.max(MIN_DB, 20 * Math.log10(g));
+}
+
+/**
+ * Ana kazancın hedefi: kapalı ya da duraklatılmışken 0; yoksa ses düzeyi ×
+ * 0,9 (Dalga 0 öncesiyle aynı) × motor veri yolu kazancı (bugün bütün sesler
+ * motor yolunda; 0 dB = 1).
+ */
+export function masterTarget(o: { volume: number; muted: boolean; paused: boolean; busDb?: Partial<Record<AudioBusId, number>> }): number {
+  if (o.muted || o.paused) return 0;
+  return o.volume * 0.9 * dbToGain(o.busDb?.engine ?? 0);
+}
+
 export class EngineAudio {
   private ctx: AudioContext | null = null;
   private master!: GainNode;
@@ -163,6 +197,8 @@ export class EngineAudio {
   private nextCrackle = 0;
   private _volume = 0.7;
   private _muted = false;
+  private _paused = false;
+  private busDbs: Record<AudioBusId, number> = { engine: 0, ui: 0, ambience: 0 };
 
   get ready() {
     return !!this.ctx && this.ctx.state === 'running';
@@ -189,9 +225,49 @@ export class EngineAudio {
     return this._muted;
   }
 
+  /**
+   * Duraklatma (A-21; App `clock.onChange`'e bağlar): duraklatılmışken ana
+   * kazanç 0'a iner (ses kısılır), devamda geri gelir. 1E gerekirse
+   * süzgeçli kısma ya da ortam yatağını açık bırakmayı buraya yazar.
+   */
+  setPaused(on: boolean) {
+    if (on === this._paused) return;
+    this._paused = on;
+    this.applyMaster();
+  }
+  get paused() {
+    return this._paused;
+  }
+
+  /** Ses düzeyi dB olarak (ayar sürgüsü, A-14): `volume`'ün dB eşi */
+  set volumeDb(db: number) {
+    this.volume = dbToGain(db);
+  }
+  get volumeDb() {
+    return gainToDb(this._volume);
+  }
+
+  /** Veri yolları (ayar sürgüleri bunları listeler) */
+  get buses(): readonly AudioBusId[] {
+    return AUDIO_BUSES;
+  }
+  /** Veri yolu kazancı [dB]; bugün yalnız 'engine' duyulur (bütün sesler onda) */
+  setBusDb(bus: AudioBusId, db: number) {
+    this.busDbs[bus] = Math.max(MIN_DB, Math.min(12, db));
+    this.applyMaster();
+  }
+  busDb(bus: AudioBusId): number {
+    return this.busDbs[bus];
+  }
+
+  /** Ana kazancın şu anki hedefi (testler; AudioContext gerekmez) */
+  get masterTarget(): number {
+    return masterTarget({ volume: this._volume, muted: this._muted, paused: this._paused, busDb: this.busDbs });
+  }
+
   private applyMaster() {
     if (!this.ctx) return;
-    this.master.gain.setTargetAtTime(this._muted ? 0 : this._volume * 0.9, this.ctx.currentTime, 0.05);
+    this.master.gain.setTargetAtTime(this.masterTarget, this.ctx.currentTime, 0.05);
   }
 
   private build() {

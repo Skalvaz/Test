@@ -104,6 +104,11 @@ export class Rain {
     g.instanceCount = Math.round(max * THREE.MathUtils.clamp(fraction, 0.1, 1));
   }
 
+  /** Düşüş saatini sıfırla (belirlenimli kayıt: App.resetClocks) */
+  resetClock() {
+    this.material.uniforms.uTime.value = 0;
+  }
+
   update(dt: number, camera: THREE.Camera, floorY: number, light = 1) {
     const r = weather.rain;
     this.mesh.visible = r > 0.01;

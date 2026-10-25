@@ -1,0 +1,70 @@
+{
+  "id": "314-tam-guc",
+  "desc": "Test hücresi, yolcu turbofanı tam güç, açı 1 (üç çeyrek ön), arayüz gizli",
+  "galeri": "314-tam-guc.png",
+  "kind": "turbofan",
+  "env": "Test hücresi",
+  "ui": "hidden",
+  "cam": [
+    6.4,
+    1.9,
+    -6.6
+  ],
+  "tgt": [
+    0,
+    0,
+    0.25
+  ],
+  "fov": 32,
+  "cut": 0,
+  "setup": "sim.trim(1, 30); a.advance(8);",
+  "warm": 3,
+  "roi": {
+    "dudak": {
+      "type": "ring",
+      "cx": 0.676,
+      "cy": 0.556,
+      "rx": 0.137,
+      "ry": 0.369,
+      "r0": 0.66,
+      "r1": 1.0
+    },
+    "fan": {
+      "type": "ellipse",
+      "cx": 0.629,
+      "cy": 0.535,
+      "rx": 0.06,
+      "ry": 0.2
+    },
+    "kaporta": [
+      0.36,
+      0.3,
+      0.5,
+      0.7
+    ],
+    "chevron": [
+      0.285,
+      0.3,
+      0.335,
+      0.72
+    ],
+    "duvar": [
+      0.3,
+      0.02,
+      0.4,
+      0.25
+    ],
+    "zemin": [
+      0.2,
+      0.8,
+      0.55,
+      0.98
+    ],
+    "augmenter": [
+      0.01,
+      0.12,
+      0.11,
+      0.48
+    ]
+  }
+}

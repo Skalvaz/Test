@@ -7,6 +7,7 @@
  * ikincil göstergeler ve CAS (ekip uyarı) mesaj listesi yer alır.
  */
 
+import { EICAS, FONT } from './palette';
 import type { EngineTraits } from '../design/traits';
 import type { SimSnapshot } from '../sim';
 
@@ -42,17 +43,8 @@ export function eicasLayout(t: EicasTraits): EicasLayout {
 /** Bağlanmadan önce (ve eski kancalar için) yolcu turbofanı düzeni */
 const DEFAULT_LAYOUT = eicasLayout({ lpLoad: 'fan', output: 'thrust', bypass: true, afterburner: false, variableNozzle: false });
 
-const C = {
-  white: '#eef2f6',
-  dim: 'rgba(238,242,246,0.28)',
-  fill: 'rgba(238,242,246,0.13)',
-  amber: '#ffb020',
-  red: '#ff4d3d',
-  magenta: '#ff5cf0',
-  cyan: '#2ee6d6',
-  green: '#3ddc84',
-  label: '#8a99a8',
-};
+/** Aviyonik renk kodları (palette.ts) */
+const C = EICAS;
 
 interface DialSpec {
   value: number;
@@ -208,7 +200,7 @@ export class Eicas {
     ctx.moveTo(cx, cy);
     ctx.arc(cx, cy, r - 2, a0, av);
     ctx.closePath();
-    ctx.fillStyle = over ? 'rgba(255,77,61,0.22)' : caution ? 'rgba(255,176,32,0.18)' : C.fill;
+    ctx.fillStyle = over ? C.arcOver : caution ? C.arcCaution : C.fill;
     ctx.fill();
 
     // Ana yay
@@ -231,7 +223,7 @@ export class Eicas {
     ctx.lineWidth = 1.5;
     ctx.strokeStyle = C.white;
     ctx.fillStyle = C.label;
-    ctx.font = `${Math.round(r * 0.14)}px ui-monospace, monospace`;
+    ctx.font = `${Math.round(r * 0.14)}px ${FONT.mono}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (const t of d.ticks) {
@@ -278,22 +270,22 @@ export class Eicas {
     ctx.strokeStyle = state;
     if (over && !blinkOn) ctx.strokeStyle = 'transparent';
     ctx.strokeRect(bx, by, bw, bh);
-    ctx.fillStyle = over ? 'rgba(255,77,61,0.18)' : 'rgba(0,0,0,0.35)';
+    ctx.fillStyle = over ? C.boxOver : C.box;
     ctx.fillRect(bx + 1, by + 1, bw - 2, bh - 2);
     ctx.fillStyle = state;
-    ctx.font = `600 ${Math.round(bh * 0.72)}px ui-monospace, 'SF Mono', Consolas, monospace`;
+    ctx.font = `600 ${Math.round(bh * 0.72)}px ${FONT.monoDigits}`;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     ctx.fillText(d.text, bx + bw - 6, by + bh / 2 + 1);
 
     // Etiket kutunun solunda
     ctx.fillStyle = C.cyan;
-    ctx.font = `600 ${Math.round(r * 0.2)}px ui-monospace, monospace`;
+    ctx.font = `600 ${Math.round(r * 0.2)}px ${FONT.mono}`;
     ctx.textAlign = 'right';
     ctx.fillText(d.label, cx - r * 0.1, by + bh * 0.42);
     if (d.unit) {
       ctx.fillStyle = C.label;
-      ctx.font = `${Math.round(r * 0.14)}px ui-monospace, monospace`;
+      ctx.font = `${Math.round(r * 0.14)}px ${FONT.mono}`;
       ctx.fillText(d.unit, cx - r * 0.1, by + bh * 0.42 + r * 0.2);
     }
   }
@@ -344,19 +336,19 @@ export class Eicas {
     rows.forEach(([label, value, unit, color], i) => {
       const yy = y + i * lh + lh / 2;
       ctx.fillStyle = C.cyan;
-      ctx.font = `600 11px ui-monospace, monospace`;
+      ctx.font = `600 11px ${FONT.mono}`;
       ctx.textAlign = 'left';
       ctx.fillText(label, x, yy);
       ctx.fillStyle = color;
-      ctx.font = `600 ${Math.min(17, lh * 0.62)}px ui-monospace, 'SF Mono', Consolas, monospace`;
+      ctx.font = `600 ${Math.min(17, lh * 0.62)}px ${FONT.monoDigits}`;
       ctx.textAlign = 'right';
       ctx.fillText(value, x + w - 34, yy);
       ctx.fillStyle = C.label;
-      ctx.font = `10px ui-monospace, monospace`;
+      ctx.font = `10px ${FONT.mono}`;
       ctx.textAlign = 'left';
       ctx.fillText(unit, x + w - 30, yy);
     });
-    ctx.strokeStyle = 'rgba(160,185,210,0.14)';
+    ctx.strokeStyle = C.rule;
     ctx.beginPath();
     ctx.moveTo(x - 10, 12);
     ctx.lineTo(x - 10, this.h - 12);
@@ -384,13 +376,13 @@ export class Eicas {
 
   private casList(x: number, y: number, w: number, msgs: { text: string; level: CasLevel }[]) {
     const ctx = this.ctx;
-    ctx.strokeStyle = 'rgba(160,185,210,0.14)';
+    ctx.strokeStyle = C.rule;
     ctx.beginPath();
     ctx.moveTo(x - 10, 12);
     ctx.lineTo(x - 10, this.h - 12);
     ctx.stroke();
     ctx.fillStyle = C.label;
-    ctx.font = '600 10px ui-monospace, monospace';
+    ctx.font = `600 10px ${FONT.mono}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText('CAS MESAJLARI', x, y);
@@ -405,11 +397,11 @@ export class Eicas {
       const yy = y + 18 + i * lh;
       const flashing = m.level === 'warning' && this.blink > 0.55;
       if (m.level === 'warning' && !flashing) {
-        ctx.fillStyle = 'rgba(255,77,61,0.18)';
+        ctx.fillStyle = C.warningRow;
         ctx.fillRect(x - 4, yy - 2, w - 6, lh - 2);
       }
       ctx.fillStyle = colors[m.level];
-      ctx.font = `600 ${m.level === 'memo' ? 12 : 13}px ui-monospace, 'SF Mono', Consolas, monospace`;
+      ctx.font = `600 ${m.level === 'memo' ? 12 : 13}px ${FONT.monoDigits}`;
       ctx.fillText(m.text, x, yy);
     });
   }

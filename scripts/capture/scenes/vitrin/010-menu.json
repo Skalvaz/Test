@@ -1,0 +1,106 @@
+{
+  "id": "010-menu",
+  "desc": "Ana menü: test hücresinde rölantide yolcu turbofanı, menü açısı (otomatik dönüş kapalı), menü kaplaması açık",
+  "galeri": "010-menu-ilk-an.png",
+  "kind": "turbofan",
+  "env": "Test hücresi",
+  "ui": "menu",
+  "setup": "a.advance(4);",
+  "warm": 3,
+  "roi": {
+    "dudak": {
+      "type": "ring",
+      "cx": 0.822,
+      "cy": 0.594,
+      "rx": 0.092,
+      "ry": 0.309,
+      "r0": 0.62,
+      "r1": 1.0
+    },
+    "kaporta": [
+      0.55,
+      0.34,
+      0.72,
+      0.78
+    ],
+    "chevron": [
+      0.465,
+      0.38,
+      0.52,
+      0.62
+    ],
+    "duvar": [
+      0.8,
+      0.04,
+      0.99,
+      0.3
+    ],
+    "zemin": [
+      0.75,
+      0.88,
+      0.99,
+      0.99
+    ],
+    "menu": [
+      0.06,
+      0.39,
+      0.42,
+      0.97
+    ],
+    "augmenter": [
+      0.0,
+      0.3,
+      0.065,
+      0.75
+    ]
+  },
+  "roiBySize": {
+    "2560x1440": {
+      "dudak": {
+        "type": "ring",
+        "cx": 0.7475,
+        "cy": 0.594,
+        "rx": 0.105,
+        "ry": 0.349,
+        "r0": 0.62,
+        "r1": 1.0
+      },
+      "kaporta": [
+        0.45,
+        0.32,
+        0.62,
+        0.8
+      ],
+      "chevron": [
+        0.35,
+        0.38,
+        0.4,
+        0.7
+      ],
+      "duvar": [
+        0.86,
+        0.04,
+        0.99,
+        0.3
+      ],
+      "zemin": [
+        0.8,
+        0.9,
+        0.99,
+        0.99
+      ],
+      "menu": [
+        0.045,
+        0.43,
+        0.22,
+        0.72
+      ],
+      "augmenter": [
+        0.0,
+        0.45,
+        0.04,
+        0.85
+      ]
+    }
+  }
+}

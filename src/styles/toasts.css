@@ -1,0 +1,57 @@
+/* Bildirimler. Sahibi: 1D. */
+
+/* ---------------- bildirimler ---------------- */
+.toasts {
+  position: fixed;
+  top: calc(var(--topbar-h) + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 30;
+  pointer-events: none;
+  width: min(560px, calc(100vw - 32px));
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-8);
+  background: var(--panel-solid);
+  border: var(--line-w) solid var(--line-strong);
+  box-shadow: var(--shadow);
+  font-size: 13px;
+  animation: toastin 0.25s ease-out;
+  max-width: 100%;
+}
+/* Ayrıntılı bildirim (atölye mimari notları): tıklanabilir, açıklama kapalı başlar */
+.toast.has-detail { pointer-events: auto; align-items: flex-start; }
+.toast.has-detail .tag { margin-top: 2px; }
+.toast-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.toast-detail summary { cursor: pointer; color: var(--accent); font-size: 12px; width: fit-content; }
+.toast-detail p {
+  margin: 6px 0 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.toast.caution { border-color: rgba(var(--amber-rgb), 0.6); }
+.toast.warning { border-color: rgba(var(--red-rgb), 0.7); background: var(--warning-bg); }
+.toast .tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 2px 6px;
+  border-radius: var(--radius-4);
+  background: rgba(var(--white-rgb), 0.08);
+}
+.toast.caution .tag { background: var(--amber); color: var(--on-amber); }
+.toast.warning .tag { background: var(--red); color: var(--on-red); }
+.toast.out { animation: toastout 0.3s ease-in forwards; }
+@keyframes toastin { from { opacity: 0; transform: translateY(-8px); } }
+@keyframes toastout { to { opacity: 0; transform: translateY(-8px); } }

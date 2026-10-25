@@ -7,6 +7,9 @@
  * Anahtarlara, gaz koluna, quiz seçeneklerine ve 3B parçalara gerçek fare
  * tıklamalarıyla basar. Yazılım rasterleştiricide kareler yavaş olduğundan
  * simülasyon, uygulamanın `advance()` test kancasıyla ileri sarılır.
+ * Bekleme sabit süre değil olay ya da koşuldur (`waitFor('lightoff')`,
+ * `until(() => N2 ≥ …)`; T-20): kalibrasyon değişince test kırılmaz.
+ * Önizleme sunucusu: PLAYTEST_URL (varsayılan http://localhost:4173/).
  */
 
 import { chromium } from 'playwright';
@@ -59,6 +62,17 @@ const until = async (fn, arg, maxSec = 120, step = 0.5) => {
     await advance(step);
   }
   return false;
+};
+/**
+ * Sim olayını bekler (T-20): sabit süre yerine `lightoff`, `idle`, `surge`,
+ * `autoStartFuel`… gelene kadar ilerletir (App.advanceUntil). Kalibrasyon
+ * (1B, 2H) zamanlamaları değiştirse de test kırılmaz. Sayfa gerçek zamanlı
+ * da döndüğünden olay tıklamayla bekleme arasında gelmiş olabilir: `already`
+ * (durum koşulu) önce sınanır.
+ */
+const waitFor = async (event, maxSec = 60, already = null) => {
+  if (already && (await page.evaluate(already))) return true;
+  return (await page.evaluate(([e, m]) => window.__app.advanceUntil(e, m), [event, maxSec])).ok;
 };
 const stepTitle = () => page.textContent('.side-left:not(.hidden) .step-title');
 const next = async () => {
@@ -139,7 +153,8 @@ const clickPart = async (part) => {
 };
 
 await page.goto(URL, { waitUntil: 'load' });
-await page.waitForFunction(() => !document.getElementById('loading'), null, { timeout: 300000 });
+// Hazır (sözleşme `window.__loadReady`) ve yükleme ekranı kalktı (T-04'te ilk tam karede)
+await page.waitForFunction(() => ('__loadReady' in window ? window.__loadReady === true : true) && !document.getElementById('loading'), null, { timeout: 300000 });
 await shot('01-menu');
 
 /* ------------------------------------------------------------------ */
@@ -153,12 +168,13 @@ check(await until(() => window.__app.runner.index === 2, null, 5), 'APU BLEED �
 await page.click('[data-sw="ignition"]');
 check(await until(() => window.__app.runner.index === 3, null, 5), 'ATEŞLEME → sonraki adım');
 await page.click('[data-sw="starter"]');
-await advance(6);
+// Marş HP milini çeviriyor: N2 %10 (eskiden sabit 6 s)
+await until(() => window.__app.sim.N2 >= 0.1, null, 30, 0.25);
 await shot('02-start-motoring');
 check(await until(() => window.__app.runner.isComplete, null, 60), 'marş: N2 %20\'yi geçti');
 await next();
 await page.click('[data-sw="fuelRun"]');
-check(await until(() => window.__app.sim.lit, null, 20), 'light-off');
+check(await waitFor('lightoff', 20, () => window.__app.sim.lit), 'light-off');
 await advance(2);
 await shot('03-start-lightoff');
 check(await until(() => window.__app.runner.isComplete, null, 20), 'yakıt adımı tamam');
@@ -186,7 +202,9 @@ await until(() => window.__app.runner.index === 2, null, 5);
 await page.click('[data-sw="ignition"]');
 await until(() => window.__app.runner.index === 3, null, 5);
 await page.click('[data-sw="starter"]');
-await advance(3);
+// Erken yakıt: marş dönmeye başladı ama N2 yakıt eşiğinin çok altında (eskiden sabit 3 s)
+await until(() => window.__app.sim.N2 >= 0.05, null, 20, 0.1);
+check(await page.evaluate(() => window.__app.sim.N2 < window.__app.sim.limits.fuelOnMinN2 - 0.05), 'yakıt eşiğinin altında');
 await page.click('[data-sw="fuelRun"]');
 await advance(1);
 check(await page.isVisible('.feedback.bad'), 'erken yakıt adımı başarısız saydı');
@@ -244,7 +262,7 @@ await page.evaluate(() => {
   el.value = '1';
   el.dispatchEvent(new Event('input', { bubbles: true }));
 });
-check(await until(() => window.__app.sim.surgeCount > 0, null, 5, 0.1), 'ani artış surge ettirdi');
+check(await waitFor('surge', 5, () => window.__app.sim.surgeCount > 0), 'ani artış surge ettirdi');
 await advance(0.15);
 await shot('08-surge');
 await page.evaluate(() => {
@@ -352,8 +370,14 @@ if (want('sandbox')) {
 console.log('\nTest hücresi');
 await page.evaluate(() => window.__app.showMenu());
 await page.click('.menu-item:has-text("Test hücresi")');
+const t0 = await page.evaluate(() => window.__app.sim.time);
 await page.click('button:has-text("Tam güç")');
-await advance(12);
+// Kalkış gücüne ulaştı (N1 > %95, tam güçten ~4,6 s sonra; henüz oturmadı),
+// sonra Dalga 0 öncesindeki sabit 12 s'ye tamamlanır: motor oturur ve görsel
+// metal sıcaklığı (τ ≈ 5 s, simülasyondan yavaş) ısınır, 09 karesi eskisiyle
+// aynı anı (~14 s) gösterir
+check(await until(() => window.__app.sim.N1 > 0.95, null, 30, 0.5), 'kalkış gücüne ulaştı (N1 > %95)');
+await advance(Math.max(0, 12 - (await page.evaluate((t) => window.__app.sim.time - t, t0))));
 await page.keyboard.press('c');
 await advance(2);
 await shot('09-sandbox-cutaway-takeoff');

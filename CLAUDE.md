@@ -42,7 +42,15 @@ npm run build:single        # → turbofan.html (tek dosya, çift tıkla açıl�
 npm run capture -- http://localhost:5173/ capture-output/after surge rain
 npm run capture:compare -- capture-output/before/surge capture-output/after/surge cmp.gif "surge"
 node scripts/playtest.mjs playtest-output   # vite preview --port 4173 açıkken
+node scripts/capture/vitrin.mjs http://localhost:5173/ capture-output/vitrin/sonra [--set hepsi]
+node scripts/visual-metrics.mjs capture-output/vitrin/sonra --compare capture-output/vitrin/once --gate 0.995
+node scripts/perf-smoke.mjs http://localhost:4173/ --compare scripts/referans/perf-smoke.json   # sayımlar
+node scripts/perf-compare.mjs --once o1.json,o2.json --sonra s1.json,s2.json                   # kare süresi (dönüşümlü koşular)
 ```
+
+Vitrin kadraj seti (`scripts/capture/scenes/vitrin/`, 12 sahne × 1280×720 ve
+2560×1440, ROI'li) bütün önce/sonra karşılaştırmalarının ortak setidir;
+referans değerler `scripts/referans/`.
 
 Önce/sonra için eski commit'i `git worktree add ../turbofan-once <commit>` ile
 ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
@@ -57,8 +65,24 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   tasarım + 3B yerleşim; `overrideGraph` ile çalışma anında değiştirilir,
   `window.__design`). Dört motor da grafikten; `flowpath.ts`'te ortak
   `computeGasPath` + yerleşimler (çıplak jet / turboprop / turbofan).
-- `src/app/App.ts` — ana döngü; test kancaları: `advance(s)`, `fixedDt` /
-  `pendingSteps` / `framesRendered` (belirlenimli kare kaydı), `window.__app`.
+- `src/app/App.ts` — ana döngü; test kancaları: `advance(s)`,
+  `advanceUntil(olay | koşul, maks)` (T-20), `fixedDt` / `pendingSteps` /
+  `framesRendered` (belirlenimli kare kaydı), `window.__app`. Paketler
+  App.ts'e dokunmaz; kanca noktaları: `onSimEvent(fn)` (sim + uygulama
+  olayları, `src/app/events.ts`), `modes.onChange` (`app/modes/ModeController.ts`),
+  `frameHooks`, `keyHooks`, `advanceHooks`, `clock` (`app/simClock.ts`:
+  duraklatma/tek adım), `pipeline.onContextRestored`.
+- `src/app/render/` — `RenderPipeline` (renderer, post zinciri, kalite,
+  ön-derleme, ısı pusu), `EnvironmentManager` (ortam yükleme ve geçişi,
+  hücre ışığı, `pending`/`serial` = `app.envPending`/`envSerial`),
+  `quality.ts`. `src/app/loadProgress.ts`: yükleme olayı (App yayar, yükleme
+  ekranı çizer). `src/sim/autostart.ts`: otomatik çalıştırma sırası.
+- `src/app/camera/` — `viewport.ts` (setViewOffset, `safeRect()`),
+  `shots.ts` (açılar, geçiş), `shake.ts`, `freecam.ts`; `CameraRig.ts` ince
+  kabuk. `src/core/exposure.ts` pozlamanın tek yazıcısı, `src/core/lightRig.ts`
+  sabit ışık takımı sözleşmesi.
+- `src/styles/` — bileşen CSS'leri; sıra `index.css`'te (lesson, cockpit'ten
+  önce). Her paket yalnız kendi dosyasını değiştirir.
 - `src/engine/visual.ts` — modeli simülasyona bağlar: lüle, termal kızıllık
   (`thermal` + `glow()`), yanma odası noktaları, surge.
 - `src/engine/*.js` — prosedürel motor parçaları (stages, combustor, nozzle…).
@@ -164,9 +188,49 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   yoksa kesitte arka yüzler kırmızı boyanır.
 - PowerShell'de `node … | Select-Object -First N` boruyu kapatınca node 255
   ile çıkar; hata sanma.
+- Testler, kayıt sahneleri ve oynanış testi sabit süre değil olay bekler
+  (T-20): `a.advanceUntil('lightoff', 40)`, `a.advanceUntil('autoStartFuel')`,
+  `a.advanceUntil(() => sim.N2 >= …)`; vitest'te `waitForSim(sim, 'idle')`.
+  Oynanış testinde sayfa gerçek zamanlı da döndüğünden `waitFor(olay, maks,
+  zatenOlduMu)`. Kalibrasyonu değiştiren paket (1B, 2H) yine de bu
+  bölümdeki zamanlamaları günceller.
+- Vitrin kaydı belirlenimlidir: sayfa açılır açılmaz App donar, Math.random
+  tohumlu, performance.now sanal saat (yalnız çizilen karelerle ilerler; zemin
+  girdabı duvar saatine bağlıydı), ses kapalı. Aynı koddan iki kayıt piksel
+  piksel aynı; NaN sayısı (kayan noktalı okuma) ±%3 oynar. Set hep tamamı ve
+  `index.json` sırasıyla kaydedilir (rüzgâr tulumu gibi kapalı saatler).
+- perf-smoke'ta çizim ve program sayıları belirlenimli (ölçüm penceresine
+  bağlı: yöntem değişince referansı yenile); kare CPU süresi aynı kodda
+  koşudan koşuya %3–6, gün içinde %20–30 oynar (ısıl durum). Kare süresi
+  kapısı iki yapıyı dönüşümlü koşup (önce, sonra, önce, sonra)
+  `perf-compare.mjs` ile medyan kıyaslamaktır; `--compare` tek koşuda yalnız
+  sayımları kapıya sokar. Yığın değeri GC zamanına bağlı (%10 oynar).
+  Önce yapısı: `git worktree add --detach ../turbofan-once <commit>`,
+  `node_modules` bağlantısı (junction), orada `npx vite build`, sonra ana
+  kopyadan `npx vite preview ..\turbofan-once --port 4202`. Dikkat: iki dev
+  sunucusu aynı `node_modules/.vite`'ı paylaşır ("Re-optimizing
+  dependencies"); aynı anda ikisinde kayıt alma. Kaldırırken önce
+  bağlantıyı sil (`cmd /c rmdir ..\turbofan-once\node_modules`), sonra
+  `git worktree remove --force ..\turbofan-once`.
+- CSS sırası bağlayıcı: `.step-body.engine-summary` (test hücresi motor
+  özeti) iki dosyanın kuralını taşır; lesson.css cockpit.css'ten önce.
+- App'i `Object.create(App.prototype)` ile yarım kuran testler yeni alanları
+  da taklit etmeli: `modes` (ModeController), `environment`, `autoStarter`,
+  `keyHooks` (App.workshop.test).
 
 ## Sıradaki işler
 
+0. **Üst seviye planı** (`docs/UST-SEVIYE-PLANI.md`; K1: önce cila,
+   Dalga 0→1→2→3→Y, sonra M5b). ✅ Dalga 0 sözleşmeleri (`0c43ada`…):
+   vitrin seti + visual-metrics + perf-smoke (referanslar
+   `scripts/referans/`), CSS bölmesi, App.ts'ten RenderPipeline /
+   EnvironmentManager / ModeController, CameraRig alt modülleri, exposure ve
+   lightRig, olay sözleşmesi ve `advanceUntil`, autostart.ts, loadProgress,
+   kanca noktaları. Kabul: vitrin seti 30 karede piksel piksel aynı (ROI SSIM
+   1,000), arayüz seti 40 karede gürültü tabanında; perf çiftli kıyas ±%2 ve
+   sayımlar aynı; oynanış 1, 2, sandbox geçti; 1120 test. Sırada Dalga 1
+   (9 paket, birleşme sırası 1A → 1F → 1C → 1D → 1I → 1E → 1H → 1G → 1B;
+   portlar 52WN/42WN).
 1. **M5a sürüyor** — şartname `docs/M5A-SPEC.md` (iş paketleri §7, oynanış
    senaryosu §8). Kullanıcı §9.2 S1–S11 varsayılanlarının hepsini onayladı.
    Kullanıcı çok ajanlı iş akışıyla (ultracode) ilerlemeyi istedi; her
@@ -210,14 +274,21 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
      yeni iş akışı yok. Ölçüm: dalga 1 düzeltmesi (12 ajan) ≈ 5 sa
      sınırının %27'si, haftalığın %4'ü.
    - Paket portları: Pn → 518n (P4b 5194), önizleme 418n; 5173/4173 ana.
-2. **Üst seviye planı** (kullanıcı, 24 Ekim: "tüm sistemleri, oynanışı,
-   grafikleri, tasarımı, menüyü ve art style'ı geliştirelim, farklı
-   açılardan yaklaşıp her şeyi üst seviyeye taşıyalım"). Önce bütünsel
-   denetim: galeri → 8 uzman (grafik, sanat, arayüz, oynanış,
-   fizik/eğitim, ses, teknik, rakip araştırması) → sentez → eleştirmen →
-   dalga planı + kullanıcı kararları; M5a P11 plana dahil. ⏸ Kullanıcı
-   isteğiyle galeri aşamasında durduruldu: `capture-output/denetim/`
-   (86 PNG; eksik: gece/hücre ortamları, test hücresinin kalanı, atölye,
-   GIF'ler, ölçümler, GALERI.md), çekim betikleri
-   `scripts/denetim-*.tmp.mjs` (gitignore'da).
+2. **Üst seviye planı** (`docs/UST-SEVIYE-PLANI.md`; ham raporlar
+   `docs/denetim/`; galeri `capture-output/denetim/GALERI.md`). Kullanıcı
+   kararları: K2 teknik çizim + müze kesiti, K1 önce cila (Dalga 0→1→2→3→Y,
+   sonra Dalga 4 = M5b), K7 AKADEMİ şemsiyesi (1C üç logo adayı üretir,
+   kullanıcı seçer), K3 açık gri tarama, K0 TFM lüle kilitli + kuru TJ
+   "aynı çekirdekte". Her dalgadan önce maliyet tahmini; haftalık %80'de dur.
+   - ⏳ Dalga 0 (sözleşmeler, ölçüm araçları; davranış değişmez):
+     uygulandı ve kabul kanıtlandı (`0c43ada`…`e444d72`; 1166 test). İki
+     denetçi 24 bulgu verdi (sözleşme 20, davranış 4); düzeltme ajanı
+     çoğunu commit etmişken kullanıcı isteğiyle durduruldu. Bulgular:
+     oturum günlüğü `subagents/workflows/wf_d48d80ca-eb8/journal.jsonl`
+     (D0-denetim-*). Devam: kalan bulguları (özellikle 1H sahiplik
+     listesi, FFT/speküler ölçütlerinin ayırt ediciliği, ayar ekleme
+     sözleşmesi, 1C'nin kapsamı, safeRect ≠ motor dikdörtgeni, ortak belge
+     sahipliği) düzelt → planın Dalga 1 tablosunu bu düzeltmelere göre
+     güncelle → Dalga 1 (9 paket, `vitrin/*` dalları, portlar 52WN,
+     birleşme sırası 1A→1F→1C→1D→1I→1E→1H→1G→1B).
 3. M5b, M5c (`docs/ATOLYE.md`).

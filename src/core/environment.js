@@ -18,6 +18,7 @@ import overcastL from '../assets/hdri/overcast_soil_puresky_l.webp?url';
 import sunsetRgb from '../assets/hdri/industrial_sunset_puresky_rgb.webp?url';
 import sunsetL from '../assets/hdri/industrial_sunset_puresky_l.webp?url';
 import hdriManifest from '../assets/hdri/manifest.json';
+import { hdriExposure, setExposure } from './exposure';
 
 /**
  * RGB + log parlaklık kodlu HDR'yi (scripts/fetch-assets.mjs → encodeHdr)
@@ -338,9 +339,9 @@ export function createEnvironment(renderer, scene, materials) {
     scene.environmentRotation.set(0, rot, 0);
     sky.visible = false;
     ground.visible = false;
-    // Pozlama: gökyüzü ortalamasını hedef parlaklığa getir
-    const exposure = THREE.MathUtils.clamp(p.key / Math.max(info.mean, 1e-4), 0.05, 8);
-    renderer.toneMappingExposure = exposure;
+    // Pozlama: gökyüzü ortalamasını hedef parlaklığa getir (core/exposure.ts)
+    const exposure = hdriExposure(p.key, info.mean);
+    setExposure(renderer, exposure);
     // Sis: ufuk rengi (pozlamadan bağımsız doğrusal renk)
     scene.fog.color.copy(info.horizon);
     scene.fog.density = p.fog;
@@ -422,7 +423,7 @@ export function createEnvironment(renderer, scene, materials) {
 
     scene.fog.color.setHex(params.fog);
     scene.fog.density = params.fogDensity;
-    renderer.toneMappingExposure = params.exposure;
+    setExposure(renderer, params.exposure);
 
     // Ortam haritasını yeniden üret
     if (envRT) envRT.dispose();
@@ -443,5 +444,5 @@ export function createEnvironment(renderer, scene, materials) {
 
   refresh();
 
-  return { sky, sun, ambient, ground, params, refresh, setPreset, setHdri, clearHdri, captureEnvironment, keyPanel, rimPanel, isHdri: () => hdriActive };
+  return { sky, sun, ambient, ground, params, refresh, setPreset, setHdri, clearHdri, captureEnvironment, keyPanel, rimPanel, rampLightA, rampLightB, isHdri: () => hdriActive };
 }

@@ -18,6 +18,8 @@ import { WorkshopStore } from '../workshop/store';
 import { FAKE_DEPS, memoryStorage } from '../workshop/testing';
 import { Toasts } from '../ui/Toasts';
 import { App } from './App';
+import { ModeController } from './modes/ModeController';
+import { AutoStart } from '../sim/autostart';
 
 // Özel alanlara erişim: yarım kurulum taklitleri
 type AnyApp = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -57,7 +59,11 @@ function rig(o: { cancel?: boolean } = {}): Rig {
     realFlush();
   };
   Object.assign(app, {
-    mode: 'workshop',
+    // Kip ModeController'da (app.mode erişimcisi ona yazar)
+    modes: new ModeController('workshop'),
+    autoStarter: new AutoStart(),
+    keyHooks: new Set(),
+    priorityKeyHooks: new Set(),
     overlay: null,
     wsStore: store,
     wsHandles: handles,
@@ -160,6 +166,32 @@ describe('#6/#22 sürüklerken Esc', () => {
     expect(r.applied).toEqual([]);
     expect(r.app.refreshWorkshop).not.toHaveBeenCalled();
     expect(r.app.wsLeaving).toBe(false);
+  });
+});
+
+describe('Dalga 0 kanca noktaları', () => {
+  it('tuş kancası true dönerse tuş yutulur; false dönerse olağan işleme sürer', () => {
+    const r = rig();
+    const seen: string[] = [];
+    r.app.keyHooks.add((e: KeyboardEvent) => {
+      seen.push(e.key);
+      return e.key === ' ';
+    });
+    const space = key(' ');
+    r.app.onKey(space);
+    expect(space.preventDefault).toHaveBeenCalled();
+    r.app.onKey(key('c'));
+    expect(seen).toEqual([' ', 'c']);
+    expect(r.app.setCutaway).toHaveBeenCalledTimes(1);
+  });
+
+  it('sürükleme sürerken tuş kancası çağrılmaz', () => {
+    const r = rig({ cancel: true });
+    const hook = vi.fn(() => true);
+    r.app.keyHooks.add(hook);
+    r.handles.dragging = 'frontTip';
+    r.app.onKey(key('Escape'));
+    expect(hook).not.toHaveBeenCalled();
   });
 });
 
@@ -352,7 +384,7 @@ describe('mod değişince bildirimler temizlenir', () => {
       catalogSlot: 'turbofan',
       cockpit: { flash() {} },
       sim: { reset() {} },
-      envName: 'Test hücresi',
+      environment: { inCell: true, cell: null },
       cutaway: false,
       mirrorWorkshopViews() {},
       enterWorkshopScene() {},

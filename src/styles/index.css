@@ -1,0 +1,19 @@
+/* =====================================================================
+   Turbofan Akademi — arayüz stilleri (Dalga 0'da styles.css'ten bölündü).
+   Sıra bağlayıcıdır: aynı özgüllükteki kurallarda sonraki kazanır. Her
+   paket yalnız kendi dosyasını değiştirir (docs/UST-SEVIYE-PLANI.md §5);
+   yeni bir bileşen dosyası buraya, sahibinin dosyasından sonra eklenir.
+   ===================================================================== */
+@import './tokens.css';
+@import './base.css';
+/* lesson, cockpit'ten önce: test hücresinin motor özeti `.step-body
+   .engine-summary` iki sınıfı birden taşır, cockpit'teki 12 px kazanmalı */
+@import './lesson.css';
+@import './cockpit.css';
+@import './eicas.css';
+@import './toasts.css';
+@import './menu.css';
+@import './loader.css';
+@import './workshop.css';
+/* 1H (Dalga 1): hızlı test / kabul testi */
+@import './testreport.css';

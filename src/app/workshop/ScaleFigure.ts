@@ -37,6 +37,7 @@
  * `visible`, `position` (salt okunur), `dispose()`.
  */
 
+import { FIGURE, FONT } from '../../ui/palette';
 import * as THREE from 'three';
 import type { BuiltEngine } from '../../design/graph';
 import { meridionalOutline, outlineBounds } from '../../design/outline';
@@ -107,11 +108,11 @@ function labelSprite(text: string, color: THREE.Color): THREE.Sprite | null {
   c.height = 48;
   const g = c.getContext('2d');
   if (!g) return null;
-  g.font = '600 26px Inter, "Segoe UI", Arial, sans-serif';
+  g.font = `600 26px ${FONT.ui}`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.lineWidth = 6;
-  g.strokeStyle = 'rgba(6, 9, 13, 0.85)';
+  g.strokeStyle = FIGURE.labelStroke;
   g.strokeText(text, 64, 25);
   g.fillStyle = `#${color.getHexString()}`;
   g.fillText(text, 64, 25);
@@ -444,7 +445,7 @@ export class ScaleFigure {
     this.group.name = 'scaleFigure';
     this.geo = new THREE.ShapeGeometry(figureShapes(), 6);
     this.mat = new THREE.MeshBasicMaterial({
-      color: cssColor('--muted', '#7b8a99'),
+      color: cssColor('--muted', FIGURE.muted),
       transparent: true,
       opacity: 0.82,
       side: THREE.DoubleSide,
@@ -452,7 +453,7 @@ export class ScaleFigure {
     });
     this.muted.copy(this.mat.color);
     this.body = new THREE.Mesh(this.geo, this.mat);
-    this.edgeMat = new THREE.LineBasicMaterial({ color: cssColor('--ink', '#e8eef4'), transparent: true, opacity: 0.85, depthWrite: false });
+    this.edgeMat = new THREE.LineBasicMaterial({ color: cssColor('--ink', FIGURE.ink), transparent: true, opacity: 0.85, depthWrite: false });
     this.edgeMat.toneMapped = false;
     for (const sh of figureShapes()) {
       const g = new THREE.BufferGeometry().setFromPoints(sh.getPoints(12).map((v) => new THREE.Vector3(v.x, v.y, 0.002)));
@@ -463,14 +464,14 @@ export class ScaleFigure {
     }
     this.body.name = 'scaleFigureBody';
     this.group.add(this.body);
-    this.label = labelSprite('1,8 m', cssColor('--ink', '#e8eef4'));
+    this.label = labelSprite('1,8 m', cssColor('--ink', FIGURE.ink));
     if (this.label) {
       // Başın yanında (üstünde motorun altına girip örtülürdü)
       this.label.position.set(LABEL_X, FIGURE_HEIGHT - 0.12, 0);
       this.group.add(this.label);
     }
     const lineMat = new THREE.LineDashedMaterial({
-      color: cssColor('--muted', '#7b8a99'),
+      color: cssColor('--muted', FIGURE.muted),
       transparent: true,
       opacity: 0.55,
       dashSize: 0.12,

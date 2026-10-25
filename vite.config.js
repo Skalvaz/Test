@@ -18,6 +18,9 @@ export default defineConfig(({ mode }) => ({
   // test dosyaları ana kopyanın koşusuna karışmasın. oyunlar/ ayrı projelerdir.
   test: {
     exclude: ['**/node_modules/**', '**/.git/**', '.claude/**', 'oyunlar/**'],
+    // Bileşen CSS'leri `?raw` ile okunabilsin (src/styles/cascade.test.ts);
+    // vitest öbür CSS'leri boş modül yapar
+    css: { include: [/src\/styles\/[\w-]+\.css/] },
   },
   build: mode === 'single' || process.env.SINGLE === '1'
     ? {

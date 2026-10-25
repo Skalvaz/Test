@@ -12,6 +12,7 @@
  * Hata durumunda son geçerli tasarım gösterilir ("son geçerli" rozeti).
  */
 
+import { MASS_COLORS } from '../../ui/palette';
 import type { Finding } from '../../design/core/rules';
 import { diffSummary, explainDelta, fmtNum, fmtSci, type DesignSummary, type LimitGauge } from '../../design/summary';
 import type { WorkshopStore, WorkshopState } from '../../workshop/store';
@@ -40,7 +41,6 @@ export const MASS_NAMES: Record<string, string> = {
   // Entegrasyon (dalga 2): şablon kütle kalemlerinin eksik adları (şeritte İngilizce anahtar görünüyordu)
   exhaust: 'Egzoz', fanCase: 'Fan muhafazası', jetPipe: 'Jet borusu', outputShaft: 'Çıkış mili',
 };
-const MASS_COLORS = ['#2ee6d6', '#3d9bff', '#8b7bff', '#ff5cf0', '#ff7a45', '#ffb020', '#d9e36b', '#3ddc84', '#7b8a99', '#c47bff', '#4fd1ff', '#ff4d3d'];
 
 const SEV_LABEL: Record<Finding['severity'], string> = { warning: 'Kırmızı', caution: 'Amber', info: 'Bilgi' };
 
@@ -96,6 +96,14 @@ export class ResultsPanel {
   private detailsBody: HTMLDivElement;
   private body: HTMLDivElement;
   private foot: HTMLDivElement;
+  /**
+   * Eylem satırı ("Test hücresinde çalıştır"): 1H'nin "Hızlı test" ve "Kabul
+   * testi" düğmeleri buraya eklenir (src/app/workshop/TestReport.ts; App
+   * kanca isteğiyle bağlar). Satır düzenleme evresinde görünür.
+   */
+  get actionRow(): HTMLDivElement {
+    return this.foot;
+  }
   /** Önceki güncellemedeki Uzman kipi: Ayrıntılar yalnız kipe geçişte açılır */
   private expertWas = false;
   /** "Neden?" açıklamasının kıyas çifti (tasarım değişince yeniden yazılır) */

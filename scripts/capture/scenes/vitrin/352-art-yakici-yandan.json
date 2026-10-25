@@ -1,0 +1,55 @@
+{
+  "id": "352-art-yakici-yandan",
+  "desc": "Test hücresi, askeri turbofan tam güç + art yakıcı, yandan (ab.json kadrajı), arayüz gizli; kuru (MIL) varyantı duvar/zemin ışığı kıyası için",
+  "galeri": "352-art-yakici-yandan.png",
+  "kind": "militaryTurbofan",
+  "env": "Test hücresi",
+  "ui": "hidden",
+  "cam": [
+    4.2,
+    0.5,
+    4.4
+  ],
+  "tgt": [
+    0,
+    -0.15,
+    4.6
+  ],
+  "fov": 52,
+  "cut": 0,
+  "setup": "sim.trim(1, 20); sim.controls.reheat = 1; a.advance(4);",
+  "warm": 3,
+  "variants": [
+    {
+      "suffix": "-kuru",
+      "desc": "Aynı kadraj, art yakıcı kapalı (MIL)",
+      "setup": "sim.trim(1, 20); a.advance(4);"
+    }
+  ],
+  "roi": {
+    "alev": [
+      0.16,
+      0.38,
+      0.7,
+      0.55
+    ],
+    "duvar": [
+      0.2,
+      0.05,
+      0.7,
+      0.33
+    ],
+    "zemin": [
+      0.25,
+      0.65,
+      0.65,
+      0.85
+    ],
+    "lule": [
+      0.71,
+      0.35,
+      0.75,
+      0.58
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "id": "360-termal-gece-kesit-kapak",
+  "extends": "360-termal-gece-kesit",
+  "desc": "360 aynısı, kesit kapağı düz yeşil anahtar renginde: kapak maskesi (kızıllık ROI'leri kapağı dışlar)",
+  "setup": "sim.trim(1, 40); a.advance(20); sim.controls.fuelRun = false; sim.controls.throttle = 0; a.advance(1.6); if (a.setCutCapColor) a.setCutCapColor(0x00ff00);",
+  "cleanup": "if (a.setCutCapColor) a.setCutCapColor(null);"
+}

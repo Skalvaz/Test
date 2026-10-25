@@ -1,0 +1,7 @@
+{
+  "id": "322-fan-yakin-taban",
+  "extends": "322-fan-yakin",
+  "desc": "322 tam güç kadrajı, fan kanatları ve dönme bulanıklığı gizli: FFT tabanı (1I: (tam − taban) / (rölanti − taban) ≤ 0,3; dönmeyen yapı ve geniş bantlı taban düşülür)",
+  "setup": "sim.trim(1, 30); a.advance(8); if (a.visual.setRotorBladesHidden) a.visual.setRotorBladesHidden(true); else { a.visual.motionBlur = false; const o = a.visual.root.getObjectByName('fan-blades'); if (o) o.visible = false; }",
+  "cleanup": "if (a.visual.setRotorBladesHidden) a.visual.setRotorBladesHidden(false); else { a.visual.motionBlur = true; const o = a.visual.root.getObjectByName('fan-blades'); if (o) o.visible = true; }"
+}

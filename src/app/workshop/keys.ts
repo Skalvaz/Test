@@ -36,6 +36,21 @@ export function keyOwnedByTarget(t: KeyTarget | null | undefined, key: string): 
   return false;
 }
 
+/**
+ * Metin girişi mi (yazılan her tuş onun): metin/sayı kutusu, çok satırlı
+ * alan, açılır liste, düzenlenebilir içerik. Öncelikli kısayollar (App
+ * `priorityKeyHooks`: Boşluk duraklat, nokta tek adım) yalnız burada
+ * çalışmaz; düğme, onay kutusu ve kaydırıcı odağında çalışır.
+ */
+export function isTextEntry(t: KeyTarget | null | undefined): boolean {
+  if (!t) return false;
+  const tag = t.tagName.toUpperCase();
+  if (tag === 'SELECT' || tag === 'TEXTAREA' || t.isContentEditable) return true;
+  if (tag !== 'INPUT') return false;
+  const type = (t.type ?? 'text').toLowerCase();
+  return type !== 'range' && !PRESS_TYPES.has(type);
+}
+
 /** Değiştiricisiz tuş (Ctrl+C kopyalama kesiti açmasın) */
 export const plainKey = (e: { ctrlKey: boolean; metaKey: boolean; altKey: boolean }): boolean => !e.ctrlKey && !e.metaKey && !e.altKey;
 

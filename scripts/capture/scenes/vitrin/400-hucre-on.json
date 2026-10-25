@@ -1,0 +1,106 @@
+{
+  "id": "400-hucre-on",
+  "desc": "Test hücresi: yolcu turbofanı tam güç, üç çeyrek ön geniş kadraj (galeri 400, havaalanı 401 ile aynı kadraj), arayüz gizli: augmenter tüpü (1F G-06: gövde arka yüzü ayıklanıyor, arka duvar derzleri tüpün içinden görünüyor). Varyantlar: arka-yan kadraj ve augmenter yakın",
+  "galeri": "400-ortam-hucre-on.png",
+  "kind": "turbofan",
+  "env": "Test hücresi",
+  "ui": "hidden",
+  "cam": [
+    8.6,
+    1.3,
+    -8.4
+  ],
+  "tgt": [
+    0,
+    0.1,
+    0.6
+  ],
+  "fov": 40,
+  "cut": 0,
+  "setup": "sim.trim(1, 30); a.advance(8);",
+  "warm": 3,
+  "variants": [
+    {
+      "suffix": "-arka",
+      "desc": "Arka-yan kadraj (galeri 400-ortam-hucre-arka): egzoz, augmenter girişi",
+      "galeri": "400-ortam-hucre-arka.png",
+      "cam": [
+        5.2,
+        0.6,
+        9.8
+      ],
+      "tgt": [
+        0,
+        -0.1,
+        3.2
+      ],
+      "fov": 42,
+      "roi": {
+        "augmenter": [
+          0.0,
+          0.05,
+          0.14,
+          0.9
+        ],
+        "zemin": [
+          0.3,
+          0.8,
+          0.7,
+          0.98
+        ]
+      }
+    },
+    {
+      "suffix": "-augmenter",
+      "desc": "Augmenter yakın: tüpün içi ve arka duvar (1F ölçütü bu karede)",
+      "cam": [
+        4.4,
+        0.6,
+        3.2
+      ],
+      "tgt": [
+        0,
+        -0.2,
+        13.5
+      ],
+      "fov": 40,
+      "roi": {
+        "augmenter": [
+          0.3,
+          0.25,
+          0.7,
+          0.75
+        ]
+      }
+    }
+  ],
+  "roi": {
+    "augmenter": [
+      0.09,
+      0.3,
+      0.28,
+      0.6
+    ],
+    "dudak": {
+      "type": "ring",
+      "cx": 0.617,
+      "cy": 0.529,
+      "rx": 0.0875,
+      "ry": 0.221,
+      "r0": 0.62,
+      "r1": 1.0
+    },
+    "duvar": [
+      0.72,
+      0.05,
+      0.98,
+      0.3
+    ],
+    "zemin": [
+      0.05,
+      0.82,
+      0.3,
+      0.98
+    ]
+  }
+}

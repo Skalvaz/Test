@@ -1,0 +1,26 @@
+{
+  "aciklama": "Vitrin kadraj seti (Dalga 0, T-19): sıra sabittir. Ortamlar bir kez derlensin diye hücre sahneleri önce, havaalanı sahneleri sonra; birikimli saatler (yağmur, rüzgâr tulumu) sıraya bağlı olduğundan karşılaştırmalar hep bütün seti aynı sırayla kaydeder. Yeni sahne hep EN SONA eklenir (öncekilerin kareleri değişmez); Dalga 0 kabul düzeltmesiyle eklenenler: 411 ve 322 FFT tabanları (kanatlar gizli), 400 hücre (augmenter, 1F), 326/360 kapak maskeleri (anahtar renkli kapak). Dalga boyunca set dondurulur.",
+  "boyutlar": [
+    "1280x720",
+    "2560x1440"
+  ],
+  "sahneler": [
+    "010-menu",
+    "314-tam-guc",
+    "322-fan-yakin",
+    "326-kesit",
+    "352-art-yakici-yandan",
+    "353-art-yakici-arkadan",
+    "360-termal-gece-kesit",
+    "511-atolye-hayalet",
+    "401-ogle-on",
+    "404-gunbatimi-on",
+    "411-yagmur-turboprop",
+    "405-gece-on",
+    "411-yagmur-turboprop-taban",
+    "400-hucre-on",
+    "322-fan-yakin-taban",
+    "326-kesit-kapak",
+    "360-termal-gece-kesit-kapak"
+  ]
+}

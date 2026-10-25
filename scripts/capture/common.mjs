@@ -15,13 +15,14 @@ import sharp from 'sharp';
  * D3D11 derlemesi boş önbellekle sahne başına bir dakikayı bulur.
  * --fresh-profile önbelleği silip baştan başlar.
  */
-export async function launchBrowser(flags) {
+export async function launchBrowser(flags, { profile: name = 'capture-profile', args: extra = [] } = {}) {
   const soft = flags.has('--swiftshader');
   const args = soft
-    ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader']
-    : ['--enable-gpu', '--ignore-gpu-blocklist', ...(process.platform === 'win32' ? ['--use-angle=d3d11'] : [])];
-  // node_modules altında: Vite izleyicisi Chrome'un kilitli dosyalarına takılıp çökmesin
-  const profile = path.resolve('node_modules', '.cache', soft ? 'capture-profile-swiftshader' : 'capture-profile');
+    ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', ...extra]
+    : ['--enable-gpu', '--ignore-gpu-blocklist', ...(process.platform === 'win32' ? ['--use-angle=d3d11'] : []), ...extra];
+  // node_modules altında: Vite izleyicisi Chrome'un kilitli dosyalarına takılıp çökmesin.
+  // Ayrı araçlar (vitrin, perf-smoke) kendi profilini kullanır: aynı anda çalışınca kilitlenmesin
+  const profile = path.resolve('node_modules', '.cache', soft ? `${name}-swiftshader` : name);
   if (flags.has('--fresh-profile')) fs.rmSync(profile, { recursive: true, force: true });
   // Kalıcı bağlam: browser.newPage / close ile aynı biçimde kullanılır
   const browser = await chromium.launchPersistentContext(profile, {

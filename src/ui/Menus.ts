@@ -5,6 +5,7 @@ import type { LessonResult } from '../game/LessonRunner';
 import type { Lesson } from '../game/lessons/types';
 import type { Progress, Settings } from '../game/progress';
 import { h, icon } from './dom';
+import { registeredSettings, setSetting, getSetting, SETTING_TABS, type SettingDef, type SettingTab } from '../app/settingsRegistry';
 
 export interface MenuCallbacks {
   onLessons(): void;
@@ -151,6 +152,50 @@ export function seg<T extends string>(options: [T, string][], value: T, onPick: 
   return el;
 }
 
+/** Kayıtlı ayarın denetimi (src/app/settingsRegistry.ts) */
+function settingControl(d: SettingDef): HTMLElement {
+  const c = d.control;
+  if (c.type === 'range') {
+    const out = c.format ? h('span', { class: 'mono', text: c.format(getSetting<number>(d.key)) }) : null;
+    const input = h('input', {
+      attrs: { type: 'range', min: String(c.min), max: String(c.max), step: String(c.step), value: String(getSetting(d.key)), 'aria-label': d.label },
+      style: { width: out ? '130px' : '180px' },
+      on: {
+        input: () => {
+          setSetting(d.key, Number(input.value));
+          if (out && c.format) out.textContent = c.format(getSetting<number>(d.key));
+        },
+      },
+    });
+    return out ? h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } }, [input, out]) : input;
+  }
+  if (c.type === 'toggle') {
+    return seg<'on' | 'off'>([['on', 'Açık'], ['off', 'Kapalı']], getSetting(d.key) ? 'on' : 'off', (v) => setSetting(d.key, v === 'on'));
+  }
+  const sel = h('select', {
+    class: 'btn',
+    style: { width: '180px' },
+    attrs: { 'aria-label': d.label },
+    on: { change: () => setSetting(d.key, sel.value) },
+  }, c.options.map(([v, label]) => h('option', { text: label, attrs: v === getSetting(d.key) ? { value: v, selected: 'true' } : { value: v } })));
+  return sel;
+}
+
+/**
+ * Kayıtlı ayarların satırları, sekme başlıklarıyla (bugün tek sayfada; 1D
+ * sekmeli pencereye geçirir). Kayıtlı ayar yoksa boş.
+ */
+export function registeredSettingRows(row: (label: string, hint: string, control: HTMLElement) => HTMLElement): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  for (const tab of Object.keys(SETTING_TABS) as SettingTab[]) {
+    const list = registeredSettings(tab);
+    if (!list.length) continue;
+    out.push(h('div', { class: 'section-label', text: SETTING_TABS[tab], style: { marginTop: '18px' } }));
+    for (const d of list) out.push(row(d.label, d.hint ?? '', settingControl(d)));
+  }
+  return out;
+}
+
 export interface SettingsCallbacks {
   onQuality(q: Settings['quality']): void;
   onVolume(v: number): void;
@@ -188,6 +233,8 @@ export function settingsModal(
     row('Ortam', 'Gökyüzü, güneş ve ışık', envSelect),
     row('Ses düzeyi', 'Motor sesi tamamen sentezlenir', vol),
     row('Ses', '', seg<'on' | 'off'>([['on', 'Açık'], ['off', 'Kapalı']], current.muted ? 'off' : 'on', (v) => cb.onMute(v === 'off'))),
+    // Paketlerin kayıtlı ayarları (settingsRegistry; bugün yok)
+    ...registeredSettingRows(row),
     h('div', { class: 'section-label', text: 'Kısayollar', style: { marginTop: '18px' } }),
     h('div', {
       class: 'step-body',
