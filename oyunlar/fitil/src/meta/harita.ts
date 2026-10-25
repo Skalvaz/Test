@@ -130,7 +130,7 @@ export const USTA_BOLUMLERI: readonly { ad: string; kural: string }[] = [
   { ad: t('Yalnız Halka', 'Loops Only'), kural: t('Yalnız halkalar geçerli hamledir', 'Only loops count as moves') },
   { ad: t('Dört Yön', 'Four Ways'), kural: t('Çapraz bağlantı yok', 'No diagonal links') },
   { ad: t('Gizli Isı', 'Hidden Heat'), kural: t('Yalnız kızgın kapsüller görünür', 'Only hot capsules show their heat') },
-  { ad: t('Domino', 'Domino'), kural: t('Barut izi ve dev fişek düzeneği, 19 hamle', 'Powder trails and giant fireworks, 19 moves') },
+  { ad: t('Domino', 'Domino'), kural: t('Barut izi ve dev fişek düzeneği, 25 hamle', 'Powder trails and giant fireworks, 25 moves') },
   { ad: t('Dev Sandık', 'Giant Chest'), kural: t('8×10, 6 renk, 3 hedef', '8×10, 6 colors, 3 goals') },
   { ad: t('Çisenti Fırtınası', 'Drizzle Storm'), kural: t('İki çisenti her hamle bir hattı söndürür', 'Two drizzles douse a line every move') },
   { ad: t("Kıvılcım Usta'nın Sınavı", "Master Spark's Trial"), kural: t('Bütün öğeler, 30 hamle', 'Everything at once, 30 moves') },
