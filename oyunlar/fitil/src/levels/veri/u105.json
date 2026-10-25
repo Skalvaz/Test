@@ -5,9 +5,9 @@
  "tur": "usta",
  "w": 8,
  "h": 10,
- "renkSayisi": 5,
+ "renkSayisi": 6,
  "esik": 4,
- "hamle": 19,
+ "hamle": 25,
  "tohum": 3152196360,
  "yardim": 0,
  "ozelEsikleri": [
@@ -98,10 +98,7 @@
   35,
   60
  ],
- "yildizEsikleri": [11200, 14400],
+ "yildizEsikleri": [14200, 17200],
  "devFisekKapasite": 4,
- "bayram": true,
- "kurallar": {
-  "caprazSiniri": 2
- }
+ "bayram": true
 }

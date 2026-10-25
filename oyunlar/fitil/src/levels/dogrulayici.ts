@@ -9,7 +9,8 @@
  * (yükleyici karıştırmadı); `yardim > 0` yalnız id ≤ 20; bant, yıldız
  * eşikleri, ipuçları ve zorunlu ilk hamle tutarlılığı; Bölüm Mühürleri
  * (6–40'ta 3 geçerli koşul, şansa bağlı ≤ 1, kademe sırası, ölçünün nesnesi
- * bölümde ve eşik erişilebilir; docs/KANCALAR.md §A.3).
+ * bölümde ve eşik erişilebilir; docs/KANCALAR.md §A.3); elle yapılmış (ana
+ * ve Usta) bölümlerde görünmeyen kural yok (K21, 24 Ekim 2026).
  *
  * P4a yorumları (§ atıflı):
  *  - Eşik 2 yalnız Usta bölümünde (K1); diğerlerinde 3–5.
@@ -21,6 +22,11 @@
  *    (fener doğumu varsa) dolum alabilen her sütun `cikislar` içinde olmalı.
  *  - Başlangıç kilitsizliği: yükleyici kilitli ilk tahtayı karıştırır
  *    (§8.1 adım 4); tasarlanmış düzen bozulmasın diye karıştırma hata sayılır.
+ *  - K21 (ürün sahibi kararı, 24 Ekim 2026): ana ve Usta bölümlerinde
+ *    `kurallar.caprazSiniri` tanımlanamaz, `ozelEsikleri`'nin her öğesi 0 ya
+ *    da standart değer (6 / 9 / 12) olur. İkisi de oyuncuya gösterilmeyen
+ *    kural değişikliğidir. Şema ve bot desteği kalır (çekirdek testleri,
+ *    deneme varyantları); günlük ve sonsuz üretimi bu denetimin dışında.
  */
 import { bolumuYukle, kilitliMi } from '../core/index';
 import type { BolumVerisi, Hedef, OyunDurumu } from '../core/index';
@@ -30,6 +36,10 @@ const TURLER = ['ogretim', 'tanitim', 'normal', 'zor', 'rahatlama', 'final', 'us
 const MOTIFLER = ['lale', 'kayik', 'mart', 'fener', 'carkifelek', 'burc'] as const;
 const TETIKLER = ['baslangic', 'ilkHamleSonrasi', 'bosta5sn', 'kisaYol', 'kazanc'] as const;
 const KAPSUL_SIMGE = new Set(['.', 'C', 'W']);
+/** Standart özel taş eşikleri (K3): roket / kasımpatı / yıldız topu. */
+const STANDART_OZEL_ESIK = [6, 9, 12] as const;
+/** K21 hata gerekçesi (oyuncuya görünmeyen kural yasağı). */
+const K21_GEREKCE = 'oyuncuya görünmeyen kural; ürün sahibi kararı 24 Ekim 2026, K21';
 
 function tamsayi(x: unknown): x is number {
   return typeof x === 'number' && Number.isInteger(x);
@@ -50,6 +60,8 @@ export function bolumDogrula(v: BolumVerisi): string[] {
     h.push(m);
   };
   const usta = v.tur === 'usta';
+  // Elle yapılmış bölüm (ana 1–40 ve Usta): günlük/sonsuz üretici çıktısı değil.
+  const elYapimi = v.tur !== 'gunluk' && v.tur !== 'sonsuz';
 
   // Kimlik ve tür.
   if (!TURLER.includes(v.tur)) hata(`tür geçersiz: ${v.tur}`);
@@ -78,6 +90,10 @@ export function bolumDogrula(v: BolumVerisi): string[] {
     const acik = v.ozelEsikleri.filter((e) => e !== 0);
     if (!v.ozelEsikleri.every((e) => e === 0 || aralikta(e, 3, 99))) hata(`ozelEsikleri 0 ya da ≥ 3: ${v.ozelEsikleri}`);
     for (let k = 1; k < acik.length; k++) if (acik[k] <= acik[k - 1]) hata(`ozelEsikleri artan olmalı: ${v.ozelEsikleri}`);
+    if (elYapimi)
+      v.ozelEsikleri.forEach((e, k) => {
+        if (e !== 0 && e !== STANDART_OZEL_ESIK[k]) hata(`ozelEsikleri[${k}] ${e}: yalnız 0 ya da ${STANDART_OZEL_ESIK[k]} (${K21_GEREKCE})`);
+      });
   }
   if (v.dogumAgirliklari) {
     const a = v.dogumAgirliklari;
@@ -183,6 +199,8 @@ export function bolumDogrula(v: BolumVerisi): string[] {
   if (v.korukKapasitesi !== undefined && !aralikta(v.korukKapasitesi, 0, 99)) hata(`korukKapasitesi: ${v.korukKapasitesi}`);
   const kur = v.kurallar ?? {};
   if (kur.caprazSiniri != null && !aralikta(kur.caprazSiniri, 0, 99)) hata(`caprazSiniri: ${kur.caprazSiniri}`);
+  // `null` da varsayılanla aynı olsa anahtarın kendisi yasak: bölüm verisinde iz kalmasın.
+  if (elYapimi && kur.caprazSiniri !== undefined) hata(`caprazSiniri tanımlı (${kur.caprazSiniri}): ${K21_GEREKCE}`);
   if (kur.soguma !== undefined && !aralikta(kur.soguma, 0, 99)) hata(`soguma: ${kur.soguma}`);
 
   // Hedefler (§6): 1..3 ve nesnesi tahtada.

@@ -61,13 +61,30 @@ describe('bölüm listesi (levels/index.ts)', () => {
 });
 
 describe('statik doğrulayıcı (§16.5)', () => {
+  // K21 (24 Ekim 2026) kararını henüz karşılamayan, ürün sahibi kararı
+  // bekleyen bölümler: yalnız beklenen K21 hatasını verir. Bölüm
+  // düzeltilince bu test kırılır; o zaman girdiyi sil (bölüm "temiz" olur).
+  const K21_BEKLEYEN = new Map<number, string>([[10, 'caprazSiniri tanımlı']]);
   for (const v of TUM_BOLUMLER) {
+    const bekleyen = K21_BEKLEYEN.get(v.id);
+    if (bekleyen) {
+      it(`bölüm ${v.id} "${v.ad}": yalnız K21 hatası (karar bekliyor)`, () => {
+        const h = bolumDogrula(v);
+        expect(h).toHaveLength(1);
+        expect(h[0]).toContain(bekleyen);
+      });
+      continue;
+    }
     it(`bölüm ${v.id}${v.taslak ? ' (taslak)' : ''} "${v.ad}" temiz`, () => {
       expect(bolumDogrula(v)).toEqual([]);
     });
   }
 
-  const taban = bolumGetir(10)!;
+  // Taban: bölüm 10, K21 karar bekleyen gizli çapraz sınırı olmadan.
+  const b10 = bolumGetir(10)!;
+  const kurallarB10 = { ...b10.kurallar };
+  delete kurallarB10.caprazSiniri;
+  const taban: BolumVerisi = { ...b10, kurallar: kurallarB10 };
   const bozuk = (ek: Partial<BolumVerisi>): string[] => bolumDogrula({ ...taban, ...ek });
   const icerir = (h: string[], parca: string): boolean => h.some((m) => m.includes(parca));
 
@@ -136,6 +153,53 @@ describe('statik doğrulayıcı (§16.5)', () => {
   it('bant %35 altına inemez, yıldız eşikleri sıralı', () => {
     expect(icerir(bozuk({ botBandi: [30, 50] }), "%35'in altında")).toBe(true);
     expect(icerir(bozuk({ yildizEsikleri: [5000, 4000] }), 'yildizEsikleri')).toBe(true);
+  });
+
+  it('K21: ana ve Usta bölümlerinde gizli çapraz sınırı yok (24 Ekim 2026)', () => {
+    expect(bozuk({})).toEqual([]);
+    for (const c of [0, 1, 2, 6, null]) {
+      const h = bozuk({ kurallar: { caprazSiniri: c } });
+      expect(icerir(h, 'caprazSiniri tanımlı'), `caprazSiniri ${c}`).toBe(true);
+      expect(icerir(h, 'oyuncuya görünmeyen kural; ürün sahibi kararı 24 Ekim 2026'), `caprazSiniri ${c}`).toBe(true);
+    }
+    // Görünür yedek düğme soğuma serbest.
+    expect(bozuk({ kurallar: { soguma: 3 } })).toEqual([]);
+    // Usta bölümünde de yasak (Usta kuralları açık kalır).
+    const u = bolumGetir(104)!;
+    expect(bolumDogrula(u)).toEqual([]);
+    expect(icerir(bolumDogrula({ ...u, kurallar: { ...u.kurallar, caprazSiniri: 2 } }), 'caprazSiniri tanımlı')).toBe(true);
+    expect(bolumDogrula({ ...bolumGetir(102)! })).toEqual([]);
+  });
+
+  it('K21: özel taş eşikleri yalnız 0 ya da standart 6 / 9 / 12', () => {
+    for (const oz of [[6, 0, 0], [6, 9, 0], [6, 9, 12], [0, 9, 12], [6, 0, 12], [0, 0, 12]] as [number, number, number][])
+      expect(icerir(bozuk({ ozelEsikleri: oz }), 'ozelEsikleri'), String(oz)).toBe(false);
+    const yanlis: [[number, number, number], string][] = [
+      [[7, 9, 12], 'ozelEsikleri[0] 7: yalnız 0 ya da 6'],
+      [[6, 11, 14], 'ozelEsikleri[1] 11: yalnız 0 ya da 9'],
+      [[6, 9, 13], 'ozelEsikleri[2] 13: yalnız 0 ya da 12'],
+      [[5, 0, 0], 'ozelEsikleri[0] 5'],
+      [[0, 6, 0], 'ozelEsikleri[1] 6'],
+      [[9, 12, 0], 'ozelEsikleri[0] 9'],
+    ];
+    for (const [oz, parca] of yanlis) {
+      const h = bozuk({ ozelEsikleri: oz });
+      expect(icerir(h, parca), `${oz}: ${h.join('; ')}`).toBe(true);
+      expect(icerir(h, 'oyuncuya görünmeyen kural'), String(oz)).toBe(true);
+    }
+    // [6, 11, 14] iki öğede de hata verir.
+    expect(bozuk({ ozelEsikleri: [6, 11, 14] }).filter((m) => m.includes('ozelEsikleri[')).length).toBe(2);
+    expect(icerir(bolumDogrula({ ...bolumGetir(105)!, ozelEsikleri: [6, 9, 14] }), 'ozelEsikleri[2] 14')).toBe(true);
+  });
+
+  it('K21 günlük ve sonsuz üretimine uygulanmaz (şema ve bot desteği kalır)', () => {
+    // yardım 0: günlük/sonsuzda yardım > 0 hatası denetimi erken bitirmesin.
+    for (const ek of [{ tur: 'gunluk' as const, id: 20261024 }, { tur: 'sonsuz' as const, id: 1_000_001 }]) {
+      const temel = { ...ek, yardim: 0, muhurler: undefined };
+      expect(bozuk(temel), ek.tur).toEqual([]);
+      expect(bozuk({ ...temel, kurallar: { caprazSiniri: 2 } }), ek.tur).toEqual([]);
+      expect(bozuk({ ...temel, ozelEsikleri: [7, 10, 14] }), ek.tur).toEqual([]);
+    }
   });
 
   it('eşik kuralı (K24) yalnız k24 ve elle eşikle birlikte değil', () => {

@@ -204,10 +204,15 @@ yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
 - Ölçütler `src/bot/olcut.ts` (§16.5): bant, yakın kaçış, R medyan/p90/p99,
   zincir medyanı, özel sıklığı, ısı, süre 60–180 sn. Öğretimde dağılım
   ölçütleri muaf (gerekçe dosyada).
+- Görünmeyen kural YOK (GDD K21, ürün sahibi kararı 24 Ekim 2026): ana ve
+  Usta bölümlerinde `kurallar.caprazSiniri` tanımlanmaz, `ozelEsikleri`'nin
+  her öğesi 0 ya da standart (6 / 9 / 12); doğrulayıcı ikisine de hata verir.
+  Şema ve bot desteği kalır (çekirdek testleri, deneme varyantları).
 - Büyük reaksiyonlar neredeyse hep özel taş ateşlemesinden gelir; p90/p99
-  aşılırsa K21 yedek düğmesi `kurallar.soguma` (6, 9, 10: 3; 8: 4),
-  uzun zincir/roket fazlaysa `caprazSiniri`. Tohum değişince kazanma oranı
-  %15'e kadar oynar; yükleyici ilk tahtayı karıştırırsa doğrulayıcı hata verir.
+  aşılırsa yedek düğme `kurallar.soguma` (6, 8, 13: 3; 9, 17: 4; 16, 40: 2;
+  12, 14: 1), uzun zincir/roket fazlaysa 6. renk (aşağıda "K21"). Tohum
+  değişince kazanma oranı %15'e kadar oynar; yükleyici ilk tahtayı
+  karıştırırsa doğrulayıcı hata verir.
 - Usta ağırlıkları `src/bot/agirliklar.json` (GDD değerlerinden sapma ve
   gerekçesi dosyada). Ağırlık değişirse bütün bölümler yeniden doğrulanmalı.
 - İlk oturum (GDD K22, K23, K24): öğretimin (1–5) yıldız eşikleri elle
@@ -224,7 +229,8 @@ yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
   `--acemi --acemi-tohum 60` ile ölç. 26–30 de Acemi'ye göre ayarlı ve K24
   eşikli (Ekim 2026; eskiden Acemi 27 %13, 28 %11, 29 %32, 30 %3): 27 hamle
   26, 28 hamle 25 + Körük 14, 29 hamle 24 + 40/40, 30 dev fişek 2 + desen
-  hücrelerine ön ısı 2 + doğum [5,5,3,3,3,3] + `ozelEsikleri` [6,9,13]; Usta
+  hücrelerine ön ısı 2 + doğum [5,5,3,3,3,3] + yıldız topu kapalı ([6,9,0],
+  Körük 12, ilk tahta tohumu 132; K21'den önce [6,9,13] + `caprazSiniri` 2); Usta
   bantları yeni kurala çekildi (normal [85,100], zor [60,85]). Ölçüm (0–99 ve
   5000+): Acemi 26 ~%50, 27 ~%40, 28 ~%36, 29 ~%90, 30 ~%13; Usta 30 %77–88.
   Mühürler yeniden ölçüldü (2000+, 6000+ hepsi bantta). 31–40 Acemi'ye göre
@@ -232,8 +238,8 @@ yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
 - Deneyerek bulundu (30): desen hedefinde Acemi'yi yükselten tek düğme desen
   hücrelerine ön ısı (2); doğumu hedef renklerine kaydırmak ([5,5,2,…])
   Acemi'yi artırır ama reaksiyon p90'ı 15–19'a, yıldız özelini %9'a çıkarır;
-  `ozelEsikleri` 13 yıldızı keser ama Usta'yı düşürür, ön ısıyla birlikte
-  dengeler. Hamle azaltmak dev fişek 2'de Usta'yı neredeyse değiştirmez.
+  yıldızı kesmek Usta'yı düşürür, ön ısıyla birlikte dengeler (K21: yıldız
+  ya 12'de ya kapalı, [6,9,0]; 13 gibi ara eşik yok). Hamle azaltmak dev fişek 2'de Usta'yı neredeyse değiştirmez.
 - Deneyerek bulundu: `soguma` Acemi'yi en çok cezalandıran düğmedir (ısı
   şansını siler); kaldırmak Acemi'yi 3–5 kat artırır ama reaksiyon p90'ı 14'ü
   aşar. Süre ≥ 60 sn ≈ Usta'nın ≥ 15 hamlede kazanması: hedef adedini çok
@@ -247,7 +253,8 @@ yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
   hamle oranı: kaya ~3, `topla` hepsi ~1,6, fener (ısısız) Acemi'de neredeyse
   hiç biter. Fener + kaya zorunda Acemi'ye şans veren tek düzen: fenerlerin
   altındaki sıralar ön ısılı (2) ve `soguma` kapalı (her soğuma Acemi'yi
-  sıfırlar); `caprazSiniri` 2 Usta'yı Acemi'den çok yavaşlatır. Kaya
+  sıfırlar); K21'den önce `caprazSiniri` 2 Usta'yı Acemi'den çok
+  yavaşlatıyordu (artık yasak). Kaya
   çıkarınca reaksiyon p90 artar (kaya ısıyı keser). Dev fişeği yukarı
   taşımak p90'ı 18–22'ye çıkarır; bunun yerine "M dev fişekten N'si" hedefi.
   Bayramda düşük Körük kapasitesi (12) Acemi'yi en çok yükselten düğme;
@@ -257,22 +264,44 @@ yöntemler JS'ten çağrılır, ör. `gokFisegi()`, `gokKivilcimi(x, y, renk)`,
   bağımsız örneklere döner, 60 tohumda ±%5 oynar.
 - Deneyerek bulundu (20–25): barut izini Acemi'nin yakamadığı kenar/köşe
   döşemelerinden geçirmek yeni öğeyi hedefin merkezine koyar (b21). Bir
-  bölümde `soguma` 3, Acemi'yi %5–28'e düşürürken `caprazSiniri` 3 reaksiyon
-  p90'ını Acemi'yi ezmeden sınırlar. Acemi'de sağ–sol asimetrisi var (sağ
+  bölümde `soguma` 3 Acemi'yi %5–28'e düşürür (K21'den önce `caprazSiniri` 3
+  p90'ı Acemi'yi ezmeden sınırlıyordu; b21'de yerini ilk tahta tohumu ve
+  Körük 16 aldı). Acemi'de sağ–sol asimetrisi var (sağ
   kenar hedefleri daha sık kalır; bot artefaktı). Zor bölümde Acemi p50'si
   (K24 2★) için 60 tohum yetmez (~6 kazanç): 200+ tohum. b24, b25'te Acemi
   kazanç p50'si Usta p50'sinden yüksek (geç kazanıp çok puan toplar).
 - Bağımsız denetim (tohum 3000+, 300 tohum): zor bölümde Usta oranı tohum
   kümesine göre ±5 puan oynar (b25: 0–99 %78, 3000+ %87, 5000+ %86, 7000+
   %79, kalibre 0–499 %80; birleşik ~%82, Acemi ~%10); sınırda karar vermeden 2–3
-  bağımsız küme birleştir. `caprazSiniri` mutlak puanda Usta'yı çok düşürür ama oranca
-  Acemi'yi daha çok düşürür (b25 `caprazSiniri` 2: Usta 86 → 63, Acemi 10 → 4;
-  b14 3 → 2: Acemi 49 → 35); zorda Usta–Acemi bağını gevşetmez. b25'te 4
+  bağımsız küme birleştir. K21 öncesi ölçüm: `caprazSiniri` mutlak puanda Usta'yı
+  çok düşürür ama oranca Acemi'yi daha çok düşürürdü (b25 `caprazSiniri` 2: Usta
+  86 → 63, Acemi 10 → 4; b14 3 → 2: Acemi 49 → 35). b25'te 4
   yerine 3 fener: 24 hamlede Acemi +1,5 puan (Usta aynı), 25 hamlede Acemi
   +6 ama Usta ~%86 (değiştirilmedi). b14 reaksiyon p90'ı tohum kümesine göre
   13–15 (sınır 14). Acemi kazanç puanları dar dağılır (p40–p50 arası
   150–300 puan): K24'ün 2★'ı (Acemi p50) bağımsız tohumlarda Acemi
   kazançlarının %38–64'ünü en az 2★ yapar.
+- Deneyerek bulundu (K21, gizli çapraz sınırı 14 bölümden kalkınca): çapraz
+  serbestken Usta hızlanır (U4 %63, U8 %80, b37 %100), zincir, roket ve
+  büyük reaksiyon artar. İşe yarayan görünür düğmeler: 6. renk (17, 19, 37,
+  U4, U5; 12'de 4 → 5) zinciri kısaltır, roketi ve p90'ı düşürür; seyrek
+  altıncı renk (doğum [8,8,8,8,8,1], [4,4,4,4,4,1]) eşit 6 renkten yumuşak
+  (b19 eşit 6 renkte roket %33, sınıra yakın); kazancı hamleyle ayarla (U5
+  19 → 25, U4 20 → 22, b37 24 → 25; fazlaysa U8 30 → 25). Zor bölümde
+  Usta'yı düşürüp Acemi'yi koruyan doğum dağılımı (b15 [4,4,4,3,3] + hamle
+  −1); hamle kesmek Acemi'yi, 6 renk ikisini birden ezer. Büyük reaksiyon
+  açılıştaki hazır zincirden geliyorsa ilk tahta tohumunu tara (b21 124,
+  b30 132; ipucunda el yolu olmamalı), Körük'ü küçült (21: 16, 30: 12, 40:
+  14), sabit kapsülü kaldırıp hazır yıldız zincirini böl (b40); tutmazsa
+  yıldız topunu kapat ([6,9,0]: 26, 30). Soğumayı seyreltmek (b17 2 → 4)
+  Acemi'ye ısı şansı verir; tek kaya eklemek uzun zinciri böler (b14).
+  Tutmayanlar: 5 renkli b10'da ~70 varyant (kafes ön ısısı, soğuma 3–12,
+  yardım, kenar/köşe/döşeme ön ısısı, kafes sayısı, delikler; Usta [70, 85]
+  iken Acemi %0–15 ya da süre < 60 sn ya da p90/p99 aşımı); b30'da [6,9,12]
+  ile doğum, ön ısı, soğuma 2–4, dev fişek ve 60 tohum (p90 16–19); U5'te
+  roketi kapatmak geçer ama oyun hissini bozar; U8'de eşit doğum (p90 16),
+  6 renk (Usta %20). Usta mühürü "Tek hamlede N desen" çapraz serbestken
+  basamaklı (b26: 8'de %32, 9'da %0; eşikle ara değer yok).
 
 ## Kanca arayüzü (Mühürler + Kasaba; docs/KANCALAR.md §C)
 

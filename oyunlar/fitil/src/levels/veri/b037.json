@@ -5,9 +5,9 @@
  "tur": "normal",
  "w": 8,
  "h": 10,
- "renkSayisi": 5,
+ "renkSayisi": 6,
  "esik": 4,
- "hamle": 24,
+ "hamle": 25,
  "tohum": 2166611676,
  "yardim": 0,
  "ozelEsikleri": [
@@ -94,12 +94,9 @@
   65,
   80
  ],
- "yildizEsikleri": [11800, 14400],
+ "yildizEsikleri": [12000, 14400],
  "sonrakiTanitim": "Sıradaki: Sur Feneri!",
- "kurallar": {
-  "caprazSiniri": 2
- },
- "devFisekKapasite": 6,
+ "devFisekKapasite": 7,
   "muhurler": [
     {"olcu": "devFisek", "kapsam": "hamle", "enAz": 2},
     {"olcu": "ozelAtes", "kapsam": "oyun", "enAz": 4},
