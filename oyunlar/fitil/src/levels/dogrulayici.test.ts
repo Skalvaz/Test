@@ -44,7 +44,7 @@ describe('bölüm listesi (levels/index.ts)', () => {
       [7, 7, 9, 5],
       [8, 7, 8, 5],
       [9, 7, 9, 5],
-      [10, 7, 9, 5],
+      [10, 7, 9, 6], // K21 (24 Ekim 2026): çapraz sınırı yerine 6 renk
     ];
     for (const [id, w, h, r] of tablo) {
       const v = bolumGetir(id)!;
@@ -64,7 +64,7 @@ describe('statik doğrulayıcı (§16.5)', () => {
   // K21 (24 Ekim 2026) kararını henüz karşılamayan, ürün sahibi kararı
   // bekleyen bölümler: yalnız beklenen K21 hatasını verir. Bölüm
   // düzeltilince bu test kırılır; o zaman girdiyi sil (bölüm "temiz" olur).
-  const K21_BEKLEYEN = new Map<number, string>([[10, 'caprazSiniri tanımlı']]);
+  const K21_BEKLEYEN = new Map<number, string>();
   for (const v of TUM_BOLUMLER) {
     const bekleyen = K21_BEKLEYEN.get(v.id);
     if (bekleyen) {
@@ -109,8 +109,9 @@ describe('statik doğrulayıcı (§16.5)', () => {
     const duzen = [...taban.duzen];
     duzen[6] = 'K1 . . . . . .';
     expect(icerir(bozuk({ duzen }), 'döşeme kapsül hücresinde değil (0,6)')).toBe(true);
-    const zemin = { desen: { motif: 'lale' as const, hucreler: [[0, 0, 5]] as [number, number, number][] } };
-    expect(icerir(bozuk({ zemin }), 'desen rengi 5')).toBe(true);
+    const r = taban.renkSayisi;
+    const zemin = { desen: { motif: 'lale' as const, hucreler: [[0, 0, r]] as [number, number, number][] } };
+    expect(icerir(bozuk({ zemin }), `desen rengi ${r}`)).toBe(true);
   });
 
   it('hedefin nesnesi tahtada olmalı', () => {
