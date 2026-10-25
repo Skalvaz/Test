@@ -4,7 +4,7 @@
  *
  *   node scripts/visual-metrics.mjs <küme> [--compare <referans-küme>] [--out sonuç.json]
  *        [--overlay <klasör>] [--gate 0.995] [--exact | --max-changed N] [--changed-tol 2.5]
- *        [--exclude-nan] [--only id,…] [--sizes 1280x720,…]
+ *        [--exclude-nan] [--only id,…] [--sizes 1280x720,…] [--set vitrin|arayuz|hepsi]
  *
  * <küme>: scripts/capture/vitrin.mjs çıktısı (<küme>/<GxY>/<sahne>.png ve
  * <sahne>.json). ROI'ler sahne tanımlarından (scripts/capture/scenes/vitrin,
@@ -57,6 +57,9 @@
  * `summary.errors`) kapıdan geçemez. --max-changed N: herhangi bir karede
  * (vitrin ve arayüz) changedPx > N ise çıkış kodu 1; --exact = N 0
  * ("görüntü değişmez" adımları: CSS bölmesi, sözleşme taşımaları).
+ * --set: yalnız vitrin kareleri ya da yalnız arayüz kümesi (varsayılan ikisi);
+ * ayrı kapılar için: vitrin --set vitrin --max-changed 0, arayüz --set arayuz
+ * --gate 0.995 --max-changed 200 (arayüz gürültü tabanı kare başına ≤ 141 px).
  * --overlay: ROI'leri kare üstüne çizip <klasör>/<GxY>/<sahne>.png yazar
  * (ROI yerleşimini göz ile doğrulamak için).
  */
@@ -757,10 +760,13 @@ async function writeOverlay(file, out, rois, w, h) {
 const listPng = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.png')).sort() : []);
 const sizeDirs = (root) => (fs.existsSync(root) ? fs.readdirSync(root).filter((d) => /^\d+x\d+$/.test(d)).sort() : []);
 
-export async function measureSet(root, { ref = null, overlay = null, only = null, sizes = null, excludeNan = false, changedTol = 2.5 / 255 } = {}) {
+export async function measureSet(root, { ref = null, overlay = null, only = null, sizes = null, excludeNan = false, changedTol = 2.5 / 255, part = 'hepsi' } = {}) {
   const scenes = loadScenes();
   const frames = {};
-  for (const size of sizeDirs(root)) {
+  // part: 'vitrin' yalnız vitrin kareleri, 'arayuz' yalnız arayüz kümesi, 'hepsi' ikisi
+  const doVitrin = part !== 'arayuz';
+  const doUi = part !== 'vitrin';
+  for (const size of doVitrin ? sizeDirs(root) : []) {
     if (sizes && !sizes.includes(size)) continue;
     for (const f of listPng(path.join(root, size))) {
       const id = f.slice(0, -4);
@@ -835,7 +841,7 @@ export async function measureSet(root, { ref = null, overlay = null, only = null
   }
   // Referansta olup kümede olmayan kareler (kayıt yarıda kaldı, sahne
   // düştü): kapı bunları sessizce geçmesin
-  if (ref) {
+  if (ref && doVitrin) {
     for (const size of sizeDirs(ref)) {
       if (sizes && !sizes.includes(size)) continue;
       for (const f of listPng(path.join(ref, size))) {
@@ -847,7 +853,7 @@ export async function measureSet(root, { ref = null, overlay = null, only = null
   }
   // Arayüz kümesi: yalnız karşılaştırma
   const ui = {};
-  if (ref) {
+  if (ref && doUi) {
     for (const size of new Set([...sizeDirs(path.join(ref, 'arayuz')), ...sizeDirs(path.join(root, 'arayuz'))])) {
       for (const f of listPng(path.join(ref, 'arayuz', size))) {
         if (!fs.existsSync(path.join(root, 'arayuz', size, f))) ui[`${size}/${f.slice(0, -4)}`] = { hata: 'kümede kare yok' };
@@ -871,6 +877,18 @@ export async function measureSet(root, { ref = null, overlay = null, only = null
   return { frames, ui };
 }
 
+/** Karşılaştırılan bütün kareler (vitrin + arayüz), değişen piksel sayısına göre azalan */
+export function changedRowsOf({ frames, ui }) {
+  return [
+    ...Object.entries(frames)
+      .filter(([, r]) => r.diff)
+      .map(([k, r]) => ({ kare: k, changedPx: r.diff.changedPx, maxAbs: r.diff.maxAbs })),
+    ...Object.entries(ui)
+      .filter(([, v]) => v.diff)
+      .map(([k, v]) => ({ kare: `arayuz/${k}`, changedPx: v.diff.changedPx, maxAbs: v.diff.maxAbs })),
+  ].sort((a, b) => b.changedPx - a.changedPx);
+}
+
 function summarize({ frames, ui }) {
   const rows = [];
   for (const [k, r] of Object.entries(frames)) {
@@ -883,14 +901,7 @@ function summarize({ frames, ui }) {
     .map(([k, v]) => ({ kare: k, ssim: Math.min(v.ssim, v.ssimRgb ?? 1), changed: v.diff.changed, changedPx: v.diff.changedPx }))
     .sort((a, b) => a.ssim - b.ssim);
   // Değişen piksel sayısı (vitrin + arayüz): --exact / --max-changed kapısı
-  const changedRows = [
-    ...Object.entries(frames)
-      .filter(([, r]) => r.diff)
-      .map(([k, r]) => ({ kare: k, changedPx: r.diff.changedPx, maxAbs: r.diff.maxAbs })),
-    ...Object.entries(ui)
-      .filter(([, v]) => v.diff)
-      .map(([k, v]) => ({ kare: `arayuz/${k}`, changedPx: v.diff.changedPx, maxAbs: v.diff.maxAbs })),
-  ].sort((a, b) => b.changedPx - a.changedPx);
+  const changedRows = changedRowsOf({ frames, ui });
   const nan = Object.entries(frames).map(([k, r]) => [k, r.nan]);
   // Karşılaştırılamayan kareler (eksik, boyut farklı): kapıdan geçemez
   const errors = [
@@ -908,6 +919,7 @@ function summarize({ frames, ui }) {
     minUiSsim: uiRows.length ? uiRows[0].ssim : null,
     worstUi: uiRows.slice(0, 5),
     maxChangedPx: changedRows.length ? changedRows[0].changedPx : null,
+    changedFrames: changedRows.filter((r) => r.changedPx > 0).length,
     worstChanged: changedRows.filter((r) => r.changedPx > 0).slice(0, 8),
     nanTotal: nan.reduce((s, [, v]) => s + (v ?? 0), 0),
   };
@@ -920,7 +932,7 @@ if (isMain) {
     const i = args.indexOf(name);
     return i >= 0 ? args[i + 1] : null;
   };
-  const valued = new Set(['--compare', '--out', '--overlay', '--gate', '--only', '--sizes', '--max-changed', '--changed-tol']);
+  const valued = new Set(['--compare', '--out', '--overlay', '--gate', '--only', '--sizes', '--max-changed', '--changed-tol', '--set']);
   const pos = args.filter((s, i) => !s.startsWith('--') && !valued.has(args[i - 1]));
   const root = pos[0];
   if (!root) {
@@ -935,6 +947,7 @@ if (isMain) {
     sizes: opt('--sizes')?.split(',') ?? null,
     excludeNan: args.includes('--exclude-nan'),
     changedTol: Number(opt('--changed-tol') ?? 2.5) / 255,
+    part: opt('--set') ?? 'hepsi',
   });
   const summary = summarize(res);
   const out = { tool: 'visual-metrics', version: 1, set: root, ref: opt('--compare'), when: new Date().toISOString(), summary, ...res };
@@ -947,7 +960,7 @@ if (isMain) {
   const gate = opt('--gate');
   if (gate) {
     const g = Number(gate);
-    if (!opt('--compare') || summary.minRoiSsim === null) {
+    if (!opt('--compare') || (summary.minRoiSsim === null && summary.minUiSsim === null)) {
       console.error('EŞİK: --gate için --compare <referans> ve en az bir ortak kare gerekir');
       process.exit(1);
     }
@@ -955,7 +968,7 @@ if (isMain) {
       console.error(`EŞİK: ${summary.errors.length} kare karşılaştırılamadı:\n  ${summary.errors.slice(0, 20).join('\n  ')}`);
       process.exit(1);
     }
-    const bad = summary.minRoiSsim < g || (summary.minUiSsim !== null && summary.minUiSsim < g);
+    const bad = (summary.minRoiSsim !== null && summary.minRoiSsim < g) || (summary.minUiSsim !== null && summary.minUiSsim < g);
     if (bad) {
       console.error(`EŞİK: en düşük SSIM ${summary.minRoiSsim} / arayüz ${summary.minUiSsim} < ${g}`);
       process.exit(1);
@@ -972,7 +985,8 @@ if (isMain) {
       console.error(`EŞİK: ${summary.errors.length} kare karşılaştırılamadı`);
       process.exit(1);
     }
-    const over = summary.worstChanged.filter((r) => r.changedPx > maxChanged);
+    // Bütün kareler (özetteki liste ilk 8 ile sınırlı)
+    const over = changedRowsOf(res).filter((r) => r.changedPx > maxChanged);
     if (over.length) {
       console.error(`EŞİK: ${over.length} karede değişen piksel > ${maxChanged}:\n  ${over.map((r) => `${r.kare}: ${r.changedPx} px (en büyük fark ${r.maxAbs})`).join('\n  ')}`);
       process.exit(1);

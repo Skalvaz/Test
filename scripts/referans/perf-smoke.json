@@ -1,34 +1,169 @@
 {
   "tool": "perf-smoke",
   "version": 1,
-  "when": "2026-10-24T20:27:00.649Z",
-  "url": "http://localhost:4202/",
+  "when": "2026-10-25T10:45:44.866Z",
+  "url": "http://localhost:4201/",
   "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Laptop GPU (0x00002860) Direct3D11 vs_5_0 ps_5_0, D3D11)",
   "profile": "cold",
   "quality": "high",
   "viewport": "1440x810",
   "load": {
-    "menuMs": 11027,
-    "firstFrameMs": 27059,
-    "longestTaskMs": 10966,
-    "longTaskTotalMs": 14974,
-    "programs": 227
+    "menuMs": 9486,
+    "readyMs": 8718,
+    "firstFrameMs": 25062,
+    "longestTaskMs": 10701,
+    "longTaskTotalMs": 14605,
+    "programs": 227,
+    "stages": {
+      "textures": 97,
+      "kit": 116,
+      "scans": 173,
+      "environment": 1745,
+      "cell": 2254,
+      "cellProps": 2416,
+      "airfield": 2533,
+      "engine": 7598,
+      "sim": 8099,
+      "post": 8340,
+      "ready": 8767,
+      "firstFrame": 25639
+    },
+    "runs": 5
   },
+  "loadWorst": {
+    "menuMs": 10054,
+    "readyMs": 9053,
+    "firstFrameMs": 25575,
+    "longestTaskMs": 11141,
+    "longTaskTotalMs": 15266
+  },
+  "loadRuns": [
+    {
+      "menuMs": 9760,
+      "readyMs": 8718,
+      "firstFrameMs": 24799,
+      "longestTaskMs": 10647,
+      "longTaskTotalMs": 14720,
+      "programs": 227,
+      "stages": {
+        "textures": 93,
+        "kit": 119,
+        "scans": 176,
+        "environment": 1736,
+        "cell": 2252,
+        "cellProps": 2423,
+        "airfield": 2550,
+        "engine": 7462,
+        "sim": 7869,
+        "post": 8067,
+        "ready": 8718,
+        "firstFrame": 24799
+      }
+    },
+    {
+      "menuMs": 9373,
+      "readyMs": 8643,
+      "firstFrameMs": 25191,
+      "longestTaskMs": 10717,
+      "longTaskTotalMs": 14605,
+      "programs": 227,
+      "stages": {
+        "textures": 99,
+        "kit": 124,
+        "scans": 178,
+        "environment": 1775,
+        "cell": 2320,
+        "cellProps": 2491,
+        "airfield": 2607,
+        "engine": 7651,
+        "sim": 8115,
+        "post": 8346,
+        "ready": 8643,
+        "firstFrame": 25182
+      }
+    },
+    {
+      "menuMs": 9389,
+      "readyMs": 8670,
+      "firstFrameMs": 25062,
+      "longestTaskMs": 10701,
+      "longTaskTotalMs": 14443,
+      "programs": 227,
+      "stages": {
+        "textures": 94,
+        "kit": 117,
+        "scans": 175,
+        "environment": 1847,
+        "cell": 2390,
+        "cellProps": 2563,
+        "airfield": 2682,
+        "engine": 7683,
+        "sim": 8086,
+        "post": 8313,
+        "ready": 8670,
+        "firstFrame": 25052
+      }
+    },
+    {
+      "menuMs": 10054,
+      "readyMs": 9053,
+      "firstFrameMs": 25575,
+      "longestTaskMs": 11141,
+      "longTaskTotalMs": 15266,
+      "programs": 227,
+      "stages": {
+        "textures": 107,
+        "kit": 133,
+        "scans": 190,
+        "environment": 1827,
+        "cell": 2350,
+        "cellProps": 2534,
+        "airfield": 2647,
+        "engine": 7608,
+        "sim": 8023,
+        "post": 8221,
+        "ready": 9053,
+        "firstFrame": 25566
+      }
+    },
+    {
+      "menuMs": 9486,
+      "readyMs": 8767,
+      "firstFrameMs": 14664,
+      "longestTaskMs": 1489,
+      "longTaskTotalMs": 3763,
+      "programs": 227,
+      "stages": {
+        "textures": 97,
+        "kit": 116,
+        "scans": 173,
+        "environment": 1745,
+        "cell": 2254,
+        "cellProps": 2416,
+        "airfield": 2533,
+        "engine": 7598,
+        "sim": 8099,
+        "post": 8340,
+        "ready": 8767,
+        "firstFrame": 25639
+      }
+    }
+  ],
   "env": {
     "ogle": {
-      "wallS": 56.099,
-      "longestTaskMs": 27637,
-      "longTaskTotalMs": 48446,
+      "wallS": 57.1,
+      "longestTaskMs": 27823,
+      "longTaskTotalMs": 49953,
       "programs": 478
     },
     "gece": {
-      "wallS": 18.628,
-      "longestTaskMs": 96,
-      "longTaskTotalMs": 96,
+      "wallS": 18.318,
+      "longestTaskMs": 92,
+      "longTaskTotalMs": 92,
       "programs": 534
     },
     "hucreDonus": {
-      "wallS": 0.034,
+      "wallS": 0.036,
       "longestTaskMs": 0,
       "longTaskTotalMs": 0,
       "programs": 534
@@ -38,17 +173,17 @@
     "menu": {
       "frameCpuMs": {
         "n": 180,
-        "avg": 3.077,
-        "p50": 3,
-        "p95": 3.8,
+        "avg": 3.238,
+        "p50": 3.2,
+        "p95": 4.1,
         "max": 4.6
       },
       "intervalMs": {
         "n": 179,
-        "avg": 7.763,
+        "avg": 7.817,
         "p50": 7.9,
         "p95": 8.2,
-        "max": 8.6
+        "max": 8.5
       },
       "draws": 270,
       "triangles": 5639568,
@@ -59,23 +194,23 @@
       "frameCpuP50s": [
         3.2,
         3.2,
-        3
+        3.6
       ]
     },
     "hucre": {
       "frameCpuMs": {
-        "n": 202,
-        "avg": 3.578,
-        "p50": 3.4,
+        "n": 201,
+        "avg": 3.582,
+        "p50": 3.5,
         "p95": 4.7,
-        "max": 5.5
+        "max": 5.4
       },
       "intervalMs": {
-        "n": 201,
-        "avg": 7.699,
+        "n": 200,
+        "avg": 7.688,
         "p50": 7.6,
-        "p95": 8.4,
-        "max": 11
+        "p95": 8.3,
+        "max": 8.6
       },
       "draws": 278,
       "triangles": 5659882,
@@ -86,50 +221,50 @@
       "frameCpuP50s": [
         3.6,
         3.5,
-        3.4
+        3.5
       ]
     },
     "ogle": {
       "frameCpuMs": {
-        "n": 202,
-        "avg": 10.543,
-        "p50": 10.4,
-        "p95": 12.2,
-        "max": 14.1
+        "n": 204,
+        "avg": 10.265,
+        "p50": 10.2,
+        "p95": 11.8,
+        "max": 13.8
       },
       "intervalMs": {
-        "n": 201,
-        "avg": 11.046,
-        "p50": 10.9,
-        "p95": 13.1,
-        "max": 15.8
+        "n": 203,
+        "avg": 10.75,
+        "p50": 10.6,
+        "p95": 12.6,
+        "max": 14.2
       },
       "draws": 1558,
-      "triangles": 11259317,
+      "triangles": 11259331,
       "programsUsedInFrame": 102,
       "programsCompiled": 478,
       "geometries": 408,
       "textures": 244,
       "frameCpuP50s": [
-        10.6,
         10.4,
-        10.5
+        10.2,
+        10.4
       ]
     },
     "gece": {
       "frameCpuMs": {
-        "n": 201,
-        "avg": 9.716,
-        "p50": 9.6,
+        "n": 205,
+        "avg": 9.583,
+        "p50": 9.5,
         "p95": 10.9,
-        "max": 16.3
+        "max": 12.7
       },
       "intervalMs": {
-        "n": 200,
-        "avg": 10.216,
-        "p50": 10.1,
-        "p95": 12.1,
-        "max": 16.7
+        "n": 204,
+        "avg": 10.051,
+        "p50": 9.9,
+        "p95": 11.6,
+        "max": 13.3
       },
       "draws": 1186,
       "triangles": 10538969,
@@ -138,9 +273,9 @@
       "geometries": 408,
       "textures": 245,
       "frameCpuP50s": [
-        9.7,
         9.9,
-        9.6
+        9.6,
+        9.5
       ]
     }
   },
@@ -150,6 +285,6 @@
     "unused": 263,
     "unusedRatio": 0.493
   },
-  "heapMB": 128.6,
+  "heapMB": 129,
   "errors": []
 }

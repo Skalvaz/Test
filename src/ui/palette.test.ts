@@ -51,4 +51,17 @@ describe('bileşen CSS belirteçleri (tokens.css)', () => {
       expect(lines).toEqual([]);
     });
   }
+
+  // Hareket dili (K-09): geçiş ve animasyon süreleri ile eğrileri tokens.css'te
+  // (loader.css 1C'nin kendi dosyası, yükleme animasyonları orada kalır)
+  for (const [f, src] of Object.entries(css)) {
+    if (f.endsWith('tokens.css') || f.endsWith('index.css') || f.endsWith('loader.css')) continue;
+    it(`${f.slice(10)}: geçiş ve animasyonda sabit süre ya da eğri yok`, () => {
+      const lines = code(src)
+        .split('\n')
+        .filter((l) => /(transition|animation)(-duration|-timing-function)?\s*:/.test(l))
+        .filter((l) => /\d(\.\d+)?m?s\b|\b(ease|ease-in|ease-out|ease-in-out|linear|cubic-bezier)\b/.test(l.replace(/var\(--[\w-]+\)/g, '')));
+      expect(lines).toEqual([]);
+    });
+  }
 });

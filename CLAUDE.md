@@ -42,10 +42,11 @@ npm run build:single        # → turbofan.html (tek dosya, çift tıkla açıl�
 npm run capture -- http://localhost:5173/ capture-output/after surge rain
 npm run capture:compare -- capture-output/before/surge capture-output/after/surge cmp.gif "surge"
 node scripts/playtest.mjs playtest-output   # vite preview --port 4173 açıkken
-node scripts/capture/vitrin.mjs http://localhost:5173/ capture-output/vitrin/sonra [--set hepsi]
-node scripts/visual-metrics.mjs capture-output/vitrin/sonra --compare capture-output/vitrin/once --gate 0.995
-node scripts/perf-smoke.mjs http://localhost:4173/ --compare scripts/referans/perf-smoke.json   # sayımlar
-node scripts/perf-compare.mjs --once o1.json,o2.json --sonra s1.json,s2.json                   # kare süresi (dönüşümlü koşular)
+node scripts/capture/vitrin.mjs http://localhost:5173/ capture-output/vitrin/sonra --set hepsi
+node scripts/visual-metrics.mjs capture-output/vitrin/sonra --compare capture-output/vitrin/dalga1-once --set vitrin --max-changed 0   # değişmeyen vitrin kareleri ([--only …])
+node scripts/visual-metrics.mjs capture-output/vitrin/sonra --compare capture-output/vitrin/dalga1-once --set arayuz --gate 0.995 --max-changed 200
+node scripts/perf-smoke.mjs http://localhost:4173/ --compare scripts/referans/perf-smoke.json   # sayımlar ([--load-runs 5] [--first-visit])
+node scripts/perf-compare.mjs --once o1.json,o2.json --sonra s1.json,s2.json [--expect scripts/referans/beklenti/1A.json]   # kare süresi (dönüşümlü koşular)
 ```
 
 Vitrin kadraj seti (`scripts/capture/scenes/vitrin/`, 12 sahne × 1280×720 ve
@@ -70,8 +71,13 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   `framesRendered` (belirlenimli kare kaydı), `window.__app`. Paketler
   App.ts'e dokunmaz; kanca noktaları: `onSimEvent(fn)` (sim + uygulama
   olayları, `src/app/events.ts`), `modes.onChange` (`app/modes/ModeController.ts`),
-  `frameHooks`, `keyHooks`, `advanceHooks`, `clock` (`app/simClock.ts`:
-  duraklatma/tek adım), `pipeline.onContextRestored`.
+  `frameHooks`, `keyHooks`, `priorityKeyHooks` (odak düğmedeyken de),
+  `advanceHooks`, `clock` (`app/simClock.ts`: duraklatma/tek adım; ses
+  `audio.setPaused`'a bağlı), `pipeline.onContextRestored`; ayarlar
+  `app/settingsRegistry.ts` (`registerSetting`, `Settings.extra`); motorun
+  ekran dikdörtgeni `camera/viewport.ts` `engineRect()` (≠ `safeRect()`);
+  kayıt kancaları `app.ready`/`window.__loadReady`, `resetClocks`,
+  `pipeline.probeNonFinite`, `visual.setRotorBladesHidden`, `setCutCapColor`.
 - `src/app/render/` — `RenderPipeline` (renderer, post zinciri, kalite,
   ön-derleme, ısı pusu), `EnvironmentManager` (ortam yükleme ve geçişi,
   hücre ışığı, `pending`/`serial` = `app.envPending`/`envSerial`),
@@ -199,6 +205,19 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
   girdabı duvar saatine bağlıydı), ses kapalı. Aynı koddan iki kayıt piksel
   piksel aynı; NaN sayısı (kayan noktalı okuma) ±%3 oynar. Set hep tamamı ve
   `index.json` sırasıyla kaydedilir (rüzgâr tulumu gibi kapalı saatler).
+  Arayüz setinde bir kare koşudan koşuya en çok ~141 pikselde oynar (kapı
+  `--set arayuz --gate 0.995 --max-changed 200`); yalnız rengi değişen
+  öğeyi parlaklık SSIM'i görmez (değişen piksel sayısı görür).
+- Donmuş kayıtta çizilen kare sayısı hiçbir zaman duvar saatine bağlı
+  olmamalı: `__loadReady` ile yükleme ekranının (700 ms sonra zamanla
+  kalkar) kalkışı arasındaki yarış sıcak önbellekli sayfalarda 2 fazla kare
+  çizdirip arayüz karelerini kaydırıyordu (aynı kodda A = B olduğu için
+  fark edilmedi; eski yapıyla kıyasta çıktı).
+- Görsel ölçüt yazmadan önce değişikliğin kaba taklidiyle ayırt ediciliğini
+  sına (`openFrozenPage` + `captureShot`, kurulumda malzemeyi değiştir):
+  dudak pürüzlülüğü artınca `hf` düşüyor ama L ≥ 0,98 oranı ikiye katlanıyor;
+  augmenter iki yüzlü olunca `hf` %48 düşüyor. `engineRect` gizli kanat
+  kesitini (pylon.js 'wing') sayıp bütün ekranı kaplıyordu.
 - perf-smoke'ta çizim ve program sayıları belirlenimli (ölçüm penceresine
   bağlı: yöntem değişince referansı yenile); kare CPU süresi aynı kodda
   koşudan koşuya %3–6, gün içinde %20–30 oynar (ısıl durum). Kare süresi
@@ -228,9 +247,12 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
    lightRig, olay sözleşmesi ve `advanceUntil`, autostart.ts, loadProgress,
    kanca noktaları. Kabul: vitrin seti 30 karede piksel piksel aynı (ROI SSIM
    1,000), arayüz seti 40 karede gürültü tabanında; perf çiftli kıyas ±%2 ve
-   sayımlar aynı; oynanış 1, 2, sandbox geçti; 1120 test. Sırada Dalga 1
-   (9 paket, birleşme sırası 1A → 1F → 1C → 1D → 1I → 1E → 1H → 1G → 1B;
-   portlar 52WN/42WN).
+   sayımlar aynı; oynanış 1, 2, sandbox geçti; 1120 test. ✅ Denetim
+   düzeltmeleri (24 bulgu, `fc704fa`…`fb5184b`: kancalar, belirteçler, araçlar,
+   referanslar ve plan; 1178 test). Sırada Dalga 1 (9 paket, birleşme sırası
+   1A → 1F → 1C → 1D → 1I → 1E → 1H → 1G → 1B; portlar 52WN/42WN; sahip
+   dosyalar, kanca istekleri ve ölçütlerin bugünkü değerleri planın §5
+   tablosunda, "(D0+)" işaretli).
 1. **M5a sürüyor** — şartname `docs/M5A-SPEC.md` (iş paketleri §7, oynanış
    senaryosu §8). Kullanıcı §9.2 S1–S11 varsayılanlarının hepsini onayladı.
    Kullanıcı çok ajanlı iş akışıyla (ultracode) ilerlemeyi istedi; her
@@ -280,15 +302,26 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
    sonra Dalga 4 = M5b), K7 AKADEMİ şemsiyesi (1C üç logo adayı üretir,
    kullanıcı seçer), K3 açık gri tarama, K0 TFM lüle kilitli + kuru TJ
    "aynı çekirdekte". Her dalgadan önce maliyet tahmini; haftalık %80'de dur.
-   - ⏳ Dalga 0 (sözleşmeler, ölçüm araçları; davranış değişmez):
-     uygulandı ve kabul kanıtlandı (`0c43ada`…`e444d72`; 1166 test). İki
-     denetçi 24 bulgu verdi (sözleşme 20, davranış 4); düzeltme ajanı
-     çoğunu commit etmişken kullanıcı isteğiyle durduruldu. Bulgular:
-     oturum günlüğü `subagents/workflows/wf_d48d80ca-eb8/journal.jsonl`
-     (D0-denetim-*). Devam: kalan bulguları (özellikle 1H sahiplik
-     listesi, FFT/speküler ölçütlerinin ayırt ediciliği, ayar ekleme
-     sözleşmesi, 1C'nin kapsamı, safeRect ≠ motor dikdörtgeni, ortak belge
-     sahipliği) düzelt → planın Dalga 1 tablosunu bu düzeltmelere göre
-     güncelle → Dalga 1 (9 paket, `vitrin/*` dalları, portlar 52WN,
-     birleşme sırası 1A→1F→1C→1D→1I→1E→1H→1G→1B).
+   - ✅ Dalga 0 (sözleşmeler, ölçüm araçları; davranış değişmez):
+     uygulandı ve kabul kanıtlandı (`0c43ada`…`e444d72`). İki denetçinin
+     24 bulgusu (sözleşme 20, davranış 4; günlük
+     `subagents/workflows/wf_d48d80ca-eb8/journal.jsonl`, D0-denetim-*)
+     kapandı: plan §5 yeniden yazıldı (ortak belgeler parça dosyasıyla,
+     araçlar ve referanslar dalga boyunca dondurulur, ayar/tuş/ses/olay
+     sözleşmeleri, 1H'nin gerçek dosyaları, ölçütler deneyle sınanmış ve
+     bugünkü değerleriyle). Taban: `scripts/referans/` (Dalga 0 sonu),
+     kareler `capture-output/vitrin/dalga1-once`. Sırada Dalga 1 (9 paket,
+     `vitrin/*` dalları, portlar 52WN, birleşme sırası
+     1A→1F→1C→1D→1I→1E→1H→1G→1B); başlamadan maliyet tahmini ve
+     `get_usage`.
+   - ⏸ Dalga 1a (1A, 1F, 1C, 1I; iş akışı `wf_09a17f37-837`) 5 sa %92 /
+     haftalık %68'de durduruldu. Dallar `vitrin/1a-render` (uygulama yarım,
+     son "ara kayıt (YARIM)"), `vitrin/1f-malzeme` (uygulama bitmiş, mozaik +
+     not), `vitrin/1c-kimlik` (uygulama bitti; denetim yarıda), `vitrin/1i-tekme`
+     (uygulama yarım, ara kayıt); worktree'ler `.claude/worktrees/wf_09a17f37-837-{1..4}`.
+     Önce yapıları `..	urbofan-once-1a`, `..	urbofan-1i-once` (junction'lı;
+     silerken önce `cmd /c rmdir <yol>
+ode_modules`). Devam: her paketi kendi
+     worktree'sinde tamamla → denetle → düzelt → entegratör 1A→1F→1C→1I.
+     Maliyet beklenenden yüksek (4 paket şimdiye dek ≈ haftalık %10).
 3. M5b, M5c (`docs/ATOLYE.md`).

@@ -92,16 +92,20 @@ const AUTOSTART_EVENTS: Record<AutoStartStep, AppEventType> = {
 
 /**
  * Motorun dünya sınır kutusu: motor parçaları (stand, egzoz akışı,
- * parçacıklar hariç). Kesit kırpması ve motorun ekran dikdörtgeni
- * (camera/viewport.ts engineRect) kullanır.
+ * parçacıklar hariç). Kesit kırpması bütün parçalarla (Dalga 0 öncesiyle
+ * aynı), motorun ekran dikdörtgeni (camera/viewport.ts engineRect) yalnız
+ * görünenlerle kurar (`visibleOnly`): gizli kanat kesiti (`pylon.js`
+ * 'wing', 4,2 × 5,9 m) dikdörtgeni bütün ekrana yayıyordu.
  */
-function engineBox(root: THREE.Object3D): THREE.Box3 {
+export function engineBox(root: THREE.Object3D, { visibleOnly = false } = {}): THREE.Box3 {
   const box = new THREE.Box3();
   root.updateMatrixWorld();
-  root.traverse((o) => {
+  const add = (o: THREE.Object3D) => {
     const m = o as THREE.Mesh;
     if (m.isMesh && !o.userData.noClip && o.userData.part && o.userData.part !== 'stand') box.expandByObject(m);
-  });
+  };
+  if (visibleOnly) root.traverseVisible(add);
+  else root.traverse(add);
   return box;
 }
 /** Uyarıdaki "Parçayı göster" vurgusunun süresi [ms] */
@@ -1730,14 +1734,17 @@ export class App {
     }
   }
 
-  /** Motorun dünya sınır kutusu, model başına önbellekli (engineRect) */
+  /**
+   * Motorun görünen parçalarının dünya sınır kutusu (engineRect). Görünürlük
+   * değişebildiği için (kanat, kesit) önbelleği yok; viewport kare başına
+   * bir kez okur, o da yalnız soran olunca.
+   */
   private engineBounds(): THREE.Box3 | null {
     const root = this.visual?.root;
     if (!root) return null;
-    if (this.boundsCache?.root !== root) this.boundsCache = { root, box: engineBox(root) };
-    return this.boundsCache.box.isEmpty() ? null : this.boundsCache.box;
+    const box = engineBox(root, { visibleOnly: true });
+    return box.isEmpty() ? null : box;
   }
-  private boundsCache: { root: THREE.Object3D; box: THREE.Box3 } | null = null;
 
   /* ================================================================ */
   /* Kalite ve boyut                                                  */

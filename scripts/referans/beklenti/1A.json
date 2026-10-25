@@ -1,0 +1,17 @@
+{
+  "aciklama": "1A Render hattı ve yükleme (docs/UST-SEVIYE-PLANI.md §5 Dalga 1). Çizim ve program sayıları bilerek azalır, kare süresi öğlede mutlak sınırın altına iner, öbür evreler yavaşlamaz. Yükleme kuralları --load-runs 5 koşularının medyanına uygulanır; iki kipte ayrı ayrı koşulur (--first-visit ve --quality high), ikisi de bu dosyayla. Kullanım: perf-compare --once o1,o2 --sonra s1,s2 --expect scripts/referans/beklenti/1A.json",
+  "kurallar": {
+    "*.draws": "≤",
+    "*.programsUsedInFrame": "≤",
+    "*.programsCompiled": "≤",
+    "oturum.programsCompiled": "≤",
+    "oturum.unusedRatio": "≤ 0.1",
+    "*.frameCpuP50": "≤ 5%",
+    "ogle.frameCpuP50": "≤ 6 ms",
+    "yukleme.readyMs": "≤ 5000",
+    "yukleme.firstFrameMs": "≤ 6000",
+    "ortam.ogle.longestTaskMs": "≤ 200",
+    "ortam.ogle.wallS": "≤ 15",
+    "ortam.gece.longestTaskMs": "≤ 200"
+  }
+}

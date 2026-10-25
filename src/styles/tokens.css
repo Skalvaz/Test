@@ -73,6 +73,23 @@
   --radius-pill: 99px;
   /* Çizgi kalınlığı (bileşenlerdeki `1px solid`) */
   --line-w: 1px;
+  /* Hareket (K-09; Dalga 0 sonrası düzeltme: bileşen dosyalarındaki geçiş ve
+     animasyon süreleri, değerler bugünkü). 1C hareket dilini (üzerine gelme
+     120 ms, panel 220 ms, ekran 420 ms, cubic-bezier(0.2, 0.8, 0.2, 1))
+     yalnız burayı değiştirerek uygular; panellerin display:none yerine
+     kayarak gelmesi (yapı değişikliği) 2E'nindir. */
+  --dur-hover: 0.15s;
+  --dur-press: 0.08s;
+  --dur-handle: 0.12s;
+  --dur-enter: 0.3s;
+  --dur-toast-in: 0.25s;
+  --dur-toast-out: 0.3s;
+  --dur-flash: 0.6s;
+  --dur-blink: 1s;
+  --ease-hover: ease;
+  --ease-enter: ease-out;
+  --ease-exit: ease-in;
+  --ease-blink: ease-in-out;
   --font: Inter, 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
   --mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Mono', Consolas, 'Roboto Mono', ui-monospace, monospace;
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
