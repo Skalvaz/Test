@@ -133,7 +133,7 @@ export const USTA_BOLUMLERI: readonly { ad: string; kural: string }[] = [
   { ad: t('Domino', 'Domino'), kural: t('Barut izi ve dev fişek düzeneği, 25 hamle', 'Powder trails and giant fireworks, 25 moves') },
   { ad: t('Dev Sandık', 'Giant Chest'), kural: t('8×10, 6 renk, 3 hedef', '8×10, 6 colors, 3 goals') },
   { ad: t('Çisenti Fırtınası', 'Drizzle Storm'), kural: t('İki çisenti her hamle bir hattı söndürür', 'Two drizzles douse a line every move') },
-  { ad: t("Kıvılcım Usta'nın Sınavı", "Master Spark's Trial"), kural: t('Bütün öğeler, 30 hamle', 'Everything at once, 30 moves') },
+  { ad: t("Kıvılcım Usta'nın Sınavı", "Master Spark's Trial"), kural: t('Bütün öğeler, 25 hamle', 'Everything at once, 25 moves') },
 ];
 
 /** Motiflerin geldiği bölümler (§8.3 planı); bölüm paketi farklıysa `haritaVerisi`'ne verilir. */
