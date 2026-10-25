@@ -5,9 +5,9 @@
  "tur": "usta",
  "w": 7,
  "h": 9,
- "renkSayisi": 5,
+ "renkSayisi": 6,
  "esik": 4,
- "hamle": 20,
+ "hamle": 22,
  "tohum": 430592800,
  "yardim": 0,
  "ozelEsikleri": [
@@ -32,14 +32,13 @@
   ". . . C . . ."
  ],
  "kurallar": {
-  "gizliIsi": true,
-  "caprazSiniri": 2
+  "gizliIsi": true
  },
  "botBandi": [
   35,
   60
  ],
- "yildizEsikleri": [9000, 11100],
+ "yildizEsikleri": [9200, 11300],
  "onIsi": [
   [
    2,
