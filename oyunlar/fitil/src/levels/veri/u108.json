@@ -7,7 +7,7 @@
  "h": 10,
  "renkSayisi": 5,
  "esik": 4,
- "hamle": 30,
+ "hamle": 25,
  "tohum": 3762737792,
  "yardim": 0,
  "ozelEsikleri": [
@@ -245,12 +245,9 @@
   }
  ],
  "korukKapasitesi": 20,
- "kurallar": {
-  "caprazSiniri": 2
- },
  "botBandi": [
   35,
   60
  ],
- "yildizEsikleri": [11700, 14700]
+ "yildizEsikleri": [12000, 15800]
 }
