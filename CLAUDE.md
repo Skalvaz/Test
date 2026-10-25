@@ -248,8 +248,8 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
    kanca noktaları. Kabul: vitrin seti 30 karede piksel piksel aynı (ROI SSIM
    1,000), arayüz seti 40 karede gürültü tabanında; perf çiftli kıyas ±%2 ve
    sayımlar aynı; oynanış 1, 2, sandbox geçti; 1120 test. ✅ Denetim
-   düzeltmeleri (24 bulgu, `fc704fa`…`ced6d69` ve izleyen araç, referans ve
-   plan commit'leri; 1178 test). Sırada Dalga 1 (9 paket, birleşme sırası
+   düzeltmeleri (24 bulgu, `fc704fa`…`fb5184b`: kancalar, belirteçler, araçlar,
+   referanslar ve plan; 1178 test). Sırada Dalga 1 (9 paket, birleşme sırası
    1A → 1F → 1C → 1D → 1I → 1E → 1H → 1G → 1B; portlar 52WN/42WN; sahip
    dosyalar, kanca istekleri ve ölçütlerin bugünkü değerleri planın §5
    tablosunda, "(D0+)" işaretli).
