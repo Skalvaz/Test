@@ -10,6 +10,7 @@ import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { satir, kasabaKartSatirlari } from './ortak';
 import { MAHALLELER } from '../../app/katalog';
 import type { AyarDegisikligi, AyarlarVM, MolaDakika, Palet } from '../tipler';
+import type { MenuTemasi } from '../../app/sozlesme';
 import { DIL, DILLER, t as tt, type Dil } from '../../platform/dil';
 
 export interface AyarlarEk {
@@ -137,6 +138,17 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
         (v) => {
           if (v !== DIL) ek.dilDegisti?.(v);
         },
+      ),
+    ),
+    h(
+      'div',
+      { s: 'f-satir f-satir-dikey' },
+      h('span', { s: 'f-satir-ust' }, h('span', { s: 'f-satir-ikon' }, ikon('cerceve')), h('span', { s: 'f-satir-etiket', t: M.menuGorunumu })),
+      parcali(
+        (['ahsap', 'gece'] as MenuTemasi[]).map((x) => ({ d: x, ad: M.temaAdlari[x] })),
+        d.tema,
+        M.menuGorunumu,
+        (v) => degis({ tema: v }),
       ),
     ),
     satir(M.hareketiAzalt, anahtar(d.hareketiAzalt || sistemAz, M.hareketiAzalt, (v) => degis({ hareketiAzalt: v })), ikon('hareket'), sistemAz ? tt('Sistem tercihi açık', 'System setting is on') : undefined),

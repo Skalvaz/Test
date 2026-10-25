@@ -48,13 +48,21 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   önbellekli), kasaba kartı kapağında süslenmiş mahallenin kartpostalı (en
   çok çapayı içine alan bant). İskele tabelası haritada HTML; önizlemede
   `tabelaSvg`.
+- Menü görünümü (25 Ekim 2026, arkadaş geri bildirimi "menüler AI gibi"):
+  süssüz pano + iç çizgi + düz düğmeler; iki tema Ahşap (varsayılan) ve Gece,
+  Ayarlar > Görünüm > Menü görünümü (`ayarlar.tema`, kök sınıfı
+  `f-tema-ahsap`/`f-tema-gece`, `Arayuz.secenekAyarla({ tema })`). Renkler
+  yalnız `--t-*` belirteçlerinden (`stil/temel.css` başı, GDD §13.1); yeni
+  bileşende sabit pirinç/ahşap rengi, degrade doku, perçin, kurdele, yazı
+  gölgesi kullanma. `serit` artık pano başlığı: içerikte `.f-baslik` varsa
+  küçük üst başlığa döner (`:has`). Önizleme: `dev/arayuz.html?…&tema=gece`.
 - Menü düzeni "Liste" (Ekim 2026, kullanıcı seçti; her yaş okusun): en küçük
   yazı ~16 px, önemli satır 18–22 px. Bölüm kartı: ad + hedefler büyük yazılı
   liste (ikon + metin, hamle ve kurallar aynı listede) + tek satır "Mühürler
   1/3" + [Oyna] (mahalle çipi, yıldız/en iyi, tablo, yeni öğe, Coşku kartı
   YOK; mühür görev metinleri Duraklat'ta, ilk mühürlü kartta `MK.muhurKart`
-  balonu). Kazandın: kurdele, tek satır bölüm, yıldız, mühür, puan, en çok iki
-  haber, ödül satırları (kandil, güçlendirici, "Sandığı aç"), yuvarlak Tekrar +
+  balonu). Kazandın: başlık, tek satır bölüm, yıldız, mühür, puan, en çok iki
+  haber, ödül satırları (tek kutuda ince ayraçlı: kandil, güçlendirici, "Sandığı aç"), yuvarlak Tekrar +
   Devam; tablo kutusu ve tanıtım balonları yok. HUD hamle yuvarlağında yalnız
   sayı. Kullanıcı yazı kalabalığına ve küçük yazıya duyarlı: yeni metin
   eklerken kısa tut, satır sayısını artırma.

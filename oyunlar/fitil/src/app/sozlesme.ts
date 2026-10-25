@@ -31,6 +31,8 @@ export interface TahtaGeometrisi {
 }
 
 export type Palet = 'standart' | 'renkKoru' | 'yuksekKontrast';
+/** Menü görünümü (pencere, düğme, alt çubuk): Ahşap (varsayılan) ya da Gece. Tahta ve harita sahnesi değişmez. */
+export type MenuTemasi = 'ahsap' | 'gece';
 
 export interface CiziciSecenek {
   hareketiAzalt: boolean;

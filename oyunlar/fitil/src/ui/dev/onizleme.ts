@@ -11,7 +11,7 @@
  * reklam|kart|canUsta), cikisOnayi (v=yeniden), harita&can=0..5, ayarlar&gelir=1
  * (&gizlilik=1: Android UMP "Reklam gizlilik seçenekleri" satırı).
  * Parametreler: v (çeşit), w/h (tahta), simdiki (harita), guvenli=47,0,34,0,
- * az=1 (hareketi azalt), palet=renkKoru|yuksekKontrast, panel, sekme, kart.
+ * az=1 (hareketi azalt), palet=renkKoru|yuksekKontrast, tema=gece, panel, sekme, kart.
  */
 import '../../style.css';
 import { Arayuz } from '../arayuz';
@@ -22,8 +22,10 @@ import { KASABA_ISLERI } from '../../app/katalog';
 import type { Kenarlar, Yerlesim } from '../yerlesim';
 import type { CanVM, HaritaSecimi, MagazaVM, Palet } from '../tipler';
 import { M, MK, tarihKisa } from '../metinler';
-import { t } from '../../platform/dil';
+import { DIL, t } from '../../platform/dil';
 
+// Oyundaki gibi (main.ts): büyük harfe çevirme dile göre (English'te I, Türkçede İ).
+document.documentElement.lang = DIL;
 const p = new URLSearchParams(location.search);
 const ekran = p.get('ekran') ?? 'harita';
 const v = p.get('v') ?? '1';
@@ -47,6 +49,7 @@ const ui = new Arayuz({
   kok: app,
   palet,
   hareketiAzalt: p.get('az') === '1',
+  tema: p.get('tema') === 'gece' ? 'gece' : 'ahsap',
   guvenliAlan: guvenli,
   ses: { arayuz: (t) => log('ses', t) },
   titresim: (x) => log('titreşim', x),

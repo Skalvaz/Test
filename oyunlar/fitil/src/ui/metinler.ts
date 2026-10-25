@@ -192,6 +192,8 @@ export const M = {
   normal: t('Normal', 'Normal'),
   hizli: t('Hızlı', 'Fast'),
   renkPaleti: t('Renk paleti', 'Color palette'),
+  menuGorunumu: t('Menü görünümü', 'Menu style'),
+  temaAdlari: t<Record<string, string>>({ ahsap: 'Ahşap', gece: 'Gece' }, { ahsap: 'Wood', gece: 'Night' }),
   // Parçalı seçicide kısa ad (390 px'te 'Yüksek ko…' diye kesiliyordu); ekran okuyucuya uzun ad.
   paletAdlari: t<Record<string, string>>(
     { standart: 'Standart', renkKoru: 'Renk körü', yuksekKontrast: 'Kontrast' },

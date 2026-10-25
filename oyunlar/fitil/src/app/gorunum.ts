@@ -317,6 +317,7 @@ export function ayarlarVM(k: Kayit, depo: StorageBackend, hareketiAzaltSistem: b
     palet: a.palet,
     ipuclari: a.ipuclari,
     mola: a.mola,
+    tema: a.tema,
     defterKartlari: MAHALLELER.map((m) => k.koleksiyon.kartlar.includes(`defter:${m.id}`)),
     kasabaKartlari: kasabaKartlari(k),
     depolama: depo,

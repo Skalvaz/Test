@@ -974,6 +974,17 @@ Hepsi sağlıklı döngü kancalarıdır. **Yasak desenler:** sahte kıtlık, s�
 | Mor | #B266FF | #E3C7FF | #4E1F8A |
 | Gül | #FF5FB4 | #FFC2E3 | #8A1F5A |
 
+**Menü görünümü (Ekim 2026; "menüler AI gibi" geri bildirimi):** pencere, düğme, HUD plakası ve harita alt çubuğu süssüz: düz pano (üstten alta hafif koyulaşır), 7 px içeride 1 px iç çizgi, büyük harfli küçük üst başlık + büyük başlık, kutu içinde kutu yerine ince ayraçlı listeler, düz köz turuncusu birincil düğme (altta 3 px koyu "dudak"), saydam ikincil düğme, çerçevesiz kapat simgesi. Metal çerçeve, perçin, ahşap damar dokusu, kurdele, parlak degrade ve yazı gölgesi yok. İki tema, Ayarlar > Görünüm > **Menü görünümü** (`ayarlar.tema`, kayıtta; eski kayıtta yoksa Ahşap):
+
+| Belirteç | Ahşap (varsayılan) | Gece |
+|---|---|---|
+| Pano üst → alt | #4A2E1C → #2C1A0F | #262A63 → #14153A (üstte fener ışığı, birkaç sönük yıldız) |
+| İç çizgi | pirinç kakma, alfa 0,42 | açık krem, alfa 0,13 |
+| Vurgu (birincil düğme) / dudak | #EC8A2F / #93450F | #FFAE48 / #B5641A |
+| Üst başlık / ikon | #E3AE55 / #EBBE6A | #FFBE62 / #F3D5A6 |
+
+Belirteçler `src/ui/stil/temel.css` başında (`--t-*`); oyun tahtası, harita sahnesi ve kasaba çizimleri temadan bağımsızdır.
+
 **Renk körü paleti (Ayarlar, baştan açık):** Okabe–Ito uyarlaması — #E8631C, #F0C419, #1BB38A, #6CC6F5, #8C7CF0, #E07BC0. Bunun yanında Yüksek Kontrast seçeneği vardır: şekil konturu 3 px, iç simge beyaz.
 
 ### 13.2 Kapsül çizim tarifi

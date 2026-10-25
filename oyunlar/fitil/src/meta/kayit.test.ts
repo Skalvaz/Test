@@ -349,6 +349,18 @@ describe('ayar ve ipucu yardımcıları', () => {
     expect(kayitOnar(b).onarilan).toEqual([]);
   });
 
+  it('menü görünümü: varsayılan Ahşap, Gece seçilir, geçersiz değer onarılır', () => {
+    const k = yeniKayit(1);
+    expect(k.ayarlar.tema).toBe('ahsap');
+    const g = ayarDegistir(k, { tema: 'gece' });
+    expect(g.ayarlar.tema).toBe('gece');
+    expect(ayarDegistir(g, { tema: 'mor' as 'gece' }).ayarlar.tema).toBe('gece');
+    const bozuk = { ...g, ayarlar: { ...g.ayarlar, tema: 'mor' } } as unknown as Kayit;
+    const r = kayitOnar(bozuk);
+    expect(r.kayit.ayarlar.tema).toBe('ahsap');
+    expect(r.onarilan).toContain('ayarlar.tema');
+  });
+
   it('ipuçları: görülen balonlar, çift dokunuş ipucu 3 kez, sıfırlama', () => {
     let k = ipucuGoruldu(yeniKayit(1), 'b1:baslangic');
     expect(ipucuGoruldu(k, 'b1:baslangic')).toBe(k);

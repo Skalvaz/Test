@@ -66,7 +66,8 @@ describe.each(ORNEKLER)('gerçek şema 2 kaydı: %s', (_ad, o, beklenen) => {
     expect(surum).toBe(KAYIT_SURUMU);
     const { surum: eskiSurum, ...eski } = ham.data as unknown as Record<string, unknown>;
     expect(eskiSurum).toBe(2);
-    expect(yeni).toEqual(eski);
+    // Menü görünümü (Ekim 2026) eski kayıtta yok: onarım sessizce varsayılanı (Ahşap) ekler.
+    expect(yeni).toEqual({ ...eski, ayarlar: { ...(eski.ayarlar as object), tema: 'ahsap' } });
     expect(kasaba).toEqual({ isler: [], gunlukKandil: 0, uyarilan: [] });
     expect(muhurOdulleri).toEqual([]);
     // Mühür geriye dönük verilmez.

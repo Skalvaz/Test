@@ -169,6 +169,7 @@ export class Uygulama {
       titresim: (p) => buzz(p),
       palet: a.palet,
       hareketiAzalt: az,
+      tema: a.tema,
       geri: this.geriCagirimlar(),
     });
     // Bulut kaydı (claude.ai, oturum açık) açılış ekranı beklerken yüklensin: ilk açılış kararı ona göre.
@@ -944,7 +945,7 @@ export class Uygulama {
       fitil: fitilGorunumu(this.kayit),
       gokyuzu: gokyuzuTemasi(this.kayit),
     });
-    this.ui.secenekAyarla({ palet: a.palet, hareketiAzalt: az });
+    this.ui.secenekAyarla({ palet: a.palet, hareketiAzalt: az, tema: a.tema });
     this.molaD = meta.molaAyarDegisti(this.molaD, a.mola);
   }
 

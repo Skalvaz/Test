@@ -16,7 +16,7 @@
  */
 import { DESENLER, FITILLER, GOKYUZU, GUCLENDIRICI_SATIN_SINIRI, GUCLENDIRICILER, MAHALLELER, EN_FAZLA_TAKILI_DESEN } from '../app/katalog';
 import type { DesenId, FitilId, GokyuzuId, GuclendiriciId } from '../app/katalog';
-import type { Palet } from '../app/sozlesme';
+import type { MenuTemasi, Palet } from '../app/sozlesme';
 import { fnv1a, mulberry32Bir } from '../core/rng';
 import type { Motif } from '../core/types';
 import { t } from '../platform/dil';
@@ -171,6 +171,8 @@ export interface Ayarlar {
   bostaIpucu: boolean;
   /** Mola hatırlatıcısı dakikası; 0 kapalı (§11 #30). */
   mola: MolaDakika;
+  /** Menü görünümü (Ekim 2026). Eski kayıtta yoksa onarım varsayılanı yazar. */
+  tema: MenuTemasi;
 }
 
 export interface SandikBekleyen {
@@ -253,6 +255,7 @@ export const VARSAYILAN_AYARLAR: Readonly<Ayarlar> = Object.freeze({
   ipuclari: true,
   bostaIpucu: true,
   mola: 45,
+  tema: 'ahsap',
 });
 
 /** Başlangıçta sahip olunan parçalar: Palmiye ve Halka tam, Kasımpatı 2/3 (3. parça 5. bölümün sandığından). */
@@ -861,6 +864,8 @@ function ayarlarOnar(ham: unknown, not: (y: string) => void): Ayarlar {
   v.bostaIpucu = mantiksal(a.bostaIpucu, v.bostaIpucu, 'ayarlar.bostaIpucu', not, true);
   if (a.mola === 0 || a.mola === 30 || a.mola === 45 || a.mola === 60) v.mola = a.mola;
   else if (a.mola !== undefined) not('ayarlar.mola');
+  if (a.tema === 'ahsap' || a.tema === 'gece') v.tema = a.tema;
+  else if (a.tema !== undefined) not('ayarlar.tema');
   return v;
 }
 

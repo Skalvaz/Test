@@ -32,9 +32,8 @@
   color: var(--krem);
   white-space: nowrap;
   pointer-events: none;
-  background: linear-gradient(180deg, #3A2416, #1E120A);
-  box-shadow: 0 0 0 1.5px rgba(217, 164, 65, .75), 0 3px 8px rgba(0, 0, 0, .5);
-  text-shadow: 0 1px 0 rgba(0, 0, 0, .5);
+  background: var(--t-pano);
+  box-shadow: 0 0 0 1px var(--t-ikincil-kenar), 0 3px 8px rgba(0, 0, 0, .5);
 }
 .f-can-hap-sure[hidden] { display: none; }
 /* Dar ekran: yıldız + can + nöbet + günlük + yardım tek satıra sığsın (360 px'te 144★, 30 gün dahil). */
@@ -60,8 +59,8 @@
   gap: 4px;
   padding: 10px 6px 8px;
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, .3), rgba(0, 0, 0, .16));
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .4), 0 1px 0 rgba(255, 220, 160, .08);
+  background: var(--t-yuzey);
+  box-shadow: inset 0 0 0 1px var(--t-yuzey-kenar);
 }
 .f-can-fitil { width: 46px; height: 46px; overflow: visible; flex: none; }
 .f-can-sayac { display: flex; flex-direction: column; align-items: center; min-height: 40px; justify-content: center; }
@@ -86,7 +85,7 @@
   background: rgba(0, 0, 0, .22);
   box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, .25);
 }
-.f-can-yarin .f-ikon { color: var(--pirinc-acik); opacity: .7; }
+.f-can-yarin .f-ikon { color: var(--t-ikon); opacity: .7; }
 
 /* ─────────────── Çıkış onayı ─────────────── */
 .f-cikis-modal .f-kart { width: min(100%, 360px); }
@@ -101,8 +100,8 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 50% 35%, #5A3A22, #1A0F08);
-  box-shadow: inset 0 1px 0 rgba(255, 220, 160, .25), 0 0 0 2px #D9A441, 0 0 0 3.5px #3A1E08;
+  background: var(--t-cukur);
+  box-shadow: inset 0 0 0 1.5px var(--t-ikincil-kenar);
 }
 .f-co-fitil { width: 40px; height: 40px; }
 .f-co-simge b {
@@ -126,7 +125,7 @@
 /* ─────────────── Kaybettin ekleri ─────────────── */
 .f-kb-can { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: -6px; font-size: 19px; font-weight: 800; color: #FFB08A; }
 .f-kb-can-fitil { width: 30px; height: 30px; }
-.f-kb-reklam .f-ikon { color: var(--pirinc-acik); }
+.f-kb-reklam .f-ikon { color: var(--t-ikon); }
 
 /* ─────────────── Mağaza ─────────────── */
 .f-magaza-modal .f-kart-ic { padding-left: 14px; padding-right: 14px; }
@@ -142,8 +141,8 @@
   align-items: center;
   padding: 10px 14px 12px;
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(0, 0, 0, .3), rgba(0, 0, 0, .16));
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .4), 0 1px 0 rgba(255, 220, 160, .08);
+  background: var(--t-yuzey);
+  box-shadow: inset 0 0 0 1px var(--t-yuzey-kenar);
 }
 .f-mg-resim { grid-area: r; width: 48px; height: 48px; }
 .f-mg-resim .f-urun-svg { width: 48px; height: 48px; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .5)); }

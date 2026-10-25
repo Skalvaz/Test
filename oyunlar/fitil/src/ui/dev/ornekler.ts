@@ -303,6 +303,7 @@ export function ayarlarVm(): AyarlarVM {
     palet: 'standart',
     ipuclari: true,
     mola: 45,
+    tema: new URLSearchParams(location.search).get('tema') === 'gece' ? 'gece' : 'ahsap',
     defterKartlari: [true, true, false, false, false, false, false, false],
     depolama: 'tarayici',
     surum: '0.1.0',

@@ -50,7 +50,7 @@ import type { Eksen } from '../core/types';
 import { muhurUcur, muhurEtiketi } from './kanca';
 import { M, MK } from './metinler';
 import { t as tt } from '../platform/dil';
-import type { Dikdortgen, SesMotoru } from '../app/sozlesme';
+import type { Dikdortgen, MenuTemasi, SesMotoru } from '../app/sozlesme';
 import type { GuclendiriciId } from '../app/katalog';
 import type {
   ArayuzGeriCagirim,
@@ -100,6 +100,8 @@ export interface ArayuzSecenek {
   geri?: Partial<ArayuzGeriCagirim>;
   palet?: Palet;
   hareketiAzalt?: boolean;
+  /** Menü görünümü (kökte `f-tema-…` sınıfı); verilmezse Ahşap. */
+  tema?: MenuTemasi;
   /** HUD kısayolları (K, 1/2/3, P). Girdi modülü bunları ayrıca dinliyorsa false. */
   klavyeKisayollari?: boolean;
   /** Güvenli alan paylarını elle ver (önizleme/test); verilmezse env(safe-area-inset-*). */
@@ -145,6 +147,7 @@ export class Arayuz {
     this.b.palet = s.palet ?? 'standart';
     this.b.hareketiAzalt = !!s.hareketiAzalt;
     this.b.kok.classList.toggle('f-az', this.b.hareketiAzalt);
+    this.temaUygula(s.tema ?? 'ahsap');
     this.kisayol = s.klavyeKisayollari !== false;
     this.guvenliSabit = s.guvenliAlan ?? null;
     if (this.guvenliSabit) this.guvenliDegiskenleri(this.guvenliSabit);
@@ -182,8 +185,14 @@ export class Arayuz {
     Object.assign(this.b.geri, g);
   }
 
-  /** Palet ve hareket tercihini anında uygular (HUD ikonları yeniden çizilir). */
-  secenekAyarla(s: { palet?: Palet; hareketiAzalt?: boolean }): void {
+  /** Menü görünümü: kökte tek tema sınıfı (stiller `stil/tema.css` belirteçlerinden). */
+  private temaUygula(t: MenuTemasi): void {
+    this.b.kok.classList.toggle('f-tema-gece', t === 'gece');
+    this.b.kok.classList.toggle('f-tema-ahsap', t !== 'gece');
+  }
+
+  /** Palet, hareket ve menü görünümü tercihini anında uygular (HUD ikonları yeniden çizilir). */
+  secenekAyarla(s: { palet?: Palet; hareketiAzalt?: boolean; tema?: MenuTemasi }): void {
     if (s.palet && s.palet !== this.b.palet) {
       this.b.palet = s.palet;
       tanimlariKur(s.palet);
@@ -197,6 +206,7 @@ export class Arayuz {
       this.b.hareketiAzalt = s.hareketiAzalt;
       this.b.kok.classList.toggle('f-az', s.hareketiAzalt);
     }
+    if (s.tema) this.temaUygula(s.tema);
   }
 
   // ─────────────────────── Yerleşim ───────────────────────
@@ -366,7 +376,7 @@ export class Arayuz {
 
   ayarlar(vm: AyarlarVM, ek: Omit<AyarlarEk, 'yerelUygula'> = {}): Promise<void> {
     const yerelUygula = (d: AyarDegisikligi) => {
-      if (d.palet !== undefined || d.hareketiAzalt !== undefined) this.secenekAyarla({ palet: d.palet, hareketiAzalt: d.hareketiAzalt });
+      if (d.palet !== undefined || d.hareketiAzalt !== undefined || d.tema !== undefined) this.secenekAyarla({ palet: d.palet, hareketiAzalt: d.hareketiAzalt, tema: d.tema });
     };
     return this.ac(
       ayarlarEkrani(this.b, vm, {

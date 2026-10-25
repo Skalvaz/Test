@@ -10,7 +10,7 @@
  */
 import type { Dil } from '../platform/dil';
 import type { Hedef, Motif, ReaksiyonKademesi } from '../core/types';
-import type { Palet } from '../app/sozlesme';
+import type { MenuTemasi, Palet } from '../app/sozlesme';
 import type { DesenId, FitilId, GokyuzuId, GuclendiriciId } from '../app/katalog';
 import type { UrunId } from '../platform/gelir';
 
@@ -452,6 +452,8 @@ export interface AyarlarVM {
   ipuclari: boolean;
   /** Mola hatırlatıcısı (dakika); 0 = kapalı. */
   mola: MolaDakika;
+  /** Menü görünümü. */
+  tema: MenuTemasi;
   /** Mahalle başına Fener Koyu Defteri kartı açık mı (8). */
   defterKartlari: boolean[];
   /** (Kancalar §B.5) Mahalle başına kasaba kartı açık mı (8). */
@@ -460,7 +462,7 @@ export interface AyarlarVM {
   surum: string;
 }
 
-export type AyarDegisikligi = Partial<Pick<AyarlarVM, 'sfx' | 'muzik' | 'ortam' | 'titresim' | 'hareketiAzalt' | 'hiz' | 'palet' | 'ipuclari' | 'mola'>>;
+export type AyarDegisikligi = Partial<Pick<AyarlarVM, 'sfx' | 'muzik' | 'ortam' | 'titresim' | 'hareketiAzalt' | 'hiz' | 'palet' | 'ipuclari' | 'mola' | 'tema'>>;
 
 /** Kayıt kodu içe aktarma önizlemesi. */
 export type KayitOnizleme =
