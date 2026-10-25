@@ -314,4 +314,14 @@ ayrı klasörde ikinci portta çalıştır (`scripts/capture/README.md`).
      `vitrin/*` dalları, portlar 52WN, birleşme sırası
      1A→1F→1C→1D→1I→1E→1H→1G→1B); başlamadan maliyet tahmini ve
      `get_usage`.
+   - ⏸ Dalga 1a (1A, 1F, 1C, 1I; iş akışı `wf_09a17f37-837`) 5 sa %92 /
+     haftalık %68'de durduruldu. Dallar `vitrin/1a-render` (uygulama yarım,
+     son "ara kayıt (YARIM)"), `vitrin/1f-malzeme` (uygulama bitmiş, mozaik +
+     not), `vitrin/1c-kimlik` (uygulama bitti; denetim yarıda), `vitrin/1i-tekme`
+     (uygulama yarım, ara kayıt); worktree'ler `.claude/worktrees/wf_09a17f37-837-{1..4}`.
+     Önce yapıları `..	urbofan-once-1a`, `..	urbofan-1i-once` (junction'lı;
+     silerken önce `cmd /c rmdir <yol>
+ode_modules`). Devam: her paketi kendi
+     worktree'sinde tamamla → denetle → düzelt → entegratör 1A→1F→1C→1I.
+     Maliyet beklenenden yüksek (4 paket şimdiye dek ≈ haftalık %10).
 3. M5b, M5c (`docs/ATOLYE.md`).
