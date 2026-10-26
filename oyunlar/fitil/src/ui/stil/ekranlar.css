@@ -801,7 +801,7 @@
   /* Duraklat: başlık ve hedefler solda, düğmeler sağda (2×2). */
   .f-dr { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 8px 14px; align-items: center; }
   .f-dr > .f-dr-bolum, .f-dr > .f-dr-hedefler { grid-column: 1; }
-  .f-dr > .f-dg-sutun { grid-column: 2; grid-row: 1 / span 3; align-self: start; }
+  .f-dr > .f-dg-sutun { grid-column: 2; grid-row: 1 / span 3; align-self: start; margin-top: 12px; }
 }
 
 /* ─────────────── P5 ekleri: bekleme kartı, eksen seçici ─────────────── */
@@ -958,3 +958,14 @@ li.f-kz-tablo .f-tablo { width: 64px; max-width: 64px; }
 .f-kz-kutu-sandik .f-sandik-etiket { margin: 0; font-size: 19px; }
 .f-kz-kutu-sandik .f-sandik-sayac { position: static; margin-left: auto; font-size: 16px; }
 .f-kz-kutu-sandik .f-sandik-oduller { justify-content: flex-start; }
+
+/* Yatay telefon: bölüm kartının sağ sütunundaki hedef listesi sıkı satırlı (Usta
+   bölümünün dört satırı Oyna bandının üstünde kalsın) ve kapat düğmesinin altından başlar. */
+@media (max-height: 480px) and (min-width: 560px) {
+  .f-bo > .f-bo-liste { margin-top: 14px; }
+  .f-bo-liste li { padding: 6px 0; font-size: 19px; gap: 12px; }
+  .f-bo-liste-ikon, .f-bo-liste-ikon .f-hedef-kutu-ikon { width: 40px; height: 40px; border-radius: 12px; }
+  .f-bo-liste-ikon .f-hedef-kutu-ikon .f-resim { width: 32px; height: 32px; }
+  .f-bo-liste-hamle .f-ikon, .f-bo-liste-kural .f-ikon { width: 26px; height: 26px; }
+  .f-bo-liste-kural { font-size: 16px !important; }
+}

@@ -280,7 +280,7 @@
   border-radius: 22px;
   padding: 14px 20px 20px;
   /* Kaydırılan içerik alttaki iç çizginin altına taşmasın: kenarın 8 px'i kırpılır. */
-  clip-path: inset(0 0 8px 0 round 0 0 15px 15px);
+  clip-path: inset(0 0 8px 0 round 0 0 23px 23px);
   scrollbar-width: thin;
   scrollbar-color: var(--t-ikincil-kenar) transparent;
 }
@@ -316,7 +316,8 @@
 .f-serit-yer + .f-kart-ic { border-top-left-radius: 0; border-top-right-radius: 0; }
 /* Uzun üst başlık ("Saat Kulesi tamamlandı!") kesilmez, ortalı iki satıra iner. */
 .f-kart:has(.f-baslik) .f-serit { white-space: normal; text-align: center; }
-.f-kart:has(.f-baslik) .f-serit-metin { overflow: visible; }
+.f-kart:has(.f-baslik) .f-serit-metin { overflow: visible; text-wrap: balance; }
+.f-kart:not(:has(.f-kapat-dg)) .f-serit-yer { padding-left: 24px; padding-right: 24px; }
 
 /* ─────────────── Ortak parçalar ─────────────── */
 .f-baslik { font-size: 26px; font-weight: 900; text-align: center; line-height: 1.1; color: var(--t-baslik); }
