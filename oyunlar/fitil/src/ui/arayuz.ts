@@ -185,10 +185,15 @@ export class Arayuz {
     Object.assign(this.b.geri, g);
   }
 
-  /** Menü görünümü: kökte tek tema sınıfı (stiller `stil/tema.css` belirteçlerinden). */
+  /**
+   * Menü görünümü: kökte tek tema sınıfı (belirteçler `stil/temel.css` başında:
+   * Ahşap çıplak `.f-kok`, Gece `.f-kok.f-tema-gece`; `f-tema-ahsap` yalnız işaret).
+   * Açık Ayarlar'daki seçici de eşitlenir (kayıt kodu içe aktarma, geç gelen bulut kaydı).
+   */
   private temaUygula(t: MenuTemasi): void {
     this.b.kok.classList.toggle('f-tema-gece', t === 'gece');
     this.b.kok.classList.toggle('f-tema-ahsap', t !== 'gece');
+    this.b.kok.querySelectorAll<HTMLElement>('[data-ayar="tema"] [role="radio"]').forEach((r) => r.setAttribute('aria-checked', String(r.dataset.d === t)));
   }
 
   /** Palet, hareket ve menü görünümü tercihini anında uygular (HUD ikonları yeniden çizilir). */

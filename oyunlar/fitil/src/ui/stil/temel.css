@@ -182,7 +182,7 @@
 /* Uyarı (sıfırlama). */
 .f-dg-tehlike {
   color: #FFF3D6;
-  background: #C9452E;
+  background: #C24129;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 3px 0 #74200F;
 }
 
@@ -221,7 +221,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: calc(var(--guv-ust) + 34px) calc(var(--guv-sag) + 14px) calc(var(--guv-alt) + 16px) calc(var(--guv-sol) + 14px);
+  padding: calc(var(--guv-ust) + 16px) calc(var(--guv-sag) + 14px) calc(var(--guv-alt) + 16px) calc(var(--guv-sol) + 14px);
   pointer-events: auto;
   touch-action: none;
 }
@@ -279,10 +279,12 @@
   touch-action: pan-y;
   border-radius: 22px;
   padding: 14px 20px 20px;
+  /* Kaydırılan içerik alttaki iç çizginin altına taşmasın: kenarın 8 px'i kırpılır. */
+  clip-path: inset(0 0 8px 0 round 0 0 15px 15px);
   scrollbar-width: thin;
   scrollbar-color: var(--t-ikincil-kenar) transparent;
 }
-.f-kart > .f-kart-ic:first-child { padding-top: 24px; }
+.f-kart-ic:first-child { padding-top: 24px; }
 .f-kart-ic::-webkit-scrollbar { width: 6px; }
 .f-kart-ic::-webkit-scrollbar-thumb { background: var(--t-ikincil-kenar); border-radius: 3px; }
 
@@ -311,6 +313,10 @@
 .f-kart:has(.f-baslik) .f-serit { font-size: 13px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--t-ust-yazi); }
 .f-kart:has(.f-baslik) .f-serit::before, .f-kart:has(.f-baslik) .f-serit::after { content: ''; flex: none; width: 18px; height: 1px; background: currentColor; opacity: .55; }
 .f-kart:has(.f-baslik) .f-serit-yer + .f-kart-ic { padding-top: 6px; }
+.f-serit-yer + .f-kart-ic { border-top-left-radius: 0; border-top-right-radius: 0; }
+/* Uzun üst başlık ("Saat Kulesi tamamlandı!") kesilmez, ortalı iki satıra iner. */
+.f-kart:has(.f-baslik) .f-serit { white-space: normal; text-align: center; }
+.f-kart:has(.f-baslik) .f-serit-metin { overflow: visible; }
 
 /* ─────────────── Ortak parçalar ─────────────── */
 .f-baslik { font-size: 26px; font-weight: 900; text-align: center; line-height: 1.1; color: var(--t-baslik); }

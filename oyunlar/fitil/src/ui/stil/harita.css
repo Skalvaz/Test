@@ -286,6 +286,7 @@
   .f-harita-sekme { min-height: 52px; }
   .f-harita-oyna { min-height: 54px; }
 }
+@media (max-width: 370px) { .f-harita-alt { gap: 2px; } }
 @media (min-width: 900px) {
   .f-harita-alt { width: 640px; }
   .f-harita-sekme { font-size: 14px; flex-direction: row; gap: 6px; min-height: 52px; white-space: nowrap; }
@@ -433,7 +434,7 @@
 .f-harita-oyna-sira { display: flex; justify-content: center; align-items: stretch; gap: 8px; width: 100%; pointer-events: none; }
 .f-harita-oyna-sira.f-kasabali { width: min(100%, 350px); }
 .f-harita-oyna-sira.f-kasabali .f-harita-oyna { flex: 1 1 206px; min-width: 0; padding-left: 14px; padding-right: 14px; }
-.f-harita-kasaba { position: relative; flex: 0 0 136px; min-height: 64px; flex-direction: column; gap: 0; padding: 4px 8px 6px; border-radius: 20px; pointer-events: auto; line-height: 1; }
+.f-harita-kasaba { position: relative; background: linear-gradient(180deg, var(--t-pano-ust), var(--t-pano)); flex: 0 0 136px; min-height: 64px; flex-direction: column; gap: 0; padding: 4px 8px 6px; border-radius: 20px; pointer-events: auto; line-height: 1; }
 .f-harita-kasaba[hidden] { display: none; }
 .f-hk-ust { display: flex; align-items: center; gap: 6px; font-size: 24px; font-weight: 800; color: #FFE7C2; }
 .f-hk-kandil { width: 30px; height: 23px; }

@@ -63,7 +63,7 @@ function anahtar(acik: boolean, etiket: string, degisti: (v: boolean) => void): 
 function parcali<T extends string | number>(secenekler: { d: T; ad: string; uzun?: string }[], secili: T, etiket: string, degisti: (v: T) => void): HTMLElement {
   const kap = h('div', { s: 'f-parcali', role: 'radiogroup', 'aria-label': etiket });
   const dgler = secenekler.map((s) => {
-    const d = h('button', { type: 'button', role: 'radio', 'aria-checked': String(s.d === secili), t: s.ad, 'aria-label': s.uzun ?? s.ad });
+    const d = h('button', { type: 'button', role: 'radio', 'data-d': String(s.d), 'aria-checked': String(s.d === secili), t: s.ad, 'aria-label': s.uzun ?? s.ad });
     d.addEventListener('click', () => {
       dgler.forEach((x) => x.setAttribute('aria-checked', 'false'));
       d.setAttribute('aria-checked', 'true');
@@ -123,6 +123,14 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
   };
   paletCiz(d.palet);
   const sistemAz = sistemAzHareket();
+  const temaSecici = parcali(
+    (['ahsap', 'gece'] as MenuTemasi[]).map((x) => ({ d: x, ad: M.temaAdlari[x] })),
+    d.tema,
+    M.menuGorunumu,
+    (v) => degis({ tema: v }),
+  );
+  // Kayıt kodu içe aktarılınca ya da bulut kaydı gelince Arayuz.temaUygula bu seçiciyi de eşitler.
+  temaSecici.dataset.ayar = 'tema';
   const gorunum = h(
     'section',
     { s: 'f-ay-bolum' },
@@ -144,12 +152,7 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
       'div',
       { s: 'f-satir f-satir-dikey' },
       h('span', { s: 'f-satir-ust' }, h('span', { s: 'f-satir-ikon' }, ikon('cerceve')), h('span', { s: 'f-satir-etiket', t: M.menuGorunumu })),
-      parcali(
-        (['ahsap', 'gece'] as MenuTemasi[]).map((x) => ({ d: x, ad: M.temaAdlari[x] })),
-        d.tema,
-        M.menuGorunumu,
-        (v) => degis({ tema: v }),
-      ),
+      temaSecici,
     ),
     satir(M.hareketiAzalt, anahtar(d.hareketiAzalt || sistemAz, M.hareketiAzalt, (v) => degis({ hareketiAzalt: v })), ikon('hareket'), sistemAz ? tt('Sistem tercihi açık', 'System setting is on') : undefined),
     h(

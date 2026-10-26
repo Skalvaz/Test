@@ -65,7 +65,7 @@
 .f-can-fitil { width: 46px; height: 46px; overflow: visible; flex: none; }
 .f-can-sayac { display: flex; flex-direction: column; align-items: center; min-height: 40px; justify-content: center; }
 .f-can-sayac-etiket { font-size: 18px; font-weight: 800; color: var(--krem-2); line-height: 1.15; }
-.f-can-sure { font-size: 46px; font-weight: 900; line-height: 1.05; color: #FFF4C2; text-shadow: 0 2px 0 rgba(0, 0, 0, .5), 0 0 20px rgba(255, 170, 60, .35); }
+.f-can-sure { font-size: 46px; font-weight: 900; line-height: 1.05; color: #FFF4C2; }
 .f-can-sayac-dolu { font-size: 20px; font-weight: 800; color: var(--basari); }
 .f-can-satirlar { gap: 12px; }
 .f-can-satirlar .f-dg { white-space: normal; text-align: center; }
@@ -82,8 +82,8 @@
   font-size: 18px;
   font-weight: 800;
   color: var(--krem-2);
-  background: rgba(0, 0, 0, .22);
-  box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, .25);
+  background: var(--t-yuzey);
+  box-shadow: inset 0 0 0 1.5px var(--t-yuzey-kenar);
 }
 .f-can-yarin .f-ikon { color: var(--t-ikon); opacity: .7; }
 
@@ -114,8 +114,8 @@
   font-weight: 900;
   line-height: 1.25;
   color: #FFF3D6;
-  background: linear-gradient(180deg, #FF8A6A, #C4321C);
-  box-shadow: 0 0 0 2px #5A0E06;
+  background: #C24129;
+  box-shadow: 0 0 0 2px var(--t-pano);
 }
 .f-co-metin { font-size: 20px; font-weight: 800; line-height: 1.25; }
 .f-cikis-onay .f-dg { font-size: 18px; white-space: normal; padding-left: 12px; padding-right: 12px; }

@@ -109,10 +109,10 @@
 .f-kz-muhur .f-kz-yeni {
   position: absolute; left: 50%; top: -9px; transform: translateX(-50%) scale(.6); opacity: 0;
   font-size: 9px; font-weight: 800; letter-spacing: .08em; color: #3A1606; padding: 0 5px; border-radius: 999px;
-  background: linear-gradient(#FFE7A2, #FFB020); box-shadow: 0 0 0 1px #8A3E18; white-space: nowrap;
+  background: var(--t-vurgu); white-space: nowrap;
 }
 .f-kz-muhur.f-bas .f-kz-yeni { opacity: 1; transform: translateX(-50%); transition: opacity .2s .2s, transform .3s .2s var(--yay); }
-.f-kz-sancak { font-size: 13px; font-weight: 800; color: #3A1606; padding: 2px 10px; border-radius: 999px; background: linear-gradient(#FFE7A2, #FFB020); box-shadow: 0 0 0 1.5px #8A3E18; opacity: 0; transform: scale(.6); }
+.f-kz-sancak { font-size: 13px; font-weight: 800; color: var(--t-vurgu-yazi); padding: 2px 10px; border-radius: 999px; background: var(--t-vurgu); opacity: 0; transform: scale(.6); }
 .f-kz-sancak.f-goster { opacity: 1; transform: none; transition: opacity .2s, transform .35s var(--yay); }
 .f-az .f-kz-muhur .f-kz-mum, .f-az .f-kz-yeni, .f-az .f-kz-sancak { transition: none !important; }
 /* Usta'nın Eli ile kazanç: boş halkaların altında kısa açıklama. */
@@ -123,14 +123,13 @@
 .f-kandil-hap {
   display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 2px 12px 2px 8px; border-radius: 999px;
   font-size: 16px; font-weight: 800; color: var(--krem);
-  background: linear-gradient(180deg, rgba(232, 149, 90, .24), rgba(106, 46, 20, .3));
-  box-shadow: inset 0 0 0 1.5px rgba(232, 149, 90, .65);
+  background: var(--t-yuzey);
+  box-shadow: inset 0 0 0 1.5px var(--t-ikincil-kenar);
 }
 .f-kandil-ucan { position: absolute; left: -12px; top: -9px; width: 24px; height: 18px; pointer-events: none; will-change: transform; }
 .f-kandil-ucan .f-kandil-svg { width: 24px; height: 18px; }
 
 /* Kazandın kazanç şeridi: ilk çip her zaman kandil (§C.5) */
-.f-kz-kandil:not(.f-kz-kutu) { background: linear-gradient(180deg, rgba(232, 149, 90, .26), rgba(106, 46, 20, .3)); box-shadow: inset 0 0 0 1.5px rgba(232, 149, 90, .7); }
 .f-kz-kandil .f-kandil-svg { width: 24px; height: 18px; flex: none; }
 .f-kz-kandil > .f-sayi { font-size: 17px; min-width: 1.2em; text-align: center; color: #FFE7C2; }
 .f-kz-kandil-not { font-size: 13px; font-weight: 800; color: #F2B07A; }
@@ -138,10 +137,6 @@
 @keyframes f-kz-zipla { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
 .f-kz-hazir { box-shadow: inset 0 0 0 1.5px rgba(255, 209, 92, .8); background: linear-gradient(90deg, rgba(255, 180, 60, .24), rgba(255, 180, 60, .05)); }
 
-/* Yatay / kısa ekran: mühür bloğu bölüm öncesinde sağ sütunda. */
-@media (max-height: 480px) and (min-width: 560px) {
-  .f-bo > .f-bo-muhurler { grid-column: 2; }
-}
 
 /* Kazandın kancalı (mühür satırı ve kandil çipi) kısa ekranda sığsın (§C.5: 390×700, 375×600):
    puan ve YENİ REKOR yan yana, sandık/tablo satırı ~%85. */
@@ -175,22 +170,29 @@
   .f-kz.f-kancali .f-kz-duyurular { gap: 4px; }
   .f-kz.f-kancali .f-kz-duyuru { padding: 3px 10px 3px 7px; font-size: 13px; }
 }
+/* Ödül listesindeki sandık satırı kısa ekranda da tek satır kalsın (yukarıdaki iki blok
+   büyük sandığı küçültür; liste satırına uymaz). */
+.f-kz.f-kancali .f-kz-kutu-sandik .f-sandik { width: 100%; height: 52px; }
+.f-kz.f-kancali .f-kz-kutu-sandik .f-kz-sandik-kutu { padding: 0; }
+.f-kz.f-kancali .f-kz-kutu-sandik .f-sandik-svg { width: 48px; }
 
 /* ── Kasaba paneli (§C.1): alttan çekmece, yükseklik min(%70, 520 px) */
 .f-kasaba-modal { padding-bottom: 0; padding-left: calc(var(--guv-sol) + 6px); padding-right: calc(var(--guv-sag) + 6px); }
-.f-kasaba-modal .f-kart { width: min(100%, 480px); height: min(70vh, 520px, 100%); padding: 5px 5px 0; border-radius: 26px 26px 0 0; transform: translateY(100%); transition: opacity .15s ease, transform .3s cubic-bezier(.2, .9, .3, 1); }
+.f-kasaba-modal .f-kart { width: min(100%, 480px); height: min(70vh, 520px, 100%); border-radius: 22px 22px 0 0; transform: translateY(100%); transition: opacity .15s ease, transform .3s cubic-bezier(.2, .9, .3, 1); }
 /* Yükseklik görüntü alanından (yüzde, modalın 34 px üst dolgulu içeriğine göre 466 px veriyordu; §C.1: 700'de 490). */
 @supports (height: 1dvh) { .f-kasaba-modal .f-kart { height: min(70dvh, 520px, 100%); } }
 .f-kasaba-modal.f-giris .f-kart { transform: none; }
 .f-kasaba-modal.f-cikis .f-kart { transform: translateY(100%); transition: transform .24s ease-in, opacity .24s ease-in; }
-.f-kasaba-modal .f-kart-ic { padding: 0; border-radius: 21px 21px 0 0; overflow: hidden; display: flex; flex-direction: column; }
+.f-kasaba-modal .f-kart::after { bottom: -1px; border-bottom: 0; border-radius: 16px 16px 0 0; }
+.f-kasaba-modal .f-kart-ic { padding: 8px 4px 0; border-radius: 22px 22px 0 0; clip-path: none; overflow: hidden; display: flex; flex-direction: column; }
 .f-ks { display: flex; flex-direction: column; min-height: 0; height: 100%; padding-bottom: var(--guv-alt); }
 .f-ks-baslik { flex: none; height: 48px; display: flex; align-items: center; gap: 8px; padding: 2px 6px 0 14px; }
 .f-ks-ad { flex: 1; min-width: 0; font-size: 18px; font-weight: 800; color: var(--krem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .f-ks-kandil { min-height: 30px; font-size: 17px; }
-.f-ks-kapat { width: 44px; height: 44px; flex: none; }
+.f-ks-kapat { width: 44px; height: 44px; flex: none; background: none; box-shadow: none; opacity: .85; }
 .f-ks-kapat .f-ikon { width: 20px; height: 20px; }
-.f-ks-sekmeler { flex: none; height: 40px; display: flex; gap: 6px; padding: 2px 12px 4px; overflow: auto hidden; scrollbar-width: none; touch-action: pan-x; overscroll-behavior: contain; }
+/* Sağda solma: şerit kaydırılabilir olduğu belli olsun (son sekme sert kesilmesin). */
+.f-ks-sekmeler { flex: none; height: 40px; display: flex; gap: 6px; padding: 2px 28px 4px 12px; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 28px), transparent calc(100% - 6px)); mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 28px), transparent calc(100% - 6px)); overflow: auto hidden; scrollbar-width: none; touch-action: pan-x; overscroll-behavior: contain; }
 .f-ks-sekmeler::-webkit-scrollbar { display: none; }
 .f-ks-sekme {
   flex: none; display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 11px 1px 9px; border: 0; border-radius: 999px;
@@ -199,21 +201,21 @@
 .f-ks-sekme small { font-size: 12px; opacity: .85; }
 .f-ks-sekme .f-ikon { width: 14px; height: 14px; }
 .f-ks-nokta { width: 9px; height: 9px; border-radius: 50%; background: var(--vurgu); box-shadow: 0 0 6px var(--vurgu); }
-.f-ks-sekme.f-secili { color: #3A1606; background: linear-gradient(#FFE7A2, #F2C66D 55%, #D9A441); box-shadow: 0 0 0 1.5px #7A3E1C; }
-.f-ks-sekme.f-secili .f-ks-nokta { box-shadow: 0 0 0 1.5px #3A1606; }
+.f-ks-sekme.f-secili { color: var(--t-vurgu-yazi); background: var(--t-vurgu); box-shadow: none; }
+.f-ks-sekme.f-secili .f-ks-nokta { box-shadow: 0 0 0 1.5px var(--t-vurgu-yazi); }
 .f-ks-sekme.f-kilitli { opacity: .55; }
-.f-ks-sekme.f-tamam:not(.f-secili) { box-shadow: inset 0 0 0 1.5px #FFD15C; color: #FFE3A0; }
+.f-ks-sekme.f-tamam:not(.f-secili) { box-shadow: inset 0 0 0 1.5px var(--t-ust-yazi); color: var(--t-ust-yazi); }
 .f-ks-sakin { flex: none; height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 16px; font-size: 14px; font-weight: 800; color: var(--t-ust-yazi); }
 .f-ks-sakin > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .f-ks-ilerleme { flex: none; display: flex; gap: 3px; }
 .f-ks-ilerleme i { width: 14px; height: 8px; border-radius: 3px; background: var(--t-cukur); box-shadow: inset 0 0 0 1px var(--t-yuzey-kenar); }
-.f-ks-ilerleme i.f-dolu { background: linear-gradient(#FFE3A0, var(--vurgu)); box-shadow: 0 0 6px rgba(255, 200, 107, .5); }
+.f-ks-ilerleme i.f-dolu { background: var(--vurgu); box-shadow: none; }
 .f-ks-liste { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 5px; padding: 2px 10px 6px; overflow: hidden auto; overscroll-behavior: contain; touch-action: pan-y; }
 .f-ks-is { position: relative; flex: none; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 8px 6px 7px; border-radius: 16px; background: var(--t-yuzey); box-shadow: inset 0 0 0 1px var(--t-ikincil-kenar); }
 .f-ks-is.f-tac { box-shadow: inset 0 0 0 1.5px rgba(255, 209, 92, .55); background: linear-gradient(90deg, rgba(255, 190, 90, .12), rgba(0, 0, 0, .22)); }
 .f-ks-is.f-d-yapildi { background: rgba(40, 90, 50, .18); box-shadow: inset 0 0 0 1.5px rgba(124, 255, 178, .3); }
 .f-ks-is.f-d-tacKilitli, .f-ks-is.f-d-sirada, .f-ks-is.f-d-haritaKilitli, .f-ks-is.f-d-kasabaKapali { opacity: .72; }
-.f-ks-ikon { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: radial-gradient(circle at 50% 40%, #2E2040, #140C1E 80%); box-shadow: inset 0 0 0 1.5px rgba(217, 164, 65, .4); }
+.f-ks-ikon { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--t-cukur); box-shadow: inset 0 0 0 1px var(--t-yuzey-kenar); }
 .f-ks-resim { width: 36px; height: 36px; display: block; overflow: visible; }
 .f-ks-metin { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .f-ks-metin strong { font-size: 16px; font-weight: 800; line-height: 1.1; color: var(--krem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
