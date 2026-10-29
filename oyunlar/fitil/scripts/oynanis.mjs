@@ -15,7 +15,7 @@
  *  - goc      390×700, dokunmatik: yayındaki şema 2 sürümünün gerçek kaydı
  *             (src/meta/_test/kayitlar/sema2-bolum14.json, localStorage olduğu
  *             gibi) yüklenir → göç denetimi (yıldız/rozet/defter aynen) →
- *             "Fener Koyu seni bekliyordu" balonu → Kasaba paneli → İskele'nin
+ *             "Hoş geldin, çırak! N kandilin birikmiş" balonu → Kasaba paneli → İskele'nin
  *             6 işi (son iş Mahalle şenliği + kasaba kartı) → 15. bölüm kazancı
  *             (mühür satırı, kandil çipi) → `kayitYama` ile şema 2 kaydı (27).
  *  - goc600   375×600: aynı denetim 27. bölüme kadar oynanmış kayıtla (panel,
@@ -292,7 +292,7 @@ async function profilKos(browser, p) {
     not(`[${p.ad}] göç: şema ${eski.surum} → ${k.surum}, ${yildiz(k)}★, ${k.rozetler.length} rozet, kartlar ${k.koleksiyon.kartlar.join(',')}`);
     await page.waitForTimeout(900);
     const balon = await page.locator('.f-harita-balon').count();
-    if (!balon) hatalar.push(`[${p.ad}] göç: "Fener Koyu seni bekliyordu" balonu yok`);
+    if (!balon) hatalar.push(`[${p.ad}] göç: kasaba hoş geldin balonu yok`);
     await kare('goc-harita-balon');
     await page.waitForTimeout(3800);
     // Kasaba: ilk iş kareli, sonra İskele'nin geri kalanı (6. iş: Mahalle şenliği + kasaba kartı).

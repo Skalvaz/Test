@@ -1,7 +1,7 @@
 /**
  * (CAN-REKLAM §6, G3) Arayüzün DOM'suz parçaları: geri sayım biçimi, harita
  * "aynı model" denetiminin can hapını dışarıda bırakması, Kaybettin'de
- * "Can yok, bekleme yok" notunun ne zaman kalktığı, Türkçe metinlerin
+ * Ücretsiz tekrar notunun ("Can derdi yok…") ne zaman kalktığı, Türkçe metinlerin
  * şartnameyle birebirliği.
  */
 import { describe, expect, it } from 'vitest';
@@ -45,7 +45,7 @@ describe('harita: aynı model denetimi can hapını saymaz (§13 karar 9)', () =
   });
 });
 
-describe('Kaybettin: sağlayıcı varken "Can yok, bekleme yok" notu çıkmaz', () => {
+describe('Kaybettin: sağlayıcı varken ücretsiz tekrar notu çıkmaz', () => {
   const kb = (o: Partial<KaybettinVM> = {}): KaybettinVM => ({ bolumId: 9, bolumAdi: 'x', yuzde: 0.5, enZorHedef: null, hayalet: 'yok', ustaEli: false, coskuSifirlandi: false, ...o });
   it('alanlar yoksa (sağlayıcı yok) not kalır', () => {
     expect(kaybettinGelirli(kb())).toBe(false);
@@ -82,7 +82,7 @@ describe('Türkçe metinler şartnameyle birebir (CAN-REKLAM §6)', () => {
   });
   it('Hakkında: sağlayıcı yokken metin aynen, varken can cümlesi', () => {
     expect(M.hakkindaMetin).toBe('Fener Koyu’nun Işık Şenliği’ni yeniden yak. Can yok, bekleme yok, mağaza yok.');
-    expect(M.hakkindaMetinGelir).toBe('Fener Koyu’nun Işık Şenliği’ni yeniden yak. Her 30 dakikada 1 can dolar; reklam yalnız sen isteyince.');
+    expect(M.hakkindaMetinGelir).toBe('Fener Koyu’nun Işık Şenliği’ni yeniden yak. Her 30 dakikada 1 can dolar. Reklam sen istemezsen çıkmaz.');
   });
   it('ürün adları her ürün için var; paket açıklaması GUCLENDIRICI_PAKETI ile tutarlı', () => {
     for (const id of URUN_IDLERI) {

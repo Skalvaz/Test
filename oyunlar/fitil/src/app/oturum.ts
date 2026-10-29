@@ -95,7 +95,7 @@ const SECIM_METNI: Record<SecimTuru, string> = t<Record<SecimTuru, string>>(
 
 /** Oyun içi kısa bildirimler (toast, balon). */
 const BILDIRIM = {
-  aksilik: t('Bir aksilik oldu, haritaya dönüldü', 'Something went wrong, back to the map'),
+  aksilik: t('Bir aksilik oldu, haritaya döndük', 'Something went wrong, back to the map'),
   halkaGerekli: t('Bu bölümde yalnız halka geçerli: başladığın yere dön', 'This level needs a loop: end where you started'),
   tekrarDokun: t('Ateşlemek için tekrar dokun', 'Tap again to ignite'),
   bolumBasina1: t('Bölüm başına 1 güçlendirici', '1 booster per level'),

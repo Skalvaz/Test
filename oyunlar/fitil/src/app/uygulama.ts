@@ -75,7 +75,7 @@ const U = {
   gunlukHazirlaniyor: t('Kıvılcım Usta bugünün tahtasını hazırlıyor…', 'Master Spark is setting up today’s board…'),
   sonsuzHazirlaniyor: t((n: number) => `Kıvılcım Usta ${n}. şenliği hazırlıyor…`, (n: number) => `Master Spark is setting up festival ${n}…`),
   gunlukAlt: t('Herkes bugün aynı tahtayı oynar.', 'Everyone plays the same board today.'),
-  sonsuzAlt: t('Her tahta botla denenip ayarlanır.', 'Every board is test-played and tuned.'),
+  sonsuzAlt: t('Her tahtayı önce kendisi dener.', 'He test-plays every board first.'),
   tahtaHazirlanamadi: t('Tahta hazırlanamadı, sonra yeniden dene', 'Couldn’t set up the board, try again later'),
   arsivdeDegil: t('Bu gün artık arşivde değil', 'This day is no longer in the archive'),
   olmadi: t('Olmadı', 'That didn’t work'),

@@ -177,7 +177,7 @@ export const M = {
   ustaEliMetin: t('+5 hamle ile devam et (en fazla 1★)', 'Continue with +5 moves (max 1★)'),
   ustaEliDugme: t('+5 hamle', '+5 moves'),
   coskuSifirlandi: t('Coşku Serisi sıfırlandı.', 'Cheer Streak reset.'),
-  ucretsizTekrar: t('Can yok, bekleme yok: tekrar her zaman ücretsiz.', 'No lives, no waiting: retries are always free.'),
+  ucretsizTekrar: t('Can derdi yok, beklemeden istediğin kadar dene.', 'No lives, no waiting: retries are always free.'),
 
   // Ayarlar
   ses: t('Ses', 'Sound'),
@@ -223,13 +223,13 @@ export const M = {
   kopyalanamadi: t('Kopyalanamadı: metin seçildi, elle kopyala', 'Couldn’t copy: text selected, copy it yourself'),
   koduYapistir: t('Kayıt kodunu buraya yapıştır', 'Paste your save code here'),
   yukle: t('Yükle', 'Load'),
-  yukleOnay: t('Bu kayıt mevcut ilerlemenin yerine geçecek.', 'This save will replace your current progress.'),
+  yukleOnay: t('Bu kayıt şimdiki ilerlemenin yerine geçecek.', 'This save will replace your current progress.'),
   evetYukle: t('Evet, yükle', 'Yes, load'),
   kayitYuklendi: t('Kayıt yüklendi', 'Save loaded'),
   kayitGecersiz: t('Kod okunamadı', 'Invalid code'),
   ilerlemeyiSifirla: t('İlerlemeyi sıfırla', 'Reset progress'),
   sifirlaUyari1: t('Bütün yıldızlar, desenler ve rekorlar silinir.', 'All stars, patterns and records will be deleted.'),
-  sifirlaUyari2: t('Son kez: bu işlem geri alınamaz.', 'Last chance: this can’t be undone.'),
+  sifirlaUyari2: t('Son kez: bunu geri alamazsın.', 'Last chance: this can’t be undone.'),
   sifirla: t('Sıfırla', 'Reset'),
   evetHepsiniSil: t('Evet, hepsini sil', 'Yes, delete all'),
   sifirlandi: t('İlerleme sıfırlandı', 'Progress reset'),
@@ -253,7 +253,7 @@ export const M = {
   ),
   /** (CAN-REKLAM §6) Gelir sağlayıcısı varken Hakkında metni ("Can yok…" cümlesinin yerine). */
   hakkindaMetinGelir: t(
-    'Fener Koyu’nun Işık Şenliği’ni yeniden yak. Her 30 dakikada 1 can dolar; reklam yalnız sen isteyince.',
+    'Fener Koyu’nun Işık Şenliği’ni yeniden yak. Her 30 dakikada 1 can dolar. Reklam sen istemezsen çıkmaz.',
     'Relight Lantern Cove’s Festival of Lights. A life refills every 30 minutes; ads only when you ask.',
   ),
   yaziTipi: t('Yazı tipi: Nunito (SIL OFL). Sesler ve görüntüler oyun içinde üretilir.', 'Font: Nunito (SIL OFL). Sounds and pictures are made by the game.'),
@@ -334,7 +334,7 @@ export const M = {
 
   // Mola
   molaBaslik: t('Kıvılcım Usta', 'Master Spark'),
-  molaMetin: t('Biraz mola? Gözlerini dinlendir, şenlik seni bekler.', 'Time for a break? Rest your eyes, the festival will wait.'),
+  molaMetin: t('Biraz mola ver çırak, gözlerin dinlensin. Fişekler kaçmaz.', 'Take a break, apprentice. The fireworks aren’t going anywhere.'),
   molaVer: t('Mola ver', 'Take a break'),
 
   // Defter kartı
@@ -439,9 +439,9 @@ export const MK = {
   ),
   yeni: t('YENİ', 'NEW'),
   muhurTanitim: t('Her bölümde üç mühür var. Kazandığın oyunda tutanlar basılır.', 'Each level has three seals. The ones you hold are stamped when you win.'),
-  muhurKart: t('Her bölümde 3 mühür görevi var. Görevleri oyunda Duraklat menüsünde görürsün.', 'Each level has 3 seal tasks. You can see them in the Pause menu.'),
+  muhurKart: t('Her bölümde 3 mühür görevi var. Oyunu duraklatınca görürsün.', 'Each level has 3 seal tasks. Pause the game to see them.'),
   muhurHud: t('Mühür tuttu! Kazanırsan basılır.', 'Seal held! Win to stamp it.'),
-  sancakIlk: t('Üç mühür: çatıya sancak!', 'Three seals: a banner on the roof!'),
+  sancakIlk: t('Üç mühür! Sancağın çatıda.', 'Three seals! Your banner’s on the roof.'),
   parcaDuyuru: t(
     (fitil: string, n: number) => `${fitil} parçası (${n} mühür)`,
     (fitil: string, n: number) => `${fitil} piece (${n} seals)`,
@@ -482,13 +482,13 @@ export const MK = {
   ),
   kasabaKapali: t('3. bölümü kazanınca açılır', 'Opens when you win level 3'),
   kandilYetti: t(
-    (is: string) => `Kandil yetti: ${is} yapalım mı?`,
+    (is: string) => `Kandil yetti. ${is} yapalım mı?`,
     (is: string) => `Enough lamps! Build “${is}”?`,
   ),
   kasabaIlk: t('Yıldızların kandile döndü! Kasabayı süsleyelim.', 'Your stars turned into lamps! Let’s decorate the town.'),
   kasabaHosgeldin: t(
-    (n: number) => `Fener Koyu seni bekliyordu. ${n} kandilin var.`,
-    (n: number) => `Lantern Cove was waiting for you. You have ${n} ${cogul(n, 'lamp', 'lamps')}.`,
+    (n: number) => `Hoş geldin, çırak! ${n} kandilin birikmiş.`,
+    (n: number) => `Welcome back, apprentice! You’ve saved up ${n} ${cogul(n, 'lamp', 'lamps')}.`,
   ),
   isHazir: t('Kasabada yapılacak iş hazır!', 'A town decoration is ready to build!'),
   sakinIsleri: t(
@@ -541,8 +541,8 @@ export const MK = {
   fenerKoyu: t('Fener Koyu', 'Lantern Cove'),
   kasabaTamamDugme: t('Fener Koyu: bütün kasaba süslendi', 'Lantern Cove: the whole town is decorated'),
   yeniSurum: t(
-    'Oyunun yeni sürümü açıldı: bu sayfa ilerlemeni kaydetmiyor. Sayfayı yenile.',
-    'A newer version of the game is open: this page isn’t saving your progress. Reload the page.',
+    'Oyunun yeni sürümü açılmış, bu sayfa ilerlemeni kaydetmiyor. Sayfayı yenile.',
+    'A newer version of the game is open, so this page isn’t saving your progress. Reload the page.',
   ),
   kasabaKartlari: t('Kasaba kartları', 'Town letters'),
   kayitOzeti: t(
@@ -848,8 +848,8 @@ export const NASIL_KARTLARI: readonly { baslik: string; metin: string }[] = t(
     { baslik: 'Çapraz ve halka', metin: 'Çapraz da bağlanır. Başladığın yere dönersen HALKA: ısısı iki kat.' },
     { baslik: 'Isı ve kızgınlık', metin: 'Patlayan kapsül komşularını ısıtır. Kızgın olan bir ısı daha alınca kendiliğinden patlar.' },
     { baslik: 'Özel taşlar', metin: '6 zincir ROKET, 9 KASIMPATI, 12 YILDIZ TOPU. Roketin yönünü son adım belirler.' },
-    { baslik: 'Kombinasyonlar', metin: 'İki özel taşı aynı fitile kat: birleşip dev bir etki yaparlar.' },
-    { baslik: 'Engeller', metin: 'Her engel ısıyla ya da patlamayla konuşur. Açtıkların burada.' },
+    { baslik: 'Kombinasyonlar', metin: 'İki özel taşı aynı fitile kat, birleşip kocaman patlarlar.' },
+    { baslik: 'Engeller', metin: 'Çoğu ısıyla ya da patlamayla kalkar. Açtıkların burada.' },
   ],
   [
     { baslik: 'Draw and let go', metin: 'Join capsules of the same color with your finger, then let go. At least 3.' },
@@ -857,7 +857,7 @@ export const NASIL_KARTLARI: readonly { baslik: string; metin: string }[] = t(
     { baslik: 'Heat and hot capsules', metin: 'A popping capsule heats its neighbors. A hot one pops by itself with one more heat.' },
     { baslik: 'Special pieces', metin: 'Chain 6 for a ROCKET, 9 for a CHRYSANTHEMUM, 12 for a STAR BALL. The last step aims the rocket.' },
     { baslik: 'Combos', metin: 'Put two specials in one fuse: they join into one huge blast.' },
-    { baslik: 'Obstacles', metin: 'Every obstacle reacts to heat or pops. The ones you know are shown here.' },
+    { baslik: 'Obstacles', metin: 'Heat or a pop clears most of them. The ones you know are shown here.' },
   ],
 );
 
@@ -887,7 +887,7 @@ export const ROZETLER: Record<RozetId, { ad: string; kosul: string }> = t<Record
     caprazNisanci: { ad: 'Diagonal Ace', kosul: 'Break 3 cages with diagonal rockets in one game' },
     sarVePisir: { ad: 'Wrap and Bake', kosul: 'Heat a cage from 3 sides with one chain' },
     halkaci: { ad: 'Loop Maker', kosul: 'Draw 50 loops in total' },
-    otuzluk: { ad: 'Thirty Club', kosul: '30+ reaction in one move' },
+    otuzluk: { ad: 'Thirty Club', kosul: '30 reactions in one move' },
     senlik: { ad: 'FESTIVAL!', kosul: '40 reactions in one move' },
     ucuncuKusak: { ad: 'Third Generation', kosul: '3rd-generation blast in one move' },
     buyukFinal: { ad: 'Grand Finale', kosul: 'Star + Star combo' },
@@ -924,27 +924,27 @@ export const DEFTER_KARTLARI: readonly { baslik: string; metin: string }[] = t(
     {
       baslik: 'Mahya',
       metin:
-        'Mahya, iki minare arasına gerilen iplere dizilmiş kandillerle yazılan ışıklı yazıdır. Ramazan’da İstanbul camilerinde kurulur ve uzaktan okunacak kadar büyüktür. Ustalar yazıyı yerde ipe dizer, sonra makaralarla yukarı çeker. Bu sanatın dünyada bir benzeri yoktur.',
+        'Mahya, iki minare arasına gerilen iplere dizilmiş kandillerle yazılan ışıklı yazıdır. Ramazan’da İstanbul camilerinde kurulur ve uzaktan okunacak kadar büyüktür. Ustalar yazıyı yerde ipe dizer, sonra makarayla yukarı çeker. Fener Koyu’nun mahyasında ŞENLİK yazar.',
     },
     {
       baslik: 'Kayık fenerleri',
       metin:
-        'Gece balığına çıkan kayıklar pruvalarına lamba asardı; ışık balığı yüzeye çekerdi. Kıyıdan bakana lambalar denizde yüzen yıldızlar gibi görünürdü. Sıra sıra dizildiklerinde koy bir sokak gibi aydınlanırdı. Fener Koyu’nun balıkçıları hâlâ her kayığa bir fener asar.',
+        'Gece balığına çıkan kayıklar pruvalarına lamba asardı, ışık balığı yüzeye çekerdi. Sardalya gibi küçük balıklar ışığın altında toplanır. Kıyıdan bakınca denizde sıra sıra ışıklar görünürdü. Fener Koyu’nun balıkçıları hâlâ her kayığa bir fener asar.',
     },
     {
       baslik: 'Saat kuleleri',
       metin:
-        'Osmanlı’nın son yüzyılında Anadolu kentlerine pek çok saat kulesi yapıldı. Kule, herkesin aynı saati paylaştığı bir buluşma yeriydi. Çanının sesi çarşının açılışını ve kapanışını haber verirdi. Fener Koyu’nda şenlik gecesi kulenin kadranı kandillerle çevrilir.',
+        'Osmanlı’nın son yüzyılında Anadolu kentlerine pek çok saat kulesi yapıldı. Evinde saati olmayan, vakti kuleye bakıp öğrenirdi. Çanının sesi çarşının açılışını ve kapanışını haber verirdi. Fener Koyu’nda şenlik gecesi kulenin kadranı kandillerle çevrilir.',
     },
     {
       baslik: 'Hıdırellez',
       metin:
-        'Hıdırellez, 6 Mayıs’ta baharın gelişini kutlayan eski bir şenliktir. Geceden ateş yakılır, üzerinden atlanarak dilek tutulur. Dilekler kâğıda yazılıp gül ağacının dalına bağlanır. Sabah ağacın altında toplananlar baharı birlikte karşılar.',
+        'Hıdırellez, 6 Mayıs’ta baharın gelişini kutlayan eski bir şenliktir. Adını o gün buluştuğuna inanılan Hızır ile İlyas’tan alır. Geceden ateş yakılır, üzerinden atlanarak dilek tutulur. Dilekler kâğıda yazılıp gül ağacının dalına bağlanır.',
     },
     {
       baslik: 'Nevruz ateşi',
       metin:
-        'Nevruz, gece ile gündüzün eşitlendiği 21 Mart’ta baharı karşılar. Tepelerde büyük ateşler yakılır, gençler ateşin üzerinden atlar. Yumurta boyanır, demir dövülür, bereket dilenir. Ateşin ışığı yeni yılın aydınlık geçmesi dileğidir.',
+        'Nevruz, gece ile gündüzün eşitlendiği 21 Mart’ta baharı karşılar. Tepelerde büyük ateşler yakılır, gençler ateşin üzerinden atlar. Yumurta boyanır, demir dövülür, bereket dilenir. Adı Farsçada “yeni gün” demektir.',
     },
     {
       baslik: 'Baruthaneler',
@@ -966,27 +966,27 @@ export const DEFTER_KARTLARI: readonly { baslik: string; metin: string }[] = t(
     {
       baslik: 'Mahya',
       metin:
-        'A mahya is a message written in oil lamps strung on ropes between two minarets. It is hung at Istanbul’s mosques during Ramadan and is big enough to read from far away. Masters string the words on the ground, then pull them up with pulleys. There is no other art like it in the world.',
+        'A mahya is a message written in oil lamps strung on ropes between two minarets. It is hung at Istanbul’s mosques during Ramadan and is big enough to read from far away. Masters string the words on the ground, then pull them up with pulleys. Lantern Cove’s mahya spells FIESTA.',
     },
     {
       baslik: 'Boat lanterns',
       metin:
-        'Boats going out to fish at night hung lamps on their bows; the light drew the fish to the surface. From the shore, the lamps looked like stars floating on the sea. Lined up in rows, they lit the cove like a street. Lantern Cove’s fishermen still hang a lantern on every boat.',
+        'Boats going out to fish at night hung lamps on their bows, and the light drew fish to the surface. Small fish like sardines gather under the light. From the shore, you could see rows of lights out at sea. Lantern Cove’s fishermen still hang a lantern on every boat.',
     },
     {
       baslik: 'Clock towers',
       metin:
-        'In the last century of the Ottoman Empire, many clock towers were built in Anatolian towns. A tower was a meeting place where everyone shared the same time. Its bell told the town when the bazaar opened and closed. On festival night in Lantern Cove, the clock face is ringed with lamps.',
+        'In the last century of the Ottoman Empire, many clock towers were built in Anatolian towns. People with no clock at home told the time by the tower. Its bell told the town when the bazaar opened and closed. On festival night in Lantern Cove, the clock face is ringed with lamps.',
     },
     {
       baslik: 'Hıdırellez',
       metin:
-        'Hıdırellez is an old festival on May 6 that celebrates the coming of spring. Fires are lit the night before, and people jump over them to make a wish. Wishes are written on paper and tied to a branch of a rose tree. In the morning, everyone gathers under the tree to greet spring together.',
+        'Hıdırellez is an old festival on May 6 that celebrates the coming of spring. It is named after Khidr and Elijah, who are said to meet on that day. Fires are lit the night before, and people jump over them to make a wish. Wishes are written on paper and tied to a branch of a rose tree.',
     },
     {
       baslik: 'Nevruz fires',
       metin:
-        'Nevruz welcomes spring on March 21, when night and day are equal. Big fires are lit on the hills, and young people leap over the flames. Eggs are painted, iron is hammered and people wish for plenty. The firelight is a wish for a bright new year.',
+        'Nevruz welcomes spring on March 21, when night and day are equal. Big fires are lit on the hills, and young people leap over the flames. Eggs are painted, iron is hammered and people wish for plenty. Its name means “new day” in Persian.',
     },
     {
       baslik: 'Powder works',
@@ -1004,24 +1004,24 @@ export const DEFTER_KARTLARI: readonly { baslik: string; metin: string }[] = t(
 /** (Kancalar §B.5) Kasaba kartları: mahallenin 6 işi bitince sakinin mektubu (mahalle sırasıyla). */
 export const KASABA_KARTLARI: readonly { baslik: string; metin: string }[] = t(
   [
-    { baslik: 'Kayıkçı Rıza\'nın mektubu', metin: 'Çırak, iskele yeniden ışıl ışıl. Kayıklar artık gece de yolunu buluyor, çocuklar fenerlerin altında oyun kuruyor. Deniz fenerinin döndüğünü gören balıkçılar sabaha kadar türkü söyledi. Babamın feneri sana emanet.' },
-    { baslik: 'Kandilci Nazlı\'nın mektubu', metin: 'Dükkânların kapısında kandiller yandığından beri çarşı gece de kapanmıyor. Mahyadaki ŞENLİK yazısını ta tepeden okuyorlarmış. Kandillerin mırıldandığı ezgiyi sen de duydun mu? Bu ışıklar senin elinden.' },
-    { baslik: 'Kaptan Yakup\'un mektubu', metin: 'Gemim donandı, vinç bile bayramlık giydi. Mendirekteki fenerler yanınca uzak limanlardan selam geldi. Tayfalar "Fener Koyu yeniden uyandı" diyor. Bir gün seni de denize çıkarırım, çırak.' },
-    { baslik: 'Saatçi Hüsnü Usta\'nın mektubu', metin: 'Kadran yeniden aydınlandı, akrep yerine oturdu. Şenlik çanı çaldığında meydandaki herkes saatini düzeltti. Kulenin her kandili bir saniye kadar değerli. Tam zamanında geldin, çırak.' },
-    { baslik: 'Bahçıvan Gülizar\'ın mektubu', metin: 'Dut ağacındaki kurdeleler rüzgârda dilekleri fısıldıyor. Havuzdaki kandiller sabaha kadar süzüldü, ateş böcekleri de onlara eşlik etti. Hıdırellez ateşinin üstünden bütün mahalle atladı. Senin dileğin de kabul olsun.' },
-    { baslik: 'Gökbilimci Ayşe\'nin mektubu', metin: 'Rasathanenin kubbesinden gök iki kat parlak görünüyor. Değirmenin ışıklı kanatları yıldızlarla dans ediyor. Gök haritasına senin adını da ekledim: küçük ama parlak bir yıldız. Nevruz ateşi bu yıl en güzel burada yandı.' },
-    { baslik: 'Barutçu Kemal\'in mektubu', metin: 'Bacalardan artık duman değil altın kıvılcım yükseliyor. Depo kapısındaki fenerler, sabrın ışıkla ödüllendiğini hatırlatıyor. Şenlik düdüğü öttüğünde bütün işçiler gökyüzüne baktı. Barut sabır ister; sen sabrettin.' },
-    { baslik: 'Sur Bekçisi Murat\'ın mektubu', metin: 'Surlar yüz yıl sonra yeniden donandı. Burçtaki büyük ateşi uzak köylerden bile görmüşler. Bekçiliğimde ilk kez bütün gece hiç karanlık görmedim. Kıvılcım Usta\'nın sözü yerine geldi, çırak: koy yeniden yandı.' },
+    { baslik: 'Kayıkçı Rıza\'nın mektubu', metin: 'Çırak, dün gece kayığı fenersiz bağladım, iskele gündüz gibiydi. Deniz feneri yine dönüyor, babam görse sevinirdi. Çocuklar fener sayıyor, kırkı geçince şaşırıp baştan başlıyor. Türkü söylemekten sesim kısıldı.' },
+    { baslik: 'Kandilci Nazlı\'nın mektubu', metin: 'Dükkânlarda kandil yanınca çarşı gece de kapanmaz oldu. Mahyadaki ŞENLİK yazısını ta tepeden okuyorlarmış. Bu hafta otuz kandile fitil taktım, ellerim yağ kokuyor. Yolun düşerse uğra, çayım demli.' },
+    { baslik: 'Kaptan Yakup\'un mektubu', metin: 'Gemim donandı, vinç bile bayramlık giydi. Mendirek fenerleri yanınca açıktaki gemiler düdükle selam verdi. Tayfalar bu gece güverteden inmiyor. Bir gün seni de denize çıkarırım, çırak.' },
+    { baslik: 'Saatçi Hüsnü Usta\'nın mektubu', metin: 'Kadran yeniden aydınlandı, akrep yerine oturdu. Şenlik çanı çalınca herkes saatini kuleye göre ayarladı. Kule iki dakika geri, kimseye söylemedim. Tam zamanında geldin, çırak.' },
+    { baslik: 'Bahçıvan Gülizar\'ın mektubu', metin: 'Dut ağacına o kadar kurdele bağlandı ki bu yıl budamaya elim varmıyor. Havuza bıraktığımız kandiller sabaha kadar sönmedi. Hıdırellez ateşinin üstünden bütün mahalle atladı, muhtar bile. Senin dileğin de kabul olsun.' },
+    { baslik: 'Gökbilimci Ayşe\'nin mektubu', metin: 'Rasathanede dürbün sırası vardı, gelenlerin çoğu dürbünü değirmene çevirdi. Nevruz ateşinden atlayanları saydım, kırk iki kişi. Gök haritasına senin adına küçük bir yıldız ekledim. Bulursan söyle, ben hâlâ arıyorum.' },
+    { baslik: 'Barutçu Kemal\'in mektubu', metin: 'Bacalardan artık duman değil altın kıvılcım çıkıyor. Depo kapısındaki fenerleri üç kez kontrol ettim, ne olur ne olmaz. Düdük öttü, işçiler önlüklerini çıkarıp göğe baktı. Barut sabır ister, sende var maşallah.' },
+    { baslik: 'Sur Bekçisi Murat\'ın mektubu', metin: 'Surlar yüz yıl sonra yeniden donandı. Burçtaki ateşi karşı köyden görenler yangın var sanıp kovayla koşmuş. Otuz yıllık bekçiyim, ilk kez nöbette fenerimi yakmadım. Kıvılcım Usta’ya selam söyle, çırak.' },
   ],
   [
-    { baslik: 'From Rıza the Boatman', metin: 'Apprentice, the pier is all aglow again. The boats find their way even at night, and children play under the lanterns. The fishermen who saw the lighthouse turn sang folk songs until morning. I leave my father’s lighthouse in your hands.' },
-    { baslik: 'From Nazlı the Lamplighter', metin: 'Since the lamps were lit at the shop doors, the bazaar stays open all night. They say you can read the FIESTA sign on the mahya from the hilltop. Did you hear the tune the lamps were humming too? These lights came from your hands.' },
-    { baslik: 'From Captain Yakup', metin: 'My ship is dressed up, even the crane is in its festival best. When the lanterns on the breakwater lit up, greetings came from faraway harbors. The crew say "Lantern Cove is awake again." One day I’ll take you out to sea too, apprentice.' },
-    { baslik: 'From Hüsnü the Clockmaker', metin: 'The clock face is lit again and the hour hand is back in place. When the festival bell rang, everyone in the square set their watches. Every lamp on the tower is worth a second. You came right on time, apprentice.' },
-    { baslik: 'From Gülizar the Gardener', metin: 'The ribbons on the mulberry tree whisper wishes in the wind. The lamps on the pool drifted until morning, with fireflies for company. The whole district jumped over the Hıdırellez fire. May your wish come true too.' },
-    { baslik: 'From Ayşe the Astronomer', metin: 'From the observatory dome, the sky looks twice as bright. The lit sails of the windmill dance with the stars. I added your name to the star map too: a small but bright star. This year the Nevruz fire burned brightest here.' },
-    { baslik: 'From Kemal the Powder Maker', metin: 'Golden sparks rise from the chimneys now, not smoke. The lanterns at the depot door remind us that patience is rewarded with light. When the festival whistle blew, every worker looked up at the sky. Powder takes patience, and you were patient.' },
-    { baslik: 'From Murat the Wall Guard', metin: 'The walls are dressed in lights again after a hundred years. They saw the great fire on the tower even from faraway villages. For the first time in all my years on watch, I saw no darkness all night. Master Spark kept his word, apprentice: the cove is alight again.' },
+    { baslik: 'From Rıza the Boatman', metin: 'Apprentice, last night I moored without a lantern because the pier was bright as day. The lighthouse turns again, and Dad would be so glad. The kids count lanterns, lose track past forty and start over. I sang until I lost my voice.' },
+    { baslik: 'From Nazlı the Lamplighter', metin: 'With lamps lit at the shops, the bazaar stays open all night. They say you can read the FIESTA sign on the mahya from the hilltop. I put new wicks in thirty lamps, and my hands smell of oil. Drop by, the kettle’s always on.' },
+    { baslik: 'From Captain Yakup', metin: 'My ship is dressed up, even the crane is in its festival best. When the breakwater lights came on, the ships at sea tooted hello. The crew won’t leave the deck tonight. One day I’ll take you out to sea too, apprentice.' },
+    { baslik: 'From Hüsnü the Clockmaker', metin: 'The clock face is lit again and the hour hand is back in place. When the bell rang, everyone set their watches by the tower. It runs two minutes slow, but I never told anyone. You came right on time, apprentice.' },
+    { baslik: 'From Gülizar the Gardener', metin: 'The mulberry tree has so many ribbons, I haven’t the heart to prune it. Our lamps on the pool burned until morning. The whole district jumped over the Hıdırellez fire, even the mayor. May your wish come true too.' },
+    { baslik: 'From Ayşe the Astronomer', metin: 'There was a line for the telescope, and most aimed it at the windmill. Forty-two people jumped the Nevruz fire, I counted. I added a little star to the sky map in your name. Tell me if you find it, I’m still looking.' },
+    { baslik: 'From Kemal the Powder Maker', metin: 'Golden sparks rise from the chimneys now, not smoke. I checked the lanterns on the depot door three times, just in case. When the whistle blew, the workers took off their aprons and looked up. Powder takes patience, and you’ve got plenty.' },
+    { baslik: 'From Murat the Wall Guard', metin: 'The walls are dressed in lights again after a hundred years. The next village saw the tower fire, thought the castle was burning and came running with buckets. Thirty years on watch, and tonight I never lit my lantern. Give Master Spark my regards, apprentice.' },
   ],
 );
 

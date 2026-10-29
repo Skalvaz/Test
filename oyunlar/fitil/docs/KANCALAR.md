@@ -559,11 +559,11 @@ Sıra (GDD §14.6'ya ek): yıldızlar → **mühürler** → puan sayımı (eşz
 | Kimlik | Ne zaman | Metin | Yer |
 |---|---|---|---|
 | `kasaba-ilk` | 3. bölümün ilk kazancından sonra haritada (oto-kart bu kez atlanır) | "Yıldızların kandile döndü! Kasabayı süsleyelim." | Kasaba düğmesi; panel açılınca ilk işin "Yap"ında el animasyonu |
-| `kasaba-hosgeldin` | Göçten sonra ilk harita (kasaba açık, hiç iş yok) | "Fener Koyu seni bekliyordu: {N} kandilin var!" | Kasaba düğmesi |
+| `kasaba-hosgeldin` | Göçten sonra ilk harita (kasaba açık, hiç iş yok) | "Hoş geldin, çırak! {N} kandilin birikmiş." (Ekim 2026 metin sadeleştirmesi; eskisi "Fener Koyu seni bekliyordu…") | Kasaba düğmesi |
 | `muhur-tanitim` | Mühürlerin tanıtıldığı Kazandın | (C.5 metni) | Kazandın ipucu |
 | `muhur-kart` | Mühürlü ilk bölüm öncesi kartı | "Mühürler bölümü başka bir yolla oynatır. Üçünü ayrı denemelerde toplayabilirsin." | Mühür bloğunun üstü |
 | `muhur-hud` | İlk 'tuttu' uçuşu | "Mühür tuttu! Kazanırsan basılır." | Tahta üst kenarı (bugünkü balon yeri) |
-| `sancak-ilk` | İlk sancaktan sonra harita (aynı dönüşte "Kandil yetti"den önce; o bir sonraki dönüşe kalır) | "Üç mühür: çatıya sancak!" | Sancağın üstü: harita önce sancağa kayar, balon harita içeriğinde durur (kaydırmayla gider), ok ucu bayrağın üstünde |
+| `sancak-ilk` | İlk sancaktan sonra harita (aynı dönüşte "Kandil yetti"den önce; o bir sonraki dönüşe kalır) | "Üç mühür! Sancağın çatıda." | Sancağın üstü: harita önce sancağa kayar, balon harita içeriğinde durur (kaydırmayla gider), ok ucu bayrağın üstünde |
 
 Haritadaki balonların ipucu kimliği ancak balon gerçekten gösterilince "görüldü" yazılır (harita kapandıysa ya da pencere açıldıysa harcanmaz).
 

@@ -402,4 +402,4 @@ serbest.
 - Hakkında metni (§6) Türkçede "Canlar 30 dakikada dolar" diyor: bütün
   canların 30 dk'da dolduğu anlaşılabilir (kural: 30 dk'da +1, 0 → 5
   2,5 saat). İngilizce "A life refills every 30 minutes" doğru. Entegrasyonda
-  "Her 30 dakikada 1 can dolar; reklam yalnız sen isteyince." yapıldı.
+  "Her 30 dakikada 1 can dolar; reklam yalnız sen isteyince." yapıldı (Ekim 2026 metin sadeleştirmesinde: "Her 30 dakikada 1 can dolar. Reklam sen istemezsen çıkmaz.").

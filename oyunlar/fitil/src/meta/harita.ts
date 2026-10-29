@@ -127,7 +127,7 @@ export interface HaritaVerisi {
 /** Usta Bölümleri (§10.2). */
 export const USTA_BOLUMLERI: readonly { ad: string; kural: string }[] = [
   { ad: t('Kuru Barut', 'Dry Powder'), kural: t('Eşik 2, 14 hamle, puan hedefi', 'Ignites at 2 heat, 14 moves, score goal') },
-  { ad: t('Yalnız Halka', 'Loops Only'), kural: t('Yalnız halkalar geçerli hamledir', 'Only loops count as moves') },
+  { ad: t('Yalnız Halka', 'Loops Only'), kural: t('Yalnız halka geçerli', 'Only loops count as moves') },
   { ad: t('Dört Yön', 'Four Ways'), kural: t('Çapraz bağlantı yok', 'No diagonal links') },
   { ad: t('Gizli Isı', 'Hidden Heat'), kural: t('Yalnız kızgın kapsüller görünür', 'Only hot capsules show their heat') },
   { ad: t('Domino', 'Domino'), kural: t('Barut izi ve dev fişek düzeneği, 25 hamle', 'Powder trails and giant fireworks, 25 moves') },
