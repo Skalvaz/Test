@@ -280,9 +280,14 @@ function hedefIsaretleme(h: HedefVM, palet: Palet): string {
         <rect x="-6.5" y="13" width="13" height="4.5" rx="1.5" fill="url(#ftl-pirinc)"/>
         <path d="M0 17.5v4" stroke="#D9A441" stroke-width="2" stroke-linecap="round"/>`;
     case 'aydinlat':
-      return `<rect x="-17" y="-17" width="34" height="34" rx="5" fill="#2A1C0E" stroke="#120A04" stroke-width="2"/>
+      // Yanan döşeme: sıcak turuncu zemin, açık merkez ışığı, parıltı; köşeler koyu kontürlü
+      // (eski koyu kare + sönük ışık HUD'da seçilmiyordu, Ekim 2026).
+      return `<rect x="-17" y="-17" width="34" height="34" rx="5" fill="#3A2410" stroke="#120A04" stroke-width="2"/>
+        <rect x="-14" y="-14" width="28" height="28" rx="3" fill="#E8862E"/>
         <rect x="-14" y="-14" width="28" height="28" rx="3" fill="url(#ftl-isik)"/>
-        <rect x="-14" y="-14" width="28" height="28" rx="3" fill="none" stroke="#FFC86B" stroke-opacity=".5" stroke-width="1.2"/>
+        <circle r="8" fill="#FFF1C4" opacity=".75"/>
+        <path d="M0-10.5 2.4-2.4 10.5 0 2.4 2.4 0 10.5-2.4 2.4-10.5 0-2.4-2.4z" fill="#FFFBEA"/>
+        <path d="M-17-9v-8h8M17-9v-8H9M-17 9v8h8M17 9v8H9" fill="none" stroke="#2A1206" stroke-width="5.4" stroke-linejoin="round"/>
         <path d="M-17-9v-8h8M17-9v-8H9M-17 9v8h8M17 9v8H9" fill="none" stroke="url(#ftl-pirinc)" stroke-width="3.2" stroke-linejoin="round"/>`;
     case 'desen':
       return `<rect x="-17" y="-17" width="34" height="34" rx="6" fill="#1A1028" stroke="#0A0612" stroke-width="2"/>
