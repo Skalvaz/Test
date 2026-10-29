@@ -519,14 +519,17 @@ function doseme(x: Ctx, c: number, kat: number, isikli: boolean): void {
   yuvarlakDikdortgen(x, -s / 2, -s / 2, s, s, 0.1 * c);
   if (isikli) {
     const g = x.createRadialGradient(0, 0, 0, 0, 0, s * 0.72);
-    g.addColorStop(0, rgba(P.sicakIsik, 0.78));
-    g.addColorStop(0.55, rgba('#FFA040', 0.42));
-    g.addColorStop(1, rgba(P.isikliYuva, 0.9));
+    // Yanmış döşeme kapsülün çevresinde de parlak kalır (sönük taştan açıkça ayrılsın).
+    g.addColorStop(0, rgba(P.sicakIsik, 0.95));
+    g.addColorStop(0.55, rgba('#FFB040', 0.85));
+    g.addColorStop(1, rgba('#E07A24', 0.9));
     x.fillStyle = g;
   } else {
+    // Sönük döşeme normal hücreden açıkça ayrılsın (Ekim 2026: "hangisi döşeme
+    // belli olmuyor"): kapsülün çevresinde kalan köşelerde sıcak taş rengi.
     const g = x.createLinearGradient(-s / 2, -s / 2, s / 2, s / 2);
-    g.addColorStop(0, '#2C2018');
-    g.addColorStop(1, '#140C08');
+    g.addColorStop(0, '#7E6448');
+    g.addColorStop(1, '#46342A');
     x.fillStyle = g;
   }
   x.fill();
@@ -535,7 +538,7 @@ function doseme(x: Ctx, c: number, kat: number, isikli: boolean): void {
     x.save();
     yuvarlakDikdortgen(x, -s / 2, -s / 2, s, s, 0.1 * c);
     x.clip();
-    x.strokeStyle = 'rgba(242,198,109,0.07)';
+    x.strokeStyle = 'rgba(255,220,150,0.12)';
     x.lineWidth = 1;
     for (let i = -4; i <= 4; i++) {
       x.beginPath();
@@ -545,22 +548,20 @@ function doseme(x: Ctx, c: number, kat: number, isikli: boolean): void {
     }
     x.restore();
   }
-  x.lineWidth = 1.2;
-  x.strokeStyle = isikli ? 'rgba(255,230,160,0.9)' : 'rgba(217,164,65,0.4)';
+  x.lineWidth = isikli ? 1.2 : 2;
+  x.strokeStyle = isikli ? 'rgba(255,230,160,0.9)' : 'rgba(242,198,109,0.9)';
   yuvarlakDikdortgen(x, -s / 2, -s / 2, s, s, 0.1 * c);
   x.stroke();
   // Pirinç köşeler; 2 katta iç içe çift köşe ve çift çerçeve.
-  x.globalAlpha = isikli ? 1 : 0.8;
-  koseler(x, c, ic - 0.5, 0.16 * c, 0.04 * c, isikli);
+  koseler(x, c, ic - 0.5, isikli ? 0.16 * c : 0.2 * c, isikli ? 0.04 * c : 0.05 * c, isikli);
   if (kat === 2) {
     const s2 = s - 0.1 * c;
     x.lineWidth = 1.3;
-    x.strokeStyle = 'rgba(217,164,65,0.55)';
+    x.strokeStyle = 'rgba(242,198,109,0.85)';
     yuvarlakDikdortgen(x, -s2 / 2, -s2 / 2, s2, s2, 0.07 * c);
     x.stroke();
     koseler(x, c, ic + 0.07 * c, 0.12 * c, 0.035 * c, isikli);
   }
-  x.globalAlpha = 1;
 }
 
 function desen(x: Ctx, c: number, k: KapsulRengi, boyali: boolean): void {
