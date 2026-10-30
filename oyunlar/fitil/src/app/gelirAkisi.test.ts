@@ -16,8 +16,10 @@ import { GelirAkisi, canPaneliVM, kayitKoduGelirKoru, magazaVM, type GelirOrtami
 const T0 = Date.UTC(2026, 9, 22, 9, 0, 0);
 const GUN = 20261022;
 const FIYAT = new Map<UrunId, string>([
+  ['baslangic_paketi', '₺49,99'],
   ['can_doldur', '₺29,99'],
   ['guclendirici_paketi', '₺59,99'],
+  ['buyuk_paket', '₺99,99'],
   ['usta_karti', '₺149,99'],
 ]);
 
@@ -131,24 +133,37 @@ describe('magazaVM', () => {
   it('sırası URUN_IDLERI; yeni kayıtta can dolu (stokDolu), paket ve kart satılık', () => {
     const vm = magazaVM(meta.yeniKayit(1), T0, FIYAT);
     expect(vm.urunler.map((u) => [u.id, u.durum, u.fiyat])).toEqual([
+      ['baslangic_paketi', 'satilik', '₺49,99'],
       ['can_doldur', 'stokDolu', '₺29,99'],
       ['guclendirici_paketi', 'satilik', '₺59,99'],
+      ['buyuk_paket', 'satilik', '₺99,99'],
       ['usta_karti', 'satilik', '₺149,99'],
     ]);
+    expect(vm.urunler.filter((u) => u.birKez).map((u) => u.id)).toEqual(['baslangic_paketi']);
     expect(vm.geriYukle).toBe(true);
     expect(vm.urunler.every((u) => u.ad.length > 0 && u.aciklama.length > 0)).toBe(true);
   });
   it('paket stok sınırını aşacaksa stokDolu, Usta kartı sende, fiyat gelmediyse null, listede yoksa yok', () => {
     const k = kayitCanli(2, { gelir: { ustaKarti: true, jetonlar: [] } });
-    k.guclendiriciler = { kibrit: 7, kalip: 0, geriSar: 0 };
-    expect(magazaVM(k, T0, FIYAT).urunler.map((u) => u.durum)).toEqual(['satilik', 'stokDolu', 'sende']);
+    // Satın alma sınırı 15: 13 Kibrit'e paketlerin hiçbiri sığmaz.
+    k.guclendiriciler = { kibrit: 13, kalip: 0, geriSar: 0 };
+    expect(magazaVM(k, T0, FIYAT).urunler.map((u) => u.durum)).toEqual(['stokDolu', 'satilik', 'stokDolu', 'stokDolu', 'sende']);
+    // 10 Kibrit: küçük paket ve başlangıç sığar, büyük paket (6) sığmaz.
+    k.guclendiriciler = { kibrit: 10, kalip: 0, geriSar: 0 };
+    expect(magazaVM(k, T0, FIYAT).urunler.map((u) => u.durum)).toEqual(['satilik', 'satilik', 'satilik', 'stokDolu', 'sende']);
     k.guclendiriciler = { kibrit: 0, kalip: 0, geriSar: 0 };
     expect(magazaVM(k, T0, null).urunler.map((u) => [u.durum, u.fiyat])).toEqual([
       ['satilik', null],
       ['satilik', null],
+      ['satilik', null],
+      ['satilik', null],
       ['sende', null],
     ]);
-    expect(magazaVM(k, T0, new Map([['can_doldur', '$0.99']])).urunler.map((u) => u.durum)).toEqual(['satilik', 'yok', 'sende']);
+    expect(magazaVM(k, T0, new Map([['can_doldur', '$0.99']])).urunler.map((u) => u.durum)).toEqual(['yok', 'satilik', 'yok', 'yok', 'sende']);
+  });
+  it('başlangıç paketi alındıktan sonra listede yok (§14 E1)', () => {
+    const k = kayitCanli(2, { gelir: { ustaKarti: false, jetonlar: ['x'], baslangic: true } });
+    expect(magazaVM(k, T0, FIYAT).urunler.map((u) => u.id)).toEqual(['can_doldur', 'guclendirici_paketi', 'buyuk_paket', 'usta_karti']);
   });
 });
 
@@ -176,7 +191,7 @@ describe('GelirAkisi: satın alma', () => {
   });
   it('stok dolu paket ve dolu can satılmaz (sağlayıcıya gidilmez); Usta kartı sendeyken de', async () => {
     const k = kayitCanli(5, { gelir: { ustaKarti: true, jetonlar: [] } });
-    k.guclendiriciler = { kibrit: 7, kalip: 0, geriSar: 0 };
+    k.guclendiriciler = { kibrit: 13, kalip: 0, geriSar: 0 };
     const { g, r } = kur(k);
     await g.urunleriYukle();
     expect(await g.satinAl('guclendirici_paketi')).toBe('satilmaz');
@@ -211,7 +226,7 @@ describe('GelirAkisi: satın alma', () => {
   });
   it('bekleyenler: verilen ve tekrar tamamlanır, sığmayan paket beklemede kalır', async () => {
     const k = kayitCanli(2, { gelir: { ustaKarti: false, jetonlar: ['b0'] } });
-    k.guclendiriciler = { kibrit: 7, kalip: 0, geriSar: 0 };
+    k.guclendiriciler = { kibrit: 13, kalip: 0, geriSar: 0 };
     const { g, r, kayit } = kur(k, {
       bekleyen: [
         { urun: 'can_doldur', jeton: 'b1' },
@@ -223,7 +238,7 @@ describe('GelirAkisi: satın alma', () => {
     expect(r.adimlar.filter((a) => a.startsWith('tamamla'))).toEqual(['tamamla:b1', 'tamamla:b0']);
     expect(r.adimlar.indexOf('yaz')).toBeLessThan(r.adimlar.indexOf('tamamla:b1'));
     expect(meta.canDurumu(kayit(), T0).sayi).toBe(5);
-    expect(kayit().guclendiriciler.kibrit).toBe(7);
+    expect(kayit().guclendiriciler.kibrit).toBe(13);
     expect(r.bildirimler).toEqual(['Satın alındı']);
   });
   it('ön plana dönüş (Android): baslat sonrası bekleyenler yeniden sorulur; satın alma sürerken sorulmaz; eş zamanlı çağrı tek işlem', async () => {
@@ -461,7 +476,7 @@ describe('GelirAkisi: reklam ve can paneli', () => {
     });
     await g.urunleriYukle();
     await g.magazaAkisi();
-    expect(vmler.map((v) => v.urunler[2].durum)).toEqual(['satilik', 'sende']);
+    expect(vmler.map((v) => v.urunler.find((u) => u.id === 'usta_karti')?.durum)).toEqual(['satilik', 'sende']);
   });
 });
 
@@ -490,5 +505,64 @@ describe('kayitKoduGelirKoru', () => {
     const y = kayitKoduGelirKoru(kod, meta.yeniKayit(2));
     expect(y.can).toBeUndefined();
     expect(y.gelir).toBeUndefined();
+  });
+});
+
+describe('Aşama 2b (§14): başlangıç paketi, büyük paket, hediye sandığı', () => {
+  it('başlangıç paketi: canlar dolar + 3/3/3, bir kez; ikinci jeton ödül vermez ama tamamlanır', async () => {
+    const { g, r, kayit } = kur(kayitCanli(1));
+    await g.urunleriYukle();
+    expect(await g.satinAl('baslangic_paketi')).toBe('verildi');
+    expect(meta.canDurumu(kayit(), T0).sayi).toBe(5);
+    expect(kayit().guclendiriciler).toEqual(meta.BASLANGIC_PAKETI);
+    expect(kayit().gelir?.baslangic).toBe(true);
+    // Mağaza artık teklif etmez; yine de gelen (ör. ikinci cihaz) satın alma tamamlanır, ödül tekrar verilmez.
+    expect(await g.satinAl('baslangic_paketi')).toBe('satilmaz');
+    const once = kayit().guclendiriciler.kibrit;
+    const x = meta.satinAlmaUygula(kayit(), 'baslangic_paketi', 'ikinci', T0);
+    expect(x).toMatchObject({ verildi: false, tekrar: true });
+    expect(x.kayit.guclendiriciler.kibrit).toBe(once);
+    expect(r.adimlar).toContain('tamamla:j1');
+  });
+  it('büyük paket: 6/5/5 stoğa; sınır 15 aşılırsa satılmaz', async () => {
+    const { g, kayit } = kur(meta.yeniKayit(3));
+    await g.urunleriYukle();
+    expect(await g.satinAl('buyuk_paket')).toBe('verildi');
+    expect(kayit().guclendiriciler).toEqual(meta.BUYUK_PAKET);
+    expect(await g.satinAl('buyuk_paket')).toBe('verildi');
+    expect(kayit().guclendiriciler).toEqual({ kibrit: 12, kalip: 10, geriSar: 10 });
+    expect(await g.satinAl('buyuk_paket')).toBe('satilmaz');
+  });
+  it('hediye sandığı: sandık sistemi kapalıyken, günlük/sonsuzda ve bugün kullanıldıysa teklif yok', async () => {
+    const kapali = kur(kayitCanli(5));
+    expect(kapali.g.hediyeSandikTeklif({ tur: 'normal' })).toBeNull();
+    const k = kayitCanli(5);
+    for (let i = 1; i <= meta.SANDIK_ACILIS_BOLUMU; i++) k.bolumler[String(i)] = { yildiz: 1, enIyi: 100, deneme: 1, basarisizSeri: 0, kazanc: 1 } as never;
+    const { g, r, kayit } = kur(k);
+    expect(g.hediyeSandikTeklif({ tur: 'gunluk' })).toBeNull();
+    expect(g.hediyeSandikTeklif({ tur: 'normal' })).toEqual({ kart: false });
+    expect(r.olaylar).toContainEqual({ ad: 'reklam_teklif', p: { yer: 'sandik' } });
+    const sayac = kayit().sandik.sayac;
+    const s = await g.hediyeSandikAl();
+    expect(s?.tur).toBe('normal');
+    expect(s?.oduller.length).toBeGreaterThan(0);
+    expect(r.adimlar).toContain('reklam:sandik');
+    expect(kayit().sandik.sayac).toBe(sayac + 1);
+    expect(kayit().can?.sandikGun).toBe(GUN);
+    expect(g.hediyeSandikTeklif({ tur: 'normal' })).toBeNull();
+    expect(await g.hediyeSandikAl()).toBeNull();
+  });
+  it('hediye sandığı: reklam iptal/yok → sandık yok, gün işaretlenmez; Usta kartıyla reklamsız', async () => {
+    const k = kayitCanli(5);
+    for (let i = 1; i <= meta.SANDIK_ACILIS_BOLUMU; i++) k.bolumler[String(i)] = { yildiz: 1, enIyi: 100, deneme: 1, basarisizSeri: 0, kazanc: 1 } as never;
+    const iptal = kur(k, { reklam: 'iptal' });
+    expect(await iptal.g.hediyeSandikAl()).toBeNull();
+    expect(iptal.kayit().can?.sandikGun).toBeUndefined();
+    const hazirDegil = kur(k, { hazir: false });
+    expect(hazirDegil.g.hediyeSandikTeklif({ tur: 'usta' })).toBeNull();
+    const kartli = kur({ ...k, gelir: { ustaKarti: true, jetonlar: [] } }, { hazir: false });
+    expect(kartli.g.hediyeSandikTeklif({ tur: 'usta' })).toEqual({ kart: true });
+    expect(await kartli.g.hediyeSandikAl()).not.toBeNull();
+    expect(kartli.r.adimlar.some((a) => a.startsWith('reklam:'))).toBe(false);
   });
 });

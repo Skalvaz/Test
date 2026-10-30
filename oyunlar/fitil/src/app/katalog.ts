@@ -112,7 +112,7 @@ export const GUCLENDIRICI_STOK_SINIRI = 3;
  * stoğu `GUCLENDIRICI_STOK_SINIRI`'na kadar doldurur, güçlendirici paketi bu
  * sınıra kadar ekler (3 ile paket neredeyse hiç sığmıyordu). Onarım da bunu kırpar.
  */
-export const GUCLENDIRICI_SATIN_SINIRI = 9;
+export const GUCLENDIRICI_SATIN_SINIRI = 15;
 
 /** Kapsül renkleri (§2.3, §13.1). */
 export const KAPSUL_RENKLERI = [

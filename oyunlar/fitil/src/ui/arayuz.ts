@@ -371,7 +371,7 @@ export class Arayuz {
   }
 
   /** ek.tablo: bu kazancın Gece Tablosu tuvali (çizici üretir). */
-  kazandin(vm: KazandinVM, ek: { tablo?: HTMLCanvasElement | null } = {}): Promise<'devam' | 'tekrar'> {
+  kazandin(vm: KazandinVM, ek: { tablo?: HTMLCanvasElement | null; hediyeSandik?: () => Promise<boolean> } = {}): Promise<'devam' | 'tekrar'> {
     return this.ac(kazandinEkrani(this.b, vm, ek));
   }
 

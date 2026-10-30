@@ -80,9 +80,9 @@ function urunSatiri(u: MagazaUrunVM, satinAl: (id: MagazaUrunVM['id']) => void):
   return h(
     'li',
     // Durum sınıfı önekli (f-mg-d-*): "f-mg-sende" iç öğenin sınıfıyla çakışmasın.
-    { s: `f-mg-urun f-mg-d-${u.durum}` },
+    { s: `f-mg-urun f-mg-d-${u.durum}`, 'data-urun': u.id },
     h('span', { s: 'f-mg-resim' }, urunSvg(u.id)),
-    h('strong', { s: 'f-mg-ad', t: u.ad }),
+    h('strong', { s: 'f-mg-ad' }, u.ad, u.birKez ? h('span', { s: 'f-mg-birkez', t: MC.birKez }) : null),
     h('span', { s: 'f-mg-aciklama', t: u.aciklama }),
     h('span', { s: 'f-mg-eylem' }, eylem),
   );

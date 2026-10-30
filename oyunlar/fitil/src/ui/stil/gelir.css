@@ -147,6 +147,8 @@
 .f-mg-resim { grid-area: r; width: 48px; height: 48px; }
 .f-mg-resim .f-urun-svg { width: 48px; height: 48px; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .5)); }
 .f-mg-ad { grid-area: a; font-size: 20px; font-weight: 800; line-height: 1.15; }
+.f-mg-birkez { display: inline-block; margin-left: 8px; padding: 1px 8px 2px; border-radius: 999px; vertical-align: 3px; font-size: 12px; font-weight: 800; letter-spacing: .04em; color: var(--t-vurgu-yazi); background: #7CFFB2; }
+.f-mg-d-satilik:has(.f-mg-birkez) { box-shadow: inset 0 0 0 1.5px rgba(124, 255, 178, .55); }
 .f-mg-aciklama { grid-area: d; font-size: 16px; font-weight: 700; line-height: 1.25; color: var(--krem-2); }
 .f-mg-eylem { grid-area: e; display: flex; flex-direction: column; align-items: stretch; margin-top: 4px; }
 .f-mg-fiyat { min-height: 48px; padding: 4px 18px 6px; font-size: 20px; }

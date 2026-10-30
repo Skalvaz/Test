@@ -145,7 +145,7 @@ describe('satinAlmaKur', () => {
       { id: 'can_doldur', fiyat: '₺29,99' },
       { id: 'guclendirici_paketi', fiyat: '₺59,99' },
     ]);
-    expect(h.np.getProducts).toHaveBeenCalledWith({ productIdentifiers: ['can_doldur', 'guclendirici_paketi', 'usta_karti'], productType: 'inapp' });
+    expect(h.np.getProducts).toHaveBeenCalledWith({ productIdentifiers: ['baslangic_paketi', 'can_doldur', 'guclendirici_paketi', 'buyuk_paket', 'usta_karti'], productType: 'inapp' });
     await s.urunler();
     // Desteklendi bilgisi saklanır: üç çağrıda iki soru (false, true).
     expect(h.np.isBillingSupported).toHaveBeenCalledTimes(2);

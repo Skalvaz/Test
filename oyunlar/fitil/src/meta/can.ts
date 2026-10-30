@@ -48,6 +48,12 @@ export const CAN_UCRETSIZ_SON_BOLUM = 5;
 export const REKLAM_CAN_GUNLUK = 3;
 /** Güçlendirici paketi içeriği (C8): 3 Kibrit + 2 Fişek Kalıbı + 2 Geri Sar. */
 export const GUCLENDIRICI_PAKETI: Readonly<Record<GuclendiriciId, number>> = Object.freeze({ kibrit: 3, kalip: 2, geriSar: 2 });
+/** Büyük güçlendirici paketi (§14 E2). */
+export const BUYUK_PAKET: Readonly<Record<GuclendiriciId, number>> = Object.freeze({ kibrit: 6, kalip: 5, geriSar: 5 });
+/** Bilinen ürünler (meta platforma değer olarak bağlanmasın diye burada; `URUN_IDLERI` ile aynı, test denetler). */
+export const BILINEN_URUNLER: ReadonlySet<string> = new Set(['baslangic_paketi', 'can_doldur', 'guclendirici_paketi', 'buyuk_paket', 'usta_karti']);
+/** Başlangıç paketinin güçlendiricileri (§14 E1; ayrıca canlar dolar). */
+export const BASLANGIC_PAKETI: Readonly<Record<GuclendiriciId, number>> = Object.freeze({ kibrit: 3, kalip: 3, geriSar: 3 });
 /** `gelir.jetonlar`'da tutulan son satın alma jetonu sayısı (çifte verme koruması). */
 export const JETON_SINIRI = 50;
 /**
@@ -76,6 +82,11 @@ export interface CanKaydi {
   reklamGun: number;
   /** `reklamGun` günü kullanılan reklam/Usta kartı +1 can sayısı (0..REKLAM_CAN_GUNLUK). */
   reklamSayisi: number;
+  /**
+   * (§14 E3) Günlük hediye sandığının kullanıldığı gün (yyyymmdd). Yoksa
+   * hiç kullanılmadı (eski kayıt onarım notu üretmesin diye isteğe bağlı).
+   */
+  sandikGun?: number;
 }
 
 /** Kayıttaki satın alma durumu (`Kayit.gelir`). */
@@ -84,6 +95,8 @@ export interface GelirKaydi {
   ustaKarti: boolean;
   /** Ödülü verilmiş son `JETON_SINIRI` satın alma jetonu (eskiden yeniye). */
   jetonlar: string[];
+  /** (§14 E1) Başlangıç paketi alındı (bir kez satılır). Yoksa alınmadı. */
+  baslangic?: boolean;
 }
 
 /** Okunan (tembel dolum uygulanmış) can durumu; arayüz ve kapı bunu kullanır. */
@@ -185,6 +198,10 @@ export function canOnar(ham: unknown, not: (yol: string) => void = sessiz): CanK
     v.reklamSayisi = 0;
     not('can.reklamSayisi');
   }
+  if (ham.sandikGun !== undefined) {
+    if (tarihGecerli(ham.sandikGun)) v.sandikGun = ham.sandikGun as number;
+    else not('can.sandikGun');
+  }
   return v;
 }
 
@@ -215,6 +232,11 @@ export function gelirOnar(ham: unknown, not: (yol: string) => void = sessiz): Ge
       not('gelir.jetonlar');
     }
   } else not('gelir.jetonlar');
+  if (ham.baslangic !== undefined) {
+    if (typeof ham.baslangic === 'boolean') {
+      if (ham.baslangic) v.baslangic = true;
+    } else not('gelir.baslangic');
+  }
   return v;
 }
 
@@ -233,6 +255,7 @@ export function gelirBirlestir(kazanan: Pick<Kayit, 'gelir'>, diger: Partial<Pic
     ustaKarti: a.ustaKarti || b.ustaKarti,
     jetonlar: [...a.jetonlar, ...b.jetonlar.filter((j) => !kume.has(j))].slice(-JETON_SINIRI),
   };
+  if (a.baslangic || b.baslangic) y.baslangic = true;
   if (kazanan.gelir === undefined && !y.ustaKarti && y.jetonlar.length === 0) return undefined;
   return y;
 }
@@ -271,7 +294,7 @@ function dolum(c: CanKaydi, simdi: number): CanKaydi {
 }
 
 function canEsit(a: CanKaydi, b: CanKaydi): boolean {
-  return a.sayi === b.sayi && a.dolumBasi === b.dolumBasi && a.reklamGun === b.reklamGun && a.reklamSayisi === b.reklamSayisi;
+  return a.sayi === b.sayi && a.dolumBasi === b.dolumBasi && a.reklamGun === b.reklamGun && a.reklamSayisi === b.reklamSayisi && a.sandikGun === b.sandikGun;
 }
 
 /** Derin kopya (`kayitKopyala` ile aynı; kayit.ts bu modülü içe aktardığı için döngü kurulmasın diye burada). */
@@ -445,8 +468,31 @@ export function reklamCanKullan(k: Kayit, simdi: number, bugun: number): Kayit {
  * açılmış olması GEREKMEZ (C13: satın alınan stok açılmamışken de bekler).
  * false ise Mağaza paketi "Stok dolu" gösterir ve satmaz (§4).
  */
-export function paketSigarMi(k: Kayit): boolean {
-  return GUCLENDIRICILER.every((g) => stok(k, g.id) + GUCLENDIRICI_PAKETI[g.id] <= GUCLENDIRICI_SATIN_SINIRI);
+export function paketSigarMi(k: Kayit, paket: Readonly<Record<GuclendiriciId, number>> = GUCLENDIRICI_PAKETI): boolean {
+  return GUCLENDIRICILER.every((g) => stok(k, g.id) + paket[g.id] <= GUCLENDIRICI_SATIN_SINIRI);
+}
+
+/** Ürünün güçlendirici içeriği (yoksa `null`). */
+export function urunPaketi(urun: UrunId): Readonly<Record<GuclendiriciId, number>> | null {
+  return urun === 'guclendirici_paketi' ? GUCLENDIRICI_PAKETI : urun === 'buyuk_paket' ? BUYUK_PAKET : urun === 'baslangic_paketi' ? BASLANGIC_PAKETI : null;
+}
+
+/** (§14 E1) Başlangıç paketi daha önce alındı mı (bir kez satılır). */
+export function baslangicAlindi(k: Kayit): boolean {
+  return gelirOku(k).baslangic === true;
+}
+
+/** (§14 E3) Günlük hediye sandığı bugün kullanılabilir mi. */
+export function hediyeSandikHakki(k: Kayit, bugun: number): boolean {
+  return canOku(k).sandikGun !== bugun;
+}
+
+/** (§14 E3) Günlük hediye sandığını bugün kullanılmış yazar (sandığı çağıran açar). */
+export function hediyeSandikKullan(k: Kayit, bugun: number): Kayit {
+  if (!tarihGecerli(bugun) || !hediyeSandikHakki(k, bugun)) return k;
+  const y = kopya(k);
+  canAta_yerinde(y, { ...canOku(y), sandikGun: bugun });
+  return y;
 }
 
 /**
@@ -468,24 +514,27 @@ export function satinAlmaUygula(k: Kayit, urun: UrunId, jeton: string, simdi: nu
   if (!jetonGecerli(jeton)) return verilemez;
   const g = gelirOku(k);
   if (g.jetonlar.includes(jeton)) return { kayit: k, verildi: false, tekrar: true };
-  if (urun !== 'can_doldur' && urun !== 'guclendirici_paketi' && urun !== 'usta_karti') return verilemez;
-  if (urun === 'guclendirici_paketi' && !paketSigarMi(k)) return verilemez;
+  if (!BILINEN_URUNLER.has(urun)) return verilemez;
+  const paket = urunPaketi(urun);
+  if (paket && !paketSigarMi(k, paket)) return verilemez;
+  // Başlangıç paketi bir kez verilir; yine de ödenmişse (iki cihaz) tamamlanmalı: tekrar sayılır.
+  if (urun === 'baslangic_paketi' && g.baslangic) return { kayit: k, verildi: false, tekrar: true };
   const temel = canTazele(k, simdi);
   const y = temel === k ? kopya(k) : temel;
   switch (urun) {
     case 'can_doldur':
+    case 'baslangic_paketi':
       canAta_yerinde(y, { ...canOku(y), sayi: CAN_ENCOK, dolumBasi: null });
       break;
-    case 'guclendirici_paketi':
-      for (const gc of GUCLENDIRICILER) y.guclendiriciler[gc.id] = stok(y, gc.id) + GUCLENDIRICI_PAKETI[gc.id];
-      break;
-    case 'usta_karti':
+    default:
       break;
   }
+  if (paket) for (const gc of GUCLENDIRICILER) y.guclendiriciler[gc.id] = stok(y, gc.id) + paket[gc.id];
   y.gelir = {
     ustaKarti: g.ustaKarti || urun === 'usta_karti',
     jetonlar: [...g.jetonlar, jeton].slice(-JETON_SINIRI),
   };
+  if (g.baslangic || urun === 'baslangic_paketi') y.gelir.baslangic = true;
   return { kayit: y, verildi: true, tekrar: false };
 }
 

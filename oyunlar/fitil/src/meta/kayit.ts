@@ -179,7 +179,8 @@ export interface SandikBekleyen {
   tur: 'normal' | 'parlak';
   neden: SandikNedeni;
 }
-export type SandikNedeni = 'ilkKazanc' | 'yildiz' | 'gorev' | 'gunluk' | 'seri';
+/** `reklam`: günlük hediye sandığı (CAN-REKLAM §14 E3; bekleyen kuyruğuna girmez, hemen açılır). */
+export type SandikNedeni = 'ilkKazanc' | 'yildiz' | 'gorev' | 'gunluk' | 'seri' | 'reklam';
 
 export interface Kayit {
   surum: typeof KAYIT_SURUMU;

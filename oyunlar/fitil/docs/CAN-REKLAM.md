@@ -77,8 +77,10 @@ alır ("+1 can", "+5 hamle"), aynı günlük ve deneme sınırlarıyla.
 
 | Ürün (`UrunId`) | Tür | İçerik | Fiyat önerisi (Play Console'da yerel) |
 |---|---|---|---|
+| `baslangic_paketi` | tüketilir, bir kez (§14 E1) | canlar 5 + 3/3/3 güçlendirici | $1.99 |
 | `can_doldur` | tüketilir | canları 5'e doldurur | $0.99 |
 | `guclendirici_paketi` | tüketilir | 3 Kibrit + 2 Fişek Kalıbı + 2 Geri Sar | $1.99 |
+| `buyuk_paket` | tüketilir (§14 E2) | 6 Kibrit + 5 Fişek Kalıbı + 5 Geri Sar | $3.99 |
 | `usta_karti` | kalıcı | ödüllü reklamların ödülü reklamsız | $4.99 |
 
 - Fiyat metni her zaman mağazadan gelir (`Urun.fiyat`, yerel biçimli); kodda
@@ -86,8 +88,8 @@ alır ("+1 can", "+5 hamle"), aynı günlük ve deneme sınırlarıyla.
 - **Güçlendirici paketi:** satın alınan stok, güçlendirici henüz açılmamış
   olsa da stokta kalır (toza dönmez; `guclendiriciVer_yerinde`'nin
   "açılmamış → toz" kuralı yalnız oyun içi hediyeler için). Satın alınan
-  stokla en çok `GUCLENDIRICI_SATIN_SINIRI` (9; hediye/sandık sınırı 3
-  aynen kalır, onarım 9'a kırpar); sınırı aşacaksa paket
+  stokla en çok `GUCLENDIRICI_SATIN_SINIRI` (15, §14 E2'den önce 9; hediye/sandık
+  sınırı 3 aynen kalır, onarım 15'e kırpar); sınırı aşacaksa paket
   düğmesi "Stok dolu" der ve satılmaz.
 - **Çifte verme koruması:** başarılı satın alma jetonu `gelir.jetonlar`'a
   (son 50) yazılır; aynı jeton ikinci kez ödül vermez. Ödül önce kayda yazılır,
@@ -240,8 +242,11 @@ Varsayılan: `{ sayi: 5, dolumBasi: null, reklamGun: 0, reklamSayisi: 0 }`,
 3. "+5 hamle" → sahte reklam → oyun 5 hamleyle sürer; kazanırsa can 5'e döner.
 4. `canAyarla(1)`; kaybet → "Can bitti" düğmesi → panel: sonraki can sayacı,
    "Reklam izle" → can 1; üç reklamdan sonra "Yarın yine".
-5. Ayarlar > Mağaza → "Canları doldur" → sahte onay → can 5; güçlendirici
-   paketi → stok +3/+2/+2; Usta kartı → reklam satırları "Ücretsiz".
+5. Ayarlar > Mağaza (§14 sırası) → başlangıç paketi → can 5 + 3/3/3, satır
+   listeden çıkar; "Canları doldur" → can 5; güçlendirici paketi → +3/+2/+2;
+   büyük paket → +6/+5/+5 (12/10/10'da büyük paket "Stok dolu"); Usta kartı
+   → reklam satırları "Ücretsiz". Reklamla devamdan gelen kazançta "Hediye
+   sandık" → İzle → sandık açılır, satır gider, `can.sandikGun` yazılır.
 6. Duraklat (≥ 1 hamle) > Haritaya dön → onay kartı → Çık → can −1.
 7. `?gelir` olmadan aç: can hapı, Mağaza, reklam düğmeleri YOK (mevcut
    profiller de bunu denetler).
@@ -403,3 +408,34 @@ serbest.
   canların 30 dk'da dolduğu anlaşılabilir (kural: 30 dk'da +1, 0 → 5
   2,5 saat). İngilizce "A life refills every 30 minutes" doğru. Entegrasyonda
   "Her 30 dakikada 1 can dolar; reklam yalnız sen isteyince." yapıldı (Ekim 2026 metin sadeleştirmesinde: "Her 30 dakikada 1 can dolar. Reklam sen istemezsen çıkmaz.").
+
+## 14. Aşama 2b: daha fazla fırsat (30 Ekim 2026)
+
+Ürün sahibi kararı: model "nazik + daha fazla fırsat". §1 ilkeleri aynen
+geçerli: zorunlu ara reklam ve afiş YOK, süre sayacı/FOMO YOK, şans kutusu
+satışı YOK, oyun satın almadan ve reklamsız bitirilebilir. Varsayılanlar
+(ürün sahibi değiştirebilir; sabitler `src/meta/can.ts`):
+
+- **E1 Başlangıç paketi** `baslangic_paketi` (tüketilir, kayıtta bir kez:
+  `gelir.baslangic`): canlar 5'e dolar + 3 Kibrit + 3 Fişek Kalıbı + 3 Geri
+  Sar. Mağaza'nın en üstünde, "Bir kez" etiketiyle; alındıktan sonra listede
+  yok. Süre sınırı ve açılır pencere yok. Fiyat önerisi $1.99. Paket
+  stok sınırını aşacaksa "Stok dolu" (E2 kuralı).
+- **E2 Büyük güçlendirici paketi** `buyuk_paket` (tüketilir): 6 Kibrit + 5
+  Fişek Kalıbı + 5 Geri Sar. Fiyat önerisi $3.99. Satın alınan stok sınırı
+  `GUCLENDIRICI_SATIN_SINIRI` 9 → 15 (büyük paket satılabilsin; hediye/
+  sandık sınırı 3 aynen).
+- **E3 Günlük hediye sandığı** (`ReklamYeri` `sandik`): sandık sistemi
+  açıkken (5. bölüm kazanıldı), ana ya da Usta bölümü kazanınca Kazandın'ın
+  ödül listesinde günde bir kez "Hediye sandık" satırı. Reklam izlenince
+  (Usta kartında reklamsız, C9) normal bir sandık açılır (`SandikNedeni`
+  `reklam`). Kayıt `can.sandikGun` (yyyymmdd; kullanılan gün). Reklam
+  hazır değilse satır görünmez.
+- **E4 Mağaza sırası:** başlangıç paketi (alınmadıysa), canları doldur,
+  güçlendirici paketi, büyük paket, Usta kartı.
+- **E5 Fiyat önerileri (Play Console, Türkiye):** can doldur ₺24,99;
+  güçlendirici paketi ₺49,99; başlangıç paketi ₺49,99; büyük paket
+  ₺99,99; Usta kartı ₺129,99. Öteki ülkeler dolar önerisinden Play'in
+  çevirisiyle. Kodda fiyat yazılmaz (§4).
+- **E6 Ölçüm:** `reklam_teklif`/`reklam_sonuc` `yer: 'sandik'`; satın alma
+  olayları yeni ürün kimlikleriyle.

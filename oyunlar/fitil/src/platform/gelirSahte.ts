@@ -57,9 +57,11 @@ export const SAHTE_KALICI_ANAHTARI = 'fitil.gelir.sahte.kalici';
 /** Deneme fiyatları (gerçekte mağaza verir, §4). */
 export function sahteFiyatlar(): Readonly<Record<UrunId, string>> {
   return {
-    can_doldur: t('₺29,99', '$0.99'),
-    guclendirici_paketi: t('₺59,99', '$1.99'),
-    usta_karti: t('₺149,99', '$4.99'),
+    baslangic_paketi: t('₺49,99', '$1.99'),
+    can_doldur: t('₺24,99', '$0.99'),
+    guclendirici_paketi: t('₺49,99', '$1.99'),
+    buyuk_paket: t('₺99,99', '$3.99'),
+    usta_karti: t('₺129,99', '$4.99'),
   };
 }
 
@@ -73,14 +75,17 @@ const S = {
   kapat: t('Kapat', 'Close'),
   odulCan: t('Ödül: +1 can', 'Reward: +1 life'),
   odulHamle: t('Ödül: +5 hamle', 'Reward: +5 moves'),
+  odulSandik: t('Ödül: hediye sandık', 'Reward: gift chest'),
   odulAl: t('Ödülü al', 'Get reward'),
   satinEtiketi: t('Deneme satın alma', 'Test purchase'),
   odemeYok: t('Ödeme alınmaz.', 'No payment is taken.'),
   vazgec: t('Vazgeç', 'Cancel'),
   satinAl: t('Satın al', 'Buy'),
   urun: {
+    baslangic_paketi: t('Başlangıç paketi', 'Starter pack'),
     can_doldur: t('Canları doldur', 'Refill lives'),
     guclendirici_paketi: t('Güçlendirici paketi', 'Booster pack'),
+    buyuk_paket: t('Büyük paket', 'Big pack'),
     usta_karti: t('Usta kartı', 'Master’s Card'),
   } satisfies Record<UrunId, string>,
 };
@@ -324,7 +329,7 @@ function reklamKatmani(yer: ReklamYeri, sureMs: number): Promise<'odul' | 'iptal
     const sayi = oge('span', 'fs-sayi', String(Math.max(1, Math.ceil(sureMs / 1000))));
     const halka = oge('div', 'fs-halka');
     halka.append(svgOge(HALKA_SVG), sayi, svgOge(TAMAM_SVG));
-    const odul = oge('p', 'fs-odul', yer === 'can' ? S.odulCan : S.odulHamle);
+    const odul = oge('p', 'fs-odul', yer === 'can' ? S.odulCan : yer === 'sandik' ? S.odulSandik : S.odulHamle);
     const orta = oge('div', 'fs-orta');
     orta.append(halka, odul);
 

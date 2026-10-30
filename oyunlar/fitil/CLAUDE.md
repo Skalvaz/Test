@@ -109,7 +109,13 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   akış `app/gelirAkisi.ts` (`Uygulama.gelir`, oturuma `gelir`). Test
   kancası `__fitil.gelir()`, `__fitil.canAyarla(n)`; oynanış profili
   `gelir` (yalnız adıyla; §11 adımları), gelirsiz profiller can hapı/Mağaza/
-  reklam düğmesi YOK denetler.
+  reklam düğmesi YOK denetler. Aşama 2b (§14, "nazik + daha fazla fırsat"):
+  5 ürün (`baslangic_paketi` bir kez, `can_doldur`, `guclendirici_paketi`,
+  `buyuk_paket`, `usta_karti`; satın alınan stok sınırı 15), Kazandın'da
+  günde bir "Hediye sandık" (`ReklamYeri` `sandik`, `can.sandikGun`;
+  `gelirAkisi` `hediyeSandikTeklif`/`hediyeSandikAl`). Mağaza satırları
+  `data-urun` taşır (oynanış testi kimlikle seçer). Önizleme
+  `ekran=kazandin&v=m&hediye=1|kart`.
 - Android (aşama 3, `docs/ANDROID.md`): kipler — web `build` / `build:single`
   (Capacitor kodu GİRMEZ; `fitil.html`'de `Capacitor`, `admob` geçmemeli),
   Android `npm run build:android` (`--mode android` → `dist-android/` + `cap sync

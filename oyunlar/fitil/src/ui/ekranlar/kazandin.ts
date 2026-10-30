@@ -10,7 +10,7 @@
  */
 import { h, say, bekle } from '../dom';
 import { yildizSvg, sandikSvg, ikon, muhurSvg, kandilSvg, type IkonAdi } from '../ikonlar';
-import { M, MK, bolumBasligi, sayi } from '../metinler';
+import { M, MC, MK, bolumBasligi, sayi } from '../metinler';
 import { kandilUcur, merkez } from '../kanca';
 import { dugme, secimSozu, type Baglam } from '../cekirdek';
 import { odulOgesi, ustaIpucu, nadirlikSirasi } from './ortak';
@@ -26,7 +26,7 @@ const MUHUR_ARA = 250;
 export function kazandinEkrani(
   b: Baglam,
   vm: KazandinVM,
-  _ek: { tablo?: HTMLCanvasElement | null } = {},
+  ek: { tablo?: HTMLCanvasElement | null; hediyeSandik?: () => Promise<boolean> } = {},
 ): { soz: Promise<'devam' | 'tekrar'>; kapat: () => void } {
   const { soz, sec } = secimSozu<'devam' | 'tekrar'>();
   const az = b.az();
@@ -105,6 +105,32 @@ export function kazandinEkrani(
     kutular.appendChild(h('li', { s: 'f-kz-kutu', 'aria-label': d.metin }, ikon(d.ikon as IkonAdi), h('span', { s: 'f-kz-kutu-sayi f-sayi', t: sayiKismi }), h('span', { s: 'f-kz-kutu-ad', t: kucukHarf(ad.join(' ')) })));
   }
   if (vm.sandiklar.length > 0) kutular.appendChild(h('li', { s: 'f-kz-kutu f-kz-kutu-sandik' }, sandikKutusu(b, vm.sandiklar)));
+  // (CAN-REKLAM §14 E3) Günlük hediye sandığı: reklam (ya da Usta kartı) → sandık ekranı Kazandın'ın üstünde açılır.
+  if (vm.hediyeSandik && ek.hediyeSandik) {
+    const istek = ek.hediyeSandik;
+    let bekliyor = false;
+    const satir = h(
+      'li',
+      { s: 'f-kz-kutu f-kz-hediye' },
+      h('span', { s: 'f-kz-hediye-resim' }, sandikSvg('normal', false)),
+      h('span', { s: 'f-kz-kutu-ad', t: MC.hediyeSandik }),
+    );
+    const dg = dugme(vm.hediyeSandik.kart ? MC.ac : MC.izle, 'ikincil', async () => {
+      if (bekliyor) return;
+      bekliyor = true;
+      dg.disabled = true;
+      let bitti = false;
+      try {
+        bitti = await istek();
+      } finally {
+        bekliyor = false;
+        if (bitti) satir.remove();
+        else dg.disabled = false;
+      }
+    }, { ikon: vm.hediyeSandik.kart ? 'sandik' : 'reklam', sinif: 'f-kz-hediye-dg', etiket: `${MC.hediyeSandik}: ${vm.hediyeSandik.kart ? MC.ac : MC.izle}` });
+    satir.appendChild(dg);
+    kutular.appendChild(satir);
+  }
   // Tablo kutusu yok (Defter'de görünür): eski tablo varsa daha nadir olan saklanır.
   const tabloKarari: boolean | null = vm.tablo?.eskiVar ? !vm.tablo.eskiNadirlik || nadirlikSirasi(vm.tablo.nadirlik) >= nadirlikSirasi(vm.tablo.eskiNadirlik) : null;
   if (kutular.childElementCount) icerik.appendChild(kutular);

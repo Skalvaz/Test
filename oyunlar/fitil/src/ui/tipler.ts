@@ -317,6 +317,12 @@ export interface KazandinVM {
   kandil?: { onceki: number; yeni: number; tanitim: boolean; yildiz?: number; muhur?: number } | null;
   /** (Kancalar §C.5) Kasabada yapılabilir iş var: "Kasabada yapılacak iş hazır!". */
   kasabaHazir?: boolean;
+  /**
+   * (CAN-REKLAM §14 E3) Günlük hediye sandığı satırı: yalnız gelir sağlayıcısı
+   * varken, sandık sistemi açıkken, bugün kullanılmadıysa ve reklam hazırsa
+   * (ya da Usta kartı: `kart`, reklamsız). Yoksa satır yok.
+   */
+  hediyeSandik?: { kart: boolean } | null;
 }
 
 export interface KaybettinVM {
@@ -422,6 +428,8 @@ export interface MagazaUrunVM {
    *  - 'yok': mağaza bu ürünü sunmuyor (pasif "Şu an yok").
    */
   durum: 'satilik' | 'sende' | 'stokDolu' | 'yok';
+  /** (§14 E1) Bir kez satılır: adın yanında "Bir kez" etiketi. */
+  birKez?: boolean;
 }
 
 /** Mağaza (Ayarlar > Mağaza, `ekranlar/magaza.ts`): üç ürün satırı + altta geri yükleme. */

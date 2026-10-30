@@ -28,7 +28,8 @@ import { URUN_IDLERI, type GelirOlayYazici, type GelirSaglayici, type ReklamSonu
 import { gelirOlayi } from '../platform/olcum';
 import { t } from '../platform/dil';
 import { MC, URUN_METINLERI } from '../ui/metinler';
-import type { CanPaneliSecimi, CanSayaciVM, CanVM, MagazaSecimi, MagazaUrunVM, MagazaVM } from '../ui/tipler';
+import type { CanPaneliSecimi, CanSayaciVM, CanVM, MagazaSecimi, MagazaUrunVM, MagazaVM, SandikVM } from '../ui/tipler';
+import { sandiklarVM } from './gorunum';
 
 /** Gelir akışının bildirimleri (iki dil; İngilizce testi: src/dil/en-oyun.test.ts). */
 const G = {
@@ -77,14 +78,16 @@ export function canPaneliVM(k: Kayit, simdi: number, bugun: number, e: { hazir: 
  */
 export function magazaVM(k: Kayit, simdi: number, fiyatlar: ReadonlyMap<UrunId, string> | null): MagazaVM {
   const c = meta.canDurumu(k, simdi);
-  const urunler = URUN_IDLERI.map((id): MagazaUrunVM => {
+  // (§14 E1) Başlangıç paketi alındıktan sonra listede yok.
+  const urunler = URUN_IDLERI.filter((id) => id !== 'baslangic_paketi' || !meta.baslangicAlindi(k)).map((id): MagazaUrunVM => {
     const m = URUN_METINLERI[id];
+    const paket = meta.urunPaketi(id);
     let durum: MagazaUrunVM['durum'] = 'satilik';
     if (id === 'usta_karti' && k.gelir?.ustaKarti === true) durum = 'sende';
     else if (id === 'can_doldur' && c.sayi >= c.enCok) durum = 'stokDolu';
-    else if (id === 'guclendirici_paketi' && !meta.paketSigarMi(k)) durum = 'stokDolu';
+    else if (paket && !meta.paketSigarMi(k, paket)) durum = 'stokDolu';
     else if (fiyatlar && !fiyatlar.has(id)) durum = 'yok';
-    return { id, ad: m.ad, aciklama: m.aciklama, fiyat: fiyatlar?.get(id) ?? null, durum };
+    return { id, ad: m.ad, aciklama: m.aciklama, fiyat: fiyatlar?.get(id) ?? null, durum, ...(id === 'baslangic_paketi' ? { birKez: true } : {}) };
   });
   return { urunler, geriYukle: true };
 }
@@ -307,6 +310,40 @@ export class GelirAkisi {
     return sonuc;
   }
 
+  // ─────────────── Günlük hediye sandığı (§14 E3) ───────────────
+
+  /**
+   * Kazandın'da hediye sandığı satırı gösterilsin mi: ana ya da Usta bölümü,
+   * sandık sistemi açık, bugün kullanılmamış, Usta kartı ya da reklam hazır.
+   * Gösterilecekse `reklam_teklif` (yer `sandik`) yazılır.
+   */
+  hediyeSandikTeklif(v: Pick<BolumVerisi, 'tur'>): { kart: boolean } | null {
+    if (v.tur === 'gunluk' || v.tur === 'sonsuz') return null;
+    const k = this.o.kayit();
+    if (!meta.sandikAcik(k) || !meta.hediyeSandikHakki(k, this.o.bugun())) return null;
+    const kart = this.ustaKarti();
+    if (!kart && !this.reklamHazir('sandik')) return null;
+    this.reklamTeklif('sandik');
+    return { kart };
+  }
+
+  /**
+   * Hediye sandığı: ödül gelirse (reklam ya da Usta kartı) günü işaretler,
+   * normal bir sandık açar (neden `reklam`), kaydı hemen yazar ve sandığın
+   * arayüz modelini döner; ödül yoksa `null` (satır kalır, ya da reklam
+   * yoksa bildirim çıkar).
+   */
+  async hediyeSandikAl(): Promise<SandikVM | null> {
+    const sonuc = await this.reklamOdulu('sandik');
+    if (sonuc !== 'odul') return null;
+    const k = this.o.kayit();
+    const y = meta.hediyeSandikKullan(k, this.o.bugun());
+    if (y === k) return null;
+    const { kayit, sonuc: s } = meta.sandikAc(y, { tur: 'normal', neden: 'reklam' });
+    this.o.yaz(kayit);
+    return sandiklarVM(k, [{ tur: 'sandik', sandik: s }])[0] ?? null;
+  }
+
   /** Can panelinin reklam satırı: ödül gelirse +1 can (günlük hak; C6, C9), kayıt hemen yazılır. */
   private async reklamCan(): Promise<ReklamSonucu> {
     const sonuc = await this.reklamOdulu('can');
@@ -440,7 +477,7 @@ export class GelirAkisi {
       }
       const s = await this.isle(r.urun, r.jeton);
       if (s === 'verildi') this.o.bildir(G.satinAlindi);
-      else if (s === 'verilemedi') this.o.bildir(r.urun === 'guclendirici_paketi' ? MC.stokDolu : G.satinHata);
+      else if (s === 'verilemedi') this.o.bildir(meta.urunPaketi(r.urun) ? MC.stokDolu : G.satinHata);
       return s;
     } finally {
       this.satinAlimda = false;

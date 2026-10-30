@@ -98,12 +98,14 @@ describe('sahte sağlayıcı: reklam', () => {
 
 describe('sahte sağlayıcı: mağaza', () => {
   it('deneme fiyatları Mağaza sırasıyla (Türkçe)', async () => {
-    expect(sahteFiyatlar()).toEqual({ can_doldur: '₺29,99', guclendirici_paketi: '₺59,99', usta_karti: '₺149,99' });
+    expect(sahteFiyatlar()).toEqual({ baslangic_paketi: '₺49,99', can_doldur: '₺24,99', guclendirici_paketi: '₺49,99', buyuk_paket: '₺99,99', usta_karti: '₺129,99' });
     const s = sahteSaglayici(NORMAL, { katmanlar: null, depo: null, urunGecikmesi: 0 });
     expect(await s.urunler()).toEqual([
-      { id: 'can_doldur', fiyat: '₺29,99' },
-      { id: 'guclendirici_paketi', fiyat: '₺59,99' },
-      { id: 'usta_karti', fiyat: '₺149,99' },
+      { id: 'baslangic_paketi', fiyat: '₺49,99' },
+      { id: 'can_doldur', fiyat: '₺24,99' },
+      { id: 'guclendirici_paketi', fiyat: '₺49,99' },
+      { id: 'buyuk_paket', fiyat: '₺99,99' },
+      { id: 'usta_karti', fiyat: '₺129,99' },
     ]);
   });
   it('onay kartı: Satın al → başarılı, tekil jeton; Vazgeç → iptal', async () => {
@@ -113,7 +115,7 @@ describe('sahte sağlayıcı: mağaza', () => {
     expect(await s.satinAl('can_doldur')).toEqual({ durum: 'basarili', urun: 'can_doldur', jeton: 'sahte-1-1000' });
     expect(await s.satinAl('guclendirici_paketi')).toEqual({ durum: 'iptal' });
     expect(await s.satinAl('guclendirici_paketi')).toEqual({ durum: 'basarili', urun: 'guclendirici_paketi', jeton: 'sahte-2-1001' });
-    expect(cagri).toEqual(['onay:can_doldur:₺29,99', 'onay:guclendirici_paketi:₺59,99', 'onay:guclendirici_paketi:₺59,99']);
+    expect(cagri).toEqual(['onay:can_doldur:₺24,99', 'onay:guclendirici_paketi:₺49,99', 'onay:guclendirici_paketi:₺49,99']);
     await expect(s.tamamla('sahte-1-1000')).resolves.toBeUndefined();
     expect(await s.bekleyenler()).toEqual([]);
   });

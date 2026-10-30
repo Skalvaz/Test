@@ -56,13 +56,14 @@ export function canVm(v = 'bitti'): CanVM {
 
 /** Mağaza çeşitleri: 1 (hepsi satılık), sende (Usta kartı alınmış), stok (paket sığmıyor, canlar dolu), bekle (fiyatlar gelmedi). */
 export function magazaVm(v = '1'): MagazaVM {
-  const fiyat: Record<UrunId, string> = { can_doldur: '₺29,99', guclendirici_paketi: '₺59,99', usta_karti: '₺149,99' };
+  const fiyat: Record<UrunId, string> = { baslangic_paketi: '₺49,99', can_doldur: '₺24,99', guclendirici_paketi: '₺49,99', buyuk_paket: '₺99,99', usta_karti: '₺129,99' };
   return {
     urunler: URUN_IDLERI.map((id) => {
       let durum: MagazaUrunVM['durum'] = 'satilik';
       if (v === 'sende' && id === 'usta_karti') durum = 'sende';
       if (v === 'stok' && id !== 'usta_karti') durum = 'stokDolu';
       if (v === 'yok' && id === 'guclendirici_paketi') durum = 'yok';
+      if (id === 'baslangic_paketi') return { id, ad: URUN_METINLERI[id].ad, aciklama: URUN_METINLERI[id].aciklama, fiyat: v === 'bekle' ? null : fiyat[id], durum, birKez: true };
       return { id, ad: URUN_METINLERI[id].ad, aciklama: URUN_METINLERI[id].aciklama, fiyat: v === 'bekle' ? null : fiyat[id], durum };
     }),
     geriYukle: true,

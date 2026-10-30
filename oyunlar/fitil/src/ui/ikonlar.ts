@@ -824,10 +824,31 @@ export function fitilCanSvg(sinif = '', yanik = true): SVGSVGElement {
   return svg(`<svg class="f-fitil-can${yanik ? '' : ' f-sonuk'} ${sinif}" viewBox="-16 -17 32 32" aria-hidden="true">${fitilCanIsaretleme(yanik)}</svg>`);
 }
 
-/** Mağaza ürün resmi (madalyon, viewBox −24..24): can doldur, güçlendirici paketi, Usta kartı. */
-export function urunSvg(id: 'can_doldur' | 'guclendirici_paketi' | 'usta_karti'): SVGSVGElement {
+/** Mağaza ürün resmi (madalyon, viewBox −24..24): başlangıç ve büyük paket, can doldur, güçlendirici paketi, Usta kartı. */
+export function urunSvg(id: 'baslangic_paketi' | 'can_doldur' | 'guclendirici_paketi' | 'buyuk_paket' | 'usta_karti'): SVGSVGElement {
   let ic = '';
   switch (id) {
+    case 'baslangic_paketi':
+      // Kurdeleli hediye kutusu (yeşil kurdele: "bir kez" teklifi öbür paketlerden ayrılsın).
+      ic = madalyon(
+        `<rect x="-13" y="-3" width="26" height="16" rx="2.4" fill="url(#ftl-kirmizi)" stroke="#5A0E0E" stroke-width="1.3"/>
+        <rect x="-15" y="-9" width="30" height="7.5" rx="2" fill="#C8281C" stroke="#5A0E0E" stroke-width="1.3"/>
+        <rect x="-3" y="-9" width="6" height="22" fill="#4ED894" stroke="#0E5A34" stroke-width="1"/>
+        <path d="M0-9c-3-6-11-7-10-2 1 3 6 3 10 2zM0-9c3-6 11-7 10-2-1 3-6 3-10 2z" fill="#7CFFB2" stroke="#0E5A34" stroke-width="1.2" stroke-linejoin="round"/>
+        <rect x="-11" y="-1" width="3" height="12" rx="1.5" fill="#fff" opacity=".22"/>`,
+        '#7CFFB2',
+      );
+      break;
+    case 'buyuk_paket':
+      ic = madalyon(
+        `<g transform="translate(-9.4 5.2) scale(.56)">${guclendiriciIsaretleme('kibrit')}</g>
+        <g transform="translate(9.4 5.2) scale(.56)">${guclendiriciIsaretleme('geriSar')}</g>
+        <g transform="translate(0 -6.2) scale(.6)">${guclendiriciIsaretleme('kalip')}</g>
+        <circle cx="13" cy="-12" r="5.6" fill="#E8862E" stroke="#5A2A08" stroke-width="1.2"/>
+        <path d="M13-14.6v5.2M10.4-12h5.2" stroke="#FFF4C2" stroke-width="1.8" stroke-linecap="round"/>`,
+        '#FFB04A',
+      );
+      break;
     case 'can_doldur':
       ic = madalyon(`<g transform="translate(-.4 1.6) scale(1.06)">${fitilCanIsaretleme(true)}</g>`, '#FF9A3C');
       break;

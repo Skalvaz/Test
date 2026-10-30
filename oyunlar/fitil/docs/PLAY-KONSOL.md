@@ -147,15 +147,24 @@ pakette bu bayrak olmaz.
 Sonra *Para kazanma > Ürünler > Uygulama içi ürünler* (yeni konsolda
 "Tek seferlik ürünler"):
 
-| Ürün kimliği (kodla aynı) | Ad (TR / EN) | Açıklama (TR / EN) | Önerilen fiyat |
+| Ürün kimliği (kodla aynı) | Ad (TR / EN) | Açıklama (TR / EN) | Önerilen fiyat (TR / temel) |
 |---|---|---|---|
-| `can_doldur` | Canları doldur / Refill lives | Canlar hemen 5'e dolar / Lives refill to 5 at once | 0,99 USD |
-| `guclendirici_paketi` | Güçlendirici paketi / Booster pack | 3 Kibrit, 2 Fişek Kalıbı, 2 Geri Sar / 3 Matches, 2 Rocket Molds, 2 Undos | 1,99 USD |
-| `usta_karti` | Usta kartı / Master's Card | Reklamlı ödüller reklamsız gelir / Ad rewards without the ads | 4,99 USD |
+| `baslangic_paketi` | Başlangıç paketi / Starter pack | Canlar dolar + her güçlendiriciden 3 / Lives refill + 3 of each booster | ₺49,99 / 1,99 USD |
+| `can_doldur` | Canları doldur / Refill lives | Canlar hemen 5'e dolar / Lives refill to 5 at once | ₺24,99 / 0,99 USD |
+| `guclendirici_paketi` | Güçlendirici paketi / Booster pack | 3 Kibrit, 2 Fişek Kalıbı, 2 Geri Sar / 3 Matches, 2 Rocket Molds, 2 Undos | ₺49,99 / 1,99 USD |
+| `buyuk_paket` | Büyük paket / Big pack | 6 Kibrit, 5 Fişek Kalıbı, 5 Geri Sar / 6 Matches, 5 Rocket Molds, 5 Undos | ₺99,99 / 3,99 USD |
+| `usta_karti` | Usta kartı / Master's Card | Reklamlı ödüller reklamsız gelir / Ad rewards without the ads | ₺129,99 / 4,99 USD |
+
+Mağaza sırası koddan gelir (yukarıdaki sıra; başlangıç paketi alınınca
+listeden çıkar). Türk lirası fiyatları önerilen değerlerdir (CAN-REKLAM
+§14 E5): USD girip yerel fiyatlara dönüştürdükten sonra Türkiye satırını
+bu değerlerle elle düzelt.
 
 - Ürün kimliği sonradan değişmez ve koddaki adla birebir aynı olmalı.
-- **Tüketilir / kalıcı ayrımı konsolda seçilmez, kod yapar:** `can_doldur` ve
-  `guclendirici_paketi` her alımdan sonra tüketilir (tekrar alınabilir);
+- **Tüketilir / kalıcı ayrımı konsolda seçilmez, kod yapar:** `can_doldur`,
+  `guclendirici_paketi`, `buyuk_paket` ve `baslangic_paketi` her alımdan
+  sonra tüketilir (başlangıç paketini oyun bir kez satar, kayıtta
+  `gelir.baslangic`);
   `usta_karti` yalnız onaylanır (kalıcıdır, "Satın alımları geri yükle" ile
   yeni cihaza gelir).
 - Fiyatı USD girip "yerel fiyatlara dönüştür" de; Türkiye fiyatını istersen

@@ -34,6 +34,7 @@ import {
   geriYuklemeUygula,
   jetonGecerli,
   paketSigarMi,
+  BUYUK_PAKET,
   reklamCanHakki,
   reklamCanKullan,
   satinAlmaUygula,
@@ -304,15 +305,16 @@ describe('satın alma (§4, C8, C13): jeton korumalı', () => {
     expect(r.kayit.can).toBeUndefined();
     // Onarım stoğu korur (stok sınırı açılmadan bağımsız).
     expect(kayitOnar(JSON.parse(anlik(r.kayit))).onarilan).toEqual([]);
-    // Satın alma sınırı 9: ikinci ve üçüncü paket sığar, dördüncü sığmaz: verilmez,
+    // Satın alma sınırı 15 (§14 E2): beşinci pakete dek sığar, altıncı sığmaz: verilmez,
     // kayıt aynen döner, jeton yazılmaz (tamamla çağrılmaz).
     expect(paketSigarMi(r.kayit)).toBe(true);
-    const p2 = satinAlmaUygula(r.kayit, 'guclendirici_paketi', 'p2', T0);
-    const p3 = satinAlmaUygula(p2.kayit, 'guclendirici_paketi', 'p3', T0);
-    expect(p3.kayit.guclendiriciler).toEqual({ kibrit: 9, kalip: 6, geriSar: 6 });
+    let son = r.kayit;
+    for (const j of ['p2', 'p3', 'p4', 'p5']) son = satinAlmaUygula(son, 'guclendirici_paketi', j, T0).kayit;
+    const p3 = { kayit: son };
+    expect(p3.kayit.guclendiriciler).toEqual({ kibrit: 15, kalip: 10, geriSar: 10 });
     expect(kayitOnar(JSON.parse(anlik(p3.kayit))).onarilan).toEqual([]);
     expect(paketSigarMi(p3.kayit)).toBe(false);
-    const s = satinAlmaUygula(p3.kayit, 'guclendirici_paketi', 'p4', T0);
+    const s = satinAlmaUygula(p3.kayit, 'guclendirici_paketi', 'p6', T0);
     expect(s).toEqual({ kayit: p3.kayit, verildi: false, tekrar: false });
     expect(s.kayit).toBe(p3.kayit);
     // Kibrit 7. bölümde açılınca satın alınan stok yerinde kalır; açılış hediyesi sığmayan kısmı toza döner.
@@ -321,14 +323,16 @@ describe('satın alma (§4, C8, C13): jeton korumalı', () => {
     expect(a.toz).toBeGreaterThan(0);
   });
 
-  it('paketSigarMi: her güçlendirici için stok + paket ≤ satın alma sınırı (9)', () => {
-    expect(GUCLENDIRICI_SATIN_SINIRI).toBe(9);
+  it('paketSigarMi: her güçlendirici için stok + paket ≤ satın alma sınırı (15; büyük paket ayrı)', () => {
+    expect(GUCLENDIRICI_SATIN_SINIRI).toBe(15);
     const k = yeniKayit(9);
     const st = (kibrit: number, kalip: number, geriSar: number) => ({ ...kayitKopyala(k), guclendiriciler: { kibrit, kalip, geriSar } });
-    expect(paketSigarMi(st(6, 7, 7))).toBe(true);
-    expect(paketSigarMi(st(7, 0, 0))).toBe(false);
-    expect(paketSigarMi(st(0, 8, 0))).toBe(false);
-    expect(paketSigarMi(st(0, 0, 8))).toBe(false);
+    expect(paketSigarMi(st(12, 13, 13))).toBe(true);
+    expect(paketSigarMi(st(13, 0, 0))).toBe(false);
+    expect(paketSigarMi(st(0, 14, 0))).toBe(false);
+    expect(paketSigarMi(st(0, 0, 14))).toBe(false);
+    expect(paketSigarMi(st(9, 10, 10), BUYUK_PAKET)).toBe(true);
+    expect(paketSigarMi(st(10, 0, 0), BUYUK_PAKET)).toBe(false);
     // Açık oyuncu: 7. bölümde kibrit hediyesi (2, hediye sınırı 3) gelir; paket yine sığar.
     const acik = ilerlet(6, 1);
     expect(acik.guclendiriciler.kibrit).toBe(2);
@@ -653,5 +657,24 @@ describe('bölüm sonucu can alanına dokunmaz', () => {
     const r = kazan(k, 7, 2).kayit;
     expect(r.can).toEqual(k.can);
     expect(r.gelir).toEqual(k.gelir);
+  });
+});
+
+describe('Aşama 2b (§14) kayıt alanları', () => {
+  it('BILINEN_URUNLER platformun URUN_IDLERI ile aynı', async () => {
+    const { URUN_IDLERI } = await import('../platform/gelir');
+    const { BILINEN_URUNLER } = await import('./can');
+    expect([...BILINEN_URUNLER].sort()).toEqual([...URUN_IDLERI].sort());
+  });
+  it('sandikGun ve baslangic isteğe bağlı: yoksa not yok, bozuksa onarılır', async () => {
+    const { canOnar, gelirOnar } = await import('./can');
+    const notlar: string[] = [];
+    expect(canOnar({ sayi: 5, dolumBasi: null, reklamGun: 0, reklamSayisi: 0 }, (y) => notlar.push(y)).sandikGun).toBeUndefined();
+    expect(canOnar({ sayi: 5, dolumBasi: null, reklamGun: 0, reklamSayisi: 0, sandikGun: 20261030 }, (y) => notlar.push(y)).sandikGun).toBe(20261030);
+    expect(notlar).toEqual([]);
+    expect(canOnar({ sayi: 5, dolumBasi: null, reklamGun: 0, reklamSayisi: 0, sandikGun: 'dün' }, (y) => notlar.push(y)).sandikGun).toBeUndefined();
+    expect(gelirOnar({ ustaKarti: false, jetonlar: [], baslangic: 'evet' }, (y) => notlar.push(y)).baslangic).toBeUndefined();
+    expect(notlar).toEqual(['can.sandikGun', 'gelir.baslangic']);
+    expect(gelirOnar({ ustaKarti: false, jetonlar: [], baslangic: true }).baslangic).toBe(true);
   });
 });

@@ -12,7 +12,7 @@ import { urunIdMi, type AndroidGelirKoprusu, type ReklamSonucu, type SatinAlmaSo
 import type { Reklam } from './reklam';
 import type { SatinAlma } from './satin';
 
-const reklamYeriMi = (yer: unknown): boolean => yer === 'can' || yer === 'hamle';
+const reklamYeriMi = (yer: unknown): boolean => yer === 'can' || yer === 'hamle' || yer === 'sandik';
 
 export function gelirKoprusu(reklam: Pick<Reklam, 'hazirMi' | 'goster'>, satin: SatinAlma): AndroidGelirKoprusu {
   return {

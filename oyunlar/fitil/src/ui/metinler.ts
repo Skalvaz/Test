@@ -607,6 +607,10 @@ export const MC = {
   canlarDolu: t('Canların dolu', 'Lives full'),
   sonrakiCan: t('Sonraki can', 'Next life'),
   reklamIzle: t('Reklam izle', 'Watch ad'),
+  /** (§14 E3) Kazandın'daki günlük hediye sandığı satırı. */
+  hediyeSandik: t('Hediye sandık', 'Gift chest'),
+  izle: t('İzle', 'Watch'),
+  ac: t('Aç', 'Open'),
   artiBirCan: t('+1 can', '+1 life'),
   ucretsizBirCan: t('Ücretsiz +1 can', 'Free +1 life'),
   /** Reklam satırının altında bugün kalan hak: "2 hak kaldı". */
@@ -645,6 +649,7 @@ export const MC = {
   geriYukle: t('Satın alımları geri yükle', 'Restore purchases'),
   sendeVar: t('Sende var', 'Owned'),
   stokDolu: t('Stok dolu', 'Stock full'),
+  birKez: t('Bir kez', 'One time'),
   suAnYok: t('Şu an yok', 'Unavailable'),
   /** Fiyat mağazadan henüz gelmedi (düğme pasif). */
   fiyatYok: '—',
@@ -653,13 +658,17 @@ export const MC = {
 /** (CAN-REKLAM §4) Mağaza ürünlerinin adı ve tek satır açıklaması (G4 `MagazaVM`'i buradan doldurur). */
 export const URUN_METINLERI: Record<UrunId, { ad: string; aciklama: string }> = t<Record<UrunId, { ad: string; aciklama: string }>>(
   {
+    baslangic_paketi: { ad: 'Başlangıç paketi', aciklama: 'Canlar dolar + her güçlendiriciden 3' },
     can_doldur: { ad: 'Canları doldur', aciklama: 'Canlar hemen 5’e dolar' },
     guclendirici_paketi: { ad: 'Güçlendirici paketi', aciklama: '3 Kibrit, 2 Fişek Kalıbı, 2 Geri Sar' },
+    buyuk_paket: { ad: 'Büyük paket', aciklama: '6 Kibrit, 5 Fişek Kalıbı, 5 Geri Sar' },
     usta_karti: { ad: 'Usta kartı', aciklama: 'Reklamlı ödüller reklamsız gelir' },
   },
   {
+    baslangic_paketi: { ad: 'Starter pack', aciklama: 'Lives refill + 3 of each booster' },
     can_doldur: { ad: 'Refill lives', aciklama: 'Lives refill to 5 at once' },
     guclendirici_paketi: { ad: 'Booster pack', aciklama: '3 Matches, 2 Rocket Molds, 2 Undos' },
+    buyuk_paket: { ad: 'Big pack', aciklama: '6 Matches, 5 Rocket Molds, 5 Undos' },
     usta_karti: { ad: 'Master’s Card', aciklama: 'Ad rewards without the ads' },
   },
 );

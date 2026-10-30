@@ -680,6 +680,22 @@ async function gelirProfili({ page, p, kare, dokun, dugme, botlaBitir, haritayaD
       // Devamla kazanç: kayıpta giden can geri gelir (C4).
       if (c3 !== once) hatalar.push(`[${p.ad}] b${n} devamla kazanç: can iade edilmedi (${once} → ${c3})`);
       devamKazandi = true;
+      // Günlük hediye sandık (CAN-REKLAM §14 E3): İzle → reklam → sandık açılır, satır gider.
+      if (await page.locator('.f-kz-hediye-dg').count()) {
+        const stokOnce = await page.evaluate(() => JSON.stringify(window.__fitil.gelir().stok));
+        await page.locator('.f-kz-hediye-dg').click();
+        await reklamIzle('hediye-sandik');
+        await bekleKosul(page, () => !!document.querySelector('.f-sandik-modal:not(.f-cikis) .f-sandik-buyuk'), null, 8000, 'hediye sandık modalı');
+        await page.locator('.f-sandik-modal:not(.f-cikis) .f-sandik-buyuk').click();
+        await page.waitForTimeout(1200);
+        await kare('hediye-sandik-acildi');
+        await page.locator('.f-sandik-modal:not(.f-cikis) .f-sandik-ekrani .f-dg-birincil').click();
+        await bekleKosul(page, () => !document.querySelector('.f-sandik-modal:not(.f-cikis)') && !document.querySelector('.f-kz-hediye'), null, 8000, 'hediye sandık kapandı, satır gitti');
+        const kayit = await page.evaluate(() => window.__fitil.kayit());
+        if (!kayit.can?.sandikGun) hatalar.push(`[${p.ad}] hediye sandık günü yazılmadı`);
+        const stokSonra = await page.evaluate(() => JSON.stringify(window.__fitil.gelir().stok));
+        not(`[${p.ad}] hediye sandık: stok ${stokOnce} → ${stokSonra}`);
+      } else hatalar.push(`[${p.ad}] devamla kazançta hediye sandık satırı yok`);
       await haritayaDon();
       break;
     }
@@ -721,7 +737,9 @@ async function gelirProfili({ page, p, kare, dokun, dugme, botlaBitir, haritayaD
     await haritayaDon();
   }
 
-  // 5. Ayarlar > Mağaza: canları doldur, güçlendirici paketi (+3/+2/+2), Usta kartı → "Sende var".
+  // 5. Ayarlar > Mağaza (CAN-REKLAM §14): başlangıç paketi (canlar dolar + 3/3/3; bir kez,
+  // sonra listeden çıkar), güçlendirici paketi (+3/+2/+2), büyük paket (+6/+5/+5),
+  // Usta kartı → "Sende var". Ürünler data-urun ile seçilir (sıra değişebilir).
   await bekleKosul(page, () => window.__fitil.ekran() === 'harita', null, 15000, 'harita (mağaza)');
   await page.evaluate(() => window.__fitil.kayitYama({ guclendiriciler: { kibrit: 0, kalip: 0, geriSar: 0 } }));
   await page.evaluate(() => window.__fitil.canAyarla(2));
@@ -731,24 +749,37 @@ async function gelirProfili({ page, p, kare, dokun, dugme, botlaBitir, haritayaD
   await page.waitForTimeout(300);
   await kare('ayarlar-magaza-satiri');
   await page.locator('.f-ay-magaza').click();
-  await bekleKosul(page, () => window.__fitil.ekran() === 'magaza' && document.querySelectorAll('.f-magaza-modal .f-mg-fiyat:not([disabled])').length >= 3, null, 8000, 'Mağaza fiyatları');
+  await bekleKosul(page, () => window.__fitil.ekran() === 'magaza' && document.querySelectorAll('.f-magaza-modal .f-mg-fiyat:not([disabled])').length >= 4, null, 8000, 'Mağaza fiyatları');
   await page.waitForTimeout(400);
+  const urunSirasi = () => page.evaluate(() => [...document.querySelectorAll('.f-magaza-modal:not(.f-cikis) .f-mg-urun')].map((e) => e.getAttribute('data-urun')));
+  const ilkSira = await urunSirasi();
+  if (JSON.stringify(ilkSira) !== JSON.stringify(['baslangic_paketi', 'can_doldur', 'guclendirici_paketi', 'buyuk_paket', 'usta_karti'])) hatalar.push(`[${p.ad}] Mağaza sırası: ${ilkSira}`);
   await kare('magaza');
-  const satinAl = async (sira, etiket) => {
+  const satinAl = async (urun, etiket) => {
     await bekleKosul(page, () => window.__fitil.ekran() === 'magaza' && !!document.querySelector('.f-magaza-modal:not(.f-cikis)'), null, 8000, `${etiket}: Mağaza`);
-    await page.locator('.f-magaza-modal:not(.f-cikis) .f-mg-urun').nth(sira).locator('.f-mg-fiyat').click();
+    await page.locator(`.f-magaza-modal:not(.f-cikis) .f-mg-urun[data-urun="${urun}"] .f-mg-fiyat`).click();
     await satinOnayla(etiket);
   };
-  await satinAl(0, 'can-doldur');
+  const stokBekle = (stok, etiket) => bekleKosul(page, (s) => JSON.stringify(window.__fitil.gelir().stok) === s, JSON.stringify(stok), 8000, etiket);
+  await satinAl('baslangic_paketi', 'baslangic');
+  await bekleCan(5, 'başlangıç paketi canları');
+  await stokBekle({ kibrit: 3, kalip: 3, geriSar: 3 }, 'başlangıç stoğu');
+  await bekleKosul(page, () => !document.querySelector('.f-magaza-modal:not(.f-cikis) .f-mg-urun[data-urun="baslangic_paketi"]') && !!document.querySelector('.f-magaza-modal:not(.f-cikis) .f-mg-urun'), null, 8000, 'başlangıç paketi listeden çıktı');
+  await page.evaluate(() => window.__fitil.canAyarla(2));
+  await page.waitForTimeout(600);
+  await satinAl('can_doldur', 'can-doldur');
   await bekleCan(5, 'canları doldur');
-  await satinAl(1, 'paket');
-  await bekleKosul(page, () => JSON.stringify(window.__fitil.gelir().stok) === JSON.stringify({ kibrit: 3, kalip: 2, geriSar: 2 }), null, 8000, 'paket stoğu');
-  await satinAl(2, 'usta-karti');
+  await satinAl('guclendirici_paketi', 'paket');
+  await stokBekle({ kibrit: 6, kalip: 5, geriSar: 5 }, 'paket stoğu');
+  await satinAl('buyuk_paket', 'buyuk-paket');
+  await stokBekle({ kibrit: 12, kalip: 10, geriSar: 10 }, 'büyük paket stoğu');
+  await satinAl('usta_karti', 'usta-karti');
   await bekleKosul(page, () => window.__fitil.gelir().ustaKarti === true, null, 8000, 'Usta kartı');
   await bekleKosul(page, () => !!document.querySelector('.f-magaza-modal:not(.f-cikis) .f-mg-d-sende'), null, 8000, 'Sende var');
   await page.waitForTimeout(500);
-  const durumlar = await page.evaluate(() => [...document.querySelectorAll('.f-magaza-modal:not(.f-cikis) .f-mg-urun')].map((e) => [...e.classList].find((c) => c.startsWith('f-mg-d-'))));
-  if (JSON.stringify(durumlar) !== JSON.stringify(['f-mg-d-stokDolu', 'f-mg-d-satilik', 'f-mg-d-sende'])) hatalar.push(`[${p.ad}] Mağaza durumları: ${durumlar}`);
+  const durumlar = await page.evaluate(() => [...document.querySelectorAll('.f-magaza-modal:not(.f-cikis) .f-mg-urun')].map((e) => `${e.getAttribute('data-urun')}:${[...e.classList].find((c) => c.startsWith('f-mg-d-'))}`));
+  // Can dolu (stokDolu), 12/10/10 stok: +3/+2/+2 sığar (15), +6/+5/+5 sığmaz.
+  if (JSON.stringify(durumlar) !== JSON.stringify(['can_doldur:f-mg-d-stokDolu', 'guclendirici_paketi:f-mg-d-satilik', 'buyuk_paket:f-mg-d-stokDolu', 'usta_karti:f-mg-d-sende'])) hatalar.push(`[${p.ad}] Mağaza durumları: ${durumlar}`);
   await kare('magaza-sende');
   await page.locator('.f-magaza-modal:not(.f-cikis) .f-mg-geri').click();
   await bekleKosul(page, () => window.__fitil.ekran() === 'magaza' && !!document.querySelector('.f-magaza-modal:not(.f-cikis)'), null, 8000, 'geri yükleme → Mağaza');

@@ -21,7 +21,7 @@ import * as O from './ornekler';
 import { KASABA_ISLERI } from '../../app/katalog';
 import type { Kenarlar, Yerlesim } from '../yerlesim';
 import type { CanVM, HaritaSecimi, MagazaVM, Palet } from '../tipler';
-import { M, MK, tarihKisa } from '../metinler';
+import { M, MC, MK, tarihKisa } from '../metinler';
 import { DIL, t } from '../../platform/dil';
 
 // Oyundaki gibi (main.ts): büyük harfe çevirme dile göre (English'te I, Türkçede İ).
@@ -350,7 +350,18 @@ async function calistir(): Promise<void> {
       break;
     case 'kazandin':
       await oyunSahnesi();
-      log('kazandın', await ui.kazandin(O.kazandinVm(v), { tablo: sahteTablo() }));
+      {
+        // hediye=1|kart: günlük hediye sandığı satırı (CAN-REKLAM §14 E3).
+        const hd = p.get('hediye');
+        const kvm = { ...O.kazandinVm(v), hediyeSandik: hd ? { kart: hd === 'kart' } : null };
+        const hediyeSandik = hd
+          ? async () => {
+              await ui.sandikAc({ tur: 'normal', oduller: [{ tur: 'toz', adet: 3 }, { tur: 'guclendirici', id: 'kibrit', adet: 1 }] }, MC.hediyeSandik);
+              return true;
+            }
+          : undefined;
+        log('kazandın', await ui.kazandin(kvm, { tablo: sahteTablo(), hediyeSandik }));
+      }
       break;
     case 'kaybettin':
       await oyunSahnesi('son1');

@@ -41,7 +41,7 @@ import type { YolCizici, YolDegisimi } from './sozlesme';
 import type { Kayitci } from './kayitci';
 import { NADIRLIK, duraklatVM, hudVM, kaybettinVM, kazandinKancalari, odulDuyurulari, sandiklarVM, yeniOge } from './gorunum';
 import { kareBekle, simdi } from './zaman';
-import { MK } from '../ui/metinler';
+import { MC, MK } from '../ui/metinler';
 import { USTA_ELI_HAMLE } from '../core/sabitler';
 import { t } from '../platform/dil';
 import type { GelirAkisi } from './gelirAkisi';
@@ -1073,7 +1073,18 @@ export class Oturum {
     cizici.karart(0.38);
     this.o.ekran('kazandin');
     this.sonucAcik = true;
-    const secim = await ui.kazandin(vm, { tablo: tuval });
+    // (CAN-REKLAM §14 E3) Günlük hediye sandığı: sandık ekranı Kazandın'ın üstünde açılır.
+    const gelir = this.o.gelir ?? null;
+    vm.hediyeSandik = gelir?.hediyeSandikTeklif(v) ?? null;
+    const hediyeSandik = gelir && vm.hediyeSandik
+      ? async () => {
+          const s = await gelir.hediyeSandikAl();
+          if (!s || jeton !== this.jeton) return false;
+          await ui.sandikAc(s, MC.hediyeSandik);
+          return true;
+        }
+      : undefined;
+    const secim = await ui.kazandin(vm, { tablo: tuval, hediyeSandik });
     if (jeton !== this.jeton) return;
     cizici.karart(0);
     this.bitir(secim === 'tekrar' ? { tur: 'tekrar' } : { tur: 'devam', sonuc, oncekiKayit: onceki });

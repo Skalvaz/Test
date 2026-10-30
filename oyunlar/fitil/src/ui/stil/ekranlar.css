@@ -969,3 +969,11 @@ li.f-kz-tablo .f-tablo { width: 64px; max-width: 64px; }
   .f-bo-liste-hamle .f-ikon, .f-bo-liste-kural .f-ikon { width: 26px; height: 26px; }
   .f-bo-liste-kural { font-size: 16px !important; }
 }
+
+/* (CAN-REKLAM §14 E3) Kazandın: günlük hediye sandığı satırı (ödül listesinde, sağda küçük düğme). */
+.f-kz-hediye { gap: 14px; }
+.f-kz-hediye-resim { display: grid; place-items: center; width: 48px; flex: none; }
+.f-kz-hediye-resim .f-sandik-svg { width: 44px; filter: none; }
+.f-kz-hediye .f-kz-kutu-ad { flex: 1 1 auto; }
+.f-kz-hediye-dg { flex: none; min-height: 44px; padding: 4px 14px 6px; font-size: 16px; }
+.f-kz-hediye-dg .f-ikon { width: 20px; height: 20px; }

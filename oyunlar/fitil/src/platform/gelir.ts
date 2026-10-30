@@ -14,9 +14,9 @@
 import { gelirOlayi, type OlcumGelirOlayi, type OlcumGelirOzellikleri } from './olcum';
 import { sahteAyarlari, sahteSaglayici } from './gelirSahte';
 
-export type ReklamYeri = 'can' | 'hamle';
+export type ReklamYeri = 'can' | 'hamle' | 'sandik';
 export type ReklamSonucu = 'odul' | 'iptal' | 'yok' | 'hata';
-export type UrunId = 'can_doldur' | 'guclendirici_paketi' | 'usta_karti';
+export type UrunId = 'baslangic_paketi' | 'can_doldur' | 'guclendirici_paketi' | 'buyuk_paket' | 'usta_karti';
 export interface Urun {
   id: UrunId;
   /** Mağazanın yerel biçimli fiyat metni ("₺29,99"); kodda fiyat yazılmaz. */
@@ -46,13 +46,16 @@ export interface GelirSaglayici {
   geriYukle(): Promise<UrunId[]>;
 }
 
-/** Bütün ürün kimlikleri, Mağaza sırasıyla (§4 tablosu). */
-export const URUN_IDLERI: readonly UrunId[] = Object.freeze(['can_doldur', 'guclendirici_paketi', 'usta_karti'] as const);
+/** Bütün ürün kimlikleri, Mağaza sırasıyla (§4 tablosu, §14 E4). */
+export const URUN_IDLERI: readonly UrunId[] = Object.freeze(['baslangic_paketi', 'can_doldur', 'guclendirici_paketi', 'buyuk_paket', 'usta_karti'] as const);
 
 /** Ürün türü (§4): tüketilir ürün tekrar alınabilir; kalıcı bir kez alınır, geri yüklenir. */
 export const URUN_TURLERI: Readonly<Record<UrunId, 'tuketilir' | 'kalici'>> = Object.freeze({
+  // Başlangıç paketi mağazada tüketilir; "bir kez" kuralı kayıtta (`gelir.baslangic`, §14 E1).
+  baslangic_paketi: 'tuketilir',
   can_doldur: 'tuketilir',
   guclendirici_paketi: 'tuketilir',
+  buyuk_paket: 'tuketilir',
   usta_karti: 'kalici',
 });
 
