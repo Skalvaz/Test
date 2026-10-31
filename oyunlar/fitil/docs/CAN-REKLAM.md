@@ -433,9 +433,10 @@ satışı YOK, oyun satın almadan ve reklamsız bitirilebilir. Varsayılanlar
   hazır değilse satır görünmez.
 - **E4 Mağaza sırası:** başlangıç paketi (alınmadıysa), canları doldur,
   güçlendirici paketi, büyük paket, Usta kartı.
-- **E5 Fiyat önerileri (Play Console, Türkiye):** can doldur ₺24,99;
-  güçlendirici paketi ₺49,99; başlangıç paketi ₺49,99; büyük paket
-  ₺99,99; Usta kartı ₺129,99. Öteki ülkeler dolar önerisinden Play'in
-  çevirisiyle. Kodda fiyat yazılmaz (§4).
+- **E5 Fiyat önerileri (dünya geneli; tablo `PLAY-KONSOL.md` §6):** temel
+  USD ($0.99 / $1.99 / $1.99 / $3.99 / $4.99), avro bölgesi aynı rakamlar
+  €, Türkiye ₺24,99 / ₺49,99 / ₺49,99 / ₺99,99 / ₺129,99; öteki ülkeler
+  Play'in dönüştürmesiyle. Kodda fiyat yazılmaz (§4); oyuncu kendi para
+  biriminde Play'in verdiği metni görür.
 - **E6 Ölçüm:** `reklam_teklif`/`reklam_sonuc` `yer: 'sandik'`; satın alma
   olayları yeni ürün kimlikleriyle.
