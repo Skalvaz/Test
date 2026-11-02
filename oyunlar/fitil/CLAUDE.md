@@ -148,6 +148,12 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   (`simge`, `play`, `ekran <url> [tr|en] [sahne,…]`, `onizleme <klasör>`);
   çıktılar `android/app/src/main/res/` ve `magaza/play/`. Ürün sahibinin
   Play Console/AdMob rehberi `docs/PLAY-KONSOL.md`, gizlilik `docs/gizlilik.html`.
+- Logo (Kasım 2026, ürün sahibi seçti): `src/ui/logo.ts` `logoSvg(id, sinif)`
+  saf SVG metni: sivri kemerli amblem (fişekler, kasaba, fener) + elle
+  çizilmiş tırnaklı, derinlikli harfler, İ noktaları iki eş kor. Tutarlılık
+  kuralları dosya başında (ışık sol üstten, tek kontur rengi, derinlik sağ
+  alta). Açılış girişi CSS'te (`f-lg-*`, ~1,2 sn), sonra `f-hazir`. Eski
+  "ip harfler" logosu ve "A/B/C" taslakları reddedildi (amatör, tutarsız).
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).

@@ -78,16 +78,21 @@
   gap: 10px;
 }
 @media (max-aspect-ratio: 1/2) { .f-acilis-orta { margin-top: calc(var(--guv-ust) + 25vh); } }
-.f-logo { width: 100%; }
-.f-logo-svg { display: block; width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 8px 12px rgba(0, 0, 0, .55)); }
-.f-yanma { stroke-dasharray: 1 1; stroke-dashoffset: 1; }
-.f-logo-svg.f-yandi .f-yanma { stroke-dashoffset: 0 !important; }
-.f-nokta-yanma { opacity: 0; transform-box: fill-box; transform-origin: center; transform: scale(.2); transition: opacity .2s, transform .3s var(--yay); }
-.f-nokta-yanma.f-yandi, .f-logo-svg.f-yandi .f-nokta-yanma { opacity: 1; transform: none; }
-.f-logo-svg.f-yandi .f-parilti-katman { animation: f-titre 2.2s ease-in-out infinite alternate; }
+.f-logo { width: 100%; display: flex; justify-content: center; }
+/* Amblem logo (ui/logo.ts): genişlik sütunu doldurur, kısa ekranda yükseklik sınırı. */
+.f-logo-svg { display: block; width: 100%; max-height: 34vh; height: auto; overflow: visible; filter: drop-shadow(0 8px 12px rgba(0, 0, 0, .55)); }
+/* Giriş: kemer yükselir, harfler oturur, fişekler patlar, İ korları yanar. */
+.f-lg-amblem { transform-box: fill-box; transform-origin: 50% 100%; animation: f-lg-amblem .55s var(--cikis) both; }
+.f-lg-yazi { transform-box: fill-box; transform-origin: 50% 60%; animation: f-lg-yazi .5s .15s var(--yay) both; }
+.f-lg-fisek, .f-lg-kor { transform-box: fill-box; transform-origin: center; animation: f-lg-patla .45s var(--lg-gec, 0ms) var(--yay) both; }
+.f-lg-hazir .f-lg-hale { animation: f-titre 2.2s ease-in-out infinite alternate; }
+.f-lg-hazir .f-lg-amblem, .f-lg-hazir .f-lg-yazi, .f-lg-hazir .f-lg-fisek, .f-lg-hazir .f-lg-kor, .f-az .f-logo-svg * { animation: none; }
+.f-az .f-lg-hale { animation: none; }
+@media (max-height: 700px) { .f-logo-svg { max-height: 30vh; } }
+@keyframes f-lg-amblem { from { opacity: 0; transform: translateY(14px) scale(.9); } }
+@keyframes f-lg-yazi { from { opacity: 0; transform: translateY(-16px) scale(1.08); } }
+@keyframes f-lg-patla { from { opacity: 0; transform: scale(.2); } }
 @keyframes f-titre { from { opacity: .55; } to { opacity: 1; } }
-.f-kivilcim { fill: #FFE08A; animation: f-kivilcim .62s ease-out forwards; }
-@keyframes f-kivilcim { from { opacity: 1; } to { opacity: 0; transform: translate(var(--dx), var(--dy)); } }
 .f-slogan { font-size: clamp(16px, 4.6vw, 20px); font-weight: 700; color: #F2DEB8; text-align: center; text-shadow: 0 2px 6px rgba(0, 0, 0, .7); opacity: 0; transform: translateY(8px); transition: opacity .7s .1s, transform .7s .1s var(--cikis); }
 .f-hazir .f-slogan { opacity: 1; transform: none; }
 /* Eylem çağrısı: kasaba siluetinin üstündeki boş gökte, pirinç çerçeveli kapsül;
