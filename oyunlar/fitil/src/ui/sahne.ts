@@ -5,6 +5,7 @@
  */
 import { Rng } from '../platform/rng';
 import { h, svg, tekilKimlik } from './dom';
+import { kiyiSirasi, lamba } from './harita/cizim';
 
 const f = (n: number) => n.toFixed(1);
 
@@ -34,43 +35,38 @@ export function kasabaSilueti(tohum: string | number, genislik = 400): SVGSVGEle
   const k = W / 400;
   const r = new Rng(tohum);
   const tepeY = 150;
-  let binalar = '';
-  let pencereler = '';
-  let yansima = '';
   // Arka tepe
   const arka = `<path d="M0 ${tepeY - 20}C${f(60 * k)} ${tepeY - 46} ${f(120 * k)} ${tepeY - 30} ${f(170 * k)} ${tepeY - 38}S${f(280 * k)} ${tepeY - 60} ${f(330 * k)} ${tepeY - 44} ${W} ${tepeY - 70} ${W} ${tepeY - 70}V260H0z" fill="#1A1030"/>`;
+  // Kıyı: haritadaki bina dili (İskele, Çarşı, Liman, konaklar, saat kulesi),
+  // önünde taş rıhtım ve sokak lambaları.
   const kuleX = Math.round(W * 0.375);
-  let x = -6;
-  while (x < W - 70) {
-    if (x > kuleX - 30 && x < kuleX + 26) {
-      x = kuleX + 26;
-      continue;
+  const t0 = typeof tohum === 'number' ? tohum : r.int(1e6);
+  // Arka sıra küçük ve gece mavisiyle örtülü (derinlik); ön sıra tam renk.
+  const binalar =
+    `<g opacity=".38">${kiyiSirasi(t0 + 7, W - 40, tepeY + 2, 0.6, 1e6)}</g>` +
+    kiyiSirasi(t0, W - 84, tepeY + 2, 0.86, kuleX);
+  let rihtim = `<rect x="0" y="${tepeY}" width="${W}" height="${28}" fill="#221C30"/>`;
+  rihtim += `<path d="M0 ${tepeY - 2}H${W}V${tepeY + 3}H0z" fill="#3A3448"/><path d="M0 ${tepeY - 2}H${W}" stroke="#8A7A9A" stroke-opacity=".55" stroke-width="1.2"/>`;
+  for (let k = 0; k < 3; k++) {
+    let x = (k % 2) * 9 - 10;
+    const yy = tepeY + 8 + k * 7;
+    while (x < W) {
+      const bw = 14 + r.int(10);
+      rihtim += `<path d="M${x} ${yy}h${bw - 1.5}M${x + bw - 1} ${yy}v7" stroke="#000" stroke-opacity=".28" stroke-width="1"/>`;
+      x += bw;
     }
-    const w = 18 + r.int(24);
-    const hh = 26 + r.int(56);
-    const y = tepeY - hh + r.int(10);
-    const tur = r.int(10);
-    let govde = `<rect x="${x}" y="${y}" width="${w}" height="${tepeY + 30 - y}" fill="#120A1E"/>`;
-    if (tur < 3) govde += `<path d="M${x - 2} ${y}L${x + w / 2} ${y - 10 - r.int(8)}L${x + w + 2} ${y}z" fill="#120A1E"/>`;
-    else if (tur < 5) govde += `<path d="M${x + 2} ${y}a${w / 2 - 2} ${w / 2 - 2} 0 0 1 ${w - 4} 0z" fill="#120A1E"/><rect x="${x + w / 2 - 0.8}" y="${y - w / 2 - 5}" width="1.6" height="6" fill="#120A1E"/>`;
-    else if (tur === 5) govde += `<rect x="${x + w / 2 - 3}" y="${y - 36}" width="6" height="36" fill="#120A1E"/><path d="M${x + w / 2 - 3.5} ${y - 36}L${x + w / 2} ${y - 46}L${x + w / 2 + 3.5} ${y - 36}z" fill="#120A1E"/><rect x="${x + w / 2 - 4}" y="${y - 26}" width="8" height="2" fill="#120A1E"/>`;
-    binalar += govde;
-    const sut = Math.max(1, Math.floor((w - 6) / 7));
-    const sat = Math.max(1, Math.floor((tepeY - y - 6) / 10));
-    for (let i = 0; i < sut; i++)
-      for (let j = 0; j < sat; j++) {
-        if (!r.chance(0.42)) continue;
-        const px = x + 4 + i * 7;
-        const py = y + 6 + j * 10;
-        pencereler += `<rect x="${px}" y="${py}" width="3.4" height="5" rx=".6" fill="#FFC86B"/>`;
-        if (r.chance(0.5)) yansima += `<rect x="${px - 0.5}" y="${2 * (tepeY + 28) - py - 6 + r.int(4)}" width="4.4" height="${(3 + r.float() * 7).toFixed(1)}" fill="#FFC86B" opacity="${(0.12 + r.float() * 0.2).toFixed(2)}"/>`;
-      }
-    x += w + 1 + r.int(4);
   }
-  // Saat kulesi
-  const kx = kuleX - 11;
-  binalar += `<rect x="${kx}" y="${tepeY - 96}" width="22" height="126" fill="#120A1E"/><path d="M${kx - 3} ${tepeY - 96}L${kx + 11} ${tepeY - 118}L${kx + 25} ${tepeY - 96}z" fill="#120A1E"/>`;
-  pencereler += `<circle cx="${kx + 11}" cy="${tepeY - 80}" r="6.5" fill="#FFE3A0"/><circle cx="${kx + 11}" cy="${tepeY - 80}" r="12" fill="url(#ftl-isik)" opacity=".7"/><path d="M${kx + 11} ${tepeY - 80}V${tepeY - 85}M${kx + 11} ${tepeY - 80}h3.5" stroke="#3A2416" stroke-width="1.2"/>`;
+  let lambalar = '';
+  let pencereler = '';
+  let yansima = '';
+  for (let lx = 34; lx < W - 90; lx += 96 + r.int(30)) {
+    lambalar += lamba(lx, tepeY - 2, true);
+    for (let j = 0; j < 4; j++) yansima += `<rect x="${lx - 4 + r.int(3)}" y="${tepeY + 34 + j * 7}" width="${8 - j}" height="1.8" rx=".9" fill="#FFC86B" opacity="${(0.3 - j * 0.06).toFixed(2)}"/>`;
+  }
+  for (let i = 0; i < Math.round(W / 9); i++) {
+    const px = r.int(W);
+    yansima += `<rect x="${px}" y="${tepeY + 32 + r.int(44)}" width="${(5 + r.float() * 12).toFixed(1)}" height="1.6" rx=".8" fill="#FFC86B" opacity="${(0.1 + r.float() * 0.2).toFixed(2)}"/>`;
+  }
   // Sağ yamaç ve deniz feneri
   const fx = W - 38;
   const yamac = `<path d="M${W - 82} ${tepeY + 30}C${W - 70} ${tepeY - 4} ${W - 50} ${tepeY - 24} ${W - 20} ${tepeY - 30}L${W} ${tepeY - 30}V260H${W - 82}z" fill="#0E0818"/>`;
@@ -93,7 +89,7 @@ export function kasabaSilueti(tohum: string | number, genislik = 400): SVGSVGEle
     <linearGradient id="f-deniz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1B1040"/><stop offset="1" stop-color="#0A0E26"/></linearGradient>
     <radialGradient id="f-ufuk" cx=".5" cy="1" r=".7"><stop offset="0" stop-color="#FF8A3C" stop-opacity=".35"/><stop offset="1" stop-color="#FF8A3C" stop-opacity="0"/></radialGradient></defs>
     <rect x="0" y="40" width="${W}" height="${tepeY - 10}" fill="url(#f-ufuk)"/>
-    ${isik}${arka}${binalar}${pencereler}${yamac}${fener}
+    ${isik}${arka}${binalar}${pencereler}${rihtim}${lambalar}${yamac}${fener}
     <rect x="0" y="${denizY}" width="${W}" height="${260 - denizY}" fill="url(#f-deniz)"/>
     <path d="M0 ${denizY}H${W}" stroke="#FFC86B" stroke-opacity=".25" stroke-width="1"/>
     ${yansima}${dalga}</svg>`, ['f-isik-huzme', 'f-deniz', 'f-ufuk']));

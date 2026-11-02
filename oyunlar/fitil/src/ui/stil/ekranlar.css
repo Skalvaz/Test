@@ -88,7 +88,6 @@
 .f-lg-hazir .f-lg-hale { animation: f-titre 2.2s ease-in-out infinite alternate; }
 .f-lg-hazir .f-lg-amblem, .f-lg-hazir .f-lg-yazi, .f-lg-hazir .f-lg-fisek, .f-lg-hazir .f-lg-kor, .f-az .f-logo-svg * { animation: none; }
 .f-az .f-lg-hale { animation: none; }
-@media (max-height: 700px) { .f-logo-svg { max-height: 30vh; } }
 @keyframes f-lg-amblem { from { opacity: 0; transform: translateY(14px) scale(.9); } }
 @keyframes f-lg-yazi { from { opacity: 0; transform: translateY(-16px) scale(1.08); } }
 @keyframes f-lg-patla { from { opacity: 0; transform: scale(.2); } }
@@ -113,6 +112,13 @@
   opacity: 0;
   transition: opacity .6s .35s;
   pointer-events: none;
+}
+/* Kısa ekran (360×640): logo yukarı, düğme biraz yukarı, kasaba alçak; saat kulesi düğmeye değmesin. */
+@media (max-height: 700px) {
+  .f-logo-svg { max-height: 30vh; }
+  .f-acilis-orta { margin-top: calc(var(--guv-ust) + 13vh); }
+  .f-dokun { bottom: calc(var(--guv-alt) + 35vh); }
+  .f-kasaba { height: 34%; }
 }
 .f-dokun > span:nth-child(2) {
   text-shadow: none;

@@ -386,9 +386,41 @@ function teras(tema: number, taraf: 'sol' | 'sag', ucX: number, zemin: number, r
 }
 
 /** Sokak lambası (terasın ucunda, sıcak ışık havuzu). */
-function lamba(x: number, zemin: number, yanik: boolean): string {
+export function lamba(x: number, zemin: number, yanik: boolean): string {
   return `${yanik ? `<ellipse cx="${f(x)}" cy="${f(zemin - 2)}" rx="22" ry="6" fill="#FFB020" opacity=".18"/><circle cx="${f(x)}" cy="${f(zemin - 34)}" r="16" fill="url(#ftl-koz)" opacity=".7"/>` : ''}
     <path d="M${f(x)} ${f(zemin)}v-30" stroke="#1A1220" stroke-width="2.6"/><path d="M${f(x - 4)} ${f(zemin - 30)}h8l-1.5 -8h-5z" fill="${yanik ? '#FFE3A0' : '#2A2232'}" stroke="#1A1220" stroke-width="1.2"/>`;
+}
+
+/**
+ * Açılış sahnesi (Fener Koyu) için harita dilinde kıyı bina sırası: İskele,
+ * Çarşı, Liman ve konak binaları, `kuleX`'te saat kulesi; bütün binalar
+ * yanık (2–3 yıldız ışığı). `taban` rıhtımın üst kenarı, `olcek` bina boyu;
+ * sıra `sonX`'e kadar dolar (sağdaki yamaç ve fener ayrı çizilir).
+ */
+export function kiyiSirasi(tohum: number, sonX: number, taban: number, olcek: number, kuleX: number): string {
+  const r = new Rng(tohum);
+  const son = sonX / olcek;
+  const kule = kuleX / olcek;
+  const temalar = [0, 1, 2, 0, 3, 1, 2, 0];
+  let s = '';
+  let x = -24;
+  let i = 0;
+  let kuleKondu = false;
+  while (x < son) {
+    let tema = temalar[i++ % temalar.length];
+    let ozel = r.int(4);
+    let cx = x + 36;
+    if (!kuleKondu && cx + 44 > kule) {
+      tema = 3;
+      ozel = 4;
+      cx = Math.max(cx, kule);
+      kuleKondu = true;
+    }
+    const b = bina(tema, cx, 0, r, 2 + r.int(2), 'acik', ozel);
+    s += b.svg;
+    x = cx + b.w / 2 + 3 + r.int(7);
+  }
+  return `<g transform="translate(0 ${f(taban)}) scale(${olcek})">${s}</g>`;
 }
 
 // ───────────────────────── Arka plan ─────────────────────────

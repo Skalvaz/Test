@@ -28,7 +28,8 @@ export function acilisEkrani(b: Baglam, ilkDokunus?: () => void): Promise<void> 
       yildizAlani('acilis', 120, 16),
       h('div', { s: 'f-acilis-ay' }),
       fisekler,
-      kasabaSilueti('fener-koyu', 260 * (window.innerWidth / Math.max(1, window.innerHeight * 0.42))),
+      // Siluet boyu CSS'teki .f-kasaba yüksekliğiyle aynı oran (kısa ekranda %34).
+      kasabaSilueti('fener-koyu', 260 * (window.innerWidth / Math.max(1, window.innerHeight * (window.innerHeight <= 700 ? 0.34 : 0.42)))),
       h('div', { s: 'f-acilis-orta' }, h('div', { s: 'f-logo' }, logo), h('p', { s: 'f-slogan', t: M.slogan })),
       dokun,
     );
