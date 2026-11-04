@@ -1,11 +1,15 @@
 /*
  * FİTİL arayüzü — temel tasarım dili (GDD §13.1 palet, §13.5 yazı).
- * Karanlık gece, krem metin, köz turuncusu vurgu. Menüler (Ekim 2026,
- * "menüler AI gibi" geri bildirimi) süssüz: düz pano, ince iç çizgi, düz
- * düğme; metal çerçeve, perçin, kurdele, parlak degrade, yazı gölgesi yok.
- * Renkler `--t-*` tema belirteçlerinden: Ahşap (varsayılan) ve Gece
- * (`.f-tema-gece`, Ayarlar > Menü görünümü). Oyun tahtası ve harita sahnesi
- * temadan bağımsız. Animasyonlar yalnız transform/opacity; "hareketi azalt" sonda.
+ * Karanlık gece, krem metin, köz turuncusu vurgu. Kasım 2026 (ürün sahibi,
+ * "B: çerçeve + kemer tepesi"): menüler logonun dilini konuşur — pano
+ * logonun altın çerçevesi ve koyu konturuyla, üstünde logodaki sivri
+ * kemerden küçük bir tepe ve İ korları gibi bir kor; birincil düğme logo
+ * harfinin yüzü (krem → altın → köz degradesi, koyu kontur, kahve derinlik);
+ * büyük başlıklar aynı degrade. Logo değerleri `--lg-*` (ui/logo.ts ile aynı).
+ * Hâlâ yok: perçin, kurdele, ahşap/metal doku, yazı gölgesi. Pano renkleri
+ * `--t-*` tema belirteçlerinden: Ahşap (varsayılan) ve Gece (`.f-tema-gece`,
+ * Ayarlar > Menü görünümü). Oyun tahtası ve harita sahnesi temadan bağımsız.
+ * Animasyonlar yalnız transform/opacity; "hareketi azalt" sonda.
  */
 .f-kok {
   --gok-ust: #0B1030;
@@ -31,6 +35,13 @@
   --guv-sol: env(safe-area-inset-left, 0px);
   --yay: cubic-bezier(.34, 1.56, .64, 1);
   --cikis: cubic-bezier(.22, 1, .36, 1);
+
+  /* Logo dili (ui/logo.ts ile aynı değerler): kontur, altın çerçeve, harf yüzü, pano tepesi. */
+  --lg-kontur: #1E0E06;
+  --lg-derinlik: #4A1F08;
+  --lg-cerceve: linear-gradient(180deg, #FFE7A8 0%, #E0A04A 50%, #A8601E 100%);
+  --lg-yuz: linear-gradient(180deg, #FFF4D2 0%, #FFD25E 38%, #FFA22E 72%, #E8601C 100%);
+  --lg-tepe: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2096%2040%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22c%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23FFE7A8%22/%3E%3Cstop%20offset%3D%22.5%22%20stop-color%3D%22%23E0A04A%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23A8601E%22/%3E%3C/linearGradient%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%2322174A%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%233A1C52%22/%3E%3C/linearGradient%3E%3CradialGradient%20id%3D%22k%22%20cx%3D%22.4%22%20cy%3D%22.36%22%20r%3D%22.64%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23FFFBE6%22/%3E%3Cstop%20offset%3D%22.4%22%20stop-color%3D%22%23FFD15C%22/%3E%3Cstop%20offset%3D%22.8%22%20stop-color%3D%22%23FF7A1A%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23E8561A%22/%3E%3C/radialGradient%3E%3CradialGradient%20id%3D%22h%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23FFE7A0%22%20stop-opacity%3D%22.8%22/%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23FF7A1A%22%20stop-opacity%3D%220%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath%20d%3D%22M4%2040V26C4%2016%2024%206%2048%202C72%206%2092%2016%2092%2026V40Z%22%20fill%3D%22%231E0E06%22/%3E%3Cpath%20d%3D%22M7%2040V26.5C7%2018%2026%209%2048%205.5C70%209%2089%2018%2089%2026.5V40Z%22%20fill%3D%22url%28%23c%29%22/%3E%3Cpath%20d%3D%22M12%2040V27C12%2020.5%2029%2013%2048%2010C67%2013%2084%2020.5%2084%2027V40Z%22%20fill%3D%22url%28%23g%29%22/%3E%3Ccircle%20cx%3D%2248%22%20cy%3D%2227%22%20r%3D%2213%22%20fill%3D%22url%28%23h%29%22/%3E%3Ccircle%20cx%3D%2248%22%20cy%3D%2227%22%20r%3D%227.2%22%20fill%3D%22%231E0E06%22/%3E%3Ccircle%20cx%3D%2248%22%20cy%3D%2227%22%20r%3D%225%22%20fill%3D%22url%28%23k%29%22/%3E%3Ccircle%20cx%3D%2246.3%22%20cy%3D%2225.2%22%20r%3D%221.7%22%20fill%3D%22%23FFFDF0%22%20opacity%3D%22.9%22/%3E%3C/svg%3E");
 
   /* Tema: Ahşap (ceviz pano, pirinç kakma çizgisi). */
   --t-pano-ust: #4A2E1C;
@@ -162,20 +173,20 @@
 .f-dg:active:not(:disabled) { transform: translateY(2px) scale(.97); filter: brightness(.95); }
 .f-dg:disabled { filter: grayscale(.7) brightness(.7); }
 
-/* Birincil: düz köz turuncusu, altta koyu "dudak" (basılınca iner). */
+/* Birincil: logo harfi gibi (yüz degradesi, koyu kontur, altta kahve derinlik; basılınca iner). */
 .f-dg-birincil {
   color: var(--t-vurgu-yazi);
-  background: var(--t-vurgu);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), 0 3px 0 var(--t-vurgu-dudak), 0 8px 16px rgba(0, 0, 0, .28);
+  background: var(--lg-yuz);
+  box-shadow: 0 0 0 2.5px var(--lg-kontur), inset 0 2px 0 rgba(255, 251, 234, .7), inset 0 -3px 0 rgba(154, 58, 14, .45), 0 5px 0 var(--lg-derinlik), 0 5px 0 2.5px var(--lg-kontur), 0 12px 18px rgba(0, 0, 0, .4);
 }
-.f-dg-birincil:active:not(:disabled) { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 1px 0 var(--t-vurgu-dudak); }
+.f-dg-birincil:active:not(:disabled) { box-shadow: 0 0 0 2.5px var(--lg-kontur), inset 0 2px 0 rgba(255, 251, 234, .6), 0 2px 0 var(--lg-derinlik), 0 2px 0 2.5px var(--lg-kontur); }
 .f-dg-buyuk { min-height: 60px; font-size: 22px; border-radius: 18px; padding: 6px 28px 9px; }
 
 /* İkincil: saydam, ince kenar. */
 .f-dg-ikincil {
   color: var(--krem);
   background: var(--t-ikincil);
-  box-shadow: inset 0 0 0 1.5px var(--t-ikincil-kenar);
+  box-shadow: 0 0 0 2px var(--lg-kontur), inset 0 0 0 1.5px rgba(224, 160, 74, .75);
 }
 .f-dg-ikincil .f-ikon { color: var(--t-ikon); }
 
@@ -208,7 +219,7 @@
   pointer-events: auto;
   color: var(--t-ikon);
   background: var(--t-pano);
-  box-shadow: inset 0 0 0 1.5px var(--t-ikincil-kenar), 0 4px 10px rgba(0, 0, 0, .35);
+  box-shadow: 0 0 0 2px var(--lg-kontur), inset 0 0 0 1.5px rgba(224, 160, 74, .75), 0 4px 10px rgba(0, 0, 0, .35);
   transition: transform .14s var(--cikis);
 }
 .f-yuvarlak:active { transform: scale(.92); }
@@ -221,7 +232,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: calc(var(--guv-ust) + 16px) calc(var(--guv-sag) + 14px) calc(var(--guv-alt) + 16px) calc(var(--guv-sol) + 14px);
+  padding: calc(var(--guv-ust) + 30px) calc(var(--guv-sag) + 14px) calc(var(--guv-alt) + 16px) calc(var(--guv-sol) + 14px);
   pointer-events: auto;
   touch-action: none;
 }
@@ -244,24 +255,40 @@
   display: flex;
   flex-direction: column;
   border-radius: 22px;
+  /* Logonun kemeri gibi: koyu kontur, altın çerçeve (kenarlık), içte tema panosu. */
+  border: 3.5px solid transparent;
   background:
-    var(--t-pano-desen),
-    radial-gradient(120% 46% at 50% 0%, var(--t-pano-isik), transparent 72%),
-    linear-gradient(180deg, var(--t-pano-ust) 0%, var(--t-pano) 58%);
-  box-shadow: 0 0 0 1.5px var(--t-cerceve), inset 0 1px 0 rgba(255, 236, 200, .1), var(--t-golge);
+    var(--t-pano-desen) padding-box,
+    radial-gradient(120% 46% at 50% 0%, var(--t-pano-isik), transparent 72%) padding-box,
+    linear-gradient(180deg, var(--t-pano-ust) 0%, var(--t-pano) 58%) padding-box,
+    var(--lg-cerceve) border-box;
+  box-shadow: 0 0 0 2.5px var(--lg-kontur), var(--t-golge);
   opacity: 0;
   transform: translateY(26px) scale(.9);
   transition: opacity .2s ease, transform .42s var(--yay);
   will-change: transform, opacity;
 }
-/* İç çizgi (Ahşap'ta pirinç kakma, Gece'de ince açık çizgi): içerik kaysa da yerinde durur. */
+/* Tepe: logodaki sivri kemerden küçük bir taç, içinde İ korları gibi bir kor. */
+.f-kart::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -27px;
+  width: 72px;
+  height: 30px;
+  transform: translateX(-50%);
+  background: var(--lg-tepe) center bottom / contain no-repeat;
+  z-index: 5;
+  pointer-events: none;
+}
+/* İç çizgi (çerçevenin içinde ince altın çizgi): içerik kaysa da yerinde durur. */
 .f-kart::after {
   content: '';
   position: absolute;
-  inset: 7px;
+  inset: 5px;
   z-index: 4; /* yapışkan düğme bandının (3) üstünde */
-  border-radius: 16px;
-  border: 1px solid var(--t-kakma);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 231, 168, .22);
   pointer-events: none;
 }
 .f-modal.f-giris .f-kart { opacity: 1; transform: none; }
@@ -318,6 +345,14 @@
 .f-kart:has(.f-baslik) .f-serit { white-space: normal; text-align: center; }
 .f-kart:has(.f-baslik) .f-serit-metin { overflow: visible; text-wrap: balance; }
 .f-kart:not(:has(.f-kapat-dg)) .f-serit-yer { padding-left: 24px; padding-right: 24px; }
+
+/* Büyük başlıklar logonun harf yüzüyle (yalnız metin taşıyan öğeler). */
+.f-kart:not(:has(.f-baslik)) .f-serit-metin, .f-baslik {
+  background: var(--lg-yuz);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 
 /* ─────────────── Ortak parçalar ─────────────── */
 .f-baslik { font-size: 26px; font-weight: 900; text-align: center; line-height: 1.1; color: var(--t-baslik); }
@@ -422,7 +457,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, .5);
   transition: transform .22s var(--yay);
 }
-.f-anahtar[aria-checked="true"] { background: var(--t-vurgu); box-shadow: none; }
+.f-anahtar[aria-checked="true"] { background: var(--lg-yuz); box-shadow: inset 0 0 0 1.5px rgba(30, 14, 6, .55); }
 .f-anahtar[aria-checked="true"]::after { background: #FFF8EA; }
 .f-anahtar[aria-checked="true"]::after { transform: translateX(24px); }
 
@@ -483,7 +518,7 @@
   text-overflow: ellipsis;
   transition: background .18s, color .18s;
 }
-.f-parcali button[aria-checked="true"] { color: var(--t-vurgu-yazi); background: var(--t-vurgu); }
+.f-parcali button[aria-checked="true"] { color: var(--t-vurgu-yazi); background: var(--lg-yuz); box-shadow: inset 0 0 0 1.5px rgba(30, 14, 6, .55), inset 0 2px 0 rgba(255, 251, 234, .6); }
 
 /* Sekmeler */
 .f-sekmeler {

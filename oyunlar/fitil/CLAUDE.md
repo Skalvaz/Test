@@ -49,7 +49,13 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   çok çapayı içine alan bant). İskele tabelası haritada HTML; önizlemede
   `tabelaSvg`.
 - Menü görünümü (25 Ekim 2026, arkadaş geri bildirimi "menüler AI gibi"):
-  süssüz pano + iç çizgi + düz düğmeler; iki tema Ahşap (varsayılan) ve Gece,
+  süssüz pano + iç çizgi + düz düğmeler. 4 Kasım 2026 güncellemesi (ürün
+  sahibi "B" seçti): pano logonun dilinde — altın çerçeve + koyu kontur,
+  üstte kemer tepesi ve kor (`.f-kart::before`, `--lg-tepe`), birincil
+  düğme/seçili parça/anahtar logo harf yüzü (`--lg-yuz`), büyük başlıklar
+  aynı degrade (yalnız metin öğeleri); değerler `--lg-*` (`temel.css`,
+  `ui/logo.ts` ile aynı). Modal üst payı tepe için 30 px. Perçin, kurdele,
+  doku, yazı gölgesi hâlâ yok; iki tema Ahşap (varsayılan) ve Gece,
   Ayarlar > Görünüm > Menü görünümü (`ayarlar.tema`, kök sınıfı
   `f-tema-ahsap`/`f-tema-gece`, `Arayuz.secenekAyarla({ tema })`). Renkler
   yalnız `--t-*` belirteçlerinden (`stil/temel.css` başı, GDD §13.1); yeni
