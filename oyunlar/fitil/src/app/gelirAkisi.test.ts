@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import * as meta from '../meta';
 import type { Kayit } from '../meta';
-import type { GelirSaglayici, ReklamSonucu, SatinAlmaSonucu, UrunId } from '../platform/gelir';
+import type { GelirSaglayici, ReklamIzni, ReklamSonucu, SatinAlmaSonucu, UrunId } from '../platform/gelir';
 import type { OlcumGelirOzellikleri } from '../platform/olcum';
 import type { CanPaneliSecimi, CanVM, MagazaSecimi, MagazaVM } from '../ui/tipler';
 import { GelirAkisi, canPaneliVM, kayitKoduGelirKoru, magazaVM, type GelirOrtami } from './gelirAkisi';
@@ -564,5 +564,63 @@ describe('Aşama 2b (§14): başlangıç paketi, büyük paket, hediye sandığ�
     expect(kartli.g.hediyeSandikTeklif({ tur: 'usta' })).toEqual({ kart: true });
     expect(await kartli.g.hediyeSandikAl()).not.toBeNull();
     expect(kartli.r.adimlar.some((a) => a.startsWith('reklam:'))).toBe(false);
+  });
+});
+
+describe('(YASAL-UYUM §2) reklam izni: açık rıza olmadan reklam yok', () => {
+  function izinliKur(baslangic: ReklamIzni | null, karar: Pick<ReklamIzni, 'izin' | 'kisisel'> | null) {
+    const r: Kayitlar = { adimlar: [], olaylar: [], bildirimler: [] };
+    let izin = baslangic;
+    const soruldu: (ReklamIzni | null)[] = [];
+    const s = { ...sahteSaglayici(r), reklamIzni: () => izin, reklamIzniVer: (i: ReklamIzni) => void (izin = i) };
+    const o: GelirOrtami = {
+      saglayici: s,
+      kayit: () => kayitCanli(5),
+      yaz: () => true,
+      degistir: () => undefined,
+      ui: {
+        canPaneli: async () => 'kapat' as CanPaneliSecimi,
+        magaza: async () => ({ tur: 'kapat' }) as MagazaSecimi,
+        reklamIzni: async (m) => {
+          soruldu.push(m);
+          return karar;
+        },
+      },
+      bildir: (m) => r.bildirimler.push(m),
+      saat: () => T0,
+      bugun: () => GUN,
+      reklamKipi: () => undefined,
+      olay: () => undefined,
+    };
+    return { g: new GelirAkisi(o), r, izin: () => izin, soruldu };
+  }
+
+  it('sorulmadıysa ilk reklamda sorulur; izin verilince karar tarihle yazılır ve reklam gösterilir', async () => {
+    const a = izinliKur(null, { izin: true, kisisel: false });
+    expect(a.g.reklamIzniDestekli()).toBe(true);
+    expect(await a.g.reklamOdulu('hamle')).toBe('odul');
+    expect(a.soruldu).toEqual([null]);
+    expect(a.izin()).toEqual({ izin: true, kisisel: false, tarih: T0 });
+    expect(a.r.adimlar).toContain('reklam:hamle');
+    // İkinci kez sorulmaz.
+    expect(await a.g.reklamOdulu('can')).toBe('odul');
+    expect(a.soruldu).toHaveLength(1);
+  });
+
+  it('"İzin verme": reklam gösterilmez, karar yazılır; kapatmak karar değildir', async () => {
+    const red = izinliKur(null, { izin: false, kisisel: true });
+    expect(await red.g.reklamOdulu('hamle')).toBe('iptal');
+    expect(red.r.adimlar).not.toContain('reklam:hamle');
+    expect(red.izin()).toEqual({ izin: false, kisisel: false, tarih: T0 });
+    const kapat = izinliKur(null, null);
+    expect(await kapat.g.reklamOdulu('hamle')).toBe('iptal');
+    expect(kapat.izin()).toBeNull();
+  });
+
+  it('Ayarlar: mevcut kararla açılır, geri alma yazılır', async () => {
+    const a = izinliKur({ izin: true, kisisel: true, tarih: 1 }, { izin: false, kisisel: false });
+    await a.g.reklamIzniDuzenle();
+    expect(a.soruldu).toEqual([{ izin: true, kisisel: true, tarih: 1 }]);
+    expect(a.izin()).toEqual({ izin: false, kisisel: false, tarih: T0 });
   });
 });

@@ -4,8 +4,16 @@
  * satın alma reddetmez, geri yükleme hatası reddedilir.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { gelirKoprusu } from './kopru';
+import { gelirKoprusu, type IzinDeposu } from './kopru';
+import type { ReklamIzni } from '../reklamIzni';
 import type { SatinAlma } from './satin';
+
+/** İzin verilmiş depo (bellekte). */
+function izinli(i: ReklamIzni | null = { izin: true, kisisel: false, tarih: 1 }): IzinDeposu & { deger: ReklamIzni | null } {
+  const d = { deger: i, oku: () => d.deger, yaz: (x: ReklamIzni) => (d.deger = x) };
+  return d;
+}
+const ekYontem = { baslat: vi.fn(async () => undefined), durdur: vi.fn(), hazirBekle: vi.fn(async () => false) };
 import { androidSaglayici, GERI_YUKLEME_HATASI } from '../gelir';
 
 function sahteSatin(o: Partial<SatinAlma> = {}): SatinAlma {
@@ -21,7 +29,7 @@ function sahteSatin(o: Partial<SatinAlma> = {}): SatinAlma {
 
 describe('gelirKoprusu', () => {
   it('JSON yöntemleri metin döner, biçim sarmalayıcının beklediği', async () => {
-    const k = gelirKoprusu({ hazirMi: () => true, goster: async () => 'odul' }, sahteSatin());
+    const k = gelirKoprusu({ ...ekYontem, hazirMi: () => true, goster: async () => 'odul' }, sahteSatin(), izinli());
     const u = await k.urunler();
     expect(typeof u).toBe('string');
     expect(JSON.parse(u)).toEqual([{ id: 'can_doldur', fiyat: '₺29,99' }]);
@@ -40,6 +48,7 @@ describe('gelirKoprusu', () => {
     });
     const k = gelirKoprusu(
       {
+        ...ekYontem,
         hazirMi: () => {
           throw new Error('x');
         },
@@ -48,6 +57,7 @@ describe('gelirKoprusu', () => {
         },
       },
       satin,
+      izinli(),
     );
     expect(JSON.parse(await k.satinAl('baska'))).toEqual({ durum: 'hata' });
     expect(JSON.parse(await k.satinAl('can_doldur'))).toEqual({ durum: 'hata' });
@@ -60,7 +70,7 @@ describe('gelirKoprusu', () => {
 
   it('sarmalayıcı: geri yükleme reddi "yapılamadı"; ürün/bekleyen reddi boş liste', async () => {
     const k = gelirKoprusu(
-      { hazirMi: () => false, goster: async () => 'yok' },
+      { ...ekYontem, hazirMi: () => false, goster: async () => 'yok' },
       sahteSatin({
         urunler: async () => {
           throw new Error('x');
@@ -72,6 +82,7 @@ describe('gelirKoprusu', () => {
           throw new Error('x');
         },
       }),
+      izinli(),
     );
     await expect(k.geriYukle()).rejects.toThrow();
     const s = androidSaglayici(k);
@@ -79,5 +90,30 @@ describe('gelirKoprusu', () => {
     expect(await s.urunler()).toEqual([]);
     expect(await s.bekleyenler()).toEqual([]);
     expect(await s.reklamGoster('can')).toBe('yok');
+  });
+
+  it('(YASAL-UYUM §2) izin sorulmadan reklam SDK\'sı başlamaz; izin verilince başlar, geri alınınca durur', async () => {
+    const r = { baslat: vi.fn(async () => undefined), durdur: vi.fn(), hazirBekle: vi.fn(async () => true), hazirMi: vi.fn(() => false), goster: vi.fn(async () => 'odul' as const) };
+    const depo = izinli(null);
+    const k = gelirKoprusu(r, sahteSatin(), depo);
+    // Sorulmadı: düğme görünür (ilk dokunuşta sorulur) ama gösterim yok, SDK başlamadı.
+    expect(k.reklamHazir('can')).toBe(true);
+    expect(await k.reklamGoster('can')).toBe('yok');
+    expect(r.baslat).not.toHaveBeenCalled();
+    expect(k.reklamIzni?.()).toBe('');
+    const s = androidSaglayici(k);
+    expect(s.reklamIzni?.()).toBeNull();
+    // İzin: SDK başlar, ilk reklam beklenir ve gösterilir; kişiselleştirme ayrı.
+    s.reklamIzniVer?.({ izin: true, kisisel: false, tarih: 5 });
+    expect(r.baslat).toHaveBeenCalledTimes(1);
+    expect(depo.deger).toEqual({ izin: true, kisisel: false, tarih: 5 });
+    expect(await k.reklamGoster('can')).toBe('odul');
+    expect(r.hazirBekle).toHaveBeenCalled();
+    // Geri alma: SDK durur, düğme kaybolur.
+    s.reklamIzniVer?.({ izin: false, kisisel: true, tarih: 6 });
+    expect(r.durdur).toHaveBeenCalledTimes(1);
+    expect(depo.deger).toEqual({ izin: false, kisisel: false, tarih: 6 });
+    expect(k.reklamHazir('can')).toBe(false);
+    expect(await k.reklamGoster('can')).toBe('yok');
   });
 });

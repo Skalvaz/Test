@@ -395,6 +395,11 @@ async function calistir(): Promise<void> {
       void ui.ayarlar(O.ayarlarVm(), { magazaAc: () => void magazaDongusu(O.magazaVm(v)), gelirVar: true });
       await magazaDongusu(O.magazaVm(v));
       break;
+    case 'reklamIzni':
+      // (YASAL-UYUM §2) v=acik: daha önce izin verilmiş (Ayarlar'dan açılış).
+      await oyunSahnesi();
+      log('reklam izni', await ui.reklamIzni(v === 'acik' ? { izin: true, kisisel: false, tarih: 1 } : null, () => log('aydınlatma metni')));
+      break;
     case 'cikisOnayi':
       // v=yeniden: "Yeniden başlarsan 1 can gider."
       await oyunSahnesi();

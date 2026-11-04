@@ -91,7 +91,7 @@ describe('onay (UMP) ve başlatma', () => {
       maxAdContentRating: 'ParentalGuidance',
     });
     expect(h.admob.initialize.mock.calls[0][0]).not.toHaveProperty('initializeForTesting');
-    expect(h.admob.prepareRewardVideoAd).toHaveBeenCalledWith({ adId: BIRIM });
+    expect(h.admob.prepareRewardVideoAd).toHaveBeenCalledWith({ adId: BIRIM, npa: true });
     expect([...h.dinleyiciler.keys()].sort()).toEqual([KAPANDI, GOSTERILEMEDI, ODUL].sort());
     expect(r.durum).toBe('hazir');
     expect(r.hazirMi()).toBe(true);

@@ -651,6 +651,20 @@ export const MC = {
   stokDolu: t('Stok dolu', 'Fully stocked'),
   birKez: t('Bir kez', 'One-time'),
   suAnYok: t('Şu an yok', 'Unavailable'),
+  // (docs/YASAL-UYUM.md §2) Reklam izni: KVKK açık rızası, aydınlatmadan ayrı; kutu önceden işaretli değil.
+  izinBaslik: t('Reklam izni', 'Ad permission'),
+  izinMetni: t(
+    'Reklamları Google AdMob gösterir. Bunun için cihazının reklam kimliği ve IP adresi Google’a (ABD) aktarılır. İzin vermezsen reklam çıkmaz, oyunun tamamı yine oynanır.',
+    'Ads are shown by Google AdMob. To do this, your device’s advertising ID and IP address are sent to Google in the USA. Without your permission no ads appear, and the whole game stays playable.',
+  ),
+  izinKisisel: t('İlgi alanıma göre reklam gösterilebilir', 'Ads may be based on my interests'),
+  izinVer: t('İzin ver', 'Allow'),
+  izinVerme: t('İzin verme', 'Don’t allow'),
+  izinAydinlatma: t('Aydınlatma metni', 'Privacy notice'),
+  izinDurum: t<Record<'acik' | 'kapali' | 'sorulmadi', string>>(
+    { acik: 'Açık', kapali: 'Kapalı', sorulmadi: 'Sorulmadı' },
+    { acik: 'On', kapali: 'Off', sorulmadi: 'Not set' },
+  ),
   /** Fiyat mağazadan henüz gelmedi (düğme pasif). */
   fiyatYok: '—',
 } as const;

@@ -39,6 +39,8 @@ export interface AyarlarEk {
    * istediğini bildirince). Ayarlar açık kalır, form üstünde açılır.
    */
   gizlilikAc?: () => void;
+  /** (docs/YASAL-UYUM.md §2) Reklam izni kartı; bitince satırın durumu tazelenir. Yalnız gelir sağlayıcısı izin istiyorsa. */
+  reklamIzniAc?: () => Promise<void>;
   /**
    * (docs/ANDROID.md §5) Hakkında'daki "Gizlilik politikası" satırı: yalnız
    * verilince görünür (Android köprüsü politikayı pakete gömdüyse). Ayarlar
@@ -305,7 +307,20 @@ export function ayarlarEkrani(b: Baglam, vm: AyarlarVM, ek: AyarlarEk = {}): { s
     gizlilik.addEventListener('click', () => ek.gizlilikAc?.());
   }
 
-  const icerik = h('div', { s: 'f-ay' }, ses, gorunum, yardim, saglik, kayit, kartlar, magaza, gizlilik, oyunOzeti, hakkinda);
+  // (docs/YASAL-UYUM.md §2) Reklam izni: KVKK açık rızası her an geri alınabilir.
+  let reklamIzni: HTMLElement | null = null;
+  if (ek.reklamIzniAc) {
+    reklamIzni = h(
+      'button',
+      { s: 'f-kart-satir f-ay-oyun-ozeti f-ay-reklam-izni', type: 'button' },
+      h('span', { s: 'f-satir-ikon' }, ikon('reklam')),
+      h('span', null, h('strong', { t: MC.izinBaslik })),
+      ikon('ileri'),
+    );
+    reklamIzni.addEventListener('click', () => void ek.reklamIzniAc?.());
+  }
+
+  const icerik = h('div', { s: 'f-ay' }, ses, gorunum, yardim, saglik, kayit, kartlar, magaza, reklamIzni, gizlilik, oyunOzeti, hakkinda);
   const kapat = () => {
     if (sec()) t.kapat(true);
   };

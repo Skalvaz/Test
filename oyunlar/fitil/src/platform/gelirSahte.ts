@@ -20,6 +20,7 @@
  */
 import { t } from './dil';
 import { URUN_IDLERI, URUN_TURLERI, urunIdMi, type GelirSaglayici, type ReklamYeri, type Urun, type UrunId } from './gelir';
+import type { ReklamIzni } from './reklamIzni';
 import './gelirSahte.css';
 
 // ─────────────────────────── Ayarlar ───────────────────────────
@@ -27,6 +28,8 @@ import './gelirSahte.css';
 export interface SahteAyarlari {
   reklam: 'normal' | 'hizli' | 'yok' | 'hata';
   satin: 'normal' | 'iptal' | 'hata';
+  /** (YASAL-UYUM §2) `?reklamIzni=sor`: izin sorulmamış cihaz; yoksa izin verilmiş başlar (testler akmaya devam etsin). */
+  izinSor?: boolean;
 }
 
 /** Adres sorgusundan test anahtarları (`?reklam=hizli|yok|hata`, `?satin=iptal|hata`). */
@@ -42,6 +45,7 @@ export function sahteAyarlari(adres: string): SahteAyarlari {
   return {
     reklam: r === 'hizli' || r === 'yok' || r === 'hata' ? r : 'normal',
     satin: s === 'iptal' || s === 'hata' ? s : 'normal',
+    ...(p?.get('reklamIzni') === 'sor' ? { izinSor: true } : {}),
   };
 }
 
@@ -141,6 +145,7 @@ export function sahteSaglayici(ayar: SahteAyarlari, secenek: SahteSecenek = {}):
   let sayac = 0;
   let mesgul = false;
   let bellek: UrunId[] = [];
+  let izin: ReklamIzni | null = ayar.izinSor ? null : { izin: true, kisisel: false, tarih: 0 };
 
   const kaliciOku = (): UrunId[] => {
     try {
@@ -167,9 +172,10 @@ export function sahteSaglayici(ayar: SahteAyarlari, secenek: SahteSecenek = {}):
 
   return {
     ad: 'sahte',
-    reklamHazir: () => ayar.reklam !== 'yok',
+    // (YASAL-UYUM §2) Android gibi: sorulmadıysa düğme görünür, reddedildiyse görünmez.
+    reklamHazir: () => ayar.reklam !== 'yok' && izin?.izin !== false,
     async reklamGoster(yer) {
-      if (ayar.reklam === 'yok') return 'yok';
+      if (ayar.reklam === 'yok' || izin?.izin !== true) return 'yok';
       if (ayar.reklam === 'hata' || !katmanlar || mesgul) return 'hata';
       mesgul = true;
       try {
@@ -209,6 +215,10 @@ export function sahteSaglayici(ayar: SahteAyarlari, secenek: SahteSecenek = {}):
     },
     async geriYukle() {
       return kaliciOku();
+    },
+    reklamIzni: () => izin,
+    reklamIzniVer: (i) => {
+      izin = { izin: i.izin, kisisel: i.izin && i.kisisel, tarih: i.tarih };
     },
   };
 }

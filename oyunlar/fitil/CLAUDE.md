@@ -161,6 +161,16 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   (`simge`, `play`, `ekran <url> [tr|en] [sahne,…]`, `onizleme <klasör>`);
   çıktılar `android/app/src/main/res/` ve `magaza/play/`. Ürün sahibinin
   Play Console/AdMob rehberi `docs/PLAY-KONSOL.md`, gizlilik `docs/gizlilik.html`.
+- Yasal uyum (Kasım 2026, `docs/YASAL-UYUM.md`): reklam SDK'sı KVKK açık
+  rızası olmadan BAŞLAMAZ (`platform/reklamIzni.ts`, cihazda `fitil.reklam-izni`;
+  ilk "Reklam izle"de `ui/ekranlar/reklamIzni.ts` kartı: iki eşit düğme,
+  önceden işaretsiz kişiselleştirme kutusu, aydınlatma bağlantısı; Ayarlar >
+  Reklam izni ile geri alınır; kişisel izin yoksa `npa`). Sağlayıcıda isteğe
+  bağlı `reklamIzni`/`reklamIzniVer`; sahte sağlayıcı izinli başlar,
+  `?reklamIzni=sor` sorulmamış cihaz. Önizleme `ekran=reklamIzni[&v=acik]`.
+  Politika = KVKK aydınlatma metni (`docs/gizlilik.html`, yer tutucular
+  `[DOLDUR: …]`, yayın derlemesi kalırsa durur). Rıza kapsamını genişleten
+  her değişiklikte politika + Veri güvenliği formu + rıza metni birlikte.
 - Logo (Kasım 2026, ürün sahibi seçti): `src/ui/logo.ts` `logoSvg(id, sinif)`
   saf SVG metni: sivri kemerli amblem (fişekler, kasaba, fener) + elle
   çizilmiş tırnaklı, derinlikli harfler, İ noktaları iki eş kor. Tutarlılık

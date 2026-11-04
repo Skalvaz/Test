@@ -53,6 +53,7 @@ describe('sahte sağlayıcı: test anahtarları', () => {
     expect(sahteAyarlari('?reklam=yok&satin=hata')).toEqual({ reklam: 'yok', satin: 'hata' });
     expect(sahteAyarlari('?reklam=hata')).toEqual({ reklam: 'hata', satin: 'normal' });
     expect(sahteAyarlari('?reklam=uzun&satin=beklemede')).toEqual(NORMAL);
+    expect(sahteAyarlari('?reklamIzni=sor')).toEqual({ ...NORMAL, izinSor: true });
   });
 });
 

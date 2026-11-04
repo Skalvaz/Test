@@ -1,0 +1,148 @@
+# FİTİL — Yasal uyum kontrol listesi (Play, KVKK, GDPR, ABD)
+
+Kasım 2026. Ürün sahibinin isteği: Türkiye'de ve yurt dışında eksiksiz, ceza
+riski en aza indirilmiş yayın. **Bu belge hukuki görüş değildir.** Kodda ve
+belgelerde yapılabilecek her şey yapıldı; ⚖️ işaretli maddeler bir avukat ya
+da mali müşavirin onayını ister, 👤 işaretliler ürün sahibinin kendi
+yapacağı işlerdir. Sıfır risk hiçbir uygulama için garanti edilemez; amaç
+bilinen her yükümlülüğü karşılamak ve kalan kararları açıkça görmektir.
+
+Durum işaretleri: ✅ yapıldı · 👤 ürün sahibi yapacak · ⚖️ uzman onayı · ❓ karar bekliyor
+
+## 1. Uygulamanın gerçekte işlediği veriler
+
+| Veri | Nerede | Kime gider | Dayanak |
+|---|---|---|---|
+| İlerleme, ayarlar, satın alma kaydı, ölçüm günlüğü | Yalnız cihaz (`localStorage`, yedekleme kapalı) | Kimseye | Hizmetin sunulması |
+| Reklam kimliği, IP, cihaz/uygulama bilgisi, reklam etkileşimi | Google Mobile Ads SDK | Google (ABD) | **Açık rıza** (§2) |
+| Satın alma (ürün, sipariş no.) | Google Play | Google; geliştiriciye Play Console | Sözleşme, vergi |
+
+Sunucu, hesap, analitik SDK'sı (Firebase vb.), konum, kişiler, kamera yok.
+claude.ai web sürümünde reklam ve satın alma hiç yoktur (bu belge Android içindir).
+
+## 2. Reklam açık rızası (KVKK m.5, çerez rehberi; GDPR m.6/1-a) — ✅ kodda
+
+- ✅ Reklam SDK'sı (UMP onay isteği, `initialize`, ön yükleme) **açık rıza
+  verilene kadar hiç başlamaz**; onaydan önce Google'a veri gitmez
+  (`platform/android/index.ts`, `kopru.ts`; test `index.test.ts`
+  "izin yokken açılışta hiçbir AdMob çağrısı yapılmaz").
+- ✅ İzin ilk "Reklam izle"de sorulur (`ui/ekranlar/reklamIzni.ts`): kısa
+  açıklama (veri, alıcı, ülke), aydınlatma metnine bağlantı (rıza metninden
+  ayrı), **iki eşit düğme** (İzin ver / İzin verme; kabul öne çıkarılmaz),
+  kişiselleştirme için ayrı ve **önceden işaretsiz** kutu. Kapatmak karar
+  sayılmaz.
+- ✅ Kişiselleştirme izni yoksa her istek `npa` (kişiselleştirilmemiş reklam).
+- ✅ Geri alma her an: Ayarlar > Reklam izni (geri alınca SDK yeni reklam
+  yüklemez). Karar ve tarihi cihazda ispat için saklanır (`fitil.reklam-izni`).
+- ✅ İzin vermeyen oyuncu oyunun tamamını oynar (can zamanla dolar, satın alma
+  isteğe bağlı). Rıza bir hizmetin ön şartı yapılmadı.
+- ✅ AEA/Birleşik Krallık/İsviçre'de Google UMP formu ayrıca gösterilir
+  (rızamızdan sonra); Ayarlar'da "Reklam gizlilik seçenekleri" satırı.
+
+## 3. KVKK
+
+- ✅ **Aydınlatma metni** (m.10): `docs/gizlilik.html` Türkçe bölümü; veri
+  sorumlusu, amaçlar, hukuki sebepler, alıcılar ve yurt dışı, toplama yöntemi,
+  saklama, m.11 hakları, başvuru yolu. Uygulamada Ayarlar > Hakkında >
+  Gizlilik politikası ve rıza kartındaki bağlantı.
+- 👤 Yer tutucular: veri sorumlusunun **adı/unvanı, posta adresi, e-postası,
+  yürürlük tarihi** (`[DOLDUR: …]`, `iletisim@ornek.com`). Yayın derlemesi bunlar
+  kalırsa durur (`android/app/build.gradle`).
+- ⚖️ **Yurt dışına aktarım (m.9, 2024 değişikliği):** açık rıza artık yalnız
+  *arızi* (ara sıra) aktarımlarda dayanak. Reklam SDK'sının aktarımı düzenli
+  olduğundan, avukatın şunlardan birini onaylaması gerekir:
+  1. Google'ın KVKK standart sözleşmesi varsa kabul edip imzadan sonra **5 iş
+     günü içinde KVKK'ya bildirmek** (bildirmemenin idari para cezası var);
+  2. ya da ❓ **Türkiye'de reklamı tamamen kapatmak** (en düşük risk; kodda
+     kolay: cihaz bölgesi Türkiye ise reklam satırları hiç görünmez, gelir
+     yalnız satın almadan). Karar ürün sahibinin.
+  Satın alma verisini Google Play kendi müşterisi olarak işler; geliştirici
+  tarafında yurt dışı aktarımı yoktur (⚖️ teyit).
+- ✅ **VERBİS:** yıllık çalışan sayısı 50'den, yıllık mali bilançosu Kurul
+  eşiğinden az olan ve ana faaliyeti özel nitelikli veri işlemek olmayan veri
+  sorumluları kayıttan muaf. ⚖️ eşiği güncel Kurul kararıyla teyit et.
+- ✅ **Veri ihlali:** sunucu ve kullanıcı veritabanı olmadığı için ihlal alanı
+  çok dar. Yine de bir ihlal öğrenilirse KVKK'ya **72 saat** içinde, ilgililere
+  makul sürede bildirilir (👤 süreç sende).
+- ✅ **Başvuru yanıtı:** en geç 30 gün, ücretsiz (politika §7). 👤 e-posta
+  kutusunu düzenli kontrol et.
+
+## 4. Google Play politikaları
+
+- ✅ Gizlilik politikası uygulama içinde ve 👤 herkese açık bir adreste
+  (giriş gerektirmeyen, kalıcı URL; Play Console > Uygulama içeriği).
+- ✅ **Veri güvenliği formu:** `PLAY-KONSOL.md` §10.6. Reklam verileri
+  "toplanıyor, **isteğe bağlı**" (oyuncu izin vermezse hiç toplanmaz).
+- ✅ **Reklam politikası:** yalnız ödüllü, yalnız istekle; araya giren, kapatılamayan
+  ya da oyunu kesen reklam yok; ödül açıkça yazılı.
+- ✅ **Hedef kitle 13+** (`PLAY-KONSOL.md` §10.4); `tagForChildDirectedTreatment:
+  false`, en çok PG içerik. ⚖️/❓ Google "çocuklara da hitap ediyor" derse ya
+  Aileler politikasına geçilir ya da mağaza görselleri yetişkin/aileye
+  netleştirilir.
+- ✅ **Ganimet kutusu yok:** sandıklar parayla satılmaz; satılan her ürünün
+  içeriği sabit ve yazılı (IARC "rastgele öğe satın alma: Hayır").
+- ✅ **Uygulama içi satın alma** yalnız Google Play Faturalandırma ile;
+  fiyatlar mağazadan, vergi dahil yerel para biriminde.
+- ✅ Hesap yok → hesap silme zorunluluğu yok (`PLAY-KONSOL.md` §10.3).
+- 👤 **AB Dijital Hizmetler Yasası (DSA) satıcı beyanı:** Play Console'da
+  "tacir (trader)" olduğunu beyan et; para kazanan geliştirici tacirdir.
+  Adın, adresin, e-postan ve telefonun AB'deki mağaza sayfasında görünür.
+  Ev adresini göstermek istemiyorsan bir şirket/iş adresi kullan (⚖️).
+- 👤 Ödeme profili ve satıcı hesabında gerçek kimlik, vergi bilgisi.
+
+## 5. AB / Birleşik Krallık (GDPR, UK GDPR)
+
+- ✅ Rıza (§2) + Google UMP; İngilizce politika GDPR haklarını sayar.
+- ⚖️ **AB temsilcisi (GDPR m.27):** AB dışındaki veri sorumlusu AB'deki
+  kişilere hizmet sunuyorsa temsilci atar; işleme "arızi ve düşük riskli"
+  ise muafiyet var. Fitil kendisi veri işlemez, yalnız Google SDK'sı rızayla
+  işler; muafiyet savunulabilir ama avukata sor. Birleşik Krallık için aynı.
+
+## 6. ABD
+
+- ✅ **COPPA:** 13 yaş altına yönelik değil; çocuk verisi toplanmaz.
+- ✅ **Eyalet gizlilik yasaları (CCPA/CPRA vb.):** eşiklerin (ör. yıllık
+  25 milyon $ gelir) çok altındasın; yine de 👤 AdMob > Gizlilik ve
+  mesajlaşma > **ABD eyalet düzenlemeleri** mesajını aç; politika "satmıyoruz"
+  der.
+
+## 7. Türk tüketici ve ticaret mevzuatı
+
+- ✅ Ürün içerikleri, fiyatlar (mağazadan, vergi dahil) ve "bir kez" bilgisi
+  satın almadan önce görünür; satın alma Google Play ekranında onaylanır.
+- ⚖️ **Mesafeli sözleşmeler:** anında ifa edilen dijital içerikte cayma hakkı
+  istisnası var; iade süreçlerini Google Play yürütür. Avukat, Google'ın
+  Türkiye'de satıcı (merchant of record) olup olmadığını ve sana kalan
+  bilgilendirme yükümlülüğünü teyit etsin.
+- ⚖️ **ETBİS (Elektronik Ticaret Bilgi Sistemi):** platform üzerinden satış
+  yapanın kayıt yükümlülüğünü mali müşavir teyit etsin.
+
+## 8. Vergi (Türkiye)
+
+- ⚖️ **GVK mükerrer 20/B:** mobil uygulama geliştiricilerinin uygulama
+  mağazası kazancı için istisna var. Şartları (ayrı banka hesabı, istisna
+  belgesi, stopaj, sınır) her yıl güncellenir; **başlamadan önce mali
+  müşavirle** kur. Reklam (AdMob) gelirinin bu istisnaya girip girmediğini
+  de sor.
+- 👤 Google ödemelerinin geleceği banka hesabı ve vergi formları (Play ve
+  AdMob ödeme profilleri).
+
+## 9. Fikri mülkiyet
+
+- ✅ Yazı tipi Nunito (SIL OFL; Hakkında'da yazılı). Görseller ve sesler oyun
+  kodunda üretilir; üçüncü taraf görsel/ses yok.
+- 👤 "Fitil" adı ve logo için TÜRKPATENT'te marka araştırması (çakışan kayıt
+  varsa sonradan ad değişikliği gerekebilir) ⚖️.
+
+## 10. Yayından önce son kontrol (👤)
+
+1. `docs/gizlilik.html` yer tutucuları dolduruldu, sayfa herkese açık adreste.
+2. Play Console: gizlilik URL'si, Veri güvenliği formu, hedef kitle 13+,
+   IARC anketi, reklam beyanı, DSA satıcı beyanı, ödeme profili.
+3. AdMob: GDPR mesajı (AEA/UK/CH) ve ABD eyalet mesajı yayımlandı;
+   uygulama mağazaya bağlandı.
+4. ⚖️ Avukat: yurt dışı aktarım yolu (standart sözleşme ya da Türkiye'de
+   reklam kapalı), AB temsilcisi, mesafeli satış.
+5. ⚖️ Mali müşavir: 20/B istisnası ya da şahıs şirketi, ETBİS.
+6. Telefonda: ilk "Reklam izle" → izin kartı; "İzin verme" → reklam yok, oyun
+   sürer; Ayarlar > Reklam izni ile aç/kapat.

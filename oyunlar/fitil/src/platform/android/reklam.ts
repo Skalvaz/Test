@@ -67,6 +67,8 @@ export interface ReklamAyari {
   hazir?: Promise<void>;
   /** Saat (ms; testler verir). */
   simdi?: () => number;
+  /** (YASAL-UYUM §2) Kişiselleştirilmiş reklama izin var mı; false → istek `npa` (kişiselleştirilmemiş). */
+  kisisel?: () => boolean;
 }
 
 export interface Reklam {
@@ -77,6 +79,10 @@ export interface Reklam {
   hazirMi(): boolean;
   /** Reklamı gösterir; hiçbir durumda reddetmez. */
   goster(): Promise<ReklamSonucu>;
+  /** Reklam en çok `ms` içinde hazır olursa true (izin yeni verildiyse ilk yükleme sürer). */
+  hazirBekle(ms: number): Promise<boolean>;
+  /** (YASAL-UYUM §2) İzin geri alındı: yeni yükleme yok, bekleyen yeniden deneme iptal. */
+  durdur(): void;
   /** UMP "gizlilik seçenekleri" giriş noktası isteniyor mu (Ayarlar satırı). */
   gizlilikGerekli(): boolean;
   /** Gizlilik seçenekleri formunu gösterir; sonra onay bilgisini tazeler. Hata yutulur. */
@@ -109,6 +115,8 @@ export function reklamKur(ayar: ReklamAyari): Reklam {
   let zamanlayici: ReturnType<typeof setTimeout> | null = null;
   /** Süren gösterimin olay işleyicileri (yalnız gösterim sırasında). */
   let gosterim: { odul(): void; kapandi(): void; hata(): void } | null = null;
+  /** `durdur()` ile kapatıldı (izin geri alındı); `baslat()` yeniden açar. */
+  let durduruldu = false;
 
   const gizlilikOku = (b: Partial<AdmobConsentInfo> | null | undefined) => {
     if (b && typeof b.privacyOptionsRequirementStatus === 'string') {
@@ -125,7 +133,7 @@ export function reklamKur(ayar: ReklamAyari): Reklam {
     const benim = ++nesil;
     let soz: Promise<{ adUnitId?: string } | undefined>;
     try {
-      soz = Promise.resolve(AdMob.prepareRewardVideoAd({ adId: ayar.birim }));
+      soz = Promise.resolve(AdMob.prepareRewardVideoAd({ adId: ayar.birim, npa: !(ayar.kisisel?.() ?? false) }));
     } catch (e) {
       soz = Promise.reject(e);
     }
@@ -157,6 +165,13 @@ export function reklamKur(ayar: ReklamAyari): Reklam {
   }
 
   function baslat(): Promise<void> {
+    // İzin geri alınıp yeniden verildiyse: SDK zaten kurulu, yalnız yüklemeye dön.
+    if (baslatSozu && durum === 'kapali' && durduruldu) {
+      durduruldu = false;
+      durum = 'bekliyor';
+      yukle();
+      return baslatSozu;
+    }
     if (baslatSozu) return baslatSozu;
     baslatSozu = (async () => {
       durum = 'onay';
@@ -196,6 +211,24 @@ export function reklamKur(ayar: ReklamAyari): Reklam {
       durum = 'bekliyor';
       yukle();
       return false;
+    }
+    return true;
+  }
+
+  function durdur(): void {
+    durduruldu = true;
+    nesil++;
+    if (zamanlayici !== null) clearTimeout(zamanlayici);
+    zamanlayici = null;
+    yuklenen = null;
+    if (durum !== 'gosteriliyor') durum = 'kapali';
+  }
+
+  async function hazirBekle(ms: number): Promise<boolean> {
+    const son = simdi() + ms;
+    while (!hazirMi()) {
+      if (durum === 'kapali' || simdi() >= son) return false;
+      await new Promise((c) => setTimeout(c, 250));
     }
     return true;
   }
@@ -285,6 +318,8 @@ export function reklamKur(ayar: ReklamAyari): Reklam {
     baslat,
     hazirMi,
     goster,
+    hazirBekle,
+    durdur,
     gizlilikGerekli: () => gizlilik,
     gizlilikAc,
   };

@@ -196,6 +196,10 @@ export class Uygulama {
             return onceki;
           },
           degisti: () => this.oturum.hudTazele(),
+          politikaAc: () => {
+            const html = gizlilikPolitikasi();
+            if (html) void this.ui.politika(html);
+          },
         })
       : null;
     // Girdi: geri çağırımlar oturuma gider (oturum hemen ardından kurulur).
@@ -920,6 +924,8 @@ export class Uygulama {
       ...(g ? { magazaAc: () => void g.magazaAkisi(), gelirVar: true } : {}),
       ...(gizlilikAc ? { gizlilikAc } : {}),
       ...(politika ? { politikaAc: () => void politikaAc(politika) } : {}),
+      // (YASAL-UYUM §2) Reklam izni: açık rızayı görme, verme, geri alma.
+      ...(g?.reklamIzniDestekli() ? { reklamIzniAc: () => g.reklamIzniDuzenle() } : {}),
     });
     if (ozetle) void ozetAc();
     await p;

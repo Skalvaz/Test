@@ -44,12 +44,12 @@ def reklamKimligiDenetimi = tasks.register('fitilReklamKimligiDenetimi') {
                 if (f.isFile() && f.name.endsWith('.js')) {
                     def metin = f.getText('UTF-8')
                     (metin =~ /ca-app-pub-(\d+)\/\d+/).each { birimYayincilari << it[1] }
-                    if (metin.contains('iletisim@ornek.com')) politikaYerTutucu = true
+                    if (metin.contains('iletisim@ornek.com') || metin.contains('[DOLDUR:')) politikaYerTutucu = true
                 }
             }
         }
         if (politikaYerTutucu) {
-            sorunlar << 'docs/gizlilik.html yer tutuculari degismemis (iletisim@ornek.com): uygulama ici politika da onu gosterir'
+            sorunlar << 'docs/gizlilik.html yer tutuculari degismemis ([DOLDUR: ...] ya da iletisim@ornek.com): uygulama ici politika da onu gosterir'
         }
         def gercekBirimler = birimYayincilari - [admobTestYayinci]
         if (birimYayincilari.isEmpty()) {

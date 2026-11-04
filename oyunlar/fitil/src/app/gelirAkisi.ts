@@ -24,7 +24,7 @@
 import * as meta from '../meta';
 import type { Kayit } from '../meta';
 import type { BolumVerisi } from '../core/types';
-import { URUN_IDLERI, type GelirOlayYazici, type GelirSaglayici, type ReklamSonucu, type ReklamYeri, type UrunId } from '../platform/gelir';
+import { URUN_IDLERI, type GelirOlayYazici, type GelirSaglayici, type ReklamIzni, type ReklamSonucu, type ReklamYeri, type UrunId } from '../platform/gelir';
 import { gelirOlayi } from '../platform/olcum';
 import { t } from '../platform/dil';
 import { MC, URUN_METINLERI } from '../ui/metinler';
@@ -131,7 +131,11 @@ export interface GelirOrtami {
   ui: {
     canPaneli(vm: CanVM, tazele?: () => CanVM): Promise<CanPaneliSecimi>;
     magaza(vm: MagazaVM, tazele?: () => MagazaVM): Promise<MagazaSecimi>;
+    /** (YASAL-UYUM §2) Reklam izni kartı; kapatılırsa null (karar yok, sonra yeniden sorulur). */
+    reklamIzni?(mevcut: ReklamIzni | null, politikaAc?: () => void): Promise<Pick<ReklamIzni, 'izin' | 'kisisel'> | null>;
   };
+  /** Gizlilik politikasını (aydınlatma metni) açar; izin kartındaki bağlantı. */
+  politikaAc?(): void;
   bildir(m: string, sure?: number): void;
   /** Duvar saati ms (`duvarSaati()`). */
   saat(): number;
@@ -293,6 +297,8 @@ export class GelirAkisi {
       return 'odul';
     }
     if (this.reklamAcik) return 'hata';
+    // (YASAL-UYUM §2) Açık rıza yoksa reklam SDK'sı hiç çalışmaz; ilk istekte sorulur.
+    if (!(await this.reklamIzniniSagla())) return 'iptal';
     this.reklamAcik = true;
     const onceki = this.o.ekran?.('reklam');
     this.o.reklamKipi(true);
@@ -308,6 +314,34 @@ export class GelirAkisi {
     }
     if (sonuc === 'yok' || sonuc === 'hata') this.o.bildir(G.reklamYok);
     return sonuc;
+  }
+
+  // ─────────────── Reklam izni (YASAL-UYUM §2) ───────────────
+
+  /** Sağlayıcı izin istiyor mu (Ayarlar > Reklam izni satırı). */
+  reklamIzniDestekli(): boolean {
+    return typeof this.o.saglayici.reklamIzni === 'function' && typeof this.o.saglayici.reklamIzniVer === 'function';
+  }
+
+  /** İzin verildiyse true; sorulmadıysa sorar (kapatılırsa false, karar yazılmaz). */
+  private async reklamIzniniSagla(): Promise<boolean> {
+    const s = this.o.saglayici;
+    if (!this.reklamIzniDestekli()) return true;
+    const i = s.reklamIzni?.() ?? null;
+    if (i) return i.izin;
+    const karar = await this.o.ui.reklamIzni?.(null, this.o.politikaAc);
+    if (!karar) return false;
+    s.reklamIzniVer?.({ izin: karar.izin, kisisel: karar.izin && karar.kisisel, tarih: this.o.saat() });
+    return karar.izin;
+  }
+
+  /** Ayarlar'dan: mevcut kararla kartı açar, değiştiyse yazar (geri alma reklamı durdurur). */
+  async reklamIzniDuzenle(): Promise<void> {
+    if (!this.reklamIzniDestekli()) return;
+    const s = this.o.saglayici;
+    const karar = await this.o.ui.reklamIzni?.(s.reklamIzni?.() ?? null, this.o.politikaAc);
+    if (!karar) return;
+    s.reklamIzniVer?.({ izin: karar.izin, kisisel: karar.izin && karar.kisisel, tarih: this.o.saat() });
   }
 
   // ─────────────── Günlük hediye sandığı (§14 E3) ───────────────

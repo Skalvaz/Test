@@ -266,10 +266,11 @@ Play ve AdMob, **herkese açık** bir gizlilik politikası adresi ister.
    değiştirdikten sonra `npm run build:android` çalıştır; yer tutucu kalırsa
    yayın derlemesi durur (§3). Politikayı her değiştirdiğinde yayımlanan
    sayfayı da aynı dosyayla güncelle.
-5. Politika bugünkü durumu anlatır: oyunda hesap ve sunucu yok, ilerleme ve
-   ölçüm günlüğü yalnız cihazda (Android yedeklemesi kapalı), AdMob ve Play
-   Billing Google'ın politikalarıyla; UMP onay isteği her açılışta her
-   ülkede gider. Oyuna veri toplayan yeni bir şey eklenirse (ör. analitik
+5. Politika bugünkü durumu anlatır ve KVKK aydınlatma metnidir: oyunda hesap
+   ve sunucu yok, ilerleme ve ölçüm günlüğü yalnız cihazda (Android yedeklemesi
+   kapalı); reklam SDK'sı yalnız oyuncu oyundaki "Reklam izni" kartında izin
+   verince başlar (UMP onay isteği de ondan sonra). Yer tutucular
+   `[DOLDUR: …]` biçimindedir. Uyum listesi: `docs/YASAL-UYUM.md`. Oyuna veri toplayan yeni bir şey eklenirse (ör. analitik
    SDK'sı) politika ve Veri güvenliği formu birlikte güncellenir.
 
 ## 10. Uygulama içeriği beyanları (Play Console > Politika > Uygulama içeriği)
@@ -336,6 +337,9 @@ listesini mutlaka buradan kontrol et ve formu ona göre doldur:
 
 - "Uygulamanız gerekli kullanıcı veri türlerini topluyor ya da paylaşıyor mu?"
   → **Evet** (reklam SDK'sı nedeniyle).
+- Her reklam veri türü için "Bu veri toplama zorunlu mu, isteğe bağlı mı?" →
+  **İsteğe bağlı (kullanıcı seçebilir)**: oyuncu izin vermezse SDK hiç
+  başlamaz (`docs/YASAL-UYUM.md` §2).
 - "Toplanan tüm veriler aktarım sırasında şifreleniyor mu?" → **Evet**.
 - "Kullanıcılar verilerinin silinmesini isteyebilir mi?" → hesap ve sunucu
   yok; cihazdaki oyun verisi uygulama verisi temizlenince silinir, reklam

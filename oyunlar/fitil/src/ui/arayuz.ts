@@ -43,6 +43,8 @@ import { oyunOzetiEkrani } from './ekranlar/oyunOzeti';
 import { molaEkrani, defterKartiEkrani, sandikEkrani } from './ekranlar/kucukler';
 import { kasabaEkrani } from './ekranlar/kasaba';
 import { canPaneliEkrani, cikisOnayiEkrani } from './ekranlar/can';
+import { reklamIzniEkrani, type ReklamIzniKarari } from './ekranlar/reklamIzni';
+import type { ReklamIzni } from '../platform/reklamIzni';
 import { magazaEkrani } from './ekranlar/magaza';
 import { beklemeEkrani, eksenSecici, type BeklemeTutamak } from './ekranlar/ek';
 import { politikaEkrani } from './ekranlar/politika';
@@ -482,6 +484,11 @@ export class Arayuz {
    * sonra açılır; true = onaylandı (can düşer), false = Vazgeç/Esc (uygulama
    * Duraklat'ı yeniden açar).
    */
+  /** (YASAL-UYUM §2) Reklam izni kartı; kapatılırsa null. */
+  reklamIzni(mevcut: ReklamIzni | null, politikaAc?: () => void): Promise<ReklamIzniKarari | null> {
+    return this.ac(reklamIzniEkrani(this.b, mevcut, politikaAc));
+  }
+
   cikisOnayi(neden: 'harita' | 'yeniden' = 'harita'): Promise<boolean> {
     return this.ac(cikisOnayiEkrani(this.b, neden));
   }

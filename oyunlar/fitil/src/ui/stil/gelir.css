@@ -175,3 +175,10 @@
   .f-mg-urun { padding: 10px 12px; }
   .f-mg-eylem { margin-top: 6px; }
 }
+
+/* Reklam izni kartı (docs/YASAL-UYUM.md §2): kısa metin, işaretsiz kutu, iki eşit seçenek. */
+.f-reklam-izni { display: flex; flex-direction: column; gap: 14px; }
+.f-ri-metin { font-size: 16px; line-height: 1.4; color: var(--krem); }
+.f-ri-kisisel { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 16px; color: var(--krem); pointer-events: auto; }
+.f-ri-kutu { width: 24px; height: 24px; flex: none; accent-color: var(--t-vurgu); }
+.f-ri-aydinlatma { align-self: flex-start; padding-left: 0; }

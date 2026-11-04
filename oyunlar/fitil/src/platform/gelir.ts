@@ -12,6 +12,8 @@
  * sağlayıcı (web denemesi, `?gelir=sahte`) `gelirSahte.ts`'te.
  */
 import { gelirOlayi, type OlcumGelirOlayi, type OlcumGelirOzellikleri } from './olcum';
+import { reklamIzniCoz, type ReklamIzni } from './reklamIzni';
+export type { ReklamIzni } from './reklamIzni';
 import { sahteAyarlari, sahteSaglayici } from './gelirSahte';
 
 export type ReklamYeri = 'can' | 'hamle' | 'sandik';
@@ -44,6 +46,13 @@ export interface GelirSaglayici {
    * aşımı, bozuk yanıt) REDDEDER, uygulama "yapılamadı" der.
    */
   geriYukle(): Promise<UrunId[]>;
+  /**
+   * (docs/YASAL-UYUM.md §2) Reklam izni (KVKK açık rızası): null → henüz
+   * sorulmadı (ilk "Reklam izle"de sorulur). Yoksa sağlayıcı izin istemez.
+   */
+  reklamIzni?(): ReklamIzni | null;
+  /** İzni kaydeder; verilirse reklam SDK'sı başlar, geri alınırsa durur. */
+  reklamIzniVer?(i: ReklamIzni): void;
 }
 
 /** Bütün ürün kimlikleri, Mağaza sırasıyla (§4 tablosu, §14 E4). */
@@ -78,6 +87,10 @@ export interface AndroidGelirKoprusu {
   bekleyenler(): Promise<string>;
   /** JSON: `UrunId[]`. */
   geriYukle(): Promise<string>;
+  /** JSON: `ReklamIzni` ya da '' (henüz sorulmadı). */
+  reklamIzni?(): string;
+  /** JSON: `ReklamIzni`. */
+  reklamIzniVer?(json: string): void;
 }
 
 // ─────────────────────────── Çözümleyiciler (saf) ───────────────────────────
@@ -277,6 +290,24 @@ export function androidSaglayici(kopru: AndroidGelirKoprusu, sure: Readonly<Kopr
       if (x === ULASILAMADI || !Array.isArray(jsonCoz(x))) throw new Error(GERI_YUKLEME_HATASI);
       return geriYukleCoz(x);
     },
+    ...(kopru.reklamIzni && kopru.reklamIzniVer
+      ? {
+          reklamIzni() {
+            try {
+              return reklamIzniCoz(kopru.reklamIzni?.());
+            } catch {
+              return null;
+            }
+          },
+          reklamIzniVer(i: ReklamIzni) {
+            try {
+              kopru.reklamIzniVer?.(JSON.stringify(i));
+            } catch {
+              /* köprü hatası: karar uygulanamadı, sonra yeniden sorulur */
+            }
+          },
+        }
+      : {}),
   };
 }
 
@@ -341,6 +372,25 @@ export function olculenSaglayici(s: GelirSaglayici, olay: GelirOlayYazici = geli
       for (const urun of liste) yaz('satin_alma', { urun, durum: 'geri_yukle' });
       return liste;
     },
+    // (YASAL-UYUM §2) İzin yöntemleri ölçülmeden aynen geçer (yoksa sağlayıcı izin istemez).
+    ...(s.reklamIzni && s.reklamIzniVer
+      ? {
+          reklamIzni: () => {
+            try {
+              return s.reklamIzni?.() ?? null;
+            } catch {
+              return null;
+            }
+          },
+          reklamIzniVer: (i: ReklamIzni) => {
+            try {
+              s.reklamIzniVer?.(i);
+            } catch {
+              /* yut: karar uygulanamadı */
+            }
+          },
+        }
+      : {}),
   };
 }
 

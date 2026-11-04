@@ -16,6 +16,7 @@
  * geri tuşu, yaşam döngüsü). Uygulama tarafı `platform/yerel.ts`.
  */
 import politikaHtml from '../../../docs/gizlilik.html?raw';
+import { reklamIzniOku, reklamIzniYaz } from '../reklamIzni';
 import { gelirKoprusu } from './kopru';
 import { reklamKur, TEST_ODULLU } from './reklam';
 import { satinAlmaKur } from './satin';
@@ -37,18 +38,19 @@ export function odulluBirim(): string {
 export async function androidKur(): Promise<void> {
   // İlk iş perde: güvenlik zamanlayıcısı aşağıdaki her şeyden önce kurulsun.
   const perde = perdeKur();
-  const reklam = reklamKur({ birim: odulluBirim(), hazir: perde.kalkti });
+  // (YASAL-UYUM §2) Reklam SDK'sı yalnız açık rızadan sonra başlar; kişiselleştirme ayrı izin.
+  const reklam = reklamKur({ birim: odulluBirim(), hazir: perde.kalkti, kisisel: () => reklamIzniOku()?.kisisel === true });
   const satin = satinAlmaKur();
   window.FitilYerel = {
     ...window.FitilYerel,
     // A8: Firebase ertelendi; olay yalnız yerel günlükte kalır (olcum.ts zaten yazar).
     olay: () => undefined,
-    gelir: gelirKoprusu(reklam, satin),
+    gelir: gelirKoprusu(reklam, satin, { oku: () => reklamIzniOku(), yaz: (i) => reklamIzniYaz(i) }),
     gizlilik: { gerekli: () => reklam.gizlilikGerekli(), ac: () => reklam.gizlilikAc() },
     hazir: () => perde.hazir(),
     // Play Kullanıcı Verileri politikası: gizlilik politikası uygulamanın içinde de (Ayarlar > Hakkında).
     politika: () => politikaHtml,
   };
   void yasamKur().catch((e: unknown) => console.error('[fitil] geri tuşu / yaşam döngüsü kurulamadı', e));
-  void reklam.baslat();
+  if (reklamIzniOku()?.izin === true) void reklam.baslat();
 }

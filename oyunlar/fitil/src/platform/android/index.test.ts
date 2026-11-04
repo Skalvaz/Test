@@ -60,6 +60,7 @@ function islem(urun: string, jeton: string, o: { durum?: string; onayli?: boolea
 const akit = () => vi.advanceTimersByTimeAsync(0);
 let pencere: EventTarget & Partial<Window>;
 let olaylar: { ad: string; p: unknown }[];
+let depoIcerik: Map<string, string>;
 
 /** androidKur + oyunun sarmalayıcısı (ölçümlü). */
 async function kur(): Promise<GelirSaglayici> {
@@ -75,6 +76,9 @@ beforeEach(() => {
   vi.useFakeTimers();
   pencere = new EventTarget() as EventTarget & Partial<Window>;
   vi.stubGlobal('window', pencere);
+  // (YASAL-UYUM §2) Bu testler izin verilmiş cihazı anlatır; izinsiz başlangıç ayrı testte.
+  depoIcerik = new Map([['fitil.reklam-izni', JSON.stringify({ izin: true, kisisel: false, tarih: 1 })]]);
+  vi.stubGlobal('localStorage', { getItem: (a: string) => depoIcerik.get(a) ?? null, setItem: (a: string, d: string) => void depoIcerik.set(a, d) });
   olaylar = [];
   h.admobDinleyici.clear();
   h.appDinleyici.clear();
@@ -194,7 +198,7 @@ describe('sarmalayıcıyla (gelir.ts) uçtan uca JSON uyumu', () => {
     const s = await kur();
     expect(s.reklamHazir('can')).toBe(false);
     await akit();
-    expect(h.admob.prepareRewardVideoAd).toHaveBeenCalledWith({ adId: TEST_ODULLU });
+    expect(h.admob.prepareRewardVideoAd).toHaveBeenCalledWith({ adId: TEST_ODULLU, npa: true });
     expect(s.reklamHazir('can')).toBe(true);
     expect(s.reklamHazir('hamle')).toBe(true);
     const r = s.reklamGoster('hamle');
@@ -310,5 +314,23 @@ describe('açılış perdesi ve onay formu', () => {
     await androidKur();
     await akit();
     expect(gizlilikSecenekleri()).toBeNull();
+  });
+});
+
+describe('(YASAL-UYUM §2) reklam izni', () => {
+  it('izin yokken açılışta hiçbir AdMob çağrısı yapılmaz; izin verilince onay + başlatma + yükleme', async () => {
+    depoIcerik.clear();
+    const s = await kur();
+    await akit();
+    expect(h.admob.requestConsentInfo).not.toHaveBeenCalled();
+    expect(h.admob.initialize).not.toHaveBeenCalled();
+    expect(h.admob.prepareRewardVideoAd).not.toHaveBeenCalled();
+    expect(s.reklamIzni?.()).toBeNull();
+    s.reklamIzniVer?.({ izin: true, kisisel: false, tarih: 2 });
+    await akit();
+    expect(h.admob.requestConsentInfo).toHaveBeenCalledTimes(1);
+    expect(h.admob.initialize).toHaveBeenCalledTimes(1);
+    expect(h.admob.prepareRewardVideoAd).toHaveBeenCalledWith(expect.objectContaining({ npa: true }));
+    expect(JSON.parse(depoIcerik.get('fitil.reklam-izni') ?? '{}')).toEqual({ izin: true, kisisel: false, tarih: 2 });
   });
 });
