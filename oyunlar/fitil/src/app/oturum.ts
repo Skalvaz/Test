@@ -89,13 +89,13 @@ const SECIM_METNI: Record<SecimTuru, string> = t<Record<SecimTuru, string>>(
   {
     koruk: 'Bellows: pick a 3×3 center',
     kibrit: 'Match: pick a cell to ignite',
-    kalip: 'Rocket Mold: pick a capsule',
+    kalip: 'Rocket Maker: pick a capsule',
   },
 );
 
 /** Oyun içi kısa bildirimler (toast, balon). */
 const BILDIRIM = {
-  aksilik: t('Bir aksilik oldu, haritaya döndük', 'Something went wrong, back to the map'),
+  aksilik: t('Bir aksilik oldu, haritaya döndük', 'Something went wrong. Back to the map.'),
   halkaGerekli: t('Bu bölümde yalnız halka geçerli: başladığın yere dön', 'This level needs a loop: end where you started'),
   tekrarDokun: t('Ateşlemek için tekrar dokun', 'Tap again to ignite'),
   bolumBasina1: t('Bölüm başına 1 güçlendirici', '1 booster per level'),

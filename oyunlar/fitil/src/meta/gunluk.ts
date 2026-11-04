@@ -106,7 +106,7 @@ export function gorevMetni(g: Pick<GorevDurumu, 'sablon' | 'renk'>): string {
     case 12:
       return t("Körük'ü 2 kez kullan", 'Use the Bellows twice');
     case 13:
-      return t('Çapraz roketle 2 engel vur', 'Hit 2 obstacles by diagonal rocket');
+      return t('Çapraz roketle 2 engel vur', 'Hit 2 obstacles diagonally');
     case 14:
       return t('10 kaya kır', 'Break 10 rocks');
     case 15:
@@ -116,7 +116,7 @@ export function gorevMetni(g: Pick<GorevDurumu, 'sablon' | 'renk'>): string {
     case 17:
       return t("Günün Şenliği'ni kazan", 'Win the Daily Festival');
     case 18:
-      return t('2. nesil bir patlama yap', 'Set off a 2nd-generation blast');
+      return t('2. nesil bir patlama yap', 'Reach a 2nd chain wave');
     case 19:
       return t('30 kapsülü ısıyla patlat', 'Pop 30 capsules with heat');
     case 20:

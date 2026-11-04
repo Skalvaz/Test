@@ -118,7 +118,7 @@ describe('İngilizce: meta ve katalog metinleri', () => {
     for (const [y, s] of ornekler(en)) {
       const tt = t.get(y)!;
       // Kısa metinlerde 10 harf, uzunlarda ~%35 pay; sakin adı ve balonu rol adı yüzünden
-      // ("Barutçu Kemal" → "Kemal the Powder Maker", +9) biraz daha geniş.
+      // ("Barutçu Kemal" → "Kemal the Fireworks Maker", +12) biraz daha geniş.
       const sakin = y.startsWith('sakin.') || y.endsWith('.sakin');
       const pay = Math.max(sakin ? 12 : 10, Math.ceil(tt.length * 0.35));
       if (s.length > tt.length + pay) uzun.push(`${y}: ${tt.length} → ${s.length} "${s}"`);
@@ -136,11 +136,11 @@ describe('İngilizce: meta ve katalog metinleri', () => {
       'Hüsnü the Clockmaker',
       'Gülizar the Gardener',
       'Ayşe the Astronomer',
-      'Kemal the Powder Maker',
-      'Murat the Wall Guard',
+      'Kemal the Fireworks Maker',
+      'Murat the Watchman',
     ]);
     expect(en.katalog.MAHALLELER.map((m) => m.ad)).toEqual(['Pier', 'Bazaar', 'Harbor', 'Clock Tower', 'Gardens', 'Hilltop', 'Factory', 'Castle']);
-    expect(en.katalog.GUCLENDIRICILER.map((g) => g.ad)).toEqual(['Match', 'Rocket Mold', 'Undo']);
+    expect(en.katalog.GUCLENDIRICILER.map((g) => g.ad)).toEqual(['Match', 'Rocket Maker', 'Undo']);
   });
 
   it('kimlikler ve sayılar iki dilde aynı (yalnız metin değişir)', () => {

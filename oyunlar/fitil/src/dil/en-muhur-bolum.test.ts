@@ -57,12 +57,12 @@ describe('İngilizce mühür metinleri', () => {
     const ornek: [MuhurKosulu, string][] = [
       [{ olcu: 'R', kapsam: 'hamle', enAz: 15, halka: true }, '15+ reaction with a loop'],
       [{ olcu: 'R', kapsam: 'hamle', enAz: 27 }, '27+ reaction in one move'],
-      [{ olcu: 'R', kapsam: 'hamle', enAz: 21, eylem: 'koruk' }, '21+ reaction with Bellows'],
+      [{ olcu: 'R', kapsam: 'hamle', enAz: 21, eylem: 'koruk' }, '21+ reaction with the Bellows'],
       [{ olcu: 'koruk', kapsam: 'oyun', enCok: 0 }, 'Win without the Bellows'],
       [{ olcu: 'koruk', kapsam: 'oyun', enAz: 2 }, 'Use the Bellows twice'],
       [{ olcu: 'kalanHamle', kapsam: 'son', enAz: 6 }, 'Win with 6+ moves left'],
-      [{ olcu: 'nesil', kapsam: 'hamle', enAz: 8 }, 'Make an 8th-generation blast'],
-      [{ olcu: 'nesil', kapsam: 'hamle', enAz: 2 }, 'Make a 2nd-generation blast'],
+      [{ olcu: 'nesil', kapsam: 'hamle', enAz: 8 }, 'Reach an 8th chain wave'],
+      [{ olcu: 'nesil', kapsam: 'hamle', enAz: 2 }, 'Reach a 2nd chain wave'],
       [{ olcu: 'devFisek', kapsam: 'hamle', enAz: 2 }, '2 giant fireworks at once'],
       [{ olcu: 'devFisek', kapsam: 'oyun', enAz: 3 }, 'Fire 3 giant fireworks'],
       [{ olcu: 'kafes', kapsam: 'hamle', enAz: 4 }, 'Break 4 cages at once'],
@@ -108,7 +108,7 @@ describe('İngilizce mühür metinleri', () => {
   });
 
   it('kademe ve kombinasyon adları İngilizce', () => {
-    expect(Object.values(M.MUHUR_KADEME_ADLARI)).toEqual(['Apprentice', 'Journeyman', 'Master']);
+    expect(Object.values(M.MUHUR_KADEME_ADLARI)).toEqual(['Bronze', 'Silver', 'Gold']);
     for (const ad of Object.values(M.KOMBO_ADLARI)) expect(turkceVar(ad), ad).toBe(false);
   });
 });

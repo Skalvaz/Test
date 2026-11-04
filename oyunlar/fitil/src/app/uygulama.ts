@@ -1263,9 +1263,9 @@ const DEFTER_HATA: Record<string, string> = t<Record<string, string>>(
     kapali: 'Collect all 3 pieces first',
     dolu: 'Up to 6 patterns in use',
     sonDesen: 'Keep at least one pattern in use',
-    yetersizToz: 'Needs 10 dust',
+    yetersizToz: 'You need 10 Stardust',
     sahip: 'You already have this piece',
-    gecersiz: 'This piece can’t be bought with dust',
+    gecersiz: 'This piece can’t be bought with Stardust',
   },
 );
 

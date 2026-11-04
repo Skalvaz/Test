@@ -103,7 +103,7 @@ export const FITILLER: readonly { id: FitilId; ad: string; baslangicta: boolean;
 export type GuclendiriciId = 'kibrit' | 'kalip' | 'geriSar';
 export const GUCLENDIRICILER: readonly { id: GuclendiriciId; ad: string; acilis: number; hediye: number }[] = [
   { id: 'kibrit', ad: t('Kibrit', 'Match'), acilis: 7, hediye: 2 },
-  { id: 'kalip', ad: t('Fişek Kalıbı', 'Rocket Mold'), acilis: 12, hediye: 1 },
+  { id: 'kalip', ad: t('Fişek Kalıbı', 'Rocket Maker'), acilis: 12, hediye: 1 },
   { id: 'geriSar', ad: t('Geri Sar', 'Undo'), acilis: 20, hediye: 1 },
 ];
 export const GUCLENDIRICI_STOK_SINIRI = 3;
@@ -172,8 +172,8 @@ export const KASABA_SAKINLERI: readonly string[] = [
   t('Saatçi Hüsnü Usta', 'Hüsnü the Clockmaker'),
   t('Bahçıvan Gülizar', 'Gülizar the Gardener'),
   t('Gökbilimci Ayşe', 'Ayşe the Astronomer'),
-  t('Barutçu Kemal', 'Kemal the Powder Maker'),
-  t('Sur Bekçisi Murat', 'Murat the Wall Guard'),
+  t('Barutçu Kemal', 'Kemal the Fireworks Maker'),
+  t('Sur Bekçisi Murat', 'Murat the Watchman'),
 ];
 
 function kasabaIsi(mahalle: number, sira: number, ad: string, isAdi: string, maliyet: number, cizim: KasabaCizimi, yer: [number, number], aciklama: string, soz: string): KasabaIsi {

@@ -102,7 +102,7 @@ describe('İngilizce arayüz metinleri (ui)', () => {
     expect(en.hedefMetni({ tur: 'topla', gerekli: 25, ilerleme: 0, tamam: false, renk: 0 })).toBe('25 red');
     expect(en.hedefMetni({ tur: 'topla', gerekli: 25, ilerleme: 0, tamam: false, renk: 'hepsi' })).toBe('25 capsules');
     expect(en.hedefMetni({ tur: 'fener', gerekli: 1, ilerleme: 0, tamam: false })).toBe('Bring down 1 lantern');
-    expect(en.hedefMetni({ tur: 'zincirleme', gerekli: 3, ilerleme: 0, tamam: false, esik: 15 })).toBe('15+ reactions, 3 times');
+    expect(en.hedefMetni({ tur: 'zincirleme', gerekli: 3, ilerleme: 0, tamam: false, esik: 15 })).toBe('Get a 15+ reaction 3 times');
     expect(en.hedefMetni({ tur: 'puan', gerekli: 12450, ilerleme: 0, tamam: false })).toBe('12,450 points');
     expect(en.hedefMetni({ tur: 'desen', gerekli: 4, ilerleme: 0, tamam: false, motif: 'lale' })).toBe('Paint the Tulip pattern');
     expect(en.kalanMetni({ tur: 'kafes', gerekli: 6, ilerleme: 5, tamam: false })).toBe('1 cage left');
@@ -130,10 +130,10 @@ describe('İngilizce arayüz metinleri (ui)', () => {
     expect(en.MK.haritaKilitli(16)).toBe('Unlock level 16');
     expect(en.M.kilitliMahalle(16)).toBe('Opens at level 16');
     expect(en.M.kilitliBolum(5)).toBe('Win level 5 first');
-    expect(en.MK.sakinIsleri(0)).toBe('Rıza the Boatman’s list');
-    expect(en.MK.sakinIsleri(2)).toBe('Captain Yakup’s list');
-    expect(en.MK.muhurAdi('kalfa')).toBe('Journeyman seal');
-    expect(en.MK.muhurTuttu(en.MK.kademe.usta)).toBe('Master seal!');
+    expect(en.MK.sakinIsleri(0)).toBe('Rıza the Boatman’s requests');
+    expect(en.MK.sakinIsleri(2)).toBe('Captain Yakup’s requests');
+    expect(en.MK.muhurAdi('kalfa')).toBe('Silver seal');
+    expect(en.MK.muhurTuttu(en.MK.kademe.usta)).toBe('Gold seal!');
     expect(en.M.hamleAdet(1)).toBe('1 move');
     expect(en.M.hamleAdet(20)).toBe('20 moves');
     expect(en.MK.kandilSayisi(1)).toBe('1 lamp');
@@ -167,9 +167,9 @@ describe('İngilizce arayüz metinleri (ui)', () => {
     expect(en.MC.hapEtiketi(5, 5, null)).toBe('Lives 5/5');
     expect(tr.MC.hapEtiketi(3, 5, '12:31')).toBe('Canlar 3/5, sonraki can 12:31');
     expect(en.MC.cikisMetni.replace(/ /g, ' ')).toBe('Leaving the level costs 1 life.');
-    expect(en.M.hakkindaMetinGelir).toBe('Relight Lantern Cove’s Festival of Lights. A life refills every 30 minutes; ads only when you ask.');
-    expect(en.M.hakkindaMetin).toBe('Relight Lantern Cove’s Festival of Lights. No lives, no waiting, no shop.');
-    expect(en.URUN_METINLERI.guclendirici_paketi).toEqual({ ad: 'Booster pack', aciklama: '3 Matches, 2 Rocket Molds, 2 Undos' });
+    expect(en.M.hakkindaMetinGelir).toBe('Bring the Festival of Lights back to Lantern Cove. A life refills every 30 minutes, and you only see ads when you choose to.');
+    expect(en.M.hakkindaMetin).toBe('Bring the Festival of Lights back to Lantern Cove. No lives, no waiting, no shop.');
+    expect(en.URUN_METINLERI.guclendirici_paketi).toEqual({ ad: 'Booster pack', aciklama: '3 Matches, 2 Rocket Makers, 2 Undos' });
     expect(tr.URUN_METINLERI.usta_karti.ad).toBe('Usta kartı');
     for (const u of Object.values(en.URUN_METINLERI)) expect(turkceMi(u.ad) || turkceMi(u.aciklama)).toBe(false);
   });
@@ -177,9 +177,9 @@ describe('İngilizce arayüz metinleri (ui)', () => {
   it('paylaşım metni, mühür harfi ve Çarşı mahyası', () => {
     const p = paylasim.paylasimMetni({ tarih: 20261014, yildiz: 2, kullanilanHamle: 18, toplamHamle: 22, enBuyuk: 27, reaksiyonlar: [1, 9, 16] });
     expect(p).toBe('FİTİL · Daily Festival Oct 14, 2026\n★★☆  18/22 moves  Biggest: 27\n●▲■');
-    expect(ikonlar.muhurIsaretleme('cirak', true)).toContain('>A</text>');
-    expect(ikonlar.muhurIsaretleme('kalfa', false)).toContain('>J</text>');
-    expect(ikonlar.muhurIsaretleme('usta', true)).toContain('>M</text>');
+    expect(ikonlar.muhurIsaretleme('cirak', true)).toContain('>B</text>');
+    expect(ikonlar.muhurIsaretleme('kalfa', false)).toContain('>S</text>');
+    expect(ikonlar.muhurIsaretleme('usta', true)).toContain('>G</text>');
     for (const hayalet of [false, true]) {
       const s = susler.mahalleSusleri(cizim.bolgeGeo(1), { yapilan: hayalet ? new Set<string>() : new Set(['carsi.mahyaYazisi']), hayalet, yeni: new Set<string>() });
       const svg = (['arka', 0, 1, 2, 3, 4, 'on'] as const).map((k) => s.katman(k)).join('') + s.canli.map((o) => o.ic).join('');

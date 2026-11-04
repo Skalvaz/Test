@@ -10,7 +10,7 @@ import type { Baglam } from './cekirdek';
 import type { MuhurVM } from './tipler';
 import { t } from '../platform/dil';
 
-/** İngilizce kademe adları (Apprentice, Journeyman) Türkçesinden uzun: sütun genişler, koşul metni sarar. */
+/** İngilizce kademe adları (Bronze, Silver, Gold) Türkçesinden uzun: sütun genişler, koşul metni sarar. */
 const KADEME_SINIFI = t('', ' f-kademe-uzun');
 
 type Nokta = { x: number; y: number };

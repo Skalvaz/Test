@@ -94,7 +94,7 @@ describe('İngilizce (oyun grubu): metin tabloları', () => {
 
   it('görünüm: duyuru tablosu, güçlendirici adları, yedek bölüm adı', () => {
     denetle('DUYURU_METNI', metinler(gorunum.DUYURU_METNI), 44);
-    expect(gorunum.GUC_ADI).toEqual({ kibrit: 'Match', kalip: 'Rocket Mold', geriSar: 'Undo' });
+    expect(gorunum.GUC_ADI).toEqual({ kibrit: 'Match', kalip: 'Rocket Maker', geriSar: 'Undo' });
     expect(gorunum.bolumYedekAdi(12)).toBe('Level 12');
   });
 });
@@ -120,7 +120,7 @@ describe('İngilizce (oyun grubu): Kazandın duyuruları', () => {
     const d = gorunum.odulDuyurulari(oduller);
     const metin = d.map((x) => x.metin);
     expect(metin).toEqual([
-      'Rocket Mold unlocked · +3',
+      'Rocket Maker unlocked · +3',
       'Daily Festival unlocked',
       'Endless Festival unlocked',
       'Master Level 1 unlocked',
@@ -128,8 +128,8 @@ describe('İngilizce (oyun grubu): Kazandın duyuruları', () => {
       'Light Pattern on the map',
       'Lighthouse fuse is yours',
       '+2 Match',
-      '+4 dust',
-      'Cheer: next level starts with a rocket',
+      '+4 Stardust',
+      'Hot Streak: next level starts with a rocket',
       'Lantern Watch: Kindling',
       'Task: Make 3 rockets',
       'Badge: First Steps',

@@ -36,7 +36,7 @@ export type MuhurKademe = 'cirak' | 'kalfa' | 'usta';
 export const MUHUR_KADEMELERI: readonly MuhurKademe[] = ['cirak', 'kalfa', 'usta'];
 export const MUHUR_KADEME_ADLARI: Readonly<Record<MuhurKademe, string>> = t(
   { cirak: 'Çırak', kalfa: 'Kalfa', usta: 'Usta' },
-  { cirak: 'Apprentice', kalfa: 'Journeyman', usta: 'Master' },
+  { cirak: 'Bronze', kalfa: 'Silver', usta: 'Gold' },
 );
 /** Mühürlü ilk bölüm; bu bölümün ilk kazancında mühürler tanıtılır. */
 export const MUHUR_ACILIS_BOLUMU = 6;
@@ -435,11 +435,11 @@ function muhurMetniEn(k: MuhurKosulu): string {
   }
   switch (k.olcu) {
     case 'R':
-      if (k.eylem === 'koruk') return `${n}+ reaction with Bellows`;
+      if (k.eylem === 'koruk') return `${n}+ reaction with the Bellows`;
       if (k.halka) return `${n}+ reaction with a loop`;
       return `${n}+ reaction in one move`;
     case 'nesil':
-      return sigan(`Make ${sayiTanimligi(n)} ${sira(n)}-generation blast`, `${sira(n)}-generation blast`);
+      return sigan(`Reach ${sayiTanimligi(n)} ${sira(n)} chain wave`, `${sira(n)} chain wave`);
     case 'zincir':
       if (k.halka) return `Close a loop of ${n}+`;
       if (k.renk !== undefined) return `Draw ${tanimlik(RENK_EN[k.renk])} chain of ${n}+`;

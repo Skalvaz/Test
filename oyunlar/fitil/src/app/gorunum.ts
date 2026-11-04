@@ -456,7 +456,7 @@ export function nasilVM(k: Kayit): NasilVM {
 
 const GUC_ADI: Record<'kibrit' | 'kalip' | 'geriSar', string> = t(
   { kibrit: 'Kibrit', kalip: 'Fişek Kalıbı', geriSar: 'Geri Sar' },
-  { kibrit: 'Match', kalip: 'Rocket Mold', geriSar: 'Undo' },
+  { kibrit: 'Match', kalip: 'Rocket Maker', geriSar: 'Undo' },
 );
 
 /** Kazandın duyuru metinleri (kısa: kartta tek satır). */
@@ -465,7 +465,7 @@ const D = {
     (ad: string, n: number) => `${ad} açıldı · ${n} hediye`,
     (ad: string, n: number) => `${ad} unlocked · +${n}`,
   ),
-  toz: t((n: number) => `+${n} toz`, (n: number) => `+${n} dust`),
+  toz: t((n: number) => `+${n} toz`, (n: number) => `+${n} Stardust`),
   gunluk: t('Günün Şenliği açıldı', 'Daily Festival unlocked'),
   sonsuz: t('Sonsuz Şenlik açıldı', 'Endless Festival unlocked'),
   usta: t((n: number) => `Usta Bölümü ${n} açıldı`, (n: number) => `Master Level ${n} unlocked`),
@@ -477,7 +477,7 @@ const D = {
   gorev: t('Görev', 'Task'),
   nobet: t('Fener Nöbeti', 'Lantern Watch'),
   denizFeneri: t('Deniz Feneri fitili senin', 'Lighthouse fuse is yours'),
-  cosku: t('Coşku: sıradaki bölüm roketle başlar', 'Cheer: next level starts with a rocket'),
+  cosku: t('Coşku: sıradaki bölüm roketle başlar', 'Hot Streak: next level starts with a rocket'),
   fitil: t('Fitil', 'Fuse'),
 };
 

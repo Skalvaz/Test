@@ -50,13 +50,16 @@ export function canVm(v = 'bitti'): CanVM {
     ...canSayaciVm(sayi),
     tur: sayi === 0 ? 'bitti' : 'durum',
     reklam: dolu ? null : { hak: v === 'hakyok' ? 0 : 2, hazir: v !== 'hazirdegil', kart: v === 'kart' },
-    doldur: dolu ? null : { fiyat: '₺29,99' },
+    doldur: dolu ? null : { fiyat: t('₺24,99', '$0.99') },
   };
 }
 
 /** Mağaza çeşitleri: 1 (hepsi satılık), sende (Usta kartı alınmış), stok (paket sığmıyor, canlar dolu), bekle (fiyatlar gelmedi). */
 export function magazaVm(v = '1'): MagazaVM {
-  const fiyat: Record<UrunId, string> = { baslangic_paketi: '₺49,99', can_doldur: '₺24,99', guclendirici_paketi: '₺49,99', buyuk_paket: '₺99,99', usta_karti: '₺129,99' };
+  const fiyat: Record<UrunId, string> = t(
+    { baslangic_paketi: '₺49,99', can_doldur: '₺24,99', guclendirici_paketi: '₺49,99', buyuk_paket: '₺99,99', usta_karti: '₺129,99' },
+    { baslangic_paketi: '$1.99', can_doldur: '$0.99', guclendirici_paketi: '$1.99', buyuk_paket: '$3.99', usta_karti: '$4.99' },
+  );
   return {
     urunler: URUN_IDLERI.map((id) => {
       let durum: MagazaUrunVM['durum'] = 'satilik';
@@ -358,7 +361,7 @@ export function istatistikVm(): IstatistikVM {
       { id: 1, ad: t('İlk Kıvılcım', 'First Spark'), enIyi: 2450, yildiz: 3 },
       { id: 2, ad: t('Çapraz Yol', 'Diagonals'), enIyi: 3120, yildiz: 3 },
       { id: 3, ad: t('Isınma', 'Warming Up'), enIyi: 3980, yildiz: 2 },
-      { id: 4, ad: t('Sar ve Pişir', 'Wrap and Bake'), enIyi: 4410, yildiz: 3 },
+      { id: 4, ad: t('Sar ve Pişir', 'Surround & Bake'), enIyi: 4410, yildiz: 3 },
       { id: 5, ad: t('Nişan', 'Aim'), enIyi: 5230, yildiz: 1 },
     ],
     rozetler: ROZET_SIRASI.map((id, i) => ({ id, acik: [0, 3, 4, 6, 9, 10, 14].includes(i) })),

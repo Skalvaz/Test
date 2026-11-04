@@ -59,7 +59,7 @@ export const M = {
   /** "+3 toz" (Kıvılcım tozu). */
   tozArti: t(
     (n: number) => `+${n} toz`,
-    (n: number) => `+${n} dust`,
+    (n: number) => `+${n} Stardust`,
   ),
 
   // Harita
@@ -70,7 +70,7 @@ export const M = {
   /** Rehberin adı (balon etiketi). */
   ustaAdi: t('Kıvılcım Usta', 'Master Spark'),
   gununSenligi: t('Günün Şenliği', 'Daily Festival'),
-  fisekDefteri: t('Fişek Defteri', 'Firework Album'),
+  fisekDefteri: t('Fişek Defteri', 'Collection'),
   istatistik: t('İstatistik', 'Stats'),
   rozetler: t('Rozetler', 'Badges'),
   ayarlar: t('Ayarlar', 'Settings'),
@@ -85,7 +85,7 @@ export const M = {
   ),
   kilitliUsta: t(
     (gereken: number) => `${gereken} yıldızda açılır`,
-    (gereken: number) => `Opens at ${gereken} stars`,
+    (gereken: number) => `Unlocks at ${gereken} stars`,
   ),
   /** Usta: yıldız yetiyor, yalnız bölüm kapısı (12) kaldı. */
   kilitliUstaBolum: t(
@@ -114,15 +114,15 @@ export const M = {
 
   // Bölüm öncesi
   hazirRoket: t('Hazır roketle başlıyorsun', 'You start with a rocket'),
-  coskuSerisi: t('Coşku Serisi', 'Cheer Streak'),
+  coskuSerisi: t('Coşku Serisi', 'Hot Streak'),
   yeniOge: t('Yeni', 'New'),
-  tabloEtiketi: t('Gece Tablosu', 'Night Painting'),
+  tabloEtiketi: t('Gece Tablosu', 'Night Scene'),
   ustaKurali: t('Usta kuralı', 'Master rule'),
 
   // HUD
   duraklat: t('Duraklat', 'Pause'),
   koruk: t('Körük', 'Bellows'),
-  korukDolu: t('Körük dolu: dokun', 'Bellows full: tap'),
+  korukDolu: t('Körük dolu: dokun', 'Bellows ready: tap!'),
   sonHamle: t('Son hamle!', 'Last move!'),
   senlikBasliyor: t('Şenlik başlıyor!', 'Festival begins!'),
   sandikSallaniyor: t('Sandık sallanıyor…', 'The chest is shaking…'),
@@ -134,9 +134,9 @@ export const M = {
       kalip: 'Kalıp: rokete dönecek kapsülü seç',
     },
     {
-      koruk: 'Pick a center to heat',
+      koruk: 'Pick a spot to heat up',
       kibrit: 'Match: pick a cell to ignite',
-      kalip: 'Mold: pick a capsule for a rocket',
+      kalip: 'Rocket Maker: pick a capsule to turn into a rocket',
     },
   ),
   bolumBasina1: t('Bölüm başına 1 güçlendirici', '1 booster per level'),
@@ -150,7 +150,7 @@ export const M = {
   duraklatildi: t('Duraklatıldı', 'Paused'),
   yenidenBasla: t('Yeniden başla', 'Restart'),
   haritayaDon: t('Haritaya dön', 'Back to map'),
-  coskuBozulur: t('Yeniden başlamak Coşku Serisi’ni bozar.', 'Restarting breaks your Cheer Streak.'),
+  coskuBozulur: t('Yeniden başlamak Coşku Serisi’ni bozar.', 'Restarting ends your Hot Streak.'),
 
   // Kazandın
   // 1★ da bir kazançtır (bütün hedefler tamam): başlık olumlu; ilk bölümde çoğu oyuncu 1★ alır.
@@ -171,17 +171,17 @@ export const M = {
   azKaldi: t('Az kaldı!', 'Almost there!'),
   birDahaDene: t('Bir daha dene!', 'One more try!'),
   tekrarDene: t('Tekrar dene', 'Try again'),
-  buCizgiKazandirirdi: t('Bu çizgi kazandırırdı', 'This line would win'),
+  buCizgiKazandirirdi: t('Bu çizgi kazandırırdı', 'This line would have won'),
   tekrarIzle: t('Tekrar izle', 'Watch again'),
-  ustaEliBaslik: t('Kıvılcım Usta’nın Eli', 'Master Spark’s Hand'),
+  ustaEliBaslik: t('Kıvılcım Usta’nın Eli', 'Helping Hand'),
   ustaEliMetin: t('+5 hamle ile devam et (en fazla 1★)', 'Continue with +5 moves (max 1★)'),
   ustaEliDugme: t('+5 hamle', '+5 moves'),
-  coskuSifirlandi: t('Coşku Serisi sıfırlandı.', 'Cheer Streak reset.'),
+  coskuSifirlandi: t('Coşku Serisi sıfırlandı.', 'Hot Streak lost.'),
   ucretsizTekrar: t('Can derdi yok, beklemeden istediğin kadar dene.', 'No lives, no waiting: retries are always free.'),
 
   // Ayarlar
   ses: t('Ses', 'Sound'),
-  efektSesi: t('Efekt sesi', 'Effects'),
+  efektSesi: t('Efekt sesi', 'Sound effects'),
   muzik: t('Müzik', 'Music'),
   ortamSesi: t('Ortam sesi', 'Ambience'),
   titresim: t('Titreşim', 'Vibration'),
@@ -220,7 +220,7 @@ export const M = {
   iceAktar: t('İçe aktar', 'Import'),
   kopyala: t('Kopyala', 'Copy'),
   kopyalandi: t('Panoya kopyalandı', 'Copied'),
-  kopyalanamadi: t('Kopyalanamadı: metin seçildi, elle kopyala', 'Couldn’t copy: text selected, copy it yourself'),
+  kopyalanamadi: t('Kopyalanamadı: metin seçildi, elle kopyala', 'Couldn’t copy. The text is selected, so copy it by hand.'),
   koduYapistir: t('Kayıt kodunu buraya yapıştır', 'Paste your save code here'),
   yukle: t('Yükle', 'Load'),
   yukleOnay: t('Bu kayıt şimdiki ilerlemenin yerine geçecek.', 'This save will replace your current progress.'),
@@ -242,21 +242,21 @@ export const M = {
     {
       bulut: 'Saved to your account',
       tarayici: 'Saved in this browser',
-      bellek: 'Temporary save: lost when the page closes. Export your save code.',
+      bellek: 'This save is temporary and disappears when you close the page. Export your save code to keep it.',
     },
   ),
   defterKartlari: t('Defter kartları', 'Journal cards'),
   hakkinda: t('Hakkında', 'About'),
   hakkindaMetin: t(
     'Fener Koyu’nun Işık Şenliği’ni yeniden yak. Can yok, bekleme yok, mağaza yok.',
-    'Relight Lantern Cove’s Festival of Lights. No lives, no waiting, no shop.',
+    'Bring the Festival of Lights back to Lantern Cove. No lives, no waiting, no shop.',
   ),
   /** (CAN-REKLAM §6) Gelir sağlayıcısı varken Hakkında metni ("Can yok…" cümlesinin yerine). */
   hakkindaMetinGelir: t(
     'Fener Koyu’nun Işık Şenliği’ni yeniden yak. Her 30 dakikada 1 can dolar. Reklam sen istemezsen çıkmaz.',
-    'Relight Lantern Cove’s Festival of Lights. A life refills every 30 minutes; ads only when you ask.',
+    'Bring the Festival of Lights back to Lantern Cove. A life refills every 30 minutes, and you only see ads when you choose to.',
   ),
-  yaziTipi: t('Yazı tipi: Nunito (SIL OFL). Sesler ve görüntüler oyun içinde üretilir.', 'Font: Nunito (SIL OFL). Sounds and pictures are made by the game.'),
+  yaziTipi: t('Yazı tipi: Nunito (SIL OFL). Sesler ve görüntüler oyun içinde üretilir.', 'Font: Nunito (SIL OFL). All sounds and art are generated by the game.'),
   surum: t(
     (s: string) => `Sürüm ${s}`,
     (s: string) => `Version ${s}`,
@@ -268,20 +268,20 @@ export const M = {
   onceki: t('Önceki', 'Back'),
 
   // Defter
-  toz: t('Kıvılcım tozu', 'Spark dust'),
-  tozHarca: t('Toz harca', 'Spend dust'),
-  tozHarcaIpucu: t('Bir parça seç: 10 toz = 1 parça', 'Pick a piece: 10 dust = 1 piece'),
-  tozYetmez: t('10 toz gerekir', 'Needs 10 dust'),
-  tozHarcaOnay: t('10 toz harca?', 'Spend 10 dust?'),
-  tak: t('Tak', 'Use'),
-  takili: t('Takılı', 'In use'),
-  cikar: t('Çıkar', 'Remove'),
+  toz: t('Kıvılcım tozu', 'Stardust'),
+  tozHarca: t('Toz harca', 'Spend Stardust'),
+  tozHarcaIpucu: t('Bir parça seç: 10 toz = 1 parça', 'Pick a piece: 10 Stardust each'),
+  tozYetmez: t('10 toz gerekir', 'You need 10 Stardust'),
+  tozHarcaOnay: t('10 toz harca?', 'Spend 10 Stardust?'),
+  tak: t('Tak', 'Equip'),
+  takili: t('Takılı', 'Equipped'),
+  cikar: t('Çıkar', 'Unequip'),
   sec: t('Seç', 'Pick'),
   secili: t('Seçili', 'Picked'),
-  enFazla6: t('En fazla 6 desen takılır', 'Up to 6 patterns in use'),
+  enFazla6: t('En fazla 6 desen takılır', 'You can equip up to 6 patterns'),
   parca: (n: number, toplam: number) => `${n}/${toplam}`,
-  tabloYok: t('Bölüm kazandıkça Gece Tabloları burada birikir.', 'Win levels to collect Night Paintings here.'),
-  defterKilitli: t('Mahalleyi tamamlayınca açılır', 'Opens when the district is complete'),
+  tabloYok: t('Bölüm kazandıkça Gece Tabloları burada birikir.', 'Win levels to fill this wall with Night Scenes.'),
+  defterKilitli: t('Mahalleyi tamamlayınca açılır', 'Unlocks when you finish the district'),
   defterBaslik: t('Fener Koyu Defteri', 'Lantern Cove Journal'),
   sekmeler: t<Record<DefterSekmesi, string>>(
     {
@@ -296,7 +296,7 @@ export const M = {
       desenler: 'Patterns',
       fitiller: 'Fuses',
       gokyuzu: 'Skies',
-      tablolar: 'Paintings',
+      tablolar: 'Scenes',
       motifler: 'Motifs',
       defter: 'Journal',
     },
@@ -306,7 +306,7 @@ export const M = {
   oyna: t('Oyna', 'Play'),
   paylas: t('Paylaş', 'Share'),
   arsiv: t('Arşiv', 'Archive'),
-  arsivNotu: t('Arşiv bölümleri sandık vermez.', 'Archive levels don’t give chests.'),
+  arsivNotu: t('Arşiv bölümleri sandık vermez.', 'Past days don’t award chests.'),
   bugun: t('Bugün', 'Today'),
   dun: t('Dün', 'Yesterday'),
   henuzOynanmadi: t('Henüz oynanmadı', 'Not played yet'),
@@ -318,15 +318,15 @@ export const M = {
     (ad: string, kalan: number) => `${ad} için ${kalan} gün`,
     (ad: string, kalan: number) => `${kalan} ${cogul(kalan, 'day', 'days')} to ${ad}`,
   ),
-  seriNotu: t('Kaçırılan gün seriyi sıfırlamaz, bir basamak düşürür.', 'A missed day won’t reset your streak, it drops one step.'),
-  ilkKazancSandik: t('İlk kazanç sandık verir', 'First win gives a chest'),
+  seriNotu: t('Kaçırılan gün seriyi sıfırlamaz, bir basamak düşürür.', 'Miss a day and you only drop one step. Your streak isn’t lost.'),
+  ilkKazancSandik: t('İlk kazanç sandık verir', 'First win earns a chest'),
 
   // İstatistik
   enUzunZincir: t('En uzun zincir', 'Longest chain'),
   enBuyukReaksiyon: t('En büyük reaksiyon', 'Biggest reaction'),
   toplamHalka: t('Toplam halka', 'Total loops'),
   toplamPatlama: t('Toplam patlama', 'Total pops'),
-  enCokNesil: t('En çok nesil', 'Most generations'),
+  enCokNesil: t('En çok nesil', 'Most chain waves'),
   enIyiGunluk: t('En iyi günlük skor', 'Best daily score'),
   bolumRekorlari: t('Bölüm rekorları', 'Level records'),
   rozetKilitli: t('Henüz kazanılmadı', 'Not earned yet'),
@@ -334,7 +334,7 @@ export const M = {
 
   // Mola
   molaBaslik: t('Kıvılcım Usta', 'Master Spark'),
-  molaMetin: t('Biraz mola ver çırak, gözlerin dinlensin. Fişekler kaçmaz.', 'Take a break, apprentice. The fireworks aren’t going anywhere.'),
+  molaMetin: t('Biraz mola ver çırak, gözlerin dinlensin. Fişekler kaçmaz.', 'Rest your eyes for a bit, friend. The fireworks will wait.'),
   molaVer: t('Mola ver', 'Take a break'),
 
   // Defter kartı
@@ -382,24 +382,24 @@ export const SAKIN_IYELIK: readonly string[] = t(
     'Hüsnü the Clockmaker’s',
     'Gülizar the Gardener’s',
     'Ayşe the Astronomer’s',
-    'Kemal the Powder Maker’s',
-    'Murat the Wall Guard’s',
+    'Kemal the Fireworks Maker’s',
+    'Murat the Watchman’s',
   ],
 );
 
 type Kademe = 'cirak' | 'kalfa' | 'usta';
-const KADEME: Record<Kademe, string> = t({ cirak: 'Çırak', kalfa: 'Kalfa', usta: 'Usta' }, { cirak: 'Apprentice', kalfa: 'Journeyman', usta: 'Master' });
+const KADEME: Record<Kademe, string> = t({ cirak: 'Çırak', kalfa: 'Kalfa', usta: 'Usta' }, { cirak: 'Bronze', kalfa: 'Silver', usta: 'Gold' });
 
 /** (Kancalar §C.7) Bölüm Mühürleri ve Kasaba İşleri metinleri. */
 export const MK = {
   muhurler: t('Mühürler', 'Seals'),
   kademe: KADEME,
-  kademeBuyuk: t<Record<Kademe, string>>({ cirak: 'ÇIRAK', kalfa: 'KALFA', usta: 'USTA' }, { cirak: 'APPRENTICE', kalfa: 'JOURNEYMAN', usta: 'MASTER' }),
+  kademeBuyuk: t<Record<Kademe, string>>({ cirak: 'ÇIRAK', kalfa: 'KALFA', usta: 'USTA' }, { cirak: 'BRONZE', kalfa: 'SILVER', usta: 'GOLD' }),
   muhurTuttu: t(
     (kademe: string) => `${kademe} mührü!`,
     (kademe: string) => `${kademe} seal!`,
   ),
-  /** Kademenin mühür adı: "Kalfa mührü" / "Journeyman seal". */
+  /** Kademenin mühür adı: "Kalfa mührü" / "Silver seal". */
   muhurAdi: t(
     (k: Kademe) => `${KADEME[k]} mührü`,
     (k: Kademe) => `${KADEME[k]} seal`,
@@ -422,15 +422,15 @@ export const MK = {
       basili: 'Basılı',
     },
     {
-      tuttu: 'Held: stamped if you win',
+      tuttu: 'Done! Win to stamp it',
       bekliyor: 'Not yet',
       korunuyor: 'Holding for now',
-      bozuldu: 'Broken this try',
+      bozuldu: 'Missed this time',
       sonda: 'Checked when you win',
       basili: 'Stamped',
     },
   ),
-  ustaEliMuhur: t("Usta'nın Eli ile mühür basılmaz", 'No seals with Master’s Hand'),
+  ustaEliMuhur: t("Usta'nın Eli ile mühür basılmaz", 'No seals with the Helping Hand'),
   /** Duraklat ilerlemesi: "2/4" ya da tek hamle ölçüsünde "En iyi 19/27". */
   muhurIlerleme: (deger: number, hedef: number, tek: boolean) => (tek ? `${t('En iyi', 'Best')} ${deger}/${hedef}` : `${deger}/${hedef}`),
   rozetEtiket: t(
@@ -438,9 +438,9 @@ export const MK = {
     (n: number) => `Seals: ${n}/3`,
   ),
   yeni: t('YENİ', 'NEW'),
-  muhurTanitim: t('Her bölümde üç mühür var. Kazandığın oyunda tutanlar basılır.', 'Each level has three seals. The ones you hold are stamped when you win.'),
-  muhurKart: t('Her bölümde 3 mühür görevi var. Oyunu duraklatınca görürsün.', 'Each level has 3 seal tasks. Pause the game to see them.'),
-  muhurHud: t('Mühür tuttu! Kazanırsan basılır.', 'Seal held! Win to stamp it.'),
+  muhurTanitim: t('Her bölümde üç mühür var. Kazandığın oyunda tutanlar basılır.', 'Every level has three seals. Earn them while you play, and they’re stamped when you win.'),
+  muhurKart: t('Her bölümde 3 mühür görevi var. Oyunu duraklatınca görürsün.', 'Every level has 3 seal challenges. Pause the game to see them.'),
+  muhurHud: t('Mühür tuttu! Kazanırsan basılır.', 'Seal earned! Win to stamp it.'),
   sancakIlk: t('Üç mühür! Sancağın çatıda.', 'Three seals! Your banner’s on the roof.'),
   parcaDuyuru: t(
     (fitil: string, n: number) => `${fitil} parçası (${n} mühür)`,
@@ -448,7 +448,7 @@ export const MK = {
   ),
   tozDuyuru: t(
     (toz: number, n: number) => `+${toz} toz (${n} mühür)`,
-    (toz: number, n: number) => `+${toz} dust (${n} seals)`,
+    (toz: number, n: number) => `+${toz} Stardust (${n} seals)`,
   ),
 
   kasaba: t('Kasaba', 'Town'),
@@ -464,14 +464,14 @@ export const MK = {
   ),
   /** Kazandın ödül kutusunun altındaki küçük ad ("+3 kandil"). */
   kandilKutuAdi: t('kandil', 'lamps'),
-  kandilTanitim: t('Her yeni yıldız bir kandil. Kandille kasabayı süsle.', 'Every new star is a lamp. Use lamps to decorate the town.'),
+  kandilTanitim: t('Her yeni yıldız bir kandil. Kandille kasabayı süsle.', 'Every new star earns a lamp. Spend lamps to decorate the town.'),
   yap: t('Yap', 'Build'),
   yapildi: t('Yapıldı', 'Built'),
   eksik: t(
     (n: number) => `${n} eksik`,
     (n: number) => `${n} more`,
   ),
-  tacKilitli: t('Önce 5 işi bitir', 'Build 5 first'),
+  tacKilitli: t('Önce 5 işi bitir', 'Build 5 decorations first'),
   sirada: t(
     (mahalle: string) => `Önce ${mahalle} süslensin`,
     (mahalle: string) => `Decorate ${mahalle} first`,
@@ -485,15 +485,15 @@ export const MK = {
     (is: string) => `Kandil yetti. ${is} yapalım mı?`,
     (is: string) => `Enough lamps! Build “${is}”?`,
   ),
-  kasabaIlk: t('Yıldızların kandile döndü! Kasabayı süsleyelim.', 'Your stars turned into lamps! Let’s decorate the town.'),
+  kasabaIlk: t('Yıldızların kandile döndü! Kasabayı süsleyelim.', 'Your stars have become lamps! Let’s light up the town.'),
   kasabaHosgeldin: t(
     (n: number) => `Hoş geldin, çırak! ${n} kandilin birikmiş.`,
-    (n: number) => `Welcome back, apprentice! You’ve saved up ${n} ${cogul(n, 'lamp', 'lamps')}.`,
+    (n: number) => `Welcome back! You have saved up ${n} ${cogul(n, 'lamp', 'lamps')}.`,
   ),
   isHazir: t('Kasabada yapılacak iş hazır!', 'A town decoration is ready to build!'),
   sakinIsleri: t(
     (m: number) => `${SAKIN_IYELIK[m] ?? ''} işleri`,
-    (m: number) => `${SAKIN_IYELIK[m] ?? ''} list`,
+    (m: number) => `${SAKIN_IYELIK[m] ?? ''} requests`,
   ),
   mahalleSenligi: t('Mahalle şenliği', 'District festival'),
   /** Ekran okuyucu duyurusu: "Çarşı mahalle şenliği". */
@@ -648,8 +648,8 @@ export const MC = {
   politika: t('Gizlilik politikası', 'Privacy policy'),
   geriYukle: t('Satın alımları geri yükle', 'Restore purchases'),
   sendeVar: t('Sende var', 'Owned'),
-  stokDolu: t('Stok dolu', 'Stock full'),
-  birKez: t('Bir kez', 'One time'),
+  stokDolu: t('Stok dolu', 'Fully stocked'),
+  birKez: t('Bir kez', 'One-time'),
   suAnYok: t('Şu an yok', 'Unavailable'),
   /** Fiyat mağazadan henüz gelmedi (düğme pasif). */
   fiyatYok: '—',
@@ -665,11 +665,11 @@ export const URUN_METINLERI: Record<UrunId, { ad: string; aciklama: string }> = 
     usta_karti: { ad: 'Usta kartı', aciklama: 'Reklamlı ödüller reklamsız gelir' },
   },
   {
-    baslangic_paketi: { ad: 'Starter pack', aciklama: 'Lives refill + 3 of each booster' },
-    can_doldur: { ad: 'Refill lives', aciklama: 'Lives refill to 5 at once' },
-    guclendirici_paketi: { ad: 'Booster pack', aciklama: '3 Matches, 2 Rocket Molds, 2 Undos' },
-    buyuk_paket: { ad: 'Big pack', aciklama: '6 Matches, 5 Rocket Molds, 5 Undos' },
-    usta_karti: { ad: 'Master’s Card', aciklama: 'Ad rewards without the ads' },
+    baslangic_paketi: { ad: 'Starter pack', aciklama: 'Full lives + 3 of each booster' },
+    can_doldur: { ad: 'Refill lives', aciklama: 'Instantly back to 5 lives' },
+    guclendirici_paketi: { ad: 'Booster pack', aciklama: '3 Matches, 2 Rocket Makers, 2 Undos' },
+    buyuk_paket: { ad: 'Big pack', aciklama: '6 Matches, 5 Rocket Makers, 5 Undos' },
+    usta_karti: { ad: 'Master’s Card', aciklama: 'Every ad reward, no ads to watch' },
   },
 );
 
@@ -717,7 +717,7 @@ export const GUCLENDIRICI_ADLARI: Record<GuclendiriciId, string> = t<Record<Gucl
   },
   {
     kibrit: 'Match',
-    kalip: 'Rocket Mold',
+    kalip: 'Rocket Maker',
     geriSar: 'Undo',
   },
 );
@@ -787,22 +787,22 @@ export const YENI_OGE: Record<YeniOge, { ad: string; metin: string }> = t<Record
     cisenti: { ad: 'Çisenti', metin: 'Satırı söndürür. Önce orayı ateşle.' },
   },
   {
-    cizim: { ad: 'Fuse', metin: 'Join matching colors, let go.' },
+    cizim: { ad: 'Fuse', metin: 'Connect matching colors, then let go.' },
     capraz: { ad: 'Diagonals', metin: 'Diagonals connect too.' },
-    isi: { ad: 'Heat', metin: 'A hot capsule ignites with 1 heat.' },
+    isi: { ad: 'Heat', metin: 'Hot capsules pop with just one more heat.' },
     roket: { ad: 'Rocket', metin: 'A chain of 6+ makes a rocket.' },
     kafes: { ad: 'Cage', metin: 'Only heat opens a cage.' },
-    nisan: { ad: 'Aim', metin: 'The last step aims the rocket.' },
-    kasimpati: { ad: 'Chrysanthemum', metin: '9 or more: heats around it too.' },
+    nisan: { ad: 'Aim', metin: 'Your last step sets the rocket’s direction.' },
+    kasimpati: { ad: 'Chrysanthemum', metin: 'Chain 9+: it also heats everything around it.' },
     islak: { ad: 'Wet Powder', metin: 'Pop next to it to dry it.' },
-    halka: { ad: 'Loop', metin: 'Return to the start: double heat.' },
-    doseme: { ad: 'Tile', metin: 'Pop on it to light the street.' },
-    fener: { ad: 'Lantern', metin: 'Bring the lantern to the bottom.' },
-    yildiz: { ad: 'Star Ball', metin: '12 or more: matches any color.' },
-    kaya: { ad: 'Rock', metin: 'Crumbles when a pop is next to it.' },
-    kombo: { ad: 'Combo', metin: 'Two specials in one fuse combine.' },
-    devFisek: { ad: 'Giant Firework', metin: 'Pop next to it to fill it.' },
-    koruk: { ad: 'Bellows', metin: 'Tap when full, heat any spot.' },
+    halka: { ad: 'Loop', metin: 'Finish where you started for double heat.' },
+    doseme: { ad: 'Tile', metin: 'Pop a capsule on it to light it up.' },
+    fener: { ad: 'Lantern', metin: 'Guide the lantern down to the bottom.' },
+    yildiz: { ad: 'Star Ball', metin: 'Chain 12+: it matches every color.' },
+    kaya: { ad: 'Rock', metin: 'Pop right next to it to crack it.' },
+    kombo: { ad: 'Combo', metin: 'Link two specials in one line for a combo.' },
+    devFisek: { ad: 'Giant Firework', metin: 'Pop beside it to charge it up.' },
+    koruk: { ad: 'Bellows', metin: 'When it’s full, tap to heat any spot.' },
     kova: { ad: 'Water Bucket', metin: 'Doesn’t heat its neighbors.' },
     bayram: { ad: 'Dry Night', metin: 'Powder ignites at 3 heat.' },
     barutIzi: { ad: 'Powder Trail', metin: 'A pop touching it burns it all.' },
@@ -813,7 +813,7 @@ export const YENI_OGE: Record<YeniOge, { ad: string; metin: string }> = t<Record
     esik5: { ad: 'Damp Night', metin: 'Powder ignites at 5 heat.' },
     meltem: { ad: 'Breeze', metin: 'Heats a row. Wait for its turn!' },
     is: { ad: 'Soot', metin: 'It spreads! Clear one each move.' },
-    cisenti: { ad: 'Drizzle', metin: 'Puts out a row. Fire there first.' },
+    cisenti: { ad: 'Drizzle', metin: 'Douses a row. Pop there before it hits.' },
   },
 );
 
@@ -865,8 +865,8 @@ export const NASIL_KARTLARI: readonly { baslik: string; metin: string }[] = t(
     { baslik: 'Diagonals and loops', metin: 'Diagonals connect too. End where you started for a LOOP: double heat.' },
     { baslik: 'Heat and hot capsules', metin: 'A popping capsule heats its neighbors. A hot one pops by itself with one more heat.' },
     { baslik: 'Special pieces', metin: 'Chain 6 for a ROCKET, 9 for a CHRYSANTHEMUM, 12 for a STAR BALL. The last step aims the rocket.' },
-    { baslik: 'Combos', metin: 'Put two specials in one fuse: they join into one huge blast.' },
-    { baslik: 'Obstacles', metin: 'Heat or a pop clears most of them. The ones you know are shown here.' },
+    { baslik: 'Combos', metin: 'Connect two specials in one line and they merge into one huge blast.' },
+    { baslik: 'Obstacles', metin: 'Most are cleared by heat or a pop right next to them. Every one you have met so far is listed here.' },
   ],
 );
 
@@ -894,17 +894,17 @@ export const ROZETLER: Record<RozetId, { ad: string; kosul: string }> = t<Record
   {
     ilkKivilcim: { ad: 'First Spark', kosul: 'Win level 1' },
     caprazNisanci: { ad: 'Diagonal Ace', kosul: 'Break 3 cages with diagonal rockets in one game' },
-    sarVePisir: { ad: 'Wrap and Bake', kosul: 'Heat a cage from 3 sides with one chain' },
+    sarVePisir: { ad: 'Surround & Bake', kosul: 'Heat a cage from 3 sides with one chain' },
     halkaci: { ad: 'Loop Maker', kosul: 'Draw 50 loops in total' },
     otuzluk: { ad: 'Thirty Club', kosul: '30 reactions in one move' },
     senlik: { ad: 'FESTIVAL!', kosul: '40 reactions in one move' },
-    ucuncuKusak: { ad: 'Third Generation', kosul: '3rd-generation blast in one move' },
+    ucuncuKusak: { ad: 'Third Wave', kosul: 'Set off a third chain wave in one move' },
     buyukFinal: { ad: 'Grand Finale', kosul: 'Star + Star combo' },
     roketYagmuru: { ad: 'Rocket Rain', kosul: 'Star + Rocket combo' },
     kilpayi: { ad: 'Close Call', kosul: 'Win on the last move' },
     tutumlu: { ad: 'Thrifty', kosul: 'Win with 10+ moves left' },
-    ustaCirak: { ad: 'Top Apprentice', kosul: '3★ on every level of a district' },
-    saheser: { ad: 'Masterpiece', kosul: 'Your first Masterpiece painting' },
+    ustaCirak: { ad: 'Star Pupil', kosul: '3★ on every level of a district' },
+    saheser: { ad: 'Masterpiece', kosul: 'Make your first Masterpiece scene' },
     defterci: { ad: 'Collector', kosul: 'Complete 12 patterns' },
     nobetci: { ad: 'Night Watch', kosul: 'Lantern Watch 7' },
     denizFeneri: { ad: 'Lighthouse', kosul: 'Lantern Watch 30' },
@@ -1003,7 +1003,7 @@ export const DEFTER_KARTLARI: readonly { baslik: string; metin: string }[] = t(
         'Ottoman gunpowder was made in powder works near Istanbul and in other cities. Saltpeter, sulfur and charcoal were pounded together in big mortars. Copper and wooden tools were used so that no spark would fly. The powder for festival fireworks also passed through these masters’ hands.',
     },
     {
-      baslik: 'Donanma festivals',
+      baslik: 'Festivals of light',
       metin:
         'In Ottoman times, “donanma” was the name of a great festival that decked the city out in lamps and fireworks. Births and victories were celebrated with donanmas that lasted for days. Firework shows were held on rafts in the Golden Horn, and towers were ringed with light. Books called Surname tell of these festivals in pictures.',
     },
@@ -1023,14 +1023,14 @@ export const KASABA_KARTLARI: readonly { baslik: string; metin: string }[] = t(
     { baslik: 'Sur Bekçisi Murat\'ın mektubu', metin: 'Surlar yüz yıl sonra yeniden donandı. Burçtaki ateşi karşı köyden görenler yangın var sanıp kovayla koşmuş. Otuz yıllık bekçiyim, ilk kez nöbette fenerimi yakmadım. Kıvılcım Usta’ya selam söyle, çırak.' },
   ],
   [
-    { baslik: 'From Rıza the Boatman', metin: 'Apprentice, last night I moored without a lantern because the pier was bright as day. The lighthouse turns again, and Dad would be so glad. The kids count lanterns, lose track past forty and start over. I sang until I lost my voice.' },
-    { baslik: 'From Nazlı the Lamplighter', metin: 'With lamps lit at the shops, the bazaar stays open all night. They say you can read the FIESTA sign on the mahya from the hilltop. I put new wicks in thirty lamps, and my hands smell of oil. Drop by, the kettle’s always on.' },
-    { baslik: 'From Captain Yakup', metin: 'My ship is dressed up, even the crane is in its festival best. When the breakwater lights came on, the ships at sea tooted hello. The crew won’t leave the deck tonight. One day I’ll take you out to sea too, apprentice.' },
-    { baslik: 'From Hüsnü the Clockmaker', metin: 'The clock face is lit again and the hour hand is back in place. When the bell rang, everyone set their watches by the tower. It runs two minutes slow, but I never told anyone. You came right on time, apprentice.' },
+    { baslik: 'From Rıza the Boatman', metin: 'Last night I moored without a lantern because the pier was bright as day. The lighthouse turns again, and Dad would be so glad. The kids count lanterns, lose track past forty and start over. I sang until I lost my voice.' },
+    { baslik: 'From Nazlı the Lamplighter', metin: 'With lamps lit at the shops, the bazaar stays open all night. They say you can read the FESTIVAL sign strung between the minarets from the hilltop. I put new wicks in thirty lamps, and my hands smell of oil. Drop by, the kettle’s always on.' },
+    { baslik: 'From Captain Yakup', metin: 'My ship is dressed up, even the crane is in its festival best. When the breakwater lights came on, the ships at sea tooted hello. The crew won’t leave the deck tonight. One day I’ll take you out to sea too, my friend.' },
+    { baslik: 'From Hüsnü the Clockmaker', metin: 'The clock face is lit again and the hour hand is back in place. When the bell rang, everyone set their watches by the tower. It runs two minutes slow, but I never told anyone. But you came right on time.' },
     { baslik: 'From Gülizar the Gardener', metin: 'The mulberry tree has so many ribbons, I haven’t the heart to prune it. Our lamps on the pool burned until morning. The whole district jumped over the Hıdırellez fire, even the mayor. May your wish come true too.' },
     { baslik: 'From Ayşe the Astronomer', metin: 'There was a line for the telescope, and most aimed it at the windmill. Forty-two people jumped the Nevruz fire, I counted. I added a little star to the sky map in your name. Tell me if you find it, I’m still looking.' },
-    { baslik: 'From Kemal the Powder Maker', metin: 'Golden sparks rise from the chimneys now, not smoke. I checked the lanterns on the depot door three times, just in case. When the whistle blew, the workers took off their aprons and looked up. Powder takes patience, and you’ve got plenty.' },
-    { baslik: 'From Murat the Wall Guard', metin: 'The walls are dressed in lights again after a hundred years. The next village saw the tower fire, thought the castle was burning and came running with buckets. Thirty years on watch, and tonight I never lit my lantern. Give Master Spark my regards, apprentice.' },
+    { baslik: 'From Kemal the Fireworks Maker', metin: 'Golden sparks rise from the chimneys now, not smoke. I checked the lanterns on the depot door three times, just in case. When the whistle blew, the workers took off their aprons and looked up. Powder takes patience, and you have plenty.' },
+    { baslik: 'From Murat the Watchman', metin: 'The walls are dressed in lights again after a hundred years. The next village saw the tower fire, thought the castle was burning and came running with buckets. Thirty years on watch, and tonight I never lit my lantern. Say hello to Master Spark for me.' },
   ],
 );
 
@@ -1060,7 +1060,7 @@ export const GOREV_SABLONLARI: readonly string[] = t(
   ],
   [
     'Draw 2 loops',
-    'Make a 15+ reaction in one move',
+    'Get a 15+ reaction in one move',
     'Pop 50 {renk} capsules',
     'Fire 3 rockets',
     'Fire 1 chrysanthemum',
@@ -1069,14 +1069,14 @@ export const GOREV_SABLONLARI: readonly string[] = t(
     'Light 20 tiles',
     'Win 3 levels',
     'Finish a level with 3★',
-    'Draw a chain of 12+',
+    'Draw a 12+ chain',
     'Use the Bellows twice',
-    'Hit 2 obstacles with a diagonal rocket',
+    'Hit 2 obstacles diagonally',
     'Break 10 rocks',
     'Bring down 2 lanterns',
-    'Fire 5+ rockets in the finale',
+    'Launch 5+ rockets in the finale',
     'Win the Daily Festival',
-    'Make a 2nd-generation pop',
+    'Set off a second chain wave',
     'Pop 30 capsules with heat',
     'Win a level on the first try',
   ],
@@ -1205,7 +1205,7 @@ function hedefMetniEn(h: HedefVM): string {
     case 'desen':
       return h.motif ? `Paint the ${MOTIF_ADLARI[h.motif]} pattern` : 'Paint the Light Pattern';
     case 'zincirleme':
-      return `${h.esik ?? 15}+ reactions, ${n} ${cogul(n, 'time', 'times')}`;
+      return `Get a ${h.esik ?? 15}+ reaction ${n === 1 ? 'once' : `${n} times`}`;
     case 'puan':
       return `${sayi(n)} points`;
     case 'fener':

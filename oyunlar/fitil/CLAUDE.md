@@ -83,8 +83,15 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   iş parçacığında (`uretim.ts` `adla`). Terim sözlüğü: Fener Koyu → Lantern
   Cove, İskele/Çarşı/Liman/Saat Kulesi/Bahçeler/Tepe/Fabrika/Kale → Pier/
   Bazaar/Harbor/Clock Tower/Gardens/Hilltop/Factory/Castle, kandil → lamp,
-  mühür → seal (Apprentice/Journeyman/Master), Kıvılcım Usta → Master Spark,
-  Coşku Serisi → Cheer Streak, Fener Nöbeti → Lantern Watch. Yeni metin
+  mühür → seal (kademeler Bronze/Silver/Gold, harfler B/S/G), Kıvılcım Usta →
+  Master Spark, Coşku Serisi → Hot Streak, Usta'nın Eli → Helping Hand,
+  Kıvılcım tozu → Stardust, Fişek Kalıbı → Rocket Maker, Fişek Defteri →
+  Collection, Gece Tablosu → Night Scene, nesil → chain wave, Fener Nöbeti →
+  Lantern Watch. İngilizce yerelleştirmedir, düz çeviri değil (Kasım 2026,
+  ürün sahibi): doğal İngilizce, hafif Türk esintisi (kişi adları, lale,
+  kubbe, mahya açıklamalı kalır); oyuncuya "çırak" diye seslenilmez.
+  Testler İngilizcenin Türkçeden belirgin uzun olmamasını ister (yerleşim);
+  dil-tara `’ve` gibi kısaltmaları "ve" sanır, "you have" yaz. Yeni metin
   eklerken iki dili birlikte yaz. Denetim: `src/dil/*.test.ts` (İngilizce
   tablolarda Türkçe harf yok) ve `node scripts/dil-tara.mjs <url> <klasör>`
   (60 ekran, `?gelir=sahte` katmanları dahil; 0 kalıntı olmalı). Playwright araçları `locale: 'tr-TR'` ile

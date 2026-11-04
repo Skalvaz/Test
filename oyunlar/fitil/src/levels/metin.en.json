@@ -15,14 +15,14 @@
     "ipuclari": ["A pop heats its neighbors. A hot capsule POPS with one more heat.", "Heat stays. Hot ones need just one touch.", "At least 3."]
   },
   "4": {
-    "ad": "Wrap and Bake",
+    "ad": "Surround & Bake",
     "sonrakiTanitim": "Next: Take Aim!",
     "ipuclari": ["Cages only open with heat. Surround them!", "At least 3."]
   },
   "5": {
     "ad": "Take Aim",
     "sonrakiTanitim": "Next: Chrysanthemum!",
-    "ipuclari": ["End diagonally for a diagonal rocket.", "Stars come from your score.", "Spare moves turn into rockets!"]
+    "ipuclari": ["End diagonally for a diagonal rocket.", "Your score earns the stars.", "Spare moves turn into rockets!"]
   },
   "6": {
     "ad": "Chrysanthemum",
@@ -37,12 +37,12 @@
   "8": {
     "ad": "Loop",
     "sonrakiTanitim": "Next: Street of Lights!",
-    "ipuclari": ["Return to your start: LOOP! Double heat."]
+    "ipuclari": ["End where you started for a LOOP: double heat!"]
   },
   "9": {
     "ad": "Street of Lights",
     "sonrakiTanitim": "Next: Bazaar Night!",
-    "ipuclari": ["Pop on the tiles to light up the street."]
+    "ipuclari": ["Pop capsules on the tiles to light up the street."]
   },
   "10": {
     "ad": "Bazaar Night",
@@ -66,7 +66,7 @@
   "14": {
     "ad": "Double Rocket",
     "sonrakiTanitim": "Next: Harbor Storm!",
-    "ipuclari": ["Put two specials in one fuse: they combine!"]
+    "ipuclari": ["Connect two specials in one line to combine them!"]
   },
   "15": {
     "ad": "Harbor Storm",
@@ -81,7 +81,7 @@
   "17": {
     "ad": "Bellows",
     "sonrakiTanitim": "Next: Water Bucket!",
-    "ipuclari": ["Heat pops fill the Bellows. When full, tap it and heat anywhere."]
+    "ipuclari": ["Pops set off by heat fill the Bellows. When it’s full, tap it to heat any spot."]
   },
   "18": {
     "ad": "Water Bucket",
@@ -110,7 +110,7 @@
   "23": {
     "ad": "Tulip Bed",
     "sonrakiTanitim": "Next: Double Layer!",
-    "ipuclari": ["Fuses can't cross gaps in the board."]
+    "ipuclari": ["Your line can’t cross the holes in the board."]
   },
   "24": {
     "ad": "Double Layer",
@@ -156,7 +156,7 @@
   "33": {
     "ad": "Drizzle",
     "sonrakiTanitim": "Next: Dry Night II!",
-    "ipuclari": ["Drizzle puts out a row. Fire there first."]
+    "ipuclari": ["Drizzle douses a row. Pop there before it hits!"]
   },
   "34": {
     "ad": "Dry Night II",

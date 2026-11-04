@@ -753,8 +753,8 @@ const MUM_YOLU = (() => {
   return `M${p.join('L')}Z`;
 })();
 
-/** Kademe harfi: Çırak/Kalfa/Usta → Ç/K/U; İngilizcede Apprentice/Journeyman/Master → A/J/M. */
-const KADEME_HARFI: Record<string, string> = tt({ cirak: 'Ç', kalfa: 'K', usta: 'U' }, { cirak: 'A', kalfa: 'J', usta: 'M' });
+/** Kademe harfi: Çırak/Kalfa/Usta → Ç/K/U; İngilizcede Bronze/Silver/Gold → B/S/G. */
+const KADEME_HARFI: Record<string, string> = tt({ cirak: 'Ç', kalfa: 'K', usta: 'U' }, { cirak: 'B', kalfa: 'S', usta: 'G' });
 
 /**
  * Mum mühür (KANCALAR §C.2): basılı = kırmızı mum + kabartma kademe harfi
