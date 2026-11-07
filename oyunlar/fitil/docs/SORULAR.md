@@ -41,6 +41,12 @@ sözleşmesi yok. Oyuncular Türkiye'de ve yurt dışında olacak.
    geliştiriciler bunu genelde nasıl çözüyor?
 8. "Fitil" adı ve logosu için marka başvurusu yapmalı mıyım? Önce benzer
    kayıt araştırması yapar mısınız?
+9. Oyun ilerlemesi yalnız telefonda; oyun silinince kayboluyor. Android'in
+   kendi "Otomatik Yedekleme" özelliğini açarsam ilerleme oyuncunun **kendi
+   Google Drive hesabına** yedeklenir (ben bu veriyi görmem, Google'ın
+   sunucuları yurt dışında). Bu, benim yaptığım bir yurt dışı aktarım sayılır
+   mı? İleride kendi sunucumu kullanırsam (yurt dışında ya da Türkiye'de)
+   ne gerekir?
 
 **İstenen:** 1–3 için yazılı görüş. Politikadaki "aktarım dayanağı" yer
 tutucusu bu görüşle doldurulacak.

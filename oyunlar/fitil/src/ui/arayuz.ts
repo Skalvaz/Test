@@ -44,6 +44,7 @@ import { molaEkrani, defterKartiEkrani, sandikEkrani } from './ekranlar/kucukler
 import { kasabaEkrani } from './ekranlar/kasaba';
 import { canPaneliEkrani, cikisOnayiEkrani } from './ekranlar/can';
 import { reklamIzniEkrani, type ReklamIzniKarari } from './ekranlar/reklamIzni';
+import { yedekEkrani, type YedekPaylas } from './ekranlar/yedek';
 import type { ReklamIzni } from '../platform/reklamIzni';
 import { magazaEkrani } from './ekranlar/magaza';
 import { beklemeEkrani, eksenSecici, type BeklemeTutamak } from './ekranlar/ek';
@@ -487,6 +488,11 @@ export class Arayuz {
   /** (YASAL-UYUM §2) Reklam izni kartı; kapatılırsa null. */
   reklamIzni(mevcut: ReklamIzni | null, politikaAc?: () => void): Promise<ReklamIzniKarari | null> {
     return this.ac(reklamIzniEkrani(this.b, mevcut, politikaAc));
+  }
+
+  /** (YASAL-UYUM §3) "Kaydını yedekle" kartı; true = kod paylaşıldı ya da kopyalandı. */
+  yedekHatirlat(kod: string, paylas?: YedekPaylas): Promise<boolean> {
+    return this.ac(yedekEkrani(this.b, kod, paylas));
   }
 
   cikisOnayi(neden: 'harita' | 'yeniden' = 'harita'): Promise<boolean> {

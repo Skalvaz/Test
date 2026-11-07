@@ -305,7 +305,7 @@ export function kaybettinVM(v: BolumVerisi, d: OyunDurumu, hayalet: KaybettinVM[
 
 // ─────────────────────────── Ayarlar, defter, günlük ───────────────────────────
 
-export function ayarlarVM(k: Kayit, depo: StorageBackend, hareketiAzaltSistem: boolean, surum: string): AyarlarVM {
+export function ayarlarVM(k: Kayit, depo: StorageBackend | AyarlarVM['depolama'], hareketiAzaltSistem: boolean, surum: string): AyarlarVM {
   const a = k.ayarlar;
   return {
     sfx: a.sfx,

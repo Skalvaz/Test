@@ -222,6 +222,14 @@ export const M = {
   kopyalandi: t('Panoya kopyalandı', 'Copied'),
   kopyalanamadi: t('Kopyalanamadı: metin seçildi, elle kopyala', 'Couldn’t copy. The text is selected, so copy it by hand.'),
   koduYapistir: t('Kayıt kodunu buraya yapıştır', 'Paste your save code here'),
+  paylasBaslik: t('FİTİL kayıt kodu', 'FITIL save code'),
+  kodNotu: t('Kodu kendine gönder. Yeni cihazda İçe aktar ile yüklersin.', 'Send the code to yourself, then use Import on a new device.'),
+  yedekBaslik: t('Kaydını yedekle', 'Back up your save'),
+  yedekMetni: t(
+    'İlerlemen yalnız bu cihazda. Kayıt kodunu kendine gönder: oyunu silsen de Ayarlar > İçe aktar ile geri gelir.',
+    'Your progress is only on this device. Send yourself your save code: even after a reinstall, Settings > Import brings it back.',
+  ),
+  sonra: t('Sonra', 'Later'),
   yukle: t('Yükle', 'Load'),
   yukleOnay: t('Bu kayıt şimdiki ilerlemenin yerine geçecek.', 'This save will replace your current progress.'),
   evetYukle: t('Evet, yükle', 'Yes, load'),
@@ -237,11 +245,13 @@ export const M = {
     {
       bulut: 'Kayıt hesabında saklanıyor',
       tarayici: 'Kayıt bu tarayıcıda saklanıyor',
+      cihaz: 'Kayıt yalnız bu cihazda: oyunu silersen kaybolur. Kayıt kodunu yedekle.',
       bellek: 'Kayıt geçici: sayfa kapanınca silinir. Kayıt kodunu dışa aktar.',
     },
     {
       bulut: 'Saved to your account',
       tarayici: 'Saved in this browser',
+      cihaz: 'Saved only on this device. Uninstalling erases it, so back up your save code.',
       bellek: 'This save is temporary and disappears when you close the page. Export your save code to keep it.',
     },
   ),

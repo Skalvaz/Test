@@ -171,6 +171,15 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   Politika = KVKK aydınlatma metni (`docs/gizlilik.html`, yer tutucular
   `[DOLDUR: …]`, yayın derlemesi kalırsa durur). Rıza kapsamını genişleten
   her değişiklikte politika + Veri güvenliği formu + rıza metni birlikte.
+- Kayıt yedeği (Kasım 2026, sunucusuz; ürün sahibi Contabo'yu şimdilik
+  istemedi): Ayarlar > Dışa aktar'da Paylaş (`platform/paylas.ts`: Android
+  `FitilYerel.paylas` → `@capacitor/share`, web'de Web Share, yoksa Kopyala)
+  + "Kodu kendine gönder" notu; 10/20/30/40 kazanılınca haritaya ilk sakin
+  dönüşte bir kez "Kaydını yedekle" kartı (`app/yedek.ts`, iz
+  `ipuclari.gorulen` `yedek-N`; kod kopyalanınca/paylaşılınca o ana dek
+  susar; kayıt `bulut` ise yok). Android'de depolama satırı `cihaz`.
+  Önizleme `ekran=yedek[&v=kopyala]`. Android Otomatik Yedekleme kapalı
+  kalır; açılması avukata soruldu (SORULAR §1 soru 9).
 - Logo (Kasım 2026, ürün sahibi seçti): `src/ui/logo.ts` `logoSvg(id, sinif)`
   saf SVG metni: sivri kemerli amblem (fişekler, kasaba, fener) + elle
   çizilmiş tırnaklı, derinlikli harfler, İ noktaları iki eş kor. Tutarlılık

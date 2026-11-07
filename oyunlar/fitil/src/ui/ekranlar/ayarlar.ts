@@ -336,14 +336,26 @@ function kayitBolumu(b: Baglam, d: AyarlarVM): HTMLElement {
     const kod = b.geri.kayitKodu?.() ?? '';
     const alan = h('textarea', { s: 'f-kod', readonly: true, rows: '3', spellcheck: 'false', 'aria-label': M.kayitKodu }) as HTMLTextAreaElement;
     alan.value = kod;
-    const kopyala = dugme(M.kopyala, 'birincil', async () => {
-      if (await panoyaKopyala(kod)) b.toast(M.kopyalandi);
-      else {
+    const paylasFn = b.geri.kayitPaylas?.bind(b.geri);
+    const kopyalaIs = async () => {
+      if (await panoyaKopyala(kod)) {
+        b.toast(M.kopyalandi);
+        b.geri.kayitYedeklendi?.();
+      } else {
         metniSec(alan);
         b.toast(M.kopyalanamadi, 2600);
       }
-    }, { ikon: 'kopyala' });
-    panel.replaceChildren(h('div', { s: 'f-kayit-ic' }, alan, kopyala));
+    };
+    const kopyala = dugme(M.kopyala, paylasFn ? 'ikincil' : 'birincil', kopyalaIs, { ikon: 'kopyala' });
+    // Paylaş (Android paylaş penceresi / Web Share): yol yoksa panoya kopyalar.
+    const paylas = paylasFn
+      ? dugme(M.paylas, 'birincil', async () => {
+          const r = await paylasFn();
+          if (r === 'tamam') b.geri.kayitYedeklendi?.();
+          else if (r === 'yok') await kopyalaIs();
+        }, { ikon: 'paylas' })
+      : null;
+    panel.replaceChildren(h('div', { s: 'f-kayit-ic' }, alan, h('small', { s: 'f-not', t: M.kodNotu }), paylas ? h('div', { s: 'f-dg-sira' }, kopyala, paylas) : kopyala));
     alan.addEventListener('focus', () => metniSec(alan));
   };
 

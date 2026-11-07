@@ -466,7 +466,8 @@ export interface AyarlarVM {
   defterKartlari: boolean[];
   /** (Kancalar §B.5) Mahalle başına kasaba kartı açık mı (8). */
   kasabaKartlari?: boolean[];
-  depolama: 'bulut' | 'tarayici' | 'bellek';
+  /** `cihaz`: Android uygulaması (yalnız cihazda; Drive yedeği kapalı). */
+  depolama: 'bulut' | 'tarayici' | 'cihaz' | 'bellek';
   surum: string;
 }
 
@@ -620,6 +621,10 @@ export interface ArayuzGeriCagirim {
   balonlariSifirla(): void;
   /** Kayıt kodu (FTL1:…). */
   kayitKodu(): string;
+  /** Kayıt kodunu sistemin paylaş penceresiyle gönder (yoksa tanımsız: yalnız Kopyala). */
+  kayitPaylas?(): Promise<'tamam' | 'iptal' | 'yok'>;
+  /** Oyuncu kodu kopyaladı ya da paylaştı: yedek hatırlatması o ana dek susar. */
+  kayitYedeklendi?(): void;
   kayitOnizle(kod: string): KayitOnizleme;
   /** true = yüklendi. */
   kayitYukle(kod: string): boolean;

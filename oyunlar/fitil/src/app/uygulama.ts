@@ -33,7 +33,7 @@ import * as meta from '../meta';
 import type { Kayit } from '../meta';
 import { bolumGetir } from '../levels/index';
 import { acemiSec, ustaSec } from '../bot/index';
-import { MK, tarihUzun } from '../ui/metinler';
+import { M, MK, tarihUzun } from '../ui/metinler';
 import { KAPSUL_RENKLERI, MAHALLELER } from './katalog';
 import type { YolCizici } from './sozlesme';
 import { Kayitci } from './kayitci';
@@ -56,8 +56,10 @@ import {
 } from './gorunum';
 import { bekle, bugun, duvarSaati, rastgeleTohum, simdi } from './zaman';
 import { gelirSaglayici } from '../platform/gelir';
-import { geriTusunuDinle, gizlilikPolitikasi, gizlilikSecenekleri, yasamDinle, yerelHazir } from '../platform/yerel';
+import { geriTusunuDinle, gizlilikPolitikasi, gizlilikSecenekleri, yasamDinle, yerelHazir, yerelUygulamaMi } from '../platform/yerel';
 import { GelirAkisi, kayitKoduGelirKoru } from './gelirAkisi';
+import { paylas, paylasDestekli } from '../platform/paylas';
+import { yedekEsigi, yedekGoruldu } from './yedek';
 
 const SURUM = '1.0';
 const GORULEN_ANAHTARI = 'fitil.gorulen';
@@ -663,7 +665,9 @@ export class Uygulama {
       });
       return true;
     }
-    if (!oduller) return false;
+    // Yedek hatırlatması kazanca bağlı değil: eşikler mahalle sonu (Defter kartı öne geçer),
+    // kart haritaya ilk sakin dönüşte çıkar.
+    if (!oduller) return this.yedekHatirlat();
     // (KANCALAR §C.6) İlk sancak, yeni kozmetiğin haritadaki tek tanıtımı: aynı dönüşte
     // "Kandil yetti" de varsa önce sancak (kandil uyarısı bir sonraki dönüşe kalır).
     const sancak = oduller.find((o): o is Extract<meta.Odul, { tur: 'sancak' }> => o.tur === 'sancak');
@@ -676,7 +680,30 @@ export class Uygulama {
       goster(MK.kandilYetti(is.ad), 'kasaba', 3500, (x) => meta.kasabaUyarildi(x, is.id));
       return true;
     }
-    return false;
+    return this.yedekHatirlat();
+  }
+
+  /** Ayarlar'daki depolama satırı: Android'de kayıt yalnız cihazda (`cihaz`). */
+  private depolamaTuru(): 'bulut' | 'tarayici' | 'cihaz' | 'bellek' {
+    const d = this.kayitci.depo.backend;
+    return d === 'tarayici' && yerelUygulamaMi() ? 'cihaz' : d;
+  }
+
+  /**
+   * (YASAL-UYUM §3, `app/yedek.ts`) Kayıt hesapta değilse 10/20/30/40. bölüm
+   * kazanıldıktan sonra haritaya ilk sakin dönüşte (açık pencere yokken) bir
+   * kez "Kaydını yedekle" kartı. Kart gösterilince eşik görülmüş sayılır
+   * ("Sonra" da); pencere açıksa sonraki dönüşe kalır.
+   */
+  private yedekHatirlat(): boolean {
+    if (this.kayitci.depo.backend === 'bulut' || yedekEsigi(this.kayit) === null) return false;
+    void this.bekle(this.hizliKip ? 0 : 650).then(async () => {
+      if (!this.haritaAcik || this.ui.modalAcik) return;
+      this.kayitci.degistir(yedekGoruldu(this.kayit), 1500);
+      const kod = () => meta.kayitKoduUret(this.kayit);
+      await this.ui.yedekHatirlat(kod(), paylasDestekli() ? () => paylas(kod(), M.paylasBaslik) : undefined);
+    });
+    return true;
   }
 
   private sonrakiniAyarla(v: BolumVerisi): void {
@@ -916,7 +943,7 @@ export class Uygulama {
       await this.ui.politika(html);
       if (acik) this.ekranAdi = 'ayarlar';
     };
-    const p = this.ui.ayarlar(ayarlarVM(this.kayit, this.kayitci.depo.backend, sistemAzHareket(), SURUM), {
+    const p = this.ui.ayarlar(ayarlarVM(this.kayit, this.depolamaTuru(), sistemAzHareket(), SURUM), {
       nasilAc: () => void this.ui.nasilOynanir(nasilVM(this.kayit)),
       defterKartiAc: (m, tur) => void this.ui.defterKarti({ mahalle: m, oduller: [], tur }),
       oyunOzetiAc: () => void ozetAc(),
@@ -999,6 +1026,8 @@ export class Uygulama {
       },
       balonlariSifirla: () => this.kayitci.degistir(meta.ipuclariniSifirla(this.kayit)),
       kayitKodu: () => meta.kayitKoduUret(this.kayit),
+      ...(paylasDestekli() ? { kayitPaylas: () => paylas(meta.kayitKoduUret(this.kayit), M.paylasBaslik) } : {}),
+      kayitYedeklendi: () => this.kayitci.degistir(yedekGoruldu(this.kayit), 1500),
       kayitOnizle: (kod) => {
         const r = meta.kayitKoduCoz(kod);
         if (!r.tamam) return { gecerli: false, hata: r.mesaj };

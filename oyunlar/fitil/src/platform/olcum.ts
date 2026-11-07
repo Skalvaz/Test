@@ -64,6 +64,11 @@ declare global {
        * Ayarlar > Hakkında satırı (`platform/yerel.ts` `gizlilikPolitikasi()`).
        */
       politika?: () => string;
+      /**
+       * Sistemin paylaş penceresi (`@capacitor/share`; kayıt kodu yedeği).
+       * Uygulama `platform/paylas.ts` `paylas()` ile çağırır.
+       */
+      paylas?: (metin: string, baslik: string) => Promise<'tamam' | 'iptal' | 'yok'>;
     };
   }
 }

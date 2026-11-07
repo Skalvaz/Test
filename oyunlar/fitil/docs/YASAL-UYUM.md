@@ -61,6 +61,20 @@ claude.ai web sürümünde reklam ve satın alma hiç yoktur (bu belge Android i
   `[DOLDUR: avukatın yazılı görüşüne göre aktarım dayanağı …]` onunla doldurulur
   (doldurulmadan yayın derlemesi durur). Avukat standart sözleşme derse:
   Google'ın imzalayıp imzalamayacağı sorulur; imza olmazsa reklam çıkarılır.
+- ✅ **Kayıt yedeği (sunucusuz, Kasım 2026):** ilerleme yalnız cihazda; oyun
+  silinince gider. Ayarlar > Kayıt > Dışa aktar: kayıt kodu + **Paylaş**
+  (Android paylaş penceresi, `platform/paylas.ts`) / Kopyala. 10/20/30/40.
+  bölümün ilk kazancından sonra bir kez "Kaydını yedekle" kartı
+  (`app/yedek.ts`, `ui/ekranlar/yedek.ts`). Kod yalnız oyuncunun seçtiği
+  uygulamaya geçer; oyun ağ isteği yapmaz (politika §3'te yazılı). Kalıcı
+  satın alma (Usta Kartı) Google Play'den geri yüklenir; tüketilen ürün
+  stoku (can, güçlendirici) kodla taşınmaz (kötüye kullanım koruması,
+  `kayitKoduGelirKoru`) ve uygulama silinince gider.
+- ⚖️ **Android Otomatik Yedekleme (açılmadı):** açılırsa oyun verisi
+  oyuncunun kendi Google Drive hesabına yedeklenir (biz görmeyiz). Yurt dışı
+  aktarım sayılıp sayılmadığı avukata soruldu (`avukat-ozet.html`, SORULAR
+  §1 soru 9). Sunucu (Contabo) şimdilik yok: Türkiye'de veri merkezi yok,
+  yurt dışı aktarım sorusu doğar.
 - ✅ **VERBİS** (doğrulandı, D13): Kurul 2025/1572 — yıllık çalışan < 50 ve
   yıllık mali bilanço < 100 milyon TL, ana faaliyeti özel nitelikli veri
   işlemek olmayan veri sorumluları kayıttan istisna; bilanço esasına göre

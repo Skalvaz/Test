@@ -19,6 +19,7 @@ import politikaHtml from '../../../docs/gizlilik.html?raw';
 import { reklamIzniOku, reklamIzniYaz } from '../reklamIzni';
 import { gelirKoprusu } from './kopru';
 import { reklamKur, TEST_ODULLU } from './reklam';
+import { yerelPaylas } from './paylas';
 import { satinAlmaKur } from './satin';
 import { perdeKur, yasamKur } from './yasam';
 
@@ -50,6 +51,8 @@ export async function androidKur(): Promise<void> {
     hazir: () => perde.hazir(),
     // Play Kullanıcı Verileri politikası: gizlilik politikası uygulamanın içinde de (Ayarlar > Hakkında).
     politika: () => politikaHtml,
+    // Kayıt kodu yedeği: oyuncunun seçtiği uygulamaya (oyun hiçbir yere göndermez).
+    paylas: (metin, baslik) => yerelPaylas(metin, baslik),
   };
   void yasamKur().catch((e: unknown) => console.error('[fitil] geri tuşu / yaşam döngüsü kurulamadı', e));
   if (reklamIzniOku()?.izin === true) void reklam.baslat();

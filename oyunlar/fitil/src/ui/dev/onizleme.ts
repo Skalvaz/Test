@@ -400,6 +400,11 @@ async function calistir(): Promise<void> {
       await oyunSahnesi();
       log('reklam izni', await ui.reklamIzni(v === 'acik' ? { izin: true, kisisel: false, tarih: 1 } : null, () => log('aydınlatma metni')));
       break;
+    case 'yedek':
+      // (YASAL-UYUM §3) v=kopyala: paylaş yolu yok (yalnız Kopyala).
+      void haritaSahnesi(3);
+      log('yedek', await ui.yedekHatirlat('FTL1:ornekKod0000', v === 'kopyala' ? undefined : async () => (log('paylaş'), 'tamam')));
+      break;
     case 'cikisOnayi':
       // v=yeniden: "Yeniden başlarsan 1 can gider."
       await oyunSahnesi();

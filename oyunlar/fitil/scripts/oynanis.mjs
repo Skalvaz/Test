@@ -169,7 +169,8 @@ async function profilKos(browser, p) {
     return e;
   };
 
-  /** Sonuç ekranından haritaya (kazançta Devam + otomatik kart kapatılır). */
+  let yedekKarti = false;
+  /** Sonuç ekranından haritaya (kazançta Devam + otomatik kart kapatılır; yedek kartı Sonra). */
   const haritayaDon = async () => {
     const e = await ekran(page);
     if (e === 'kazandin') await dugme('Devam').click();
@@ -183,6 +184,15 @@ async function profilKos(browser, p) {
         await page.waitForTimeout(500);
         continue;
       }
+      if (await page.locator('.f-yedek-modal').count()) {
+        // (YASAL-UYUM §3) "Kaydını yedekle" kartı: 10/20/30/40'tan sonra bir kez; Sonra ile kapanır.
+        yedekKarti = true;
+        await page.waitForTimeout(400);
+        await kare('yedek-karti');
+        await dugme('Sonra').click();
+        await page.waitForTimeout(400);
+        continue;
+      }
       if (s === 'defterKarti') {
         await kare('defter-karti');
         await dugme('Devam').click();
@@ -190,6 +200,7 @@ async function profilKos(browser, p) {
         await dugme('Kapat').click();
       } else if (s === 'harita') {
         await page.waitForTimeout(1700);
+        if (await page.locator('.f-yedek-modal').count()) continue;
         if ((await ekran(page)) === 'harita') break;
       }
       await page.waitForTimeout(300);
@@ -482,6 +493,9 @@ async function profilKos(browser, p) {
       await kare('b7-kazandin-muhur');
     }
     await haritayaDon();
+    // (YASAL-UYUM §3) 10. bölüm kazanıldı: tarayıcı kaydında yedek kartı bir kez çıkmış olmalı.
+    const yk = await page.evaluate(() => ({ g: window.__fitil.kayit().ipuclari.gorulen.includes('yedek-10'), on: !!window.__fitil.kayit().bolumler['10']?.yildiz }));
+    if (yk.on && (!yedekKarti || !yk.g)) hatalar.push(`[${p.ad}] 10. bölümden sonra yedek kartı (gösterildi ${yedekKarti}, kayıtta ${yk.g})`);
   }
 
   // ── 4b. Usta Bölümü ve Sonsuz Şenlik başlangıcı (yalnız telefon profilinde; üretim uzun sürebilir)

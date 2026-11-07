@@ -78,6 +78,15 @@ export function yasamDinle(fn: (aktif: boolean) => void, hedef: EventTarget | nu
   return () => hedef.removeEventListener(YASAM_OLAYI, d);
 }
 
+/** Android uygulaması mı (yerel köprü kurulu; web, claude.ai ve `fitil.html`'de false). */
+export function yerelUygulamaMi(): boolean {
+  try {
+    return typeof window !== 'undefined' && !!window.FitilYerel;
+  } catch {
+    return false;
+  }
+}
+
 /** (Uygulama) Açılış ekranı kuruldu: Android'de yerel açılış perdesi kalkar; web'de etkisiz. */
 export function yerelHazir(): void {
   try {
