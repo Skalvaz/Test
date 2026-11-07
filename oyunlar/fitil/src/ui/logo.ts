@@ -86,6 +86,60 @@ function kasaba(): string {
     <g fill="#FFC85A">${pencere(112, 140)}${pencere(120, 140)}${pencere(164, 150)}${pencere(186, 150)}${pencere(206, 136)}${pencere(220, 136)}${pencere(240, 150)}${pencere(252, 150)}${pencere(288, 142)}${pencere(270, 94)}${pencere(270, 114)}</g>`;
 }
 
+/** Kemerin dış ve iç çizgisi (amblem ve mağaza simgesi). */
+const KEMER = `M96 ${KEMER_ALT}V108C96 64 142 30 200 10C258 30 304 64 304 108V${KEMER_ALT}Z`;
+const KEMER_IC = `M106 ${KEMER_ALT}V109C106 70 148 40 200 22C252 40 294 70 294 109V${KEMER_ALT}Z`;
+
+/** Degrade ve kırpma tanımları (`harfKirp`: harf çokgenleri; amblemde boş). */
+function tanimlar(id: string, harfKirp: string): string {
+  return `  <defs>
+    <linearGradient id="${id}-gok" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0E1438"/><stop offset=".6" stop-color="#22174A"/><stop offset="1" stop-color="#3A1C52"/></linearGradient>
+    <linearGradient id="${id}-cerceve" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE7A8"/><stop offset=".5" stop-color="#E0A04A"/><stop offset="1" stop-color="#A8601E"/></linearGradient>
+    <linearGradient id="${id}-yuz" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop offset="0" stop-color="#FFF4D2"/><stop offset=".38" stop-color="#FFD25E"/><stop offset=".72" stop-color="#FFA22E"/><stop offset="1" stop-color="#E8601C"/></linearGradient>
+    <linearGradient id="${id}-huzme" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFE7A0" stop-opacity=".55"/><stop offset="1" stop-color="#FFE7A0" stop-opacity="0"/></linearGradient>
+    <radialGradient id="${id}-hale"><stop offset="0" stop-color="#FFE7A0" stop-opacity=".7"/><stop offset=".4" stop-color="#FFB020" stop-opacity=".3"/><stop offset="1" stop-color="#FF7A1A" stop-opacity="0"/></radialGradient>
+    <radialGradient id="${id}-koz" cx=".4" cy=".36" r=".64"><stop offset="0" stop-color="#FFFBE6"/><stop offset=".4" stop-color="#FFD15C"/><stop offset=".8" stop-color="#FF7A1A"/><stop offset="1" stop-color="#E8561A"/></radialGradient>
+    <clipPath id="${id}-kemer"><path d="${KEMER_IC}"/></clipPath>
+    <clipPath id="${id}-harf">${harfKirp}</clipPath>
+  </defs>
+`;
+}
+
+/** Kemerli amblem: altın çerçeve, gece göğü, üç fişek, kasaba ve fener. */
+function amblem(id: string): string {
+  const kemer = KEMER;
+  const kemerIc = KEMER_IC;
+  const yildizlar = [[134, 64], [170, 40], [244, 46], [286, 100], [122, 104], [230, 104], [158, 120]]
+    .map(([a, b], i) => `<circle cx="${a}" cy="${b}" r="${i % 3 ? 1 : 1.5}" fill="#FFF3D6" opacity="${i % 2 ? 0.55 : 0.85}"/>`)
+    .join('');
+  return `  <g class="f-lg-amblem">
+    <path d="${kemer}" fill="${KONTUR}" stroke="${KONTUR}" stroke-width="10" stroke-linejoin="round"/>
+    <path d="${kemer}" fill="url(#${id}-cerceve)"/>
+    <path d="${kemerIc}" fill="url(#${id}-gok)"/>
+    <g clip-path="url(#${id}-kemer)">
+      ${yildizlar}
+      ${fisek(id, 200, 80, 44, 18, '#FFD25E', '#FFF1C0', 0.17, 2.9, 420)}
+      ${fisek(id, 146, 70, 18, 12, '#FF7A6A', '#FFC2B4', 0.3, 2.1, 620)}
+      ${fisek(id, 254, 62, 16, 12, '#6FD6E8', '#C8F4FA', 0.1, 2.1, 780)}
+      <g transform="translate(0 20)">${kasaba().replace(/LOGO-/g, `${id}-`)}</g>
+    </g>
+    <path d="${kemerIc}" fill="none" stroke="#FFE7A8" stroke-opacity=".35" stroke-width="1.5"/>
+  </g>
+`;
+}
+
+/**
+ * Yalnız amblem (yazısız; Play simgesi ve uyarlanabilir simgenin ön katmanı,
+ * `scripts/logo-yaz.ts`). viewBox kemeri kontur payıyla sarar.
+ */
+export function amblemSvg(id = 'fam'): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${AMBLEM_KUTU.join(' ')}" width="${AMBLEM_KUTU[2]}" height="${AMBLEM_KUTU[3]}">
+${tanimlar(id, '')}${amblem(id)}</svg>`;
+}
+
+/** Amblemin kutusu [x, y, w, h] (kontur 5 birim taşar). */
+export const AMBLEM_KUTU = [90, 4, 220, KEMER_ALT + 2] as const;
+
 /**
  * Logo SVG metni. `id` sayfada tek olmalı (degrade/kırpma kimliklerinin
  * öneki); `sinif` kök öğeye eklenir.
@@ -104,11 +158,6 @@ export function logoSvg(id = 'flg', sinif = 'f-logo-svg', etiket = 'FİTİL'): s
     derinlik += `<g transform="${t}">${harfler(`fill="${k > 5 ? '#4A1F08' : '#7A3812'}"`)}</g>`;
     derinlikKontur += `<g transform="${t}">${harfler('')}</g>`;
   }
-  const kemer = `M96 ${KEMER_ALT}V108C96 64 142 30 200 10C258 30 304 64 304 108V${KEMER_ALT}Z`;
-  const kemerIc = `M106 ${KEMER_ALT}V109C106 70 148 40 200 22C252 40 294 70 294 109V${KEMER_ALT}Z`;
-  const yildizlar = [[134, 64], [170, 40], [244, 46], [286, 100], [122, 104], [230, 104], [158, 120]]
-    .map(([a, b], i) => `<circle cx="${a}" cy="${b}" r="${i % 3 ? 1 : 1.5}" fill="#FFF3D6" opacity="${i % 2 ? 0.55 : 0.85}"/>`)
-    .join('');
   const kor = (cx: number, i: number) => `<g class="f-lg-kor" style="--lg-gec:${1000 + i * 160}ms" transform="translate(${f(cx)} -22)">
       <circle class="f-lg-hale" r="25" fill="url(#${id}-hale)"/>
       <circle r="12.5" fill="${KONTUR}"/>
@@ -116,30 +165,7 @@ export function logoSvg(id = 'flg', sinif = 'f-logo-svg', etiket = 'FİTİL'): s
       <circle cx="-2.9" cy="-3.2" r="2.9" fill="#FFFDF0" opacity=".9"/></g>`;
 
   return `<svg class="${sinif}" viewBox="0 0 ${LOGO_GENISLIK} ${LOGO_YUKSEKLIK}" role="img" aria-label="${etiket}" overflow="visible">
-  <defs>
-    <linearGradient id="${id}-gok" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0E1438"/><stop offset=".6" stop-color="#22174A"/><stop offset="1" stop-color="#3A1C52"/></linearGradient>
-    <linearGradient id="${id}-cerceve" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE7A8"/><stop offset=".5" stop-color="#E0A04A"/><stop offset="1" stop-color="#A8601E"/></linearGradient>
-    <linearGradient id="${id}-yuz" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100"><stop offset="0" stop-color="#FFF4D2"/><stop offset=".38" stop-color="#FFD25E"/><stop offset=".72" stop-color="#FFA22E"/><stop offset="1" stop-color="#E8601C"/></linearGradient>
-    <linearGradient id="${id}-huzme" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFE7A0" stop-opacity=".55"/><stop offset="1" stop-color="#FFE7A0" stop-opacity="0"/></linearGradient>
-    <radialGradient id="${id}-hale"><stop offset="0" stop-color="#FFE7A0" stop-opacity=".7"/><stop offset=".4" stop-color="#FFB020" stop-opacity=".3"/><stop offset="1" stop-color="#FF7A1A" stop-opacity="0"/></radialGradient>
-    <radialGradient id="${id}-koz" cx=".4" cy=".36" r=".64"><stop offset="0" stop-color="#FFFBE6"/><stop offset=".4" stop-color="#FFD15C"/><stop offset=".8" stop-color="#FF7A1A"/><stop offset="1" stop-color="#E8561A"/></radialGradient>
-    <clipPath id="${id}-kemer"><path d="${kemerIc}"/></clipPath>
-    <clipPath id="${id}-harf">${harfler('')}</clipPath>
-  </defs>
-  <g class="f-lg-amblem">
-    <path d="${kemer}" fill="${KONTUR}" stroke="${KONTUR}" stroke-width="10" stroke-linejoin="round"/>
-    <path d="${kemer}" fill="url(#${id}-cerceve)"/>
-    <path d="${kemerIc}" fill="url(#${id}-gok)"/>
-    <g clip-path="url(#${id}-kemer)">
-      ${yildizlar}
-      ${fisek(id, 200, 80, 44, 18, '#FFD25E', '#FFF1C0', 0.17, 2.9, 420)}
-      ${fisek(id, 146, 70, 18, 12, '#FF7A6A', '#FFC2B4', 0.3, 2.1, 620)}
-      ${fisek(id, 254, 62, 16, 12, '#6FD6E8', '#C8F4FA', 0.1, 2.1, 780)}
-      <g transform="translate(0 20)">${kasaba().replace(/LOGO-/g, `${id}-`)}</g>
-    </g>
-    <path d="${kemerIc}" fill="none" stroke="#FFE7A8" stroke-opacity=".35" stroke-width="1.5"/>
-  </g>
-  <g class="f-lg-yazi">${kelime(`
+${tanimlar(id, harfler(''))}${amblem(id)}  <g class="f-lg-yazi">${kelime(`
     <g fill="${KONTUR}" stroke="${KONTUR}" stroke-width="11" stroke-linejoin="round">${derinlikKontur}</g>
     ${derinlik}
     ${harfler(`fill="url(#${id}-yuz)" stroke="${KONTUR}" stroke-width="5" stroke-linejoin="round" paint-order="stroke"`)}

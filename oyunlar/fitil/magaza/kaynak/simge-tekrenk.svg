@@ -1,32 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  FİTİL uygulama simgesi — TEK RENK katman (Android 13+ temalı simge,
-  <monochrome>). Sistem yalnız alfayı kullanır ve kendi rengiyle boyar.
-  Ön katmanla aynı çizim (simge-on.svg), hale ve örgü yok; yıldızın
-  çevresinde ince boşluk (maske) var ki ip ile yıldız tek leke olmasın.
-  Kimlikler "t-" önekli.
+  FİTİL uygulama simgesi — TEK RENK katman: Android 13+ temalı simge; amblemin sade hâli (çerçeve, fişek, kasaba).
+  ÜRETİLİR (scripts/logo-yaz.ts, kaynak src/ui/logo.ts); elle düzenleme.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
-  <defs>
-    <!-- Maske ipin yerel koordinatlarında (ipi taşıyan grubun dönüşümüyle). -->
-    <mask id="t-bosluk" maskUnits="userSpaceOnUse" x="-20" y="-20" width="160" height="160">
-      <rect x="-20" y="-20" width="160" height="160" fill="#fff"/>
-      <path d="M64 30.4 65.5 40.6 74.6 42.2 65.5 43.8 64 54 62.5 43.8 53.4 42.2 62.5 40.6z" fill="#000" stroke="#000" stroke-width="3.4" stroke-linejoin="round"/>
-    </mask>
-  </defs>
-  <g transform="translate(54 54) scale(.84) translate(-58.5 -51)" fill="#FFFFFF">
-    <path mask="url(#t-bosluk)" d="M35 76C40.5 78.5 45.5 72 46 65S53.5 54 62.6 43.6" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
-    <g stroke="#FFFFFF" stroke-linecap="round" fill="none">
-      <path d="M70.5 35.5 77 29" stroke-width="2.4"/>
-      <path d="M73 43.6 81.6 45" stroke-width="2.2"/>
-      <path d="M64.8 33 65.6 24.4" stroke-width="2"/>
-      <path d="M57 35.6 51.6 30.2" stroke-width="2"/>
-      <path d="M70.4 49.6 75.6 55.4" stroke-width="2"/>
-    </g>
-    <circle cx="80.4" cy="26" r="1.7"/>
-    <circle cx="84.6" cy="45.4" r="1.4"/>
-    <circle cx="49" cy="27.6" r="1.3"/>
-    <circle cx="77.8" cy="58" r="1.3"/>
-    <path d="M64 30.4 65.5 40.6 74.6 42.2 65.5 43.8 64 54 62.5 43.8 53.4 42.2 62.5 40.6z" stroke="#FFFFFF" stroke-width="1" stroke-linejoin="round"/>
+  <g transform="translate(54 54) scale(0.25) translate(-200 -118)" fill="#fff">
+    <path d="M96 185V108C96 64 142 30 200 10C258 30 304 64 304 108V185Z M110 185V110C110 74 150 46 200 27C250 46 290 74 290 110V185Z" fill-rule="evenodd" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+    <g stroke="#fff" stroke-width="7" stroke-linecap="round" fill="none"><path d="M213.8 86.4L239.4 90.8"/><path d="M210.8 93.0L230.8 109.6"/><path d="M204.8 97.1L213.9 121.5"/><path d="M197.6 97.8L193.2 123.4"/><path d="M191.0 94.8L174.4 114.8"/><path d="M186.9 88.8L162.5 97.9"/><path d="M186.2 81.6L160.6 77.2"/><path d="M189.2 75.0L169.2 58.4"/><path d="M195.2 70.9L186.1 46.5"/><path d="M202.4 70.2L206.8 44.6"/><path d="M209.0 73.2L225.6 53.2"/><path d="M213.1 79.2L237.5 70.1"/></g>
+    <circle cx="200" cy="84" r="7"/>
+    <path d="M110 185V160L126 150L142 160V136H150V118L156 106L162 118V136H170V160C170 150 180 144 190 144C200 144 208 150 208 160L226 148L244 160H262V112L272 102L282 112V158H290V185Z"/>
   </g>
 </svg>

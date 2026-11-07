@@ -16,6 +16,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { execFileSync } from 'node:child_process';
 
 const KOK = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const KAYNAK = join(KOK, 'magaza', 'kaynak');
@@ -319,6 +320,11 @@ async function onizleme(c, klasor) {
  * (with alpha)"; 24 bit RGB yükleme reddedilebilir. Öne çıkan görsel ve ekran
  * görüntüleri 24 bit RGB kalır (onların şartı "JPEG ya da 24-bit PNG (alfa yok)").
  */
+/** Logo, simge ön katmanı ve temalı simge `src/ui/logo.ts`'ten (scripts/logo-yaz.ts). */
+function logoKaynaklari() {
+  execFileSync(process.execPath, [join(KOK, 'node_modules', 'tsx', 'dist', 'cli.mjs'), join(KOK, 'scripts', 'logo-yaz.ts')], { stdio: 'inherit', cwd: KOK });
+}
+
 async function playGorselleri(c) {
   const tam = tamSimgeSvg();
   yaz(join(KAYNAK, 'simge-tam.svg'), tam);
@@ -327,8 +333,10 @@ async function playGorselleri(c) {
   await c.ciz(sayfa(512, 512, [ic], { zemin: GECE }), 512, 512, join(PLAY, 'simge-512.png'), { alfa: true });
   yazilan.push(join(PLAY, 'simge-512.png'));
 
-  // Öne çıkan görsel 1024×500 (24 bit, saydamlık yok): Türkçe ve İngilizce.
-  const one = svgOku('one-cikan.svg');
+  // Öne çıkan görsel 1024×500 (24 bit, saydamlık yok): Türkçe ve İngilizce; logo oyunun kendisinden.
+  const logo = svgOku('logo.svg').replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
+  const one = svgOku('one-cikan.svg').replace(/<g id="logo-yeri" transform="([^"]*)"\/>/, (_, t) => `<g transform="${t}">${logo}</g>`);
+  if (!one.includes('lg-yuz')) throw new Error('one-cikan.svg: #logo-yeri bulunamadı');
   for (const [dil, dosya] of [
     ['tr', 'one-cikan-1024x500.png'],
     ['en', 'one-cikan-1024x500_en.png'],
@@ -355,7 +363,8 @@ const EKRAN = { w: 360, h: 640, dpr: 3 };
 function ilerlemisKayit(son, isler = []) {
   const b = {};
   for (let i = 1; i <= son; i++) b[i] = { yildiz: 3, enIyi: 9000, deneme: 1, basarisizSeri: 0, kazanc: 1, ...(i >= 6 ? { muhur: 3 } : {}) };
-  return { bolumler: b, kasaba: { isler, gunlukKandil: 0 }, ayarlar: { ipuclari: false } };
+  // Yedek hatırlatma kartı (app/yedek.ts) mağaza karelerine girmesin.
+  return { bolumler: b, kasaba: { isler, gunlukKandil: 0 }, ayarlar: { ipuclari: false }, ipuclari: { gorulen: ['yedek-10', 'yedek-20', 'yedek-30', 'yedek-40'], ciftDokunus: 0 } };
 }
 
 /** Harita karesi: İskele ve Çarşı tamamen, Liman yarıya kadar süslü (bakiye artıda: 39★ + 16 mühür + 2 mahalle). */
@@ -565,6 +574,7 @@ if (!['varsayilan', 'simge', 'play', 'onizleme'].includes(komut)) {
   console.error('kullanım: node scripts/magaza-gorselleri.mjs [simge|play|ekran <url> [tr|en] [sahne,…]|onizleme <klasör>]');
   process.exit(1);
 }
+if (komut !== 'onizleme') logoKaynaklari();
 const c = new Cizer();
 await c.ac();
 try {

@@ -2,12 +2,12 @@
 <!--
   FİTİL Play öne çıkan görseli (1024×500; docs/ANDROID.md §4).
   Gece göğü, ay, havai fişekler, yanan fitille bağlanmış kapsüller (GDD
-  §13.2), ortada yanmış FİTİL yazısı (açılış logosu, src/ui/ekranlar/acilis.ts)
-  ve slogan; altta açılış ekranının kasabası (kasabaSilueti('fener-koyu',
+  §13.2), ortada oyunun logosu (magaza/kaynak/logo.svg, src/ui/logo.ts'ten
+  üretilir; betik #logo-yeri'ne gömer) ve slogan; altta açılış ekranının kasabası (kasabaSilueti('fener-koyu',
   1100) çıktısı, animasyon sınıfları atıldı).
   Dil: .tr / .en grupları; varsayılan Türkçe. Üretim betiği
-  (scripts/magaza-gorselleri.mjs) İngilizce için .tr'yi gizler; İngilizce
-  yazı işareti noktasız "FITIL". Slogan Nunito 800 (betik yazı tipini gömer).
+  (scripts/magaza-gorselleri.mjs) İngilizce için .tr'yi gizler; logo iki
+  dilde aynı (oyunun adı FİTİL). Slogan Nunito 800 (betik yazı tipini gömer).
   Kimlikler "c-" önekli.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
@@ -246,13 +246,12 @@
   <g transform="translate(790 202)"><circle r="31.68" fill="url(#c-p-kehribar)"/><path d="M0 -19.01L6.21 -7.39L19.17 -5.08L10.04 4.42L11.85 17.46L0 11.71L-11.85 17.46L-10.04 4.42L-19.17 -5.08L-6.21 -7.39Z" fill="url(#c-k-kehribar)" stroke="#8A5A00" stroke-width="1.6" stroke-linejoin="round"/><circle r="9.6" fill="url(#c-ic)"/><ellipse cx="-6.91" cy="-8.06" rx="8.64" ry="4.22" fill="#FFFFFF" opacity=".55" transform="rotate(-30 -6.91 -8.06)"/></g>
 
   <!-- Yazı işareti + slogan -->
-  <ellipse cx="512.0" cy="119.0" rx="330" ry="150" fill="url(#c-yazi-hale)"/>
-  <g class="tr" transform="translate(287 26) scale(1.5)"><g fill="none" stroke="#000" stroke-opacity=".5" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 4)"><path d="M30 100V24H72"/><path d="M30 61H63"/><path d="M106 100V48"/><path d="M128 24H176"/><path d="M152 24V100"/><path d="M204 100V48"/><path d="M232 24V100H270"/></g><g fill="#000" fill-opacity=".5" transform="translate(0 4)"><circle cx="106" cy="25" r="9.5"/><circle cx="204" cy="25" r="9.5"/></g><g fill="none" stroke="#2A1408" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M30 100V24H72"/><path d="M30 61H63"/><path d="M106 100V48"/><path d="M128 24H176"/><path d="M152 24V100"/><path d="M204 100V48"/><path d="M232 24V100H270"/></g><g fill="#2A1408"><circle cx="106" cy="25" r="9.5"/><circle cx="204" cy="25" r="9.5"/></g><g filter="url(#c-bulanik)" fill="none" stroke="#FF9A2C" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" opacity=".85"><path d="M30 100V24H72"/><path d="M30 61H63"/><path d="M106 100V48"/><path d="M128 24H176"/><path d="M152 24V100"/><path d="M204 100V48"/><path d="M232 24V100H270"/></g><g filter="url(#c-bulanik)" fill="#FF9A2C" opacity=".85"><circle cx="106" cy="25" r="10"/><circle cx="204" cy="25" r="10"/></g><g fill="none" stroke="url(#c-alev)" stroke-width="11.5" stroke-linecap="round" stroke-linejoin="round"><path d="M30 100V24H72"/><path d="M30 61H63"/><path d="M106 100V48"/><path d="M128 24H176"/><path d="M152 24V100"/><path d="M204 100V48"/><path d="M232 24V100H270"/></g><g fill="url(#c-alev)"><circle cx="106" cy="25" r="7.5"/><circle cx="204" cy="25" r="7.5"/></g></g>
-  <g class="en" transform="translate(287 26) scale(1.5)"><g fill="none" stroke="#000" stroke-opacity=".5" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 4)"><path d="M30 100V24H72"/><path d="M30 61H63"/><path d="M106 100V24"/><path d="M128 24H176"/><path d="M152 24V100"/><path d="M204 100V24"/><path d="M232 24V100H270"/></g><g fill="#000" fill-opacity=".5" transform="translate(0 4)"></g><g fill="none" stroke="#2A1408" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M30 100V24H72"/><path d="M30 61H63"/><path d="M106 100V24"/><path d="M128 24H176"/><path d="M152 24V100"/><path d="M204 100V24"/><path d="M232 24V100H270"/></g><g fill="#2A1408"></g><g filter="url(#c-bulanik)" fill="none" stroke="#FF9A2C" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" opacity=".85"><path d="M30 100V24H72"/><path d="M30 61H63"/><path d="M106 100V24"/><path d="M128 24H176"/><path d="M152 24V100"/><path d="M204 100V24"/><path d="M232 24V100H270"/></g><g filter="url(#c-bulanik)" fill="#FF9A2C" opacity=".85"></g><g fill="none" stroke="url(#c-alev)" stroke-width="11.5" stroke-linecap="round" stroke-linejoin="round"><path d="M30 100V24H72"/><path d="M30 61H63"/><path d="M106 100V24"/><path d="M128 24H176"/><path d="M152 24V100"/><path d="M204 100V24"/><path d="M232 24V100H270"/></g><g fill="url(#c-alev)"></g></g>
+  <ellipse cx="512.0" cy="150.0" rx="330" ry="170" fill="url(#c-yazi-hale)"/>
+  <g id="logo-yeri" transform="translate(317 6) scale(.975)"/>
   <g class="slogan" text-anchor="middle" font-size="34">
-    <text class="tr" x="512.0" y="271" fill="#000" fill-opacity=".55">Bir çizgi çek, geceyi tutuştur.</text>
-    <text class="tr" x="512.0" y="268" fill="#FFF3D6">Bir çizgi çek, geceyi tutuştur.</text>
-    <text class="en" x="512.0" y="271" fill="#000" fill-opacity=".55">Draw a line, light up the night.</text>
-    <text class="en" x="512.0" y="268" fill="#FFF3D6">Draw a line, light up the night.</text>
+    <text class="tr" x="512.0" y="327" fill="#000" fill-opacity=".55">Bir çizgi çek, geceyi tutuştur.</text>
+    <text class="tr" x="512.0" y="324" fill="#FFF3D6">Bir çizgi çek, geceyi tutuştur.</text>
+    <text class="en" x="512.0" y="327" fill="#000" fill-opacity=".55">Draw a line, light up the night.</text>
+    <text class="en" x="512.0" y="324" fill="#FFF3D6">Draw a line, light up the night.</text>
   </g>
 </svg>
