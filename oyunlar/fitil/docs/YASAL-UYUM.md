@@ -55,8 +55,12 @@ claude.ai web sürümünde reklam ve satın alma hiç yoktur (bu belge Android i
   1.000.000 TL, 2024 tutarı). Google AdMob'da bağımsız veri sorumlusu ve
   şartlarında KVKK standart sözleşmesi yok. Kanun kapsamında oyuncunun ülkesine
   göre sınır yok; yalnız Türk oyunculara reklamı kapatmak soruyu kesin çözmez.
-  Kesin çözüm: ❓ **AdMob'u hiç kullanmamak** (reklam verisi cihazdan çıkmaz) ya
-  da ⚖️ yayından önce avukatın S1–S3'e yazılı görüşü.
+  Kesin çözüm: AdMob'u hiç kullanmamak ya da avukatın S1–S3'e yazılı görüşü.
+  **Ürün sahibinin kararı (7 Kasım 2026): reklamlı, avukat onayıyla.** ⚖️ Yayından
+  önce avukat S1–S3'ü yazılı yanıtlar; `docs/gizlilik.html` §5'teki
+  `[DOLDUR: avukatın yazılı görüşüne göre aktarım dayanağı …]` onunla doldurulur
+  (doldurulmadan yayın derlemesi durur). Avukat standart sözleşme derse:
+  Google'ın imzalayıp imzalamayacağı sorulur; imza olmazsa reklam çıkarılır.
 - ✅ **VERBİS** (doğrulandı, D13): Kurul 2025/1572 — yıllık çalışan < 50 ve
   yıllık mali bilanço < 100 milyon TL, ana faaliyeti özel nitelikli veri
   işlemek olmayan veri sorumluları kayıttan istisna; bilanço esasına göre
