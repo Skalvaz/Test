@@ -1,6 +1,6 @@
 # FİTİL — Yasal uyum kontrol listesi (Play, KVKK, GDPR, ABD)
 
-Kasım 2026. Ürün sahibinin isteği: Türkiye'de ve yurt dışında eksiksiz, ceza
+Kasım 2026 (7 Kasım'da birincil kaynaklardan yeniden doğrulandı: `docs/YASAL-DOGRULAMA.md`). Ürün sahibinin isteği: Türkiye'de ve yurt dışında eksiksiz, ceza
 riski en aza indirilmiş yayın. **Bu belge hukuki görüş değildir.** Kodda ve
 belgelerde yapılabilecek her şey yapıldı; ⚖️ işaretli maddeler bir avukat ya
 da mali müşavirin onayını ister, 👤 işaretliler ürün sahibinin kendi
@@ -48,19 +48,20 @@ claude.ai web sürümünde reklam ve satın alma hiç yoktur (bu belge Android i
 - 👤 Yer tutucular: veri sorumlusunun **adı/unvanı, posta adresi, e-postası,
   yürürlük tarihi** (`[DOLDUR: …]`, `iletisim@ornek.com`). Yayın derlemesi bunlar
   kalırsa durur (`android/app/build.gradle`).
-- ⚖️ **Yurt dışına aktarım (m.9, 2024 değişikliği):** açık rıza artık yalnız
-  *arızi* (ara sıra) aktarımlarda dayanak. Reklam SDK'sının aktarımı düzenli
-  olduğundan, avukatın şunlardan birini onaylaması gerekir:
-  1. Google'ın KVKK standart sözleşmesi varsa kabul edip imzadan sonra **5 iş
-     günü içinde KVKK'ya bildirmek** (bildirmemenin idari para cezası var);
-  2. ya da ❓ **Türkiye'de reklamı tamamen kapatmak** (en düşük risk; kodda
-     kolay: cihaz bölgesi Türkiye ise reklam satırları hiç görünmez, gelir
-     yalnız satın almadan). Karar ürün sahibinin.
-  Satın alma verisini Google Play kendi müşterisi olarak işler; geliştirici
-  tarafında yurt dışı aktarımı yoktur (⚖️ teyit).
-- ✅ **VERBİS:** yıllık çalışan sayısı 50'den, yıllık mali bilançosu Kurul
-  eşiğinden az olan ve ana faaliyeti özel nitelikli veri işlemek olmayan veri
-  sorumluları kayıttan muaf. ⚖️ eşiği güncel Kurul kararıyla teyit et.
+- ❗ **Yurt dışına aktarım (m.9) — doğrulandı, karar bekliyor** (`YASAL-DOGRULAMA.md`
+  D1–D10, S1–S3): Kurul hiçbir ülke için yeterlilik kararı vermedi; açık rıza
+  yalnız *arızi* aktarımda dayanak; düzenli aktarım için standart sözleşme +
+  imzadan sonra 5 iş günü içinde Kurul'a bildirim (bildirmeme cezası 50.000 –
+  1.000.000 TL, 2024 tutarı). Google AdMob'da bağımsız veri sorumlusu ve
+  şartlarında KVKK standart sözleşmesi yok. Kanun kapsamında oyuncunun ülkesine
+  göre sınır yok; yalnız Türk oyunculara reklamı kapatmak soruyu kesin çözmez.
+  Kesin çözüm: ❓ **AdMob'u hiç kullanmamak** (reklam verisi cihazdan çıkmaz) ya
+  da ⚖️ yayından önce avukatın S1–S3'e yazılı görüşü.
+- ✅ **VERBİS** (doğrulandı, D13): Kurul 2025/1572 — yıllık çalışan < 50 ve
+  yıllık mali bilanço < 100 milyon TL, ana faaliyeti özel nitelikli veri
+  işlemek olmayan veri sorumluları kayıttan istisna; bilanço esasına göre
+  defter tutmayanlarda yalnız çalışan sayısı esas alınır. İstisna, Kanun'un
+  öteki yükümlülüklerinden muafiyet değildir.
 - ✅ **Veri ihlali:** sunucu ve kullanıcı veritabanı olmadığı için ihlal alanı
   çok dar. Yine de bir ihlal öğrenilirse KVKK'ya **72 saat** içinde, ilgililere
   makul sürede bildirilir (👤 süreç sende).
@@ -84,10 +85,11 @@ claude.ai web sürümünde reklam ve satın alma hiç yoktur (bu belge Android i
 - ✅ **Uygulama içi satın alma** yalnız Google Play Faturalandırma ile;
   fiyatlar mağazadan, vergi dahil yerel para biriminde.
 - ✅ Hesap yok → hesap silme zorunluluğu yok (`PLAY-KONSOL.md` §10.3).
-- 👤 **AB Dijital Hizmetler Yasası (DSA) satıcı beyanı:** Play Console'da
-  "tacir (trader)" olduğunu beyan et; para kazanan geliştirici tacirdir.
-  Adın, adresin, e-postan ve telefonun AB'deki mağaza sayfasında görünür.
-  Ev adresini göstermek istemiyorsan bir şirket/iş adresi kullan (⚖️).
+- 👤 **Geliştirici bilgileri görünürlüğü** (doğrulandı, D12): Play yasal
+  adını, ülkeni ve geliştirici e-postanı gösterir; **para kazanıyorsan tam
+  adresini** gösterir; bazı bölgelerde telefon da. Ad ve adres Google
+  Payments profilinden alınır ve doğrulanır. Ev adresinin görünmesini
+  istemiyorsan bir iş adresi gerekir (⚖️ şirket/şahıs işletmesi).
 - 👤 Ödeme profili ve satıcı hesabında gerçek kimlik, vergi bilgisi.
 
 ## 5. AB / Birleşik Krallık (GDPR, UK GDPR)
