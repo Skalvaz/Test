@@ -208,7 +208,17 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   haritada yok (bölgelerin opak göğü arka katmanı örter). KURAL: her görsel
   eklemeyi 2–3 kat büyütülmüş kareyle denetle (hizalama, taşma, yazıyla
   çakışma); sekiz mahalle için scratch `kasaba-denet` tarzı toplu görüntü.
-  Sıradaki adaylar: kazanç anı, günlük dönüş ödülü akışı, arayüz sesleri.
+  3. dalga (ürün sahibi "sen devam et, sonda hepsini denerim"): yakın plan
+  tarama — harita evlerinde pencere halesi komşu haleye değmez (`ui/harita/
+  cizim.ts` `pencereler`: aralıktan büyüktü, üst üste binip bant yapıyordu);
+  iskele fenerleri yalnız alt düğme bandına kadar yer varsa (`gok.kur(…,
+  altSinir)`: 360×640 ve 375×600'de yok, yatay yerleşimde var); düğme sesi
+  yumuşak ahşap "tok" (587 Hz; eski 880 Hz + 4 kHz tıkırtı). İncelenip
+  dokunulmayanlar (zaten iyi): Kazandın zaman çizelgesi, hamle animasyonu, 12
+  menü ekranı, günlük dönüş (Fener Nöbeti + görevler + Günün Şenliği var; yeni
+  meta sistem EKLEME: YAYIN.md "yedi sistem üst üste" dersi). Önizleme
+  örneğindeki "0 eksik" yalnız `dev/ornekler.ts` verisi (gerçekte `yetersiz`
+  ⇒ eksik ≥ 1). Mağaza ekran görüntüleri yeni sahneyle yeniden çekildi.
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).

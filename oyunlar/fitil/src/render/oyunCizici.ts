@@ -475,7 +475,7 @@ class OyunCiziciSinifi implements OyunCizici {
     const t = s.tahta;
     const F = s.cerceve;
     const c = s.c;
-    this.gok.kur(s.ekranW, s.ekranH, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F }, s.secenek.gokyuzu || undefined);
+    this.gok.kur(s.ekranW, s.ekranH, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F }, s.secenek.gokyuzu || undefined, s.alan.w < s.ekranW ? s.ekranH : s.alan.y + s.alan.h);
   }
 
   /** Yerleşim hesabı (pişirme yok). Tahta yoksa false. */

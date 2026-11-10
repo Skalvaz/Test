@@ -1206,9 +1206,11 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
       case 'dugme': {
         const s = sesAc('dugme', 0.08, { kazanc: 0.2 });
         if (!s) return;
-        ton(s, { dalga: 'triangle', f: 880, a: 0.001, d: 0.05, g: 1 });
-        ton(s, { f: 1760, a: 0.001, d: 0.02, g: 0.3 });
-        gur(s, { renk: 'beyaz', filtre: 'bandpass', f: 4000, q: 1.5, a: 0.0005, d: 0.008, g: 0.35 });
+        // Yumuşak ahşap "tok" (Kasım 2026, sakin ton: eskiden 880 Hz + 4 kHz tıkırtı, daha keskindi).
+        ton(s, { dalga: 'triangle', f: 587.33, a: 0.001, d: 0.06, g: 1 });
+        ton(s, { f: 1174.66, a: 0.001, d: 0.025, g: 0.22 });
+        ton(s, { f: 196, a: 0.001, d: 0.045, g: 0.5 });
+        gur(s, { renk: 'beyaz', filtre: 'bandpass', f: 2400, q: 1.2, a: 0.0005, d: 0.01, g: 0.22 });
         return;
       }
       case 'ac':

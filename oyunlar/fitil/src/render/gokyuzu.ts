@@ -99,9 +99,15 @@ export class Gokyuzu {
    * `tema` (P5 ek): oyuncunun Fişek Defteri'nde seçtiği kişisel gökyüzü
    * (§10.3); verilmezse mahallenin teması. Siluet her zaman mahallenindir.
    */
-  kur(w: number, h: number, dpr: number, mahalle: number, gokBandi: Dikdortgen, sandik: Dikdortgen | null, tema?: string): void {
+  /**
+   * `altSinir`: tahtanın altında tuvale kalan boş alanın alt kenarı (dikey
+   * telefonda alt düğme bandının üstü; verilmezse ekranın altı). İskele
+   * fenerleri yalnız bu sınırın üstüne tam sığarsa asılır (küçük ekranda
+   * düğmelerin arkasına girmesinler).
+   */
+  kur(w: number, h: number, dpr: number, mahalle: number, gokBandi: Dikdortgen, sandik: Dikdortgen | null, tema?: string, altSinir?: number): void {
     // Aynı girdiyle yeniden pişirme yok (Tekrar dene, aynı yerleşimde yeni bölüm).
-    const anahtar = `${w},${h},${dpr},${mahalle},${gokBandi.x},${gokBandi.y},${gokBandi.w},${gokBandi.h},${sandik ? `${sandik.x},${sandik.y},${sandik.w},${sandik.h}` : '-'},${tema ?? ''}`;
+    const anahtar = `${w},${h},${dpr},${mahalle},${gokBandi.x},${gokBandi.y},${gokBandi.w},${gokBandi.h},${sandik ? `${sandik.x},${sandik.y},${sandik.w},${sandik.h}` : '-'},${tema ?? ''},${altSinir ?? ''}`;
     if (anahtar === this.anahtar && this.taban) return;
     this.anahtar = anahtar;
     this.w = w;
@@ -227,9 +233,10 @@ export class Gokyuzu {
         ctx.fillStyle = ig;
         ctx.fillRect(-ir, 0, 2 * ir, ir);
         ctx.restore();
-        // İki dış ayağa asılı fener (gövde pişer; ışığı ve yansıması karede).
+        // İskele kirişine asılı iki fener (gövde pişer; ışığı ve yansıması karede):
+        // yalnız altlarında düğme bandına kadar yer varsa (fener sy + 37'de biter).
         this.iskeleFenerY = sy + 31;
-        this.iskeleFener = [sx + sw * 0.125, sx + sw * 0.875];
+        this.iskeleFener = (altSinir ?? h) - sy >= 56 ? [sx + sw * 0.125, sx + sw * 0.875] : [];
         for (const fx of this.iskeleFener) {
           ctx.fillStyle = '#0A0604';
           ctx.fillRect(fx - 0.5, sy + 18, 1, 8);

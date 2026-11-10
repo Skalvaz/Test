@@ -128,7 +128,11 @@ function pencereler(r: Rng, x0: number, y0: number, sut: number, sat: number, ar
         ? `M${f(x)} ${f(y + ph)}V${f(y + pw / 2)}a${f(pw / 2)} ${f(pw / 2)} 0 0 1 ${f(pw)} 0V${f(y + ph)}z`
         : `M${f(x)} ${f(y)}h${f(pw)}v${f(ph)}h${f(-pw)}z`;
       if (yan) {
-        s += `<rect x="${f(x - pw * 0.7)}" y="${f(y - ph * 0.4)}" width="${f(pw * 2.4)}" height="${f(ph * 1.8)}" rx="${f(pw)}" fill="#FFB020" opacity=".16"/>`;
+        // Işık halesi pencereye ortalı; komşu pencerenin halesine değmez (eskiden satır/sütun
+        // aralığından büyüktü: haleler üst üste binip koyu bantlar yapıyordu).
+        const hw = Math.min(pw * 2.4, sut > 1 && aralikX > 0 ? aralikX - 1.5 : pw * 2.4);
+        const hh = Math.min(ph * 1.8, sat > 1 && aralikY > 0 ? aralikY - 1.5 : ph * 1.8);
+        s += `<rect x="${f(x + (pw - hw) / 2)}" y="${f(y + (ph - hh) / 2)}" width="${f(hw)}" height="${f(hh)}" rx="${f(Math.min(pw, hw / 2, hh / 2))}" fill="#FFB020" opacity=".16"/>`;
         s += `<path d="${yol}" fill="${PENCERE_ISIK}"/>`;
         if (!kemer) s += `<path d="M${f(x + pw / 2)} ${f(y)}v${f(ph)}M${f(x)} ${f(y + ph / 2)}h${f(pw)}" stroke="#8A5A20" stroke-width=".7" opacity=".7"/>`;
       } else {
