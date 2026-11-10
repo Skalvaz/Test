@@ -25,6 +25,37 @@ export function yildizAlani(tohum: string | number, adet = 110, kipirti = 14): S
 }
 
 /**
+ * Dilek fenerleri (Kasım 2026, "cozy"; oyun sahnesindeki `render/gokyuzu.ts`
+ * fenerlerinin DOM karşılığı): kabın altından ağır ağır yükselip tepede söner.
+ * Yalnız `transform` + `opacity` canlandırılır. Kasaba/harita içeriğinden ÖNCE
+ * eklenir ki fenerler yapıların arkasından çıksın. Hareketi azalt açıkken
+ * görünmez (canlandırma tek karede biter).
+ *
+ * `seritler`: fenerlerin yükseleceği yatay bantlar (% cinsinden [sol, sağ]);
+ * verilmezse bütün genişlik. Açılış ekranı yalnız iki kenar bandını kullanır:
+ * fenerler logonun, sloganın ve düğmenin arkasından geçmez (yazı temiz kalsın).
+ */
+export function dilekFenerleri(tohum: string | number, adet = 6, seritler?: readonly (readonly [number, number])[]): HTMLElement {
+  const r = new Rng(tohum);
+  const kap = document.createElement('div');
+  kap.className = 'f-dilekler';
+  kap.setAttribute('aria-hidden', 'true');
+  for (let i = 0; i < adet; i++) {
+    const el = document.createElement('i');
+    el.className = 'f-dilek';
+    // Yatayda eşit dilimlere dağıt (üst üste binmesinler), dilim içinde rastgele.
+    const serit = seritler?.[i % seritler.length];
+    const sol = serit ? serit[0] + r.float() * (serit[1] - serit[0]) : ((i + 0.15 + r.float() * 0.7) / adet) * 100;
+    const sure = 62 + r.float() * 34;
+    // Aynı şeritteki fenerler süre boyunca eşit aralıkla dizilir (üst üste binmesinler).
+    const gec = serit ? -((Math.floor(i / seritler.length) + 0.2 + r.float() * 0.5) / Math.ceil(adet / seritler.length)) * sure : -r.float() * sure;
+    el.style.cssText = `left:${f(sol)}%;--df-sure:${f(sure)}s;--df-gec:${f(gec)}s;--df-boy:${f(0.8 + r.float() * 0.5)};--df-sal:${f((r.float() - 0.5) * (serit ? 14 : 36))}px`;
+    kap.appendChild(el);
+  }
+  return kap;
+}
+
+/**
  * Fener Koyu kasaba silueti + deniz (yükseklik 260 birim, alta yaslı).
  * Kubbe, minare, saat kulesi, sağ yamaçta dönen ışıklı deniz feneri.
  * `genislik`: geniş ekranda siluet kırpılmasın diye viewBox genişliği

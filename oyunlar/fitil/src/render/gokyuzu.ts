@@ -74,6 +74,11 @@ export class Gokyuzu {
   private kayikSprite: Sprite | null = null;
   private haleSprite: Sprite | null = null;
   private fenerler: DilekFeneri[] = [];
+  /**
+   * Oyuncunun kazandığı dilek fenerleri (`dilekSal`): iyi hamlede ve kazançta
+   * salınır, bir kez yükselip söner. Sabit havuz (kare başına bellek yok).
+   */
+  private readonly ekFenerler: (DilekFeneri & { yas: number; aktif: boolean })[] = Array.from({ length: 28 }, () => ({ x: 0, y: 0, hiz: 0, faz: 0, sal: 0, boy: 1, yas: 0, aktif: false }));
   /** Kayık: deniz bandı yeterince yüksekse (≥ 24 px). `yon` +1 sağa. */
   private kayikVar = false;
   private kayikX = 0;
@@ -378,6 +383,27 @@ export class Gokyuzu {
     this.kayikX = w * (0.15 + 0.7 * this.rz.float());
     this.kayikBekle = 0;
     this.kyYas = -(6000 + this.rz.float() * 14000);
+    for (const f of this.ekFenerler) f.aktif = false;
+  }
+
+  /**
+   * Oyuncu için `adet` dilek feneri sal (iyi hamle, kazanç): çatıların hemen
+   * arkasından hızlıca çıkar, sonra ağırlaşarak yükselir. Hareketi azalt açıkken yok.
+   */
+  dilekSal(adet: number): void {
+    if (this.sakin || !this.fenerSprite) return;
+    let kalan = adet;
+    for (const f of this.ekFenerler) {
+      if (kalan <= 0) break;
+      if (f.aktif) continue;
+      this.fenerDogur(f, this.w);
+      f.y = this.ufuk - 12 - this.rz.float() * 46;
+      f.hiz = 16 + this.rz.float() * 8;
+      f.boy *= 1.1;
+      f.yas = 0;
+      f.aktif = true;
+      kalan--;
+    }
   }
 
   private fenerDogur(f: DilekFeneri, w: number): void {
@@ -411,6 +437,14 @@ export class Gokyuzu {
     for (const f of this.fenerler) {
       f.y -= f.hiz * sn;
       if (f.y < tavan) this.fenerDogur(f, this.w);
+    }
+    for (const f of this.ekFenerler) {
+      if (!f.aktif) continue;
+      f.yas += dt;
+      // Hızlı çıkış, sonra ağır süzülme (~6 px/sn'ye iner).
+      f.hiz += (6 - f.hiz) * Math.min(1, sn * 0.9);
+      f.y -= f.hiz * sn;
+      if (f.y < tavan) f.aktif = false;
     }
     if (this.kayikVar) {
       if (this.kayikBekle > 0) this.kayikBekle -= dt;
@@ -486,6 +520,14 @@ export class Gokyuzu {
         const a = Math.min(1, k * 6) * Math.min(1, (1 - k) * 3.2);
         if (a <= 0.01) continue;
         c.globalAlpha = a * (0.86 + 0.14 * Math.sin(t * 2.3 + f.faz * 3));
+        spriteCiz(c, fs, f.x + Math.sin(t * 0.35 + f.faz) * f.sal * (0.4 + k), f.y, f.boy * (1 - 0.28 * k));
+      }
+      for (const f of this.ekFenerler) {
+        if (!f.aktif) continue;
+        const k = Math.max(0, (this.ufuk - f.y) / yol);
+        const a = Math.min(1, f.yas / 500) * Math.min(1, (1 - k) * 3.2);
+        if (a <= 0.01) continue;
+        c.globalAlpha = a * (0.88 + 0.12 * Math.sin(t * 2.3 + f.faz * 3));
         spriteCiz(c, fs, f.x + Math.sin(t * 0.35 + f.faz) * f.sal * (0.4 + k), f.y, f.boy * (1 - 0.28 * k));
       }
       c.globalAlpha = 1;

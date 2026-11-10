@@ -62,6 +62,9 @@ const BILGI = {
 };
 
 /** Anında bitirmede bile bildirilen (durum taşıyan) olaylar. */
+/** Reaksiyon kademesine göre salınan dilek feneri sayısı. */
+const DILEK_ADEDI: Record<string, number> = { guzel: 1, harika: 2, muhtesem: 3, senlik: 5 };
+
 const DURUM_OLAYLARI = new Set(['hedefIlerledi', 'puanEklendi', 'korukDoldu', 'korukKullanildi', 'reaksiyon', 'bolumBitti', 'finalBasladi']);
 
 /** Hedef kıvılcımının kaynağı olabilecek olaylar. */
@@ -990,6 +993,8 @@ class OyunCiziciSinifi implements OyunCizici {
         else {
           this.parlaHedef = 1;
           for (let k = 0; k < 5; k++) this.zamanla(200 + k * 380, () => this.gokFisegi());
+          // Kazanç: gök dilek fenerleriyle dolar (üç dalga).
+          for (let k = 0; k < 3; k++) this.zamanla(300 + k * 900, () => this.gok.dilekSal(4));
         }
         break;
       }
@@ -1506,6 +1511,8 @@ class OyunCiziciSinifi implements OyunCizici {
       }
     }
     if (kademe === 'senlik' || kademe === 'muhtesem') for (let k = 0; k < (kademe === 'senlik' ? 3 : 1); k++) this.zamanla(120 + k * 300, () => this.gokFisegi());
+    // İyi hamlenin sakin ödülü: kasabadan dilek fenerleri yükselir (kademe büyüdükçe çok).
+    this.gok.dilekSal(DILEK_ADEDI[kademe] ?? 1);
   }
 
   /**

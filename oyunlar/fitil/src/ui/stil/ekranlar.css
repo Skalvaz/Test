@@ -50,6 +50,37 @@
 .f-acilis-gok { position: absolute; inset: 0; background: radial-gradient(90% 40% at 50% 78%, rgba(255, 120, 60, .22), transparent 70%), radial-gradient(60% 35% at 80% 10%, rgba(255, 240, 200, .08), transparent 70%); }
 .f-yildiz-alani { position: absolute; inset: 0; width: 100%; height: 100%; }
 .f-kipirti { animation: f-kipirti 3s ease-in-out infinite alternate; }
+/* Dilek fenerleri (ui/sahne.ts dilekFenerleri): hale + kâğıt gövde; yalnız transform/opacity. */
+.f-dilekler { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.f-dilek {
+  position: absolute;
+  bottom: -36px;
+  width: 11px;
+  height: 13px;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: f-dilek-yuksel var(--df-sure, 70s) linear var(--df-gec, 0s) infinite;
+}
+.f-dilek::before {
+  content: '';
+  position: absolute;
+  inset: -20px -21px;
+  background: radial-gradient(circle, rgba(255, 200, 107, .55), rgba(255, 160, 70, .2) 32%, rgba(255, 140, 60, 0) 68%);
+}
+.f-dilek::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #FFF0C0, #FFC462 50%, #FF8E34 92%, #3A1A0C 92%);
+  clip-path: polygon(8% 14%, 30% 3%, 50% 0, 70% 3%, 92% 14%, 80% 100%, 20% 100%);
+}
+@keyframes f-dilek-yuksel {
+  0% { transform: translate3d(0, 0, 0) scale(var(--df-boy, 1)); opacity: 0; }
+  5% { opacity: .95; }
+  50% { transform: translate3d(var(--df-sal, 8px), -60vh, 0) scale(calc(var(--df-boy, 1) * .86)); }
+  82% { opacity: .9; }
+  100% { transform: translate3d(0, -118vh, 0) scale(calc(var(--df-boy, 1) * .7)); opacity: 0; }
+}
 @keyframes f-kipirti { from { opacity: .12; } to { opacity: 1; } }
 .f-acilis-ay {
   position: absolute;

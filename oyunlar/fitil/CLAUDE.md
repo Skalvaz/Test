@@ -197,8 +197,18 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   (`melodiCumlesi`: soru–cevap–soru–kapanış, her üç döngüden biri "nefes";
   rastgele nota yok), ortamda 18–40 sn'de bir uzak şamandıra çanı. Ölçüm
   (scratch `sesolc`): müzik RMS −36 dBFS (eski −37,7), tepe −21. Müziği
-  kulakla yalnız ürün sahibi doğrulayabilir. Sıradaki adaylar: harita ve
-  menülerde ortam canlılığı, kazanç anı, günlük dönüş ödülü akışı.
+  kulakla yalnız ürün sahibi doğrulayabilir. 2. dalga (aynı gün; ürün sahibi
+  "evlerin ışıkları binayla uyuşmuyor, dikkat et" dedi): kasaba pencereleri
+  yalnız binanın düz gövdesinde, ortalı (`render/kasaba.ts` `pencereIzgarasi`);
+  titreşim pencereyle aynı boyda; simge yapıların örttüğü pencere çizilmez
+  (`simgeMaskesi`). Dilek fenerleri kasabadan ÖNCE çizilir (çatıların
+  arkasından çıkar). Ödül döngüsü: iyi hamlede (`DILEK_ADEDI` güzel 1 … şenlik
+  5) ve kazançta `gok.dilekSal(n)`. Açılışta DOM fenerleri (`ui/sahne.ts`
+  `dilekFenerleri`) yalnız iki kenar şeridinde: yazının arkasından geçmez;
+  haritada yok (bölgelerin opak göğü arka katmanı örter). KURAL: her görsel
+  eklemeyi 2–3 kat büyütülmüş kareyle denetle (hizalama, taşma, yazıyla
+  çakışma); sekiz mahalle için scratch `kasaba-denet` tarzı toplu görüntü.
+  Sıradaki adaylar: kazanç anı, günlük dönüş ödülü akışı, arayüz sesleri.
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).

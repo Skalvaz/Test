@@ -8,7 +8,7 @@
 import { h, svg } from '../dom';
 import { M } from '../metinler';
 import { logoSvg } from '../logo';
-import { yildizAlani, kasabaSilueti, havaiFisek } from '../sahne';
+import { yildizAlani, kasabaSilueti, havaiFisek, dilekFenerleri } from '../sahne';
 import type { Baglam } from '../cekirdek';
 
 /** Logo girişinin süresi (CSS canlandırmaları `f-lg-*` bu sürede biter). */
@@ -28,6 +28,9 @@ export function acilisEkrani(b: Baglam, ilkDokunus?: () => void): Promise<void> 
       yildizAlani('acilis', 120, 16),
       h('div', { s: 'f-acilis-ay' }),
       fisekler,
+      // Dilek fenerleri kasabanın arkasından yükselir (siluetten önce eklenir).
+      // Yalnız iki kenar bandında: logonun, sloganın ve düğmenin arkasından geçmezler.
+      dilekFenerleri('acilis-dilek', 6, [[3, 9], [91, 97]]),
       // Siluet boyu CSS'teki .f-kasaba yüksekliğiyle aynı oran (kısa ekranda %34).
       kasabaSilueti('fener-koyu', 260 * (window.innerWidth / Math.max(1, window.innerHeight * (window.innerHeight <= 700 ? 0.34 : 0.42)))),
       h('div', { s: 'f-acilis-orta' }, h('div', { s: 'f-logo' }, logo), h('p', { s: 'f-slogan', t: M.slogan })),
