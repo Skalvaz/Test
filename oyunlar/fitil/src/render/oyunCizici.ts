@@ -25,6 +25,7 @@
  * görsel tahta `sonraki` ile karşılaştırılır (geliştirme kipinde fark
  * uyarısı) ve eşitlenir.
  */
+import { dprTavani } from '../platform/gorunum';
 import type { CiziciSecenek, Dikdortgen, OyunCizici, TahtaGeometrisi } from '../app/sozlesme';
 import type { BolumVerisi, Eksen, Hedef, Icerik, Konum, Olay, Onizleme, OyunDurumu } from '../core/types';
 import type { Stage } from './stage';
@@ -383,7 +384,7 @@ class OyunCiziciSinifi implements OyunCizici {
     const s = this.s;
     if (acik && s.ekranW > 0) {
       const H = s.ekranH;
-      this.gok.kur(s.ekranW, H, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, { x: 0, y: 0, w: s.ekranW, h: Math.round(H * 0.6) }, null, s.secenek.gokyuzu || undefined);
+      this.gok.kur(s.ekranW, H, Math.min(dprTavani(), s.dpr), this.bolum?.mahalle ?? 0, { x: 0, y: 0, w: s.ekranW, h: Math.round(H * 0.6) }, null, s.secenek.gokyuzu || undefined);
       this.kaliteAtla = Math.max(this.kaliteAtla, 20);
     } else this.yerlesimGerekli = true;
   }
@@ -489,7 +490,7 @@ class OyunCiziciSinifi implements OyunCizici {
     const t = s.tahta;
     const F = s.cerceve;
     const c = s.c;
-    this.gok.kur(s.ekranW, s.ekranH, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F }, s.secenek.gokyuzu || undefined, this.altDugmeUstu());
+    this.gok.kur(s.ekranW, s.ekranH, Math.min(dprTavani(), s.dpr), this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F }, s.secenek.gokyuzu || undefined, this.altDugmeUstu());
   }
 
   /** Yerleşim hesabı (pişirme yok). Tahta yoksa false. */
@@ -1510,7 +1511,7 @@ class OyunCiziciSinifi implements OyunCizici {
     const s = this.s;
     const x = s.gx + (s.tahta.w * s.c) / 2;
     const y = s.gy + s.tahta.h * s.c * 0.38;
-    this.yazi.goster(REAKSIYON_METNI[kademe] ?? kademe, STILLER[kademe] ?? STILLER.guzel, x, y, Math.min(2, s.dpr), this.yaziSiniri());
+    this.yazi.goster(REAKSIYON_METNI[kademe] ?? kademe, STILLER[kademe] ?? STILLER.guzel, x, y, Math.min(dprTavani(), s.dpr), this.yaziSiniri());
     // Yazı çevresinde 20 kıvılcım.
     const n = s.havuz.adet(20);
     const rx = this.yazi.genislik / 2 + 24;
@@ -1542,7 +1543,7 @@ class OyunCiziciSinifi implements OyunCizici {
     const s = this.s;
     const gen = s.tahta.w * s.c;
     const bx = x ?? s.gx + gen / 2;
-    this.bilgi.goster(metin, STILLER[stil], bx, y, Math.min(2, s.dpr), this.yaziSiniri());
+    this.bilgi.goster(metin, STILLER[stil], bx, y, Math.min(dprTavani(), s.dpr), this.yaziSiniri());
     // Ölçülen genişlikle tahtanın içinde tut; tahtadan genişse ortala.
     const yari = this.bilgi.genislik / 2;
     this.bilgi.x = 2 * yari >= gen ? s.gx + gen / 2 : Math.max(s.gx + yari, Math.min(s.gx + gen - yari, bx));

@@ -3,6 +3,7 @@
  * havuzu, kamera, görsel tahta, seçenekler ve dönüşümler. Modüller bunu
  * kurucuda alır; döngüsel bağımlılık olmaz.
  */
+import { dprTavani } from '../platform/gorunum';
 import type { CiziciSecenek, Dikdortgen, Palet } from '../app/sozlesme';
 import type { Konum } from '../core/types';
 import { Rng } from '../platform/rng';
@@ -109,7 +110,7 @@ export class Sahne {
 
   /** Paleti ve hücre boyunu sprite'lara uygula. */
   kaynaklariHazirla(palet: Palet): void {
-    const d = Math.min(2, this.dpr);
+    const d = Math.min(dprTavani(), this.dpr);
     this.kapsul.hazirla(this.c, d, palet);
     this.kapsulRenk = this.kapsul.renkler;
     this.engel.hazirla(this.c, d, this.kapsulRenk);

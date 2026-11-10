@@ -230,6 +230,19 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   değişmez; `zoom` KULLANMA: `.f-hud-ust/alt` satır içi px ile konumlanır,
   eski WebView'da ölçüm tutarsız). (3) İskele feneri kuralı düğmelerin gerçek
   üst kenarına göre (`OyunCizici.altDugmeUstu`).
+  5. dalga: tablet görünümü kökten — `platform/gorunum.ts`
+  `tabletGorunumuKur()` (main.ts, ilk yerleşimden önce): dokunmatik cihazda
+  ve sayfa en üstteyken viewport meta kısa kenarı 600 dp'ye indirir (ölçek =
+  kısa kenar / 600, en çok 1,5; yön değişince yeniden); HUD, pencereler,
+  harita, yazılar orantılı büyür, yerleşim kodu/CSS değişmez. Tuval
+  bulanmasın diye `Stage` dpr'ı `gorunumOlcegi()` ile çarpar, sprite tavanı
+  `dprTavani()` (2 × ölçek; render'da sabit `Math.min(2, dpr)` YAZMA).
+  Çerçevede (claude.ai) ve masaüstünde etkisiz. Yalnız Playwright
+  öykünmesiyle doğrulandı (`npm run oynanis -- <url> <klasör> tablet`:
+  800×1280 → yerleşim 600×960, tuval 1200×1920); gerçek tablette denenmedi.
+  Engelli 8 bölüm, 12 menü ve `dil-tara` (60 ekran, 0 kalıntı) yeniden
+  tarandı: kusur yok. Yazılım GL'de ağır bölümde giriş dalgası uzun sürer
+  (kare başına dt ≤ 100 ms): ekran görüntüsünü ≥ 3 sn sonra al.
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).

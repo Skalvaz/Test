@@ -58,10 +58,12 @@ const PROFILLER = [
   { ad: 'telefon', w: 390, h: 844, dokunmatik: true, tam: true },
   { ad: 'masaustu', w: 1280, h: 800, dokunmatik: false, tam: true },
   { ad: 'kucuk', w: 360, h: 640, dokunmatik: true, tam: false },
+  // Tablet (yalnız adıyla): görünüm alanı 600 dp'ye iner (platform/gorunum.ts); yerleşim 600×960.
+  { ad: 'tablet', w: 800, h: 1280, dokunmatik: true, tam: false, ozel: true },
   { ad: 'goc', w: 390, h: 700, dokunmatik: true, tam: false, goc: 'sema2-bolum14.json' },
   { ad: 'goc600', w: 375, h: 600, dokunmatik: true, tam: false, goc: 'sema2-bolum27.json' },
   { ad: 'gelir', w: 390, h: 844, dokunmatik: true, tam: false, gelir: true },
-].filter((p) => (SADECE ? SADECE.split(',').includes(p.ad) : !p.goc && !p.gelir));
+].filter((p) => (SADECE ? SADECE.split(',').includes(p.ad) : !p.goc && !p.gelir && !p.ozel));
 
 const KAYIT_KLASORU = new globalThis.URL('../src/meta/_test/kayitlar/', import.meta.url);
 const eskiKayit = (ad) => JSON.parse(readFileSync(new globalThis.URL(ad, KAYIT_KLASORU), 'utf-8'));
@@ -90,6 +92,7 @@ async function profilKos(browser, p) {
   const ctx = await browser.newContext({
     locale: 'tr-TR',
     viewport: { width: p.w, height: p.h },
+    screen: { width: p.w, height: p.h },
     deviceScaleFactor: 2,
     isMobile: p.dokunmatik,
     hasTouch: p.dokunmatik,

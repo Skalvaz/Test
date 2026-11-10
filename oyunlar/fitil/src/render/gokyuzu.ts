@@ -11,6 +11,7 @@
  * yumuşak (boşta sıçrama yok); `sakin` (hareketi azalt) açıkken fenerler ve
  * kayık yerinde durur, kayan yıldız çıkmaz. Kare başına bellek ayrılmaz.
  */
+import { dprTavani } from '../platform/gorunum';
 import { GOKYUZU, MAHALLELER } from '../app/katalog';
 import { Rng } from '../platform/rng';
 import { kasabaCiz, type Pencere } from './kasaba';
@@ -307,7 +308,7 @@ export class Gokyuzu {
 
   /** Dilek fenerleri, kayık ve kayan yıldızın sprite'ları ve ilk yerleşimi. */
   private yasayanKur(w: number, h: number, dpr: number, sandik: Dikdortgen | null): void {
-    const d = Math.min(2, dpr);
+    const d = Math.min(dprTavani(), dpr);
     // Fener: sıcak hale + kâğıt gövde (üstü geniş, altı dar) + koyu ağız.
     this.fenerSprite = spriteUret(44, 44, d, (x) => {
       const g = x.createRadialGradient(0, 1, 0, 0, 1, 21);

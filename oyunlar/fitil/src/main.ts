@@ -15,6 +15,7 @@ import { yaziTipiniGom } from './ui/yazitipi';
 import { bootWithHot } from './platform/hot';
 import { Uygulama, type SicakVeri } from './app/uygulama';
 import { DIL } from './platform/dil';
+import { tabletGorunumuKur } from './platform/gorunum';
 
 declare global {
   interface Window {
@@ -27,6 +28,9 @@ declare global {
 window.__fitilAcildi = true;
 // Dil: CSS büyük harfi (i → İ / I) ve ekran okuyucu için.
 document.documentElement.lang = DIL;
+
+// Tablet: görünüm alanı ilk yerleşimden önce kurulur (platform/gorunum.ts).
+tabletGorunumuKur();
 
 // Gömülü yazı tipi ilk çizimden önce (GDD §13.5: çalışma anında ağ isteği yok).
 yaziTipiniGom();

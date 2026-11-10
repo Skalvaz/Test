@@ -12,6 +12,7 @@
  *  el            öğretici saydam el
  *  vinyet        kenar kararması (tam ekran, ölçeklenir)
  */
+import { dprTavani } from '../../platform/gorunum';
 import { P } from '../palet';
 import { hexRgb } from '../matematik';
 import { spriteUret, type Ctx, type Sprite } from '../tuval';
@@ -39,7 +40,7 @@ export class PariltiSpritelari {
     if (dpr === this.dpr && anahtar === this.anahtar) return false;
     this.dpr = dpr;
     this.anahtar = anahtar;
-    const d = Math.min(dpr, 2);
+    const d = Math.min(dpr, dprTavani());
     this.nokta = renkler.map((r) => spriteUret(2 * NOKTA_R, 2 * NOKTA_R, d, (x) => nokta(x, r)));
     this.cizgi = renkler.map((r) => spriteUret(CIZGI_W, CIZGI_H, d, (x) => cizgi(x, r), CIZGI_W - CIZGI_H / 2, CIZGI_H / 2));
     this.duman = spriteUret(64, 64, d, (x) => {

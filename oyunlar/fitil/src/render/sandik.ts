@@ -7,6 +7,7 @@
  * Çerçeve ve yuvalar offscreen'de pişer; ışık izi ayrı bir offscreen'e hücre
  * hücre işlenir (açılış canlandırması bitince).
  */
+import { dprTavani } from '../platform/gorunum';
 import { gurultu2, hexRgb, rgba } from './matematik';
 import { P } from './palet';
 import type { Sahne } from './sahne';
@@ -47,7 +48,7 @@ export class Sandik {
     this.oy = s.gy - pay;
     this.ow = t.w * c + 2 * pay;
     this.oh = t.h * c + 2 * pay;
-    const d = Math.min(2, s.dpr);
+    const d = Math.min(dprTavani(), s.dpr);
     // Gövde (ahşap damarı, yuvalar, perçinler) yalnız boyut/hücre/DPR/delik deseni değişince
     // pişer: Tekrar dene, aynı boyutta yeni bölüm ve yalnız konumu değişen yeniden
     // boyutlanma (tarayıcı çubuğu) önbellekten çizer (§16.6).

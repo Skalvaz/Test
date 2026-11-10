@@ -3,6 +3,7 @@
  * yeniden boyutlanma ve telefonda tarayıcı çubuğunun açılıp kapanmasına
  * (visualViewport) tepki. Mantıksal birim CSS pikselidir.
  */
+import { gorunumOlcegi } from '../platform/gorunum';
 export class Stage {
   readonly canvas: HTMLCanvasElement;
   readonly ctx: CanvasRenderingContext2D;
@@ -24,7 +25,8 @@ export class Stage {
     this.ctx = ctx;
     const fit = () => {
       const r = host.getBoundingClientRect();
-      const dpr = Math.min(maxDpr, window.devicePixelRatio || 1);
+      // Tablet görünümü (platform/gorunum.ts) sayfayı büyütür: 1 CSS px daha çok fiziksel piksel.
+      const dpr = Math.min(maxDpr, window.devicePixelRatio || 1) * gorunumOlcegi();
       const w = Math.max(1, Math.round(r.width));
       const h = Math.max(1, Math.round(r.height));
       if (w === this.width && h === this.height && dpr === this.dpr) return;
