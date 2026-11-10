@@ -10,7 +10,7 @@
 import { Rng } from '../platform/rng';
 import { GOKYUZU, MAHALLELER } from '../app/katalog';
 import { karistir, rgba } from './matematik';
-import type { Ctx } from './tuval';
+import { tuvalOlustur, type Ctx } from './tuval';
 
 export interface KasabaRenkleri {
   arka: string;
@@ -30,8 +30,12 @@ export function kasabaRenkleri(mahalle: number): KasabaRenkleri {
 
 /** Yanık pencerelerin konumları (çizimde titreşim için). */
 export interface Pencere {
+  /** Merkez. */
   x: number;
   y: number;
+  /** Işığın boyutu (titreşim tam bu dikdörtgeni parlatır; taşmaz). */
+  w: number;
+  h: number;
   faz: number;
 }
 
@@ -45,6 +49,7 @@ export function kasabaCiz(c: Ctx, sol: number, gen: number, taban: number, mahal
   const r = new Rng((tohum ^ Math.imul(m + 1, 0x9e3779b9)) >>> 0);
   const renk = kasabaRenkleri(m);
   const pencereler: Pencere[] = [];
+  const adaylar: PencereAdayi[] = [];
 
   // Arka katman: daha alçak, sisli.
   c.fillStyle = renk.arka;
@@ -78,26 +83,86 @@ export function kasabaCiz(c: Ctx, sol: number, gen: number, taban: number, mahal
     c.lineWidth = 1;
     binaYolu(c, x, taban, w, h, tur);
     c.stroke();
-    // Pencereler 4×6 px
-    const pw = 4 * olcek;
-    const ph = 6 * olcek;
-    const ust = taban - h + (tur === 0 ? 6 : 12) * olcek;
-    for (let py = ust; py < taban - 10 * olcek; py += 11 * olcek) {
-      for (let px = x + 4 * olcek; px < x + w - 6 * olcek; px += 8 * olcek) {
-        if (r.float() < 0.42) {
-          c.fillStyle = '#FFC86B';
-          c.fillRect(px, py, pw, ph);
-          pencereler.push({ x: px + pw / 2, y: py + ph / 2, faz: r.float() * Math.PI * 2 });
-        } else if (r.float() < 0.5) {
-          c.fillStyle = 'rgba(255,200,107,0.12)';
-          c.fillRect(px, py, pw, ph);
-        }
-      }
+    // Pencereler 4×6 px: yalnız binanın düz gövdesinde (çatı eğiminin, kubbenin ve kule
+    // külahının altında), sütunlar gövdeye ortalı; hiçbir pencere siluetin dışına taşmaz.
+    const govdeUst = taban - h * (tur === 1 ? 0.8 : tur === 2 ? 0.72 : tur === 3 ? 0.55 : 1);
+    pencereIzgarasi(r, adaylar, x, w, govdeUst + 5 * olcek, taban - 10 * olcek, olcek);
+    if (tur === 3) {
+      // Kulenin dar gövdesi (genişliğin yarısı): ortalı tek/çift sütun.
+      const k = w * 0.25;
+      pencereIzgarasi(r, adaylar, x + k, w - 2 * k, taban - h * 0.82 + 4 * olcek, taban - h * 0.55 - 3 * olcek, olcek);
     }
     x += w + r.range(0, 3) * olcek;
   }
+  // Simge yapılar (gemi, ağaç, sur, değirmen…) binaların önüne çizilir: onların örttüğü
+  // pencereler hiç çizilmez (yarım pencere ya da yapının üstünde yanan ışık kalmasın).
+  const ortulu = simgeMaskesi(c, (mc) => simgeCiz(mc, m, simgeX, taban, olcek, renk, r.clone(), [], sol, gen));
+  for (const a of adaylar) {
+    if (ortulu(a.x - 1, a.y - 1, a.w + 2, a.h + 2)) continue;
+    c.fillStyle = a.yanik ? '#FFC86B' : 'rgba(255,200,107,0.12)';
+    c.fillRect(a.x, a.y, a.w, a.h);
+    if (a.yanik) pencereler.push({ x: a.x + a.w / 2, y: a.y + a.h / 2, w: a.w, h: a.h, faz: a.faz });
+  }
   simgeCiz(c, m, simgeX, taban, olcek, renk, r, pencereler, sol, gen);
   return pencereler;
+}
+
+interface PencereAdayi {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  yanik: boolean;
+  faz: number;
+}
+
+/**
+ * `ciz`'in boyadığı alanın maskesi: aynı boyut ve dönüşümde gizli bir tuvale çizilir,
+ * dönen işlev kullanıcı uzayındaki bir dikdörtgenin boyalı piksele değip değmediğini
+ * söyler. Tuval yoksa (test ortamı) hiçbir şey örtülü sayılmaz.
+ */
+function simgeMaskesi(c: Ctx, ciz: (mc: Ctx) => void): (x: number, y: number, w: number, h: number) => boolean {
+  try {
+    const W = c.canvas.width;
+    const H = c.canvas.height;
+    const t = c.getTransform();
+    const { ctx } = tuvalOlustur(W, H);
+    ctx.setTransform(t);
+    ciz(ctx);
+    const veri = ctx.getImageData(0, 0, W, H).data;
+    return (x, y, w, h) => {
+      const x0 = Math.max(0, Math.floor(t.a * x + t.e));
+      const y0 = Math.max(0, Math.floor(t.d * y + t.f));
+      const x1 = Math.min(W, Math.ceil(t.a * (x + w) + t.e));
+      const y1 = Math.min(H, Math.ceil(t.d * (y + h) + t.f));
+      for (let yy = y0; yy < y1; yy++) for (let xx = x0; xx < x1; xx++) if (veri[(yy * W + xx) * 4 + 3] > 24) return true;
+      return false;
+    };
+  } catch {
+    return () => false;
+  }
+}
+
+/**
+ * [x, x+w] genişliğinde, [ust, alt) yükseklik aralığında ortalı pencere ızgarası (adaylar;
+ * çizim simge yapıların maskesinden sonra).
+ * Pencere 4×6, sütun adımı 8, satır adımı 11 (× ölçek); kenar payı ≥ 3. Konumlar
+ * tam piksele yuvarlanır (bulanık kenar olmasın).
+ */
+function pencereIzgarasi(r: Rng, adaylar: PencereAdayi[], x: number, w: number, ust: number, alt: number, olcek: number): void {
+  const pw = 4 * olcek;
+  const ph = 6 * olcek;
+  const adim = 8 * olcek;
+  const n = Math.floor((w - 6 * olcek + (adim - pw)) / adim);
+  if (n < 1) return;
+  const x0 = Math.round(x + (w - ((n - 1) * adim + pw)) / 2);
+  for (let py = Math.round(ust); py + ph <= alt; py += 11 * olcek) {
+    for (let i = 0; i < n; i++) {
+      const px = x0 + i * adim;
+      if (r.float() < 0.42) adaylar.push({ x: px, y: py, w: pw, h: ph, yanik: true, faz: r.float() * Math.PI * 2 });
+      else if (r.float() < 0.5) adaylar.push({ x: px, y: py, w: pw, h: ph, yanik: false, faz: 0 });
+    }
+  }
 }
 
 function mahalleCatisi(m: number, r: Rng): number {
@@ -157,7 +222,7 @@ function simgeCiz(c: Ctx, m: number, x: number, taban: number, o: number, renk: 
     c.beginPath();
     c.arc(px, py, rr * o, 0, Math.PI * 2);
     c.fill();
-    pen.push({ x: px, y: py, faz: r.float() * Math.PI * 2 });
+    pen.push({ x: px, y: py, w: rr * o * 1.5, h: rr * o * 1.5, faz: r.float() * Math.PI * 2 });
     c.fillStyle = renk.on;
   };
   switch (m) {
@@ -298,7 +363,7 @@ function simgeCiz(c: Ctx, m: number, x: number, taban: number, o: number, renk: 
       c.moveTo(x + 23 * o, taban - 76 * o);
       c.lineTo(x + 28 * o, taban - 74 * o);
       c.stroke();
-      pen.push({ x: x + 23 * o, y: taban - 76 * o, faz: 0 });
+      pen.push({ x: x + 23 * o, y: taban - 76 * o, w: 2 * o, h: 2 * o, faz: 0 });
       c.fillStyle = renk.on;
       for (let k = 0; k < 3; k++) isik(x + 16 * o + k * 7 * o, taban - 40 * o, 1.4);
       break;

@@ -5,8 +5,8 @@
  * oturduğu iskele. Durağan kısımlar yalnız boyut/tema değişince pişirilir;
  * karede yalnız birkaç drawImage ve ucuz şeritler çizilir.
  *
- * Yaşayan sahne (Kasım 2026, "cozy"): rıhtımdan göğe ağır ağır yükselen
- * dilek fenerleri, denizde fenerli bir kayık, iskele ayaklarında asılı iki
+ * Yaşayan sahne (Kasım 2026, "cozy"): kasabanın arkasından göğe ağır ağır
+ * yükselen dilek fenerleri, denizde fenerli bir kayık, iskele ayaklarında asılı iki
  * fener ve sudaki titrek yansımaları, seyrek bir kayan yıldız. Hepsi yavaş ve
  * yumuşak (boşta sıçrama yok); `sakin` (hareketi azalt) açıkken fenerler ve
  * kayık yerinde durur, kayan yıldız çıkmaz. Kare başına bellek ayrılmaz.
@@ -19,7 +19,7 @@ import { P } from './palet';
 import { spriteCiz, spriteUret, tuvalOlustur, type Ctx, type Sprite, type Tuval } from './tuval';
 import type { Dikdortgen } from '../app/sozlesme';
 
-/** Dilek feneri: rıhtımdan yükselir, tepede sönüp ufuktan yeniden doğar. */
+/** Dilek feneri: kasabanın arkasından yükselir, tepede sönüp ufuktan yeniden doğar. */
 interface DilekFeneri {
   x: number;
   y: number;
@@ -361,7 +361,7 @@ export class Gokyuzu {
       x.fillRect(-14.4, -13.3, 4.8, 1);
     });
     // Dilek fenerleri: genişliğe göre 4–9; ilk kurulumda göğe yayılmış başlar.
-    const adet = Math.max(4, Math.min(9, Math.round(w / 85)));
+    const adet = Math.max(6, Math.min(12, Math.round(w / 55)));
     this.fenerler.length = 0;
     for (let i = 0; i < adet; i++) {
       const f: DilekFeneri = { x: 0, y: 0, hiz: 0, faz: 0, sal: 0, boy: 1 };
@@ -474,6 +474,22 @@ export class Gokyuzu {
       c.globalAlpha = 1;
     }
     c.globalCompositeOperation = 'source-over';
+    // Dilek fenerleri kasabadan ÖNCE çizilir: çatıların arkasından çıkıp göğe yükselir
+    // (binaların önünde yarı saydam süzülünce pencere ışıklarıyla karışıyordu).
+    const fs = this.fenerSprite;
+    if (fs) {
+      const tavan = this.ufuk * FENER_TAVAN;
+      const yol = this.ufuk - tavan;
+      for (const f of this.fenerler) {
+        const k = (this.ufuk - f.y) / yol;
+        // Ufukta belirir, tavana yaklaşırken söner; yükseldikçe küçülür (uzaklaşır).
+        const a = Math.min(1, k * 6) * Math.min(1, (1 - k) * 3.2);
+        if (a <= 0.01) continue;
+        c.globalAlpha = a * (0.86 + 0.14 * Math.sin(t * 2.3 + f.faz * 3));
+        spriteCiz(c, fs, f.x + Math.sin(t * 0.35 + f.faz) * f.sal * (0.4 + k), f.y, f.boy * (1 - 0.28 * k));
+      }
+      c.globalAlpha = 1;
+    }
   }
 
   /** Kasaba + deniz şeritleri + yansımalar (gök parçacıklarından sonra). */
@@ -486,8 +502,9 @@ export class Gokyuzu {
     c.fillStyle = '#FFC86B';
     for (let i = 0; i < this.pencereler.length; i += 3) {
       const p = this.pencereler[i];
-      c.globalAlpha = 0.18 + 0.18 * Math.sin(t * 0.9 + p.faz);
-      c.fillRect(p.x - 4, p.y - 4, 8, 8);
+      // Tam pencerenin üstüne (eskiden 8×8 kare pencereden taşıyor, yanlış hizalı görünüyordu).
+      c.globalAlpha = 0.22 + 0.2 * Math.sin(t * 0.9 + p.faz);
+      c.fillRect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h);
     }
     c.globalAlpha = 1;
     // Deniz: 6 sinüs şerit (0,3 Hz), gökyüzünün alfa 0,25'i.
@@ -548,21 +565,6 @@ export class Gokyuzu {
     }
     c.globalAlpha = 1;
     c.globalCompositeOperation = 'source-over';
-    // Dilek fenerleri: rıhtımdan bırakılır, kasabanın önünden göğe yükselir.
-    const fs = this.fenerSprite;
-    if (fs) {
-      const tavan = this.ufuk * FENER_TAVAN;
-      const yol = this.ufuk - tavan;
-      for (const f of this.fenerler) {
-        const k = (this.ufuk - f.y) / yol;
-        // Ufukta belirir, tavana yaklaşırken söner; yükseldikçe küçülür (uzaklaşır).
-        const a = Math.min(1, k * 6) * Math.min(1, (1 - k) * 3.2);
-        if (a <= 0.01) continue;
-        c.globalAlpha = a * (0.86 + 0.14 * Math.sin(t * 2.3 + f.faz * 3));
-        spriteCiz(c, fs, f.x + Math.sin(t * 0.35 + f.faz) * f.sal * (0.4 + k), f.y, f.boy * (1 - 0.28 * k));
-      }
-      c.globalAlpha = 1;
-    }
     const ks = this.kayikSprite;
     if (ks && this.kayikVar && this.kayikBekle <= 0) {
       const by = this.kayikY + (this.sakin ? 0 : Math.sin(t * 1.1) * 0.8);
