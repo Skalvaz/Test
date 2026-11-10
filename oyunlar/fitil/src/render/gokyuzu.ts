@@ -100,10 +100,10 @@ export class Gokyuzu {
    * (§10.3); verilmezse mahallenin teması. Siluet her zaman mahallenindir.
    */
   /**
-   * `altSinir`: tahtanın altında tuvale kalan boş alanın alt kenarı (dikey
-   * telefonda alt düğme bandının üstü; verilmezse ekranın altı). İskele
-   * fenerleri yalnız bu sınırın üstüne tam sığarsa asılır (küçük ekranda
-   * düğmelerin arkasına girmesinler).
+   * `altSinir`: tahtanın altında tuvale kalan boş alanın alt kenarı (dikeyde
+   * alt düğmelerin üst kenarı; verilmezse ekranın altı). İskele fenerleri
+   * yalnız bu sınırın üstüne tam sığarsa asılır (fener `sy + 37`'de biter;
+   * küçük ekranda düğmelerin arkasına girmesinler).
    */
   kur(w: number, h: number, dpr: number, mahalle: number, gokBandi: Dikdortgen, sandik: Dikdortgen | null, tema?: string, altSinir?: number): void {
     // Aynı girdiyle yeniden pişirme yok (Tekrar dene, aynı yerleşimde yeni bölüm).
@@ -236,7 +236,7 @@ export class Gokyuzu {
         // İskele kirişine asılı iki fener (gövde pişer; ışığı ve yansıması karede):
         // yalnız altlarında düğme bandına kadar yer varsa (fener sy + 37'de biter).
         this.iskeleFenerY = sy + 31;
-        this.iskeleFener = (altSinir ?? h) - sy >= 56 ? [sx + sw * 0.125, sx + sw * 0.875] : [];
+        this.iskeleFener = (altSinir ?? h) - sy >= 43 ? [sx + sw * 0.125, sx + sw * 0.875] : [];
         for (const fx of this.iskeleFener) {
           ctx.fillStyle = '#0A0604';
           ctx.fillRect(fx - 0.5, sy + 18, 1, 8);

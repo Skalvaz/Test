@@ -66,6 +66,8 @@ export interface GHucre {
   hasar: number;
   /** İçerik geçici olarak çizilmez (örn. havalanan yüklü taş). */
   gizli: boolean;
+  /** Bölüm açılışı girişi: belirmesine kalan ms (< 0 pasif). Dolunca `gizli` kalkar, "pop" başlar. */
+  giris: number;
 
   // --- Zemin canlandırması ---
   /** Işık izi dairesel maske 0..1 (300 ms). */
@@ -111,6 +113,7 @@ function yeniHucre(i: number): GHucre {
     titreme: 0,
     hasar: 0,
     gizli: false,
+    giris: -1,
     isikAcilis: 1,
     dosemeAcilis: 1,
     desenAcilis: 1,
@@ -130,6 +133,7 @@ function animTasi(a: GHucre, b: GHucre): void {
   b.pop = a.pop;
   b.titreme = a.titreme;
   b.gizli = false;
+  b.giris = -1;
 }
 
 function animSifirla(h: GHucre): void {
@@ -147,6 +151,7 @@ function animSifirla(h: GHucre): void {
   h.titreme = 0;
   h.hasar = 0;
   h.gizli = false;
+  h.giris = -1;
   const ic = h.icerik;
   h.isiGorunen = ic?.tur === 'kapsul' ? ic.isi : 0;
   h.kizgin = 0;
@@ -461,12 +466,38 @@ export class GorselTahta {
     }
   }
 
+  /**
+   * Bölüm açılışı girişi (Kasım 2026): içerikler alt sıradan yukarı, soldan sağa
+   * hafif kaymayla dalga hâlinde belirir (her biri "pop" ile; toplam ~0,8 sn).
+   * Yalnız görsel: oyun durumu ve girdi etkilenmez; bir olay hücreye dokunursa
+   * (`animSifirla`/`animTasi`) o hücre hemen görünür.
+   */
+  girisBaslat(): void {
+    for (let i = 0; i < this.hucreler.length; i++) {
+      const h = this.hucreler[i];
+      if (h.delik || !h.icerik) continue;
+      const x = i % this.w;
+      const y = (i / this.w) | 0;
+      // 200 ms bekleme: harita/kart solması (0,25 sn) bitsin, dalga görünsün.
+      h.giris = 200 + (this.h - 1 - y) * 38 + x * 10;
+      h.gizli = true;
+    }
+  }
+
   /** Canlandırmaları ilerlet (dt: oyun ms'i). Hareket sürüyorsa true. */
   guncelle(dt: number): boolean {
     let hareket = false;
     const sn = dt / 1000;
     for (const h of this.hucreler) {
       if (h.delik) continue;
+      if (h.giris >= 0) {
+        h.giris -= dt;
+        if (h.giris < 0) {
+          h.giris = -1;
+          h.gizli = false;
+          h.pop = 0;
+        }
+      }
       if (h.hTur) {
         hareket = true;
         h.hT += dt;

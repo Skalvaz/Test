@@ -219,6 +219,17 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   meta sistem EKLEME: YAYIN.md "yedi sistem üst üste" dersi). Önizleme
   örneğindeki "0 eksik" yalnız `dev/ornekler.ts` verisi (gerçekte `yetersiz`
   ⇒ eksik ≥ 1). Mağaza ekran görüntüleri yeni sahneyle yeniden çekildi.
+  4. dalga: (1) bölüm açılışında tahta girişi — `GorselTahta.girisBaslat()`
+  (`bolumKur` çağırır; `giris` gecikmesi dolunca `gizli` kalkar, "pop"
+  başlar): içerikler alttan yukarı dalga hâlinde belirir, 200 ms bekleme
+  (harita solması) + ~0,7 sn; yalnız görsel, hareketi azalt açıkken yok;
+  dondurulmuş çizicide (`dev.dondur`) ilerlemez, kareyi ≥ 1 sn sonra çek.
+  (2) Dikey tablette HUD ölçeği — `ui/yerlesim.ts` `hudOlcegi` (kısa kenar
+  ≥ 600: 1,3'e kadar, plaka ekrana sığacak kadar), `--hud-olcek` ile
+  `.f-plaka` ve alt düğme grupları `transform: scale` (yerleşim kutusu
+  değişmez; `zoom` KULLANMA: `.f-hud-ust/alt` satır içi px ile konumlanır,
+  eski WebView'da ölçüm tutarsız). (3) İskele feneri kuralı düğmelerin gerçek
+  üst kenarına göre (`OyunCizici.altDugmeUstu`).
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).

@@ -168,3 +168,16 @@ describe('metinler', () => {
     expect(gorevMetni(3, 0)).toBe('50 kızıl patlat');
   });
 });
+
+describe('HUD tablet ölçeği', () => {
+  it('telefonda ve yatayda 1; dikey tablette 1,3\'e kadar, plaka ekrana sığar', async () => {
+    const { hudOlcegi, HUD_PLAKA_GENISLIK } = await import('./yerlesim');
+    expect(hudOlcegi(390, 844)).toBe(1);
+    expect(hudOlcegi(360, 640)).toBe(1);
+    expect(hudOlcegi(1280, 800)).toBe(1);
+    expect(hudOlcegi(800, 1280)).toBe(1.3);
+    const dar = hudOlcegi(600, 960);
+    expect(dar).toBeGreaterThan(1);
+    expect(dar * HUD_PLAKA_GENISLIK).toBeLessThanOrEqual(600 - 24 + 1e-6);
+  });
+});

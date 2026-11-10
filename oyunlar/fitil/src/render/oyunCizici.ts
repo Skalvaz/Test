@@ -283,6 +283,8 @@ class OyunCiziciSinifi implements OyunCizici {
     const s = this.s;
     s.tahta.uyari = this.gelistirme ? (m) => console.warn('[çizici]', m) : () => {};
     s.tahta.kur(d);
+    // Bölüm açılışı: kapsüller dalga hâlinde belirir (hareketi azalt açıkken anında).
+    if (!s.secenek.hareketiAzalt) s.tahta.girisBaslat();
     this.karanlik = 0;
     this.karanlikHedef = 0;
     this.parlaHedef = 0;
@@ -386,6 +388,18 @@ class OyunCiziciSinifi implements OyunCizici {
     } else this.yerlesimGerekli = true;
   }
 
+  /**
+   * Tahtanın altında tuvale kalan boş alanın alt kenarı (iskele fenerleri için):
+   * yatay yerleşimde ekranın altı; dikeyde alt banttaki düğmelerin üst kenarı
+   * (düğmeler bandın ortasında, ~56 px; tablette 1,3 kat büyük: `ui/yerlesim.ts` `hudOlcegi`).
+   */
+  private altDugmeUstu(): number {
+    const s = this.s;
+    if (s.alan.w < s.ekranW) return s.ekranH;
+    const bantUst = s.alan.y + s.alan.h;
+    return (bantUst + s.ekranH) / 2 - (Math.min(s.ekranW, s.ekranH) >= 600 ? 40 : 30);
+  }
+
   /** Şovda gök (ufuk) yüksekliği: fişekler bunun üstünde patlar. */
   ufuk(): number {
     return this.gok.ufuk;
@@ -475,7 +489,7 @@ class OyunCiziciSinifi implements OyunCizici {
     const t = s.tahta;
     const F = s.cerceve;
     const c = s.c;
-    this.gok.kur(s.ekranW, s.ekranH, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F }, s.secenek.gokyuzu || undefined, s.alan.w < s.ekranW ? s.ekranH : s.alan.y + s.alan.h);
+    this.gok.kur(s.ekranW, s.ekranH, Math.min(2, s.dpr), this.bolum?.mahalle ?? 0, s.gokBandi, { x: s.gx - F, y: s.gy - F, w: t.w * c + 2 * F, h: t.h * c + 2 * F }, s.secenek.gokyuzu || undefined, this.altDugmeUstu());
   }
 
   /** Yerleşim hesabı (pişirme yok). Tahta yoksa false. */

@@ -82,6 +82,20 @@ export const ALT_SINIR = 0.86;
  */
 export const HUD_PLAKA = { pay: 8, boy: 62, madalyon: 66, darPay: 5, darBoy: 58, darMadalyon: 60, halka: 5 } as const;
 
+/** Dikey tablette HUD plakasının ve alt düğmelerin büyütme oranı üst sınırı. */
+export const HUD_OLCEK_GENIS = 1.3;
+/** HUD plakasının en büyük genişliği (hud.css `.f-plaka` `min(100%, 520px)`). */
+export const HUD_PLAKA_GENISLIK = 520;
+
+/**
+ * Dikey HUD ölçeği (hud.css `--hud-olcek`): telefonda 1; kısa kenarı ≥ 600 px
+ * olan dikey ekranda (tablet) 1,3'e kadar, plaka ekrana sığacak kadar.
+ */
+export function hudOlcegi(ekranW: number, ekranH: number): number {
+  if (yatayMi(ekranW, ekranH) || Math.min(ekranW, ekranH) < GENIS_EKRAN) return 1;
+  return Math.max(1, Math.min(HUD_OLCEK_GENIS, (ekranW - 24) / HUD_PLAKA_GENISLIK));
+}
+
 /** Dikey HUD dar kipte mi (hud.css `.f-dar`). */
 export function hudDarMi(ustOran: number, ekranH: number): boolean {
   return ustOran < UST_ORAN || ekranH < 700;

@@ -15,7 +15,7 @@ import { ikon, hedefIkonu, guclendiriciIsaretleme, alevSvg } from './ikonlar';
 import { M, GUCLENDIRICI_ADLARI, hedefKalan, hedefEtiketi, sayi, bolumBasligi } from './metinler';
 import type { Baglam } from './cekirdek';
 import type { HudVM, HedefVM, GuclendiriciVM } from './tipler';
-import { HUD_PLAKA, type Yerlesim } from './yerlesim';
+import { HUD_PLAKA, hudOlcegi, type Yerlesim } from './yerlesim';
 import type { GuclendiriciId } from '../app/katalog';
 import { puanOrani, yildizKonumlari } from './puanCubugu';
 import { MuhurRozeti } from './kanca';
@@ -196,6 +196,9 @@ export class Hud {
     k.style.setProperty('--tahta-y', `${yer.tahta.y}px`);
     k.style.setProperty('--tahta-w', `${yer.tahta.w}px`);
     k.style.setProperty('--tahta-h', `${yer.tahta.h}px`);
+    // Dikey tablet (kısa kenar ≥ 600 px): plaka ve alt düğmeler tahtayla orantılı büyür
+    // (telefon boyunda kalıp 96 px'lik hücrelerin yanında küçük duruyordu); öbür yerleşimlerde 1.
+    k.style.setProperty('--hud-olcek', hudOlcegi(yer.ekranW, yer.ekranH).toFixed(3));
     if (yer.kip === 'dikey') {
       const ust = k.querySelector<HTMLElement>('.f-hud-ust')!;
       ust.style.height = `${yer.ustBant.h}px`;
