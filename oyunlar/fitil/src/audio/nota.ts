@@ -75,3 +75,90 @@ export const KADEME_ARPEJ: Record<'guzel' | 'harika' | 'muhtesem' | 'senlik', re
 
 /** Kazandın arpeji (§12.2): C5-E5-G5-C6-E6 (pentatonik indeksler). */
 export const KAZANC_ARPEJ: readonly number[] = [0, 2, 3, 5, 7];
+
+// ─── Üretken ninni melodisi (Kasım 2026, "cozy") ─────────────────────────
+/**
+ * Müzik kutusu melodisi: her akor 8 vuruşluk (1 vuruş = 1 sn, ninni temposu)
+ * iki ölçüdür. Melodi rastgele notalar değil, tekrar eden küçük motiflerden
+ * kurulur (akılda kalsın, sakinleştirsin): dört akorluk döngüde biçim
+ * "soru – cevap – soru – kapanış". Motif adımı, akorun `AKOR_MELODI`
+ * listesinin ilk dört basamağına indekstir (hep akor tonu: uyumsuzluk olmaz).
+ */
+export interface MelodiNotasi {
+  /** Akor başından vuruş (0–7,5). */
+  vurus: number;
+  /** Pentatonik dizi indeksi (`nota(i)`). */
+  indeks: number;
+  /** Vurgu 0–1 (ölçü başı güçlü). */
+  guc: number;
+  /** true: bir oktav üstte ince "çıngırak" eşlik eder (cümle sonu). */
+  parlak: boolean;
+}
+
+/** [vuruş, basamak] çiftleri. Soru motifleri (yukarı açılır). */
+export const MOTIF_SORU: readonly (readonly (readonly [number, number])[])[] = [
+  [[0, 0], [1, 1], [2, 2], [4, 1], [5, 2], [6, 3]],
+  [[0, 2], [1.5, 1], [2, 2], [4, 3], [6, 2]],
+  [[0, 0], [2, 2], [3, 1], [4, 2], [6, 3]],
+  [[0.5, 1], [1, 2], [2, 3], [4, 2], [5.5, 1], [6, 2]],
+];
+/** Cevap motifleri (aşağı iner, dinlenir). */
+export const MOTIF_CEVAP: readonly (readonly (readonly [number, number])[])[] = [
+  [[0, 3], [1, 2], [2, 1], [4, 2], [5, 1], [6, 0]],
+  [[0, 2], [2, 1], [4, 1], [5, 0]],
+  [[0, 3], [1.5, 2], [2, 1], [4, 0]],
+];
+/** Kapanış: uzun, seyrek; son nota akorun kökünde kalır. */
+export const MOTIF_KAPANIS: readonly (readonly (readonly [number, number])[])[] = [
+  [[0, 2], [2, 1], [4, 0]],
+  [[0, 1], [1, 2], [2, 1], [4, 0]],
+  [[0, 3], [2, 2], [3, 1], [4, 0]],
+];
+/** Nefes: tek-iki nota (her üç döngüden biri böyle seyrek geçer). */
+export const MOTIF_NEFES: readonly (readonly (readonly [number, number])[])[] = [
+  [[0, 0], [4, 1]],
+  [[2, 2]],
+  [[0, 1], [4, 0]],
+];
+
+/**
+ * `dongu`. dört akorluk döngünün `sira`. akorunun (0–3) notaları. `sec(n)`
+ * 0…n−1 tamsayı verir; aynı döngüde aynı soru/cevap motifi kullanılsın diye
+ * çağıran döngü başına sabit bir tohumdan üretir (`donguSecimi`).
+ */
+export interface DonguSecimi {
+  soru: number;
+  cevap: number;
+  kapanis: number;
+  /** Seyrek döngü: bütün akorlarda nefes motifi. */
+  nefes: boolean;
+  nefesMotifi: number;
+}
+
+export function donguSecimi(sec: (n: number) => number): DonguSecimi {
+  return {
+    soru: sec(MOTIF_SORU.length),
+    cevap: sec(MOTIF_CEVAP.length),
+    kapanis: sec(MOTIF_KAPANIS.length),
+    nefes: sec(3) === 0,
+    nefesMotifi: sec(MOTIF_NEFES.length),
+  };
+}
+
+export function melodiCumlesi(sira: number, d: DonguSecimi): MelodiNotasi[] {
+  const a = ((sira % 4) + 4) % 4;
+  const motif = d.nefes
+    ? MOTIF_NEFES[(d.nefesMotifi + a) % MOTIF_NEFES.length]
+    : a === 3
+      ? MOTIF_KAPANIS[d.kapanis]
+      : a === 1
+        ? MOTIF_CEVAP[d.cevap]
+        : MOTIF_SORU[d.soru];
+  const basamaklar = AKOR_MELODI[a];
+  return motif.map(([vurus, b], i) => ({
+    vurus,
+    indeks: basamaklar[Math.min(b, Math.min(3, basamaklar.length - 1))],
+    guc: vurus === 0 ? 1 : vurus === 4 ? 0.85 : 0.7,
+    parlak: !d.nefes && a === 3 && i === motif.length - 1,
+  }));
+}

@@ -217,6 +217,7 @@ class OyunCiziciSinifi implements OyunCizici {
       }
     }
     s.kamera.hareketiAzalt = s.secenek.hareketiAzalt;
+    this.gok.sakin = s.secenek.hareketiAzalt;
     this.sandik = new Sandik(s);
     this.tc = new TahtaCizimi(s);
     this.ef = new Efektler(s);
@@ -342,6 +343,7 @@ class OyunCiziciSinifi implements OyunCizici {
     Object.assign(s.secenek, p);
     if (gokDegisti) this.yerlesimGerekli = true;
     s.kamera.hareketiAzalt = s.secenek.hareketiAzalt;
+    this.gok.sakin = s.secenek.hareketiAzalt;
     this.kaliteUygula();
     if (paletDegisti) this.yerlesimGerekli = true;
     if (p.fitil !== undefined && this.yol.yol.length) this.yol.goster(this.yol.yol, this.yol.halka, this.yol.renk, this.yol.onizleme);

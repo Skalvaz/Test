@@ -40,9 +40,9 @@
 import type { Konum, Olay } from '../core/types';
 import type { SesMotoru } from '../app/sozlesme';
 import { SesHavuzu, type HavuzSesi } from './havuz';
+import type { DonguSecimi } from './nota';
 import { gurultuUret, rastgeleUretici, yankiKanali, type GurultuRengi } from './gurultu';
 import {
-  AKOR_MELODI,
   AKOR_SURESI,
   KADEME_ARPEJ,
   KAZANC_ARPEJ,
@@ -50,6 +50,8 @@ import {
   PED_AKORLARI,
   SON_INDEKS,
   dalgaIndeksi,
+  donguSecimi,
+  melodiCumlesi,
   midiFrekans,
   nota,
   notaIndeksi,
@@ -1306,7 +1308,53 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
 
   // ─── Ortam: kalabalık uğultusu + deniz (§12.3) ───────────────────────
 
-  let ortamDugum: { kok: GainNode; kaynaklar: AudioScheduledSourceNode[] } | null = null;
+  let ortamDugum: { kok: GainNode; kaynaklar: AudioScheduledSourceNode[]; taban: number; canSonraki: number; zamanlayici: ReturnType<typeof setInterval> | null } | null = null;
+
+  /**
+   * Uzak şamandıra çanı (Kasım 2026, gece limanı): 18–40 sn'de bir, çok alçak
+   * sesle tek ya da çift vuruş; uyumsuz kısmileriyle metal çan, stereoda rastgele.
+   */
+  function ortamCani(o: NonNullable<typeof ortamDugum>, t: number): void {
+    const c = ctx!;
+    const f = [587.33, 659.26, 783.99][Math.floor(r01() * 3) % 3];
+    let hedef: AudioNode = o.kok;
+    if (typeof c.createStereoPanner === 'function') {
+      const p = c.createStereoPanner();
+      p.pan.value = (r01() - 0.5) * 1.4;
+      p.connect(o.kok);
+      hedef = p;
+    }
+    const vurus = r01() < 0.45 ? 2 : 1;
+    for (let v = 0; v < vurus; v++) {
+      const vt = t + v * (0.9 + r01() * 0.3);
+      const g = c.createGain();
+      g.connect(hedef);
+      zarf(g.gain, vt, 0.01, 3.2, 0.08 * (v ? 0.6 : 1));
+      for (const [oran, kaz] of [[1, 1], [2.76, 0.35], [5.4, 0.12]] as const) {
+        const os = c.createOscillator();
+        os.frequency.value = f * oran;
+        const og = c.createGain();
+        og.gain.setValueAtTime(kaz, vt);
+        og.gain.exponentialRampToValueAtTime(kaz * 0.02, vt + 3.2 / oran);
+        os.connect(og);
+        og.connect(g);
+        os.start(vt);
+        os.stop(vt + 3.3);
+        o.kaynaklar.push(os);
+      }
+    }
+  }
+
+  function canPlanla(ufuk: number): void {
+    const o = ortamDugum;
+    if (!o || !ctx) return;
+    while (o.canSonraki < ctx.currentTime + ufuk) {
+      ortamCani(o, o.canSonraki);
+      o.canSonraki += 18 + r01() * 22;
+    }
+    // Çalıp bitmiş çan osilatörlerini listeden düş (liste büyümesin).
+    if (o.kaynaklar.length > o.taban + 36) o.kaynaklar.splice(o.taban, o.kaynaklar.length - o.taban - 18);
+  }
 
   function ortamBaslat(): void {
     if (!ctx || !yol || ortamDugum || !gurultuHazir()) return;
@@ -1384,13 +1432,16 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
     [-0.3, 0.3].forEach((p, n) => kaynak('kahve', n ? 0.91 : 1).connect(pan(p, lp)));
     lp.connect(den);
     den.connect(kok);
-    ortamDugum = { kok, kaynaklar };
+    ortamDugum = { kok, kaynaklar, taban: kaynaklar.length, canSonraki: t + 7 + r01() * 8, zamanlayici: null };
+    if (cevrimdisi) canPlanla(120);
+    else ortamDugum.zamanlayici = setInterval(() => canPlanla(1.5), 700);
   }
 
   function ortamDurdur(): void {
     const o = ortamDugum;
     if (!o || !ctx) return;
     ortamDugum = null;
+    if (o.zamanlayici) clearInterval(o.zamanlayici);
     const t = ctx.currentTime;
     try {
       o.kok.gain.cancelScheduledValues(t);
@@ -1402,9 +1453,36 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
     }
   }
 
-  // ─── Müzik: üretken pentatonik ped (§12.3) ───────────────────────────
+  // ─── Müzik: sıcak ped + bas + motifli müzik kutusu ninnisi (§12.3; Kasım 2026) ─
 
-  let muzikDugum: { kok: GainNode; filtre: BiquadFilterNode; ped: GainNode; sira: number; sonraki: number; zamanlayici: ReturnType<typeof setInterval> | null } | null = null;
+  let muzikDugum: { kok: GainNode; filtre: BiquadFilterNode; ped: GainNode; sira: number; sonraki: number; dongu: DonguSecimi; zamanlayici: ReturnType<typeof setInterval> | null } | null = null;
+
+  /**
+   * Müzik kutusu notası: sinüs temel + kısa süren üst kısmiler (tını "tın"),
+   * yumuşak vuruş, uzun sönüm. Tepe kazancı `guc` (0,05 civarı).
+   */
+  function kutuNota(hedef: AudioNode, t: number, f: number, guc: number, uzun = 1.9): void {
+    const c = ctx!;
+    const g = c.createGain();
+    g.connect(hedef);
+    zarf(g.gain, t, 0.006, uzun, guc);
+    const kismi = (oran: number, kaz: number, sure: number, dalga: OscillatorType = 'sine') => {
+      const o = c.createOscillator();
+      o.type = dalga;
+      o.frequency.value = f * oran;
+      const og = c.createGain();
+      og.gain.setValueAtTime(kaz, t);
+      og.gain.exponentialRampToValueAtTime(Math.max(1e-4, kaz * 0.02), t + sure);
+      o.connect(og);
+      og.connect(g);
+      o.start(t);
+      o.stop(t + Math.min(sure, uzun) + 0.06);
+    };
+    kismi(1, 1, uzun, 'sine');
+    kismi(2, 0.32, uzun * 0.55, 'triangle');
+    kismi(3.01, 0.14, 0.35);
+    kismi(5.4, 0.05, 0.09);
+  }
 
   function akorCal(m: NonNullable<typeof muzikDugum>, sira: number, t: number): void {
     const c = ctx!;
@@ -1430,26 +1508,37 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
         o.stop(bit + 0.05);
       }
     }
-    // Üretken melodi: akor tonlarında seyrek, yumuşak marimba notaları.
-    const melodi = AKOR_MELODI[sira];
-    const adet = 2 + Math.floor(r01() * 3);
-    for (let i = 0; i < adet; i++) {
-      const gec = 0.6 + r01() * (AKOR_SURESI - 1.2);
-      const f = nota(melodi[Math.floor(r01() * melodi.length)]) / (r01() < 0.5 ? 2 : 1);
+    // Bas: akorun kökü ölçü başında, beşlisi ikinci ölçüde (yumuşak, yuvarlak).
+    const kokF = midiFrekans(PED_AKORLARI[sira][0]);
+    const besF = midiFrekans(PED_AKORLARI[sira][1]);
+    for (const [gec, f, guc] of [[0, kokF, 0.052], [4, besF, 0.036]] as const) {
       const g = c.createGain();
       g.connect(m.kok);
-      zarf(g.gain, t + gec, 0.004, 1.1, 0.05);
-      for (const [dalga, k] of [['triangle', 1], ['sine', 0.6]] as const) {
+      const bt = t + gec;
+      g.gain.setValueAtTime(0, bt);
+      g.gain.linearRampToValueAtTime(guc, bt + 0.09);
+      g.gain.exponentialRampToValueAtTime(guc * 0.02, bt + 3.4);
+      g.gain.linearRampToValueAtTime(0, bt + 3.5);
+      for (const [dalga, oran, kaz] of [['sine', 1, 1], ['triangle', 2, 0.3]] as const) {
         const o = c.createOscillator();
         o.type = dalga;
-        o.frequency.value = f * k * (dalga === 'sine' ? 2 : 1);
+        o.frequency.value = f * oran;
         const og = c.createGain();
-        og.gain.value = k;
+        og.gain.value = kaz;
         o.connect(og);
         og.connect(g);
-        o.start(t + gec);
-        o.stop(t + gec + 1.2);
+        o.start(bt);
+        o.stop(bt + 3.6);
       }
+    }
+    // Melodi: motifli ninni (nota.ts `melodiCumlesi`); döngü başında motifler seçilir.
+    if (sira === 0) m.dongu = donguSecimi((n) => Math.min(n - 1, Math.floor(r01() * n)));
+    for (const n of melodiCumlesi(sira, m.dongu)) {
+      // Hafif insanilik: ±12 ms, vurgu ±%10. Sıcak ses için dizi bir oktav aşağıda (C4–E5).
+      const nt = t + n.vurus + (r01() - 0.5) * 0.024;
+      const guc = 0.075 * n.guc * (0.9 + r01() * 0.2);
+      kutuNota(m.kok, nt, nota(n.indeks) / 2, guc);
+      if (n.parlak) kutuNota(m.kok, nt + 0.5, nota(n.indeks), guc * 0.45, 2.4);
     }
   }
 
@@ -1479,7 +1568,7 @@ export function sesMotoruOlustur(secenek: SesMotoruSecenek = {}): SesMotoruAyrin
     ped.gain.value = PED_KAZANCI;
     filtre.connect(ped);
     ped.connect(kok);
-    muzikDugum = { kok, filtre, ped, sira: 0, sonraki: t, zamanlayici: null };
+    muzikDugum = { kok, filtre, ped, sira: 0, sonraki: t, dongu: donguSecimi(() => 0), zamanlayici: null };
     if (cevrimdisi) akorPlanla(60);
     else {
       akorPlanla(1.5);

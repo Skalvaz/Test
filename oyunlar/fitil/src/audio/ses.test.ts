@@ -360,3 +360,33 @@ describe('ses motoru — gerçek bağlam (iOS / WhatsApp içi tarayıcı)', () =
     expect(b.state).toBe('running');
   });
 });
+
+describe('ninni melodisi (nota.ts)', () => {
+  it('her nota akorun tonudur, vuruşlar 0–8 arasında ve sıralı', async () => {
+    const { AKOR_MELODI, donguSecimi, melodiCumlesi, MOTIF_SORU, MOTIF_CEVAP, MOTIF_KAPANIS, MOTIF_NEFES } = await import('./nota');
+    for (const liste of [MOTIF_SORU, MOTIF_CEVAP, MOTIF_KAPANIS, MOTIF_NEFES])
+      for (const motif of liste) {
+        const v = motif.map((x) => x[0]);
+        expect(v).toEqual([...v].sort((a, b) => a - b));
+        expect(Math.min(...v)).toBeGreaterThanOrEqual(0);
+        expect(Math.max(...v)).toBeLessThan(8);
+      }
+    for (let tohum = 0; tohum < 40; tohum++) {
+      let i = tohum;
+      const d = donguSecimi((n) => (i = (i * 7 + 3) % 97) % n);
+      for (let sira = 0; sira < 4; sira++)
+        for (const n of melodiCumlesi(sira, d)) expect(AKOR_MELODI[sira]).toContain(n.indeks);
+    }
+  });
+  it('biçim: soru – cevap – soru – kapanış; kapanış akorun kökünde biter', async () => {
+    const { AKOR_MELODI, melodiCumlesi } = await import('./nota');
+    const d = { soru: 1, cevap: 0, kapanis: 2, nefes: false, nefesMotifi: 0 };
+    const adim = (sira: number) => melodiCumlesi(sira, d).map((n) => AKOR_MELODI[sira].indexOf(n.indeks));
+    expect(adim(0)).toEqual(adim(2).map((_, k) => adim(0)[k]));
+    expect(melodiCumlesi(0, d).map((n) => n.vurus)).toEqual(melodiCumlesi(2, d).map((n) => n.vurus));
+    const son = melodiCumlesi(3, d).at(-1)!;
+    expect(son.indeks).toBe(AKOR_MELODI[3][0]);
+    expect(son.parlak).toBe(true);
+    expect(melodiCumlesi(1, { ...d, nefes: true }).length).toBeLessThanOrEqual(2);
+  });
+});

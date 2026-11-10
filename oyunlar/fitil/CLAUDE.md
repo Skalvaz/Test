@@ -186,6 +186,19 @@ geçerli: kullanıcıyla, kod yorumlarında ve commit mesajlarında Türkçe.
   kuralları dosya başında (ışık sol üstten, tek kontur rengi, derinlik sağ
   alta). Açılış girişi CSS'te (`f-lg-*`, ~1,2 sn), sonra `f-hazir`. Eski
   "ip harfler" logosu ve "A/B/C" taslakları reddedildi (amatör, tutarsız).
+- "Üst seviye" 1. dalga (10 Kasım 2026, ürün sahibi: cozy, sakin, bağımlılık
+  yapıcı; her açıdan cila): (1) yaşayan sahne `render/gokyuzu.ts` — rıhtımdan
+  yükselen dilek fenerleri (kasabanın önünde), deniz bandında fenerli kayık,
+  iskele kirişine asılı iki fener + sudaki yansıma, tahtanın suya vuran sıcak
+  ışığı, 25–55 sn'de bir kayan yıldız; `gok.sakin` (hareketi azalt) hepsini
+  durdurur, düşük kalitede kayan yıldız yok; kare başına bellek ayrılmaz,
+  `titreme.mjs` işaret 0. (2) Müzik `audio/sesMotoru.ts` + `nota.ts`: testere
+  ped duruyor, üstüne kök/beşli bas ve motifli müzik kutusu ninnisi
+  (`melodiCumlesi`: soru–cevap–soru–kapanış, her üç döngüden biri "nefes";
+  rastgele nota yok), ortamda 18–40 sn'de bir uzak şamandıra çanı. Ölçüm
+  (scratch `sesolc`): müzik RMS −36 dBFS (eski −37,7), tepe −21. Müziği
+  kulakla yalnız ürün sahibi doğrulayabilir. Sıradaki adaylar: harita ve
+  menülerde ortam canlılığı, kazanç anı, günlük dönüş ödülü akışı.
 - Görsel dil: mevcut tasarım (gece kasabası, ahşap HUD, parlak kapsüller)
   korunur. Kullanıcı "Kibrit Kutusu" (matbaa baskısı) ve "Kesme Kâğıt"
   (origami) yönlerini reddetti, mevcut hâli daha güzel buldu (`docs/tasarim/`).
