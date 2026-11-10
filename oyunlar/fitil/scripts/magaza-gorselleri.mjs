@@ -399,7 +399,9 @@ const SAHNELER = [
       // Kıvılcım Usta balonu yerleşsin; el ipucunu sürüklemenin ortasında dondur
       // (yolKatmani cizEl döngüsü: 450 ms giriş + düğüm başı 380 ms sürükleme).
       await bekleKosul(page, () => !!window.__fitil.cizici().yol.el, null, 15000, 'el ipucu');
-      await page.waitForTimeout(300);
+      // Balon tam görünür olsun (yük altında giriş canlandırması gecikiyor, kare soluk çıkıyordu).
+      await bekleKosul(page, () => { const b = document.querySelector('.f-balon'); return !!b && getComputedStyle(b).opacity === '1'; }, null, 8000, 'öğretim balonu');
+      await page.waitForTimeout(450);
       await page.evaluate(() => {
         const c = window.__fitil.cizici();
         c.yol.elT = 450 + 380 * 1.6;
