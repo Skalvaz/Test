@@ -29,6 +29,16 @@ misina, besin zinciri, fırtına; Canvas 2D + TS + Vite, bağımlılıksız). No
 (`npm run build:single` → `dist-single/artifact.html` aynı yolla yeniden
 yayınlanır; yetenek yok).
 
+## Ayrı proje: BARUT (oyunlar/barut)
+
+`oyunlar/barut/` çöp adamlı, yıkımlı helikopter savaş oyunu (taramalı piksel
+sanatı, açık zemin, 7 gri ton; altyapı LODOS'tan). Notlar
+`oyunlar/barut/CLAUDE.md`. Yayın: https://claude.ai/artifact/EWcMNfL86UpbVwS6N42QeM
+(`npm run build:single` → `dist-single/artifact.html` aynı yolla yeniden
+yayınlanır; yetenek yok). Kullanıcı LODOS'un görüntüsünü "düşük kalite, göz
+yoruyor" buldu; yeni oyunlarda BARUT'un görsel yolunu (açık zemin, düz tonlar,
+daha yüksek çözünürlük) izle.
+
 ## Kurallar
 
 - Kullanıcıyla Türkçe konuş. Kod yorumları ve commit mesajları da Türkçe.

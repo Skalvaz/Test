@@ -1,0 +1,23 @@
+{
+  "name": "barut",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "BARUT — çöp adamlı, yıkımlı helikopter savaş oyunu. Taramalı piksel sanatı.",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "build:single": "vite build --mode single && node scripts/bundle-single.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p .",
+    "shot": "node scripts/shot.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.2"
+  },
+  "config": {
+    "slug": "barut"
+  }
+}
