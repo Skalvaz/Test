@@ -21,6 +21,14 @@ tasarım `oyunlar/ebruli/docs/GDD.md`. Asıl ürün FİTİL. Yayın:
 https://claude.ai/artifact/6MV9JE4wa3u1ChCCkS7wma (`npm run build:single` →
 `dist-single/artifact.html` aynı yolla; yetenekler db + user).
 
+## Ayrı proje: LODOS (oyunlar/lodos)
+
+`oyunlar/lodos/` 1-bit piksel sanatlı gece balıkçılığı oyunu (ip fizikli
+misina, besin zinciri, fırtına; Canvas 2D + TS + Vite, bağımlılıksız). Notlar
+`oyunlar/lodos/CLAUDE.md`. Yayın: https://claude.ai/artifact/PF8aiYSTHRz4WvAoqGQtHQ
+(`npm run build:single` → `dist-single/artifact.html` aynı yolla yeniden
+yayınlanır; yetenek yok).
+
 ## Kurallar
 
 - Kullanıcıyla Türkçe konuş. Kod yorumları ve commit mesajları da Türkçe.

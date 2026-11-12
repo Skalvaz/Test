@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Lodos</title>
+<meta name="description" content="LODOS — gece balıkçısı. 1-bit piksel sanatlı, ip fizikli balık tutma oyunu.">
+<meta name="theme-color" content="#080b12">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%23080b12'/%3E%3Cpath d='M2 9h12v1H2zM3 10h10v1H3zM4 11h8v1H4zM8 3h1v6H8z' fill='%23dce8f0'/%3E%3Crect x='9' y='3' width='2' height='2' fill='%23ffa82e'/%3E%3C/svg%3E">
+<style>
+/* Tek ekran oyun: ortada piksel tuval, çevresi oyunun zemin rengi. Tek (koyu) tema. */
+:root{--zemin:#080b12;--murekkep:#dce8f0;--vurgu:#ffa82e;color-scheme:dark}
+html,body{margin:0;height:100%;background:var(--zemin);color:var(--murekkep);overflow:hidden;overscroll-behavior:none}
+body{box-sizing:border-box;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));font:14px/1.4 ui-monospace,Menlo,Consolas,monospace;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#app{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+canvas{display:block;max-width:100%;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;cursor:crosshair;outline:none}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module" src="./src/main.ts"></script>
+</body>
+</html>

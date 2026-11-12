@@ -1,0 +1,23 @@
+{
+  "name": "lodos",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "LODOS — gece balıkçısı. 1-bit piksel sanatlı, ip fizikli balık tutma oyunu.",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "build:single": "vite build --mode single && node scripts/bundle-single.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p .",
+    "shot": "node scripts/shot.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.2"
+  },
+  "config": {
+    "slug": "lodos"
+  }
+}
