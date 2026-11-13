@@ -323,6 +323,7 @@ export class Dunya {
   jetUyari = 0;
   jetUyariY = 0;
   private sozSayac = 0;
+  private kanSayac = 0;
 
   constructor(
     public readonly yuk: number,
@@ -679,8 +680,17 @@ export class Dunya {
     this.digerAdim(dt);
 
     const h = this.heli;
-    const hedefKam = h.x - G * 0.4 + h.yon * 26;
-    this.kam.x += (sinirla(hedefKam, 0, KAM_SAG) - this.kam.x) * Math.min(1, dt * 3.5);
+    // Kamera: helikopter ekranın ortasındaki bir kuşakta serbestçe gezer (parmağa
+    // bire bir karşılık görünür); kuşağın dışına çıkınca kamera peşinden gelir.
+    // Yöne göre öne atlama YOK: sürüklerken helikopteri ekranda geri kaydırıyordu.
+    // Düşman hep sağdan geldiği için helikopter ekranın sol üçte birinde durur:
+    // önündeki top ve roket menzili ekranda kalır (playtest: ortadayken
+    // düşmanın %64'ü ekran dışında ölüyordu).
+    const fark = h.x - G * 0.3 - this.kam.x;
+    const BOSLUK = 16;
+    if (fark > BOSLUK) this.kam.x += (fark - BOSLUK) * Math.min(1, dt * 5);
+    else if (fark < -BOSLUK) this.kam.x += (fark + BOSLUK) * Math.min(1, dt * 5);
+    this.kam.x = sinirla(this.kam.x, 0, KAM_SAG);
 
     if (this.oyunda && !this.bitti) {
       const g = this.guc;
@@ -696,6 +706,13 @@ export class Dunya {
           b.adet++;
         }
       } else b.dolum = 0;
+    }
+    // Kan zamanla kurur ve silinir (yoksa birkaç dalgada bütün zemin kırmızı olur)
+    this.kanSayac -= dt;
+    if (this.kanSayac <= 0) {
+      this.kanSayac = 0.22;
+      const k = this.kanIz;
+      for (let i = 0; i < k.length; i++) if (k[i] > 0) k[i]--;
     }
     if (this.sarsinti > 0) this.sarsinti = Math.max(0, this.sarsinti - dt * 3.2);
     if (this.parla > 0) this.parla = Math.max(0, this.parla - dt * 7);
@@ -1380,7 +1397,7 @@ export class Dunya {
         // Bir süre yattıktan sonra zemine karışır
         if (b.t > 7 || this.bezler.length > 30) {
           this.bezler.splice(n, 1);
-          this.yigin(b.x[2], 7, 2.3);
+          this.yigin(b.x[2], 8, 1.5);
         }
         continue;
       }
@@ -1517,7 +1534,7 @@ export class Dunya {
       if (e.t < 3 && this.rng() < 0.3) this.parca(P_ATES, e.x + (this.rng() - 0.5) * 18, e.y - 8, 0, -20, 0.4, 3);
       if (e.t > 15) {
         this.enkazlar.splice(i, 1);
-        this.yigin(e.x, 17, 8);
+        this.yigin(e.x, 18, 6);
       }
     }
     for (let i = this.gomuler.length - 1; i >= 0; i--) {

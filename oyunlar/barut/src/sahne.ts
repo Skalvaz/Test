@@ -10,8 +10,9 @@ import {
   type Asker,
 } from './dunya';
 import {
-  SPR_AGAC, SPR_DHELI, SPR_GOMU, SPR_HELI, SPR_JET, SPR_KAMYON, SPR_KASK, SPR_KIRPI, SPR_KULE, SPR_MAYIN,
-  SPR_NAKLIYE, SPR_SANDIK, SPR_SIMGE_HELI, SPR_SIMGE_SIPER, SPR_TANK, SPR_UCAKSAVAR,
+  DHELI_N, HELI_N, JET_N, KAMYON_N, KULE_N, NAKLIYE_N, SPR_AGAC, SPR_DHELI, SPR_GOMU, SPR_HELI, SPR_JET, SPR_KAMYON,
+  SPR_KASK, SPR_KIRPI, SPR_KULE, SPR_MAYIN, SPR_NAKLIYE, SPR_SANDIK, SPR_SIMGE_HELI, SPR_SIMGE_SIPER, SPR_TANK,
+  SPR_UCAKSAVAR, SPR_UKULE, TANK_N, UCAKSAVAR_N, UKULE_N,
 } from './sprite';
 import { AKKOR, ATES, KAN, KURU_KAN, Tuval, yaziGenislik, type YaziSecenek } from './tuval';
 
@@ -520,31 +521,36 @@ export class Sahne {
     for (const o of d.havalar) {
       const x = this.X(o.x);
       const y = this.Y(o.y);
-      if (x < -110 || x > EK + 110) continue;
+      if (x < -120 || x > EK + 120) continue;
       if (o.tip === T_HELI) {
-        t.cizDon(SPR_DHELI, x, y, o.aci, o.yon < 0, 33, 12);
+        const N = DHELI_N;
+        t.cizDon(SPR_DHELI, x, y, o.aci, o.yon < 0, N.ox, N.oy);
         if (!o.dusuyor) {
-          const [mx, my] = this.yerel(x, y, o.aci, o.yon, -2, -13);
-          this.pervane(mx, my, o.aci, 34);
-          const [kx, ky] = this.yerel(x, y, o.aci, o.yon, -30, -6);
+          const [mx, my] = this.yerel(x, y, o.aci, o.yon, N.direk[0] - N.ox, N.direk[1] - N.oy);
+          this.pervane(mx, my, o.aci, 44);
+          const [kx, ky] = this.yerel(x, y, o.aci, o.yon, N.kuyruk[0] - N.ox, N.kuyruk[1] - N.oy);
           const ka = d.zaman * 38;
-          t.cizgi(kx - Math.cos(ka) * 5, ky - Math.sin(ka) * 5, kx + Math.cos(ka) * 5, ky + Math.sin(ka) * 5, 0);
+          t.cizgi(kx - Math.cos(ka) * 6, ky - Math.sin(ka) * 6, kx + Math.cos(ka) * 6, ky + Math.sin(ka) * 6, 0);
+          t.cizgi(kx + Math.sin(ka) * 6, ky - Math.cos(ka) * 6, kx - Math.sin(ka) * 6, ky + Math.cos(ka) * 6, 128);
         }
       } else if (o.tip === T_JET) {
-        t.cizDon(SPR_JET, x, y, o.dusuyor ? o.aci * 0.5 : 0, true, 38, 10);
+        t.cizDon(SPR_JET, x, y, o.dusuyor ? o.aci * 0.5 : 0, true, JET_N.ox, JET_N.oy);
         if (!o.dusuyor) {
-          // Art yakıcı
-          const uz = 7 + (Math.floor(d.zaman * 30) % 3) * 3;
+          // Art yakıcı: lülenin arkasında titreyen alev
+          const uz = 9 + (Math.floor(d.zaman * 30) % 3) * 4;
           for (let k = 0; k < uz; k++) {
-            const gen = Math.max(0, 2 - Math.floor(k / 3));
-            for (let m = -gen; m <= gen; m++) t.vurgu(x + 37 + k, y + 1 + m, k < 3 ? AKKOR : ATES);
+            const gen = Math.max(0, 2 - Math.floor(k / 4));
+            for (let m = -gen; m <= gen; m++) t.vurgu(x + JET_N.ox - JET_N.lule[0] + k, y + m, k < 4 ? AKKOR : ATES);
           }
         }
       } else {
-        t.ciz(SPR_NAKLIYE, x - 44, y - 11);
+        const N = NAKLIYE_N;
+        t.ciz(SPR_NAKLIYE, x - N.ox, y - N.oy);
         const p = Math.floor(d.zaman * 30) % 2 === 0 ? 9 : 4;
-        t.cizgi(x + 7, y + 1 - p, x + 7, y + 1 + p, 60);
-        t.cizgi(x + 8, y + 1 - 9, x + 8, y + 1 + 9, 200);
+        for (const [px, py] of N.pervane) {
+          t.cizgi(x - N.ox + px + 1, y - N.oy + py - 9, x - N.ox + px + 1, y - N.oy + py + 9, 200);
+          t.cizgi(x - N.ox + px, y - N.oy + py - p, x - N.ox + px, y - N.oy + py + p, 60);
+        }
       }
     }
   }
@@ -594,7 +600,8 @@ export class Sahne {
       // Kan: yüzeyde kırmızı, yoğunsa aşağı sızar
       if (kan > 30 && ys >= 0 && ys < H - 8) {
         const derin = 2 + (kan > 110 ? 1 : 0) + (kan > 190 ? 1 : 0) + (kan > 150 && kes(px, 3) < 0.25 ? 3 : 0);
-        for (let k = 0; k < derin; k++) t.v[(ys + k) * W + x] = k < 3 ? KAN : KURU_KAN;
+        // Taze kan parlak, eskidikçe koyulaşır
+        for (let k = 0; k < derin; k++) t.v[(ys + k) * W + x] = kan > 100 && k < 3 ? KAN : KURU_KAN;
       }
       // Ot, çakıl
       if (is < 40 && les < 30 && wi > SIPER_ON && ys > 6) {
@@ -639,12 +646,12 @@ export class Sahne {
       const y = this.Y(e.y);
       // Zemine karışmadan önce yavaşça gömülür
       const bat = e.t > 11 ? Math.round((e.t - 11) * 3) : 0;
-      if (e.tip === T_TANK) t.cizDon(SPR_TANK, x, y - 8 + bat, e.aci, true, 36, 10, 255);
-      else if (e.tip === T_UCAKSAVAR) t.cizDon(SPR_UCAKSAVAR, x, y - 8 + bat, e.aci, true, 32, 10, 255);
-      else if (e.tip === T_KAMYON) t.cizDon(SPR_KAMYON, x, y - 9 + bat, e.aci + 0.2, true, 33, 13, 255);
-      else if (e.tip === T_HELI) t.cizDon(SPR_DHELI, x, y - 8 + bat, e.aci + 0.4, true, 33, 12, 255);
-      else if (e.tip === T_JET) t.cizDon(SPR_JET, x, y - 6 + bat, e.aci + 0.5, true, 38, 10, 255);
-      else t.cizDon(SPR_HELI, x, y - 9 + bat, e.aci + 0.5, false, 36, 14, 255);
+      if (e.tip === T_TANK) t.cizDon(SPR_TANK, x, y - 9 + bat, e.aci, true, TANK_N.ox, TANK_N.oy, 255);
+      else if (e.tip === T_UCAKSAVAR) t.cizDon(SPR_UCAKSAVAR, x, y - 8 + bat, e.aci, true, UCAKSAVAR_N.ox, UCAKSAVAR_N.oy, 255);
+      else if (e.tip === T_KAMYON) t.cizDon(SPR_KAMYON, x, y - 11 + bat, e.aci + 0.2, true, KAMYON_N.ox, KAMYON_N.oy, 255);
+      else if (e.tip === T_HELI) t.cizDon(SPR_DHELI, x, y - 9 + bat, e.aci + 0.4, true, DHELI_N.ox, DHELI_N.oy, 255);
+      else if (e.tip === T_JET) t.cizDon(SPR_JET, x, y - 6 + bat, e.aci + 0.5, true, JET_N.ox, JET_N.oy, 255);
+      else t.cizDon(SPR_HELI, x, y - 10 + bat, e.aci + 0.5, false, HELI_N.ox, HELI_N.oy, 255);
     }
   }
 
@@ -741,43 +748,65 @@ export class Sahne {
     t.kutu(x - 13, y + 1, Math.max(1, Math.round(26 * oran)), 2, 0, KAN);
   }
 
+  /** Araçların görsel eğimi (yumuşatılmış); simülasyonda yok. */
+  private egimler = new WeakMap<object, number>();
+
+  /**
+   * Aracın zemindeki duruşu: ön ve arka temas noktasından eğim ve yükseklik.
+   * Dönen değer: [ekran x, taban y, eğim açısı].
+   */
+  private durus(a: { x: number }, yari: number): [number, number, number] {
+    const d = this.d;
+    const y0 = d.yerY(a.x - yari);
+    const y1 = d.yerY(a.x + yari);
+    const hedef = sinirla(Math.atan2(y1 - y0, yari * 2), -0.6, 0.6);
+    let e = this.egimler.get(a);
+    if (e === undefined) e = hedef;
+    e += (hedef - e) * 0.22;
+    this.egimler.set(a, e);
+    // İki ucun ortalamasına oturur; ortadaki tümsek daha yüksekse ona
+    const taban = Math.min((y0 + y1) / 2, d.yerY(a.x) + 1.5);
+    return [this.X(a.x), this.Y(taban), e];
+  }
+
   private araclar(): void {
     const { t, d } = this;
     for (const a of d.araclar) {
       const sars = a.sars > 0 ? (Math.floor(d.zaman * 60) % 2 ? 1 : -1) : 0;
-      const x = this.X(a.x) + sars;
-      const y = this.Y(a.y);
-      if (x < -60 || x > EK + 60) continue;
+      const [x0, yb, e] = this.durus(a, a.tip === T_KAMYON ? 17 : 16);
+      const x = x0 + sars;
+      if (x < -70 || x > EK + 70) continue;
       const gidiyor = a.x > a.dur;
-      // Yürürken hafif sallanır
-      const zip = gidiyor && Math.sin(a.t * 13) > 0.6 ? 1 : 0;
+      // Yürürken süspansiyon hafifçe yaylanır
+      const zip = gidiyor ? Math.round(Math.abs(Math.sin(a.t * 11)) * 1.3) : 0;
       if (a.tip === T_TANK) {
-        const yon = a.nisanT > 0 && d.heli.x > a.x ? 1 : -1;
-        const c = Math.cos(a.namlu);
-        const s = Math.sin(a.namlu);
-        const tepki = a.sars > 0.08 ? 4 : 0; // atış sonrası geri tepme
-        const kx = x + 4 - yon * tepki * 0.5;
-        const ky = y - 20;
-        // Namlu
-        const bx = kx + yon * 13;
-        const by = ky - 5;
-        const uz = 30 - tepki;
-        for (let k = -1; k <= 1; k++) t.cizgi(bx, by + k, bx + yon * c * uz, by + k - s * uz, 0);
-        t.kutu(bx + yon * c * uz - 2, by - s * uz - 2, 4, 5, 0); // namlu ağız freni
-        t.ciz(SPR_KULE, kx - 16, ky - 11, yon < 0);
-        // Anten
-        const ax = kx - yon * 10;
-        const sal = Math.sin(a.t * 7) * (gidiyor ? 2 : 0.6);
-        t.cizgi(ax, ky - 11, ax + sal, ky - 27, 0);
-        t.ciz(SPR_TANK, x - 36, y - 20 + zip, true);
+        const yc = yb - (SPR_TANK.h - 1 - TANK_N.oy) - zip;
+        t.cizDon(SPR_TANK, x, yc, e, true, TANK_N.ox, TANK_N.oy);
         if (gidiyor) {
-          // Palet dişleri akar
+          // Palet baklaları akar
           const k = Math.floor(a.t * 16) % 4;
-          for (let p = -32 + k; p < 33; p += 4) {
-            t.nokta(x + p, y - 1, 150);
-            t.nokta(x - p, y - 10, 150);
+          for (let p = -34 + k; p < 35; p += 4) {
+            const [px, py] = this.yerel(x, yc, e, -1, p, 9);
+            t.nokta(px, py, 150);
           }
         }
+        const yon = a.nisanT > 0 && d.heli.x > a.x ? 1 : -1;
+        const tepki = a.sars > 0.08 ? 5 : 0; // atış sonrası geri tepme
+        // Kule gövdenin üstüne 1 piksel biner (arada boşluk kalmaz)
+        const [tx, ty] = this.yerel(x, yc, e, -1, TANK_N.kule[0] - TANK_N.ox, TANK_N.kule[1] - TANK_N.oy + 1);
+        const [bx, by] = this.yerel(tx, ty, e, yon, KULE_N.namlu[0] - KULE_N.ox, KULE_N.namlu[1] - KULE_N.oy);
+        // Namlu dengelidir: gövde yatsa da hedefe bakar
+        const ux = yon * Math.cos(a.namlu);
+        const uy = -Math.sin(a.namlu);
+        const uz = 40 - tepki;
+        for (let k = -1; k <= 1; k++) t.cizgi(bx, by + k, bx + ux * uz, by + k + uy * uz, 0);
+        // Namlu gaz boşaltıcısı ve ağız
+        for (let k = -2; k <= 2; k++) t.cizgi(bx + ux * uz * 0.5, by + k + uy * uz * 0.5, bx + ux * uz * 0.66, by + k + uy * uz * 0.66, 0);
+        t.kutu(bx + ux * uz - 1, by + uy * uz - 2, 3, 5, 0);
+        t.cizDon(SPR_KULE, tx - yon * tepki * 0.4, ty, e, yon < 0, KULE_N.ox, KULE_N.oy);
+        // Anten
+        const [ax, ay] = this.yerel(tx, ty, e, yon, -14, -9);
+        t.cizgi(ax, ay, ax + Math.sin(a.t * 7) * (gidiyor ? 2.5 : 0.6) - e * 8, ay - 18, 0);
         if (a.nisanT > 0 && Math.floor(d.zaman * 14) % 2 === 0) {
           // Nişan çizgisi: helikoptere doğru kesik kırmızı çizgi
           const hx = this.X(d.heli.x);
@@ -789,25 +818,37 @@ export class Sahne {
           }
         }
       } else if (a.tip === T_UCAKSAVAR) {
-        t.ciz(SPR_UCAKSAVAR, x - 32, y - 20 + zip, true);
-        const px = x + 11;
-        const py = y - 13 + zip;
+        const N = UCAKSAVAR_N;
+        const yc = yb - (SPR_UCAKSAVAR.h - 1 - N.oy) - zip;
+        t.cizDon(SPR_UCAKSAVAR, x, yc, e, true, N.ox, N.oy);
         const c = Math.cos(a.namlu);
         const s = Math.sin(a.namlu);
-        // Kaide, kalkan, çift namlu
-        t.kutu(px - 3, py - 2, 7, 4, 0);
-        t.kalin(px, py - 2, px + c * 6, py - 2 - s * 6, 0);
-        for (const k of [-2, 2]) {
-          const ox = -s * k;
-          const oy = -c * k;
-          t.cizgi(px + ox, py - 4 + oy, px + ox + c * 22, py - 4 + oy - s * 22, 0);
+        const yon = c >= 0 ? 1 : -1;
+        const [tx, ty] = this.yerel(x, yc, e, -1, N.kule[0] - N.ox, N.kule[1] - N.oy + 1);
+        const [gx, gy] = this.yerel(tx, ty, e, yon, UKULE_N.namlu[0] - UKULE_N.ox, UKULE_N.namlu[1] - UKULE_N.oy);
+        // Dörtlü top: iki çift namlu, uçlarında alev gizleyen
+        for (const k of [-3, -1, 1, 3]) {
+          const ox = s * k * 0.8;
+          const oy = c * k * 0.8;
+          t.cizgi(gx + ox, gy + oy, gx + ox + c * 24, gy + oy - s * 24, 0);
+          t.nokta(gx + ox + c * 25, gy + oy - s * 25, 0);
         }
-        t.daire(px + c * 5, py - 4 - s * 5, 3, 0);
-        t.daire(px + c * 5, py - 4 - s * 5, 1.5, 128);
+        t.cizDon(SPR_UKULE, tx, ty, e, yon < 0, UKULE_N.ox, UKULE_N.oy);
+        // Dönen radar çanağı
+        const [rx, ry] = this.yerel(tx, ty, e, yon, UKULE_N.radar[0] - UKULE_N.ox, UKULE_N.radar[1] - UKULE_N.oy);
+        t.cizgi(rx, ry, rx, ry - 6, 0);
+        const gen = 1 + Math.abs(Math.cos(d.zaman * 3 + a.x)) * 7;
+        for (let yy = -4; yy <= 4; yy++) {
+          const w = Math.round(gen * Math.sqrt(1 - (yy / 4.5) ** 2));
+          t.kutu(rx - w, ry - 10 + yy, w * 2 + 1, 1, yy === -4 || yy === 4 ? 0 : 128);
+          t.nokta(rx - w, ry - 10 + yy, 0);
+          t.nokta(rx + w, ry - 10 + yy, 0);
+        }
       } else {
-        t.ciz(SPR_KAMYON, x - 33, y - 26 + zip, true);
+        const N = KAMYON_N;
+        t.cizDon(SPR_KAMYON, x, yb - (SPR_KAMYON.h - 1 - N.oy) - zip, e, true, N.ox, N.oy);
       }
-      this.canCubugu(x, y - 44, a.can / a.enCan);
+      this.canCubugu(x, yb - 52, a.can / a.enCan);
     }
   }
 
@@ -1081,17 +1122,18 @@ export class Sahne {
       }
     }
     const vurulmus = h.darbe > 0 && Math.floor(d.zaman * 30) % 2 === 0;
-    t.cizDon(SPR_HELI, x, y, h.egim, h.yon < 0, 36, 14, vurulmus ? 255 : 0);
-    const [mx, my] = this.yerel(x, y, h.egim, h.yon, -3, -15);
-    this.pervane(mx, my, h.egim, 40);
+    const N = HELI_N;
+    t.cizDon(SPR_HELI, x, y, h.egim, h.yon < 0, N.ox, N.oy, vurulmus ? 255 : 0);
+    const [mx, my] = this.yerel(x, y, h.egim, h.yon, N.direk[0] - N.ox, N.direk[1] - N.oy);
+    this.pervane(mx, my, h.egim, 48);
     // Kuyruk pervanesi
-    const [kx, ky] = this.yerel(x, y, h.egim, h.yon, -32, -8);
+    const [kx, ky] = this.yerel(x, y, h.egim, h.yon, N.kuyruk[0] - N.ox, N.kuyruk[1] - N.oy);
     const ka = d.zaman * 40;
     t.cizgi(kx - Math.cos(ka) * 6, ky - Math.sin(ka) * 6, kx + Math.cos(ka) * 6, ky + Math.sin(ka) * 6, 0);
     t.cizgi(kx - Math.cos(ka + 1.57) * 6, ky - Math.sin(ka + 1.57) * 6, kx + Math.cos(ka + 1.57) * 6, ky + Math.sin(ka + 1.57) * 6, 150);
     // Namlu alevi: yıldız biçimli parlama
     if (h.top > 0.07 && d.oyunda && !h.olu) {
-      const [ax, ay] = this.yerel(x, y, h.egim, h.yon, 28, 10);
+      const [ax, ay] = this.yerel(x, y, h.egim, h.yon, N.namlu[0] - N.ox, N.namlu[1] - N.oy);
       const c = Math.cos(h.namlu);
       const s = Math.sin(h.namlu);
       t.daire(ax + c * 3, ay + s * 3, 3, 0, ATES);

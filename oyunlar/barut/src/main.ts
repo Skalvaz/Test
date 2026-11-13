@@ -8,6 +8,15 @@ import { Ses } from './ses';
 import { Tuval } from './tuval';
 
 const ADIM = 1 / 60;
+/**
+ * Yatay sürükleme kazancı parmağın hızına göre artar (fare ivmesi gibi):
+ * yavaş hareket hassas, hızlı çekiş uzağa götürür. Dünya ekrandan geniş
+ * olduğu için sabit düşük kazançta parmak kenara varır, yol bitmez.
+ */
+const KAZANC_YAVAS = 1.35;
+const KAZANC_HIZLI = 2.6;
+/** Parmak ekranın bu kadar kenarındaysa helikopter o yöne gitmeye devam eder. */
+const KENAR = 34;
 const REKOR_ANAHTAR = 'barut-rekor';
 
 function rekorOku(): number {
@@ -43,7 +52,7 @@ let pikseller!: Uint32Array;
 const ses = new Ses();
 const arayuz: Arayuz = { durum: 'baslik', rekor: rekorOku(), yeniRekor: false, sesAcik: true, duyuru: '', duyuruT: 9, sonucT: 0, ipucuT: 0 };
 /** `id`: helikopteri süren parmak. `t0`/`yol`: kısa dokunuşu sürüklemeden ayırmak için. */
-const parmak = { basili: false, x: 0, y: 0, id: -1, t0: 0, yol: 0 };
+const parmak = { basili: false, x: 0, y: 0, id: -1, t0: 0, yol: 0, sonT: 0 };
 const tus = { sol: false, sag: false, asagi: false, yukari: false };
 
 function yeniDunya(): void {
@@ -129,13 +138,21 @@ kanvas.addEventListener('pointerdown', (e) => {
   parmak.x = p.x;
   parmak.y = p.y;
   parmak.t0 = performance.now();
+  parmak.sonT = parmak.t0;
   parmak.yol = 0;
 });
 kanvas.addEventListener('pointermove', (e) => {
   if (!parmak.basili || e.pointerId !== parmak.id || arayuz.durum !== 'oyun') return;
   const p = ekrandan(e);
   // Göreli sürükleme: helikopter parmağın altında kalmaz.
-  dunya.surukle(((p.x - parmak.x) / K) * 1.25, ((p.y - parmak.y) / K) * 1.25);
+  // Yatayda dünya ekrandan geniş: kazanç yüksek olmazsa parmak ekranın kenarına
+  // varır, yol bitmez, kaldırıp yeniden sürüklemek gerekir.
+  const simdi = performance.now();
+  const gecen = Math.max(4, simdi - parmak.sonT);
+  parmak.sonT = simdi;
+  const hiz = (Math.abs(p.x - parmak.x) / gecen) * 1000; // tuval pikseli / sn
+  const kazanc = KAZANC_YAVAS + (KAZANC_HIZLI - KAZANC_YAVAS) * Math.min(1, Math.max(0, (hiz - 150) / 700));
+  dunya.surukle(((p.x - parmak.x) / K) * kazanc, ((p.y - parmak.y) / K) * 1.25);
   parmak.yol += Math.abs(p.x - parmak.x) + Math.abs(p.y - parmak.y);
   parmak.x = p.x;
   parmak.y = p.y;
@@ -245,6 +262,11 @@ function adimAt(dt: number): void {
     const yatay = (tus.sag ? 1 : 0) - (tus.sol ? 1 : 0);
     const dikey = (tus.asagi ? 1 : 0) - (tus.yukari ? 1 : 0);
     if (yatay || dikey) dunya.surukle(yatay * 230 * dt, dikey * 200 * dt);
+    // Kenar itme: parmak ekranın kenarında bekliyorsa yolculuk sürer
+    if (parmak.basili) {
+      if (parmak.x < KENAR) dunya.surukle(-190 * dt, 0);
+      else if (parmak.x > EK - KENAR) dunya.surukle(190 * dt, 0);
+    }
   }
   dunya.adim(dt);
   sahne.guncelle(dt);

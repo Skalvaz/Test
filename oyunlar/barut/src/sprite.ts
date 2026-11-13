@@ -136,168 +136,217 @@ export class Boya {
   }
 }
 
-/** Oyuncunun helikopteri. Dönme merkezi (36, 14), direk ucu (33, 0), namlu ucu (63, 24). */
+/**
+ * Modeller gerçek araçların siluetinden esinlenir (işaret ve ülke yok):
+ * saldırı helikopteri (tandem kabinli, T129/A129 çizgisinde), nakliye-saldırı
+ * helikopteri (çift balon kabinli, Mi-24 çizgisinde), ana muharebe tankı
+ * (alçak yuvarlak kuleli, T-72 çizgisinde), paletli uçaksavar (ZSU-23-4
+ * çizgisinde), 6×6 kamyon (Ural çizgisinde), delta kanatlı av uçağı (MiG-21
+ * çizgisinde), dört motorlu nakliye uçağı (C-130 çizgisinde).
+ * Her sprite'ın yanında bağlantı noktaları: `ox, oy` dönme merkezi.
+ */
+
+/** Oyuncunun saldırı helikopteri. */
+export const HELI_N = { ox: 44, oy: 15, direk: [42, 0], kuyruk: [5, 7], namlu: [84, 27] } as const;
 export const SPR_HELI = (() => {
-  const b = new Boya(74, 29);
-  b.p([2, 10, 31, 10, 31, 18, 17, 16, 2, 13], B); // kuyruk bomu
-  b.p([1, 3, 6, 3, 11, 11, 2, 13], B); // dikey kuyruk
-  b.k(9, 13, 9, 2, B); // yatay denge
-  b.p([25, 9, 47, 7, 59, 9, 67, 13, 70, 17, 65, 21, 31, 22, 25, 18], B); // gövde
-  b.p([28, 5, 46, 4, 50, 8, 26, 9], T5); // motor kaputu
-  b.k(32, 1, 3, 4, T2); // direk
-  b.o(69, 19, 2, T2); // burun algılayıcısı
-  b.k(34, 19, 11, 2, T2); // kanatçık
-  b.k(32, 22, 15, 4, T2); // roket yuvası
-  b.k(52, 22, 6, 3, T2); // top yuvası
+  const b = new Boya(90, 32);
+  b.p([5, 11, 40, 10, 40, 18, 22, 16, 5, 14], B); // kuyruk bomu
+  b.p([2, 2, 8, 2, 14, 11, 6, 14, 2, 10], B); // geriye yatık dikme
+  b.k(13, 13, 11, 2, B); // yatay denge
+  b.p([36, 10, 52, 8, 58, 5, 67, 5, 71, 9, 77, 9, 83, 15, 86, 19, 82, 22, 44, 23, 36, 19], B); // gövde + kademeli kabin
+  b.p([38, 6, 56, 6, 60, 9, 60, 14, 38, 14], T5); // motor kaportası
+  b.k(40, 2, 5, 4, T2); // rotor göbeği
+  b.o(85, 21, 2.4, T2); // burun nişangâhı
+  b.p([48, 17, 61, 17, 59, 20, 48, 20], T2); // kanatçık
+  b.k(46, 21, 15, 4, T2); // roket yuvası
+  b.k(72, 23, 6, 3, T2); // çene topu
+  b.o(63, 28, 2.4, T1); // ana teker
+  b.o(8, 21, 1.8, T1); // kuyruk tekeri
   b.kenar();
-  b.c(58, 24, 63, 24, M); // namlu
-  b.c(36, 24, 34, 27, M).c(50, 24, 52, 27, M); // kızak ayakları
-  b.c(29, 28, 57, 28, M).n(58, 27, M); // kızak
-  // Kabin camı
-  b.p([48, 9, 58, 9, 66, 14, 50, 14], T4);
-  b.c(48, 9, 58, 9, M).c(58, 9, 66, 14, M).c(50, 14, 66, 14, M).c(48, 9, 50, 14, M).c(54, 9, 56, 14, M);
-  b.c(51, 10, 53, 10, B).n(60, 11, B).n(61, 12, B);
-  // Panel çizgileri, kapı
-  b.c(41, 9, 41, 21, T5).c(30, 14, 46, 14, T5).c(44, 15, 44, 20, T4).c(44, 15, 48, 15, T4);
-  b.k(27, 6, 3, 2, T2); // egzoz
-  b.k(45, 5, 2, 2, M); // hava girişi
-  b.c(30, 6, 43, 6, T4); // kaput çizgisi
-  b.k(13, 11, 2, 4, M).k(17, 12, 1, 3, M); // kuyruk şeritleri
-  b.o(35, 17, 3, M).o(35, 17, 1.3, B); // amblem
-  b.c(33, 24, 45, 24, T1).n(47, 23, B).n(47, 25, B); // roket tüpleri
-  b.n(29, 19, T4).n(61, 19, T4).n(23, 13, T4).n(20, 13, T4); // perçinler
-  b.k(3, 5, 2, 2, T2); // kuyruk pervanesi göbeği
+  b.c(78, 25, 84, 27, M); // namlu
+  b.c(61, 24, 63, 26, M).c(9, 15, 8, 19, M); // dikmeler
+  // Tandem kabin: arkada pilot (yüksek), önde nişancı; düz cam paneller
+  b.p([59, 6, 66, 6, 69, 9, 60, 9], T4);
+  b.p([70, 10, 76, 10, 81, 15, 71, 15], T4);
+  b.c(59, 6, 66, 6, M).c(66, 6, 69, 9, M).c(60, 9, 69, 9, M).c(59, 6, 60, 9, M).c(63, 6, 64, 9, M);
+  b.c(70, 10, 76, 10, M).c(76, 10, 81, 15, M).c(71, 15, 81, 15, M).c(70, 10, 71, 15, M).c(73, 10, 75, 15, M);
+  b.n(61, 7, B).n(72, 11, B).n(73, 12, B);
+  // Motor: egzoz, hava girişi, kaporta çizgileri
+  b.k(37, 8, 3, 4, T2).o(59, 10, 2, M).o(59, 10, 1, T3);
+  b.c(42, 8, 54, 8, T4).c(42, 12, 56, 12, T4).n(46, 10, T3).n(52, 10, T3);
+  b.c(66, 11, 66, 21, T5).c(46, 15, 46, 22, T5).c(38, 19, 80, 19, T5);
+  b.k(16, 12, 2, 4, M).k(20, 12, 1, 4, M); // kuyruk şeritleri
+  b.o(30, 14, 2.6, M).o(30, 14, 1.1, B); // halka amblem
+  b.c(47, 23, 59, 23, T1).n(61, 22, B).n(61, 24, B); // roket tüpleri
+  b.k(4, 6, 2, 2, T2);
+  b.n(34, 12, T4).n(26, 13, T4).n(78, 20, T4).n(56, 21, T4);
   return b.bitir();
 })();
 
-/** Düşman helikopteri: koyu, hantal. Dönme merkezi (33, 12), direk ucu (31, 0). */
+/** Düşmanın nakliye-saldırı helikopteri. */
+export const DHELI_N = { ox: 44, oy: 14, direk: [41, 0], kuyruk: [4, 5], namlu: [89, 25] } as const;
 export const SPR_DHELI = (() => {
-  const b = new Boya(68, 25);
-  b.p([2, 9, 28, 10, 28, 16, 14, 14, 2, 12], T2);
-  b.p([1, 2, 7, 2, 11, 10, 2, 12], T2);
-  b.p([22, 7, 46, 5, 58, 8, 64, 13, 64, 18, 56, 21, 28, 21, 22, 16], T2);
-  b.p([26, 3, 44, 2, 48, 6, 24, 7], T1);
-  b.k(30, 0, 3, 3, T1);
-  b.k(30, 19, 13, 3, T1);
+  const b = new Boya(92, 31);
+  b.p([3, 10, 34, 11, 34, 18, 18, 16, 3, 13], T2);
+  b.p([0, 1, 6, 1, 12, 10, 4, 13, 0, 9], T2);
+  b.k(10, 12, 10, 2, T2);
+  b.p([30, 8, 52, 6, 62, 7, 68, 10, 76, 12, 86, 17, 87, 20, 80, 23, 36, 24, 30, 19], T2); // gövde
+  b.p([35, 3, 54, 3, 60, 7, 33, 8], T1); // motor kamburu
+  b.k(39, 0, 5, 3, T1);
+  b.p([44, 17, 58, 17, 56, 22, 46, 25], T1); // aşağı eğik kanat
+  b.k(42, 24, 13, 3, T1); // roket yuvası
+  b.o(49, 28, 2.2, T1).o(73, 28, 2, T1);
+  b.k(82, 22, 4, 3, T1);
   b.kenar();
-  b.p([46, 8, 55, 8, 61, 13, 48, 13], T4).c(51, 8, 53, 13, M).c(46, 8, 55, 8, M).c(48, 13, 61, 13, M);
-  b.n(49, 9, B).n(50, 9, B);
-  b.k(36, 10, 5, 4, T4).k(29, 10, 5, 4, T4);
-  b.c(36, 10, 40, 10, M).c(29, 10, 33, 10, M);
-  b.c(24, 17, 62, 17, T1); // gövde çizgisi
-  b.k(8, 10, 3, 3, B).k(13, 11, 2, 2, B); // kuyruk işareti
-  b.c(60, 20, 66, 21, M); // top
-  b.c(33, 22, 31, 24, M).c(48, 22, 50, 24, M).c(26, 24, 55, 24, M);
-  b.k(25, 4, 3, 2, M); // egzoz
-  b.n(27, 12, T3).n(44, 18, T3).n(58, 16, T3);
+  // Çift balon kabin
+  b.o(69, 9, 4.2, M).o(69, 9, 3.2, T4).o(78, 13, 4.2, M).o(78, 13, 3.2, T4);
+  b.n(68, 7, B).n(77, 11, B).n(67, 8, B);
+  b.k(45, 11, 3, 3, T4).k(50, 11, 3, 3, T4).k(55, 11, 3, 3, T4); // kabin pencereleri
+  b.c(44, 10, 58, 10, T1).c(44, 15, 58, 15, T1);
+  b.o(58, 5, 1.6, M).o(54, 5, 1.6, M); // hava girişleri
+  b.k(34, 5, 3, 2, M); // egzoz
+  b.o(38, 16, 3, T1, 2).o(64, 19, 4, T1, 2).o(24, 13, 3, T1, 1.5); // kamuflaj
+  b.c(85, 24, 89, 25, M);
+  b.c(49, 25, 49, 26, M).c(73, 24, 73, 26, M);
+  b.k(8, 11, 2, 3, B);
+  b.c(45, 25, 54, 25, M).n(55, 24, B).n(55, 26, B);
   return b.bitir();
 })();
 
-/** Tank gövdesi. Alt orta (36, 20). */
+/** Tank gövdesi. `kule`: kulenin oturduğu yer (alt orta). */
+export const TANK_N = { ox: 40, oy: 12, kule: [45, 7] } as const;
 export const SPR_TANK = (() => {
-  const b = new Boya(72, 21);
-  b.p([4, 10, 66, 10, 70, 14, 67, 19, 6, 19, 1, 15], T1); // palet takımı
-  b.p([8, 3, 52, 3, 66, 7, 68, 10, 4, 10, 4, 6], T2); // üst gövde
+  const b = new Boya(80, 23);
+  b.p([3, 12, 75, 12, 78, 16, 74, 21, 7, 21, 1, 17], T1); // palet zarfı
+  b.p([6, 6, 54, 6, 73, 10, 76, 12, 4, 12, 4, 8], T2); // alçak gövde, eğimli ön zırh
+  b.o(7, 5, 3.2, T2); // arkada yakıt varili
   b.kenar();
-  for (let i = 0; i < 6; i++) b.teker(11 + i * 10, 15, 4);
-  b.o(66, 13, 2.6, M).o(66, 13, 1.2, T3); // tahrik dişlisi
-  b.o(5, 14, 2.6, M).o(5, 14, 1.2, T3); // gergi tekerleği
-  b.c(4, 10, 67, 10, M); // çamurluk altı
-  b.c(5, 9, 66, 9, T3); // çamurluk
-  b.c(52, 4, 65, 8, T3); // ön eğim
-  b.k(40, 4, 7, 1, M).n(43, 5, M); // kapak
-  b.k(61, 6, 2, 2, B); // far
-  b.k(5, 4, 4, 3, T1).n(4, 3, M); // egzoz
-  b.k(14, 5, 9, 2, T1).n(16, 5, M).n(19, 5, M).n(22, 5, M); // yedek palet
-  b.c(26, 6, 36, 6, T3); // kürek sapı
-  b.n(48, 7, T3).n(30, 8, T3).n(10, 8, T3);
+  for (let i = 0; i < 6; i++) b.teker(13 + i * 10.4, 17, 4.4);
+  b.o(73, 15, 2.6, M).o(73, 15, 1.2, T3);
+  b.o(5, 16, 2.6, M).o(5, 16, 1.2, T3);
+  // Yan etek plakaları: tekerlerin üstünü örter
+  b.k(8, 11, 64, 3, T2).c(8, 11, 71, 11, M).c(8, 14, 71, 14, M);
+  for (let x = 18; x < 70; x += 10) b.c(x, 11, x, 14, M);
+  b.k(70, 11, 4, 4, T1); // ön çamurluk lastiği
+  b.c(56, 7, 71, 10, T3); // sıçratma levhası
+  b.k(64, 7, 2, 2, B).n(76, 13, M); // far, çeki kancası
+  b.k(1, 10, 4, 2, T1).n(6, 4, T4).n(8, 6, T1); // kütük, varil
+  b.k(50, 6, 5, 1, M).n(30, 9, T3).n(20, 9, T3).n(40, 9, T3);
   return b.bitir();
 })();
 
-/** Tank kulesi. Alt orta (16, 11). Namlu çizim anında eklenir. */
+/** Tank kulesi: alçak, yuvarlak. Alt orta (19, 13); namlu çıkışı (36, 8). */
+export const KULE_N = { ox: 19, oy: 13, namlu: [36, 8] } as const;
 export const SPR_KULE = (() => {
-  const b = new Boya(34, 12);
-  b.p([4, 2, 24, 2, 31, 5, 31, 9, 26, 10, 4, 10, 1, 8, 1, 5], T2);
-  b.k(13, 0, 7, 2, T2); // komutan kulesi
+  const b = new Boya(42, 14);
+  b.p([3, 12, 1, 9, 4, 5, 12, 3, 25, 3, 33, 6, 36, 10, 34, 12], T2);
+  b.k(12, 1, 7, 2, T2); // komutan kulesi
+  b.k(0, 6, 4, 5, T1); // arka sandık
   b.kenar();
-  b.k(28, 5, 4, 4, T1); // namlu kalkanı
-  b.c(6, 4, 22, 4, T3);
-  b.k(4, 6, 6, 3, T1).c(4, 7, 9, 7, M); // eşya sandığı
-  b.n(16, 1, M).n(24, 7, T3).n(20, 7, T3);
+  b.k(33, 7, 4, 4, T1); // namlu kalkanı
+  b.o(29, 6, 1.8, M).o(29, 6, 0.9, B); // projektör
+  b.c(20, 8, 22, 5, M).c(23, 8, 25, 5, M).c(26, 9, 28, 6, M); // sis havanları
+  b.c(13, 0, 22, 0, M).n(13, 1, M); // kule makinelisi
+  b.c(7, 6, 10, 5, T3).n(16, 8, T3).n(18, 10, T3).c(6, 9, 30, 9, T3);
   return b.bitir();
 })();
 
-/** Uçaksavar kamyonu: kasa solda, kabin sağda. Alt orta (32, 20). Silah çizimde eklenir, kasadaki yeri (20, 8). */
+/** Paletli uçaksavar gövdesi. */
+export const UCAKSAVAR_N = { ox: 38, oy: 10, kule: [34, 6] } as const;
 export const SPR_UCAKSAVAR = (() => {
-  const b = new Boya(64, 21);
-  b.k(2, 9, 40, 4, T2); // kasa
-  b.p([42, 3, 54, 3, 60, 8, 62, 13, 42, 13], T2); // kabin
-  b.k(4, 13, 56, 2, T1); // şasi
-  b.k(5, 6, 6, 3, T1).k(30, 6, 7, 3, T1); // cephane sandıkları
-  b.kenar();
-  b.teker(12, 16, 4).teker(22, 16, 4).teker(52, 16, 4);
-  b.p([46, 5, 53, 5, 57, 9, 46, 9], T4).c(46, 5, 53, 5, M).c(46, 9, 57, 9, M).n(48, 6, B);
-  b.c(44, 4, 44, 12, M); // kapı
-  b.k(61, 12, 2, 2, M); // tampon
-  b.n(60, 10, B); // far
-  b.c(3, 11, 40, 11, T1); // kasa çıtası
-  for (let x = 6; x < 40; x += 6) b.n(x, 10, T3);
-  return b.bitir();
-})();
-
-/** Asker kamyonu: branda solda, kabin sağda. Alt orta (33, 26). */
-export const SPR_KAMYON = (() => {
-  const b = new Boya(66, 27);
-  b.p([2, 5, 6, 3, 36, 3, 40, 5, 40, 18, 2, 18], T3); // branda
-  b.p([43, 8, 55, 8, 61, 13, 64, 18, 43, 18], T2); // kabin ve kaput
-  b.k(2, 18, 62, 3, T1); // şasi
-  b.kenar();
-  for (const x of [8, 15, 22, 29, 36]) b.c(x, 4, x, 17, T4); // branda kaburgaları
-  b.c(3, 10, 39, 10, T2); // ip
-  b.k(2, 6, 2, 12, T2); // arka perde
-  b.n(5, 12, M).n(11, 10, M).n(18, 10, M).n(25, 10, M).n(32, 10, M); // ip düğümleri
-  b.p([46, 10, 54, 10, 58, 14, 46, 14], T4).c(46, 10, 54, 10, M).c(46, 14, 58, 14, M).n(48, 11, B).n(49, 11, B);
-  b.c(45, 9, 45, 18, M).n(47, 16, M); // kapı
-  b.c(62, 15, 62, 18, M).n(61, 14, B); // ızgara, far
-  b.k(63, 19, 2, 2, M); // tampon
-  b.teker(12, 22, 4).teker(22, 22, 4).teker(54, 22, 4);
-  b.c(6, 19, 28, 19, M).c(48, 19, 60, 19, M); // çamurluk
-  return b.bitir();
-})();
-
-/** Jet. Dönme merkezi (38, 10). */
-export const SPR_JET = (() => {
   const b = new Boya(76, 20);
-  b.p([4, 8, 30, 7, 52, 7, 66, 9, 74, 11, 66, 13, 30, 14, 6, 13], T2);
-  b.p([2, 1, 8, 1, 14, 8, 5, 9], T2);
-  b.p([24, 13, 44, 13, 30, 19, 20, 19], T1);
-  b.p([4, 12, 12, 12, 7, 16, 2, 16], T1);
+  b.p([3, 10, 71, 10, 74, 14, 70, 18, 7, 18, 1, 15], T1);
+  b.p([5, 5, 58, 5, 70, 8, 72, 10, 4, 10], T2);
   b.kenar();
-  b.p([50, 7, 58, 7, 64, 9, 50, 9], T4).c(54, 7, 55, 9, M).c(50, 7, 58, 7, M).n(52, 8, B);
-  b.k(40, 10, 6, 3, M); // hava girişi
-  b.c(10, 10, 38, 10, T1).c(48, 11, 68, 11, T1);
-  b.k(2, 9, 2, 4, T1); // lüle
-  b.c(22, 18, 36, 18, M).n(37, 18, B); // kanat altı füze
-  b.k(5, 3, 2, 3, B); // kuyruk işareti
-  b.n(60, 11, T4).n(26, 9, T4).n(18, 9, T4);
+  for (let i = 0; i < 6; i++) b.teker(12 + i * 10.4, 14, 3.8);
+  b.o(70, 13, 2.2, M).o(70, 13, 1, T3);
+  b.o(5, 13, 2.2, M).o(5, 13, 1, T3);
+  b.c(6, 9, 70, 9, T3);
+  b.k(62, 6, 2, 2, B);
+  for (let x = 8; x < 22; x += 3) b.c(x, 6, x, 8, T1); // motor ızgarası
+  b.n(40, 7, T3).n(50, 7, T3);
   return b.bitir();
 })();
 
-/** Dost nakliye uçağı. Dönme merkezi (44, 11). Pervane yerleri (52, 12) ve (38, 12). */
-export const SPR_NAKLIYE = (() => {
-  const b = new Boya(88, 22);
-  b.p([6, 8, 70, 7, 80, 10, 86, 14, 78, 17, 14, 17, 4, 12], B);
-  b.p([2, 1, 9, 1, 16, 8, 6, 9], B);
-  b.p([28, 4, 56, 4, 54, 8, 30, 8], T5); // üst kanat
-  b.k(36, 9, 14, 5, T2); // motor
+/** Uçaksavar kulesi: büyük, köşeli. Alt orta (20, 15); namlu mili (29, 8); radar direği (8, 2). */
+export const UKULE_N = { ox: 20, oy: 15, namlu: [29, 8], radar: [8, 2] } as const;
+export const SPR_UKULE = (() => {
+  const b = new Boya(40, 16);
+  b.p([3, 14, 3, 6, 8, 3, 30, 3, 36, 7, 36, 14], T2);
   b.kenar();
-  b.p([72, 9, 78, 9, 83, 13, 72, 13], T4).c(76, 9, 78, 13, M).c(72, 9, 78, 9, M).c(72, 13, 83, 13, M);
-  for (let x = 20; x < 34; x += 5) b.k(x, 10, 2, 2, T4);
-  for (let x = 54; x < 70; x += 5) b.k(x, 10, 2, 2, T4);
-  b.c(8, 14, 78, 14, T5);
-  b.k(14, 10, 3, 6, T5).c(14, 10, 14, 15, T3); // kapı
-  b.k(4, 3, 3, 3, M).n(5, 4, B); // kuyruk işareti
-  b.c(38, 12, 48, 12, T1);
+  b.c(8, 8, 26, 8, T3);
+  b.k(12, 10, 6, 4, T1).c(12, 10, 17, 10, M); // kapak
+  b.k(26, 5, 7, 6, T1).c(26, 5, 32, 5, M); // namlu yuvası
+  b.n(33, 12, T3).n(6, 12, T3);
+  return b.bitir();
+})();
+
+/** 6×6 asker kamyonu: branda solda, kabin ve uzun kaput sağda. */
+export const KAMYON_N = { ox: 40, oy: 16 } as const;
+export const SPR_KAMYON = (() => {
+  const b = new Boya(80, 31);
+  b.p([3, 6, 8, 3, 38, 3, 43, 6, 43, 21, 3, 21], T3); // branda
+  b.p([45, 7, 57, 7, 59, 14, 59, 23, 45, 23], T2); // kabin
+  b.p([59, 14, 72, 14, 76, 17, 76, 23, 59, 23], T2); // kaput
+  b.k(3, 21, 72, 3, T1); // şasi
+  b.k(47, 24, 9, 3, T1); // yakıt deposu
+  b.k(75, 23, 4, 2, T1); // tampon
+  b.kenar();
+  for (const x of [9, 16, 23, 30, 37]) b.c(x, 4, x, 16, T4);
+  b.c(4, 10, 42, 10, T2);
+  b.k(3, 17, 41, 4, T2).c(3, 17, 43, 17, M); // ahşap kasa
+  for (let x = 8; x < 42; x += 7) b.c(x, 18, x, 20, T1);
+  b.p([53, 9, 56, 9, 58, 14, 53, 14], T4).k(47, 9, 5, 5, T4); // ön cam, kapı camı
+  b.c(52, 8, 52, 22, M).n(48, 10, B).n(54, 10, B).c(46, 16, 51, 16, T1).n(50, 18, M);
+  b.c(74, 18, 74, 22, M).c(72, 18, 72, 22, T1).c(70, 18, 70, 22, T1); // ızgara
+  b.k(73, 16, 2, 2, B); // far
+  b.c(60, 15, 71, 15, T3);
+  b.teker(13, 26, 4.5).teker(25, 26, 4.5).teker(66, 26, 4.5);
+  b.c(7, 21, 31, 21, M).c(60, 21, 72, 21, M);
+  return b.bitir();
+})();
+
+/** Delta kanatlı av uçağı. */
+export const JET_N = { ox: 46, oy: 11, lule: [2, 11] } as const;
+export const SPR_JET = (() => {
+  const b = new Boya(92, 22);
+  b.p([5, 8, 62, 7, 76, 9, 84, 11, 76, 13, 62, 14, 5, 14], T2); // ince gövde
+  b.p([28, 7, 58, 7, 62, 5, 44, 4], T2); // sırt
+  b.p([4, 8, 9, 0, 17, 0, 28, 8], T2); // dikey kuyruk
+  b.p([26, 12, 52, 12, 36, 20, 25, 20], T1); // delta kanat
+  b.p([4, 11, 14, 11, 8, 17, 2, 17], T1); // yatay kuyruk
+  b.p([10, 14, 22, 14, 15, 18], T1); // karın yüzgeci
+  b.kenar();
+  b.p([58, 7, 63, 4, 69, 5, 73, 8], T4);
+  b.c(58, 7, 63, 4, M).c(63, 4, 69, 5, M).c(69, 5, 73, 8, M).c(65, 4, 66, 8, M).n(62, 6, B);
+  b.c(77, 9, 77, 13, M).p([78, 10, 86, 11, 78, 12], M).c(86, 11, 90, 10, M); // giriş konisi, pitot
+  b.k(2, 9, 3, 5, T1).c(2, 9, 2, 13, M); // lüle
+  b.c(10, 11, 56, 11, T1).c(30, 9, 30, 13, T1).c(48, 9, 48, 13, T1);
+  b.k(11, 3, 3, 3, B);
+  b.c(28, 19, 42, 19, M).n(43, 19, B).c(28, 18, 28, 20, M); // kanat altı füze
+  return b.bitir();
+})();
+
+/** Dört motorlu dost nakliye uçağı. `pervane`: görünen iki motorun pervane yeri. */
+export const NAKLIYE_N = { ox: 52, oy: 15, pervane: [[60, 12], [70, 12]] } as const;
+export const SPR_NAKLIYE = (() => {
+  const b = new Boya(104, 30);
+  b.p([12, 11, 76, 9, 90, 10, 99, 15, 96, 19, 88, 21, 32, 21, 8, 14], B); // gövde, arkası kalkık
+  b.p([4, 0, 13, 0, 24, 10, 10, 12, 4, 8], B); // yüksek dikey kuyruk
+  b.k(2, 10, 14, 2, B);
+  b.p([42, 6, 66, 6, 64, 9, 44, 9], T5); // üst kanat
+  b.k(50, 10, 9, 5, T2).k(61, 10, 8, 4, T2); // motorlar
+  b.o(54, 22, 8, B, 2.6); // iniş takımı kaportası
+  b.kenar();
+  b.o(99, 16, 1.6, T1); // radom
+  b.k(85, 11, 3, 2, T4).k(89, 12, 3, 2, T4).k(93, 13, 2, 2, T4); // kokpit camları
+  for (let x = 24; x < 48; x += 6) b.k(x, 13, 2, 2, T4);
+  for (let x = 72; x < 84; x += 5) b.k(x, 13, 2, 2, T4);
+  b.c(14, 16, 96, 16, T5).c(14, 14, 30, 20, T4);
+  b.o(51, 24, 2, M).o(57, 24, 2, M);
+  b.o(60, 12, 1.2, M).o(70, 12, 1.2, M);
+  b.k(8, 3, 3, 3, M).n(9, 4, B);
+  b.k(66, 12, 3, 6, T5).c(66, 12, 66, 17, T3); // yan kapı
   return b.bitir();
 })();
 

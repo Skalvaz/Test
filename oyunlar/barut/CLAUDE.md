@@ -29,6 +29,7 @@ npm run typecheck
 npm run build:single        # → barut.html + dist-single/artifact.html
 node scripts/shot.mjs <url> <png> [w] [h] [js]      # L = window.__barut
 node scripts/kayit.mjs <url> <klasör> [başlangıç-sn] [süre-sn] [fps]
+node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]   # gerçek girdiyle, gerçek zamanda
 ```
 
 ## Kod haritası
@@ -77,6 +78,22 @@ node scripts/kayit.mjs <url> <klasör> [başlangıç-sn] [süre-sn] [fps]
   da sayı 30'u geçince `yigin()` ile zemine karışır ve araziyi yükseltir
   (`les[]` doku izi). Hurda 15 sn sonra aynı şekilde. Kullanıcı isteği:
   "cesetler birikse dağ olsa".
+- Modeller gerçek araç siluetlerinden esinli (kullanıcı isteği: "olabildiğince
+  yakın"): T129/A129 çizgisinde saldırı helikopteri, Mi-24, T-72, ZSU-23-4,
+  Ural, MiG-21, C-130. İşaret, bayrak, ülke YOK. Bağlantı noktaları
+  `*_N` sabitlerinde (`ox, oy`, `direk`, `namlu`, `kule`…); sprite'ı
+  değiştirince onları da güncelle.
+- Araçlar zemine oturur: `durus()` ön/arka temas noktasından eğim ve taban
+  verir, gövde `cizDon` ile yatar, kule gövdeye 1 piksel biner (boşluk
+  kalmasın), namlu dengelidir (dünya açısında kalır; simülasyondaki atış
+  yönüyle aynı olsun diye).
+- Kamera: helikopter ekranın sol %30'unda, ±16 birimlik serbest kuşakla.
+  Yöne göre öne atlama YOK (sürüklerken helikopteri ekranda geri kaydırıp
+  "takılıyor" hissi veriyordu). Ortaya almak da olmaz: düşmanın %64'ü ekran
+  dışında ölüyordu (playtest).
+- Sürükleme: yatay kazanç parmak hızıyla 1,35 → 2,6 arası (fare ivmesi),
+  dikey 1,25 sabit; parmak ekran kenarındaysa helikopter gitmeye devam eder.
+- Kan izi zamanla kurur ve silinir (`kanSayac`); taze parlak, eski koyu.
 - `GIRIS_X`'in sağındaki düşman hedef alınmaz, vurulmaz; helikopter
   `HELI_SAG`'dan öteye geçemez. Yoksa oyuncu doğum noktasında pusu kurar ve
   ekranda hiç kalabalık oluşmaz (bot kaydı gösterdi).
@@ -91,10 +108,30 @@ node scripts/kayit.mjs <url> <klasör> [başlangıç-sn] [süre-sn] [fps]
 - Bomba girdisi üç yoldan: düğme (`bombaDugme`, çizim ve dokunma aynı yeri
   kullanır), sürüklemeden kısa dokunuş (< 240 ms, < 5 piksel), sürüklerken
   ikinci parmak. Oyunu başlatan ilk dokunuş bomba saymaz (`ipucuT > 0,4`).
-- Bot pilot ≈ 2,5–3 dakikada 6.–7. dalgada düşer (≈ 6400–8200 puan). Dengeyi
+- Bot pilot ≈ 2–3 dakikada 5.–7. dalgada düşer (≈ 3500–8000 puan). Dengeyi
   değiştirince `kayit.mjs` özetine ve `dunya.test.ts` eşiklerine bak.
 - vitest `console.log` göstermez; ayıklama için `scripts/*.tmp.test.ts`
   içinde dosyaya yaz, işin bitince sil.
+
+## Playtest (Kasım 2026, `scripts/oynanis.mjs`, 3 el)
+
+Betik oyunu gerçek fare/dokunma olaylarıyla gerçek zamanda oynar, 2 sn'de
+bir kare ve yarım saniyede bir ölçüm alır. Elle oynamanın yerini tutmaz
+(his ölçülmez) ama girdi yolunu, kareleri ve sayıları gösterir.
+
+- İyi: 60 fps; dalga başı 25–30 sn; bot 5.–7. dalgada düşüyor; hasar
+  çeşitli (tank topu ve RPG asıl öldürücü, kurşun küçük); sandıklar
+  alınıyor; parmağı kaldırıp yeniden sürükleme gerekmiyor.
+- Düzeltildi: düşman ekran dışında ölüyordu (kamera); bütün zemin kırmızı
+  oluyordu (kan kuruyor); leş yığını 150 sn'de tavana vuruyordu (yavaşladı).
+- AÇIK, en önemlisi: oyun tek noktada oynanıyor. Helikopter sürenin %86'sında
+  sağ sınırda (`HELI_SAG`) duruyor, düşman hep aynı yerde ölüyor, ekrandaki
+  görüntü hiç değişmiyor, siper ilk dalgalarda hiç tehlikeye girmiyor.
+  Öneri: siperi dünyanın ortasına al, düşman iki yandan gelsin (iki cephe);
+  ya da düşmanı helikopterin arkasına indiren paraşütçüler.
+- AÇIK: ekranın üst %45'i hep boş gök. Yüksek binalardaki nişancılar
+  (paket 2) ve hava hedefleri burayı kullanmalı.
+- AÇIK: bot bombayı az kullanıyor; insanın ne yaptığı bilinmiyor.
 
 ## Yol haritası (kullanıcı kararları bana bıraktı, Kasım 2026)
 
