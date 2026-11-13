@@ -64,6 +64,7 @@ export const P_ENKAZ = 5;
 export const P_KOVAN = 6;
 export const P_TOZ = 7;
 export const P_KULE = 8;
+export const P_KASK = 9;
 
 export interface Asker {
   x: number;
@@ -182,6 +183,8 @@ export interface Sandik {
   /** O_TAMIR, O_CIFT, O_HIZ, O_BOMBA */
   tip: number;
   parasut: boolean;
+  /** Helikopter üstünde: halatla yukarı çekiliyor. */
+  cekiliyor: boolean;
 }
 
 /** Toprağın altında bekleyen mayın ya da sandık; üstü kazılınca ortaya çıkar. */
@@ -267,6 +270,8 @@ export class Dunya {
   yer: Float32Array;
   kanIz: Uint8Array;
   is: Uint8Array;
+  /** Leş yığını izi: ceset ve hurdanın zemine karıştığı yerler (doku için). */
+  les: Uint8Array;
   rng: () => number;
 
   zaman = 0;
@@ -329,6 +334,7 @@ export class Dunya {
     this.yer = new Float32Array(n);
     this.kanIz = new Uint8Array(n);
     this.is = new Uint8Array(n);
+    this.les = new Uint8Array(n);
     for (let x = 0; x < n; x++) {
       const k = sinirla((x - SIPER_ON) / 80, 0, 1);
       this.yer[x] = this.zemin + k * (6 * Math.sin(x * 0.013 + 1) + 3.5 * Math.sin(x * 0.041) + 1.5 * Math.sin(x * 0.11 + 2));
@@ -367,9 +373,9 @@ export class Dunya {
         g.fitil = 0.4;
       } else {
         this.gomuler.splice(i, 1);
-        this.sandiklar.push({ x: g.x, y: this.yerY(g.x) - 7, vy: -105, yerde: 0, tip: 1 + ((this.rng() * 3) | 0), parasut: false });
+        this.sandiklar.push({ x: g.x, y: this.yerY(g.x) - 7, vy: -105, yerde: 0, tip: 1 + ((this.rng() * 3) | 0), parasut: false, cekiliyor: false });
         this.sac(P_TOPRAK, g.x, this.yerY(g.x) - 2, 10, 90, 0.8, 1, 90);
-        this.sozler.push({ metin: 'SANDIK!', x: g.x, y: this.yerY(g.x) - 26, t: 0, vurgu: false });
+        this.sozler.push({ metin: 'SANDIK! ÜSTÜNE UÇ', x: g.x, y: this.yerY(g.x) - 26, t: 0, vurgu: false });
       }
     }
   }
@@ -448,8 +454,37 @@ export class Dunya {
       this.yer[xi] = Math.max(this.yer[xi], Math.min(this.zemin + sinir, this.yer[xi] + derin * k));
       this.is[xi] = Math.max(this.is[xi], Math.round(255 * Math.min(1, k * 1.6)));
       this.kanIz[xi] = Math.round(this.kanIz[xi] * (1 - k * 0.8));
+      this.les[xi] = Math.round(this.les[xi] * (1 - k * 0.7));
+    }
+    // Altı oyulan cesetler uyanır (yoksa havada asılı kalırlar)
+    for (const b of this.bezler) {
+      if (b.uyku && Math.abs(b.x[2] - x) < r + 10) {
+        b.uyku = false;
+        b.t = 0.5;
+      }
     }
     this.gomuKontrol();
+  }
+
+  /** Ceset ve hurda zemine karışır: araziyi yükseltir (leş yığını). */
+  private yigin(x: number, r: number, yukseklik: number): void {
+    const x0 = Math.max(SIPER_ON + 10, Math.floor(x - r));
+    const x1 = Math.min(DUNYA_G, Math.ceil(x + r));
+    if (x1 <= x0) return;
+    for (let xi = x0; xi <= x1; xi++) {
+      const d = (xi - x) / r;
+      const k = 1 - d * d;
+      if (k <= 0) continue;
+      this.yer[xi] = Math.max(this.zemin - 46, this.yer[xi] - yukseklik * k);
+      this.les[xi] = Math.min(255, this.les[xi] + Math.round(210 * k));
+    }
+    // Sivri uçları yumuşat
+    let once = this.yer[x0 - 1];
+    for (let xi = x0; xi < x1; xi++) {
+      const simdi = this.yer[xi];
+      this.yer[xi] = (once + 2 * simdi + this.yer[xi + 1]) / 4;
+      once = simdi;
+    }
   }
 
   /**
@@ -564,7 +599,7 @@ export class Dunya {
       this.oldur(this.askerler.length - 1, (this.rng() - 0.5) * 300, -200 - this.rng() * 160, true);
     }
     if (a.tip !== T_UCAKSAVAR && this.rng() < 0.22) {
-      this.sandiklar.push({ x: a.x, y: a.y - 12, vy: -120, yerde: 0, tip: 1 + ((this.rng() * 3) | 0), parasut: false });
+      this.sandiklar.push({ x: a.x, y: a.y - 12, vy: -120, yerde: 0, tip: 1 + ((this.rng() * 3) | 0), parasut: false, cekiliyor: false });
     }
     this.patlat(a.x, a.y - 8, a.tip === T_KAMYON ? 26 : 32, true, 3);
   }
@@ -609,6 +644,8 @@ export class Dunya {
     this.bezler.push(b);
     if (this.bezler.length > 44) this.bezler.shift();
     if (!yanik) this.sac(P_KAN, s.x, s.y - 8, patlama ? 16 : 9, patlama ? 150 : 80, 1.2, 1, patlama ? 110 : 50);
+    // Miğfer başından fırlar
+    if (!s.dost && !yanik) this.parca(P_KASK, s.x, s.y - 14, ix * 0.4 + (r() - 0.5) * 60, iy * 0.5 - 70 - r() * 60, 6, 1, (r() - 0.5) * 16);
     if (!s.dost) {
       this.olu.piyade++;
       this.puan(s.tip, s.x, s.y - 22);
@@ -1211,7 +1248,7 @@ export class Dunya {
         o.x += o.vx * dt;
         if (o.yuk > 0 && o.x >= o.birakX) {
           o.yuk = 0;
-          this.sandiklar.push({ x: o.x, y: o.y + 8, vy: 20, yerde: 0, tip: O_TAMIR, parasut: true });
+          this.sandiklar.push({ x: o.x, y: o.y + 8, vy: 20, yerde: 0, tip: O_TAMIR, parasut: true, cekiliyor: false });
         }
         if (o.x > DUNYA_G + 90) this.havalar.splice(i, 1);
       }
@@ -1336,8 +1373,17 @@ export class Dunya {
 
   private bezAdim(dt: number): void {
     const r = this.rng;
-    for (const b of this.bezler) {
-      if (b.uyku) continue;
+    for (let n = this.bezler.length - 1; n >= 0; n--) {
+      const b = this.bezler[n];
+      if (b.uyku) {
+        b.t += dt;
+        // Bir süre yattıktan sonra zemine karışır
+        if (b.t > 7 || this.bezler.length > 30) {
+          this.bezler.splice(n, 1);
+          this.yigin(b.x[2], 7, 2.3);
+        }
+        continue;
+      }
       b.t += dt;
       let hareket = 0;
       for (let k = 0; k < 7; k++) {
@@ -1350,9 +1396,9 @@ export class Dunya {
         hareket += Math.abs(vx) + Math.abs(vy);
       }
       for (let it = 0; it < 3; it++) {
-        for (let n = 0; n < 6; n++) {
-          if (!(b.bag & (1 << n))) continue;
-          const [i0, i1, uz] = BAGLAR[n];
+        for (let m = 0; m < 6; m++) {
+          if (!(b.bag & (1 << m))) continue;
+          const [i0, i1, uz] = BAGLAR[m];
           const dx = b.x[i1] - b.x[i0];
           const dy = b.y[i1] - b.y[i0];
           const d = Math.hypot(dx, dy) || 0.001;
@@ -1383,6 +1429,7 @@ export class Dunya {
       }
       if (b.t > 6 || (b.t > 1.2 && hareket < 0.35)) {
         b.uyku = true;
+        b.t = 0;
         if (!b.yanik) {
           // Altında kan gölü
           const cx = Math.round(b.x[2]);
@@ -1426,7 +1473,7 @@ export class Dunya {
             const xi = Math.round(p.x);
             if (xi >= 0 && xi <= DUNYA_G) this.kanIz[xi] = Math.min(255, this.kanIz[xi] + 70);
             p.omur = 0;
-          } else if (tip === P_ENKAZ || tip === P_KULE) {
+          } else if (tip === P_ENKAZ || tip === P_KULE || tip === P_KASK) {
             p.y = gy;
             if (Math.abs(p.vy) > 40) {
               p.vy = -p.vy * 0.36;
@@ -1468,7 +1515,10 @@ export class Dunya {
       e.y = this.yerY(e.x);
       if (e.t < 9 && this.rng() < 0.22) this.parca(P_DUMAN, e.x + (this.rng() - 0.5) * 16, e.y - 10, 0, -14, 1.6, 4);
       if (e.t < 3 && this.rng() < 0.3) this.parca(P_ATES, e.x + (this.rng() - 0.5) * 18, e.y - 8, 0, -20, 0.4, 3);
-      if (e.t > 26) this.enkazlar.splice(i, 1);
+      if (e.t > 15) {
+        this.enkazlar.splice(i, 1);
+        this.yigin(e.x, 17, 8);
+      }
     }
     for (let i = this.gomuler.length - 1; i >= 0; i--) {
       const g = this.gomuler[i];
@@ -1485,7 +1535,19 @@ export class Dunya {
     for (let i = this.sandiklar.length - 1; i >= 0; i--) {
       const s = this.sandiklar[i];
       const gy = this.yerY(s.x) - 5;
-      if (s.y < gy) {
+      // Helikopter üstündeyse halatla yukarı çekilir (çukura inmek gerekmez)
+      const kx = h.x;
+      const ky = h.y + 10;
+      const asagida = s.y - ky;
+      s.cekiliyor = !h.olu && this.oyunda && Math.abs(kx - s.x) < 30 && asagida > -12 && asagida < 150;
+      if (s.cekiliyor) {
+        const uz = Math.hypot(kx - s.x, ky - s.y) || 1;
+        const adim = Math.min(uz, 170 * dt);
+        s.x += ((kx - s.x) / uz) * adim;
+        s.y += ((ky - s.y) / uz) * adim;
+        s.vy = 0;
+        s.yerde = Math.min(s.yerde, 8);
+      } else if (s.y < gy) {
         s.vy += (32 - s.vy) * dt * 2;
         s.y += s.vy * dt;
         if (s.parasut) s.x += Math.sin(this.zaman * 2 + s.x) * 5 * dt;
@@ -1493,7 +1555,7 @@ export class Dunya {
         s.y = gy;
         s.yerde += dt;
       }
-      if (!h.olu && Math.hypot(h.x - s.x, h.y + 6 - s.y) < 24) {
+      if (!h.olu && Math.hypot(kx - s.x, ky - s.y) < 13) {
         let metin = 'TAMİR +35';
         if (s.tip === O_TAMIR) {
           h.can = Math.min(100, h.can + 35);
@@ -1512,7 +1574,7 @@ export class Dunya {
         this.sozler.push({ metin, x: s.x, y: s.y - 14, t: 0, vurgu: false });
         this.olaylar.push({ tip: 'sandik' });
         this.sandiklar.splice(i, 1);
-      } else if (s.yerde > 14) this.sandiklar.splice(i, 1);
+      } else if (s.yerde > 22) this.sandiklar.splice(i, 1);
     }
   }
 }

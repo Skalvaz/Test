@@ -1,7 +1,8 @@
 # BARUT — siperi koru
 
 Çöp adamlı, yıkımlı helikopter savaş oyunu. Taramalı piksel sanatı: açık
-kâğıt zemin, 7 gri ton, kırmızı kan ve kehribar ateş.
+kâğıt zemin, 7 gri ton, kırmızı kan ve kehribar ateş. Cesetler ve hurdalar
+zamanla zemine karışıp araziyi yükseltir.
 
 ![BARUT](docs/barut.gif)
 
@@ -13,7 +14,8 @@ kâğıt zemin, 7 gri ton, kırmızı kan ve kehribar ateş.
 - **Bomba elle:** sağ alttaki düğmeye dokun, ekrana kısaca dokun ya da
   sürüklerken ikinci parmakla dokun. 3 bomba var, zamanla dolar.
 - **Toprağı kaz:** kesitte görünen `?` kutularının üstünü bombayla aç,
-  sandık fırlar; üstüne uçup al (çift top, hız, bomba yağmuru). Dikenli
+  sandık fırlar; üstüne gel, helikopter halatla çeker (çift top, hız,
+  bomba yağmuru). Dikenli
   toplar mayın: üstü açılınca patlar, üstündekileri götürür.
 - **Amaç:** soldaki siperi dalga dalga gelen düşmana karşı korumak.
   Helikopter düşerse ya da siper düşerse oyun biter.

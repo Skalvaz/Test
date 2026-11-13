@@ -3,7 +3,7 @@
  * verir, basit bir pilot birkaç dalga dayanır, hiç oynamayan kaybeder.
  */
 import { describe, expect, it } from 'vitest';
-import { Dunya, G_MAYIN, G_SANDIK, O_CIFT } from './dunya';
+import { Dunya, G_MAYIN, G_SANDIK } from './dunya';
 
 const ADIM = 1 / 60;
 
@@ -96,7 +96,7 @@ describe('BARUT simülasyonu', () => {
     expect(d.bitisNeden).not.toBe('');
   });
 
-  it('bomba toprağı kazar: sandık çıkar, toplanınca güçlendirme verir', () => {
+  it('bomba toprağı kazar: sandık çıkar, üstünde bekleyen helikopter halatla alır', () => {
     const d = new Dunya(566, 11);
     d.basla();
     const g = d.gomuler.find((k) => k.tip === G_SANDIK)!;
@@ -104,15 +104,9 @@ describe('BARUT simülasyonu', () => {
     bombala(d, g.x, 3);
     expect(d.yerY(g.x)).toBeGreaterThan(once + 8);
     expect(d.gomuler.includes(g)).toBe(false);
-    expect(d.sandiklar.length).toBe(1);
-    // Sandığın üstüne in
-    const s = d.sandiklar[0];
-    s.tip = O_CIFT;
-    d.heli.x = d.heli.hx = s.x;
-    d.heli.y = d.heli.hy = s.y - 8;
-    d.adim(ADIM);
+    // Helikopter üstünde beklediği için sandık halatla çekilip alınır
     expect(d.sandiklar.length).toBe(0);
-    expect(d.guc.cift).toBeGreaterThan(20);
+    expect(d.guc.cift + d.guc.hiz + d.guc.bomba).toBeGreaterThan(15);
   });
 
   it('üstü kazılan mayın patlar ve üstündeki askerleri öldürür', () => {
@@ -125,6 +119,34 @@ describe('BARUT simülasyonu', () => {
     expect(d.gomuler.filter((k) => k.tip === G_MAYIN).length).toBeLessThan(mayinSayisi + 1);
     // Mayın çukuru bombanınkinden derin
     expect(d.yerY(m.x)).toBeGreaterThan(d.zemin + 20);
+  });
+
+  it('altı oyulan ceset uyanıp düşer; cesetler zamanla yığına karışır', () => {
+    const d = new Dunya(566, 14);
+    d.basla();
+    d.ara = 99; // dalga gelmesin
+    // Bir asker koy, öldür, cesedin durmasını bekle
+    const yer0 = d.yerY(300);
+    d.askerler.push({ x: 300, y: yer0, tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 9, hiz: 0, menzil: 0, nisanAci: 0, hedef: 0, yon: -1 });
+    d.patlat(300, yer0 - 30, 4, true, 0); // öldürmeyecek kadar uzak; cesedi mermiyle yapalım
+    d.mermiler.push({ tip: 0, x: 296, y: yer0 - 8, vx: 300, vy: 0, omur: 1, yas: 0, hedef: null });
+    for (let i = 0; i < 4 / ADIM; i++) d.adim(ADIM);
+    expect(d.bezler.length).toBe(1);
+    const b = d.bezler[0];
+    expect(b.uyku).toBe(true);
+    const yOnce = b.y[2];
+    // Altını oy
+    d.patlat(b.x[2], d.yerY(b.x[2]) - 1, 25, true, 5, true);
+    expect(b.uyku).toBe(false);
+    for (let i = 0; i < 2 / ADIM; i++) d.adim(ADIM);
+    expect(b.y[2]).toBeGreaterThan(yOnce + 5);
+    // Yeterince bekleyince zemine karışır ve zemini yükseltir
+    const x = Math.round(b.x[2]);
+    const yerOnce = d.yerY(x);
+    for (let i = 0; i < 9 / ADIM; i++) d.adim(ADIM);
+    expect(d.bezler.length).toBe(0);
+    expect(d.yerY(x)).toBeLessThan(yerOnce);
+    expect(d.les[x]).toBeGreaterThan(0);
   });
 
   it('bomba sayısı sınırlıdır ve zamanla dolar', () => {

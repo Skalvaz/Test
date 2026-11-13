@@ -3,7 +3,7 @@
  * çizim her karede bir kez. `window.__barut` deneme/kayıt kancasıdır.
  */
 import { Dunya, G } from './dunya';
-import { Sahne, bombaDugme, type Arayuz } from './sahne';
+import { EK, K, Sahne, bombaDugme, sesDugme, type Arayuz } from './sahne';
 import { Ses } from './ses';
 import { Tuval } from './tuval';
 
@@ -31,7 +31,9 @@ kanvas.tabIndex = 0;
 kok.appendChild(kanvas);
 const ctx = kanvas.getContext('2d', { alpha: false })!;
 
+/** Dünya yüksekliği (birim) ve tuvalin piksel yüksekliği. */
 let yuk = 0;
+let ey = 0;
 let tuval!: Tuval;
 let dunya!: Dunya;
 let sahne!: Sahne;
@@ -57,16 +59,17 @@ function boyutla(): void {
   const yeniYuk = Math.round(G / oran);
   if (yeniYuk !== yuk && (yuk === 0 || arayuz.durum === 'baslik')) {
     yuk = yeniYuk;
-    kanvas.width = G;
-    kanvas.height = yuk;
-    tuval = new Tuval(G, yuk);
-    goruntu = ctx.createImageData(G, yuk);
+    ey = Math.round(yuk * K);
+    kanvas.width = EK;
+    kanvas.height = ey;
+    tuval = new Tuval(EK, ey);
+    goruntu = ctx.createImageData(EK, ey);
     pikseller = new Uint32Array(goruntu.data.buffer);
     yeniDunya();
   }
-  const olcek = Math.min(gw / G, gh / yuk);
-  kanvas.style.width = `${Math.floor(G * olcek)}px`;
-  kanvas.style.height = `${Math.floor(yuk * olcek)}px`;
+  const olcek = Math.min(gw / EK, gh / ey);
+  kanvas.style.width = `${Math.floor(EK * olcek)}px`;
+  kanvas.style.height = `${Math.floor(ey * olcek)}px`;
 }
 window.addEventListener('resize', boyutla);
 boyutla();
@@ -75,7 +78,8 @@ boyutla();
 
 function ekrandan(e: PointerEvent): { x: number; y: number } {
   const r = kanvas.getBoundingClientRect();
-  return { x: ((e.clientX - r.left) / r.width) * G, y: ((e.clientY - r.top) / r.height) * yuk };
+  // Ekran pikseli (tuval çözünürlüğünde)
+  return { x: ((e.clientX - r.left) / r.width) * EK, y: ((e.clientY - r.top) / r.height) * ey };
 }
 
 function basla(): void {
@@ -97,7 +101,8 @@ kanvas.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   ses.baslat();
   const p = ekrandan(e);
-  if (p.x > G - 30 && p.y > 22 && p.y < 48) {
+  const sd = sesDugme();
+  if (p.x > sd.x - 8 && p.y > sd.y - 8 && p.y < sd.y + sd.h + 8) {
     sesDegistir();
     return;
   }
@@ -108,7 +113,7 @@ kanvas.addEventListener('pointerdown', (e) => {
     return;
   } else {
     // Bomba: düğmeye dokunmak ya da helikopteri sürerken ikinci parmakla dokunmak
-    const b = bombaDugme(yuk);
+    const b = bombaDugme(ey);
     if (Math.hypot(p.x - b.x, p.y - b.y) < b.r + 8 || parmak.basili) {
       dunya.bombaBirak();
       return;
@@ -130,7 +135,7 @@ kanvas.addEventListener('pointermove', (e) => {
   if (!parmak.basili || e.pointerId !== parmak.id || arayuz.durum !== 'oyun') return;
   const p = ekrandan(e);
   // Göreli sürükleme: helikopter parmağın altında kalmaz.
-  dunya.surukle((p.x - parmak.x) * 1.25, (p.y - parmak.y) * 1.25);
+  dunya.surukle(((p.x - parmak.x) / K) * 1.25, ((p.y - parmak.y) / K) * 1.25);
   parmak.yol += Math.abs(p.x - parmak.x) + Math.abs(p.y - parmak.y);
   parmak.x = p.x;
   parmak.y = p.y;
@@ -138,7 +143,7 @@ kanvas.addEventListener('pointermove', (e) => {
 const birak = (e: PointerEvent): void => {
   if (e.pointerId !== parmak.id) return;
   // Sürüklemeden kısa bir dokunuş: bomba
-  if (parmak.basili && arayuz.durum === 'oyun' && e.type === 'pointerup' && parmak.yol < 5 && performance.now() - parmak.t0 < 240 && arayuz.ipucuT > 0.4) {
+  if (parmak.basili && arayuz.durum === 'oyun' && e.type === 'pointerup' && parmak.yol < 8 && performance.now() - parmak.t0 < 240 && arayuz.ipucuT > 0.4) {
     dunya.bombaBirak();
   }
   parmak.basili = false;

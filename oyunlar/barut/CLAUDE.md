@@ -39,23 +39,44 @@ node scripts/kayit.mjs <url> <klasör> [başlangıç-sn] [süre-sn] [fps]
   değerler (0, 42, 85, 128, 170, 213, 255) DÜZ görünür; düz yüzeylerde
   bunları kullan, ara değerleri yalnız geçiş ve duman için. `leke()` yarı
   saydam duman/toz, `cizDon()` döndürülmüş sprite.
-- `src/sprite.ts` — ASCII sprite'lar (`#` mürekkep, `x` koyu, `+` orta,
-  `-` açık, `o` beyaz, `r` kan, `*` ateş). Hepsi sağa bakar.
+- `src/sprite.ts` — sprite'lar `Boya` ile çizilir (çokgen `p`, kutu `k`,
+  daire `o`, çizgi `c`, nokta `n`, `teker`); gövde düz tonlarla boyanır,
+  `kenar()` siluete 1 piksel mürekkep çeker, ince ayrıntı (cam, panel
+  çizgisi, perçin) kenardan SONRA eklenir. Hepsi sağa bakar. Her sprite'ın
+  dönme merkezi ve bağlantı noktaları (direk ucu, namlu) yorumunda yazılı;
+  `sahne.ts`'teki `cizDon`/`yerel` çağrıları bu sayılara bağlı.
 - `src/dunya.ts` — simülasyon: helikopter (yay-sönüm, otomatik top + roket),
   askerler (koş/nişan/panik/yanıyor), araçlar (tank, uçaksavar, kamyon),
   hava (düşman helikopteri, jet, dost nakliye), mermiler, `patlat()` (hasar,
   krater, panik, zincirleme), bez bebek (7 nokta verlet, kopabilen bağlar),
   parçalar, dalgalar. Tohumlu RNG, sabit 1/60 s adım, `olaylar` kuyruğu.
-- `src/sahne.ts` — çizim: açılışta üretilen uzak/orta katman (harabe
-  binalar), zemin (kan ve is izleri), siper, çöp adamlar (kodla), araçlar,
-  mermiler, patlamalar, HUD, başlık, sonuç.
+- `src/sahne.ts` — çizim, `K = 1,5` katı çözünürlükte (ekran `EK = 360`
+  piksel). Simülasyon dünya biriminde kalır; dünya → ekran yalnız `X()` ve
+  `Y()` ile. Açılışta üretilenler: uzak katman (soluk şehir), orta katman
+  (pencereli, balkonlu, top yemiş binalar), toprak dokusu (dünyaya sabit:
+  katmanlar, taşlar, kökler, boru, kemikler). Çöp adamlar kodla çizilir
+  (`adam`: iki parçalı uzuv, miğfer, sırt çantası). HUD ekran pikselinde.
 - `src/ses.ts` — WebAudio sesleri. `src/main.ts` — döngü, göreli sürükleme,
   `window.__barut` (`dondur`, `ilerlet(sn)`, `basla`, `ciz`, `dunya`).
 
 ## Kurallar ve tuzaklar
 
-- Mantıksal genişlik `G = 240` (telefonda piksel başı ≈ 1,5 CSS pikseli).
-  360 denendi: birimler çok küçük kaldı. Yazı ölçeği varsayılan 2.
+- Dünya genişliği `G = 240` birim; çizim `K = 1,5` ile 360 piksel
+  (telefonda piksel başı ≈ 1 CSS pikseli). Kullanıcı "daha detaylı" isteyince
+  simülasyona dokunmadan yalnız çizim ölçeklendi. Dünyayı 360 birim yapmak
+  denendi: birimler küçücük kaldı. Yazı ölçeği HUD'da 3.
+- Kamera pikseli kare başına BİR kez yuvarlanır (`kam`); her şey
+  `round(wx*K) - kam` ile çizilir, yoksa kayarken nesneler birbirine göre
+  titrer. Zemin sütunları `yer[]` arasında doğrusal ara değer alır.
+- Ufkun altı koyu toprakla doldurulur: derin çukurun içinden gök (beyaz)
+  görünmesin (kullanıcı ekran görüntüsüyle yakaladı).
+- Sandık halatla alınır: helikopter üstündeyse (yatay < 30, 150'ye kadar
+  aşağıda) sandık yukarı çekilir. Çukura inmek gerekmez; helikopterin inme
+  sınırı çukur dibine yetmiyordu.
+- Uyuyan bez bebek altı oyulunca uyanır (`krater` içinde); 7 sn yatınca ya
+  da sayı 30'u geçince `yigin()` ile zemine karışır ve araziyi yükseltir
+  (`les[]` doku izi). Hurda 15 sn sonra aynı şekilde. Kullanıcı isteği:
+  "cesetler birikse dağ olsa".
 - `GIRIS_X`'in sağındaki düşman hedef alınmaz, vurulmaz; helikopter
   `HELI_SAG`'dan öteye geçemez. Yoksa oyuncu doğum noktasında pusu kurar ve
   ekranda hiç kalabalık oluşmaz (bot kaydı gösterdi).
@@ -70,7 +91,7 @@ node scripts/kayit.mjs <url> <klasör> [başlangıç-sn] [süre-sn] [fps]
 - Bomba girdisi üç yoldan: düğme (`bombaDugme`, çizim ve dokunma aynı yeri
   kullanır), sürüklemeden kısa dokunuş (< 240 ms, < 5 piksel), sürüklerken
   ikinci parmak. Oyunu başlatan ilk dokunuş bomba saymaz (`ipucuT > 0,4`).
-- Bot pilot ≈ 2–2,5 dakikada 6. dalgada düşer (≈ 5500–6800 puan). Dengeyi
+- Bot pilot ≈ 2,5–3 dakikada 6.–7. dalgada düşer (≈ 6400–8200 puan). Dengeyi
   değiştirince `kayit.mjs` özetine ve `dunya.test.ts` eşiklerine bak.
 - vitest `console.log` göstermez; ayıklama için `scripts/*.tmp.test.ts`
   içinde dosyaya yaz, işin bitince sil.
@@ -104,4 +125,5 @@ diye okundu.
 Kanca (halatla sandık/enkaz/asker taşıma; LODOS'un ip fiziği), günün görevi
 (aynı tohum + skor tablosu, sayfa yeteneği db + user), büyük patlamada ağır
 çekim ve paylaşılacak "en iyi an" karesi, askerlere isim ve rütbe, gerçek
-ses tasarımı, yeni bölgeler (köprü, liman).
+ses tasarımı, yeni bölgeler (köprü, liman). Sedyeyle ceset toplayan
+sıhhiyeler (kullanıcı fikri; top onlara ateş etmez).
