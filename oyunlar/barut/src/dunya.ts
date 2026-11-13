@@ -80,6 +80,8 @@ export const P_TUGLA = 10;
 /** Yıkılabilir binaların hücre boyu (dünya birimi). */
 export const HUCRE = 4;
 // Bina hücreleri
+/** Yol kenarında araba hurdası duran yerler: zemin burada düzlenir (çizim `sahne.ts` SUSLER). */
+export const PARK_X = [312, 572];
 export const B_DUVAR = 1;
 export const B_PENCERE = 2;
 export const B_CATI = 3;
@@ -147,6 +149,8 @@ export interface Kopru {
  */
 export interface Bina {
   x: number;
+  /** 0 ev, 1 dükkân, 2 atölye (çizimdeki deriyi seçer). */
+  tur: number;
   sutun: number;
   satir: number;
   h: Uint8Array;
@@ -159,6 +163,8 @@ export interface Bina {
   /** Son atış yapılan pencere ve namlu alevi süresi. */
   atisHucre: number;
   atisT: number;
+  /** Her sütunun kurulduğu andaki zemin kotu: zemin oynarsa sütun moloza döner. */
+  kot: Float32Array;
 }
 
 export interface Hava {
@@ -411,9 +417,10 @@ export class Dunya {
     this.heli.y = this.heli.hy = this.zemin - 110;
     for (let i = 0; i < 6; i++) this.gomEkle(G_MAYIN);
     for (let i = 0; i < 5; i++) this.gomEkle(G_SANDIK);
-    this.binaKur(236, 10, 8, 2);
-    this.binaKur(352, 8, 5, 1);
-    this.binaKur(452, 10, 7, 2);
+    this.binaKur(232, 0, 2);
+    this.binaKur(344, 1, 1);
+    this.binaKur(452, 2, 2);
+    for (const x of PARK_X) this.duzlestir(x - 16, x + 16);
     // Siperdeki dostlar: [x farkı, görev, yükseklik]
     const kadro: [number, number, number][] = [[44, 0, 0], [52, 0, 0], [26, 1, 0], [6, 2, 44], [-8, 3, 0]];
     for (const [dx, rol, yukseklik] of kadro) {
@@ -483,21 +490,37 @@ export class Dunya {
     }
   }
 
-  /** Küçük bina kurar: duvarlar, pencereler, kapı, en üstte çatı. */
-  private binaKur(x: number, sutun: number, satir: number, asker: number): void {
-    const h = new Uint8Array(sutun * satir);
-    for (let r = 0; r < satir; r++) {
-      for (let c = 0; c < sutun; c++) {
-        let tur = B_DUVAR;
-        if (r === satir - 1) tur = B_CATI;
-        else if (r < 2 && (c === Math.floor(sutun / 2) - 1 || c === Math.floor(sutun / 2))) tur = B_KAPI;
-        else if (r % 3 === 2 && c % 5 >= 1 && c % 5 <= 2 && c < sutun - 1) tur = B_PENCERE;
-        h[r * sutun + c] = tur;
-      }
+  /** [x0, x1] arasını orta noktanın kotunda düzler; iki yanda 12 birimlik rampa bırakır. */
+  private duzlestir(x0: number, x1: number): void {
+    const kot = this.yerY((x0 + x1) / 2);
+    for (let i = x0 - 14; i <= x1 + 14; i++) {
+      if (i < 0 || i > DUNYA_G) continue;
+      const k = sinirla(Math.min(i - (x0 - 14), x1 + 14 - i) / 12, 0, 1);
+      this.yer[i] += (kot - this.yer[i]) * k;
     }
+  }
+
+  /**
+   * Küçük bina kurar. Şablon: [sütun, satır, boş hücreler, atış pencereleri]
+   * (hücre = [sütun, satır], satır 0 en altta). Ölçüler `dekor.ts`'teki
+   * derilerle aynı olmalı (hücre başına 6 piksel): ev 72×60, dükkân 72×42,
+   * atölye 84×48. Temelin altı düzlenir ki cephe dilim dilim kaymasın.
+   */
+  private binaKur(x: number, tur: number, asker: number): void {
+    const SABLON: [number, number, [number, number][], [number, number][]][] = [
+      [12, 10, [[0, 9], [11, 9]], [[2, 5], [8, 5], [8, 2]]],
+      [12, 7, [], [[2, 2], [8, 2]]],
+      [14, 8, [[0, 7], [1, 7], [12, 7], [13, 7]], [[9, 4], [12, 4]]],
+    ];
+    const [sutun, satir, bos, pencere] = SABLON[tur];
+    const h = new Uint8Array(sutun * satir).fill(B_DUVAR);
+    for (const [c, r] of bos) h[r * sutun + c] = 0;
+    for (const [c, r] of pencere) h[r * sutun + c] = B_PENCERE;
+    this.duzlestir(x, x + sutun * HUCRE);
     this.binalar.push({
-      x, sutun, satir, h, dy: new Float32Array(sutun * satir), vy: new Float32Array(sutun * satir),
-      asker, sayac: 2 + this.rng() * 2, ilk: sutun * satir, atisHucre: -1, atisT: 0,
+      x, tur, sutun, satir, h, dy: new Float32Array(sutun * satir), vy: new Float32Array(sutun * satir),
+      asker, sayac: 2 + this.rng() * 2, ilk: h.reduce((n, v) => n + (v ? 1 : 0), 0), atisHucre: -1, atisT: 0,
+      kot: Float32Array.from({ length: sutun }, (_, c) => this.yerY(x + (c + 0.5) * HUCRE)),
     });
   }
 
@@ -577,6 +600,13 @@ export class Dunya {
     const h = this.heli;
     for (const b of this.binalar) {
       if (b.atisT > 0) b.atisT -= dt;
+      // Altı oyulan (ya da leş yığınıyla kalkan) sütun bütün kalamaz: moloza döner.
+      // Yoksa cephe dilim dilim kayar (tabela, vitrin birbirinden kopuk görünüyordu).
+      for (let c = 0; c < b.sutun; c++) {
+        if (Math.abs(this.yerY(b.x + (c + 0.5) * HUCRE) - b.kot[c]) < 2.5) continue;
+        b.kot[c] = 1e9;
+        for (let k = 0; k < b.satir; k++) if (b.h[k * b.sutun + c]) b.h[k * b.sutun + c] = B_MOLOZ;
+      }
       for (let i = 0; i < b.h.length; i++) {
         if (b.dy[i] <= 0) continue;
         b.vy[i] += 260 * dt;

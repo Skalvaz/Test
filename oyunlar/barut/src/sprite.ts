@@ -451,16 +451,33 @@ export const SPR_SIMGE_SIPER = (() => {
 // Okunabilirlik kuralı: mürekkep siyahı yalnız hareketli birliklerindir. Dekor
 // gri tonlarla ve koyu gri kenarla çizilir, yoksa askerler arada kaybolur.
 
-/** Yanmış otomobil iskeleti. */
+/**
+ * Yanmış otomobil: camları boşalmış, lastikleri erimiş, kaputu kalkmış sedan.
+ * Alt orta (27, 21) yere oturur; iki jant aynı hizada, gövde düz durur.
+ */
 export const SPR_ARABA = (() => {
-  const b = new Boya(48, 19);
-  b.p([2, 9, 12, 8, 18, 2, 32, 2, 38, 8, 45, 9, 46, 14, 2, 14], T3);
-  b.kenar(T2);
-  b.p([19, 4, 24, 4, 24, 8, 15, 8], T2).p([26, 4, 31, 4, 35, 8, 26, 8], T2); // yanmış camlar: boş
-  b.o(11, 15, 3.4, T2).o(11, 15, 1.6, T2); // lastiksiz jant
-  b.o(37, 15, 3.4, T2).o(37, 15, 1.6, T2);
-  b.c(4, 11, 44, 11, T2).c(25, 3, 25, 13, T2);
-  b.n(8, 10, T3).n(30, 10, T3).n(41, 10, T3).c(13, 6, 16, 3, T3);
+  const b = new Boya(54, 22);
+  // Gövde: bagaj, kabin, kaput, tamponlar. Büyük, sade biçimler: yamaçta
+  // döndürülünce de okunur (ince ayrıntı döndürmede karıncalanıyordu).
+  b.p([3, 11, 8, 10, 15, 9, 21, 3, 35, 3, 41, 9, 49, 10, 51, 12, 51, 17, 3, 17], T3);
+  b.p([42, 9, 48, 4, 50, 5, 45, 10], T3); // kalkık kaput
+  b.k(1, 13, 3, 3, T3).k(50, 14, 3, 2, T3); // tamponlar
+  b.o(13, 18, 3.3, T4).o(40, 18, 3.3, T4); // çıplak jantlar
+  b.kenar(T1);
+  // Camlar: yanmış, karanlık kabin; ortada direk
+  b.p([22, 5, 27, 5, 27, 9, 18, 9], T1).p([30, 5, 34, 5, 38, 9, 30, 9], T1);
+  // Üst yüzeylerde ışık: tavan, bagaj, kaput
+  b.c(22, 4, 34, 4, T5).c(5, 11, 14, 10, T5).c(42, 10, 48, 11, T5);
+  // Gövde alt yarısı gölgede
+  b.k(4, 15, 46, 2, T2);
+  // Çamurluk boşlukları ve jantlar
+  for (const cx of [13, 40]) {
+    b.o(cx, 18, 5, T1).o(cx, 18, 3, T4).o(cx, 18, 1, T1);
+  }
+  b.c(28, 11, 28, 16, T1); // kapı derzi
+  b.c(22, 12, 24, 12, T1).c(31, 12, 33, 12, T1); // kollar
+  b.k(31, 13, 4, 2, T4).k(7, 12, 3, 2, T4); // dökülmüş boya
+  b.n(51, 12, B); // far yuvası
   return b.bitir();
 })();
 

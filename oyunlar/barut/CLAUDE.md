@@ -57,6 +57,11 @@ node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]
   (pencereli, balkonlu, top yemiş binalar), toprak dokusu (dünyaya sabit:
   katmanlar, taşlar, kökler, boru, kemikler). Çöp adamlar kodla çizilir
   (`adam`: iki parçalı uzuv, miğfer, sırt çantası). HUD ekran pikselinde.
+- `src/dekor.ts` — açılışta bir kez boyanan dekor: uzak katman (iki sıra
+  soluk yapı, düzenli pencere ızgarası), orta katman (üç cephe tarzı:
+  apartman, iş hanı, eski taş bina; balkon, yangın merdiveni, çatı panosu,
+  top deliği, yangın izi) ve yıkılabilir binaların derisi (`binaDerisi(tur)`:
+  ev 72×60, dükkân 72×42, atölye 84×48 piksel; 0 saydam, 1 mürekkep).
 - `src/ses.ts` — WebAudio sesleri. `src/main.ts` — döngü, göreli sürükleme,
   `window.__barut` (`dondur`, `ilerlet(sn)`, `basla`, `ciz`, `dunya`).
 
@@ -132,6 +137,26 @@ node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]
   eder; hücrelerin %45'inden azı kalınca savrulup ölürler, %50 ihtimalle
   sandık düşer. Roketler içi dolu binayı kendiliğinden hedef alır; roket ve
   bomba hücrelere çarpar, top mermisi geçer. Dalga bitimi için sayılmazlar.
+- Bina = şablon + deri. `dunya.ts` `binaKur(x, tur, asker)` hücre ızgarasını
+  (boş köşeler, atış pencereleri) kurar, `dekor.ts` aynı ölçüde cepheyi
+  boyar (hücre başına 6 piksel); birini değiştirince ötekini de değiştir.
+  Ayakta duran hücre derinin kendi parçasını basar, yerinden oynayan moloza
+  döner; kırık kenar girintili, altından tuğla görünür. Deri tonları
+  `duzle()` ile düz kademelere oturtulur (ara ton küçük cephede
+  karıncalanıyor). Temelin altı kurulurken düzlenir (`duzlestir`); sonradan
+  zemini 2,5 birimden çok oynayan sütun tümüyle moloza döner, yoksa cephe
+  dilim dilim kayıyordu.
+- Sabit süsler (`susler()`) zeminden ÖNCE çizilir: toprak üstlerine boyandığı
+  için gömülen kısım kırpılır. Geniş olan iki temas noktasına göre yatar,
+  dik olan ayak izinin en alçak noktasına oturur; araba yerleri (`PARK_X`)
+  düzlenir ve düzde döndürülmeden basılır (döndürme ince çizgiyi bozar).
+  Kullanıcı yamaçta yarısı havada duran arabayı ekran görüntüsüyle yakaladı.
+- TASARIM ÇITASI (kullanıcı, Kasım 2026): "evler daha kaliteli ve uğraşılmış
+  olsun, bu bütün tasarımlar için geçerli." Düz kutu + rastgele nokta kabul
+  değil: her nesnenin parçaları (çatı, saçak, doğrama, denizlik, tabela…)
+  ayrı düşünülür ve 6–8 kat büyütülmüş kırpmayla denetlenir. Ekran görüntüsünü
+  tam sayı katıyla büyüt (görüntü alanı 360 genişlikte): 390'da tuval
+  kesirli ölçeklenir ve düz ton taranmış gibi görünür.
 - Gömüler (`gomuler`): her kraterden sonra `gomuKontrol` bakar; üstü 5
   piksele inen mayının fitili yanar (0,4 sn), sandık fırlar. Top ve roket
   düşmana nişan aldığı için toprağı yalnız bomba bilerek kazar.
@@ -172,6 +197,8 @@ Paketler birer oturumluk; kullanım sınırı yüzünden teker teker.
 
 1. ✅ **Toprak ve bomba:** elle bomba, gömülü mayın ve sandık, üç süreli
    güçlendirme (çift top, hız, bomba yağmuru), araçlardan ödül düşmesi.
+   Sırada tasarım çıtası turu (evler ve arka plan ✅; kalan: ağaç, lamba,
+   bariyer, yıkık duvar, üs, araç hurdaları, toprak altı).
 2. ✅ (çoğu) **Tabya ve bina:** yıkılabilir, içinden ateş edilen küçük
    binalar; köprücü zırhlı ve köprü; derin zemin; makineli, nişancı, subay.
    Kalan: arka plan binalarının pencerelerinden nişancılar, hızlı makineli

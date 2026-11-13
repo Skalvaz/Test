@@ -4,7 +4,7 @@
  * Arka plan katmanları ve toprak dokusu açılışta bir kez üretilir.
  */
 import {
-  BAGLAR, B_CATI, B_KAPI, B_MOLOZ, B_PENCERE, DUNYA_G, Dunya, G, G_MAYIN, HUCRE, KOS, P_TUGLA, T_KOPRUCU, M_BOMBA, M_DKURSUN, M_DRPG, M_HAVAN, M_KURSUN, M_OBOMBA, M_ROKET, M_TOP,
+  BAGLAR, B_MOLOZ, B_PENCERE, DUNYA_G, Dunya, G, G_MAYIN, HUCRE, KOS, P_TUGLA, T_KOPRUCU, M_BOMBA, M_DKURSUN, M_DRPG, M_HAVAN, M_KURSUN, M_OBOMBA, M_ROKET, M_TOP,
   M_NISANCI, O_CIFT, O_HIZ, O_TAMIR, PANIK, T_MAKINELI, T_NISANCI, T_SUBAY, P_ATES, P_DUMAN, P_ENKAZ, P_KAN, P_KASK, P_KIVILCIM, P_KOVAN, P_KULE, P_TOPRAK,
   P_TOZ, SIPER_ON, SIPER_X, T_HELI, T_JET, T_KAMYON, T_ROKET, T_TANK, T_TUFEK, T_UCAKSAVAR, YANIYOR,
   type Asker,
@@ -16,6 +16,7 @@ import {
   SPR_UCAKSAVAR, SPR_UKULE, TANK_N, UCAKSAVAR_N, UKULE_N,
 } from './sprite';
 import { AKKOR, ATES, KAN, KURU_KAN, Tuval, yaziGenislik, type YaziSecenek } from './tuval';
+import { binaDerisi, ortaKatman, uzakKatman } from './dekor';
 
 /** Çizim ölçeği: 1 dünya birimi = K ekran pikseli. */
 export const K = 1.5;
@@ -69,265 +70,12 @@ const LOGO = [
 
 /** Savaş alanındaki sabit süsler: [dünya x, tip]. 0 tank engeli, 1 kuru ağaç, 2 araba, 3 lamba, 4 bariyer, 5 levha, 6 varil, 7 duvar. */
 const SUSLER: [number, number][] = [
-  [178, 4], [204, 3], [232, 1], [262, 7], [296, 0], [326, 2], [362, 1], [388, 6], [416, 0], [446, 3], [486, 7], [514, 0],
-  [540, 2], [566, 1],
+  [178, 4], [204, 3], [220, 1], [290, 0], [312, 2], [400, 6], [416, 1], [436, 3], [522, 7], [548, 0], [572, 2], [590, 1],
 ];
 
-/** Uzak katman: tepeler ve soluk bir şehir silueti. 0 = saydam. */
-function uzakKatman(): Uint8Array {
-  const t = new Tuval(UW, UH);
-  t.g.fill(0);
-  const sirt = (x: number): number => UH - 40 - 18 * Math.sin(x * 0.011 + 0.6) - 9 * Math.sin(x * 0.029 + 2);
-  for (let x = 0; x < UW; x++) for (let y = Math.round(sirt(x)); y < UH; y++) t.g[y * UW + x] = 234;
-  // Şehir: sıkışık, farklı boylarda soluk yapılar
-  let x = 2;
-  let no = 0;
-  while (x < UW - 8) {
-    no++;
-    const w = 10 + Math.round(kes(no, 2) * 22);
-    const h = 18 + Math.round(kes(no, 3) * kes(no, 7) * 150);
-    const y = UH - 22 - h;
-    t.kutu(x, y, w, h + 30, 213);
-    t.kutu(x + w - 2, y, 2, h + 30, 200);
-    // Pencere noktaları
-    for (let wy = y + 4; wy < y + h - 2; wy += 6) {
-      for (let wx = x + 2; wx < x + w - 3; wx += 4) if (kes(wx, wy) < 0.5) t.kutu(wx, wy, 2, 3, 196);
-    }
-    const tur = kes(no, 4);
-    if (tur < 0.2) {
-      // Baca ve duman
-      t.kutu(x + 2, y - 30, 4, 30, 213);
-      for (let k = 0; k < 7; k++) t.daire(x + 6 + k * 7, y - 34 - k * 4, 3.5 + k * 1.5, 238);
-    } else if (tur < 0.4) {
-      t.cizgi(x + w / 2, y, x + w / 2, y - 14, 213); // anten
-      t.cizgi(x + w / 2 - 3, y - 9, x + w / 2 + 3, y - 9, 213);
-    } else if (tur < 0.55) {
-      t.kutu(x + 2, y - 6, 7, 6, 213); // su deposu
-      t.cizgi(x + 2, y - 7, x + 8, y - 7, 200);
-    } else if (tur < 0.7 && h > 50) {
-      // Yıkık köşe
-      for (let k = 0; k < 9; k++) t.kutu(x + w - 6 + Math.round(kes(k, no) * 4), y + k * 2 - 2, 8, 3, 0);
-    }
-    x += w + (kes(no, 5) < 0.3 ? 8 + Math.round(kes(no, 6) * 20) : 1);
-  }
-  // Yakın sırt: şehrin eteğini örter
-  for (let xx = 0; xx < UW; xx++) {
-    const b = UH - 20 - 9 * Math.sin(xx * 0.019 + 3) - 5 * Math.sin(xx * 0.051);
-    for (let y = Math.round(b); y < UH; y++) t.g[y * UW + xx] = 224;
-  }
-  return t.g;
-}
-
-/** Orta katman: bombalanmış binalar, direkler, kuru ağaçlar, enkaz. 0 = saydam. */
-function ortaKatman(): Uint8Array {
-  const t = new Tuval(OW, OH);
-  t.g.fill(0);
-  const DUVAR = 170;
-  const GOLGE = 128;
-  const taban = (x: number): number => OH - 13 - 7 * Math.sin(x * 0.02 + 1) - 4 * Math.sin(x * 0.055 + 2);
-  const al = (x: number, y: number): number => (x < 0 || y < 0 || x >= OW || y >= OH ? 0 : t.g[y * OW + x]);
-  const koy = (x: number, y: number, d: number): void => {
-    if (x >= 0 && y >= 0 && x < OW && y < OH) t.g[y * OW + x] = d;
-  };
-  /** Yalnız duvarın olduğu yere boyar. */
-  const duvara = (x: number, y: number, d: number): void => {
-    if (al(x, y) === DUVAR) koy(x, y, d);
-  };
-
-  let bx = 34;
-  let no = 0;
-  while (bx < OW - 70) {
-    no++;
-    const w = 50 + Math.round(kes(no, 1) * 66);
-    const h = 96 + Math.round(kes(no, 2) * 270);
-    const by = Math.round(taban(bx + w / 2)) + 5;
-    const sol = kes(no, 3) < 0.5;
-    const yikik = 0.2 + kes(no, 4) * 0.65;
-    const ustler: number[] = [];
-    for (let c = 0; c < w; c++) {
-      // Kırık üst kenar: bir köşeden basamak basamak çökmüş
-      const u = sol ? c / w : 1 - c / w;
-      const cok = Math.max(0, yikik - u) / yikik;
-      const basamak = Math.floor(cok * 8) / 8;
-      const ust = by - h + Math.round(basamak * h * 0.72 + (cok > 0 ? (kes(Math.floor(c / 4) + no * 9, 5) - 0.5) * 7 : 0));
-      ustler.push(ust);
-      for (let y = Math.max(0, ust); y < by; y++) koy(bx + c, y, c >= w - 5 ? GOLGE : DUVAR);
-    }
-    // Sağlam kısmın çatısı: korkuluk, su deposu, anten
-    const saglam = ustler.findIndex((u) => u === by - h);
-    if (saglam >= 0) {
-      let son = saglam;
-      while (son < w && ustler[son] === by - h) son++;
-      for (let c = saglam; c < son; c++) {
-        koy(bx + c, by - h - 1, GOLGE);
-        koy(bx + c, by - h - 2, c % 6 < 4 ? DUVAR : 0);
-      }
-      if (son - saglam > 24) {
-        const tx = bx + saglam + 6 + Math.round(kes(no, 30) * (son - saglam - 22));
-        if (kes(no, 31) < 0.6) {
-          t.kutu(tx, by - h - 16, 12, 9, GOLGE);
-          t.kutu(tx + 1, by - h - 15, 10, 2, 150);
-          t.cizgi(tx + 1, by - h - 7, tx + 1, by - h - 2, GOLGE);
-          t.cizgi(tx + 10, by - h - 7, tx + 10, by - h - 2, GOLGE);
-        } else {
-          t.cizgi(tx, by - h - 2, tx, by - h - 26, GOLGE);
-          t.cizgi(tx - 5, by - h - 19, tx + 5, by - h - 19, GOLGE);
-          t.cizgi(tx - 3, by - h - 23, tx + 3, by - h - 23, GOLGE);
-        }
-      }
-    }
-    // Kırık kenarda demirler ve açıkta kalan kat döşemeleri
-    for (let c = 1; c < w - 1; c++) {
-      const u = ustler[c];
-      if (u > by - h) {
-        if (al(bx + c, u) === DUVAR) koy(bx + c, u, GOLGE);
-        if (kes(c + no * 5, 40) < 0.13) {
-          const uz = 4 + Math.round(kes(c, no + 41) * 8);
-          const yat = Math.round((kes(c, no + 42) - 0.5) * 6);
-          t.cizgi(bx + c, u - 1, bx + c + yat, u - uz, 100);
-        }
-      }
-    }
-    // Katlar ve pencereler
-    const KAT = 26;
-    for (let ky = by - 18; ky > by - h + 10; ky -= KAT) {
-      for (let c = 0; c < w - 5; c++) duvara(bx + c, ky + 14, 150); // kat silmesi
-      const balkon = kes(no * 3, ky) < 0.3;
-      for (let c = 8; c < w - 16; c += 17) {
-        const px = bx + c;
-        const tur = kes(c + no * 3, ky);
-        if (al(px, ky) !== DUVAR || al(px + 8, ky - 12) !== DUVAR) continue;
-        if (tur < 0.09) {
-          // Top yemiş duvar: köşeli, düzensiz delik. Çoğunun içi karanlık oda,
-          // bazısından gök görünür; altında açıkta kalan döşeme.
-          const acik = kes(c, ky + 7) < 0.35;
-          const gen = 7 + kes(c, ky + 8) * 5;
-          const boy = 9 + kes(c, ky + 9) * 5;
-          for (let yy = -20; yy <= 6; yy++) {
-            for (let xx = -8; xx <= 16; xx++) {
-              const uz = Math.max(Math.abs(xx - 4) / gen, Math.abs(yy + 7) / boy) + (kes(Math.floor((xx + c) / 2), Math.floor((yy + ky) / 2)) - 0.5) * 0.5;
-              if (uz < 0.8) duvara(px + xx, ky + yy, acik ? 0 : 85);
-              else if (uz < 1) duvara(px + xx, ky + yy, GOLGE);
-            }
-          }
-          if (!acik) for (let xx = -2; xx < 11; xx++) if (al(px + xx, ky + 1) === 85) koy(px + xx, ky + 1, 150);
-          continue;
-        }
-        // Çerçeve + cam
-        for (let yy = 0; yy < 13; yy++) for (let xx = 0; xx < 9; xx++) duvara(px + xx, ky - yy, tur < 0.34 ? 213 : 85);
-        for (let xx = -1; xx < 10; xx++) duvara(px + xx, ky + 1, GOLGE); // denizlik
-        for (let xx = -1; xx < 10; xx++) duvara(px + xx, ky - 13, 150); // lento
-        if (tur >= 0.34) {
-          if (tur < 0.5) {
-            // Tahtayla kapatılmış
-            for (let k = 0; k < 3; k++) for (let xx = 0; xx < 9; xx++) koy(px + xx, ky - 2 - k * 4, 150);
-          } else if (tur < 0.8) {
-            // Kayıt: artı
-            for (let yy = 0; yy < 13; yy++) koy(px + 4, ky - yy, 128);
-            for (let xx = 0; xx < 9; xx++) koy(px + xx, ky - 6, 128);
-          } else {
-            // Kırık cam: köşede açıklık
-            for (let k = 0; k < 5; k++) for (let xx = 0; xx < 5 - k; xx++) koy(px + xx, ky - 12 + k, 128);
-          }
-          // Üstünde is lekesi
-          if (kes(c, ky + no) < 0.18) {
-            for (let yy = 14; yy < 30; yy++) {
-              for (let xx = 1; xx < 8; xx++) if (kes(px + xx, ky - yy) < 1 - (yy - 14) / 16) duvara(px + xx, ky - yy, 150);
-            }
-          }
-        }
-        if (balkon && tur >= 0.09) {
-          // Balkon: döşeme ve korkuluk
-          for (let xx = -3; xx < 12; xx++) koy(px + xx, ky + 3, GOLGE);
-          for (let xx = -3; xx < 12; xx += 2) for (let yy = 0; yy < 5; yy++) duvara(px + xx, ky + 2 - yy, GOLGE);
-          for (let xx = -3; xx < 12; xx++) duvara(px + xx, ky - 3, GOLGE);
-        }
-      }
-    }
-    // Çatlaklar
-    for (let k = 0; k < 3; k++) {
-      let cx = bx + 6 + Math.round(kes(no, 50 + k) * (w - 16));
-      let cy = by - 20 - Math.round(kes(no, 53 + k) * (h - 50));
-      for (let n = 0; n < 16; n++) {
-        duvara(cx, cy, GOLGE);
-        cy += 1;
-        duvara(cx, cy, GOLGE);
-        cx += kes(n + k, no) < 0.5 ? 1 : -1;
-        cy += 1;
-      }
-    }
-    // Yağmur borusu
-    if (kes(no, 60) < 0.6) for (let y = by - h + 4; y < by; y++) duvara(bx + 3, y, y % 14 === 0 ? 100 : GOLGE);
-    // Giriş: kapı ve tente
-    const kx = bx + Math.round(w * (0.3 + kes(no, 61) * 0.3));
-    for (let yy = 0; yy < 20; yy++) for (let xx = 0; xx < 11; xx++) duvara(kx + xx, by - 1 - yy, 85);
-    for (let xx = -2; xx < 13; xx++) duvara(kx + xx, by - 22, GOLGE);
-    // Enkaz yığını
-    for (let k = 0; k < 16; k++) {
-      const rx = bx + Math.round((sol ? 0 : w) + (kes(no, k + 20) - 0.5) * 44);
-      const rw = 4 + Math.round(kes(k, no) * 9);
-      const rh = 3 + Math.round(kes(k, no + 2) * 5);
-      const ry = by - Math.round(kes(k, no + 1) * 10) - rh + 4;
-      t.kutu(rx, ry, rw, rh, kes(k, 7) < 0.5 ? 150 : GOLGE);
-      t.kutu(rx, ry, rw, 1, kes(k, 7) < 0.5 ? DUVAR : 150);
-    }
-    bx += w + 18 + Math.round(kes(no, 6) * 76);
-  }
-  // Zemin şeridi
-  for (let x = 0; x < OW; x++) {
-    const ty = Math.round(taban(x));
-    for (let y = ty; y < OH; y++) koy(x, y, y === ty ? GOLGE : 150);
-  }
-  // Direkler ve teller
-  let once = -1;
-  let onceY = 0;
-  for (let x = 20; x < OW; x += 110 + Math.round(kes(x, 8) * 44)) {
-    const by = Math.round(taban(x));
-    const egik = Math.round((kes(x, 9) - 0.5) * 10);
-    t.kalin(x, by, x + egik, by - 72, 100);
-    t.cizgi(x + egik - 8, by - 65, x + egik + 8, by - 66, 100);
-    t.cizgi(x + egik - 6, by - 58, x + egik + 6, by - 59, 100);
-    t.nokta(x + egik - 8, by - 67, 100);
-    t.nokta(x + egik + 8, by - 68, 100);
-    if (once >= 0 && kes(x, 10) < 0.8) {
-      for (let k = 0; k <= 60; k++) {
-        const u = k / 60;
-        t.nokta(once + (x + egik - once) * u, onceY + (by - 66 - onceY) * u + Math.sin(u * Math.PI) * 14, 128);
-      }
-    } else if (once >= 0) {
-      // Kopmuş tel: direkten sarkar
-      for (let k = 0; k < 26; k++) t.nokta(once + k * 0.5 + Math.sin(k * 0.3) * 2, onceY + k * 1.6, 128);
-    }
-    once = x + egik + 8;
-    onceY = by - 67;
-  }
-  // Kuru ağaçlar
-  const dal = (x: number, y: number, aci: number, uz: number, d: number): void => {
-    const x1 = x + Math.cos(aci) * uz;
-    const y1 = y + Math.sin(aci) * uz;
-    t.cizgi(x, y, x1, y1, 112);
-    if (d > 2) t.cizgi(x + 1, y, x1 + 1, y1, 112);
-    if (d <= 0) return;
-    dal(x1, y1, aci - 0.33 - kes(x, d) * 0.4, uz * 0.73, d - 1);
-    dal(x1, y1, aci + 0.3 + kes(y, d) * 0.4, uz * 0.71, d - 1);
-  };
-  for (let x = 70; x < OW; x += 140 + Math.round(kes(x, 11) * 90)) dal(x, Math.round(taban(x)) + 2, -Math.PI / 2 + (kes(x, 12) - 0.5) * 0.3, 19, 5);
-  // Yanmış araba iskeletleri
-  for (let x = 150; x < OW; x += 260 + Math.round(kes(x, 13) * 120)) {
-    const y = Math.round(taban(x)) + 1;
-    t.kutu(x, y - 8, 30, 6, 112);
-    t.kutu(x + 7, y - 14, 15, 6, 112);
-    t.kutu(x + 9, y - 12, 5, 4, 0);
-    t.kutu(x + 16, y - 12, 4, 4, 0);
-    t.daire(x + 6, y - 2, 3, 112);
-    t.daire(x + 24, y - 2, 3, 112);
-  }
-  return t.g;
-}
-
 export class Sahne {
-  private uzak = uzakKatman();
-  private orta = ortaKatman();
+  private uzak = uzakKatman(UW, UH);
+  private orta = ortaKatman(OW, OH);
   private toprak: Uint8Array;
   private toprakW = DP + 2;
   private toprakH: number;
@@ -475,6 +223,7 @@ export class Sahne {
     this.kam = Math.round(this.d.kam.x * K) - this.sx;
     this.gok();
     this.havadakiler();
+    this.susler();
     this.zeminCiz();
     this.enkazlar();
     this.binalar();
@@ -677,21 +426,46 @@ export class Sahne {
         if (Math.floor(d.zaman * 2 + g.x) % 2 === 0) t.vurgu(x, y, ATES);
       } else t.ciz(SPR_GOMU, x - 8, y - 7);
     }
-    // Sabit süsler
+  }
+
+  /**
+   * Sabit süsler. Zeminden ÖNCE çizilir: toprak sütunları üstlerine boyandığı
+   * için gömülen kısım kendiliğinden kırpılır. Geniş olanlar (araba, bariyer,
+   * tank engeli) iki temas noktasına göre yatar; dik duranlar ayak izinin en
+   * alçak noktasına oturur. Hiçbiri yamaçta havada kalmaz (kullanıcı ekran
+   * görüntüsüyle yakaladı: arabanın yarısı boşluktaydı).
+   */
+  private susler(): void {
+    const { t, d } = this;
+    const yat = (ox: number, yari: number): [number, number] => {
+      const y0 = d.yerY(ox - yari);
+      const y1 = d.yerY(ox + yari);
+      return [this.Y(Math.max((y0 + y1) / 2, d.yerY(ox) - 1)) + 2, sinirla(Math.atan2(y1 - y0, yari * 2), -0.7, 0.7)];
+    };
+    const dip = (ox: number, yari: number): number => {
+      let y = -1e9;
+      for (let k = -yari; k <= yari; k++) y = Math.max(y, d.yerY(ox + k));
+      return this.Y(y) + 1;
+    };
     for (const [ox, tip] of SUSLER) {
       const x = this.X(ox);
-      if (x < -30 || x > EK + 30) continue;
-      const y = this.Y(d.yerY(ox));
       if (x < -50 || x > EK + 50) continue;
-      // Çukura düşen süs zeminle birlikte iner; leş yığını yükselirse gömülür
-      if (tip === 0) t.ciz(SPR_KIRPI, x - 9, y - 12);
-      else if (tip === 1) t.ciz(SPR_AGAC, x - 17, y - 36);
-      else if (tip === 2) t.ciz(SPR_ARABA, x - 24, y - 17);
-      else if (tip === 3) t.ciz(SPR_LAMBA, x - 8, y - 60, ox % 2 === 0);
-      else if (tip === 4) t.ciz(SPR_BARIYER, x - 13, y - 12);
-      else if (tip === 5) t.ciz(SPR_LEVHA, x - 9, y - 32);
-      else if (tip === 6) t.ciz(SPR_VARIL, x - 5, y - 13);
-      else t.ciz(SPR_DUVAR, x - 20, y - 48);
+      if (tip === 0) {
+        const [y, e] = yat(ox, 5);
+        t.cizDon(SPR_KIRPI, x, y, e, false, SPR_KIRPI.w / 2, SPR_KIRPI.h - 1);
+      } else if (tip === 1) t.ciz(SPR_AGAC, x - 17, dip(ox, 2) - 36);
+      else if (tip === 2) {
+        // Düz zeminde döndürmeden basılır (döndürme ince çizgileri bozar)
+        const [y, e] = yat(ox, 13);
+        if (Math.abs(e) < 0.07) t.ciz(SPR_ARABA, x - 27, y - SPR_ARABA.h);
+        else t.cizDon(SPR_ARABA, x, y, e, false, SPR_ARABA.w / 2, SPR_ARABA.h - 1);
+      } else if (tip === 3) t.ciz(SPR_LAMBA, x - 8, dip(ox, 2) - 60, ox % 2 === 0);
+      else if (tip === 4) {
+        const [y, e] = yat(ox, 7);
+        t.cizDon(SPR_BARIYER, x, y, e, false, SPR_BARIYER.w / 2, SPR_BARIYER.h - 2);
+      } else if (tip === 5) t.ciz(SPR_LEVHA, x - 9, dip(ox, 1) - 32);
+      else if (tip === 6) t.ciz(SPR_VARIL, x - 5, dip(ox, 3) - 13);
+      else t.ciz(SPR_DUVAR, x - 20, dip(ox, 13) - 48);
     }
   }
 
@@ -714,62 +488,94 @@ export class Sahne {
 
   // ---- Yıkılabilir binalar ve köprüler ----
 
+  /**
+   * Binalar derisinden çizilir (`dekor.ts`): ayakta duran her hücre derinin
+   * kendi 6×6 parçasını basar, yerinden oynayan hücre moloza döner. Kırılan
+   * kenar girintili çıkıntılıdır ve açıkta kalan tuğla görünür.
+   */
   private binalar(): void {
     const { t, d } = this;
     const B = Math.round(HUCRE * K); // hücre pikseli
+    const W = t.w;
+    const H = t.h;
+    const koy = (x: number, y: number, v: number): void => {
+      if (x < 0 || y < 0 || x >= W || y >= H) return;
+      const i = y * W + x;
+      t.g[i] = v;
+      t.v[i] = 0;
+    };
     for (const b of d.binalar) {
       const x0 = this.X(b.x);
-      if (x0 > EK + 10 || x0 + b.sutun * B < -10) continue;
+      const N = b.sutun;
+      if (x0 > EK + 10 || x0 + N * B < -10) continue;
+      const deri = binaDerisi(b.tur);
+      const tohum = b.x * 0.37;
+      const ayakta = (c: number, r: number): boolean => c >= 0 && c < N && r >= 0 && r < b.satir && b.h[r * N + c] !== 0 && b.dy[r * N + c] === 0;
       let pencere = 0;
-      for (let c = 0; c < b.sutun; c++) {
-        const cx = b.x + (c + 0.5) * HUCRE;
-        const taban = this.Y(d.yerY(cx));
+      for (let c = 0; c < N; c++) {
+        const taban = this.Y(d.yerY(b.x + (c + 0.5) * HUCRE));
         const x = x0 + c * B;
         for (let r = 0; r < b.satir; r++) {
-          const i = r * b.sutun + c;
+          const i = r * N + c;
           const tur = b.h[i];
           if (!tur) continue;
           const y = taban - (r + 1) * B - Math.round(b.dy[i] * K);
-          if (tur === B_CATI) {
-            t.kutu(x, y, B, B, 85);
-            t.kutu(x, y, B, 1, 150);
-            t.nokta(x + 1 + ((c * 3) % 4), y + 3, 42);
-          } else if (tur === B_MOLOZ) {
-            t.kutu(x, y, B, B, 128);
-            t.cizgi(x + 1, y + 1 + ((c + r) % 3), x + 4, y + 4 - ((c + r) % 2), 64);
-            t.nokta(x + 4, y + 1, 170);
-          } else if (tur === B_KAPI) {
-            t.kutu(x, y, B, B, 64);
-            t.kutu(x, y, 1, B, 128);
-            if (r === 0) t.nokta(x + 4, y + 1, 200);
-          } else {
-            // Tuğla duvar: şaşırtmalı derzler
-            t.kutu(x, y, B, B, 213);
-            t.kutu(x, y + 2, B, 1, 160);
-            t.kutu(x, y + 5, B, 1, 160);
-            t.nokta(x + (r % 2 ? 1 : 4), y, 160);
-            t.nokta(x + (r % 2 ? 1 : 4), y + 1, 160);
-            t.nokta(x + (r % 2 ? 4 : 1), y + 3, 160);
-            t.nokta(x + (r % 2 ? 4 : 1), y + 4, 160);
-            if (tur === B_PENCERE) {
-              t.kutu(x + 1, y + 1, B - 2, B - 2, 42);
-              t.kutu(x + 1, y + 1, B - 2, 1, 213);
-              // İçerideki asker: pencerede miğfer
-              if (pencere++ < b.asker && b.dy[i] === 0) {
-                t.kutu(x + 2, y + 2, 2, 2, 0);
-                t.kutu(x + 1, y + 3, 4, 1, 0);
-              }
-              if (b.atisT > 0 && b.atisHucre === i) {
-                t.daire(x + 3, y + 3, 3, 0, ATES);
-                t.vurgu(x + 3, y + 3, AKKOR);
+          const sol = c > 0 && !ayakta(c - 1, r);
+          const sag = c < N - 1 && !ayakta(c + 1, r);
+          const ust = !ayakta(c, r + 1);
+          if (tur === B_MOLOZ) {
+            // Moloz: kırık tuğla, sıva parçası, aralarında boşluk; üstü dişli
+            for (let py = 0; py < B; py++) {
+              for (let px = 0; px < B; px++) {
+                const gx = c * B + px;
+                const gy = r * B + py;
+                if (ust && py < 2 && kes(gx + tohum, c * 3 + r) < (py === 0 ? 0.55 : 0.2)) continue;
+                // Devrilmiş tuğla ve sıva parçaları: sıra sıra kaymış bloklar, aralarında gölge
+                const sira = Math.floor(gy / 3);
+                const kay = Math.floor(kes(sira + tohum, c) * 5);
+                const blok = Math.floor((gx + kay) / 5);
+                const h = kes(blok + tohum, sira * 3 + 1);
+                let v = h < 0.14 ? 85 : h < 0.42 ? 128 : h < 0.8 ? 170 : 213;
+                if (gy % 3 === 2 || (gx + kay) % 5 === 0) v = h < 0.14 ? 42 : 85;
+                if (kes(gx * 5 + tohum, gy * 7) < 0.02) v = 0;
+                const tepe = ust && (py === 0 || (py < 3 && kes(gx + tohum, c * 3 + r) < (py === 1 ? 0.55 : 0.2)));
+                if (tepe || (sol && px === 0) || (sag && px === B - 1)) v = 0;
+                koy(x + px, y + py, v);
               }
             }
+            continue;
           }
-          // Açıkta kalan kenarlara mürekkep
-          const bos = (cc: number, rr: number): boolean => cc < 0 || cc >= b.sutun || rr >= b.satir || !b.h[rr * b.sutun + cc];
-          if (bos(c - 1, r)) t.kutu(x, y, 1, B, 0);
-          if (bos(c + 1, r)) t.kutu(x + B - 1, y, 1, B, 0);
-          if (bos(c, r + 1)) t.kutu(x, y, B, 1, 0);
+          const sx0 = c * B;
+          const sy0 = (b.satir - 1 - r) * B;
+          const ustKirik = ust && r < b.satir - 1 && deri.g[(sy0 - 1) * deri.w + sx0 + 2] !== 0;
+          for (let py = 0; py < B; py++) {
+            for (let px = 0; px < B; px++) {
+              let v = deri.g[(sy0 + py) * deri.w + sx0 + px];
+              if (!v) continue;
+              // Kırık kenarlar: girinti, mürekkep, açıkta tuğla
+              let ic = 99;
+              if (sol) ic = Math.min(ic, px - (kes(py + r * B + tohum, c) < 0.4 ? 1 : 0));
+              if (sag) ic = Math.min(ic, B - 1 - px - (kes(py + r * B + tohum, c + 9) < 0.4 ? 1 : 0));
+              if (ustKirik) ic = Math.min(ic, py - (kes(px + c * B + tohum, r + 5) < 0.4 ? 1 : 0));
+              if (ic < 0) continue;
+              if (ic === 0) v = 1;
+              else if (ic === 1) v = (py + r * B) % 3 === 2 ? 112 : 170;
+              koy(x + px, y + py, v === 1 ? 0 : v);
+            }
+          }
+          if (tur === B_PENCERE) {
+            // İçerideki asker: pencerede miğfer ve dışarı uzanan namlu
+            if (pencere++ < b.asker) {
+              t.kutu(x + 3, y + 2, 3, 1, 0);
+              t.kutu(x + 2, y + 3, 5, 1, 0);
+              t.kutu(x + 3, y + 4, 3, 1, 0);
+              t.kutu(x - 1, y + 5, 5, 1, 0);
+            }
+            if (b.atisT > 0 && b.atisHucre === i) {
+              t.daire(x - 2, y + 5, 3, 0, ATES);
+              t.vurgu(x - 2, y + 5, AKKOR);
+            }
+          }
         }
       }
     }
@@ -1861,9 +1667,12 @@ export class Sahne {
         t.cizDon(SPR_KULE, x, y - 5, p.aci, false);
       } else if (tip === P_TUGLA) {
         if (p.omur < 1 && Math.floor(d.zaman * 10) % 2 === 0) continue;
-        const c = Math.round(Math.cos(p.aci) * 2);
-        t.kutu(x - 2 + c, y - 4, 4, 4, 0);
-        t.kutu(x - 1 + c, y - 3, 2, 2, 150);
+        // Dönen tuğla: yatayken 4×2, dikken 2×4; koyu gri kenar, açık yüz
+        const yatay = Math.abs(Math.cos(p.aci)) > 0.7;
+        const tw = yatay ? 4 : 2;
+        const th = yatay ? 2 : 4;
+        t.kutu(x - 2, y - th - 1, tw + 1, th + 1, 42);
+        t.kutu(x - 2, y - th - 1, tw, th, ((p.aci * 3) | 0) % 2 ? 170 : 213);
       } else if (tip === P_KASK) {
         if (p.omur < 1 && Math.floor(d.zaman * 10) % 2 === 0) continue;
         t.cizDon(SPR_KASK, x, y - 3, p.aci, false);
