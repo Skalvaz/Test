@@ -169,6 +169,10 @@ export class Ses {
     [392, 494, 587].forEach((f, i) => this.bip(f, f, 0.16, 'triangle', 0.09, i * 0.12));
   }
 
+  bomba(): void {
+    this.bip(1100, 300, 0.5, 'sine', 0.07);
+  }
+
   sandik(): void {
     [523, 659, 784, 1047].forEach((f, i) => this.bip(f, f, 0.1, 'square', 0.07, i * 0.07));
   }

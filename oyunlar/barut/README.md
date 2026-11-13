@@ -10,13 +10,18 @@ kâğıt zemin, 7 gri ton, kırmızı kan ve kehribar ateş.
 - **Sürükle:** helikopter parmağını izler (göreli; parmağın altında kalmaz).
 - **Silahlar kendi ateş eder:** top en yakın hedefe, roketler araçlara ve
   kalabalık piyadeye. Yaklaştıkça top daha isabetli.
+- **Bomba elle:** sağ alttaki düğmeye dokun, ekrana kısaca dokun ya da
+  sürüklerken ikinci parmakla dokun. 3 bomba var, zamanla dolar.
+- **Toprağı kaz:** kesitte görünen `?` kutularının üstünü bombayla aç,
+  sandık fırlar; üstüne uçup al (çift top, hız, bomba yağmuru). Dikenli
+  toplar mayın: üstü açılınca patlar, üstündekileri götürür.
 - **Amaç:** soldaki siperi dalga dalga gelen düşmana karşı korumak.
   Helikopter düşerse ya da siper düşerse oyun biter.
 - Kırmızı kesik çizgi = tank sana nişan aldı; daralan halka = uçaksavar
   atışı geliyor; `< UÇAK` = bombardıman uçağı o yükseklikten geçecek.
 - Dalga bitince hasarın varsa dost uçak paraşütle tamir sandığı atar.
 
-Klavye: oklar / WASD, `M` ses.
+Klavye: oklar / WASD, boşluk ya da `B` bomba, `M` ses.
 
 ## Çalıştırma
 

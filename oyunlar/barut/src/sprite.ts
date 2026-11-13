@@ -188,3 +188,30 @@ export const SPR_SIMGE_SIPER = sprite([
   '.#.########..',
   '############.',
 ]);
+
+/** Toprağın altında görünen mayın ve sandık (açık tonlu siluet). */
+export const SPR_MAYIN = sprite([
+  '.....o.....',
+  '.o...o...o.',
+  '..o.ooo.o..',
+  '...ooooo...',
+  '..oo---oo..',
+  'oooo-r-oooo',
+  '..oo---oo..',
+  '...ooooo...',
+  '..o.ooo.o..',
+  '.o...o...o.',
+  '.....o.....',
+]);
+
+export const SPR_GOMU = sprite([
+  '-----------',
+  '-.........-',
+  '-..-----..-',
+  '-......-..-',
+  '-....--...-',
+  '-....-....-',
+  '-.........-',
+  '-....-....-',
+  '-----------',
+]);

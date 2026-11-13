@@ -46,6 +46,28 @@ await page.evaluate(() => {
       const dy = h.y - m.y;
       if (Math.hypot(dx, dy) < 60 && dx * m.vx + dy * m.vy > 0) ty += dy > 0 ? 26 : -26;
     }
+    // Dalga arasında en yakın gömülü sandığın üstüne gidip kazar; yere inen sandığı toplar.
+    const sandik = d.sandiklar.find((k) => k.tip > 0 || h.can < 80);
+    if (sandik) {
+      tx = sandik.x;
+      ty = sandik.y - 12;
+    } else if (d.ara > 0 || on > 1e8) {
+      const g = d.gomuler.filter((k) => k.tip === 1 && k.x < 400).sort((a, b) => Math.abs(a.x - h.x) - Math.abs(b.x - h.x))[0];
+      if (g) {
+        tx = g.x;
+        ty = d.zemin - 60;
+        if (Math.abs(h.x - g.x) < 3 && Math.abs(h.vx) < 20) d.bombaBirak();
+      }
+    }
+    // Bomba: düşeceği yerde düşman varsa bırak
+    if (d.bomba.adet > 0) {
+      const dusme = Math.sqrt((2 * Math.max(10, d.yerY(h.x) - h.y)) / 280);
+      const bx = h.x + h.vx * 0.55 * dusme;
+      let yakin = 0;
+      for (const s of d.askerler) if (!s.dost && s.x < 538 && Math.abs(s.x - bx) < 14) yakin++;
+      for (const a of d.araclar) if (a.x < 538 && Math.abs(a.x - bx) < 16) yakin += 3;
+      if (yakin >= 2) d.bombaBirak();
+    }
     d.surukle((tx - h.hx) * 0.2, (ty - h.hy) * 0.2);
   };
   L.basla();

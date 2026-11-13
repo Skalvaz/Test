@@ -62,14 +62,46 @@ node scripts/kayit.mjs <url> <klasör> [başlangıç-sn] [süre-sn] [fps]
 - Dizi üstünde geriye doğru dönerken `patlat`/`siperHasar` başka elemanları
   silebilir: döngü başında `if (!s) continue` koruması var, kaldırma.
 - Krater derinliği `zemin + 11` ile sınırlı; aynı yere düşen patlamalar
-  çukuru sonsuza kadar derinleştirmesin.
-- Bot pilot ≈ 2 dakikada 5.–6. dalgada düşer (≈ 3500–5500 puan). Dengeyi
+  çukuru sonsuza kadar derinleştirmesin. Yalnız `kazi` patlamaları (oyuncu
+  bombası, mayın) `zemin + 38`'e kadar oyar; gömüler 11–29 piksel derinde.
+- Gömüler (`gomuler`): her kraterden sonra `gomuKontrol` bakar; üstü 5
+  piksele inen mayının fitili yanar (0,4 sn), sandık fırlar. Top ve roket
+  düşmana nişan aldığı için toprağı yalnız bomba bilerek kazar.
+- Bomba girdisi üç yoldan: düğme (`bombaDugme`, çizim ve dokunma aynı yeri
+  kullanır), sürüklemeden kısa dokunuş (< 240 ms, < 5 piksel), sürüklerken
+  ikinci parmak. Oyunu başlatan ilk dokunuş bomba saymaz (`ipucuT > 0,4`).
+- Bot pilot ≈ 2–2,5 dakikada 6. dalgada düşer (≈ 5500–6800 puan). Dengeyi
   değiştirince `kayit.mjs` özetine ve `dunya.test.ts` eşiklerine bak.
 - vitest `console.log` göstermez; ayıklama için `scripts/*.tmp.test.ts`
   içinde dosyaya yaz, işin bitince sil.
 
-## Sıradaki fikirler
+## Yol haritası (kullanıcı kararları bana bıraktı, Kasım 2026)
 
-Elle ateşlenen özel silah (hava saldırısı çağır); dost piyade ve dost tank;
-yıkılabilen ön plan binaları; patron dalga (zırhlı tren / dev tank); skor
-tablosu (sayfa yeteneği db + user); yeni bölgeler (köprü, liman).
+Kaynak: kullanıcının kız arkadaşının el yazısı notları + benim önerilerim.
+Hedef: ücretsiz Android oyunu (FİTİL'deki Capacitor yolu), belki sonra PC.
+Oyunun kimliği: normal savaş olarak başlar, dalga ilerledikçe saçmalaşır.
+Paketler birer oturumluk; kullanım sınırı yüzünden teker teker.
+
+1. ✅ **Toprak ve bomba:** elle bomba, gömülü mayın ve sandık, üç süreli
+   güçlendirme (çift top, hız, bomba yağmuru), araçlardan ödül düşmesi.
+2. **Tabya ve bina:** tuğla tuğla yıkılan, üstü kapalı, içinde asker olan
+   ve ateş eden tabya; arka plan binalarının pencerelerinden nişancılar;
+   hızlı makineli jeep; hasar alan araçtan sağ atlayıp dağılan askerler;
+   yıkılan yapılardan güçlendirme.
+3. **Saçmalık başlasın:** üst üste binip dev çöp adam olan askerler (her
+   parçası ayrı bez bebek; vuruldukça dökülür; oyunun imzası), lazerli
+   asker, helikopteri lazerle vuran UFO.
+4. **Gelişim:** birkaç dalgada bir üç seçenekten biri, destek helikopteri,
+   paraşütle inen DOST takviye, 10–20 dalgada bir mutasyon patronu.
+5. Android paketi (Capacitor), kansız mod düğmesi.
+
+Yorum kararları: "silahsız kaçışanlar" hedef değil moral bozukluğu (silahını
+atıp kaçar, top ateş etmez, puan yok). Notlardaki "HPC" güçlendirme kutusu
+diye okundu.
+
+## Diğer fikirler
+
+Kanca (halatla sandık/enkaz/asker taşıma; LODOS'un ip fiziği), günün görevi
+(aynı tohum + skor tablosu, sayfa yeteneği db + user), büyük patlamada ağır
+çekim ve paylaşılacak "en iyi an" karesi, askerlere isim ve rütbe, gerçek
+ses tasarımı, yeni bölgeler (köprü, liman).

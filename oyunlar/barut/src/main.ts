@@ -3,7 +3,7 @@
  * çizim her karede bir kez. `window.__barut` deneme/kayıt kancasıdır.
  */
 import { Dunya, G } from './dunya';
-import { Sahne, type Arayuz } from './sahne';
+import { Sahne, bombaDugme, type Arayuz } from './sahne';
 import { Ses } from './ses';
 import { Tuval } from './tuval';
 
@@ -40,7 +40,8 @@ let pikseller!: Uint32Array;
 
 const ses = new Ses();
 const arayuz: Arayuz = { durum: 'baslik', rekor: rekorOku(), yeniRekor: false, sesAcik: true, duyuru: '', duyuruT: 9, sonucT: 0, ipucuT: 0 };
-const parmak = { basili: false, x: 0, y: 0 };
+/** `id`: helikopteri süren parmak. `t0`/`yol`: kısa dokunuşu sürüklemeden ayırmak için. */
+const parmak = { basili: false, x: 0, y: 0, id: -1, t0: 0, yol: 0 };
 const tus = { sol: false, sag: false, asagi: false, yukari: false };
 
 function yeniDunya(): void {
@@ -105,6 +106,13 @@ kanvas.addEventListener('pointerdown', (e) => {
   } else if (arayuz.durum === 'sonuc') {
     if (arayuz.sonucT > 1.6) basla();
     return;
+  } else {
+    // Bomba: düğmeye dokunmak ya da helikopteri sürerken ikinci parmakla dokunmak
+    const b = bombaDugme(yuk);
+    if (Math.hypot(p.x - b.x, p.y - b.y) < b.r + 8 || parmak.basili) {
+      dunya.bombaBirak();
+      return;
+    }
   }
   try {
     kanvas.setPointerCapture(e.pointerId);
@@ -112,19 +120,29 @@ kanvas.addEventListener('pointerdown', (e) => {
     /* yoksa da olur */
   }
   parmak.basili = true;
+  parmak.id = e.pointerId;
   parmak.x = p.x;
   parmak.y = p.y;
+  parmak.t0 = performance.now();
+  parmak.yol = 0;
 });
 kanvas.addEventListener('pointermove', (e) => {
-  if (!parmak.basili || arayuz.durum !== 'oyun') return;
+  if (!parmak.basili || e.pointerId !== parmak.id || arayuz.durum !== 'oyun') return;
   const p = ekrandan(e);
   // Göreli sürükleme: helikopter parmağın altında kalmaz.
   dunya.surukle((p.x - parmak.x) * 1.25, (p.y - parmak.y) * 1.25);
+  parmak.yol += Math.abs(p.x - parmak.x) + Math.abs(p.y - parmak.y);
   parmak.x = p.x;
   parmak.y = p.y;
 });
-const birak = (): void => {
+const birak = (e: PointerEvent): void => {
+  if (e.pointerId !== parmak.id) return;
+  // Sürüklemeden kısa bir dokunuş: bomba
+  if (parmak.basili && arayuz.durum === 'oyun' && e.type === 'pointerup' && parmak.yol < 5 && performance.now() - parmak.t0 < 240 && arayuz.ipucuT > 0.4) {
+    dunya.bombaBirak();
+  }
   parmak.basili = false;
+  parmak.id = -1;
 };
 kanvas.addEventListener('pointerup', birak);
 kanvas.addEventListener('pointercancel', birak);
@@ -137,8 +155,8 @@ const tusla = (e: KeyboardEvent, bas: boolean): void => {
   else if (k === 'ArrowDown' || k === 's' || k === 'S') tus.asagi = bas;
   else if (k === 'ArrowUp' || k === 'w' || k === 'W') tus.yukari = bas;
   else if (bas && (k === 'm' || k === 'M')) sesDegistir();
-  else if (bas && (k === ' ' || k === 'Enter')) {
-    /* yalnız başlatır */
+  else if (bas && (k === ' ' || k === 'Enter' || k === 'b' || k === 'B')) {
+    if (arayuz.durum === 'oyun' && !e.repeat) dunya.bombaBirak();
   } else return;
   e.preventDefault();
   if (bas) {
@@ -184,6 +202,12 @@ function olaylar(): void {
       case 'sandik':
         ses.sandik();
         break;
+      case 'bomba':
+        ses.bomba();
+        break;
+      case 'mayin':
+        ses.uyari();
+        break;
       case 'dalga':
         arayuz.duyuru = `DALGA ${o.no}`;
         arayuz.duyuruT = 0;
@@ -198,6 +222,7 @@ function olaylar(): void {
         arayuz.durum = 'sonuc';
         arayuz.sonucT = 0;
         parmak.basili = false;
+        parmak.id = -1;
         if (dunya.skor > arayuz.rekor) {
           arayuz.rekor = dunya.skor;
           arayuz.yeniRekor = true;

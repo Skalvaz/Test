@@ -4,16 +4,22 @@
  * yazılır; tarama Tuval.sun'da. Arka plan katmanları açılışta bir kez üretilir.
  */
 import {
-  BAGLAR, DUNYA_G, Dunya, G, KOS, M_BOMBA, M_DKURSUN, M_DRPG, M_HAVAN, M_KURSUN, M_ROKET, M_TOP, NISAN, PANIK,
+  BAGLAR, DUNYA_G, Dunya, G, G_MAYIN, KOS, M_BOMBA, M_OBOMBA, O_CIFT, O_HIZ, O_TAMIR, M_DKURSUN, M_DRPG, M_HAVAN, M_KURSUN, M_ROKET, M_TOP, NISAN, PANIK,
   P_ATES, P_DUMAN, P_ENKAZ, P_KAN, P_KIVILCIM, P_KOVAN, P_KULE, P_TOPRAK, P_TOZ, SIPER_ON, SIPER_X, T_HELI, T_JET,
   T_KAMYON, T_NAKLIYE, T_ROKET, T_TANK, T_UCAKSAVAR, YANIYOR,
   type Asker, type Bez,
 } from './dunya';
 import {
-  SPR_AGAC, SPR_DHELI, SPR_HELI, SPR_JET, SPR_KAMYON, SPR_KIRPI, SPR_KULE, SPR_NAKLIYE, SPR_SANDIK, SPR_SIMGE_HELI,
+  SPR_AGAC, SPR_DHELI, SPR_GOMU, SPR_HELI, SPR_JET, SPR_KAMYON, SPR_KIRPI, SPR_KULE, SPR_MAYIN, SPR_NAKLIYE, SPR_SANDIK,
+  SPR_SIMGE_HELI,
   SPR_SIMGE_SIPER, SPR_TANK, SPR_UCAKSAVAR,
 } from './sprite';
 import { AKKOR, ATES, KAN, KURU_KAN, Tuval, yaziGenislik } from './tuval';
+
+/** Bomba düğmesinin ekrandaki yeri (çizim ve dokunma aynı yeri kullanır). */
+export function bombaDugme(yuk: number): { x: number; y: number; r: number } {
+  return { x: G - 30, y: yuk - 36, r: 20 };
+}
 
 export interface Arayuz {
   durum: 'baslik' | 'oyun' | 'sonuc';
@@ -285,7 +291,7 @@ export class Sahne {
     for (const s of d.sandiklar) {
       const x = s.x - kam;
       const y = s.y + this.sy;
-      if (s.yerde <= 0) {
+      if (s.parasut && s.yerde <= 0) {
         // Paraşüt
         for (let k = -10; k <= 10; k++) {
           const yy = y - 22 - Math.sqrt(Math.max(0, 100 - k * k)) * 0.7;
@@ -296,7 +302,23 @@ export class Sahne {
         t.cizgi(x + 10, y - 22, x + 4, y - 4, 0);
         t.cizgi(x, y - 22, x, y - 4, 0);
       }
-      if (s.yerde < 11 || Math.floor(d.zaman * 6) % 2 === 0) t.ciz(SPR_SANDIK, x - 5, y - 4);
+      if (s.yerde > 11 && Math.floor(d.zaman * 6) % 2 !== 0) continue;
+      if (s.tip === O_TAMIR) {
+        t.ciz(SPR_SANDIK, x - 5, y - 4);
+        continue;
+      }
+      // Güçlendirme sandığı: beyaz kutu, üstünde simge; hafifçe yanıp söner
+      const by = y - 6 + Math.round(Math.sin(d.zaman * 5 + s.x) * 1.5);
+      t.kutu(x - 8, by - 1, 17, 13, 0);
+      t.kutu(x - 7, by, 15, 11, 255);
+      if (Math.floor(d.zaman * 4) % 2 === 0) t.cerceve(x - 10, by - 3, 21, 17, 0);
+      if (s.tip === O_CIFT) t.yazi('x2', x + 1, by + 3, { olcek: 1, hiza: 0 });
+      else if (s.tip === O_HIZ) t.yazi('>>', x + 1, by + 3, { olcek: 1, hiza: 0 });
+      else {
+        t.daire(x, by + 6, 3, 0);
+        t.cizgi(x + 2, by + 3, x + 4, by + 1, 0);
+        t.vurgu(x + 5, by + 1, ATES);
+      }
     }
   }
 
@@ -356,6 +378,17 @@ export class Sahne {
         const boy = 1 + Math.floor(kes(wx, 8) * 3);
         for (let k = 1; k <= boy; k++) t.nokta(x + (k === boy && kes(wx, 9) < 0.5 ? 1 : 0), y0 - k, 0);
       }
+    }
+    // Toprağın altındakiler: mayın ve sandık siluetleri
+    for (const g of d.gomuler) {
+      const x = g.x - kam;
+      if (x < -12 || x > G + 12) continue;
+      const y = Math.round(g.y) + this.sy;
+      if (g.tip === G_MAYIN) {
+        if (g.fitil >= 0 && Math.floor(d.zaman * 20) % 2 === 0) t.daire(x, y, 9, 0, KAN);
+        t.ciz(SPR_MAYIN, x - 5, y - 5);
+        if (Math.floor(d.zaman * 2 + g.x) % 2 === 0) t.nokta(x, y, 255);
+      } else t.ciz(SPR_GOMU, x - 5, y - 4);
     }
     // Sabit süsler: tank engelleri, kuru ağaçlar
     for (const [ox, tip] of SUSLER) {
@@ -629,7 +662,7 @@ export class Sahne {
         t.vurgu(x, y, KAN);
       } else if (m.tip === M_TOP) {
         t.kalin(x - ux * 4, y - uy * 4, x, y, 0);
-      } else if (m.tip === M_HAVAN || m.tip === M_BOMBA) {
+      } else if (m.tip === M_HAVAN || m.tip === M_BOMBA || m.tip === M_OBOMBA) {
         t.kalin(x - ux * 3, y - uy * 3, x + ux * 3, y + uy * 3, 0);
         t.cizgi(x - ux * 5 - uy * 2, y - uy * 5 + ux * 2, x - ux * 5 + uy * 2, y - uy * 5 - ux * 2, 0);
       }
@@ -802,8 +835,63 @@ export class Sahne {
     // Ekran dışındaki sandık
     if (a.ipucuT < 6 && a.durum === 'oyun') {
       const y = d.yuk - 40;
-      t.yazi('SÜRÜKLE: HELİKOPTER UÇAR', G / 2, y, { hiza: 0, ton: 240, kenar: 0 });
-      t.yazi('SİLAHLAR KENDİ ATEŞ EDER', G / 2, y + 16, { hiza: 0, ton: 240, kenar: 0 });
+      t.yazi('SÜRÜKLE: UÇ', 8, y, { ton: 240, kenar: 0 });
+      t.yazi('DOKUN: BOMBA', 8, y + 16, { ton: 240, kenar: 0 });
+    }
+    this.bombaHud();
+    this.gucHud();
+  }
+
+  /** Sağ alttaki bomba düğmesi ve üstündeki bomba sayısı. */
+  private bombaHud(): void {
+    const { t, d } = this;
+    const b = bombaDugme(d.yuk);
+    const var_ = d.bomba.adet > 0;
+    t.daire(b.x, b.y, b.r, 0);
+    t.daire(b.x, b.y, b.r - 2, var_ ? 255 : 128);
+    // Bomba simgesi
+    t.daire(b.x - 1, b.y + 2, 7, 0);
+    t.kutu(b.x + 3, b.y - 7, 3, 4, 0);
+    t.cizgi(b.x + 5, b.y - 8, b.x + 8, b.y - 11, 0);
+    if (var_) {
+      t.vurgu(b.x + 9, b.y - 12, ATES);
+      t.vurgu(b.x + 10, b.y - 12, AKKOR);
+      t.vurgu(b.x + 9, b.y - 13, ATES);
+    }
+    t.nokta(b.x - 4, b.y - 1, 255);
+    t.nokta(b.x - 3, b.y - 2, 255);
+    // Bomba sayısı: düğmenin üstünde küçük kutular; son kutu dolarken yükselir
+    const n = d.bomba.enCok;
+    const x0 = b.x - Math.round((n * 6 - 2) / 2);
+    for (let i = 0; i < n; i++) {
+      const x = x0 + i * 6;
+      const y = b.y - b.r - 11;
+      t.kutu(x - 1, y - 1, 6, 8, 0);
+      t.kutu(x, y, 4, 6, i < d.bomba.adet ? 0 : 255, i < d.bomba.adet && d.guc.bomba > 0 ? KAN : 0);
+      if (i === d.bomba.adet) {
+        const dolu = Math.round(d.bomba.dolum * 6);
+        if (dolu > 0) t.kutu(x, y + 6 - dolu, 4, dolu, 128);
+      }
+    }
+  }
+
+  /** Süreli güçlendirmeler: can çubuklarının altında ad + kalan süre. */
+  private gucHud(): void {
+    const { t, d } = this;
+    const liste: [string, number, number][] = [];
+    if (d.guc.cift > 0) liste.push(['ÇİFT TOP', d.guc.cift, 22]);
+    if (d.guc.hiz > 0) liste.push(['HIZ', d.guc.hiz, 22]);
+    if (d.guc.bomba > 0) liste.push(['BOMBA', d.guc.bomba, 24]);
+    let y = 38;
+    for (const [ad, kalan, sure] of liste) {
+      if (kalan < 4 && Math.floor(d.zaman * 6) % 2 === 0) {
+        y += 17;
+        continue;
+      }
+      t.yazi(ad, 8, y, { kenar: 255 });
+      const w = Math.round((kalan / sure) * 50);
+      t.kutu(8, y + 12, w, 2, 0, KAN);
+      y += 17;
     }
   }
 
@@ -849,8 +937,9 @@ export class Sahne {
     t.yazi('SİPERİ KORU', G / 2, y + 56, { hiza: 0, kenar: 255 });
     if (Math.floor(d.zaman * 1.6) % 2 === 0) t.yazi('DOKUN VE BAŞLA', G / 2, Math.round(d.yuk * 0.48), { hiza: 0, olcek: 3, kenar: 255 });
     const y2 = d.yuk - 56;
-    t.yazi('SÜRÜKLE: HELİKOPTER UÇAR', G / 2, y2, { hiza: 0, ton: 240, kenar: 0 });
-    t.yazi('SİLAHLAR KENDİ ATEŞ EDER', G / 2, y2 + 16, { hiza: 0, ton: 240, kenar: 0 });
+    t.yazi('SÜRÜKLE: HELİKOPTER UÇAR', G / 2, y2 - 16, { hiza: 0, ton: 240, kenar: 0 });
+    t.yazi('DOKUN: BOMBA BIRAK', G / 2, y2, { hiza: 0, ton: 240, kenar: 0 });
+    t.yazi('TOPRAĞI KAZ, SANDIK BUL', G / 2, y2 + 16, { hiza: 0, ton: 240, kenar: 0 });
     if (a.rekor > 0) t.yazi(`REKOR ${a.rekor}`, G / 2, y2 + 36, { hiza: 0, ton: 250, kenar: 0 });
     this.sesSimge(a);
   }
