@@ -24,8 +24,14 @@ export const T_UCAKSAVAR = 4;
 export const T_HELI = 5;
 export const T_JET = 6;
 export const T_NAKLIYE = 7;
+/** Piyade çeşitleri (tüfekçi ve roketçiye ek). */
+export const T_MAKINELI = 8;
+export const T_NISANCI = 9;
+export const T_SUBAY = 10;
 
-const PUAN = [10, 20, 50, 100, 80, 150, 200];
+export const piyadeMi = (tip: number): boolean => tip === T_TUFEK || tip === T_ROKET || tip >= T_MAKINELI;
+
+const PUAN = [10, 20, 50, 100, 80, 150, 200, 0, 25, 45, 60];
 
 // Asker durumları
 export const KOS = 0;
@@ -43,6 +49,8 @@ export const M_HAVAN = 5;
 export const M_BOMBA = 6;
 /** Oyuncunun elle bıraktığı bomba: toprağı derin oyar. */
 export const M_OBOMBA = 7;
+/** Keskin nişancı mermisi: hızlı, kaçması zor; önceden lazer çizgisiyle haber verir. */
+export const M_NISANCI = 8;
 
 // Sandık (ödül) tipleri
 export const O_TAMIR = 0;
@@ -81,6 +89,16 @@ export interface Asker {
   /** Roketçi: 1 helikoptere, 2 sipere nişan alıyor. */
   hedef: number;
   yon: 1 | -1;
+  /** Görünüş tohumu: başlık, çanta, atkı (çizim buna bakar). */
+  kilik: number;
+  /** Yerden yükseklik (gözetleme kulesindeki nöbetçi). */
+  yukseklik: number;
+  /** Seri atış sayacı (makineli) ya da nişan durumu (keskin nişancı: 1 = nişan alıyor). */
+  seri: number;
+  /** Dostlarda görev: 0 tüfekçi, 1 makineli yuvası, 2 kule nöbetçisi, 3 subay. */
+  rol: number;
+  /** > 0 iken namlu alevi görünür. */
+  atis: number;
 }
 
 export interface Arac {
@@ -343,11 +361,13 @@ export class Dunya {
     this.heli.y = this.heli.hy = this.zemin - 110;
     for (let i = 0; i < 4; i++) this.gomEkle(G_MAYIN);
     for (let i = 0; i < 3; i++) this.gomEkle(G_SANDIK);
-    // Siperdeki dostlar
-    for (const dx of [-18, 2, 26]) {
+    // Siperdeki dostlar: [x farkı, görev, yükseklik]
+    const kadro: [number, number, number][] = [[44, 0, 0], [52, 0, 0], [26, 1, 0], [6, 2, 44], [-8, 3, 0]];
+    for (const [dx, rol, yukseklik] of kadro) {
       this.askerler.push({
-        x: SIPER_X + dx, y: this.zemin, tip: T_TUFEK, dost: true, durum: NISAN, t: 0, faz: 0,
-        sayac: 1 + this.rng(), hiz: 0, menzil: 0, nisanAci: -0.2, hedef: 0, yon: 1,
+        x: SIPER_X + dx, y: this.zemin, tip: T_TUFEK, dost: true, durum: NISAN, t: this.rng() * 5, faz: 0,
+        sayac: 1 + this.rng(), hiz: 0, menzil: 0, nisanAci: -0.1, hedef: 0, yon: 1,
+        kilik: (this.rng() * 4096) | 0, yukseklik, seri: 0, rol, atis: 0,
       });
     }
   }
@@ -650,15 +670,29 @@ export class Dunya {
     if (!s.dost) {
       this.olu.piyade++;
       this.puan(s.tip, s.x, s.y - 22);
+      if (s.tip === T_SUBAY) {
+        // Subay vurulunca çevresindekiler dağılır
+        for (const o of this.askerler) {
+          if (o.dost || o.durum === YANIYOR || Math.abs(o.x - s.x) > 60) continue;
+          o.durum = PANIK;
+          o.t = -0.8;
+          o.yon = 1;
+        }
+        this.sozSayac = 0;
+        this.bagir(s.x, s.y - 24, 'SUBAY VURULDU!', true);
+      }
     }
     this.olaylar.push({ tip: 'olum' });
   }
 
   private askerEkle(tip: number, x: number): Asker {
     const r = this.rng;
+    // Ağır silah taşıyan yavaş yürür; keskin nişancı uzakta mevzilenir
+    const hiz = tip === T_MAKINELI ? 19 + r() * 7 : tip === T_NISANCI ? 22 + r() * 8 : tip === T_SUBAY ? 27 + r() * 6 : 25 + r() * 14;
     const s: Asker = {
       x, y: this.yerY(x), tip, dost: false, durum: KOS, t: 0, faz: r() * 6, sayac: 0.6 + r() * 1.2,
-      hiz: 25 + r() * 14, menzil: 30 + r() * 70, nisanAci: Math.PI, hedef: 0, yon: -1,
+      hiz, menzil: tip === T_NISANCI ? 215 + r() * 70 : 30 + r() * 70, nisanAci: Math.PI, hedef: 0, yon: -1,
+      kilik: (r() * 4096) | 0, yukseklik: 0, seri: 0, rol: 0, atis: 0,
     };
     this.askerler.push(s);
     return s;
@@ -746,8 +780,8 @@ export class Dunya {
         const ilk = this.kuyruk.shift()!;
         this.dogur(ilk, 0);
         let adet = 1;
-        if (ilk <= T_ROKET) {
-          while (adet < 5 && this.kuyruk.length && this.kuyruk[0] <= T_ROKET) this.dogur(this.kuyruk.shift()!, adet++);
+        if (piyadeMi(ilk)) {
+          while (adet < 5 && this.kuyruk.length && piyadeMi(this.kuyruk[0])) this.dogur(this.kuyruk.shift()!, adet++);
         }
         this.dogumSayac = this.dogumAra * adet * (0.6 + this.rng() * 0.8);
       }
@@ -775,6 +809,19 @@ export class Dunya {
     taban.forEach((adet, tip) => {
       for (let i = 0; i < Math.round(adet * kat); i++) liste.push(tip);
     });
+    // Tüfekçilerin bir kısmı makineli; ilerleyen dalgalarda keskin nişancı ve subay
+    if (n >= 2) {
+      let makineli = Math.floor(liste.filter((t) => t === T_TUFEK).length / 6);
+      for (let i = 0; i < liste.length && makineli > 0; i++) {
+        if (liste[i] === T_TUFEK && i % 3 === 0) {
+          liste[i] = T_MAKINELI;
+          makineli--;
+        }
+      }
+      liste.push(T_SUBAY);
+      if (n >= 6) liste.push(T_SUBAY);
+    }
+    if (n >= 3) for (let i = 0; i < Math.min(4, 1 + Math.floor((n - 3) / 2)); i++) liste.push(T_NISANCI);
     // Karıştır; ilk ikisi piyade olsun
     for (let i = liste.length - 1; i > 0; i--) {
       const j = (this.rng() * (i + 1)) | 0;
@@ -796,7 +843,7 @@ export class Dunya {
 
   private dogur(tip: number, sira: number): void {
     const r = this.rng;
-    if (tip === T_TUFEK || tip === T_ROKET) {
+    if (piyadeMi(tip)) {
       this.askerEkle(tip, DUNYA_G - 36 + sira * 8 + r() * 4);
     } else if (tip === T_KAMYON || tip === T_TANK || tip === T_UCAKSAVAR) {
       const can = tip === T_TANK ? 12 : tip === T_UCAKSAVAR ? 7 : 5;
@@ -1001,33 +1048,49 @@ export class Dunya {
       if (!s) continue; // siper düşünce dizi kısalmış olabilir
       s.t += dt;
       s.sayac -= dt;
+      if (s.atis > 0) s.atis -= dt;
       s.y = this.yerY(s.x);
 
       if (s.dost) {
-        // Siperdekiler: menzildeki en yakın düşmana ateş eder
-        if (s.sayac <= 0 && this.oyunda && !this.bitisNeden) {
+        // Siperdekiler: subay yalnız gözetler; ötekiler menzildeki en yakın düşmana ateş eder
+        if (s.rol === 3 || s.sayac > 0 || !this.oyunda || this.bitisNeden) continue;
+        const menzil = s.rol === 2 ? 170 : s.rol === 1 ? 150 : 135;
+        let en = -1;
+        let enD = menzil;
+        for (let k = 0; k < this.askerler.length; k++) {
+          const o = this.askerler[k];
+          if (o.dost) continue;
+          const d = o.x - s.x;
+          if (d > 0 && d < enD) {
+            enD = d;
+            en = k;
+          }
+        }
+        if (en < 0) {
+          s.seri = 0;
+          s.sayac = 0.3;
+          continue;
+        }
+        const o = this.askerler[en];
+        const oy = s.y - 10 - s.yukseklik;
+        s.nisanAci = Math.atan2(o.y - 8 - oy, o.x - s.x);
+        let isabet: number;
+        if (s.rol === 1) {
+          // Makineli yuvası: 6'lık seri
+          if (s.seri <= 0) s.seri = 6;
+          s.seri--;
+          s.sayac = s.seri > 0 ? 0.1 : 1.5 + r() * 0.8;
+          isabet = 0.07;
+        } else {
           s.sayac = 1.0 + r() * 0.7;
-          let en = -1;
-          let enD = 135;
-          for (let k = 0; k < this.askerler.length; k++) {
-            const o = this.askerler[k];
-            if (o.dost) continue;
-            const d = o.x - s.x;
-            if (d > 0 && d < enD) {
-              enD = d;
-              en = k;
-            }
-          }
-          if (en >= 0) {
-            const o = this.askerler[en];
-            s.nisanAci = Math.atan2(o.y - 8 - (s.y - 10), o.x - s.x);
-            this.izler.push({ x0: s.x + 5, y0: s.y - 10, x1: o.x + (r() - 0.5) * 8, y1: o.y - 4 - r() * 8, t: 0 });
-            this.olaylar.push({ tip: 'tufek' });
-            if (r() < 0.24) {
-              this.oldur(en, 50 + r() * 40, -30, false);
-              if (en < i) i--;
-            }
-          }
+          isabet = s.rol === 2 ? 0.3 : 0.24;
+        }
+        s.atis = 0.07;
+        this.izler.push({ x0: s.x + 8, y0: oy, x1: o.x + (r() - 0.5) * 8, y1: o.y - 4 - r() * 8, t: 0 });
+        this.olaylar.push({ tip: 'tufek' });
+        if (r() < isabet) {
+          this.oldur(en, 50 + r() * 40, -30, false);
+          if (en < i) i--;
         }
         continue;
       }
@@ -1036,6 +1099,7 @@ export class Dunya {
       const dyh = h.y - (s.y - 10);
       const dh = Math.hypot(dxh, dyh);
       const mesafe = s.x - SIPER_ON;
+      const siperde = mesafe < s.menzil + 30;
 
       if (s.durum === KOS) {
         s.x -= s.hiz * dt;
@@ -1045,16 +1109,18 @@ export class Dunya {
           s.durum = NISAN;
           s.t = 0;
           s.hedef = 1;
-        } else if (s.tip === T_TUFEK && !h.olu && dh < 125 && s.sayac <= 0 && mesafe > s.menzil) {
-          // Durup helikoptere nişan alır
+        } else if ((s.tip === T_TUFEK || s.tip === T_MAKINELI) && !h.olu && dh < (s.tip === T_MAKINELI ? 140 : 125) && s.sayac <= 0 && mesafe > s.menzil) {
+          // Durup helikoptere nişan alır (makineli çatalını açar: biraz daha uzun sürer)
           s.durum = NISAN;
           s.t = 0;
           s.hedef = 1;
-          s.sayac = 0.3 + r() * 0.25;
+          s.seri = 0;
+          s.sayac = s.tip === T_MAKINELI ? 0.5 : 0.3 + r() * 0.25;
         } else if (mesafe < s.menzil) {
           s.durum = NISAN;
           s.t = 0;
-          s.hedef = 2;
+          s.hedef = s.tip === T_NISANCI ? 0 : 2;
+          s.seri = 0;
           s.sayac = Math.max(s.sayac, 0.3 + r() * 0.6);
         }
       } else if (s.durum === NISAN) {
@@ -1072,21 +1138,71 @@ export class Dunya {
             });
             this.sac(P_TOZ, s.x - Math.cos(s.nisanAci) * 6, s.y - 9, 3, 30, 0.5, 3);
             this.olaylar.push({ tip: 'top' });
+            s.atis = 0.1;
             s.sayac = 3.4 + r();
             s.t = 0;
             if (heliye && mesafe > s.menzil) s.durum = KOS;
             else s.hedef = 2;
           }
+        } else if (s.tip === T_NISANCI) {
+          // Keskin nişancı: mevzilenir, helikopteri izler, lazerle nişan alıp tek atar
+          const gorur = !h.olu && dh < 235;
+          if (gorur) {
+            s.nisanAci = Math.atan2(dyh + h.vy * 0.12, dxh + h.vx * 0.12);
+            s.yon = dxh > 0 ? 1 : -1;
+          }
+          if (s.seri === 1) {
+            if (!gorur) s.seri = 0;
+            else if (s.t > 1.05) {
+              this.mermiler.push({ tip: M_NISANCI, x: s.x, y: s.y - 9, vx: Math.cos(s.nisanAci) * 520, vy: Math.sin(s.nisanAci) * 520, omur: 0.7, yas: 0, hedef: null });
+              this.olaylar.push({ tip: 'top' });
+              s.atis = 0.1;
+              s.seri = 0;
+              s.sayac = 3.4 + r() * 1.2;
+            }
+          } else if (gorur && s.sayac <= 0) {
+            s.seri = 1;
+            s.t = 0;
+            this.olaylar.push({ tip: 'uyari' });
+          }
+        } else if (s.tip === T_MAKINELI) {
+          if (s.sayac <= 0) {
+            if (s.seri > 0) {
+              // Seri: dört mermi art arda
+              s.seri--;
+              s.sayac = s.seri > 0 ? 0.13 : 2 + r();
+              const aci = Math.atan2(dyh + h.vy * 0.4, dxh + h.vx * 0.4) + (r() - 0.5) * 0.17;
+              s.nisanAci = aci;
+              this.mermiler.push({ tip: M_DKURSUN, x: s.x, y: s.y - 8, vx: Math.cos(aci) * 165, vy: Math.sin(aci) * 165, omur: 1.5, yas: 0, hedef: null });
+              this.olaylar.push({ tip: 'tufek' });
+              s.atis = 0.07;
+              if (s.seri === 0 && !siperde && r() < 0.5) s.durum = KOS;
+            } else if (!h.olu && dh < 148 && (!siperde || r() < 0.6)) {
+              s.seri = 4;
+              s.yon = dxh > 0 ? 1 : -1;
+            } else if (siperde) {
+              s.yon = -1;
+              s.sayac = 1.1 + r() * 0.6;
+              const ty = this.zemin - 4 - r() * 14;
+              s.nisanAci = Math.atan2(ty - (s.y - 8), SIPER_X + 20 - s.x);
+              for (let k = 0; k < 3; k++) this.izler.push({ x0: s.x - 7, y0: s.y - 8, x1: SIPER_X + 40 - r() * 60, y1: ty + (r() - 0.5) * 8, t: -k * 0.02 });
+              this.siperHasar(1.3);
+              this.olaylar.push({ tip: 'tufek' });
+              s.atis = 0.1;
+            } else s.durum = KOS;
+          }
         } else if (s.sayac <= 0) {
+          // Tüfekçi ve subay (subayın tabancası zayıftır)
+          const subay = s.tip === T_SUBAY;
           s.sayac = 1.1 + r() * 0.8;
-          const siperde = mesafe < s.menzil + 30;
-          if (!h.olu && dh < 135 && (!siperde || r() < 0.55)) {
+          if (!h.olu && dh < (subay ? 80 : 135) && (!siperde || r() < 0.55)) {
             // Helikoptere: kaçılabilir mermi
-            const aci = Math.atan2(dyh + h.vy * 0.4, dxh + h.vx * 0.4) + (r() - 0.5) * 0.2;
+            const aci = Math.atan2(dyh + h.vy * 0.4, dxh + h.vx * 0.4) + (r() - 0.5) * (subay ? 0.4 : 0.2);
             s.nisanAci = aci;
             s.yon = dxh > 0 ? 1 : -1;
             this.mermiler.push({ tip: M_DKURSUN, x: s.x, y: s.y - 10, vx: Math.cos(aci) * 150, vy: Math.sin(aci) * 150, omur: 1.5, yas: 0, hedef: null });
             this.olaylar.push({ tip: 'tufek' });
+            s.atis = 0.07;
             if (!siperde && r() < 0.5) s.durum = KOS;
           } else if (siperde) {
             s.yon = -1;
@@ -1095,8 +1211,9 @@ export class Dunya {
             s.nisanAci = Math.atan2(ty - (s.y - 10), tx - s.x);
             this.izler.push({ x0: s.x - 5, y0: s.y - 10, x1: tx, y1: ty, t: 0 });
             this.parca(P_TOZ, tx, ty, 0, -6, 0.4, 2);
-            this.siperHasar(0.7);
+            this.siperHasar(subay ? 0.4 : 0.7);
             this.olaylar.push({ tip: 'tufek' });
+            s.atis = 0.07;
           } else {
             s.durum = KOS;
           }
@@ -1351,13 +1468,14 @@ export class Dunya {
           if (yakin) {
             bitti = true;
             if (m.tip === M_DKURSUN) this.heliHasar(3.5);
+            else if (m.tip === M_NISANCI) this.heliHasar(9);
             else patla = true;
           }
         }
         if (!bitti && m.y >= gy) {
           bitti = true;
           m.y = gy;
-          if (m.tip === M_KURSUN || m.tip === M_DKURSUN) this.parca(P_TOZ, m.x, gy - 1, 0, -10, 0.35, 2);
+          if (m.tip === M_KURSUN || m.tip === M_DKURSUN || m.tip === M_NISANCI) this.parca(P_TOZ, m.x, gy - 1, 0, -10, 0.35, 2);
           else patla = true;
         }
       }

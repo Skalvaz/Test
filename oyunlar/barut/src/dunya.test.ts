@@ -127,7 +127,7 @@ describe('BARUT simülasyonu', () => {
     d.ara = 99; // dalga gelmesin
     // Bir asker koy, öldür, cesedin durmasını bekle
     const yer0 = d.yerY(300);
-    d.askerler.push({ x: 300, y: yer0, tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 9, hiz: 0, menzil: 0, nisanAci: 0, hedef: 0, yon: -1 });
+    d.askerler.push({ x: 300, y: yer0, tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 9, hiz: 0, menzil: 0, nisanAci: 0, hedef: 0, yon: -1, kilik: 0, yukseklik: 0, seri: 0, rol: 0, atis: 0 });
     d.patlat(300, yer0 - 30, 4, true, 0); // öldürmeyecek kadar uzak; cesedi mermiyle yapalım
     d.mermiler.push({ tip: 0, x: 296, y: yer0 - 8, vx: 300, vy: 0, omur: 1, yas: 0, hedef: null });
     for (let i = 0; i < 4 / ADIM; i++) d.adim(ADIM);

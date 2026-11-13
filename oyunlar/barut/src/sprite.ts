@@ -247,7 +247,10 @@ export const SPR_KULE = (() => {
   b.o(29, 6, 1.8, M).o(29, 6, 0.9, B); // projektör
   b.c(20, 8, 22, 5, M).c(23, 8, 25, 5, M).c(26, 9, 28, 6, M); // sis havanları
   b.c(13, 0, 22, 0, M).n(13, 1, M); // kule makinelisi
-  b.c(7, 6, 10, 5, T3).n(16, 8, T3).n(18, 10, T3).c(6, 9, 30, 9, T3);
+  b.c(7, 6, 10, 5, T3).n(16, 8, T3).n(18, 10, T3).c(6, 10, 30, 10, T3);
+  // Kule numarası (beyaz boya): 27
+  b.c(8, 5, 10, 5, B).n(10, 6, B).c(8, 7, 10, 7, B).n(8, 8, B).c(8, 9, 10, 9, B);
+  b.c(12, 5, 14, 5, B).n(14, 6, B).n(13, 7, B).n(13, 8, B).n(13, 9, B);
   return b.bitir();
 })();
 
@@ -362,11 +365,11 @@ export const SPR_SANDIK = (() => {
 /** Tank engeli (çapraz çelik kirişler). Alt orta (9, 13). */
 export const SPR_KIRPI = (() => {
   const b = new Boya(19, 14);
-  b.c(1, 1, 16, 12, T3).c(2, 1, 17, 12, T3);
-  b.c(17, 1, 2, 12, T3).c(16, 1, 1, 12, T3);
-  b.k(8, 0, 2, 13, T3);
-  b.kenar();
-  b.c(9, 1, 9, 11, T5);
+  b.c(1, 1, 16, 12, T4).c(2, 1, 17, 12, T4);
+  b.c(17, 1, 2, 12, T4).c(16, 1, 1, 12, T4);
+  b.k(8, 0, 2, 13, T4);
+  b.kenar(T2);
+  b.c(9, 1, 9, 11, B);
   return b.bitir();
 })();
 
@@ -381,16 +384,16 @@ export const SPR_AGAC = (() => {
   const dal = (x: number, y: number, aci: number, uz: number, d: number): void => {
     const x1 = x + Math.cos(aci) * uz;
     const y1 = y + Math.sin(aci) * uz;
-    b.c(x, y, x1, y1, M);
-    if (d > 2) b.c(x + 1, y, x1 + 1, y1, M);
-    if (d > 3) b.c(x - 1, y, x1 - 1, y1, M);
+    b.c(x, y, x1, y1, T2);
+    if (d > 2) b.c(x + 1, y, x1 + 1, y1, T2);
+    if (d > 3) b.c(x - 1, y, x1 - 1, y1, T2);
     if (d <= 0) return;
     dal(x1, y1, aci - 0.3 - r() * 0.45, uz * 0.74, d - 1);
     dal(x1, y1, aci + 0.28 + r() * 0.45, uz * 0.7, d - 1);
     if (d > 2 && r() < 0.5) dal(x1, y1, aci + (r() - 0.5) * 0.3, uz * 0.6, d - 2);
   };
   dal(17, 37, -Math.PI / 2 + 0.06, 11, 4);
-  b.k(15, 35, 6, 3, M); // kök
+  b.k(15, 35, 6, 3, T2); // kök
   return b.bitir();
 })();
 
@@ -440,6 +443,84 @@ export const SPR_SIMGE_SIPER = (() => {
   b.k(2, 0, 1, 11, M);
   b.k(3, 0, 8, 5, M).k(5, 2, 3, 1, B);
   b.o(10, 9, 4, M, 2).o(17, 9, 4, M, 2).o(13, 6, 4, M, 2);
+  return b.bitir();
+})();
+
+// ---- Sokak döküntüsü (savaş alanındaki sabit süsler; hepsinin alt ortası yere oturur) ----
+
+// Okunabilirlik kuralı: mürekkep siyahı yalnız hareketli birliklerindir. Dekor
+// gri tonlarla ve koyu gri kenarla çizilir, yoksa askerler arada kaybolur.
+
+/** Yanmış otomobil iskeleti. */
+export const SPR_ARABA = (() => {
+  const b = new Boya(48, 19);
+  b.p([2, 9, 12, 8, 18, 2, 32, 2, 38, 8, 45, 9, 46, 14, 2, 14], T3);
+  b.kenar(T2);
+  b.p([19, 4, 24, 4, 24, 8, 15, 8], T2).p([26, 4, 31, 4, 35, 8, 26, 8], T2); // yanmış camlar: boş
+  b.o(11, 15, 3.4, T2).o(11, 15, 1.6, T2); // lastiksiz jant
+  b.o(37, 15, 3.4, T2).o(37, 15, 1.6, T2);
+  b.c(4, 11, 44, 11, T2).c(25, 3, 25, 13, T2);
+  b.n(8, 10, T3).n(30, 10, T3).n(41, 10, T3).c(13, 6, 16, 3, T3);
+  return b.bitir();
+})();
+
+/** Eğilmiş sokak lambası. */
+export const SPR_LAMBA = (() => {
+  const b = new Boya(22, 62);
+  b.c(6, 61, 8, 30, T4).c(7, 61, 9, 30, T4);
+  b.c(8, 30, 12, 8, T4).c(9, 30, 13, 8, T4);
+  b.c(12, 8, 19, 5, T4).c(12, 7, 19, 4, T4);
+  b.k(16, 5, 5, 3, T4);
+  b.k(4, 57, 7, 5, T4);
+  b.kenar(T2);
+  b.n(18, 8, B).n(17, 8, T4); // kırık cam
+  return b.bitir();
+})();
+
+/** Beton bariyer. */
+export const SPR_BARIYER = (() => {
+  const b = new Boya(26, 14);
+  b.p([7, 1, 18, 1, 20, 8, 24, 12, 1, 12, 5, 8], T4);
+  b.kenar(T2);
+  b.c(6, 9, 19, 9, T3).c(8, 3, 17, 3, T5).n(12, 6, T3).n(15, 10, T3);
+  b.c(3, 12, 6, 7, T3); // çatlak
+  return b.bitir();
+})();
+
+/** Yol levhası (direği eğik, kurşun delikli). */
+export const SPR_LEVHA = (() => {
+  const b = new Boya(18, 34);
+  b.c(8, 33, 10, 12, T4).c(9, 33, 11, 12, T4);
+  b.p([4, 1, 15, 2, 14, 12, 3, 11], B);
+  b.kenar(T2);
+  b.c(6, 4, 12, 5, T2).c(6, 7, 11, 8, T2); // yazı çizgileri
+  b.n(13, 9, T2).n(5, 9, T2).n(9, 3, T2); // kurşun delikleri
+  return b.bitir();
+})();
+
+/** Varil. */
+export const SPR_VARIL = (() => {
+  const b = new Boya(11, 15);
+  b.k(1, 1, 9, 13, T4);
+  b.kenar(T2);
+  b.c(1, 4, 9, 4, T2).c(1, 10, 9, 10, T2).c(2, 2, 2, 12, T4).n(7, 7, T2);
+  return b.bitir();
+})();
+
+/** Yıkık duvar parçası: pencere boşluklu, üstü kırık. */
+export const SPR_DUVAR = (() => {
+  const b = new Boya(40, 50);
+  b.p([2, 49, 2, 14, 7, 12, 9, 6, 15, 7, 17, 2, 24, 3, 26, 10, 33, 12, 34, 22, 38, 24, 38, 49], T4);
+  b.kenar(T2);
+  // Pencere boşluğu: arkası görünür
+  for (let y = 20; y < 33; y++) for (let x = 12; x < 22; x++) b.d[y * 40 + x] = 0;
+  b.c(11, 19, 22, 19, T2).c(11, 33, 22, 33, T2).c(11, 19, 11, 33, T2).c(22, 19, 22, 33, T2);
+  b.c(10, 34, 23, 34, T2); // denizlik
+  // Tuğla sıraları ve çatlak
+  for (let y = 16; y < 48; y += 5) for (let x = 4 + ((y / 5) % 2) * 3; x < 36; x += 7) if (b.d[y * 40 + Math.round(x)] === T4 + 1) b.c(x, y, x + 3, y, T3);
+  b.c(28, 14, 30, 22, T2).c(30, 22, 27, 30, T2);
+  b.c(17, 2, 15, -1, T2).c(24, 3, 27, 0, T2); // demirler
+  b.k(2, 44, 36, 1, T2);
   return b.bitir();
 })();
 

@@ -6,6 +6,10 @@ zamanla zemine karışıp araziyi yükseltir.
 
 ![BARUT](docs/barut.gif)
 
+![Üs](docs/us.png)
+
+![Piyade çeşitleri](docs/piyade.png)
+
 ## Nasıl oynanır
 
 - **Sürükle:** helikopter parmağını izler (göreli; parmağın altında kalmaz).

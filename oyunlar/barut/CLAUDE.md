@@ -94,6 +94,22 @@ node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]
 - Sürükleme: yatay kazanç parmak hızıyla 1,35 → 2,6 arası (fare ivmesi),
   dikey 1,25 sabit; parmak ekran kenarındaysa helikopter gitmeye devam eder.
 - Kan izi zamanla kurur ve silinir (`kanSayac`); taze parlak, eski koyu.
+- OKUNABİLİRLİK KURALI: mürekkep siyahı yalnız hareketli birliklerindir
+  (asker, araç, mermi). Dekor (sokak döküntüsü, ağaç, dikenli tel, ot) gri
+  tonlarla ve koyu gri kenarla çizilir (`kenar(T2)`). Dekor siyah olunca
+  askerler arada kayboluyordu.
+- Piyade çeşitleri (`T_TUFEK`, `T_ROKET`, `T_MAKINELI`, `T_NISANCI`,
+  `T_SUBAY`; `piyadeMi()`): makineli yavaş yürür, yüzüstü yatıp 4'lük seri
+  atar; keskin nişancı uzakta diz çöker, 1 sn lazerle nişan alıp hızlı tek
+  mermi atar (9 can); subay ölünce çevresindekiler panikler. `kilik` tohumu
+  görünüşü seçer (başlık, çanta, atkı, boy farkı, süngü); davranışı
+  etkilemez. Çizim: `adam()` → `sapka()`, `canta()`, `silah()`, `yuzustu()`.
+- Üs (`siper()`): arka geçişte bayrak, çadır, cephanelik, telsiz direği,
+  kütük çatılı sığınak, gözetleme kulesi; ön geçişte kule korkuluğu,
+  makineli yuvası, iki sıra kum torbası duvarı, dikenli tel. Hasar
+  eşikleri 66 / 50 / 33 / 0. Dostların görevi `rol`: 0 duvarda tüfekçi,
+  1 ağır makineli (6'lık seri), 2 kule nöbetçisi (`yukseklik` 44), 3 subay
+  (dürbün, ateş etmez). Dalga arasında sevinirler.
 - `GIRIS_X`'in sağındaki düşman hedef alınmaz, vurulmaz; helikopter
   `HELI_SAG`'dan öteye geçemez. Yoksa oyuncu doğum noktasında pusu kurar ve
   ekranda hiç kalabalık oluşmaz (bot kaydı gösterdi).
@@ -108,7 +124,7 @@ node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]
 - Bomba girdisi üç yoldan: düğme (`bombaDugme`, çizim ve dokunma aynı yeri
   kullanır), sürüklemeden kısa dokunuş (< 240 ms, < 5 piksel), sürüklerken
   ikinci parmak. Oyunu başlatan ilk dokunuş bomba saymaz (`ipucuT > 0,4`).
-- Bot pilot ≈ 2–3 dakikada 5.–7. dalgada düşer (≈ 3500–8000 puan). Dengeyi
+- Bot pilot ≈ 2–3 dakikada 5.–6. dalgada düşer (≈ 4000–9000 puan). Dengeyi
   değiştirince `kayit.mjs` özetine ve `dunya.test.ts` eşiklerine bak.
 - vitest `console.log` göstermez; ayıklama için `scripts/*.tmp.test.ts`
   içinde dosyaya yaz, işin bitince sil.
