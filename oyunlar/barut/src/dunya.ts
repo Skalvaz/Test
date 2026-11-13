@@ -109,6 +109,8 @@ export interface Asker {
   yukseklik: number;
   /** Seri atış sayacı (makineli) ya da nişan durumu (keskin nişancı: 1 = nişan alıyor). */
   seri: number;
+  /** Önü derin çukur ya da duvar: yürüyemiyor, köprü bekliyor. */
+  engelli: boolean;
   /** Dostlarda görev: 0 tüfekçi, 1 makineli yuvası, 2 kule nöbetçisi, 3 subay. */
   rol: number;
   /** > 0 iken namlu alevi görünür. */
@@ -370,6 +372,8 @@ export class Dunya {
   kopruler: Kopru[] = [];
   binalar: Bina[] = [];
   private kopruSayac = 6;
+  /** Çukur başında bekleyen düşman askeri var mı (köprücü onlar için de gelir). */
+  private askerBekliyor = false;
   /** Elle bırakılan bombalar: `dolum` dolunca bir tane eklenir. */
   bomba = { adet: 3, enCok: 3, dolum: 0 };
   /** Süreli güçlendirmeler (kalan saniye). */
@@ -427,7 +431,7 @@ export class Dunya {
       this.askerler.push({
         x: SIPER_X + dx, y: this.zemin, tip: T_TUFEK, dost: true, durum: NISAN, t: this.rng() * 5, faz: 0,
         sayac: 1 + this.rng(), hiz: 0, menzil: 0, nisanAci: -0.1, hedef: 0, yon: 1,
-        kilik: (this.rng() * 4096) | 0, yukseklik, seri: 0, rol, atis: 0,
+        kilik: (this.rng() * 4096) | 0, yukseklik, seri: 0, rol, atis: 0, engelli: false,
       });
     }
   }
@@ -444,12 +448,14 @@ export class Dunya {
   }
 
   /**
-   * Sola giden araç için: önünde aşılmaz bir iniş (derin çukur) ya da dik bir
-   * duvar var mı? Tek bomba çukuru geçilir; üst üste bombalanmış çukur geçilmez.
+   * Yürüyen araç ya da asker için: önünde aşılmaz bir iniş (derin çukur) ya da
+   * dik bir duvar var mı? Tek bomba çukuru geçilir; üst üste bombalanmış çukur
+   * geçilmez. Askerler de aynı kurala uyar (kullanıcı: "askerler geçebiliyorsa
+   * köprünün mantığı yok").
    */
-  private engel(x: number): boolean {
+  private engel(x: number, yon = -1): boolean {
     const simdi = this.yolY(x);
-    const ileri = this.yolY(x - 16);
+    const ileri = this.yolY(x + yon * 16);
     return ileri - simdi > 14 || simdi - ileri > 34;
   }
 
@@ -975,7 +981,7 @@ export class Dunya {
     const s: Asker = {
       x, y: this.yerY(x), tip, dost: false, durum: KOS, t: 0, faz: r() * 6, sayac: 0.6 + r() * 1.2,
       hiz, menzil: tip === T_NISANCI ? 215 + r() * 70 : 30 + r() * 70, nisanAci: Math.PI, hedef: 0, yon: -1,
-      kilik: (r() * 4096) | 0, yukseklik: 0, seri: 0, rol: 0, atis: 0,
+      kilik: (r() * 4096) | 0, yukseklik: 0, seri: 0, rol: 0, atis: 0, engelli: false,
     };
     this.askerler.push(s);
     return s;
@@ -1339,6 +1345,7 @@ export class Dunya {
   private askerAdim(dt: number): void {
     const r = this.rng;
     const h = this.heli;
+    this.askerBekliyor = false;
     for (let i = this.askerler.length - 1; i >= 0; i--) {
       const s = this.askerler[i];
       if (!s) continue; // siper düşünce dizi kısalmış olabilir
@@ -1398,8 +1405,16 @@ export class Dunya {
       const siperde = mesafe < s.menzil + 30;
 
       if (s.durum === KOS) {
-        s.x -= s.hiz * dt;
-        s.faz += dt * s.hiz * 0.42;
+        // Derin çukurun ya da dik duvarın başında durur, köprü bekler
+        // (kılığa göre kenardan 0–28 birim geride: hepsi aynı noktaya yığılmasın)
+        const engelli = mesafe > s.menzil && this.engel(s.x - (s.kilik % 8) * 4);
+        if (engelli && !s.engelli && r() < 0.25) this.sozler.push({ metin: 'GEÇİT YOK!', x: s.x, y: s.y - 26, t: 0, vurgu: false });
+        s.engelli = engelli;
+        if (engelli && this.yolY(s.x - (s.kilik % 8) * 4 - 16) > s.y) this.askerBekliyor = true;
+        else {
+          s.x -= s.hiz * dt;
+          s.faz += dt * s.hiz * 0.42;
+        }
         s.yon = -1;
         if (s.tip === T_ROKET && !h.olu && dh < 150 && dyh < -24 && s.sayac <= 0) {
           s.durum = NISAN;
@@ -1515,6 +1530,7 @@ export class Dunya {
           }
         }
       } else if (s.durum === PANIK) {
+        if (this.engel(s.x, s.yon)) s.yon = -s.yon as 1 | -1; // çukura atlamaz, geri döner
         s.x += s.yon * s.hiz * 2.1 * dt;
         s.faz += dt * s.hiz * 0.9;
         if (s.t > 1.3) {
@@ -1522,6 +1538,7 @@ export class Dunya {
           s.t = 0;
         }
       } else if (s.durum === YANIYOR) {
+        if (this.engel(s.x, s.yon)) s.yon = -s.yon as 1 | -1;
         s.x += s.yon * 46 * dt;
         s.faz += dt * 22;
         if (r() < 2.5 * dt) s.yon = -s.yon as 1 | -1;
@@ -1541,7 +1558,8 @@ export class Dunya {
   private aracAdim(dt: number): void {
     const r = this.rng;
     const h = this.heli;
-    let engelliVar = false;
+    // Çukur başında bekleyen asker de köprücüyü çağırır (duvar dibinde sıkışan çağırmaz)
+    let engelliVar = this.askerBekliyor;
     for (let i = this.araclar.length - 1; i >= 0; i--) {
       const a = this.araclar[i];
       a.t += dt;
@@ -1626,6 +1644,7 @@ export class Dunya {
             if (this.kopruKur(a)) {
               a.yuk = 0;
               a.dur = a.x;
+              this.kopruSayac = 16; // köprü açılırken bekleyenler yeni köprücü çağırmasın
               a.nisanT = 0;
               this.sozler.push({ metin: 'KÖPRÜ KURULDU', x: a.x - 30, y: a.y - 34, t: 0, vurgu: true });
             } else a.nisanT = -5;
@@ -1638,7 +1657,7 @@ export class Dunya {
     if (engelliVar && this.kopruSayac <= 0 && this.oyunda && !this.bitisNeden && !this.araclar.some((a) => a.tip === T_KOPRUCU && a.yuk > 0)) {
       this.kopruSayac = 16;
       this.araclar.push({
-        tip: T_KOPRUCU, x: DUNYA_G + 4, y: this.yerY(DUNYA_G), can: 9, enCan: 9, dur: SIPER_ON + 150, sayac: 9, nisanT: 0, namlu: 0, yuk: 1, t: 0,
+        tip: T_KOPRUCU, x: DUNYA_G + 4, y: this.yerY(DUNYA_G), can: 9, enCan: 9, dur: SIPER_ON + 60, sayac: 9, nisanT: 0, namlu: 0, yuk: 1, t: 0,
         sars: 0, engelli: false,
       });
       this.olaylar.push({ tip: 'uyari' });

@@ -128,7 +128,7 @@ describe('BARUT simülasyonu', () => {
     d.binalar.length = 0; // roketler binayı yıkıp içindekileri saçmasın
     // Bir asker koy, öldür, cesedin durmasını bekle
     const yer0 = d.yerY(300);
-    d.askerler.push({ x: 300, y: yer0, tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 9, hiz: 0, menzil: 0, nisanAci: 0, hedef: 0, yon: -1, kilik: 0, yukseklik: 0, seri: 0, rol: 0, atis: 0 });
+    d.askerler.push({ x: 300, y: yer0, tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 9, hiz: 0, menzil: 0, nisanAci: 0, hedef: 0, yon: -1, kilik: 0, yukseklik: 0, seri: 0, rol: 0, atis: 0, engelli: false });
     d.patlat(300, yer0 - 30, 4, true, 0); // öldürmeyecek kadar uzak; cesedi mermiyle yapalım
     d.mermiler.push({ tip: 0, x: 296, y: yer0 - 8, vx: 300, vy: 0, omur: 1, yas: 0, hedef: null });
     for (let i = 0; i < 4 / ADIM; i++) d.adim(ADIM);
@@ -183,6 +183,33 @@ describe('BARUT simülasyonu', () => {
     d.patlat(tank.x, tank.y + 4, 25, true, 9, true);
     expect(d.kopruler.length).toBe(0);
     expect(d.araclar.includes(tank)).toBe(false);
+  });
+
+  it('derin çukur askeri de durdurur; köprü kurulunca geçer', () => {
+    const d = new Dunya(566, 23);
+    d.basla();
+    d.ara = 999;
+    d.binalar.length = 0;
+    d.heli.x = d.heli.hx = 100;
+    for (let k = 0; k < 4; k++) d.patlat(400, d.yerY(400) - 1, 25, true, 0, true);
+    d.askerler.push({ x: 470, y: d.yerY(470), tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 99, hiz: 30, menzil: 40, nisanAci: 0, hedef: 0, yon: -1, kilik: 0, yukseklik: 0, seri: 0, rol: 0, atis: 0, engelli: false });
+    const s = d.askerler[d.askerler.length - 1];
+    for (let i = 0; i < 8 / ADIM; i++) {
+      d.heli.can = 100;
+      d.adim(ADIM);
+    }
+    expect(s.engelli).toBe(true);
+    expect(s.x).toBeGreaterThan(410);
+    expect(d.yerY(s.x)).toBeLessThan(d.zemin + 20); // çukura inmedi
+    // Yalnız asker bekliyor olsa da köprücü gelir; köprüden sonra asker geçer
+    for (let i = 0; i < 45 / ADIM && s.x > 380; i++) {
+      d.heli.can = 100;
+      d.siperCan = 100;
+      s.sayac = 99; // ateş etmek için durmasın
+      d.adim(ADIM);
+    }
+    expect(d.kopruler.length).toBe(1);
+    expect(s.x).toBeLessThanOrEqual(380);
   });
 
   it('bina patlamayla çöker, içindekiler ölür', () => {

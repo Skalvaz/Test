@@ -125,6 +125,13 @@ node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]
   patlamaları (oyuncu bombası, mayın) `zemin + 88`'e kadar oyar. Gömüler
   11–75 birim derinde; sığ olanı 1–2 bomba açar.
 - Araçlar ve düşman askerleri `yolY()` üstünde yürür (zemin ya da köprü).
+  ASKERLER DE `engel()` kuralına uyar (kullanıcı: "askerler çukurdan
+  geçebiliyorsa köprünün mantığı yok"): derin çukurun başında dururlar
+  (`engelli`; kılığa göre kenardan 0–28 birim geride, üst üste binmesinler),
+  oradan ateş edebilirler, köprücüyü onlar da çağırır. Panikleyen ve yanan
+  asker çukur kenarında geri döner. Çukur dibinde duvara dayanan asker
+  köprücü çağırmaz (yoksa sonsuz köprücü gelirdi). Altı 7 birimden çok
+  oyulan sabit süs yok olur (çukurun içinde asılı kalıyordu).
   `engel()`: 16 birim ileride 14'ten derin iniş ya da 34'ten yüksek duvar
   varsa araç durur (`engelli`). Tek bomba çukuru geçilir, üst üste
   bombalanan geçilmez. Bekleyen varsa 16 sn'de bir köprücü (`T_KOPRUCU`)

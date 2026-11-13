@@ -69,6 +69,8 @@ const LOGO = [
 ];
 
 /** Savaş alanındaki sabit süsler: [dünya x, tip]. 0 tank engeli, 1 kuru ağaç, 2 araba, 3 lamba, 4 bariyer, 5 levha, 6 varil, 7 duvar. */
+/** Süs tiplerinin yarı genişliği (dünya birimi): ayak izi denetimi için. */
+const SUS_YARI = [5, 2, 13, 2, 7, 1, 3, 12];
 const SUSLER: [number, number][] = [
   [178, 4], [204, 3], [220, 1], [290, 0], [312, 2], [400, 6], [416, 1], [436, 3], [522, 7], [548, 0], [572, 2], [590, 1],
 ];
@@ -435,8 +437,12 @@ export class Sahne {
    * alçak noktasına oturur. Hiçbiri yamaçta havada kalmaz (kullanıcı ekran
    * görüntüsüyle yakaladı: arabanın yarısı boşluktaydı).
    */
+  private susKot: number[] = [];
+  private susYok: boolean[] = [];
+
   private susler(): void {
     const { t, d } = this;
+    if (this.susKot.length === 0) for (const [ox, tip] of SUSLER) this.susKot.push(Math.max(d.yerY(ox - SUS_YARI[tip]), d.yerY(ox), d.yerY(ox + SUS_YARI[tip])));
     const yat = (ox: number, yari: number): [number, number] => {
       const y0 = d.yerY(ox - yari);
       const y1 = d.yerY(ox + yari);
@@ -447,7 +453,15 @@ export class Sahne {
       for (let k = -yari; k <= yari; k++) y = Math.max(y, d.yerY(ox + k));
       return this.Y(y) + 1;
     };
-    for (const [ox, tip] of SUSLER) {
+    for (let n = 0; n < SUSLER.length; n++) {
+      const [ox, tip] = SUSLER[n];
+      // Altı oyulan süs yok olur (bomba onu da götürdü); yoksa çukurun içinde asılı kalırdı
+      if (this.susYok[n]) continue;
+      const yari = SUS_YARI[tip];
+      if (Math.max(d.yerY(ox - yari), d.yerY(ox), d.yerY(ox + yari)) - this.susKot[n] > 7) {
+        this.susYok[n] = true;
+        continue;
+      }
       const x = this.X(ox);
       if (x < -50 || x > EK + 50) continue;
       if (tip === 0) {
@@ -1213,7 +1227,8 @@ export class Sahne {
     const tip = s.tip;
     const dusman = !s.dost;
     const boy = dusman ? ((kl >> 7) & 3) - 1 : 0; // boy farkı: kalabalık tek tip görünmesin
-    const kosuyor = dusman && (s.durum === KOS || s.durum === PANIK || s.durum === YANIYOR);
+    // Çukur başında bekleyen koşmaz, ayakta durur
+    const kosuyor = dusman && (s.durum === KOS || s.durum === PANIK || s.durum === YANIYOR) && !(s.durum === KOS && s.engelli);
     // Dalga arasında dostlar sevinir
     const sevinc = s.dost && d.oyunda && d.ara > 2.6 && d.dalga > 0 && !d.bitisNeden;
 
