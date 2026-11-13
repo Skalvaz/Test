@@ -121,12 +121,14 @@ kanvas.addEventListener('pointerdown', (e) => {
     if (arayuz.sonucT > 1.6) basla();
     return;
   } else {
-    // Bomba: düğmeye dokunmak ya da helikopteri sürerken ikinci parmakla dokunmak
+    // Bomba YALNIZ sağ alttaki düğmeyle (kullanıcı isteği: ekrana dokununca
+    // bırakmasın). Sürüklerken öteki parmakla düğmeye basmak da olur.
     const b = bombaDugme(ey);
-    if (Math.hypot(p.x - b.x, p.y - b.y) < b.r + 8 || parmak.basili) {
+    if (Math.hypot(p.x - b.x, p.y - b.y) < b.r + 10) {
       dunya.bombaBirak();
       return;
     }
+    if (parmak.basili) return; // ikinci parmak başka yere dokundu: yok say
   }
   try {
     kanvas.setPointerCapture(e.pointerId);
@@ -159,10 +161,6 @@ kanvas.addEventListener('pointermove', (e) => {
 });
 const birak = (e: PointerEvent): void => {
   if (e.pointerId !== parmak.id) return;
-  // Sürüklemeden kısa bir dokunuş: bomba
-  if (parmak.basili && arayuz.durum === 'oyun' && e.type === 'pointerup' && parmak.yol < 8 && performance.now() - parmak.t0 < 240 && arayuz.ipucuT > 0.4) {
-    dunya.bombaBirak();
-  }
   parmak.basili = false;
   parmak.id = -1;
 };

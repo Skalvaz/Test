@@ -115,15 +115,29 @@ node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]
   ekranda hiç kalabalık oluşmaz (bot kaydı gösterdi).
 - Dizi üstünde geriye doğru dönerken `patlat`/`siperHasar` başka elemanları
   silebilir: döngü başında `if (!s) continue` koruması var, kaldırma.
-- Krater derinliği `zemin + 11` ile sınırlı; aynı yere düşen patlamalar
-  çukuru sonsuza kadar derinleştirmesin. Yalnız `kazi` patlamaları (oyuncu
-  bombası, mayın) `zemin + 38`'e kadar oyar; gömüler 11–29 piksel derinde.
+- Zemin `yuk * 0,70`'te: toprak kesiti ekranın alt %30'u (kullanıcı isteği:
+  derinlik artsın). Krater derinliği `zemin + 11` ile sınırlı; yalnız `kazi`
+  patlamaları (oyuncu bombası, mayın) `zemin + 88`'e kadar oyar. Gömüler
+  11–75 birim derinde; sığ olanı 1–2 bomba açar.
+- Araçlar ve düşman askerleri `yolY()` üstünde yürür (zemin ya da köprü).
+  `engel()`: 16 birim ileride 14'ten derin iniş ya da 34'ten yüksek duvar
+  varsa araç durur (`engelli`). Tek bomba çukuru geçilir, üst üste
+  bombalanan geçilmez. Bekleyen varsa 16 sn'de bir köprücü (`T_KOPRUCU`)
+  gelir, çukur başında 2 sn'de köprü serer (`kopruKur`, en çok ~110 birim).
+  Köprü 7 can; patlamayla çöker, üstündeki araç ve askerler ölür.
+  Çukur başında kalan kamyon askerlerini indirir; menzildeki tank ateş eder.
+- Yıkılabilir binalar (`binalar`, hücre `HUCRE = 4` birim): patlama
+  `r*0,45+2` yarıçapındaki hücreleri siler, üsttekiler sütun sütun aşağı
+  düşüp moloza döner. İçindeki askerler ayakta kalan pencerelerden ateş
+  eder; hücrelerin %45'inden azı kalınca savrulup ölürler, %50 ihtimalle
+  sandık düşer. Roketler içi dolu binayı kendiliğinden hedef alır; roket ve
+  bomba hücrelere çarpar, top mermisi geçer. Dalga bitimi için sayılmazlar.
 - Gömüler (`gomuler`): her kraterden sonra `gomuKontrol` bakar; üstü 5
   piksele inen mayının fitili yanar (0,4 sn), sandık fırlar. Top ve roket
   düşmana nişan aldığı için toprağı yalnız bomba bilerek kazar.
-- Bomba girdisi üç yoldan: düğme (`bombaDugme`, çizim ve dokunma aynı yeri
-  kullanır), sürüklemeden kısa dokunuş (< 240 ms, < 5 piksel), sürüklerken
-  ikinci parmak. Oyunu başlatan ilk dokunuş bomba saymaz (`ipucuT > 0,4`).
+- Bomba YALNIZ sağ alttaki düğmeyle (`bombaDugme`; çizim ve dokunma aynı
+  yeri kullanır) ya da klavyede boşluk / B. Ekrana kısa dokunuş ve ikinci
+  parmak kaldırıldı: kullanıcı istemeden bomba atıyordu.
 - Bot pilot ≈ 2–3 dakikada 5.–6. dalgada düşer (≈ 4000–9000 puan). Dengeyi
   değiştirince `kayit.mjs` özetine ve `dunya.test.ts` eşiklerine bak.
 - vitest `console.log` göstermez; ayıklama için `scripts/*.tmp.test.ts`
@@ -158,10 +172,10 @@ Paketler birer oturumluk; kullanım sınırı yüzünden teker teker.
 
 1. ✅ **Toprak ve bomba:** elle bomba, gömülü mayın ve sandık, üç süreli
    güçlendirme (çift top, hız, bomba yağmuru), araçlardan ödül düşmesi.
-2. **Tabya ve bina:** tuğla tuğla yıkılan, üstü kapalı, içinde asker olan
-   ve ateş eden tabya; arka plan binalarının pencerelerinden nişancılar;
-   hızlı makineli jeep; hasar alan araçtan sağ atlayıp dağılan askerler;
-   yıkılan yapılardan güçlendirme.
+2. ✅ (çoğu) **Tabya ve bina:** yıkılabilir, içinden ateş edilen küçük
+   binalar; köprücü zırhlı ve köprü; derin zemin; makineli, nişancı, subay.
+   Kalan: arka plan binalarının pencerelerinden nişancılar, hızlı makineli
+   jeep, hasar alan araçtan sağ atlayan askerler.
 3. **Saçmalık başlasın:** üst üste binip dev çöp adam olan askerler (her
    parçası ayrı bez bebek; vuruldukça dökülür; oyunun imzası), lazerli
    asker, helikopteri lazerle vuran UFO.

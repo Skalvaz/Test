@@ -125,6 +125,7 @@ describe('BARUT simülasyonu', () => {
     const d = new Dunya(566, 14);
     d.basla();
     d.ara = 99; // dalga gelmesin
+    d.binalar.length = 0; // roketler binayı yıkıp içindekileri saçmasın
     // Bir asker koy, öldür, cesedin durmasını bekle
     const yer0 = d.yerY(300);
     d.askerler.push({ x: 300, y: yer0, tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 9, hiz: 0, menzil: 0, nisanAci: 0, hedef: 0, yon: -1, kilik: 0, yukseklik: 0, seri: 0, rol: 0, atis: 0 });
@@ -147,6 +148,55 @@ describe('BARUT simülasyonu', () => {
     expect(d.bezler.length).toBe(0);
     expect(d.yerY(x)).toBeLessThan(yerOnce);
     expect(d.les[x]).toBeGreaterThan(0);
+  });
+
+  it('derin çukur aracı durdurur; köprücü köprü kurar; köprü bombayla çöker', () => {
+    const d = new Dunya(566, 21);
+    d.basla();
+    d.ara = 999;
+    d.binalar.length = 0;
+    d.heli.x = d.heli.hx = 100; // uzakta dursun, ateş etmesin
+    // 400 civarına derin bir çukur aç
+    for (let k = 0; k < 4; k++) d.patlat(400, d.yerY(400) - 1, 25, true, 0, true);
+    expect(d.yerY(400)).toBeGreaterThan(d.zemin + 30);
+    d.araclar.push({ tip: 3, x: 470, y: d.yerY(470), can: 12, enCan: 12, dur: 200, sayac: 99, nisanT: 0, namlu: 0.2, yuk: 0, t: 0, sars: 0, engelli: false });
+    const tank = d.araclar[0];
+    for (let i = 0; i < 8 / ADIM; i++) {
+      d.heli.can = 100;
+      d.adim(ADIM);
+    }
+    expect(tank.engelli).toBe(true);
+    expect(tank.x).toBeGreaterThan(410);
+    // Köprücü gelir, köprü kurar, tank geçer
+    for (let i = 0; i < 40 / ADIM && tank.x > 380; i++) {
+      d.heli.can = 100;
+      d.siperCan = 100;
+      d.adim(ADIM);
+    }
+    expect(d.kopruler.length).toBe(1);
+    expect(tank.x).toBeLessThanOrEqual(380);
+    // Tank köprünün üstündeyken köprüyü vur
+    const k = d.kopruler[0];
+    tank.x = (k.x0 + k.x1) / 2;
+    d.adim(ADIM);
+    expect(d.yerY(tank.x) - tank.y).toBeGreaterThan(7);
+    d.patlat(tank.x, tank.y + 4, 25, true, 9, true);
+    expect(d.kopruler.length).toBe(0);
+    expect(d.araclar.includes(tank)).toBe(false);
+  });
+
+  it('bina patlamayla çöker, içindekiler ölür', () => {
+    const d = new Dunya(566, 22);
+    d.basla();
+    d.ara = 999;
+    const b = d.binalar[0];
+    expect(b.asker).toBeGreaterThan(0);
+    const ilk = b.h.filter((v) => v > 0).length;
+    const mx = b.x + (b.sutun * 4) / 2;
+    for (let k = 0; k < 6 && b.asker > 0; k++) d.patlat(mx + (k % 3 - 1) * 10, d.yerY(mx) - 8, 25, true, 5, true);
+    expect(b.h.filter((v) => v > 0).length).toBeLessThan(ilk * 0.5);
+    expect(b.asker).toBe(0);
+    expect(d.olu.piyade).toBeGreaterThan(0);
   });
 
   it('bomba sayısı sınırlıdır ve zamanla dolar', () => {

@@ -15,14 +15,18 @@ zamanla zemine karışıp araziyi yükseltir.
 - **Sürükle:** helikopter parmağını izler (göreli; parmağın altında kalmaz).
 - **Silahlar kendi ateş eder:** top en yakın hedefe, roketler araçlara ve
   kalabalık piyadeye. Yaklaştıkça top daha isabetli.
-- **Bomba elle:** sağ alttaki düğmeye dokun, ekrana kısaca dokun ya da
-  sürüklerken ikinci parmakla dokun. 3 bomba var, zamanla dolar.
+- **Bomba elle:** yalnız sağ alttaki düğmeyle. 3 bomba var, zamanla dolar.
 - **Toprağı kaz:** kesitte görünen `?` kutularının üstünü bombayla aç,
   sandık fırlar; üstüne gel, helikopter halatla çeker (çift top, hız,
   bomba yağmuru). Dikenli
   toplar mayın: üstü açılınca patlar, üstündekileri götürür.
 - **Amaç:** soldaki siperi dalga dalga gelen düşmana karşı korumak.
   Helikopter düşerse ya da siper düşerse oyun biter.
+- **Çukur ve köprü:** aynı yeri üst üste bombalarsan araçlar geçemez,
+  kenarda bekler. Köprücü zırhlı gelip köprü kurar; köprüyü üstündekilerle
+  birlikte çökertebilirsin.
+- **Binalar:** savaş alanındaki küçük evlerin içinden ateş edilir; bomba ve
+  roketle tuğla tuğla yıkılır.
 - Kırmızı kesik çizgi = tank sana nişan aldı; daralan halka = uçaksavar
   atışı geliyor; `< UÇAK` = bombardıman uçağı o yükseklikten geçecek.
 - Dalga bitince hasarın varsa dost uçak paraşütle tamir sandığı atar.
