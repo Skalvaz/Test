@@ -10,6 +10,8 @@ zamanla zemine karışıp araziyi yükseltir.
 
 ![Yıkılabilir binalar: ev, dükkân, atölye](docs/binalar.png)
 
+![Sokak süsleri ve hurda](docs/susler.png)
+
 ![Piyade çeşitleri](docs/piyade.png)
 
 ## Nasıl oynanır

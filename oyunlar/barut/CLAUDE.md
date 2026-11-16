@@ -101,8 +101,18 @@ node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]
 - Kan izi zamanla kurur ve silinir (`kanSayac`); taze parlak, eski koyu.
 - OKUNABİLİRLİK KURALI: mürekkep siyahı yalnız hareketli birliklerindir
   (asker, araç, mermi). Dekor (sokak döküntüsü, ağaç, dikenli tel, ot) gri
-  tonlarla ve koyu gri kenarla çizilir (`kenar(T2)`). Dekor siyah olunca
-  askerler arada kayboluyordu.
+  tonlarla ve koyu gri kenarla çizilir (`kenar(T1)`; gövde T3/T5, ışık T5/B,
+  gölge T2). Dekor siyah olunca askerler arada kayboluyordu. T4 gövde arka
+  plan binalarıyla (170) aynı tonda kaybolur, kullanma.
+- Sabit süs sprite'larında alt orta yere oturur (`w >> 1, h - 1`); lamba
+  ayna alınabildiği için kaidesi (8, 67)'de. Kalın parça `Boya.kal()` ile
+  çizilir, `kenar()`dan sonra ışık/gölge çizgisi eklenir; ince sürgün
+  kenardan SONRA tek piksel çizilir (kenarlı ince çizgi 3 piksel kalın ve
+  kapkara oluyor; ağacın tacı ilk denemede koyu bir yumaktı).
+- Hurdalar `hurda()` ile sağlam sprite'tan türetilir (`SPR_H_*`): kül grisi
+  gövde, koyu gri çizgi, isabet çevresinde is, köşeli delik (`acik` olan
+  silueti koparır). Eskiden düz siyah siluetti (`koyu = 255`). Sprite'ı
+  değiştirince delik yerlerine de bak.
 - Piyade çeşitleri (`T_TUFEK`, `T_ROKET`, `T_MAKINELI`, `T_NISANCI`,
   `T_SUBAY`; `piyadeMi()`): makineli yavaş yürür, yüzüstü yatıp 4'lük seri
   atar; keskin nişancı uzakta diz çöker, 1 sn lazerle nişan alıp hızlı tek
@@ -132,8 +142,9 @@ node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]
   asker çukur kenarında geri döner. Çukur dibinde duvara dayanan asker
   köprücü çağırmaz (yoksa sonsuz köprücü gelirdi). Altı 7 birimden çok
   oyulan sabit süs yok olur (çukurun içinde asılı kalıyordu).
-  `engel()`: 16 birim ileride 14'ten derin iniş ya da 34'ten yüksek duvar
-  varsa araç durur (`engelli`). Tek bomba çukuru geçilir, üst üste
+  `engel()`: 16 birim ileride 14'ten derin iniş (ve varılan yer `zemin + 18`
+  altındaysa: leş yığınının öbür yüzü çukur sayılmaz, köprü çağırmaz) ya da
+  34'ten yüksek duvar varsa araç durur (`engelli`). Tek bomba çukuru geçilir, üst üste
   bombalanan geçilmez. Bekleyen varsa 16 sn'de bir köprücü (`T_KOPRUCU`)
   gelir, çukur başında 2 sn'de köprü serer (`kopruKur`, en çok ~110 birim).
   Köprü 7 can; patlamayla çöker, üstündeki araç ve askerler ölür.
@@ -204,8 +215,9 @@ Paketler birer oturumluk; kullanım sınırı yüzünden teker teker.
 
 1. ✅ **Toprak ve bomba:** elle bomba, gömülü mayın ve sandık, üç süreli
    güçlendirme (çift top, hız, bomba yağmuru), araçlardan ödül düşmesi.
-   Sırada tasarım çıtası turu (evler ve arka plan ✅; kalan: ağaç, lamba,
-   bariyer, yıkık duvar, üs, araç hurdaları, toprak altı).
+   Tasarım çıtası turu: evler ve arka plan ✅, sokak süsleri (ağaç, lamba,
+   bariyer, levha, variller, yıkık duvar, tank engeli) ve hurdalar ✅;
+   kalan: üs, toprak altı, parçacıklar (duman, patlama), HUD.
 2. ✅ (çoğu) **Tabya ve bina:** yıkılabilir, içinden ateş edilen küçük
    binalar; köprücü zırhlı ve köprü; derin zemin; makineli, nişancı, subay.
    Kalan: arka plan binalarının pencerelerinden nişancılar, hızlı makineli

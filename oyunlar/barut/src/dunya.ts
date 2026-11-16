@@ -456,7 +456,9 @@ export class Dunya {
   private engel(x: number, yon = -1): boolean {
     const simdi = this.yolY(x);
     const ileri = this.yolY(x + yon * 16);
-    return ileri - simdi > 14 || simdi - ileri > 34;
+    // İniş yalnız gerçekten çukura iniyorsa engeldir: leş yığınının öbür yüzü
+    // dik olsa da düz zemine iner, oradan kayarak inilir (köprü çağırmaz).
+    return (ileri - simdi > 14 && ileri > this.zemin + 18) || simdi - ileri > 34;
   }
 
   /** Köprücü köprüsünü serer: çukurun karşı yakasını bulur. Bulamazsa false. */

@@ -110,6 +110,17 @@ export class Boya {
     return this;
   }
 
+  /** Kalın çizgi: yol boyunca w×w kareler basar. */
+  kal(x0: number, y0: number, x1: number, y1: number, w: number, ton: number): this {
+    const n = Math.max(1, Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))));
+    for (let i = 0; i <= n; i++) {
+      const x = x0 + ((x1 - x0) * i) / n;
+      const y = y0 + ((y1 - y0) * i) / n;
+      this.k(Math.round(x - (w - 1) / 2), Math.round(y - (w - 1) / 2), w, w, ton);
+    }
+    return this;
+  }
+
   /** Siluetin çevresine 1 piksel kenar çeker (boş olup dolu komşusu olan hücreler). */
   kenar(ton = M): this {
     const { w, h, d } = this;
@@ -362,38 +373,71 @@ export const SPR_SANDIK = (() => {
   return b.bitir();
 })();
 
-/** Tank engeli (çapraz çelik kirişler). Alt orta (9, 13). */
+/** Sabit süslerin ortak gürültüsü (sıva dökülmesi, kabuk, pas). */
+const kes = (a: number, b: number): number => {
+  const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+};
+
+// Sabit süslerin hepsinde alt orta yere oturur: (w >> 1, h - 1).
+
+/** Tank engeli: üç çelik kiriş, ortada cıvatalı bağlantı levhası. */
 export const SPR_KIRPI = (() => {
-  const b = new Boya(19, 14);
-  b.c(1, 1, 16, 12, T4).c(2, 1, 17, 12, T4);
-  b.c(17, 1, 2, 12, T4).c(16, 1, 1, 12, T4);
-  b.k(8, 0, 2, 13, T4);
-  b.kenar(T2);
-  b.c(9, 1, 9, 11, B);
+  const b = new Boya(27, 21);
+  b.kal(3, 18, 23, 3, 3, T3); // sağa yatan kiriş
+  b.kal(3, 4, 23, 18, 3, T3); // sola yatan kiriş
+  b.kal(13, 1, 12, 19, 3, T2); // arkadaki dik kiriş (gölgede)
+  b.kenar(T1);
+  // Üst yüzlerde ışık, alt yüzlerde gölge: kiriş köşebent gibi okunur
+  b.c(3, 17, 23, 2, T5).c(3, 3, 23, 17, T5);
+  b.c(4, 19, 24, 4, T2).c(3, 5, 22, 19, T2);
+  b.k(11, 9, 5, 5, T2).k(12, 10, 3, 3, T3).n(11, 9, T5).n(15, 9, T5).n(11, 13, T5).n(15, 13, T5); // levha ve cıvatalar
+  b.n(4, 18, T1).n(22, 18, T1).n(22, 4, T4).n(5, 4, T4); // uç kesikleri
+  b.c(8, 14, 9, 13, T4).n(18, 7, T4).n(17, 14, T4); // pas lekeleri
   return b.bitir();
 })();
 
-/** Kuru ağaç. Alt orta (17, 37). */
+/**
+ * Kuru ağaç: kalın, kabuklu gövde; biri kırık üç ana dal; ince sürgünler;
+ * dalda bir karga. Kalın kısımlar kenarlı, sürgünler tek piksel.
+ */
 export const SPR_AGAC = (() => {
-  const b = new Boya(36, 38);
-  let tohum = 7;
+  const W = 47;
+  const b = new Boya(W, 56);
+  let tohum = 11;
   const r = (): number => {
     tohum = (tohum * 16807) % 2147483647;
     return tohum / 2147483647;
   };
-  const dal = (x: number, y: number, aci: number, uz: number, d: number): void => {
+  const surgun: [number, number, number, number][] = [];
+  const dal = (x: number, y: number, aci: number, uz: number, kalin: number, d: number): void => {
     const x1 = x + Math.cos(aci) * uz;
     const y1 = y + Math.sin(aci) * uz;
-    b.c(x, y, x1, y1, T2);
-    if (d > 2) b.c(x + 1, y, x1 + 1, y1, T2);
-    if (d > 3) b.c(x - 1, y, x1 - 1, y1, T2);
+    if (kalin >= 2) b.kal(x, y, x1, y1, kalin, T2);
+    else surgun.push([x, y, x1, y1]);
     if (d <= 0) return;
-    dal(x1, y1, aci - 0.3 - r() * 0.45, uz * 0.74, d - 1);
-    dal(x1, y1, aci + 0.28 + r() * 0.45, uz * 0.7, d - 1);
-    if (d > 2 && r() < 0.5) dal(x1, y1, aci + (r() - 0.5) * 0.3, uz * 0.6, d - 2);
+    const k = kalin > 2 ? kalin - 1 : kalin - (d < 3 ? 1 : 0);
+    dal(x1, y1, aci - 0.38 - r() * 0.35, uz * 0.8, Math.max(1, k), d - 1);
+    dal(x1, y1, aci + 0.34 + r() * 0.38, uz * 0.74, Math.max(1, k - 1), d - 1);
   };
-  dal(17, 37, -Math.PI / 2 + 0.06, 11, 4);
-  b.k(15, 35, 6, 3, T2); // kök
+  // Gövde: dipte genişler, hafif eğri
+  b.p([19, 55, 20, 48, 21, 40, 21, 33, 26, 33, 26, 41, 27, 48, 29, 55], T2);
+  b.p([14, 55, 19, 51, 20, 55], T2).p([28, 55, 29, 51, 33, 55], T2); // kökler
+  dal(23, 34, -Math.PI / 2 - 0.62, 11, 3, 3);
+  dal(24, 34, -Math.PI / 2 + 0.55, 12, 3, 3);
+  dal(23, 36, -Math.PI / 2 - 0.02, 14, 2, 2);
+  // Kırık dal: kısa, ucu yarılmış
+  b.kal(26, 40, 33, 36, 2, T2);
+  b.kenar(T1);
+  for (const [x0, y0, x1, y1] of surgun) b.c(x0, y0, x1, y1, T1);
+  // Kabuk: ışık soldan, dikine yarıklar, budak
+  b.c(20, 53, 22, 35, T3).c(21, 46, 21, 41, T3).n(20, 50, T3);
+  b.c(25, 52, 24, 44, T1).c(23, 49, 23, 46, T1).c(26, 54, 26, 50, T1);
+  b.o(24, 42, 1.2, T1).n(24, 42, T3);
+  b.n(33, 35, T5).n(34, 36, T5).n(34, 35, T1).n(32, 36, T4); // kırığın açık renkli odunu
+  b.c(15, 55, 18, 53, T3).c(30, 53, 32, 55, T1);
+  // Karga: kırık dalın ucunda, sola bakar
+  b.k(33, 32, 4, 2, T1).n(32, 32, T1).n(31, 33, T1).n(37, 33, T1).n(38, 34, T1).n(34, 31, T1).n(35, 34, T1);
   return b.bitir();
 })();
 
@@ -481,64 +525,225 @@ export const SPR_ARABA = (() => {
   return b.bitir();
 })();
 
-/** Eğilmiş sokak lambası. */
+/**
+ * Sokak lambası: dökme kaide, bilezikli direk, ortasından bükülmüş; kıvrık
+ * kol, camı kırık fener, sarkan kablo, direğe yapıştırılmış ilan. Kaide
+ * ortası (8, 67); çizimde ayna alınabilir.
+ */
 export const SPR_LAMBA = (() => {
-  const b = new Boya(22, 62);
-  b.c(6, 61, 8, 30, T4).c(7, 61, 9, 30, T4);
-  b.c(8, 30, 12, 8, T4).c(9, 30, 13, 8, T4);
-  b.c(12, 8, 19, 5, T4).c(12, 7, 19, 4, T4);
-  b.k(16, 5, 5, 3, T4);
-  b.k(4, 57, 7, 5, T4);
-  b.kenar(T2);
-  b.n(18, 8, B).n(17, 8, T4); // kırık cam
+  const b = new Boya(30, 68);
+  // Kaide: iki kademeli
+  b.k(4, 63, 9, 5, T3).k(5, 58, 7, 5, T3).k(6, 55, 5, 3, T3);
+  // Direk: dik çıkar, belinden bükülmüş
+  b.kal(8, 55, 8, 32, 3, T3);
+  b.kal(8, 32, 13, 9, 3, T3);
+  b.k(12, 5, 3, 4, T3).n(13, 4, T3); // tepe topuzu
+  // Kol: düz, altında payanda
+  b.kal(13, 9, 25, 9, 2, T3);
+  b.c(14, 14, 19, 10, T3);
+  // Fener: koldan asılı, üstü şapkalı
+  b.k(22, 11, 2, 2, T3);
+  b.p([19, 13, 27, 13, 28, 15, 26, 20, 20, 20, 18, 15], T3);
+  b.kenar(T1);
+  // Direkte ışık ve gölge, bilezikler
+  b.c(7, 54, 7, 33, T5).c(7, 32, 12, 10, T5);
+  b.c(9, 54, 9, 33, T2).c(10, 31, 14, 11, T2);
+  for (const y of [50, 41, 33]) b.c(7, y, 9, y, T1);
+  b.c(10, 24, 12, 24, T1).c(12, 16, 14, 16, T1);
+  b.c(14, 8, 25, 8, T5).n(12, 5, T5).n(12, 6, T5);
+  // Kaide ayrıntısı
+  b.c(4, 63, 12, 63, T5).c(5, 58, 11, 58, T5).c(6, 55, 10, 55, T5);
+  b.k(11, 64, 2, 4, T2).k(10, 59, 2, 4, T2).n(7, 65, T1).n(7, 60, T1);
+  // Fener: şapkada ışık, camı kırık (içi karanlık, köşede bir parça cam)
+  b.c(19, 13, 27, 13, T5).c(18, 15, 28, 15, T1);
+  b.k(20, 16, 6, 3, T1).n(20, 16, B).n(21, 17, B).n(20, 17, B).n(25, 16, T4);
+  b.c(23, 16, 23, 18, T3); // cam çıtası
+  // Sarkan kablo
+  b.n(24, 21, T1).n(24, 22, T1).n(25, 23, T1).n(25, 24, T1).n(24, 25, T1).n(24, 26, T1).n(25, 27, T1);
+  // Direkteki ilan
+  b.k(6, 43, 5, 6, B).c(6, 43, 10, 43, T1).c(6, 48, 9, 48, T1).c(6, 43, 6, 48, T1).c(10, 43, 10, 47, T1);
+  b.c(7, 45, 9, 45, T2).c(7, 46, 8, 46, T2).n(10, 48, T4);
   return b.bitir();
 })();
 
-/** Beton bariyer. */
+/**
+ * Beton bariyer: geniş taban, daralan gövde; uyarı şeritleri; bir köşesi
+ * kopmuş, içinden demir çıkıyor; altta kaldırma yuvaları.
+ */
 export const SPR_BARIYER = (() => {
-  const b = new Boya(26, 14);
-  b.p([7, 1, 18, 1, 20, 8, 24, 12, 1, 12, 5, 8], T4);
-  b.kenar(T2);
-  b.c(6, 9, 19, 9, T3).c(8, 3, 17, 3, T5).n(12, 6, T3).n(15, 10, T3);
-  b.c(3, 12, 6, 7, T3); // çatlak
+  const b = new Boya(33, 17);
+  b.p([1, 15, 1, 12, 7, 9, 9, 1, 19, 1, 22, 4, 24, 4, 25, 9, 31, 12, 31, 15], T5);
+  b.kenar(T1);
+  // Alt kademe gölgede
+  for (let y = 10; y <= 15; y++) for (let x = 1; x <= 31; x++) if (b.d[y * 33 + x] === T5 + 1) b.n(x, y, T4);
+  b.c(8, 9, 24, 9, T3);
+  // Uyarı şeritleri (yalnız üst gövdede)
+  for (let k = 0; k < 4; k++) {
+    for (let y = 2; y <= 8; y++) {
+      for (let dx = 0; dx < 2; dx++) {
+        const x = 9 + k * 5 + dx + (8 - y) * 0.5;
+        if (b.d[y * 33 + Math.round(x)] === T5 + 1) b.n(x, y, T2);
+      }
+    }
+  }
+  b.c(9, 1, 18, 1, B); // üst kenarda ışık
+  // Kopuk köşe: kırık yüzey ve demirler
+  b.n(20, 2, T3).n(21, 3, T3).n(22, 4, T3).n(23, 5, T3);
+  b.c(21, 2, 24, 0, T1).c(23, 3, 26, 2, T1);
+  // Kaldırma yuvaları, çatlak, kurşun izi
+  b.k(6, 14, 3, 2, T1).k(23, 14, 3, 2, T1);
+  b.c(13, 10, 14, 13, T2).c(14, 13, 13, 15, T2).n(27, 12, T2).n(4, 13, T2);
   return b.bitir();
 })();
 
-/** Yol levhası (direği eğik, kurşun delikli). */
+/**
+ * Yön levhası: ok biçimli tabela (yazı yok, yalnız ok), altında yuvarlak
+ * küçük levha; direk eğik, beton ayaklı; kurşun delikleri.
+ */
 export const SPR_LEVHA = (() => {
-  const b = new Boya(18, 34);
-  b.c(8, 33, 10, 12, T4).c(9, 33, 11, 12, T4);
-  b.p([4, 1, 15, 2, 14, 12, 3, 11], B);
-  b.kenar(T2);
-  b.c(6, 4, 12, 5, T2).c(6, 7, 11, 8, T2); // yazı çizgileri
-  b.n(13, 9, T2).n(5, 9, T2).n(9, 3, T2); // kurşun delikleri
+  const b = new Boya(25, 40);
+  b.kal(12, 38, 13, 12, 2, T3); // direk
+  b.k(9, 37, 7, 3, T4); // beton ayak
+  b.p([2, 2, 16, 3, 22, 8, 16, 13, 2, 12], B); // ok biçimli tabela
+  b.o(12, 21, 4.4, T5); // yuvarlak levha
+  b.kenar(T1);
+  b.c(12, 37, 13, 26, T5).c(12, 16, 12, 14, T5);
+  b.c(9, 37, 15, 37, B);
+  // Tabela: iç çerçeve ve ok
+  b.c(4, 4, 15, 5, T3).c(4, 10, 15, 11, T3).c(4, 4, 4, 10, T3).c(15, 5, 19, 8, T3).c(15, 11, 19, 8, T3);
+  b.c(6, 7, 14, 8, T1).c(6, 8, 14, 9, T1).c(12, 5, 16, 8, T1).c(12, 11, 16, 8, T1);
+  // Yuvarlak levha: halka ve çubuk
+  for (let a = 0; a < 20; a++) b.n(12 + Math.cos(a * 0.314) * 3.2, 21 + Math.sin(a * 0.314) * 3.2, T2);
+  b.c(10, 21, 14, 21, T1);
+  // Kurşun delikleri (çevresi ezik)
+  b.n(8, 6, T1).n(9, 6, T4).n(18, 9, T1).n(5, 11, T1).n(13, 19, T1).n(14, 19, T4);
+  b.n(11, 13, T1).n(14, 13, T1); // kelepçeler
   return b.bitir();
 })();
 
-/** Varil. */
+/** Variller: biri dik (ezik, kapaklı), biri devrilmiş; altında sızıntı. */
 export const SPR_VARIL = (() => {
-  const b = new Boya(11, 15);
-  b.k(1, 1, 9, 13, T4);
-  b.kenar(T2);
-  b.c(1, 4, 9, 4, T2).c(1, 10, 9, 10, T2).c(2, 2, 2, 12, T4).n(7, 7, T2);
+  const b = new Boya(29, 19);
+  b.k(2, 4, 10, 13, T3); // dik varil
+  b.o(6.5, 4, 5, T4, 1.6); // kapak
+  b.k(13, 9, 13, 8, T3); // devrik varil
+  b.o(25.5, 12.5, 2, T4, 4); // devrik varilin ağzı
+  b.kenar(T1);
+  // Dik varil: ışık solda, gölge sağda, bilezikler, ezik
+  b.k(3, 5, 1, 11, T5).k(10, 5, 2, 12, T2);
+  b.c(2, 8, 11, 8, T1).c(2, 13, 11, 13, T1).c(3, 8, 3, 8, T4);
+  b.o(6.5, 4, 3, T5, 0.8).n(8, 4, T1); // kapak yüzü ve tıpa
+  b.c(6, 10, 8, 11, T2).n(7, 10, T5);
+  // Devrik varil: üst yüzde ışık, altında gölge, bilezikler dikine
+  b.c(13, 10, 24, 10, T5).c(13, 16, 24, 16, T2);
+  b.c(16, 9, 16, 16, T1).c(21, 9, 21, 16, T1);
+  b.o(25.5, 12.5, 1, T1, 2.6); // ağız içi karanlık
+  // Sızıntı
+  b.c(22, 18, 28, 18, T1).n(26, 17, T1).n(27, 17, T1);
   return b.bitir();
 })();
 
-/** Yıkık duvar parçası: pencere boşluklu, üstü kırık. */
+/**
+ * Yıkık duvar köşesi: sıvalı tuğla, basamak basamak kırılmış üst, pencere
+ * boşluğu (lentosu ve denizliği yerinde, bir kanadı asılı), demirler, dipte
+ * tuğla yığını.
+ */
 export const SPR_DUVAR = (() => {
-  const b = new Boya(40, 50);
-  b.p([2, 49, 2, 14, 7, 12, 9, 6, 15, 7, 17, 2, 24, 3, 26, 10, 33, 12, 34, 22, 38, 24, 38, 49], T4);
-  b.kenar(T2);
-  // Pencere boşluğu: arkası görünür
-  for (let y = 20; y < 33; y++) for (let x = 12; x < 22; x++) b.d[y * 40 + x] = 0;
-  b.c(11, 19, 22, 19, T2).c(11, 33, 22, 33, T2).c(11, 19, 11, 33, T2).c(22, 19, 22, 33, T2);
-  b.c(10, 34, 23, 34, T2); // denizlik
-  // Tuğla sıraları ve çatlak
-  for (let y = 16; y < 48; y += 5) for (let x = 4 + ((y / 5) % 2) * 3; x < 36; x += 7) if (b.d[y * 40 + Math.round(x)] === T4 + 1) b.c(x, y, x + 3, y, T3);
-  b.c(28, 14, 30, 22, T2).c(30, 22, 27, 30, T2);
-  b.c(17, 2, 15, -1, T2).c(24, 3, 27, 0, T2); // demirler
-  b.k(2, 44, 36, 1, T2);
+  const W = 48;
+  const H = 54;
+  const b = new Boya(W, H);
+  // Duvarın üst kenarı: tuğla basamakları (4 piksellik sütunlar, 3 piksellik sıralar)
+  const ust = [30, 21, 15, 12, 6, 6, 3, 9, 15, 18, 27];
+  for (let k = 0; k < ust.length; k++) {
+    for (let y = ust[k]; y < H - 1; y++) {
+      for (let x = 2 + k * 4; x < 6 + k * 4; x++) {
+        const sira = Math.floor(y / 3);
+        const derz = y % 3 === 2 || (x + (sira % 2) * 3) % 6 === 0;
+        // Sıva: kırık kenarlara yakın yerlerde ve rastgele lekelerde dökülmüş
+        const kenaraYakin = y - ust[k] < 4 + kes(k, 3) * 5;
+        const leke = Math.hypot((x - 34) / 7, (y - 40) / 6) + (kes(x, y) - 0.5) * 0.4 < 1;
+        b.n(x, y, kenaraYakin || leke ? (derz ? T2 : T3) : T5);
+      }
+    }
+  }
+  // Pencere boşluğu
+  for (let y = 22; y < 37; y++) for (let x = 15; x < 26; x++) b.d[y * W + x] = 0;
+  // Dipteki tuğla yığını (duvardan taşar)
+  b.p([0, 53, 3, 48, 9, 46, 13, 50, 15, 53], T3);
+  b.p([36, 53, 39, 47, 44, 49, 47, 53], T3);
+  b.kenar(T1);
+  for (let y = 22; y < 37; y++) for (let x = 15; x < 26; x++) if (x > 15 && x < 25 && y > 22 && y < 36) b.d[y * W + x] = 0;
+  // Lento ve denizlik
+  b.k(13, 19, 15, 3, T4).c(13, 19, 27, 19, B).c(13, 22, 27, 22, T1);
+  b.k(13, 37, 15, 2, B).c(13, 39, 27, 39, T1);
+  // Asılı kalan kanat: tek menteşede, eğik
+  b.p([25, 24, 29, 26, 28, 37, 24, 35], T3);
+  b.c(25, 24, 29, 26, T1).c(29, 26, 28, 37, T1).c(28, 37, 24, 35, T1);
+  for (let y = 27; y < 35; y += 2) b.c(25, y, 28, y + 1, T2);
+  // Sıvada çatlak, kurşun izleri, afiş kalıntısı
+  b.c(8, 30, 10, 36, T2).c(10, 36, 8, 42, T2).c(8, 42, 9, 47, T2);
+  b.n(31, 30, T2).n(32, 30, T4).n(12, 44, T2).n(29, 45, T2);
+  b.k(30, 20, 6, 7, B).c(30, 20, 35, 20, T2).c(30, 20, 30, 26, T2).c(31, 22, 34, 22, T3).c(31, 24, 33, 24, T3).n(35, 26, T5).n(34, 26, T5);
+  // Demirler: kırık üstten çıkar, biri bükük
+  b.c(19, 5, 18, 0, T1).c(27, 3, 29, 0, T1).c(29, 0, 32, 1, T1).c(11, 15, 9, 10, T1);
+  // Yığındaki tuğlalar
+  b.k(3, 50, 4, 2, T4).k(8, 48, 4, 2, T5).k(9, 51, 4, 2, T2).k(39, 50, 4, 2, T4).k(41, 52, 4, 1, T2);
+  b.c(3, 52, 6, 52, T1).c(8, 50, 11, 50, T1).c(39, 52, 42, 52, T1);
+  b.c(2, 52, 45, 52, T2);
   return b.bitir();
 })();
+
+// ---- Hurdalar ----
+
+/**
+ * Yanmış hurda: sağlam sprite'tan türetilir. Boya yanıp kül rengine döner
+ * (gövde orta gri, çizgiler koyu gri; mürekkep yok: hurda dekor sayılır,
+ * hareketli birliklerle yarışmaz), isabet yerinin çevresi islenir, delik
+ * köşeli ve içi karanlıktır; `acik` delik silueti de koparır (kule yuvası,
+ * kopan burun). Eskiden hurda düz siyah siluetti.
+ */
+function hurda(s: Sprite, tohum: number, delikler: [number, number, number, number][]): Sprite {
+  const d = new Uint8Array(s.d.length);
+  const kul = (ton: number): number => (ton < 20 ? T1 : ton < 64 ? T2 : ton < 150 ? T3 : ton < 234 ? T4 : T5);
+  for (let y = 0; y < s.h; y++) {
+    for (let x = 0; x < s.w; x++) {
+      const c = s.d[y * s.w + x];
+      if (!c) continue;
+      let ton = kul(c - 1);
+      // İs: isabet yerine yakınlık + yukarı doğru yalayan alev izi
+      let is = 0;
+      for (const [hx, hy, r] of delikler) {
+        const uz = Math.hypot(x - hx, (y - hy) * (y < hy ? 0.6 : 1.3));
+        is = Math.max(is, 1 - (uz - r) / (r * 1.6 + 4));
+      }
+      is += (kes((x >> 1) + tohum, (y >> 1) * 3 + tohum) - 0.5) * 0.5;
+      if (is > 0.75 && ton > T1) ton = Math.max(T1, ton - 86);
+      else if (is > 0.3 && ton > T2) ton -= 43;
+      d[y * s.w + x] = ton + 1;
+    }
+  }
+  for (const [hx, hy, r, acik] of delikler) {
+    for (let y = Math.max(0, Math.floor(hy - r - 3)); y < Math.min(s.h, hy + r + 4); y++) {
+      for (let x = Math.max(0, Math.floor(hx - r - 3)); x < Math.min(s.w, hx + r + 4); x++) {
+        if (!d[y * s.w + x]) continue;
+        // Köşeli delik: yarıçap açıya göre oynar (yıldız gibi yırtık)
+        const aci = Math.atan2(y - hy, x - hx);
+        const rr = r * (0.62 + 0.55 * kes(Math.floor((aci + Math.PI) * 1.6) + tohum, r));
+        const uz = Math.hypot(x - hx, y - hy);
+        if (uz < rr) d[y * s.w + x] = acik ? 0 : T1 + 1;
+        else if (uz < rr + 1.1) d[y * s.w + x] = (kes(x + tohum, y) < 0.28 ? T5 : T1) + 1; // yırtık sac: yer yer parlak
+      }
+    }
+  }
+  return { w: s.w, h: s.h, d, v: new Uint8Array(s.d.length) };
+}
+
+// Delikler: [x, y, yarıçap, açık mı (silueti koparır)]
+export const SPR_H_TANK = hurda(SPR_TANK, 3, [[45, 4, 7, 1], [22, 12, 3, 0], [63, 11, 2, 0]]);
+export const SPR_H_UCAKSAVAR = hurda(SPR_UCAKSAVAR, 5, [[34, 3, 7, 1], [56, 10, 3, 0]]);
+export const SPR_H_KAMYON = hurda(SPR_KAMYON, 7, [[24, 5, 8, 1], [63, 11, 3, 0], [40, 14, 2, 0]]);
+export const SPR_H_DHELI = hurda(SPR_DHELI, 9, [[52, 13, 5, 0], [84, 19, 5, 1], [18, 13, 2, 0]]);
+export const SPR_H_JET = hurda(SPR_JET, 11, [[42, 10, 4, 0], [88, 11, 6, 1]]);
+export const SPR_H_HELI = hurda(SPR_HELI, 13, [[50, 15, 5, 0], [10, 6, 5, 1]]);
 
 void ATES;

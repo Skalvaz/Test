@@ -11,7 +11,7 @@ import {
 } from './dunya';
 import {
   DHELI_N, HELI_N, JET_N, KAMYON_N, KULE_N, NAKLIYE_N, SPR_AGAC, SPR_ARABA, SPR_BARIYER, SPR_DUVAR, SPR_LAMBA,
-  SPR_LEVHA, SPR_VARIL, SPR_DHELI, SPR_GOMU, SPR_HELI, SPR_JET, SPR_KAMYON,
+  SPR_LEVHA, SPR_VARIL, SPR_DHELI, SPR_H_DHELI, SPR_H_HELI, SPR_H_JET, SPR_H_KAMYON, SPR_H_TANK, SPR_H_UCAKSAVAR, SPR_GOMU, SPR_HELI, SPR_JET, SPR_KAMYON,
   SPR_KASK, SPR_KIRPI, SPR_KULE, SPR_MAYIN, SPR_NAKLIYE, SPR_SANDIK, SPR_SIMGE_HELI, SPR_SIMGE_SIPER, SPR_TANK,
   SPR_UCAKSAVAR, SPR_UKULE, TANK_N, UCAKSAVAR_N, UKULE_N,
 } from './sprite';
@@ -70,9 +70,9 @@ const LOGO = [
 
 /** Savaş alanındaki sabit süsler: [dünya x, tip]. 0 tank engeli, 1 kuru ağaç, 2 araba, 3 lamba, 4 bariyer, 5 levha, 6 varil, 7 duvar. */
 /** Süs tiplerinin yarı genişliği (dünya birimi): ayak izi denetimi için. */
-const SUS_YARI = [5, 2, 13, 2, 7, 1, 3, 12];
+const SUS_YARI = [6, 3, 13, 2, 8, 2, 7, 13];
 const SUSLER: [number, number][] = [
-  [178, 4], [204, 3], [220, 1], [290, 0], [312, 2], [400, 6], [416, 1], [436, 3], [522, 7], [548, 0], [572, 2], [590, 1],
+  [160, 0], [178, 4], [204, 3], [220, 1], [312, 2], [333, 5], [400, 6], [416, 1], [436, 3], [522, 7], [548, 0], [572, 2], [590, 1],
 ];
 
 export class Sahne {
@@ -466,20 +466,25 @@ export class Sahne {
       if (x < -50 || x > EK + 50) continue;
       if (tip === 0) {
         const [y, e] = yat(ox, 5);
-        t.cizDon(SPR_KIRPI, x, y, e, false, SPR_KIRPI.w / 2, SPR_KIRPI.h - 1);
-      } else if (tip === 1) t.ciz(SPR_AGAC, x - 17, dip(ox, 2) - 36);
+        if (Math.abs(e) < 0.07) t.ciz(SPR_KIRPI, x - (SPR_KIRPI.w >> 1), y - SPR_KIRPI.h);
+        else t.cizDon(SPR_KIRPI, x, y, e, false, SPR_KIRPI.w / 2, SPR_KIRPI.h - 1);
+      } else if (tip === 1) t.ciz(SPR_AGAC, x - (SPR_AGAC.w >> 1), dip(ox, 3) - SPR_AGAC.h + 1);
       else if (tip === 2) {
         // Düz zeminde döndürmeden basılır (döndürme ince çizgileri bozar)
         const [y, e] = yat(ox, 13);
         if (Math.abs(e) < 0.07) t.ciz(SPR_ARABA, x - 27, y - SPR_ARABA.h);
         else t.cizDon(SPR_ARABA, x, y, e, false, SPR_ARABA.w / 2, SPR_ARABA.h - 1);
-      } else if (tip === 3) t.ciz(SPR_LAMBA, x - 8, dip(ox, 2) - 60, ox % 2 === 0);
+      } else if (tip === 3) {
+        const ters = ox % 2 === 0;
+        t.ciz(SPR_LAMBA, ters ? x - (SPR_LAMBA.w - 9) : x - 8, dip(ox, 2) - SPR_LAMBA.h + 1, ters);
+      }
       else if (tip === 4) {
         const [y, e] = yat(ox, 7);
-        t.cizDon(SPR_BARIYER, x, y, e, false, SPR_BARIYER.w / 2, SPR_BARIYER.h - 2);
-      } else if (tip === 5) t.ciz(SPR_LEVHA, x - 9, dip(ox, 1) - 32);
-      else if (tip === 6) t.ciz(SPR_VARIL, x - 5, dip(ox, 3) - 13);
-      else t.ciz(SPR_DUVAR, x - 20, dip(ox, 13) - 48);
+        if (Math.abs(e) < 0.07) t.ciz(SPR_BARIYER, x - (SPR_BARIYER.w >> 1), y - SPR_BARIYER.h);
+        else t.cizDon(SPR_BARIYER, x, y, e, false, SPR_BARIYER.w / 2, SPR_BARIYER.h - 1);
+      } else if (tip === 5) t.ciz(SPR_LEVHA, x - (SPR_LEVHA.w >> 1), dip(ox, 1) - SPR_LEVHA.h + 1);
+      else if (tip === 6) t.ciz(SPR_VARIL, x - (SPR_VARIL.w >> 1), dip(ox, 5) - SPR_VARIL.h + 1);
+      else t.ciz(SPR_DUVAR, x - (SPR_DUVAR.w >> 1), dip(ox, 12) - SPR_DUVAR.h + 2);
     }
   }
 
@@ -491,12 +496,13 @@ export class Sahne {
       const y = this.Y(e.y);
       // Zemine karışmadan önce yavaşça gömülür
       const bat = e.t > 11 ? Math.round((e.t - 11) * 3) : 0;
-      if (e.tip === T_TANK || e.tip === T_KOPRUCU) t.cizDon(SPR_TANK, x, y - 9 + bat, e.aci, true, TANK_N.ox, TANK_N.oy, 255);
-      else if (e.tip === T_UCAKSAVAR) t.cizDon(SPR_UCAKSAVAR, x, y - 8 + bat, e.aci, true, UCAKSAVAR_N.ox, UCAKSAVAR_N.oy, 255);
-      else if (e.tip === T_KAMYON) t.cizDon(SPR_KAMYON, x, y - 11 + bat, e.aci + 0.2, true, KAMYON_N.ox, KAMYON_N.oy, 255);
-      else if (e.tip === T_HELI) t.cizDon(SPR_DHELI, x, y - 9 + bat, e.aci + 0.4, true, DHELI_N.ox, DHELI_N.oy, 255);
-      else if (e.tip === T_JET) t.cizDon(SPR_JET, x, y - 6 + bat, e.aci + 0.5, true, JET_N.ox, JET_N.oy, 255);
-      else t.cizDon(SPR_HELI, x, y - 10 + bat, e.aci + 0.5, false, HELI_N.ox, HELI_N.oy, 255);
+      // Hurda sprite'ları yanmış, delinmiş, koyu gri (düz siyah siluet değil)
+      if (e.tip === T_TANK || e.tip === T_KOPRUCU) t.cizDon(SPR_H_TANK, x, y - 9 + bat, e.aci, true, TANK_N.ox, TANK_N.oy);
+      else if (e.tip === T_UCAKSAVAR) t.cizDon(SPR_H_UCAKSAVAR, x, y - 8 + bat, e.aci, true, UCAKSAVAR_N.ox, UCAKSAVAR_N.oy);
+      else if (e.tip === T_KAMYON) t.cizDon(SPR_H_KAMYON, x, y - 11 + bat, e.aci + 0.2, true, KAMYON_N.ox, KAMYON_N.oy);
+      else if (e.tip === T_HELI) t.cizDon(SPR_H_DHELI, x, y - 9 + bat, e.aci + 0.4, true, DHELI_N.ox, DHELI_N.oy);
+      else if (e.tip === T_JET) t.cizDon(SPR_H_JET, x, y - 6 + bat, e.aci + 0.5, true, JET_N.ox, JET_N.oy);
+      else t.cizDon(SPR_H_HELI, x, y - 10 + bat, e.aci + 0.5, false, HELI_N.ox, HELI_N.oy);
     }
   }
 
