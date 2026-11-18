@@ -6,11 +6,11 @@
 import {
   BAGLAR, B_MOLOZ, B_PENCERE, DUNYA_G, Dunya, G, G_MAYIN, HUCRE, KOS, P_TUGLA, T_KOPRUCU, M_BOMBA, M_DKURSUN, M_DRPG, M_HAVAN, M_KURSUN, M_OBOMBA, M_ROKET, M_TOP,
   M_NISANCI, O_CIFT, O_HIZ, O_TAMIR, PANIK, T_MAKINELI, T_NISANCI, T_SUBAY, P_ATES, P_DUMAN, P_ENKAZ, P_KAN, P_KASK, P_KIVILCIM, P_KOVAN, P_KULE, P_TOPRAK,
-  P_TOZ, SIPER_X, SIPER_YARI, onMesafe, yanOf, T_HELI, T_JET, T_KAMYON, T_ROKET, T_TANK, T_TUFEK, T_UCAKSAVAR, YANIYOR,
+  P_TOZ, SIPER_X, SIPER_YARI, onMesafe, yanOf, T_HELI, T_JEEP, T_JET, T_KAMYON, T_ROKET, T_TANK, T_TUFEK, T_UCAKSAVAR, YANIYOR,
   type Asker,
 } from './dunya';
 import {
-  DHELI_N, HELI_N, JET_N, KAMYON_N, KULE_N, NAKLIYE_N, SPR_AGAC, SPR_ARABA, SPR_BARIYER, SPR_DUVAR, SPR_LAMBA,
+  DHELI_N, HELI_N, JEEP_N, JET_N, KAMYON_N, SPR_H_JEEP, SPR_JEEP, KULE_N, NAKLIYE_N, SPR_AGAC, SPR_ARABA, SPR_BARIYER, SPR_DUVAR, SPR_LAMBA,
   SPR_LEVHA, SPR_VARIL, SPR_DHELI, SPR_H_DHELI, SPR_H_HELI, SPR_H_JET, SPR_H_KAMYON, SPR_H_TANK, SPR_H_UCAKSAVAR, SPR_GOMU, SPR_HELI, SPR_JET, SPR_KAMYON,
   SPR_KASK, SPR_KIRPI, SPR_KULE, SPR_MAYIN, SPR_NAKLIYE, SPR_SANDIK, SPR_SIMGE_HELI, SPR_SIMGE_SIPER, SPR_TANK,
   SPR_UCAKSAVAR, SPR_UKULE, TANK_N, UCAKSAVAR_N, UKULE_N,
@@ -73,9 +73,9 @@ const LOGO = [
 const SUS_YARI = [6, 3, 13, 2, 8, 2, 7, 13];
 const SUSLER: [number, number][] = [
   // Sol cephe
-  [70, 7], [104, 0], [126, 1], [216, 3], [240, 2], [262, 5], [352, 6], [366, 4],
-  // Sağ cephe
-  [592, 4], [604, 3], [678, 1], [710, 2], [736, 5], [748, 6], [842, 7], [868, 0], [886, 1],
+  [70, 7], [104, 0], [126, 1], [216, 3], [240, 2], [262, 5], [344, 6],
+  // Sağ cephe (siperin önündeki ilk 100 birim boş: araçlar ve askerler orada durur, süs karışmasın)
+  [652, 4], [678, 1], [710, 2], [736, 5], [748, 6], [842, 7], [868, 0], [886, 1],
 ];
 
 export class Sahne {
@@ -505,6 +505,7 @@ export class Sahne {
       if (e.tip === T_TANK || e.tip === T_KOPRUCU) t.cizDon(SPR_H_TANK, x, y - 9 + bat, e.aci, sola, TANK_N.ox, TANK_N.oy);
       else if (e.tip === T_UCAKSAVAR) t.cizDon(SPR_H_UCAKSAVAR, x, y - 8 + bat, e.aci, sola, UCAKSAVAR_N.ox, UCAKSAVAR_N.oy);
       else if (e.tip === T_KAMYON) t.cizDon(SPR_H_KAMYON, x, y - 11 + bat, e.aci + 0.2, sola, KAMYON_N.ox, KAMYON_N.oy);
+      else if (e.tip === T_JEEP) t.cizDon(SPR_H_JEEP, x, y - 12 + bat, e.aci - 0.12, sola, JEEP_N.ox, JEEP_N.oy);
       else if (e.tip === T_HELI) t.cizDon(SPR_H_DHELI, x, y - 9 + bat, e.aci + 0.4, sola, DHELI_N.ox, DHELI_N.oy);
       else if (e.tip === T_JET) t.cizDon(SPR_H_JET, x, y - 6 + bat, e.aci + 0.5, sola, JET_N.ox, JET_N.oy);
       else t.cizDon(SPR_H_HELI, x, y - 10 + bat, e.aci + 0.5, false, HELI_N.ox, HELI_N.oy);
@@ -971,7 +972,7 @@ export class Sahne {
     const { t, d } = this;
     for (const a of d.araclar) {
       const sars = a.sars > 0 ? (Math.floor(d.zaman * 60) % 2 ? 1 : -1) : 0;
-      const [x0, yb, e] = this.durus(a, a.tip === T_KAMYON ? 17 : 16);
+      const [x0, yb, e] = this.durus(a, a.tip === T_KAMYON ? 17 : a.tip === T_JEEP ? 13 : 16);
       const x = x0 + sars;
       if (x < -70 || x > EK + 70) continue;
       // Sağ cepheden gelen sola bakar, sol cepheden gelen sağa (sprite'lar sağa bakar)
@@ -1066,11 +1067,50 @@ export class Sahne {
           t.nokta(rx - w, ry - 10 + yy, 0);
           t.nokta(rx + w, ry - 10 + yy, 0);
         }
+      } else if (a.tip === T_JEEP) {
+        const N = JEEP_N;
+        const yc = yb - (SPR_JEEP.h - 1 - N.oy) - zip;
+        // Şoför: gövdeden önce (ön camın arkasında kalır)
+        const [sx, sy] = this.yerel(x, yc, e, gy, N.sofor[0] - N.ox, N.sofor[1] - N.oy);
+        t.daire(sx, sy - 4, 2.4, 0);
+        t.kutu(sx - 2, sy - 6, 5, 1, 0); // miğfer kenarı
+        t.kutu(sx - 1, sy - 2, 3, 4, 0);
+        t.cizgi(sx, sy, sx + gy * 5, sy + 1, 0); // direksiyona uzanan kol
+        t.cizDon(SPR_JEEP, x, yc, e, sola, N.ox, N.oy);
+        if (gidiyor) {
+          // Teker jantı döner
+          for (const [tx, ty] of N.teker) {
+            const [wx, wy] = this.yerel(x, yc, e, gy, tx - N.ox, ty - N.oy);
+            const ta = a.t * 14 * gy;
+            t.cizgi(wx - Math.cos(ta) * 3, wy - Math.sin(ta) * 3, wx + Math.cos(ta) * 3, wy + Math.sin(ta) * 3, 0);
+          }
+        }
+        // Nişancı: arkada ayakta, makineliye sarılmış; namlu hedefe döner
+        const [mx, my] = this.yerel(x, yc, e, gy, N.namlu[0] - N.ox, N.namlu[1] - N.oy);
+        const [nx, ny] = this.yerel(x, yc, e, gy, N.nisanci[0] - N.ox, N.nisanci[1] - N.oy);
+        const c = Math.cos(a.namlu);
+        const s = Math.sin(a.namlu);
+        t.kalin(nx, ny, nx, ny - 9, 0); // gövde
+        t.daire(nx, ny - 12, 2.6, 0);
+        t.kutu(nx - 3, ny - 14, 7, 1, 0); // miğfer kenarı
+        t.nokta(nx - 1, ny - 15, 128);
+        t.cizgi(nx, ny - 7, mx - c * 3, my - s * 3, 0); // kollar kabzada
+        t.cizgi(nx, ny - 5, mx - c * 5, my - s * 5 + 1, 0);
+        const tepki = a.sars > 0.03 ? 2 : 0;
+        for (let k = 0; k <= 1; k++) t.cizgi(mx - c * (5 + tepki), my - s * (5 + tepki) + k, mx + c * (13 - tepki), my + s * (13 - tepki) + k, 0);
+        t.kutu(mx - 2, my, 4, 3, 0); // mermi kutusu
+        if (a.sars > 0.03) {
+          const ax = mx + c * 16;
+          const ay = my + s * 16;
+          t.daire(ax, ay, 3, 0, ATES);
+          t.vurgu(ax, ay, AKKOR);
+          t.vurgu(ax + c * 3, ay + s * 3, ATES);
+        }
       } else {
         const N = KAMYON_N;
         t.cizDon(SPR_KAMYON, x, yb - (SPR_KAMYON.h - 1 - N.oy) - zip, e, sola, N.ox, N.oy);
       }
-      this.canCubugu(x, yb - 52, a.can / a.enCan);
+      this.canCubugu(x, yb - (a.tip === T_JEEP ? 46 : 52), a.can / a.enCan);
       // Çukur başında bekleyen araç: üstünde yanıp sönen işaret
       if (a.engelli && a.tip !== T_KOPRUCU && Math.floor(d.zaman * 3) % 2 === 0) t.yazi('?', x, yb - 62, { hiza: 0, olcek: 3, kenar: 255 });
     }

@@ -693,6 +693,42 @@ export const SPR_DUVAR = (() => {
   return b.bitir();
 })();
 
+/**
+ * Makineli cip (üstü açık arazi taşıtı, UAZ-469 çizgisinde): kısa kaput, yatık
+ * ön cam, arkada yedek lastik ve bidon, ortada makineli ayağı. Mürettebat ve
+ * namlu çizim anında eklenir (hurdada görünmesinler). Makineli mili `namlu`.
+ */
+export const JEEP_N = { ox: 29, oy: 17, namlu: [17, 8], sofor: [26, 13], nisanci: [12, 13], teker: [[15, 26], [43, 26]] } as const;
+export const SPR_JEEP = (() => {
+  const W = 58;
+  const b = new Boya(W, 32);
+  // Tekne: kutu gibi arka, alçalan kaput, ön panel
+  b.p([4, 12, 30, 12, 30, 15, 48, 16, 53, 18, 54, 24, 4, 24], T3);
+  b.p([30, 12, 33, 4, 35, 4, 33, 13], T2); // ön cam çerçevesi
+  b.k(54, 21, 3, 3, T2).k(1, 21, 3, 3, T2); // tamponlar
+  b.o(3, 16, 4, T1); // yedek lastik
+  b.kenar(M);
+  // Gövde tonları: kaputta ışık, eşikte gölge, çamurluk boşlukları
+  b.c(31, 15, 47, 16, T5).c(6, 13, 28, 13, T4);
+  for (let x = 5; x < 54; x++) for (let y = 21; y < 24; y++) if (b.d[y * W + x] === T3 + 1) b.n(x, y, T2);
+  for (const [cx, cy] of [[15, 26], [43, 26]]) {
+    for (let x = cx - 8; x <= cx + 8; x++) for (let y = 16; y < 24; y++) if (Math.hypot(x - cx, y - cy) <= 7.6 && b.d[y * W + x] > M + 1) b.n(x, y, T1);
+  }
+  b.teker(15, 26, 5.5).teker(43, 26, 5.5);
+  // Üstü açık kabin: kapı boşluğu karanlık, koltuk arkalığı, kapı derzleri
+  b.p([22, 13, 29, 13, 29, 19, 22, 19], T1);
+  b.c(22, 13, 22, 20, M).c(30, 15, 30, 20, M).c(23, 20, 29, 20, M).k(23, 14, 2, 4, T2);
+  // Ön cam, far, ızgara, yedek lastik göbeği
+  b.c(31, 12, 33, 6, T5).k(52, 18, 2, 2, B);
+  b.c(50, 20, 50, 22, M).c(48, 20, 48, 22, M);
+  b.o(3, 16, 1.4, T3);
+  // Arkada bidon, makineli ayağı, anten
+  b.k(8, 14, 4, 6, T2).c(8, 14, 11, 14, M).c(8, 14, 8, 19, M).c(11, 14, 11, 19, M).n(9, 16, T4).n(10, 16, T4);
+  b.k(16, 8, 2, 5, M);
+  b.c(6, 12, 4, 0, M);
+  return b.bitir();
+})();
+
 // ---- Hurdalar ----
 
 /**
@@ -745,5 +781,6 @@ export const SPR_H_KAMYON = hurda(SPR_KAMYON, 7, [[24, 5, 8, 1], [63, 11, 3, 0],
 export const SPR_H_DHELI = hurda(SPR_DHELI, 9, [[52, 13, 5, 0], [84, 19, 5, 1], [18, 13, 2, 0]]);
 export const SPR_H_JET = hurda(SPR_JET, 11, [[42, 10, 4, 0], [88, 11, 6, 1]]);
 export const SPR_H_HELI = hurda(SPR_HELI, 13, [[50, 15, 5, 0], [10, 6, 5, 1]]);
+export const SPR_H_JEEP = hurda(SPR_JEEP, 15, [[34, 8, 5, 1], [25, 17, 3, 0]]);
 
 void ATES;

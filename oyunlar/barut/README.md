@@ -16,6 +16,9 @@ zamanla zemine karışıp araziyi yükseltir.
 
 ## Nasıl oynanır
 
+- **İki cephe:** siper ortada, düşman iki yandan gelir. Ekran kenarındaki ok
+  ve sayı öbür cepheden gelenleri gösterir; kırmızı yanıp sönüyorsa sipere
+  dayanmışlardır.
 - **Sürükle:** helikopter parmağını izler (göreli; parmağın altında kalmaz).
 - **Silahlar kendi ateş eder:** top en yakın hedefe, roketler araçlara ve
   kalabalık piyadeye. Yaklaştıkça top daha isabetli.

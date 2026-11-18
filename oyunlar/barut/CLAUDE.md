@@ -65,6 +65,43 @@ node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]
 - `src/ses.ts` — WebAudio sesleri. `src/main.ts` — döngü, göreli sürükleme,
   `window.__barut` (`dondur`, `ilerlet(sn)`, `basla`, `ciz`, `dunya`).
 
+## İki cephe (Kasım 2026, kullanıcı kararı)
+
+Siper dünyanın ortasında (`SIPER_X = 480`, ön kenarlar ± `SIPER_YARI = 60`),
+dünya `DUNYA_G = 960` birim; düşman iki kenardan girer. Playtest'in en büyük
+bulgusu buydu: tek cephede helikopter sürenin %86'sında aynı noktada duruyordu.
+Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
+
+- Bir birliğin yanı konumundan okunur: `yanOf(x)` (+1 sağ, sola yürür; −1
+  sol, sağa yürür), `onMesafe(x)` (siperin o yandaki ön kenarına uzaklık).
+  Siperi kimse geçemediği için yan değişmez; ayrı alan tutulmaz. Yeni yönlü
+  kod yazarken `x -= …` YAZMA: `gid = -yanOf(x)` ile çarp. Aracın `dur`u
+  mutlak x'tir (`on + yan * uzaklık`); "varmadı mı" = `(x - dur) * yan > 0`.
+- Dalgalar: 1. sağdan, 2. soldan (oyuncu iki yanı öğrensin), 3. ve sonrası
+  iki yandan, 4–8'lik öbekler hâlinde yan değiştirerek (`kuyruk: {tip, yan}`).
+  Duyuru "DALGA 1 SAĞDAN / 2 SOLDAN / 3 İKİ YANDAN".
+- Üs simetrik: ortada kule (nöbetçi iki yana ateş eder), her duvarda iki
+  tüfekçi + bir makineli yuvası (`kadro`: dx, rol, yükseklik, baktığı yan),
+  subay ortada. Ön geçiş `P(px, w)` ile sol yana aynalanır. Siperin önündeki
+  ilk ~100 birimde süs yok (araç ve asker orada durur, karışmasın).
+- Kamera: helikopter siperin sağındaysa ekranın sol %36'sında, solundaysa
+  sağ %36'sında (`kam.oran`); geçiş helikopterin KONUMUNA bağlı ve yavaş
+  (saniyede 0,09). Yöne bağlı öne atlama yine YOK. Roket menzili 172 → 150
+  (ekranda kalsın). Kamera iki kenardaki doğum şeridini (44 birim) göstermez.
+- `cepheHud()`: ekran dışındaki düşmanlar için o kenarda ok + sayı; en
+  yakını sipere 130'dan yakınsa kırmızı yanıp söner. Uçak uyarısı geldiği
+  kenarda (`jetUyariYan`). Köprücü ve bekleme sayaçları cephe başına
+  (`kopruSayac[2]`, `askerBekliyor[2]`); köprü `kok` ucundan açılır.
+- Makineli cip (`T_JEEP`): hızlı (58), 3 can; sipere 50–90 birim sokulup
+  5'lik seri atar (seri başı 2,5 hasar), helikopter 135 içindeyse ona döner.
+  Oyuncu öbür cephedeyken geri dönmeye zorlar; 3. dalgadan sonra gelir.
+  Mürettebat ve namlu çizimde eklenir (hurdada görünmesinler); `yuk = 2`
+  vurulunca savrulan iki kişidir. `piyadeMi()` üst sınırlıdır: yeni araç
+  tipi eklerken `>= T_MAKINELI` gibi açık uçlu koşul YAZMA (cip piyade
+  sanılıp asker olarak doğuyordu).
+- Kenar itme 230/sn (cepheler arası ~500 birim; parmak kenardayken geçiş
+  ≈ 2 sn).
+
 ## Kurallar ve tuzaklar
 
 - Dünya genişliği `G = 240` birim; çizim `K = 1,5` ile 360 piksel
@@ -92,10 +129,9 @@ node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]
   verir, gövde `cizDon` ile yatar, kule gövdeye 1 piksel biner (boşluk
   kalmasın), namlu dengelidir (dünya açısında kalır; simülasyondaki atış
   yönüyle aynı olsun diye).
-- Kamera: helikopter ekranın sol %30'unda, ±16 birimlik serbest kuşakla.
-  Yöne göre öne atlama YOK (sürüklerken helikopteri ekranda geri kaydırıp
-  "takılıyor" hissi veriyordu). Ortaya almak da olmaz: düşmanın %64'ü ekran
-  dışında ölüyordu (playtest).
+- Kamera: ±16 birimlik serbest kuşak; helikopterin ekrandaki yeri için "İki
+  cephe" bölümüne bak. Yöne göre öne atlama YOK (sürüklerken helikopteri
+  ekranda geri kaydırıp "takılıyor" hissi veriyordu).
 - Sürükleme: yatay kazanç parmak hızıyla 1,35 → 2,6 arası (fare ivmesi),
   dikey 1,25 sabit; parmak ekran kenarındaysa helikopter gitmeye devam eder.
 - Kan izi zamanla kurur ve silinir (`kanSayac`); taze parlak, eski koyu.
@@ -120,13 +156,14 @@ node scripts/oynanis.mjs <url> <klasör> [en-çok-sn] [kazanç] [kenar-itme 0|1]
   görünüşü seçer (başlık, çanta, atkı, boy farkı, süngü); davranışı
   etkilemez. Çizim: `adam()` → `sapka()`, `canta()`, `silah()`, `yuzustu()`.
 - Üs (`siper()`): arka geçişte bayrak, çadır, cephanelik, telsiz direği,
-  kütük çatılı sığınak, gözetleme kulesi; ön geçişte kule korkuluğu,
-  makineli yuvası, iki sıra kum torbası duvarı, dikenli tel. Hasar
+  kütük çatılı sığınak, gözetleme kulesi; ön geçişte kule korkuluğu ve HER
+  İKİ YANDA makineli yuvası, iki sıra kum torbası duvarı, dikenli tel. Hasar
   eşikleri 66 / 50 / 33 / 0. Dostların görevi `rol`: 0 duvarda tüfekçi,
   1 ağır makineli (6'lık seri), 2 kule nöbetçisi (`yukseklik` 44), 3 subay
   (dürbün, ateş etmez). Dalga arasında sevinirler.
-- `GIRIS_X`'in sağındaki düşman hedef alınmaz, vurulmaz; helikopter
-  `HELI_SAG`'dan öteye geçemez. Yoksa oyuncu doğum noktasında pusu kurar ve
+- Kenara `GIRIS` (62) biriminden yakın düşman hedef alınmaz, vurulmaz
+  (`sahnede()`); helikopter kenarlara `HELI_KENAR` (215) biriminden fazla
+  yaklaşamaz. Yoksa oyuncu doğum noktasında pusu kurar ve
   ekranda hiç kalabalık oluşmaz (bot kaydı gösterdi).
 - Dizi üstünde geriye doğru dönerken `patlat`/`siperHasar` başka elemanları
   silebilir: döngü başında `if (!s) continue` koruması var, kaldırma.
@@ -197,7 +234,7 @@ bir kare ve yarım saniyede bir ölçüm alır. Elle oynamanın yerini tutmaz
   alınıyor; parmağı kaldırıp yeniden sürükleme gerekmiyor.
 - Düzeltildi: düşman ekran dışında ölüyordu (kamera); bütün zemin kırmızı
   oluyordu (kan kuruyor); leş yığını 150 sn'de tavana vuruyordu (yavaşladı).
-- AÇIK, en önemlisi: oyun tek noktada oynanıyor. Helikopter sürenin %86'sında
+- ÇÖZÜLDÜ (iki cephe, yukarıda): oyun tek noktada oynanıyordu. Helikopter sürenin %86'sında
   sağ sınırda (`HELI_SAG`) duruyor, düşman hep aynı yerde ölüyor, ekrandaki
   görüntü hiç değişmiyor, siper ilk dalgalarda hiç tehlikeye girmiyor.
   Öneri: siperi dünyanın ortasına al, düşman iki yandan gelsin (iki cephe);
@@ -220,8 +257,8 @@ Paketler birer oturumluk; kullanım sınırı yüzünden teker teker.
    kalan: üs, toprak altı, parçacıklar (duman, patlama), HUD.
 2. ✅ (çoğu) **Tabya ve bina:** yıkılabilir, içinden ateş edilen küçük
    binalar; köprücü zırhlı ve köprü; derin zemin; makineli, nişancı, subay.
-   Kalan: arka plan binalarının pencerelerinden nişancılar, hızlı makineli
-   jeep, hasar alan araçtan sağ atlayan askerler.
+   ✅ İki cephe ve makineli cip. Kalan: arka plan binalarının
+   pencerelerinden nişancılar, hasar alan araçtan sağ atlayan askerler.
 3. **Saçmalık başlasın:** üst üste binip dev çöp adam olan askerler (her
    parçası ayrı bez bebek; vuruldukça dökülür; oyunun imzası), lazerli
    asker, helikopteri lazerle vuran UFO.

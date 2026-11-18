@@ -46,10 +46,12 @@ export const T_NISANCI = 9;
 export const T_SUBAY = 10;
 /** Köprü seren zırhlı: çukur başında durup köprü kurar. */
 export const T_KOPRUCU = 11;
+/** Makineli cip: hızlıdır, sipere sokulup seri atar; öbür cephedeyken geri dönmeye zorlar. */
+export const T_JEEP = 12;
 
-export const piyadeMi = (tip: number): boolean => tip === T_TUFEK || tip === T_ROKET || tip >= T_MAKINELI;
+export const piyadeMi = (tip: number): boolean => tip === T_TUFEK || tip === T_ROKET || (tip >= T_MAKINELI && tip <= T_SUBAY);
 
-const PUAN = [10, 20, 50, 100, 80, 150, 200, 0, 25, 45, 60, 120];
+const PUAN = [10, 20, 50, 100, 80, 150, 200, 0, 25, 45, 60, 120, 70];
 
 // Asker durumları
 export const KOS = 0;
@@ -949,7 +951,7 @@ export class Dunya {
     if (a.tip !== T_UCAKSAVAR && this.rng() < 0.22) {
       this.sandiklar.push({ x: a.x, y: a.y - 12, vy: -120, yerde: 0, tip: 1 + ((this.rng() * 3) | 0), parasut: false, cekiliyor: false });
     }
-    this.patlat(a.x, a.y - 8, a.tip === T_KAMYON ? 26 : 32, true, 3);
+    this.patlat(a.x, a.y - 8, a.tip === T_JEEP ? 20 : a.tip === T_KAMYON ? 26 : 32, true, 3);
   }
 
   private havaHasar(h: Hava, d: number): void {
@@ -1152,6 +1154,7 @@ export class Dunya {
       if (n >= 6) liste.push(T_SUBAY);
     }
     if (n >= 3) for (let i = 0; i < Math.min(4, 1 + Math.floor((n - 3) / 2)); i++) liste.push(T_NISANCI);
+    if (n >= 3) for (let i = 0; i < Math.min(3, 1 + Math.floor((n - 3) / 3)); i++) liste.push(T_JEEP);
     // Karıştır; ilk ikisi piyade olsun
     for (let i = liste.length - 1; i > 0; i--) {
       const j = (this.rng() * (i + 1)) | 0;
@@ -1189,12 +1192,13 @@ export class Dunya {
     const on = yan > 0 ? SIPER_SAG : SIPER_SOL;
     if (piyadeMi(tip)) {
       this.askerEkle(tip, kenar(36 - sira * 8 - r() * 4));
-    } else if (tip === T_KAMYON || tip === T_TANK || tip === T_UCAKSAVAR) {
-      const can = tip === T_TANK ? 12 : tip === T_UCAKSAVAR ? 7 : 5;
-      const uzak = tip === T_TANK ? 80 + r() * 60 : tip === T_UCAKSAVAR ? 140 + r() * 100 : 130 + r() * 100;
+    } else if (tip === T_KAMYON || tip === T_TANK || tip === T_UCAKSAVAR || tip === T_JEEP) {
+      const can = tip === T_TANK ? 12 : tip === T_UCAKSAVAR ? 7 : tip === T_JEEP ? 3 : 5;
+      const uzak = tip === T_TANK ? 80 + r() * 60 : tip === T_UCAKSAVAR ? 140 + r() * 100 : tip === T_JEEP ? 50 + r() * 40 : 130 + r() * 100;
       this.araclar.push({
-        tip, x: kenar(-4), y: this.yerY(kenar(0)), can, enCan: can, dur: on + yan * uzak, sayac: 2 + r() * 2, nisanT: 0, namlu: 0.2,
-        yuk: tip === T_KAMYON ? 5 : 0, t: 0, sars: 0, engelli: false,
+        // Cipin `namlu`su dünya açısıdır (makineli nereye bakıyor); `yuk`: vurulunca savrulan iki kişi
+        tip, x: kenar(-4), y: this.yerY(kenar(0)), can, enCan: can, dur: on + yan * uzak, sayac: 2 + r() * 2, nisanT: 0,
+        namlu: tip === T_JEEP ? (yan > 0 ? Math.PI : 0) : 0.2, yuk: tip === T_KAMYON ? 5 : tip === T_JEEP ? 2 : 0, t: 0, sars: 0, engelli: false,
       });
     } else if (tip === T_HELI) {
       this.havalar.push({
@@ -1640,7 +1644,7 @@ export class Dunya {
       const gidiyor = isteyen && !a.engelli;
       if (a.engelli && (a.tip !== T_KOPRUCU || a.yuk === 0)) engelliVar[yan > 0 ? 1 : 0] = true;
       if (gidiyor) {
-        a.x += gid * (a.tip === T_TANK ? 15 : a.tip === T_UCAKSAVAR ? 20 : a.tip === T_KOPRUCU ? 17 : 27) * dt;
+        a.x += gid * (a.tip === T_TANK ? 15 : a.tip === T_UCAKSAVAR ? 20 : a.tip === T_KOPRUCU ? 17 : a.tip === T_JEEP ? 58 : 27) * dt;
         if (r() < 0.12) this.parca(P_TOZ, a.x + yan * 18, a.y - 1, yan * 8, -4, 0.6, 2.5);
       }
       a.y = this.yolY(a.x);
@@ -1704,6 +1708,32 @@ export class Dunya {
           a.yuk--;
           const s = this.askerEkle(T_TUFEK, a.x + yan * (20 + r() * 4));
           s.sayac = 1;
+        }
+      } else if (a.tip === T_JEEP) {
+        // Makineli cip: helikopter menzildeyse ona, değilse yerine varınca sipere 5'lik seri atar
+        const oy = a.y - 15;
+        const heliye = !h.olu && dh < 135;
+        const sipere = !gidiyor && onMesafe(a.x) < 150;
+        const tx = heliye ? h.x + h.vx * 0.35 : SIPER_X + yan * 30;
+        const ty = heliye ? h.y + h.vy * 0.35 : this.zemin - 8;
+        let fark = (heliye || sipere ? Math.atan2(ty - oy, tx - a.x) : gid < 0 ? Math.PI : 0) - a.namlu;
+        while (fark > Math.PI) fark -= Math.PI * 2;
+        while (fark < -Math.PI) fark += Math.PI * 2;
+        a.namlu += fark * Math.min(1, dt * 9);
+        if (a.sayac <= 0 && (heliye || sipere)) {
+          if (a.nisanT <= 0) a.nisanT = 5;
+          a.nisanT--;
+          a.sayac = a.nisanT > 0 ? 0.11 : 1.5 + r() * 0.7;
+          a.sars = 0.07;
+          const aci = a.namlu + (r() - 0.5) * 0.2;
+          const ox = a.x + Math.cos(a.namlu) * 9;
+          const oy2 = oy + Math.sin(a.namlu) * 9;
+          if (heliye) this.mermiler.push({ tip: M_DKURSUN, x: ox, y: oy2, vx: Math.cos(aci) * 170, vy: Math.sin(aci) * 170, omur: 1.5, yas: 0, hedef: null });
+          else {
+            this.izler.push({ x0: ox, y0: oy2, x1: tx + (r() - 0.5) * 40, y1: ty + (r() - 0.5) * 10, t: 0 });
+            this.siperHasar(0.5);
+          }
+          this.olaylar.push({ tip: 'tufek' });
         }
       } else if (a.tip === T_KOPRUCU) {
         if (a.yuk > 0 && a.engelli) {
