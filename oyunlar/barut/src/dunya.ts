@@ -6,15 +6,31 @@
  */
 
 export const G = 240; // ekran genişliği (mantıksal piksel)
-export const DUNYA_G = 600;
-export const SIPER_X = 78;
-/** Siperin ön kenarı: düşman bunun sağında durur. */
-export const SIPER_ON = 138;
+/**
+ * İKİ CEPHE: siper dünyanın ortasında, düşman iki yandan gelir. Bir birliğin
+ * hangi yandan geldiği konumundan okunur (`yanOf`): siperi geçemedikleri için
+ * yan hiç değişmez. Yan +1 = sağ (sola yürür), −1 = sol (sağa yürür).
+ */
+export const DUNYA_G = 960;
+/** Siperin ortası. */
+export const SIPER_X = 480;
+/** Siperin yarı genişliği: ön kenarlar `SIPER_X ± SIPER_YARI`. */
+export const SIPER_YARI = 60;
+const SIPER_SOL = SIPER_X - SIPER_YARI;
+const SIPER_SAG = SIPER_X + SIPER_YARI;
+/** Kamera doğum şeritlerini göstermez. */
+const KAM_SOL = 44;
 const KAM_SAG = DUNYA_G - G - 44;
-/** Bunun sağındaki düşman henüz sahneye girmemiştir: hedef alınmaz, vurulmaz. */
-const GIRIS_X = DUNYA_G - 62;
-/** Helikopter doğum noktasına bu kadar yaklaşabilir. */
-const HELI_SAG = DUNYA_G - 215;
+/** Kenara bundan yakın düşman henüz sahneye girmemiştir: hedef alınmaz, vurulmaz. */
+const GIRIS = 62;
+/** Helikopter doğum noktalarına bu kadar yaklaşabilir. */
+const HELI_KENAR = 215;
+
+/** Birliğin geldiği yan: +1 sağ, −1 sol. */
+export const yanOf = (x: number): 1 | -1 => (x > SIPER_X ? 1 : -1);
+/** Siperin o yandaki ön kenarına uzaklık (içerideyse eksi). */
+export const onMesafe = (x: number): number => (x > SIPER_X ? x - SIPER_SAG : SIPER_SOL - x);
+const sahnede = (x: number): boolean => x >= GIRIS && x <= DUNYA_G - GIRIS;
 
 export const T_TUFEK = 0;
 export const T_ROKET = 1;
@@ -81,7 +97,7 @@ export const P_TUGLA = 10;
 export const HUCRE = 4;
 // Bina hücreleri
 /** Yol kenarında araba hurdası duran yerler: zemin burada düzlenir (çizim `sahne.ts` SUSLER). */
-export const PARK_X = [312, 572];
+export const PARK_X = [240, 710];
 export const B_DUVAR = 1;
 export const B_PENCERE = 2;
 export const B_CATI = 3;
@@ -143,6 +159,8 @@ export interface Kopru {
   can: number;
   /** Açılma: 0 → 1; 1 olunca geçilebilir. */
   t: number;
+  /** Köprücünün durduğu uç: +1 ise x1 (sağ), −1 ise x0 (sol). Köprü oradan açılır. */
+  kok: 1 | -1;
 }
 
 /**
@@ -299,7 +317,7 @@ export type Olay =
   | { tip: 'olum' }
   | { tip: 'tufek' }
   | { tip: 'top' }
-  | { tip: 'dalga'; no: number }
+  | { tip: 'dalga'; no: number; yan: -1 | 0 | 1 }
   | { tip: 'dalgaBitti' }
   | { tip: 'uyari' }
   | { tip: 'jet' }
@@ -353,11 +371,12 @@ export class Dunya {
   private bitisSayac = 0;
 
   heli = {
-    x: 170, y: 0, vx: 0, vy: 0, hx: 170, hy: 0, egim: 0, yon: 1 as 1 | -1, can: 100,
+    x: SIPER_X, y: 0, vx: 0, vy: 0, hx: SIPER_X, hy: 0, egim: 0, yon: 1 as 1 | -1, can: 100,
     top: 0, roket: 0, roketYan: 1, olu: false, patladi: false, donus: 0, darbe: 0, namlu: 0,
   };
   siperCan = 100;
-  kam = { x: 0 };
+  /** `oran`: helikopterin ekrandaki yeri (0 sol … 1 sağ); bulunduğu cepheye göre yavaşça kayar. */
+  kam = { x: SIPER_X - G / 2, oran: 0.5 };
 
   askerler: Asker[] = [];
   araclar: Arac[] = [];
@@ -371,9 +390,9 @@ export class Dunya {
   gomuler: Gomu[] = [];
   kopruler: Kopru[] = [];
   binalar: Bina[] = [];
-  private kopruSayac = 6;
-  /** Çukur başında bekleyen düşman askeri var mı (köprücü onlar için de gelir). */
-  private askerBekliyor = false;
+  /** Köprücü sayacı ve çukur başında bekleyen asker: [sol cephe, sağ cephe]. */
+  private kopruSayac = [6, 6];
+  private askerBekliyor = [false, false];
   /** Elle bırakılan bombalar: `dolum` dolunca bir tane eklenir. */
   bomba = { adet: 3, enCok: 3, dolum: 0 };
   /** Süreli güçlendirmeler (kalan saniye). */
@@ -387,7 +406,7 @@ export class Dunya {
   seri = 0;
   seriT = 0;
   dalga = 0;
-  private kuyruk: number[] = [];
+  private kuyruk: { tip: number; yan: 1 | -1 }[] = [];
   private dogumSayac = 0;
   private dogumAra = 1;
   /** Dalgalar arası dinlenme; > 0 iken yeni dalga beklenir. */
@@ -399,6 +418,8 @@ export class Dunya {
   parla = 0;
   jetUyari = 0;
   jetUyariY = 0;
+  /** Uçağın geldiği yan (uyarı o kenarda çıkar). */
+  jetUyariYan: 1 | -1 = 1;
   private sozSayac = 0;
   private kanSayac = 0;
 
@@ -415,22 +436,27 @@ export class Dunya {
     this.is = new Uint8Array(n);
     this.les = new Uint8Array(n);
     for (let x = 0; x < n; x++) {
-      const k = sinirla((x - SIPER_ON) / 80, 0, 1);
+      const k = sinirla(onMesafe(x) / 80, 0, 1);
       this.yer[x] = this.zemin + k * (6 * Math.sin(x * 0.013 + 1) + 3.5 * Math.sin(x * 0.041) + 1.5 * Math.sin(x * 0.11 + 2));
     }
     this.heli.y = this.heli.hy = this.zemin - 110;
-    for (let i = 0; i < 6; i++) this.gomEkle(G_MAYIN);
-    for (let i = 0; i < 5; i++) this.gomEkle(G_SANDIK);
-    this.binaKur(232, 0, 2);
-    this.binaKur(344, 1, 1);
-    this.binaKur(452, 2, 2);
+    for (let i = 0; i < 10; i++) this.gomEkle(G_MAYIN);
+    for (let i = 0; i < 8; i++) this.gomEkle(G_SANDIK);
+    // Sol cephe: ev, dükkân. Sağ cephe: ev, atölye.
+    this.binaKur(150, 0, 2);
+    this.binaKur(286, 1, 1);
+    this.binaKur(620, 0, 2);
+    this.binaKur(770, 2, 2);
     for (const x of PARK_X) this.duzlestir(x - 16, x + 16);
-    // Siperdeki dostlar: [x farkı, görev, yükseklik]
-    const kadro: [number, number, number][] = [[44, 0, 0], [52, 0, 0], [26, 1, 0], [6, 2, 44], [-8, 3, 0]];
-    for (const [dx, rol, yukseklik] of kadro) {
+    // Siperdeki dostlar: [x farkı, görev, yükseklik, baktığı yan]. Her duvarda iki
+    // tüfekçi ve bir makineli; kuledeki nöbetçi iki yana da ateş eder.
+    const kadro: [number, number, number, 1 | -1][] = [
+      [44, 0, 0, 1], [52, 0, 0, 1], [27, 1, 0, 1], [-44, 0, 0, -1], [-52, 0, 0, -1], [-27, 1, 0, -1], [0, 2, 44, 1], [12, 3, 0, 1],
+    ];
+    for (const [dx, rol, yukseklik, yon] of kadro) {
       this.askerler.push({
         x: SIPER_X + dx, y: this.zemin, tip: T_TUFEK, dost: true, durum: NISAN, t: this.rng() * 5, faz: 0,
-        sayac: 1 + this.rng(), hiz: 0, menzil: 0, nisanAci: -0.1, hedef: 0, yon: 1,
+        sayac: 1 + this.rng(), hiz: 0, menzil: 0, nisanAci: yon > 0 ? -0.1 : Math.PI + 0.1, hedef: 0, yon,
         kilik: (this.rng() * 4096) | 0, yukseklik, seri: 0, rol, atis: 0, engelli: false,
       });
     }
@@ -461,13 +487,19 @@ export class Dunya {
     return (ileri - simdi > 14 && ileri > this.zemin + 18) || simdi - ileri > 34;
   }
 
-  /** Köprücü köprüsünü serer: çukurun karşı yakasını bulur. Bulamazsa false. */
+  /** Köprücü köprüsünü serer: gidiş yönünde çukurun karşı yakasını bulur. Bulamazsa false. */
   private kopruKur(a: Arac): boolean {
-    const x1 = Math.round(a.x - 5);
-    const y1 = this.yerY(x1);
-    for (let x = x1 - 14; x > x1 - 110 && x > SIPER_ON + 12; x--) {
-      if (this.yerY(x) <= y1 + 6 && this.yerY(x - 6) <= y1 + 8) {
-        this.kopruler.push({ x0: x - 3, x1, y0: this.yerY(x - 3), y1, can: 7, t: 0 });
+    const g = -yanOf(a.x); // gidiş yönü
+    const xa = Math.round(a.x + g * 5);
+    const ya = this.yerY(xa);
+    for (let n = 14; n < 110; n++) {
+      const x = xa + g * n;
+      if (onMesafe(x) < 12) break;
+      if (this.yerY(x) <= ya + 6 && this.yerY(x + g * 6) <= ya + 8) {
+        const xb = x + g * 3;
+        const x0 = Math.min(xa, xb);
+        const x1 = Math.max(xa, xb);
+        this.kopruler.push({ x0, x1, y0: this.yerY(x0), y1: this.yerY(x1), can: 7, t: 0, kok: g < 0 ? 1 : -1 });
         return true;
       }
     }
@@ -656,7 +688,9 @@ export class Dunya {
   private gomEkle(tip: number): void {
     const r = this.rng;
     for (let deneme = 0; deneme < 12; deneme++) {
-      const x = Math.round(SIPER_ON + 46 + r() * (DUNYA_G - SIPER_ON - 150));
+      // İki cepheye eşit dağılır; siperin dibine ve doğum şeridine gömülmez
+      const uzak = 46 + r() * (SIPER_SOL - 150);
+      const x = Math.round(r() < 0.5 ? SIPER_SAG + uzak : SIPER_SOL - uzak);
       // Derinlik çeşitli: sığ olanı 1–2 bomba açar, derindeki emek ister
       const derin = tip === G_MAYIN ? 15 + r() * r() * 60 : 11 + r() * r() * 56;
       if (this.gomuler.some((g) => Math.abs(g.x - x) < 22 && Math.abs(g.y - (this.yerY(x) + derin)) < 18)) continue;
@@ -704,7 +738,7 @@ export class Dunya {
   /** Parmak hareketi: helikopterin hedefini kaydırır (parmağın altında kalmasın diye göreli). */
   surukle(dx: number, dy: number): void {
     const h = this.heli;
-    h.hx = sinirla(h.hx + dx, 16, HELI_SAG);
+    h.hx = sinirla(h.hx + dx, HELI_KENAR, DUNYA_G - HELI_KENAR);
     h.hy = sinirla(h.hy + dy, 36, this.zemin - 18);
   }
 
@@ -747,9 +781,10 @@ export class Dunya {
   }
 
   private krater(x: number, r: number, derin: number, sinir = 11): void {
-    const x0 = Math.max(SIPER_ON + 6, Math.floor(x - r));
+    const x0 = Math.max(0, Math.floor(x - r));
     const x1 = Math.min(DUNYA_G, Math.ceil(x + r));
     for (let xi = x0; xi <= x1; xi++) {
+      if (onMesafe(xi) < 6) continue; // siperin altı oyulmaz
       const d = (xi - x) / r;
       const k = 1 - d * d;
       if (k <= 0) continue;
@@ -770,10 +805,11 @@ export class Dunya {
 
   /** Ceset ve hurda zemine karışır: araziyi yükseltir (leş yığını). */
   private yigin(x: number, r: number, yukseklik: number): void {
-    const x0 = Math.max(SIPER_ON + 10, Math.floor(x - r));
+    const x0 = Math.max(1, Math.floor(x - r));
     const x1 = Math.min(DUNYA_G, Math.ceil(x + r));
     if (x1 <= x0) return;
     for (let xi = x0; xi <= x1; xi++) {
+      if (onMesafe(xi) < 10) continue; // siperin içine yığılmaz
       const d = (xi - x) / r;
       const k = 1 - d * d;
       if (k <= 0) continue;
@@ -784,7 +820,7 @@ export class Dunya {
     let once = this.yer[x0 - 1];
     for (let xi = x0; xi < x1; xi++) {
       const simdi = this.yer[xi];
-      this.yer[xi] = (once + 2 * simdi + this.yer[xi + 1]) / 4;
+      if (onMesafe(xi) >= 10) this.yer[xi] = (once + 2 * simdi + this.yer[xi + 1]) / 4;
       once = simdi;
     }
   }
@@ -812,7 +848,7 @@ export class Dunya {
 
     for (let i = this.askerler.length - 1; i >= 0; i--) {
       const s = this.askerler[i];
-      if (!s || s.dost || s.x > GIRIS_X) continue;
+      if (!s || s.dost || !sahnede(s.x)) continue;
       const dx = s.x - x;
       const dy = s.y - 7 - y;
       const d = Math.hypot(dx, dy);
@@ -848,7 +884,7 @@ export class Dunya {
     if (!dost) {
       const h = this.heli;
       if (!h.olu && Math.hypot(h.x - x, h.y - y) < r + 13) this.heliHasar(guc * 4);
-      if (x < SIPER_ON + 16 && y > this.zemin - 44) this.siperHasar(guc * 2);
+      if (onMesafe(x) < 16 && y > this.zemin - 44) this.siperHasar(guc * 2);
     }
     this.binaHasar(x, y, r);
     for (let i = this.kopruler.length - 1; i >= 0; i--) {
@@ -886,7 +922,7 @@ export class Dunya {
       this.siperCan = 0;
       this.bitisNeden = this.bitisNeden || 'siper';
       this.bitisSayac = 1.6;
-      for (let k = 0; k < 4; k++) this.patlat(SIPER_X - 30 + k * 22, this.zemin - 8, 24, true, 0);
+      for (let k = 0; k < 5; k++) this.patlat(SIPER_X - 48 + k * 24, this.zemin - 8, 24, true, 0);
       for (let i = this.askerler.length - 1; i >= 0; i--) {
         if (this.askerler[i].dost) this.oldur(i, (this.rng() - 0.5) * 200, -260, true);
       }
@@ -967,7 +1003,7 @@ export class Dunya {
           if (o.dost || o.durum === YANIYOR || Math.abs(o.x - s.x) > 60) continue;
           o.durum = PANIK;
           o.t = -0.8;
-          o.yon = 1;
+          o.yon = yanOf(o.x); // siperden uzağa kaçar
         }
         this.sozSayac = 0;
         this.bagir(s.x, s.y - 24, 'SUBAY VURULDU!', true);
@@ -982,7 +1018,7 @@ export class Dunya {
     const hiz = tip === T_MAKINELI ? 19 + r() * 7 : tip === T_NISANCI ? 22 + r() * 8 : tip === T_SUBAY ? 27 + r() * 6 : 25 + r() * 14;
     const s: Asker = {
       x, y: this.yerY(x), tip, dost: false, durum: KOS, t: 0, faz: r() * 6, sayac: 0.6 + r() * 1.2,
-      hiz, menzil: tip === T_NISANCI ? 215 + r() * 70 : 30 + r() * 70, nisanAci: Math.PI, hedef: 0, yon: -1,
+      hiz, menzil: tip === T_NISANCI ? 215 + r() * 70 : 30 + r() * 70, nisanAci: x > SIPER_X ? Math.PI : 0, hedef: 0, yon: x > SIPER_X ? -1 : 1,
       kilik: (r() * 4096) | 0, yukseklik: 0, seri: 0, rol: 0, atis: 0, engelli: false,
     };
     this.askerler.push(s);
@@ -1006,17 +1042,19 @@ export class Dunya {
     this.digerAdim(dt);
 
     const h = this.heli;
-    // Kamera: helikopter ekranın ortasındaki bir kuşakta serbestçe gezer (parmağa
-    // bire bir karşılık görünür); kuşağın dışına çıkınca kamera peşinden gelir.
-    // Yöne göre öne atlama YOK: sürüklerken helikopteri ekranda geri kaydırıyordu.
-    // Düşman hep sağdan geldiği için helikopter ekranın sol üçte birinde durur:
-    // önündeki top ve roket menzili ekranda kalır (playtest: ortadayken
-    // düşmanın %64'ü ekran dışında ölüyordu).
-    const fark = h.x - G * 0.3 - this.kam.x;
+    // Kamera: helikopter ekranda bir kuşakta serbestçe gezer (parmağa bire bir
+    // karşılık görünür); kuşağın dışına çıkınca kamera peşinden gelir.
+    // İki cephe: helikopter siperin sağındaysa ekranın sol %36'sında durur (sağdan
+    // gelen düşman görünsün), solundaysa sağ %36'sında. Geçiş helikopterin
+    // yönüne değil KONUMUNA bağlı ve yavaş (yöne göre öne atlama sürüklerken
+    // helikopteri ekranda geri kaydırıp "takılıyor" hissi veriyordu).
+    const hedefOran = 0.5 - 0.14 * sinirla((h.x - SIPER_X) / 70, -1, 1);
+    this.kam.oran += sinirla(hedefOran - this.kam.oran, -0.09 * dt, 0.09 * dt);
+    const fark = h.x - G * this.kam.oran - this.kam.x;
     const BOSLUK = 16;
     if (fark > BOSLUK) this.kam.x += (fark - BOSLUK) * Math.min(1, dt * 5);
     else if (fark < -BOSLUK) this.kam.x += (fark + BOSLUK) * Math.min(1, dt * 5);
-    this.kam.x = sinirla(this.kam.x, 0, KAM_SAG);
+    this.kam.x = sinirla(this.kam.x, KAM_SOL, KAM_SAG);
 
     if (this.oyunda && !this.bitti) {
       const g = this.guc;
@@ -1070,10 +1108,10 @@ export class Dunya {
       if (this.dogumSayac <= 0) {
         // Piyade manga hâlinde gelir (art arda en çok 5)
         const ilk = this.kuyruk.shift()!;
-        this.dogur(ilk, 0);
+        this.dogur(ilk.tip, 0, ilk.yan);
         let adet = 1;
-        if (piyadeMi(ilk)) {
-          while (adet < 5 && this.kuyruk.length && piyadeMi(this.kuyruk[0])) this.dogur(this.kuyruk.shift()!, adet++);
+        if (piyadeMi(ilk.tip)) {
+          while (adet < 5 && this.kuyruk.length && piyadeMi(this.kuyruk[0].tip) && this.kuyruk[0].yan === ilk.yan) this.dogur(this.kuyruk.shift()!.tip, adet++, ilk.yan);
         }
         this.dogumSayac = this.dogumAra * adet * (0.6 + this.rng() * 0.8);
       }
@@ -1085,7 +1123,7 @@ export class Dunya {
       if (this.heli.can < 80 || this.siperCan < 80) {
         this.havalar.push({
           tip: T_NAKLIYE, x: -70, y: 52, vx: 135, vy: 0, can: 99, dusuyor: false, t: 0, yon: 1, aci: 0, sayac: 0, seri: 0,
-          birakX: sinirla(this.heli.x - 30, SIPER_ON + 30, DUNYA_G - 140), yuk: 1,
+          birakX: sinirla(this.heli.x - 30, 120, DUNYA_G - 140), yuk: 1,
         });
       }
     }
@@ -1123,40 +1161,59 @@ export class Dunya {
       const j = liste.indexOf(T_TUFEK, k);
       if (j > k) [liste[k], liste[j]] = [liste[j], liste[k]];
     }
-    this.kuyruk = liste;
+    // Cephe: 1. dalga sağdan, 2. dalga soldan (oyuncu iki yanı da öğrensin);
+    // sonrakiler iki yandan birden, 4–8'lik öbekler hâlinde yan değiştirerek.
+    let yan: 1 | -1 = n === 2 ? -1 : n === 1 ? 1 : this.rng() < 0.5 ? 1 : -1;
+    let kalan = 0;
+    this.kuyruk = liste.map((tip) => {
+      if (n >= 3 && kalan-- <= 0) {
+        yan = -yan as 1 | -1;
+        kalan = 3 + ((this.rng() * 5) | 0);
+      }
+      return { tip, yan };
+    });
     this.dogumAra = sinirla(20 / liste.length, 0.32, 1.2);
     this.dogumSayac = 0.4;
-    if (this.gomuler.length < 13) {
+    if (this.gomuler.length < 22) {
       this.gomEkle(G_MAYIN);
       if (n % 2 === 0) this.gomEkle(G_SANDIK);
     }
-    this.olaylar.push({ tip: 'dalga', no: n });
+    this.olaylar.push({ tip: 'dalga', no: n, yan: n === 1 ? 1 : n === 2 ? -1 : 0 });
   }
 
-  private dogur(tip: number, sira: number): void {
+  /** `yan`: +1 sağ kenardan, −1 sol kenardan girer. */
+  private dogur(tip: number, sira: number, yan: 1 | -1): void {
     const r = this.rng;
+    // Kenardan içeri doğru ölçülen x
+    const kenar = (ic: number): number => (yan > 0 ? DUNYA_G - ic : ic);
+    const on = yan > 0 ? SIPER_SAG : SIPER_SOL;
     if (piyadeMi(tip)) {
-      this.askerEkle(tip, DUNYA_G - 36 + sira * 8 + r() * 4);
+      this.askerEkle(tip, kenar(36 - sira * 8 - r() * 4));
     } else if (tip === T_KAMYON || tip === T_TANK || tip === T_UCAKSAVAR) {
       const can = tip === T_TANK ? 12 : tip === T_UCAKSAVAR ? 7 : 5;
-      const dur = tip === T_TANK ? SIPER_ON + 80 + r() * 60 : tip === T_UCAKSAVAR ? SIPER_ON + 140 + r() * 100 : SIPER_ON + 130 + r() * 100;
-      this.araclar.push({ tip, x: DUNYA_G + 4, y: this.yerY(DUNYA_G), can, enCan: can, dur, sayac: 2 + r() * 2, nisanT: 0, namlu: 0.2, yuk: tip === T_KAMYON ? 5 : 0, t: 0, sars: 0, engelli: false });
+      const uzak = tip === T_TANK ? 80 + r() * 60 : tip === T_UCAKSAVAR ? 140 + r() * 100 : 130 + r() * 100;
+      this.araclar.push({
+        tip, x: kenar(-4), y: this.yerY(kenar(0)), can, enCan: can, dur: on + yan * uzak, sayac: 2 + r() * 2, nisanT: 0, namlu: 0.2,
+        yuk: tip === T_KAMYON ? 5 : 0, t: 0, sars: 0, engelli: false,
+      });
     } else if (tip === T_HELI) {
       this.havalar.push({
-        tip, x: DUNYA_G + 10, y: 90 + r() * 80, vx: -60, vy: 0, can: 9, dusuyor: false, t: r() * 6, yon: -1, aci: 0,
+        tip, x: kenar(-10), y: 90 + r() * 80, vx: -60 * yan, vy: 0, can: 9, dusuyor: false, t: r() * 6, yon: -yan as 1 | -1, aci: 0,
         sayac: 2, seri: 0, birakX: 0, yuk: 0,
       });
     } else if (tip === T_JET) {
       const y = 58 + r() * 50;
-      const hedef = r() < 0.5 ? SIPER_X + 30 : this.heli.x;
-      const vx = -280;
+      const hedef = r() < 0.5 ? SIPER_X + (r() - 0.5) * 60 : this.heli.x;
+      const vx = -280 * yan;
       const dusme = Math.sqrt((2 * (this.zemin - y)) / 210);
       this.havalar.push({
-        tip, x: this.kam.x + G + 350, y, vx, vy: 0, can: 4, dusuyor: false, t: 0, yon: -1, aci: 0, sayac: 0, seri: 0,
-        birakX: hedef + Math.abs(vx) * 0.4 * dusme, yuk: 3,
+        tip, x: yan > 0 ? this.kam.x + G + 350 : this.kam.x - 350, y, vx, vy: 0, can: 4, dusuyor: false, t: 0, yon: -yan as 1 | -1, aci: 0, sayac: 0, seri: 0,
+        // Bomba hedefe varmadan bırakılır (uçuş yönünün tersinde)
+        birakX: hedef + yan * 280 * 0.4 * dusme, yuk: 3,
       });
       this.jetUyari = 1.3;
       this.jetUyariY = y;
+      this.jetUyariYan = yan;
       this.olaylar.push({ tip: 'jet' });
     }
   }
@@ -1188,7 +1245,7 @@ export class Dunya {
     }
     if (!this.oyunda) {
       // Başlık ekranı: yerinde süzülür
-      h.hx = 170 + Math.sin(this.zaman * 0.5) * 18;
+      h.hx = SIPER_X + 40 + Math.sin(this.zaman * 0.5) * 18;
       h.hy = this.zemin - 110 + Math.sin(this.zaman * 0.9) * 8;
     }
     const yay = this.guc.hiz > 0 ? 50 : 34;
@@ -1223,17 +1280,17 @@ export class Dunya {
     let evx = 0;
     let enP = 1e9;
     for (const s of this.askerler) {
-      if (s.dost || s.x > GIRIS_X) continue;
+      if (s.dost || !sahnede(s.x)) continue;
       const d = Math.hypot(s.x - mx, s.y - 7 - my);
       if (d < 118 && d < enP) {
         enP = d;
         ex = s.x;
         ey = s.y - 7;
-        evx = s.durum === KOS ? -s.hiz : 0;
+        evx = s.durum === KOS && !s.engelli ? -yanOf(s.x) * s.hiz : 0;
       }
     }
     for (const a of this.araclar) {
-      if (a.x > GIRIS_X) continue;
+      if (!sahnede(a.x)) continue;
       const d = Math.hypot(a.x - mx, a.y - 9 - my);
       const p = d + (a.tip === T_TANK ? 240 : 50);
       if (d < 118 && p < enP) {
@@ -1281,11 +1338,13 @@ export class Dunya {
       let hx = 0;
       let hy = 0;
       let enR = 1e9;
+      // Roket menzili ekranda kalır (iki cephede kamera daha ortada)
+      const RM = 150;
       for (const a of this.araclar) {
-        if (a.x > GIRIS_X) continue;
+        if (!sahnede(a.x)) continue;
         const d = Math.hypot(a.x - h.x, a.y - 9 - h.y);
         const p = d + (a.tip === T_TANK ? 0 : a.tip === T_UCAKSAVAR ? 20 : 90);
-        if (d < 172 && p < enR) {
+        if (d < RM && p < enR) {
           enR = p;
           hedef = a;
           hx = a.x;
@@ -1296,7 +1355,7 @@ export class Dunya {
         if (o.tip === T_NAKLIYE || o.dusuyor) continue;
         const d = Math.hypot(o.x - h.x, o.y - h.y);
         const p = d + 30;
-        if (d < 172 && p < enR) {
+        if (d < RM && p < enR) {
           enR = p;
           hedef = o;
           hx = o.x + o.vx * 0.5;
@@ -1310,7 +1369,7 @@ export class Dunya {
           const bx = b.x + (b.sutun * HUCRE) / 2;
           const by = this.yerY(bx) - b.satir * HUCRE * 0.45;
           const d = Math.hypot(bx - h.x, by - h.y);
-          if (d < 172 && d + 60 < enR) {
+          if (d < RM && d + 60 < enR) {
             enR = d + 60;
             hx = bx;
             hy = by;
@@ -1318,9 +1377,9 @@ export class Dunya {
         }
         // Kalabalık piyade
         for (const s of this.askerler) {
-          if (s.dost || s.x > GIRIS_X) continue;
+          if (s.dost || !sahnede(s.x)) continue;
           const d = Math.hypot(s.x - h.x, s.y - h.y);
-          if (d > 160 || d > enR) continue;
+          if (d > RM - 8 || d > enR) continue;
           let komsu = 0;
           for (const o of this.askerler) if (!o.dost && Math.abs(o.x - s.x) < 22) komsu++;
           if (komsu >= 3) {
@@ -1347,7 +1406,7 @@ export class Dunya {
   private askerAdim(dt: number): void {
     const r = this.rng;
     const h = this.heli;
-    this.askerBekliyor = false;
+    this.askerBekliyor = [false, false];
     for (let i = this.askerler.length - 1; i >= 0; i--) {
       const s = this.askerler[i];
       if (!s) continue; // siper düşünce dizi kısalmış olabilir
@@ -1365,7 +1424,8 @@ export class Dunya {
         for (let k = 0; k < this.askerler.length; k++) {
           const o = this.askerler[k];
           if (o.dost) continue;
-          const d = o.x - s.x;
+          // Duvardakiler kendi cephesine, kuledeki nöbetçi iki yana da bakar
+          const d = s.rol === 2 ? Math.abs(o.x - s.x) : (o.x - s.x) * s.yon;
           if (d > 0 && d < enD) {
             enD = d;
             en = k;
@@ -1378,6 +1438,7 @@ export class Dunya {
         }
         const o = this.askerler[en];
         const oy = s.y - 10 - s.yukseklik;
+        s.yon = o.x > s.x ? 1 : -1;
         s.nisanAci = Math.atan2(o.y - 8 - oy, o.x - s.x);
         let isabet: number;
         if (s.rol === 1) {
@@ -1391,10 +1452,10 @@ export class Dunya {
           isabet = s.rol === 2 ? 0.3 : 0.24;
         }
         s.atis = 0.07;
-        this.izler.push({ x0: s.x + 8, y0: oy, x1: o.x + (r() - 0.5) * 8, y1: o.y - 4 - r() * 8, t: 0 });
+        this.izler.push({ x0: s.x + s.yon * 8, y0: oy, x1: o.x + (r() - 0.5) * 8, y1: o.y - 4 - r() * 8, t: 0 });
         this.olaylar.push({ tip: 'tufek' });
         if (r() < isabet) {
-          this.oldur(en, 50 + r() * 40, -30, false);
+          this.oldur(en, s.yon * (50 + r() * 40), -30, false);
           if (en < i) i--;
         }
         continue;
@@ -1403,21 +1464,24 @@ export class Dunya {
       const dxh = h.x - s.x;
       const dyh = h.y - (s.y - 10);
       const dh = Math.hypot(dxh, dyh);
-      const mesafe = s.x - SIPER_ON;
+      const yan = yanOf(s.x);
+      const gid = -yan as 1 | -1; // sipere doğru yürüyüş yönü
+      const mesafe = onMesafe(s.x);
       const siperde = mesafe < s.menzil + 30;
 
       if (s.durum === KOS) {
         // Derin çukurun ya da dik duvarın başında durur, köprü bekler
         // (kılığa göre kenardan 0–28 birim geride: hepsi aynı noktaya yığılmasın)
-        const engelli = mesafe > s.menzil && this.engel(s.x - (s.kilik % 8) * 4);
+        const geri = (s.kilik % 8) * 4;
+        const engelli = mesafe > s.menzil && this.engel(s.x + gid * geri, gid);
         if (engelli && !s.engelli && r() < 0.25) this.sozler.push({ metin: 'GEÇİT YOK!', x: s.x, y: s.y - 26, t: 0, vurgu: false });
         s.engelli = engelli;
-        if (engelli && this.yolY(s.x - (s.kilik % 8) * 4 - 16) > s.y) this.askerBekliyor = true;
+        if (engelli && this.yolY(s.x + gid * (geri + 16)) > s.y) this.askerBekliyor[yan > 0 ? 1 : 0] = true;
         else {
-          s.x -= s.hiz * dt;
+          s.x += gid * s.hiz * dt;
           s.faz += dt * s.hiz * 0.42;
         }
-        s.yon = -1;
+        s.yon = gid;
         if (s.tip === T_ROKET && !h.olu && dh < 150 && dyh < -24 && s.sayac <= 0) {
           s.durum = NISAN;
           s.t = 0;
@@ -1439,7 +1503,7 @@ export class Dunya {
       } else if (s.durum === NISAN) {
         if (s.tip === T_ROKET) {
           const heliye = s.hedef === 1;
-          const tx = heliye ? h.x + h.vx * 0.5 : SIPER_X + 20;
+          const tx = heliye ? h.x + h.vx * 0.5 : SIPER_X + yan * 30;
           const ty = heliye ? h.y + h.vy * 0.3 : this.zemin - 10;
           s.nisanAci = Math.atan2(ty - (s.y - 9), tx - s.x);
           s.yon = tx > s.x ? 1 : -1;
@@ -1494,11 +1558,11 @@ export class Dunya {
               s.seri = 4;
               s.yon = dxh > 0 ? 1 : -1;
             } else if (siperde) {
-              s.yon = -1;
+              s.yon = gid;
               s.sayac = 1.1 + r() * 0.6;
               const ty = this.zemin - 4 - r() * 14;
-              s.nisanAci = Math.atan2(ty - (s.y - 8), SIPER_X + 20 - s.x);
-              for (let k = 0; k < 3; k++) this.izler.push({ x0: s.x - 7, y0: s.y - 8, x1: SIPER_X + 40 - r() * 60, y1: ty + (r() - 0.5) * 8, t: -k * 0.02 });
+              s.nisanAci = Math.atan2(ty - (s.y - 8), SIPER_X + yan * 20 - s.x);
+              for (let k = 0; k < 3; k++) this.izler.push({ x0: s.x + gid * 7, y0: s.y - 8, x1: SIPER_X + yan * (40 - r() * 60), y1: ty + (r() - 0.5) * 8, t: -k * 0.02 });
               this.siperHasar(1.3);
               this.olaylar.push({ tip: 'tufek' });
               s.atis = 0.1;
@@ -1518,11 +1582,11 @@ export class Dunya {
             s.atis = 0.07;
             if (!siperde && r() < 0.5) s.durum = KOS;
           } else if (siperde) {
-            s.yon = -1;
-            const tx = SIPER_X + 34 - r() * 60;
+            s.yon = gid;
+            const tx = SIPER_X + yan * (34 - r() * 60);
             const ty = this.zemin - 4 - r() * 14;
             s.nisanAci = Math.atan2(ty - (s.y - 10), tx - s.x);
-            this.izler.push({ x0: s.x - 5, y0: s.y - 10, x1: tx, y1: ty, t: 0 });
+            this.izler.push({ x0: s.x + gid * 5, y0: s.y - 10, x1: tx, y1: ty, t: 0 });
             this.parca(P_TOZ, tx, ty, 0, -6, 0.4, 2);
             this.siperHasar(subay ? 0.4 : 0.7);
             this.olaylar.push({ tip: 'tufek' });
@@ -1551,7 +1615,8 @@ export class Dunya {
           continue;
         }
       }
-      s.x = sinirla(s.x, SIPER_ON + 4, DUNYA_G + 6);
+      // Siperi geçemez: geldiği yanda kalır
+      s.x = yan > 0 ? sinirla(s.x, SIPER_SAG + 4, DUNYA_G + 6) : sinirla(s.x, -6, SIPER_SOL - 4);
     }
   }
 
@@ -1561,20 +1626,22 @@ export class Dunya {
     const r = this.rng;
     const h = this.heli;
     // Çukur başında bekleyen asker de köprücüyü çağırır (duvar dibinde sıkışan çağırmaz)
-    let engelliVar = this.askerBekliyor;
+    const engelliVar = [this.askerBekliyor[0], this.askerBekliyor[1]];
     for (let i = this.araclar.length - 1; i >= 0; i--) {
       const a = this.araclar[i];
       a.t += dt;
       a.sayac -= dt;
       if (a.sars > 0) a.sars -= dt;
+      const yan = yanOf(a.x);
+      const gid = -yan as 1 | -1;
       // Gidecek yolu var mı, önü açık mı?
-      const isteyen = a.x > a.dur;
-      a.engelli = isteyen && this.engel(a.x);
+      const isteyen = (a.x - a.dur) * yan > 0;
+      a.engelli = isteyen && this.engel(a.x, gid);
       const gidiyor = isteyen && !a.engelli;
-      if (a.engelli && (a.tip !== T_KOPRUCU || a.yuk === 0)) engelliVar = true;
+      if (a.engelli && (a.tip !== T_KOPRUCU || a.yuk === 0)) engelliVar[yan > 0 ? 1 : 0] = true;
       if (gidiyor) {
-        a.x -= (a.tip === T_TANK ? 15 : a.tip === T_UCAKSAVAR ? 20 : a.tip === T_KOPRUCU ? 17 : 27) * dt;
-        if (r() < 0.12) this.parca(P_TOZ, a.x + 18, a.y - 1, 8, -4, 0.6, 2.5);
+        a.x += gid * (a.tip === T_TANK ? 15 : a.tip === T_UCAKSAVAR ? 20 : a.tip === T_KOPRUCU ? 17 : 27) * dt;
+        if (r() < 0.12) this.parca(P_TOZ, a.x + yan * 18, a.y - 1, yan * 8, -4, 0.6, 2.5);
       }
       a.y = this.yolY(a.x);
       if (a.can < a.enCan * 0.45 && r() < 0.25) this.parca(P_DUMAN, a.x + (r() - 0.5) * 12, a.y - 14, (r() - 0.5) * 8, -16, 1.2, 3.5);
@@ -1605,11 +1672,11 @@ export class Dunya {
         } else if (gorur && a.sayac <= 0 && r() < 0.6) {
           a.nisanT = 0.8;
           this.olaylar.push({ tip: 'uyari' });
-        } else if ((!isteyen || (a.engelli && a.x - SIPER_ON < 300)) && a.sayac <= 0) {
+        } else if ((!isteyen || (a.engelli && onMesafe(a.x) < 300)) && a.sayac <= 0) {
           // Sipere havan atışı (balistik); çukur başında bekleyen de menzildeyse atar
-          const tx = SIPER_X + 30 - r() * 70;
+          const tx = SIPER_X + yan * (30 - r() * 70);
           const ty = this.zemin - 4;
-          const ox = a.x - 22;
+          const ox = a.x + gid * 22;
           const oy = a.y - 22;
           const T = 1.5 + r() * 0.3;
           this.mermiler.push({ tip: M_HAVAN, x: ox, y: oy, vx: (tx - ox) / T, vy: (ty - oy) / T - 0.5 * 170 * T, omur: 4, yas: 0, hedef: null });
@@ -1635,7 +1702,7 @@ export class Dunya {
         if (!gidiyor && a.yuk > 0 && a.sayac <= 0) {
           a.sayac = 0.5;
           a.yuk--;
-          const s = this.askerEkle(T_TUFEK, a.x + 20 + r() * 4);
+          const s = this.askerEkle(T_TUFEK, a.x + yan * (20 + r() * 4));
           s.sayac = 1;
         }
       } else if (a.tip === T_KOPRUCU) {
@@ -1646,20 +1713,24 @@ export class Dunya {
             if (this.kopruKur(a)) {
               a.yuk = 0;
               a.dur = a.x;
-              this.kopruSayac = 16; // köprü açılırken bekleyenler yeni köprücü çağırmasın
+              this.kopruSayac[yan > 0 ? 1 : 0] = 16; // köprü açılırken bekleyenler yeni köprücü çağırmasın
               a.nisanT = 0;
-              this.sozler.push({ metin: 'KÖPRÜ KURULDU', x: a.x - 30, y: a.y - 34, t: 0, vurgu: true });
+              this.sozler.push({ metin: 'KÖPRÜ KURULDU', x: a.x + gid * 30, y: a.y - 34, t: 0, vurgu: true });
             } else a.nisanT = -5;
           }
         } else if (a.yuk > 0) a.nisanT = 0;
       }
     }
-    // Çukur başında bekleyen varsa köprücü gelir
-    this.kopruSayac -= dt;
-    if (engelliVar && this.kopruSayac <= 0 && this.oyunda && !this.bitisNeden && !this.araclar.some((a) => a.tip === T_KOPRUCU && a.yuk > 0)) {
-      this.kopruSayac = 16;
+    // Çukur başında bekleyen varsa o cepheye köprücü gelir
+    for (const yan of [-1, 1] as const) {
+      const k = yan > 0 ? 1 : 0;
+      this.kopruSayac[k] -= dt;
+      if (!engelliVar[k] || this.kopruSayac[k] > 0 || !this.oyunda || this.bitisNeden) continue;
+      if (this.araclar.some((a) => a.tip === T_KOPRUCU && a.yuk > 0 && yanOf(a.x) === yan)) continue;
+      this.kopruSayac[k] = 16;
+      const x = yan > 0 ? DUNYA_G + 4 : -4;
       this.araclar.push({
-        tip: T_KOPRUCU, x: DUNYA_G + 4, y: this.yerY(DUNYA_G), can: 9, enCan: 9, dur: SIPER_ON + 60, sayac: 9, nisanT: 0, namlu: 0, yuk: 1, t: 0,
+        tip: T_KOPRUCU, x, y: this.yerY(x), can: 9, enCan: 9, dur: SIPER_X + yan * (SIPER_YARI + 60), sayac: 9, nisanT: 0, namlu: 0, yuk: 1, t: 0,
         sars: 0, engelli: false,
       });
       this.olaylar.push({ tip: 'uyari' });
@@ -1682,7 +1753,7 @@ export class Dunya {
         o.aci += dt * (o.tip === T_HELI ? 9 : 1.6) * o.yon;
         if (r() < 0.8) this.parca(P_DUMAN, o.x, o.y, (r() - 0.5) * 20, -8, 1.5, 5);
         if (r() < 0.5) this.parca(P_ATES, o.x, o.y, (r() - 0.5) * 30, -10, 0.4, 4);
-        if (o.y >= this.yerY(o.x) - 5 || o.x < -80) {
+        if (o.y >= this.yerY(o.x) - 5 || o.x < -80 || o.x > DUNYA_G + 80) {
           this.patlat(o.x, this.yerY(o.x) - 4, 34, true, 4);
           this.sac(P_ENKAZ, o.x, o.y - 6, 10, 220, 5, 3, 190);
           this.enkazlar.push({ tip: o.tip, x: o.x, y: this.yerY(o.x), t: 0, aci: (r() - 0.5) * 0.6 });
@@ -1693,7 +1764,7 @@ export class Dunya {
       }
       if (o.tip === T_HELI) {
         const yan = o.x >= h.x ? 1 : -1;
-        const tx = sinirla(h.x + yan * 104, 170, DUNYA_G - 30);
+        const tx = sinirla(h.x + yan * 104, 30, DUNYA_G - 30);
         const ty = sinirla(h.y - 14 + Math.sin(o.t * 1.3) * 26, 50, this.zemin - 70);
         o.vx += ((tx - o.x) * 1.6 - o.vx * 1.8) * dt;
         o.vy += ((ty - o.y) * 2 - o.vy * 2) * dt;
@@ -1717,12 +1788,12 @@ export class Dunya {
         if (o.can < 4 && r() < 0.3) this.parca(P_DUMAN, o.x - o.yon * 10, o.y, 0, -10, 1.1, 3.5);
       } else if (o.tip === T_JET) {
         o.x += o.vx * dt;
-        if (o.yuk > 0 && o.x <= o.birakX && o.sayac <= 0) {
+        if (o.yuk > 0 && (o.x - o.birakX) * o.vx >= 0 && o.sayac <= 0) {
           o.yuk--;
           o.sayac = 0.13;
           this.mermiler.push({ tip: M_BOMBA, x: o.x, y: o.y + 6, vx: o.vx * 0.4, vy: 20, omur: 6, yas: 0, hedef: null });
         }
-        if (o.x < -70) this.havalar.splice(i, 1);
+        if (o.vx < 0 ? o.x < -70 : o.x > DUNYA_G + 70) this.havalar.splice(i, 1);
       } else {
         // Dost nakliye: sandık bırakır
         o.x += o.vx * dt;
@@ -1783,7 +1854,7 @@ export class Dunya {
         if (dostMermi) {
           for (let k = this.askerler.length - 1; k >= 0 && !bitti; k--) {
             const s = this.askerler[k];
-            if (s.dost || s.x > GIRIS_X) continue;
+            if (s.dost || !sahnede(s.x)) continue;
             if (Math.abs(m.x - s.x) < 3.6 && m.y > s.y - 15 && m.y < s.y + 1) {
               bitti = true;
               if (patlar) patla = true;
@@ -1829,7 +1900,7 @@ export class Dunya {
           else patla = true;
         }
       }
-      if (m.x < -90 || m.x > DUNYA_G + 400 || m.y < -200) bitti = true;
+      if (m.x < -400 || m.x > DUNYA_G + 400 || m.y < -200) bitti = true;
 
       if (patla) {
         if (m.tip === M_ROKET) this.patlat(m.x, m.y, 21, true, 4);

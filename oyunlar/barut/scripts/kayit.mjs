@@ -29,10 +29,11 @@ await page.evaluate(() => {
   window.__bot = () => {
     const d = L.dunya;
     const h = d.heli;
+    // İki cephe: sipere en yakın düşmanın siper tarafında, 50 birim geride durur
     let on = 1e9;
-    for (const s of d.askerler) if (!s.dost && s.x < on) on = s.x;
-    for (const a of d.araclar) if (a.x < on) on = a.x;
-    let tx = Math.max(170, Math.min(385, (on < 1e8 ? on : 300) - 50));
+    for (const s of d.askerler) if (!s.dost && Math.abs(s.x - 480) < Math.abs(on - 480)) on = s.x;
+    for (const a of d.araclar) if (Math.abs(a.x - 480) < Math.abs(on - 480)) on = a.x;
+    let tx = on < 1e8 ? Math.max(215, Math.min(745, on - Math.sign(on - 480) * 50)) : 480;
     let ty = d.zemin - 88 + Math.sin(d.zaman * 1.7) * 28;
     for (const f of d.flaklar) {
       if (Math.hypot(f.x - h.x, f.y - h.y) < 40) {
@@ -52,7 +53,7 @@ await page.evaluate(() => {
       tx = sandik.x;
       ty = sandik.y - 12;
     } else if (d.ara > 0 || on > 1e8) {
-      const g = d.gomuler.filter((k) => k.tip === 1 && k.x < 400).sort((a, b) => Math.abs(a.x - h.x) - Math.abs(b.x - h.x))[0];
+      const g = d.gomuler.filter((k) => k.tip === 1 && Math.abs(k.x - h.x) < 240).sort((a, b) => Math.abs(a.x - h.x) - Math.abs(b.x - h.x))[0];
       if (g) {
         tx = g.x;
         ty = d.zemin - 60;
@@ -64,8 +65,8 @@ await page.evaluate(() => {
       const dusme = Math.sqrt((2 * Math.max(10, d.yerY(h.x) - h.y)) / 280);
       const bx = h.x + h.vx * 0.55 * dusme;
       let yakin = 0;
-      for (const s of d.askerler) if (!s.dost && s.x < 538 && Math.abs(s.x - bx) < 14) yakin++;
-      for (const a of d.araclar) if (a.x < 538 && Math.abs(a.x - bx) < 16) yakin += 3;
+      for (const s of d.askerler) if (!s.dost && s.x > 62 && s.x < 898 && Math.abs(s.x - bx) < 14) yakin++;
+      for (const a of d.araclar) if (a.x > 62 && a.x < 898 && Math.abs(a.x - bx) < 16) yakin += 3;
       if (yakin >= 2) d.bombaBirak();
     }
     d.surukle((tx - h.hx) * 0.2, (ty - h.hy) * 0.2);

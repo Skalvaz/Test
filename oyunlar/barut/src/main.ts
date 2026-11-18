@@ -229,7 +229,7 @@ function olaylar(): void {
         ses.uyari();
         break;
       case 'dalga':
-        arayuz.duyuru = `DALGA ${o.no}`;
+        arayuz.duyuru = `DALGA ${o.no}` + (o.yan > 0 ? ' SAĞDAN' : o.yan < 0 ? ' SOLDAN' : o.no === 3 ? ' İKİ YANDAN' : '');
         arayuz.duyuruT = 0;
         ses.dalga();
         break;
@@ -262,8 +262,8 @@ function adimAt(dt: number): void {
     if (yatay || dikey) dunya.surukle(yatay * 230 * dt, dikey * 200 * dt);
     // Kenar itme: parmak ekranın kenarında bekliyorsa yolculuk sürer
     if (parmak.basili) {
-      if (parmak.x < KENAR) dunya.surukle(-190 * dt, 0);
-      else if (parmak.x > EK - KENAR) dunya.surukle(190 * dt, 0);
+      if (parmak.x < KENAR) dunya.surukle(-230 * dt, 0);
+      else if (parmak.x > EK - KENAR) dunya.surukle(230 * dt, 0);
     }
   }
   dunya.adim(dt);

@@ -10,10 +10,11 @@ const ADIM = 1 / 60;
 /** scripts/kayit.mjs'teki pilotla aynı mantık. */
 function pilot(d: Dunya): void {
   const h = d.heli;
+  // İki cephe: sipere en yakın düşmanın siper tarafında, 50 birim geride durur
   let on = 1e9;
-  for (const s of d.askerler) if (!s.dost && s.x < on) on = s.x;
-  for (const a of d.araclar) if (a.x < on) on = a.x;
-  let tx = Math.max(170, Math.min(385, (on < 1e8 ? on : 300) - 50));
+  for (const s of d.askerler) if (!s.dost && Math.abs(s.x - 480) < Math.abs(on - 480)) on = s.x;
+  for (const a of d.araclar) if (Math.abs(a.x - 480) < Math.abs(on - 480)) on = a.x;
+  let tx = on < 1e8 ? Math.max(215, Math.min(745, on - Math.sign(on - 480) * 50)) : 480;
   let ty = d.zemin - 88 + Math.sin(d.zaman * 1.7) * 28;
   for (const f of d.flaklar) {
     if (Math.hypot(f.x - h.x, f.y - h.y) < 40) {
@@ -31,8 +32,8 @@ function pilot(d: Dunya): void {
     const dusme = Math.sqrt((2 * Math.max(10, d.yerY(h.x) - h.y)) / 280);
     const bx = h.x + h.vx * 0.55 * dusme;
     let yakin = 0;
-    for (const s of d.askerler) if (!s.dost && s.x < 538 && Math.abs(s.x - bx) < 14) yakin++;
-    for (const a of d.araclar) if (a.x < 538 && Math.abs(a.x - bx) < 16) yakin += 3;
+    for (const s of d.askerler) if (!s.dost && s.x > 62 && s.x < 898 && Math.abs(s.x - bx) < 14) yakin++;
+    for (const a of d.araclar) if (a.x > 62 && a.x < 898 && Math.abs(a.x - bx) < 16) yakin += 3;
     if (yakin >= 2) d.bombaBirak();
   }
   d.surukle((tx - h.hx) * 0.2, (ty - h.hy) * 0.2);
@@ -112,7 +113,9 @@ describe('BARUT simülasyonu', () => {
   it('üstü kazılan mayın patlar ve üstündeki askerleri öldürür', () => {
     const d = new Dunya(566, 12);
     d.basla();
-    const m = d.gomuler.find((k) => k.tip === G_MAYIN)!;
+    d.binalar.length = 0; // bomba binaya çarpmasın
+    // En sığ mayın (derindekine dört bomba yetmez)
+    const m = d.gomuler.filter((k) => k.tip === G_MAYIN).sort((a, b) => a.y - d.yerY(a.x) - (b.y - d.yerY(b.x)))[0];
     const mayinSayisi = d.gomuler.filter((k) => k.tip === G_MAYIN).length;
     bombala(d, m.x, 4);
     expect(d.gomuler.includes(m)).toBe(false);
@@ -127,10 +130,10 @@ describe('BARUT simülasyonu', () => {
     d.ara = 99; // dalga gelmesin
     d.binalar.length = 0; // roketler binayı yıkıp içindekileri saçmasın
     // Bir asker koy, öldür, cesedin durmasını bekle
-    const yer0 = d.yerY(300);
-    d.askerler.push({ x: 300, y: yer0, tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 9, hiz: 0, menzil: 0, nisanAci: 0, hedef: 0, yon: -1, kilik: 0, yukseklik: 0, seri: 0, rol: 0, atis: 0, engelli: false });
-    d.patlat(300, yer0 - 30, 4, true, 0); // öldürmeyecek kadar uzak; cesedi mermiyle yapalım
-    d.mermiler.push({ tip: 0, x: 296, y: yer0 - 8, vx: 300, vy: 0, omur: 1, yas: 0, hedef: null });
+    const yer0 = d.yerY(700);
+    d.askerler.push({ x: 700, y: yer0, tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 9, hiz: 0, menzil: 0, nisanAci: 0, hedef: 0, yon: -1, kilik: 0, yukseklik: 0, seri: 0, rol: 0, atis: 0, engelli: false });
+    d.patlat(700, yer0 - 30, 4, true, 0); // öldürmeyecek kadar uzak; cesedi mermiyle yapalım
+    d.mermiler.push({ tip: 0, x: 696, y: yer0 - 8, vx: 300, vy: 0, omur: 1, yas: 0, hedef: null });
     for (let i = 0; i < 4 / ADIM; i++) d.adim(ADIM);
     expect(d.bezler.length).toBe(1);
     const b = d.bezler[0];
@@ -155,26 +158,26 @@ describe('BARUT simülasyonu', () => {
     d.basla();
     d.ara = 999;
     d.binalar.length = 0;
-    d.heli.x = d.heli.hx = 100; // uzakta dursun, ateş etmesin
-    // 400 civarına derin bir çukur aç
-    for (let k = 0; k < 4; k++) d.patlat(400, d.yerY(400) - 1, 25, true, 0, true);
-    expect(d.yerY(400)).toBeGreaterThan(d.zemin + 30);
-    d.araclar.push({ tip: 3, x: 470, y: d.yerY(470), can: 12, enCan: 12, dur: 200, sayac: 99, nisanT: 0, namlu: 0.2, yuk: 0, t: 0, sars: 0, engelli: false });
+    d.heli.x = d.heli.hx = 480; // uzakta dursun, ateş etmesin
+    // Sağ cephede 720 civarına derin bir çukur aç
+    for (let k = 0; k < 4; k++) d.patlat(720, d.yerY(720) - 1, 25, true, 0, true);
+    expect(d.yerY(720)).toBeGreaterThan(d.zemin + 30);
+    d.araclar.push({ tip: 3, x: 790, y: d.yerY(790), can: 12, enCan: 12, dur: 600, sayac: 99, nisanT: 0, namlu: 0.2, yuk: 0, t: 0, sars: 0, engelli: false });
     const tank = d.araclar[0];
     for (let i = 0; i < 8 / ADIM; i++) {
       d.heli.can = 100;
       d.adim(ADIM);
     }
     expect(tank.engelli).toBe(true);
-    expect(tank.x).toBeGreaterThan(410);
+    expect(tank.x).toBeGreaterThan(730);
     // Köprücü gelir, köprü kurar, tank geçer
-    for (let i = 0; i < 40 / ADIM && tank.x > 380; i++) {
+    for (let i = 0; i < 40 / ADIM && tank.x > 700; i++) {
       d.heli.can = 100;
       d.siperCan = 100;
       d.adim(ADIM);
     }
     expect(d.kopruler.length).toBe(1);
-    expect(tank.x).toBeLessThanOrEqual(380);
+    expect(tank.x).toBeLessThanOrEqual(700);
     // Tank köprünün üstündeyken köprüyü vur
     const k = d.kopruler[0];
     tank.x = (k.x0 + k.x1) / 2;
@@ -185,31 +188,57 @@ describe('BARUT simülasyonu', () => {
     expect(d.araclar.includes(tank)).toBe(false);
   });
 
-  it('derin çukur askeri de durdurur; köprü kurulunca geçer', () => {
+  it('derin çukur askeri de durdurur; köprü kurulunca geçer (sol cephe, sağa yürüyüş)', () => {
     const d = new Dunya(566, 23);
     d.basla();
     d.ara = 999;
     d.binalar.length = 0;
-    d.heli.x = d.heli.hx = 100;
-    for (let k = 0; k < 4; k++) d.patlat(400, d.yerY(400) - 1, 25, true, 0, true);
-    d.askerler.push({ x: 470, y: d.yerY(470), tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 99, hiz: 30, menzil: 40, nisanAci: 0, hedef: 0, yon: -1, kilik: 0, yukseklik: 0, seri: 0, rol: 0, atis: 0, engelli: false });
+    d.heli.x = d.heli.hx = 480;
+    for (let k = 0; k < 4; k++) d.patlat(240, d.yerY(240) - 1, 25, true, 0, true);
+    d.askerler.push({ x: 170, y: d.yerY(170), tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 99, hiz: 30, menzil: 40, nisanAci: 0, hedef: 0, yon: 1, kilik: 0, yukseklik: 0, seri: 0, rol: 0, atis: 0, engelli: false });
     const s = d.askerler[d.askerler.length - 1];
     for (let i = 0; i < 8 / ADIM; i++) {
       d.heli.can = 100;
       d.adim(ADIM);
     }
     expect(s.engelli).toBe(true);
-    expect(s.x).toBeGreaterThan(410);
+    expect(s.x).toBeLessThan(230);
     expect(d.yerY(s.x)).toBeLessThan(d.zemin + 20); // çukura inmedi
     // Yalnız asker bekliyor olsa da köprücü gelir; köprüden sonra asker geçer
-    for (let i = 0; i < 45 / ADIM && s.x > 380; i++) {
+    for (let i = 0; i < 45 / ADIM && s.x < 262; i++) {
       d.heli.can = 100;
       d.siperCan = 100;
       s.sayac = 99; // ateş etmek için durmasın
       d.adim(ADIM);
     }
     expect(d.kopruler.length).toBe(1);
-    expect(s.x).toBeLessThanOrEqual(380);
+    expect(s.x).toBeGreaterThanOrEqual(262);
+  });
+
+  it('iki cephe: 1. dalga sağdan, 2. dalga soldan gelir; siperi kimse geçemez', () => {
+    const d = new Dunya(566, 31);
+    d.basla();
+    const yanlar = new Map<number, Set<number>>();
+    for (let i = 0; i < 75 / ADIM && d.dalga < 3; i++) {
+      d.heli.can = 100;
+      d.siperCan = 100;
+      d.adim(ADIM);
+      d.olaylar.length = 0;
+      for (const s of d.askerler) {
+        if (s.dost) continue;
+        if (!yanlar.has(d.dalga)) yanlar.set(d.dalga, new Set());
+        yanlar.get(d.dalga)!.add(s.x > 480 ? 1 : -1);
+        // Siperin içine giren olmaz
+        expect(Math.abs(s.x - 480)).toBeGreaterThan(60);
+      }
+      // Dalgayı çabuk bitir: düşmanları sil
+      if (d.askerler.some((s) => !s.dost) && i % 600 === 599) {
+        d.askerler = d.askerler.filter((s) => s.dost);
+        d.araclar.length = 0;
+      }
+    }
+    expect([...yanlar.get(1)!]).toEqual([1]);
+    expect(yanlar.get(2)!.has(-1)).toBe(true);
   });
 
   it('bina patlamayla çöker, içindekiler ölür', () => {
@@ -243,11 +272,13 @@ describe('BARUT simülasyonu', () => {
   it('patlama zemini oyar ama siperin altını oymaz', () => {
     const d = new Dunya(566, 9);
     d.basla();
-    const once = d.yerY(400);
-    const siper = d.yerY(100);
-    d.patlat(400, once - 2, 24, true, 3);
-    d.patlat(100, siper - 2, 24, true, 3);
-    expect(d.yerY(400)).toBeGreaterThan(once);
-    expect(d.yerY(100)).toBe(siper);
+    const once = d.yerY(700);
+    const siper = d.yerY(480);
+    d.patlat(700, once - 2, 24, true, 3);
+    d.patlat(480, siper - 2, 24, true, 3);
+    d.patlat(430, siper - 2, 24, true, 3);
+    expect(d.yerY(700)).toBeGreaterThan(once);
+    expect(d.yerY(480)).toBe(siper);
+    expect(d.yerY(430)).toBe(siper);
   });
 });

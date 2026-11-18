@@ -6,7 +6,7 @@
 import {
   BAGLAR, B_MOLOZ, B_PENCERE, DUNYA_G, Dunya, G, G_MAYIN, HUCRE, KOS, P_TUGLA, T_KOPRUCU, M_BOMBA, M_DKURSUN, M_DRPG, M_HAVAN, M_KURSUN, M_OBOMBA, M_ROKET, M_TOP,
   M_NISANCI, O_CIFT, O_HIZ, O_TAMIR, PANIK, T_MAKINELI, T_NISANCI, T_SUBAY, P_ATES, P_DUMAN, P_ENKAZ, P_KAN, P_KASK, P_KIVILCIM, P_KOVAN, P_KULE, P_TOPRAK,
-  P_TOZ, SIPER_ON, SIPER_X, T_HELI, T_JET, T_KAMYON, T_ROKET, T_TANK, T_TUFEK, T_UCAKSAVAR, YANIYOR,
+  P_TOZ, SIPER_X, SIPER_YARI, onMesafe, yanOf, T_HELI, T_JET, T_KAMYON, T_ROKET, T_TANK, T_TUFEK, T_UCAKSAVAR, YANIYOR,
   type Asker,
 } from './dunya';
 import {
@@ -72,7 +72,10 @@ const LOGO = [
 /** Süs tiplerinin yarı genişliği (dünya birimi): ayak izi denetimi için. */
 const SUS_YARI = [6, 3, 13, 2, 8, 2, 7, 13];
 const SUSLER: [number, number][] = [
-  [160, 0], [178, 4], [204, 3], [220, 1], [312, 2], [333, 5], [400, 6], [416, 1], [436, 3], [522, 7], [548, 0], [572, 2], [590, 1],
+  // Sol cephe
+  [70, 7], [104, 0], [126, 1], [216, 3], [240, 2], [262, 5], [352, 6], [366, 4],
+  // Sağ cephe
+  [592, 4], [604, 3], [678, 1], [710, 2], [736, 5], [748, 6], [842, 7], [868, 0], [886, 1],
 ];
 
 export class Sahne {
@@ -333,13 +336,14 @@ export class Sahne {
           t.cizgi(kx + Math.sin(ka) * 6, ky - Math.cos(ka) * 6, kx - Math.sin(ka) * 6, ky + Math.cos(ka) * 6, 128);
         }
       } else if (o.tip === T_JET) {
-        t.cizDon(SPR_JET, x, y, o.dusuyor ? o.aci * 0.5 : 0, true, JET_N.ox, JET_N.oy);
+        const sola = o.vx < 0;
+        t.cizDon(SPR_JET, x, y, o.dusuyor ? o.aci * 0.5 : 0, sola, JET_N.ox, JET_N.oy);
         if (!o.dusuyor) {
           // Art yakıcı: lülenin arkasında titreyen alev
           const uz = 9 + (Math.floor(d.zaman * 30) % 3) * 4;
           for (let k = 0; k < uz; k++) {
             const gen = Math.max(0, 2 - Math.floor(k / 4));
-            for (let m = -gen; m <= gen; m++) t.vurgu(x + JET_N.ox - JET_N.lule[0] + k, y + m, k < 4 ? AKKOR : ATES);
+            for (let m = -gen; m <= gen; m++) t.vurgu(x + (sola ? 1 : -1) * (JET_N.ox - JET_N.lule[0] + k), y + m, k < 4 ? AKKOR : ATES);
           }
         }
       } else {
@@ -391,7 +395,7 @@ export class Sahne {
             t.v[i] = KURU_KAN;
           } else t.g[i] = 0;
         } else if (dd < 2 + lesK + yanik) t.g[i] = kes(px, dd) < 0.7 ? 0 : 42;
-        else if (dd < 6 && lesK === 0 && yanik === 0 && wi > SIPER_ON) t.g[i] = dd === 5 ? (kes(px, 1) < 0.55 ? 150 : 64) : 42; // asfalt ve altındaki çakıl
+        else if (dd < 6 && lesK === 0 && yanik === 0 && onMesafe(wi) > 0) t.g[i] = dd === 5 ? (kes(px, 1) < 0.55 ? 150 : 64) : 42; // asfalt ve altındaki çakıl
         else {
           const ty = y - ty0;
           t.g[i] = ty >= 0 && ty < TH ? this.toprak[ty * TW + tpx] : 85;
@@ -404,7 +408,7 @@ export class Sahne {
         for (let k = 0; k < derin; k++) t.v[(ys + k) * W + x] = kan > 100 && k < 3 ? KAN : KURU_KAN;
       }
       // Ot, çakıl
-      if (is < 40 && les < 30 && wi > SIPER_ON && ys > 6) {
+      if (is < 40 && les < 30 && onMesafe(wi) > 0 && ys > 6) {
         const h = kes(px, 7);
         if (h < 0.2) {
           const boy = 1 + Math.floor(kes(px, 8) * 5);
@@ -496,12 +500,13 @@ export class Sahne {
       const y = this.Y(e.y);
       // Zemine karışmadan önce yavaşça gömülür
       const bat = e.t > 11 ? Math.round((e.t - 11) * 3) : 0;
+      const sola = e.x > SIPER_X; // sağ cephedeki araç sola bakıyordu
       // Hurda sprite'ları yanmış, delinmiş, koyu gri (düz siyah siluet değil)
-      if (e.tip === T_TANK || e.tip === T_KOPRUCU) t.cizDon(SPR_H_TANK, x, y - 9 + bat, e.aci, true, TANK_N.ox, TANK_N.oy);
-      else if (e.tip === T_UCAKSAVAR) t.cizDon(SPR_H_UCAKSAVAR, x, y - 8 + bat, e.aci, true, UCAKSAVAR_N.ox, UCAKSAVAR_N.oy);
-      else if (e.tip === T_KAMYON) t.cizDon(SPR_H_KAMYON, x, y - 11 + bat, e.aci + 0.2, true, KAMYON_N.ox, KAMYON_N.oy);
-      else if (e.tip === T_HELI) t.cizDon(SPR_H_DHELI, x, y - 9 + bat, e.aci + 0.4, true, DHELI_N.ox, DHELI_N.oy);
-      else if (e.tip === T_JET) t.cizDon(SPR_H_JET, x, y - 6 + bat, e.aci + 0.5, true, JET_N.ox, JET_N.oy);
+      if (e.tip === T_TANK || e.tip === T_KOPRUCU) t.cizDon(SPR_H_TANK, x, y - 9 + bat, e.aci, sola, TANK_N.ox, TANK_N.oy);
+      else if (e.tip === T_UCAKSAVAR) t.cizDon(SPR_H_UCAKSAVAR, x, y - 8 + bat, e.aci, sola, UCAKSAVAR_N.ox, UCAKSAVAR_N.oy);
+      else if (e.tip === T_KAMYON) t.cizDon(SPR_H_KAMYON, x, y - 11 + bat, e.aci + 0.2, sola, KAMYON_N.ox, KAMYON_N.oy);
+      else if (e.tip === T_HELI) t.cizDon(SPR_H_DHELI, x, y - 9 + bat, e.aci + 0.4, sola, DHELI_N.ox, DHELI_N.oy);
+      else if (e.tip === T_JET) t.cizDon(SPR_H_JET, x, y - 6 + bat, e.aci + 0.5, sola, JET_N.ox, JET_N.oy);
       else t.cizDon(SPR_H_HELI, x, y - 10 + bat, e.aci + 0.5, false, HELI_N.ox, HELI_N.oy);
     }
   }
@@ -604,14 +609,15 @@ export class Sahne {
   private kopruler(): void {
     const { t, d } = this;
     for (const k of d.kopruler) {
-      const xb = this.X(k.x1);
-      const yb = this.Y(k.y1);
-      // Açılırken sağ yakadan sola uzar; ucu yukarıdan iner
+      // Köprücünün durduğu yakadan karşıya uzar; ucu yukarıdan iner
+      const sagdan = k.kok > 0;
+      const xb = this.X(sagdan ? k.x1 : k.x0);
+      const yb = this.Y(sagdan ? k.y1 : k.y0);
       const u = k.t;
-      const xa = xb + (this.X(k.x0) - xb) * u;
-      const ya = yb + (this.Y(k.y0) - yb) * u - (1 - u) * 34;
-      if (xb < -10 || xa > EK + 10) continue;
-      const n = Math.max(1, Math.round((xb - xa) / 9));
+      const xa = xb + (this.X(sagdan ? k.x0 : k.x1) - xb) * u;
+      const ya = yb + (this.Y(sagdan ? k.y0 : k.y1) - yb) * u - (1 - u) * 34;
+      if (Math.max(xa, xb) < -10 || Math.min(xa, xb) > EK + 10) continue;
+      const n = Math.max(1, Math.round(Math.abs(xb - xa) / 9));
       for (let i = 0; i < n; i++) {
         const u0 = i / n;
         const u1 = (i + 1) / n;
@@ -705,13 +711,13 @@ export class Sahne {
     const y = this.Y(d.zemin);
     const can = d.siperCan;
     const z = d.zaman;
-    const kx = this.X(SIPER_X + 6); // gözetleme kulesinin ortası
+    const kx = this.X(SIPER_X); // gözetleme kulesi: üssün tam ortası
     const ky = y - 66; // platform
-    if (this.X(SIPER_ON + 40) < -10) return;
+    if (this.X(SIPER_X + SIPER_YARI + 60) < -10 || this.X(SIPER_X - SIPER_YARI - 60) > EK + 10) return;
 
     if (!on) {
       // --- Bayrak direği (en arkada) ---
-      const dx = this.X(SIPER_X - 44);
+      const dx = this.X(SIPER_X - 53);
       const egik = can > 0 ? 0 : 16;
       t.kalin(dx, y, dx + egik, y - 104, 0);
       t.daire(dx + egik + 0.5, y - 106, 1.8, 0);
@@ -730,7 +736,7 @@ export class Sahne {
       }
 
       // --- Çadır ---
-      const cx = this.X(SIPER_X - 61);
+      const cx = this.X(SIPER_X + 31);
       if (can > 33) {
         for (let yy = 0; yy <= 34; yy++) {
           const yari = Math.round((yy * 21) / 34);
@@ -755,14 +761,14 @@ export class Sahne {
       if (can <= 66 && can > 0) this.alev(cx - 14, y, 9);
 
       // --- Cephanelik: variller, kasalar ---
-      const sx = this.X(SIPER_X - 48);
+      const sx = this.X(SIPER_X + 9);
       this.varil(sx, y);
       this.varil(sx + 9, y);
       this.varil(sx + 4, y - 13, true);
       this.kasa(sx + 16, y, 13, 9);
 
       // --- Telsiz direği (sığınağın arkasında): kafes, gergi telleri, yanıp sönen ışık ---
-      const mx = this.X(SIPER_X - 26);
+      const mx = this.X(SIPER_X - 30);
       if (can > 0) {
         t.cizgi(mx - 2, y - 30, mx - 1, y - 128, 0);
         t.cizgi(mx + 3, y - 30, mx + 1, y - 128, 0);
@@ -782,7 +788,7 @@ export class Sahne {
       }
 
       // --- Sığınak: beton gövde, kütük çatı, mazgal, kamuflaj ağı ---
-      const bx = this.X(SIPER_X - 36);
+      const bx = this.X(SIPER_X - 43);
       const bw = 50;
       if (can > 0) {
         t.kutu(bx, y - 31, bw, 31, 0);
@@ -889,40 +895,44 @@ export class Sahne {
       this.kumTorbasi(kx - 14, ky - 7);
       for (let k = -14; k <= 14; k += 7) t.cizgi(kx + k, ky - 13, kx + k, ky, 0);
     }
-    // Makineli yuvası: yarım ay kum torbası
-    const nx = this.X(SIPER_X + 30);
-    if (can > 0) {
-      this.kumTorbasi(nx - 22, y - 7);
-      this.kumTorbasi(nx + 2, y - 7);
-      this.kumTorbasi(nx + 15, y - 7);
-      this.kasa(nx - 20, y - 7, 9, 6); // mermi sandığı
-    }
-    // Ön duvar: kazıklı kum torbası duvarı
-    const sx = this.X(SIPER_ON - 20);
+    // İki cephe: makineli yuvası, kum torbası duvarı ve dikenli tel her iki yanda
+    const bc = this.X(SIPER_X);
     const satir = can > 50 ? 2 : can > 0 ? 1 : 0;
-    if (satir > 0) {
-      t.kalin(sx - 2, y, sx - 2, y - 8 - satir * 6, 0);
-      t.kalin(sx + 41, y, sx + 41, y - 8 - satir * 6, 0);
-    }
-    for (let r = 0; r < satir; r++) {
-      for (let k = 0; k < 3; k++) this.kumTorbasi(sx + k * 13 + (r % 2) * 6, y - 7 - r * 6);
-    }
-    if (can <= 50 && can > 0) {
-      // Dökülmüş torbalar
-      this.kumTorbasi(sx + 44, y - 7);
-      t.kutu(sx + 30, y - 2, 9, 2, 200);
-    }
-    // Dikenli tel: iki sıra sarmal, kazıklar
-    const tx = this.X(SIPER_ON + 8);
-    for (let k = 0; k <= 48; k += 12) {
-      t.cizgi(tx + k - 3, y, tx + k + 3, y - 15, 85);
-      t.cizgi(tx + k + 3, y, tx + k - 3, y - 15, 85);
-    }
-    for (let k = 0; k < 50; k++) {
-      const a = k * 0.62;
-      t.nokta(tx + k + Math.cos(a) * 2.5, y - 9 + Math.sin(a) * 5, 85);
-      t.nokta(tx + k + Math.cos(a + 2) * 2.5, y - 4 + Math.sin(a + 2) * 3, 85);
-      if (k % 5 === 2) t.nokta(tx + k, y - 15, 85);
+    for (const yan of [-1, 1]) {
+      /** Merkezden piksel uzaklığı; sol yanda aynalanır (`w`: öğenin eni). */
+      const P = (px: number, w = 0): number => (yan > 0 ? bc + px : bc - px - w);
+      // Makineli yuvası: yarım ay kum torbası, mermi sandığı
+      if (can > 0) {
+        this.kumTorbasi(P(23, 14), y - 7);
+        this.kumTorbasi(P(47, 14), y - 7);
+        this.kasa(P(25, 9), y - 7, 9, 6);
+      }
+      // Ön duvar: kazıklı kum torbası duvarı
+      if (satir > 0) {
+        t.kalin(P(58), y, P(58), y - 8 - satir * 6, 0);
+        t.kalin(P(101), y, P(101), y - 8 - satir * 6, 0);
+      }
+      for (let r = 0; r < satir; r++) {
+        for (let k = 0; k < 3; k++) this.kumTorbasi(P(60 + k * 13 + (r % 2) * 6, 14), y - 7 - r * 6);
+      }
+      if (can <= 50 && can > 0) {
+        // Dökülmüş torbalar
+        this.kumTorbasi(P(104, 14), y - 7);
+        t.kutu(P(90, 9), y - 2, 9, 2, 200);
+      }
+      // Dikenli tel: iki sıra sarmal, kazıklar
+      for (let k = 0; k <= 48; k += 12) {
+        const c = P(110 + k);
+        t.cizgi(c - 3, y, c + 3, y - 15, 85);
+        t.cizgi(c + 3, y, c - 3, y - 15, 85);
+      }
+      for (let k = 0; k < 50; k++) {
+        const a = k * 0.62;
+        const c = P(110 + k);
+        t.nokta(c + Math.cos(a) * 2.5, y - 9 + Math.sin(a) * 5, 85);
+        t.nokta(c + Math.cos(a + 2) * 2.5, y - 4 + Math.sin(a + 2) * 3, 85);
+        if (k % 5 === 2) t.nokta(c, y - 15, 85);
+      }
     }
   }
 
@@ -964,24 +974,27 @@ export class Sahne {
       const [x0, yb, e] = this.durus(a, a.tip === T_KAMYON ? 17 : 16);
       const x = x0 + sars;
       if (x < -70 || x > EK + 70) continue;
-      const gidiyor = a.x > a.dur;
+      // Sağ cepheden gelen sola bakar, sol cepheden gelen sağa (sprite'lar sağa bakar)
+      const gy = -yanOf(a.x);
+      const sola = gy < 0;
+      const gidiyor = (a.x - a.dur) * -gy > 0;
       // Yürürken süspansiyon hafifçe yaylanır
       const zip = gidiyor ? Math.round(Math.abs(Math.sin(a.t * 11)) * 1.3) : 0;
       if (a.tip === T_TANK) {
         const yc = yb - (SPR_TANK.h - 1 - TANK_N.oy) - zip;
-        t.cizDon(SPR_TANK, x, yc, e, true, TANK_N.ox, TANK_N.oy);
+        t.cizDon(SPR_TANK, x, yc, e, sola, TANK_N.ox, TANK_N.oy);
         if (gidiyor) {
           // Palet baklaları akar
           const k = Math.floor(a.t * 16) % 4;
           for (let p = -34 + k; p < 35; p += 4) {
-            const [px, py] = this.yerel(x, yc, e, -1, p, 9);
+            const [px, py] = this.yerel(x, yc, e, gy, p, 9);
             t.nokta(px, py, 150);
           }
         }
-        const yon = a.nisanT > 0 && d.heli.x > a.x ? 1 : -1;
+        const yon = a.nisanT > 0 ? (d.heli.x > a.x ? 1 : -1) : gy;
         const tepki = a.sars > 0.08 ? 5 : 0; // atış sonrası geri tepme
         // Kule gövdenin üstüne 1 piksel biner (arada boşluk kalmaz)
-        const [tx, ty] = this.yerel(x, yc, e, -1, TANK_N.kule[0] - TANK_N.ox, TANK_N.kule[1] - TANK_N.oy + 1);
+        const [tx, ty] = this.yerel(x, yc, e, gy, TANK_N.kule[0] - TANK_N.ox, TANK_N.kule[1] - TANK_N.oy + 1);
         const [bx, by] = this.yerel(tx, ty, e, yon, KULE_N.namlu[0] - KULE_N.ox, KULE_N.namlu[1] - KULE_N.oy);
         // Namlu dengelidir: gövde yatsa da hedefe bakar
         const ux = yon * Math.cos(a.namlu);
@@ -1008,9 +1021,9 @@ export class Sahne {
       } else if (a.tip === T_KOPRUCU) {
         // Köprücü: tank gövdesi, üstünde katlı köprü; açarken üst kiriş öne devrilir
         const yc = yb - (SPR_TANK.h - 1 - TANK_N.oy) - zip;
-        t.cizDon(SPR_TANK, x, yc, e, true, TANK_N.ox, TANK_N.oy);
-        const [ax, ay] = this.yerel(x, yc, e, -1, 24, -8); // ön mafsal (araç sola bakar)
-        const [bx2, by2] = this.yerel(x, yc, e, -1, -30, -9);
+        t.cizDon(SPR_TANK, x, yc, e, sola, TANK_N.ox, TANK_N.oy);
+        const [ax, ay] = this.yerel(x, yc, e, gy, 24, -8); // ön mafsal
+        const [bx2, by2] = this.yerel(x, yc, e, gy, -30, -9);
         t.kutu(ax - 2, ay - 2, 5, 6, 0);
         if (a.yuk > 0) {
           const kiris = (x0: number, y0: number, x1: number, y1: number): void => {
@@ -1022,25 +1035,25 @@ export class Sahne {
           const ac = sinirla(a.nisanT / 2, 0, 1);
           const aci = -ac * Math.PI * 0.94;
           const uz = Math.hypot(bx2 - ax, by2 - ay);
-          kiris(ax, ay - 8, ax + Math.cos(aci) * uz, ay - 8 + Math.sin(aci) * uz);
+          kiris(ax, ay - 8, ax - gy * Math.cos(aci) * uz, ay - 8 + Math.sin(aci) * uz);
         } else {
-          t.kalin(ax, ay - 2, ax + 10, ay - 12, 0); // boş kaldırma kolu
+          t.kalin(ax, ay - 2, ax - gy * 10, ay - 12, 0); // boş kaldırma kolu
         }
       } else if (a.tip === T_UCAKSAVAR) {
         const N = UCAKSAVAR_N;
         const yc = yb - (SPR_UCAKSAVAR.h - 1 - N.oy) - zip;
-        t.cizDon(SPR_UCAKSAVAR, x, yc, e, true, N.ox, N.oy);
+        t.cizDon(SPR_UCAKSAVAR, x, yc, e, sola, N.ox, N.oy);
         const c = Math.cos(a.namlu);
         const s = Math.sin(a.namlu);
         const yon = c >= 0 ? 1 : -1;
-        const [tx, ty] = this.yerel(x, yc, e, -1, N.kule[0] - N.ox, N.kule[1] - N.oy + 1);
-        const [gx, gy] = this.yerel(tx, ty, e, yon, UKULE_N.namlu[0] - UKULE_N.ox, UKULE_N.namlu[1] - UKULE_N.oy);
+        const [tx, ty] = this.yerel(x, yc, e, gy, N.kule[0] - N.ox, N.kule[1] - N.oy + 1);
+        const [nx, ny] = this.yerel(tx, ty, e, yon, UKULE_N.namlu[0] - UKULE_N.ox, UKULE_N.namlu[1] - UKULE_N.oy);
         // Dörtlü top: iki çift namlu, uçlarında alev gizleyen
         for (const k of [-3, -1, 1, 3]) {
           const ox = s * k * 0.8;
           const oy = c * k * 0.8;
-          t.cizgi(gx + ox, gy + oy, gx + ox + c * 24, gy + oy - s * 24, 0);
-          t.nokta(gx + ox + c * 25, gy + oy - s * 25, 0);
+          t.cizgi(nx + ox, ny + oy, nx + ox + c * 24, ny + oy - s * 24, 0);
+          t.nokta(nx + ox + c * 25, ny + oy - s * 25, 0);
         }
         t.cizDon(SPR_UKULE, tx, ty, e, yon < 0, UKULE_N.ox, UKULE_N.oy);
         // Dönen radar çanağı
@@ -1055,7 +1068,7 @@ export class Sahne {
         }
       } else {
         const N = KAMYON_N;
-        t.cizDon(SPR_KAMYON, x, yb - (SPR_KAMYON.h - 1 - N.oy) - zip, e, true, N.ox, N.oy);
+        t.cizDon(SPR_KAMYON, x, yb - (SPR_KAMYON.h - 1 - N.oy) - zip, e, sola, N.ox, N.oy);
       }
       this.canCubugu(x, yb - 52, a.can / a.enCan);
       // Çukur başında bekleyen araç: üstünde yanıp sönen işaret
@@ -1796,6 +1809,40 @@ export class Sahne {
     }
   }
 
+  /**
+   * İki cephe göstergesi: ekranın dışında kalan düşmanlar için o kenarda ok
+   * ve sayı. Sipere yaklaşmışlarsa kırmızı ve yanıp söner; oyuncu öbür
+   * cephedeyken neyin geldiğini buradan görür.
+   */
+  private cepheHud(): void {
+    const { t, d } = this;
+    if (!d.oyunda || d.bitisNeden) return;
+    for (const yan of [-1, 1]) {
+      let sayi = 0;
+      let yakin = 1e9;
+      const say = (wx: number): void => {
+        if (yanOf(wx) !== yan) return;
+        const x = this.X(wx);
+        if (x >= 0 && x <= EK) return;
+        sayi++;
+        yakin = Math.min(yakin, onMesafe(wx));
+      };
+      for (const s of d.askerler) if (!s.dost) say(s.x);
+      for (const a of d.araclar) say(a.x);
+      if (sayi === 0) continue;
+      const tehlike = yakin < 130;
+      if (tehlike && Math.floor(d.zaman * 6) % 2 === 0) continue;
+      const y = Math.round(this.Y(d.zemin) - 96);
+      const x = yan > 0 ? EK - 8 : 8;
+      // Ok başı
+      for (let k = 0; k < 9; k++) {
+        const w = 9 - Math.abs(k - 4) * 2;
+        t.kutu(yan > 0 ? x - 9 : x + 9 - w, y + k, w, 1, 0, tehlike ? KAN : 0); // ucu kenara bakar
+      }
+      t.yazi(String(sayi), yan > 0 ? x - 13 : x + 13, y - 2, { hiza: yan > 0 ? 1 : -1, olcek: 3, kenar: 255, vurgu: tehlike ? KAN : 0 });
+    }
+  }
+
   private hud(a: Arayuz): void {
     const { t, d } = this;
     t.ciz(SPR_SIMGE_HELI, 10, 14);
@@ -1813,10 +1860,12 @@ export class Sahne {
     if (a.duyuru && a.duyuruT < 2.4 && (a.duyuruT > 0.4 || Math.floor(a.duyuruT * 14) % 2 === 0)) {
       this.sigdir(a.duyuru, EK / 2, Math.round(t.h * 0.26), { hiza: 0, olcek: 6, kenar: 255 });
     }
-    // Uçak uyarısı: geleceği yükseklikte, sağ kenarda
+    // Uçak uyarısı: geleceği yükseklikte, geldiği kenarda
     if (d.jetUyari > 0 && Math.floor(d.zaman * 8) % 2 === 0) {
-      t.yazi('< UÇAK', EK - 10, this.Y(d.jetUyariY) - 8, { hiza: 1, olcek: 3, kenar: 255, vurgu: KAN });
+      const sagdan = d.jetUyariYan > 0;
+      t.yazi(sagdan ? '< UÇAK' : 'UÇAK >', sagdan ? EK - 10 : 10, this.Y(d.jetUyariY) - 8, { hiza: sagdan ? 1 : -1, olcek: 3, kenar: 255, vurgu: KAN });
     }
+    this.cepheHud();
     // Ekran dışındaki sandık: kenarda ok
     for (const s of d.sandiklar) {
       const x = this.X(s.x);

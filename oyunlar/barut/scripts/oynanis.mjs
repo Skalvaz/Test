@@ -98,26 +98,27 @@ for (;;) {
     const L = window.__barut;
     const d = L.dunya;
     const h = d.heli;
+    // İki cephe: sipere en yakın düşman
     let on = 1e9;
-    for (const a of d.askerler) if (!a.dost && a.x < on) on = a.x;
-    for (const a of d.araclar) if (a.x < on) on = a.x;
+    for (const a of d.askerler) if (!a.dost && Math.abs(a.x - 480) < Math.abs(on - 480)) on = a.x;
+    for (const a of d.araclar) if (Math.abs(a.x - 480) < Math.abs(on - 480)) on = a.x;
     const dusme = Math.sqrt((2 * Math.max(10, d.yerY(h.x) - h.y)) / 280);
     const bx = h.x + h.vx * 0.55 * dusme;
     let altinda = 0;
-    for (const a of d.askerler) if (!a.dost && a.x < 538 && Math.abs(a.x - bx) < 14) altinda++;
-    for (const a of d.araclar) if (a.x < 538 && Math.abs(a.x - bx) < 16) altinda += 3;
+    for (const a of d.askerler) if (!a.dost && a.x > 62 && a.x < 898 && Math.abs(a.x - bx) < 14) altinda++;
+    for (const a of d.araclar) if (a.x > 62 && a.x < 898 && Math.abs(a.x - bx) < 16) altinda += 3;
     return {
       durum: L.arayuz.durum, zemin: d.zemin, hx: h.hx, hy: h.hy, x: h.x, y: h.y, can: h.can, on, altinda, bomba: d.bomba.adet, ara: d.ara,
       flak: d.flaklar.map((f) => [f.x, f.y]),
       mermi: d.mermiler.filter((m) => m.tip >= 2 && m.tip <= 6).map((m) => [m.x, m.y, m.vx, m.vy]),
       sandik: d.sandiklar.map((k) => [k.x, k.y, k.tip]),
-      gomu: d.gomuler.filter((g) => g.tip === 1 && g.x < 400).map((g) => g.x),
+      gomu: d.gomuler.filter((g) => g.tip === 1 && Math.abs(g.x - h.x) < 240).map((g) => g.x),
     };
   });
   if (s.durum === 'sonuc') break;
 
   // Karar: botla aynı mantık, ama çıktısı parmak hareketi
-  let tx = Math.max(170, Math.min(385, (s.on < 1e8 ? s.on : 300) - 50));
+  let tx = s.on < 1e8 ? Math.max(215, Math.min(745, s.on - Math.sign(s.on - 480) * 50)) : 480;
   let ty = s.zemin - 88 + Math.sin(gecen * 1.7) * 28;
   for (const [x, y] of s.flak) {
     if (Math.hypot(x - s.x, y - s.y) < 40) {
