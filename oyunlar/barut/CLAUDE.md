@@ -92,6 +92,9 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   yakını sipere 130'dan yakınsa kırmızı yanıp söner. Uçak uyarısı geldiği
   kenarda (`jetUyariYan`). Köprücü ve bekleme sayaçları cephe başına
   (`kopruSayac[2]`, `askerBekliyor[2]`); köprü `kok` ucundan açılır.
+- Cip HMMWV çizgisinde (kullanıcı: "Humvee'ye benzesin"): kutu gövde, uzun
+  düz kaput, dik ön cam, eğik arka, köşeli çamurluk boşlukları; nişancı
+  tavandaki taret halkasından belden yukarı görünür, namlunun önünde kalkan.
 - Makineli cip (`T_JEEP`): hızlı (58), 3 can; sipere 50–90 birim sokulup
   5'lik seri atar (seri başı 2,5 hasar), helikopter 135 içindeyse ona döner.
   Oyuncu öbür cephedeyken geri dönmeye zorlar; 3. dalgadan sonra gelir.
@@ -121,8 +124,11 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   (`les[]` doku izi). Hurda 15 sn sonra aynı şekilde. Kullanıcı isteği:
   "cesetler birikse dağ olsa".
 - Modeller gerçek araç siluetlerinden esinli (kullanıcı isteği: "olabildiğince
-  yakın"): T129/A129 çizgisinde saldırı helikopteri, Mi-24, T-72, ZSU-23-4,
-  Ural, MiG-21, C-130. İşaret, bayrak, ülke YOK. Bağlantı noktaları
+  yakın"): oyuncu helikopteri AH-64 çizgisinde (kullanıcı ayrıca istedi:
+  rotor üstünde radar kubbesi, iri motor kaportası, koyu düz panelli tandem
+  kabin, burun tareti, gövde altında zincirli top, kısa kanatta roket yuvası
+  ve füze rafı, geriye yatık dikme + alçak yatay denge), Mi-24, T-72,
+  ZSU-23-4, Ural, HMMWV, MiG-21, C-130. İşaret, bayrak, ülke YOK. Bağlantı noktaları
   `*_N` sabitlerinde (`ox, oy`, `direk`, `namlu`, `kule`…); sprite'ı
   değiştirince onları da güncelle.
 - Araçlar zemine oturur: `durus()` ön/arka temas noktasından eğim ve taban
@@ -160,11 +166,20 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   İKİ YANDA makineli yuvası, iki sıra kum torbası duvarı, dikenli tel. Hasar
   eşikleri 66 / 50 / 33 / 0. Dostların görevi `rol`: 0 duvarda tüfekçi,
   1 ağır makineli (6'lık seri), 2 kule nöbetçisi (`yukseklik` 44), 3 subay
-  (dürbün, ateş etmez). Dalga arasında sevinirler.
+  (dürbün, ateş etmez, helikopteri izler). Dalga arasında sevinirler.
+- Dost askerler (kullanıcı: "base'deki askerler kötü duruyor"): duvardaki
+  tüfekçiler atış basamağında durur (`yukseklik` 6), göğüsten yukarısı kum
+  torbalarının üstünde kalır; eskiden yalnız miğferleri görünüyordu. Açık
+  renkli yelek + başın üst yarısını örten açık miğfer (geniş kenarlı miğfer
+  mantar gibi duruyordu), kalın bacak. Makineli ve subay çizimi `yon`a göre
+  aynalanır (iki cepheden sonra sol yuvadaki makineli ters duruyordu).
+  Düşman bacağı İNCE kalır: kalabalıkta kalın bacak yumak oluyor (denendi).
+  Sağ yanda büyük komuta çadırı askerlerin arkasında fon olur.
 - Kenara `GIRIS` (62) biriminden yakın düşman hedef alınmaz, vurulmaz
-  (`sahnede()`); helikopter kenarlara `HELI_KENAR` (215) biriminden fazla
-  yaklaşamaz. Yoksa oyuncu doğum noktasında pusu kurar ve
-  ekranda hiç kalabalık oluşmaz (bot kaydı gösterdi).
+  (`sahnede()`); helikopter kenarlara `HELI_KENAR` (96) biriminden fazla
+  yaklaşamaz (kullanıcı: "sağa sola daha çok gidilebilsin"; eskiden 215).
+  Tek cephedeyken sınır pusuyu önlüyordu; iki cephede bir kenarda beklemek
+  öbür cepheyi boş bırakır, sınır gevşetilebildi.
 - Dizi üstünde geriye doğru dönerken `patlat`/`siperHasar` başka elemanları
   silebilir: döngü başında `if (!s) continue` koruması var, kaldırma.
 - Zemin `yuk * 0,70`'te: toprak kesiti ekranın alt %30'u (kullanıcı isteği:
@@ -191,7 +206,15 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   düşüp moloza döner. İçindeki askerler ayakta kalan pencerelerden ateş
   eder; hücrelerin %45'inden azı kalınca savrulup ölürler, %50 ihtimalle
   sandık düşer. Roketler içi dolu binayı kendiliğinden hedef alır; roket ve
-  bomba hücrelere çarpar, top mermisi geçer. Dalga bitimi için sayılmazlar.
+  bomba hücrelere çarpar, top mermisi geçer.
+- Binalar BOŞ başlar (kullanıcı: "sahadan gelen askerler binaya girsin de
+  öyle yıkılsın"). `binayaGir()`: koşan tüfekçi ya da makineli kapının
+  (`kapi`) önünden geçerken %45 ihtimalle girer (kılığından, bina başına bir
+  karar); en çok 3 kişi, bina %60'tan çok ayaktaysa ve atış penceresi
+  kaldıysa. İçeridekiler `dusmanSayisi()`na sayılır: dolu bina yıkılmadan
+  dalga bitmez (70 sn sınırı hariç). Çatının üstünde kişi sayısı kadar
+  yanıp sönen kırmızı `!` çıkar. Dört bina da yıkılınca özellik biter
+  (AÇIK: dalga arasında onarım ya da yeni bina).
 - Bina = şablon + deri. `dunya.ts` `binaKur(x, tur, asker)` hücre ızgarasını
   (boş köşeler, atış pencereleri) kurar, `dekor.ts` aynı ölçüde cepheyi
   boyar (hücre başına 6 piksel); birini değiştirince ötekini de değiştir.

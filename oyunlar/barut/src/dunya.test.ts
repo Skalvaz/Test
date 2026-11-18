@@ -235,10 +235,40 @@ describe('BARUT simülasyonu', () => {
       if (d.askerler.some((s) => !s.dost) && i % 600 === 599) {
         d.askerler = d.askerler.filter((s) => s.dost);
         d.araclar.length = 0;
+        for (const b of d.binalar) b.asker = 0;
       }
     }
     expect([...yanlar.get(1)!]).toEqual([1]);
     expect(yanlar.get(2)!.has(-1)).toBe(true);
+  });
+
+  it('sahadan gelen askerler binaya girer; boş bina ateş etmez', () => {
+    const d = new Dunya(566, 41);
+    d.basla();
+    d.ara = 999;
+    d.heli.x = d.heli.hx = 640;
+    const b = d.binalar[2]; // sağ cephedeki ev (620)
+    // Boşken ateş etmez
+    for (let i = 0; i < 4 / ADIM; i++) {
+      d.heli.can = 100;
+      d.adim(ADIM);
+    }
+    expect(d.mermiler.filter((m) => m.tip === 2).length).toBe(0);
+    expect(d.heli.can).toBe(100);
+    // Kapının sağından yürüyen tüfekçiler: bir kısmı girer, en çok 3
+    d.heli.x = d.heli.hx = 200;
+    for (let k = 0; k < 12; k++) {
+      d.askerler.push({ x: b.x + b.kapi + 6 + k * 3, y: d.zemin, tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 99, hiz: 30, menzil: 40, nisanAci: 0, hedef: 0, yon: -1, kilik: k * 37 + 5, yukseklik: 0, seri: 0, rol: 0, atis: 0, engelli: false });
+    }
+    const once = d.dusmanSayisi();
+    for (let i = 0; i < 3 / ADIM; i++) {
+      d.heli.can = 100;
+      for (const s of d.askerler) s.sayac = 99;
+      d.adim(ADIM);
+    }
+    expect(b.asker).toBeGreaterThan(0);
+    expect(b.asker).toBeLessThanOrEqual(3);
+    expect(d.dusmanSayisi()).toBe(once); // içeridekiler de sayılır
   });
 
   it('bina patlamayla çöker, içindekiler ölür', () => {
@@ -246,7 +276,8 @@ describe('BARUT simülasyonu', () => {
     d.basla();
     d.ara = 999;
     const b = d.binalar[0];
-    expect(b.asker).toBeGreaterThan(0);
+    expect(b.asker).toBe(0); // binalar boş başlar
+    b.asker = 2;
     const ilk = b.h.filter((v) => v > 0).length;
     const mx = b.x + (b.sutun * 4) / 2;
     for (let k = 0; k < 6 && b.asker > 0; k++) d.patlat(mx + (k % 3 - 1) * 10, d.yerY(mx) - 8, 25, true, 5, true);

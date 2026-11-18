@@ -536,6 +536,11 @@ export class Sahne {
       if (x0 > EK + 10 || x0 + N * B < -10) continue;
       const deri = binaDerisi(b.tur);
       const tohum = b.x * 0.37;
+      // İçinde asker varsa çatının üstünde yanıp sönen işaret (yıkılması gerektiğini söyler)
+      if (b.asker > 0 && Math.floor(d.zaman * 3) % 2 === 0) {
+        const mx = b.x + (N * HUCRE) / 2;
+        t.yazi('!'.repeat(b.asker), this.X(mx), this.Y(d.yerY(mx)) - b.satir * B - 22, { hiza: 0, olcek: 3, kenar: 255, vurgu: KAN });
+      }
       const ayakta = (c: number, r: number): boolean => c >= 0 && c < N && r >= 0 && r < b.satir && b.h[r * N + c] !== 0 && b.dy[r * N + c] === 0;
       let pencere = 0;
       for (let c = 0; c < N; c++) {
@@ -736,33 +741,54 @@ export class Sahne {
         if (uz <= 2) for (let m = 8 - (2 - uz); m <= 8 + (2 - uz); m++) t.nokta(fx, fy + m, can > 0 ? 254 : 128);
       }
 
-      // --- Çadır ---
-      const cx = this.X(SIPER_X + 31);
+      // --- Komuta çadırı: yan duvarlı, mahyalı; askerlerin arkasında fon olur ---
+      const cx = this.X(SIPER_X + 38);
       if (can > 33) {
-        for (let yy = 0; yy <= 34; yy++) {
-          const yari = Math.round((yy * 21) / 34);
-          t.kutu(cx - yari, y - 34 + yy, yari * 2 + 1, 1, yy > 30 ? 170 : 213);
-          t.kutu(cx - yari, y - 34 + yy, Math.max(1, Math.round(yari * 0.45)), 1, 240); // güneş alan yüz
-          t.nokta(cx - yari - 1, y - 34 + yy, 0);
-          t.nokta(cx + yari + 1, y - 34 + yy, 0);
+        const YARI = 27;
+        const DUVAR = 13;
+        const TEPE = 40;
+        for (let yy = 0; yy <= TEPE; yy++) {
+          // Üstten aşağı: mahyadan saçağa genişler, sonra dik duvar
+          const yari = yy <= TEPE - DUVAR ? Math.round((yy * YARI) / (TEPE - DUVAR)) : YARI;
+          const yy0 = y - TEPE + yy;
+          const duvar = yy > TEPE - DUVAR;
+          t.kutu(cx - yari, yy0, yari * 2 + 1, 1, duvar ? 170 : 213);
+          if (!duvar) t.kutu(cx - yari, yy0, Math.max(1, Math.round(yari * 0.42)), 1, 254); // güneş alan yüz
+          t.nokta(cx - yari - 1, yy0, 0);
+          t.nokta(cx + yari + 1, yy0, 0);
         }
-        for (let yy = 14; yy <= 34; yy++) {
-          const yari = Math.round(((yy - 14) * 6) / 20);
-          t.kutu(cx - yari, y - 34 + yy, yari * 2 + 1, 1, 64); // kapı aralığı
+        t.kutu(cx - YARI - 2, y - DUVAR - 1, YARI * 2 + 5, 2, 0); // saçak
+        t.kutu(cx - YARI - 1, y - DUVAR - 1, YARI * 2 + 3, 1, 128);
+        for (let k = -18; k <= 18; k += 9) t.cizgi(cx + k * 0.25, y - TEPE + 6, cx + k, y - DUVAR - 2, 170); // dikiş yerleri
+        t.cizgi(cx, y - TEPE - 4, cx, y - TEPE, 0); // direk ucu
+        t.kutu(cx - 1, y - TEPE - 6, 3, 2, 0);
+        // Kapı: iki yana toplanmış perde, içerisi karanlık, masada harita lambası
+        for (let yy = 0; yy < 20; yy++) {
+          const yari = 2 + Math.round((yy * 5) / 20);
+          t.kutu(cx - yari, y - 20 + yy, yari * 2 + 1, 1, 42);
         }
-        t.cizgi(cx, y - 37, cx, y - 34, 0);
-        t.cizgi(cx - 21, y - 2, cx - 34, y, 0); // gergi ipleri
-        t.cizgi(cx + 21, y - 2, cx + 31, y, 0);
-        t.kutu(cx + 9, y - 16, 5, 1, 0, KAN); // sıhhiye işareti
-        t.kutu(cx + 11, y - 18, 1, 5, 0, KAN);
+        t.cizgi(cx - 2, y - 20, cx - 8, y - 1, 0);
+        t.cizgi(cx + 2, y - 20, cx + 8, y - 1, 0);
+        t.kutu(cx - 3, y - 8, 7, 1, 128);
+        t.nokta(cx, y - 11, 254);
+        // Yan pencere (file), gergi ipleri ve kazıklar, sıhhiye işareti
+        t.kutu(cx + 13, y - 10, 7, 5, 0);
+        t.kutu(cx + 14, y - 9, 5, 3, 85);
+        t.cizgi(cx + 16, y - 9, cx + 16, y - 7, 0);
+        t.cizgi(cx - YARI, y - DUVAR, cx - YARI - 12, y, 0);
+        t.cizgi(cx + YARI, y - DUVAR, cx + YARI + 12, y, 0);
+        t.kutu(cx - YARI - 13, y - 3, 2, 3, 0);
+        t.kutu(cx + YARI + 12, y - 3, 2, 3, 0);
+        t.kutu(cx + 9, y - 24, 7, 3, 0, KAN);
+        t.kutu(cx + 11, y - 26, 3, 7, 0, KAN);
       } else {
-        for (let k = -20; k <= 20; k++) t.kutu(cx + k, y - 4 - Math.round(Math.abs(Math.sin(k * 0.5)) * 5), 1, 9, k % 3 ? 170 : 128);
-        for (let k = -20; k <= 20; k++) t.nokta(cx + k, y - 5 - Math.round(Math.abs(Math.sin(k * 0.5)) * 5), 0);
+        for (let k = -26; k <= 26; k++) t.kutu(cx + k, y - 4 - Math.round(Math.abs(Math.sin(k * 0.5)) * 5), 1, 9, k % 3 ? 170 : 128);
+        for (let k = -26; k <= 26; k++) t.nokta(cx + k, y - 5 - Math.round(Math.abs(Math.sin(k * 0.5)) * 5), 0);
       }
       if (can <= 66 && can > 0) this.alev(cx - 14, y, 9);
 
       // --- Cephanelik: variller, kasalar ---
-      const sx = this.X(SIPER_X + 9);
+      const sx = this.X(SIPER_X + 8);
       this.varil(sx, y);
       this.varil(sx + 9, y);
       this.varil(sx + 4, y - 13, true);
@@ -836,6 +862,20 @@ export class Sahne {
         for (let k = 0; k < 14; k++) t.kutu(bx - 4 + k * 5 + Math.round(kes(k, 1) * 4), y - 4 - Math.round(kes(k, 2) * 14), 6, 18, kes(k, 3) < 0.5 ? 0 : 85);
         this.alev(bx + 14, y - 8, 12);
         this.alev(bx + 38, y - 4, 8);
+      }
+
+      // --- Atış basamağı: duvardaki tüfekçiler bunun üstünde durur, göğüsten
+      // yukarısı kum torbalarının üstünde kalır (eskiden yalnız miğferleri görünüyordu) ---
+      if (can > 0) {
+        const bc0 = this.X(SIPER_X);
+        for (const yan of [-1, 1]) {
+          const x0 = yan > 0 ? bc0 + 54 : bc0 - 54 - 44;
+          t.kutu(x0, y - 9, 44, 1, 0);
+          t.kutu(x0, y - 8, 44, 2, 128);
+          t.kutu(x0, y - 6, 44, 1, 0);
+          for (const k of [3, 21, 39]) t.kutu(x0 + k, y - 5, 2, 5, 0);
+          for (let k = 8; k < 44; k += 9) t.nokta(x0 + k, y - 8, 0);
+        }
       }
 
       // --- Gözetleme kulesi: çapraz bağlı ayaklar, merdiven, saç çatı, projektör ---
@@ -1070,12 +1110,6 @@ export class Sahne {
       } else if (a.tip === T_JEEP) {
         const N = JEEP_N;
         const yc = yb - (SPR_JEEP.h - 1 - N.oy) - zip;
-        // Şoför: gövdeden önce (ön camın arkasında kalır)
-        const [sx, sy] = this.yerel(x, yc, e, gy, N.sofor[0] - N.ox, N.sofor[1] - N.oy);
-        t.daire(sx, sy - 4, 2.4, 0);
-        t.kutu(sx - 2, sy - 6, 5, 1, 0); // miğfer kenarı
-        t.kutu(sx - 1, sy - 2, 3, 4, 0);
-        t.cizgi(sx, sy, sx + gy * 5, sy + 1, 0); // direksiyona uzanan kol
         t.cizDon(SPR_JEEP, x, yc, e, sola, N.ox, N.oy);
         if (gidiyor) {
           // Teker jantı döner
@@ -1090,18 +1124,20 @@ export class Sahne {
         const [nx, ny] = this.yerel(x, yc, e, gy, N.nisanci[0] - N.ox, N.nisanci[1] - N.oy);
         const c = Math.cos(a.namlu);
         const s = Math.sin(a.namlu);
-        t.kalin(nx, ny, nx, ny - 9, 0); // gövde
-        t.daire(nx, ny - 12, 2.6, 0);
-        t.kutu(nx - 3, ny - 14, 7, 1, 0); // miğfer kenarı
-        t.nokta(nx - 1, ny - 15, 128);
-        t.cizgi(nx, ny - 7, mx - c * 3, my - s * 3, 0); // kollar kabzada
-        t.cizgi(nx, ny - 5, mx - c * 5, my - s * 5 + 1, 0);
+        // Tavandaki kapaktan belden yukarısı görünür
+        t.kalin(nx, ny, nx, ny - 4, 0); // gövde
+        t.daire(nx, ny - 7, 2.6, 0);
+        t.kutu(nx - 3, ny - 8, 7, 1, 0); // miğfer kenarı
+        t.nokta(nx - 1, ny - 9, 128);
+        t.cizgi(nx, ny - 3, mx - c * 3, my - s * 3, 0); // kollar kabzada
         const tepki = a.sars > 0.03 ? 2 : 0;
-        for (let k = 0; k <= 1; k++) t.cizgi(mx - c * (5 + tepki), my - s * (5 + tepki) + k, mx + c * (13 - tepki), my + s * (13 - tepki) + k, 0);
-        t.kutu(mx - 2, my, 4, 3, 0); // mermi kutusu
+        for (let k = 0; k <= 1; k++) t.cizgi(mx - c * (4 + tepki), my - s * (4 + tepki) + k, mx + c * (14 - tepki), my + s * (14 - tepki) + k, 0);
+        t.kutu(mx - 2, my + 1, 4, 2, 0); // mermi kutusu
+        // Kalkan: namluya dik kısa levha
+        t.kalin(mx + c * 3 + s * 4, my + s * 3 - c * 4, mx + c * 3 - s * 3, my + s * 3 + c * 3, 0);
         if (a.sars > 0.03) {
-          const ax = mx + c * 16;
-          const ay = my + s * 16;
+          const ax = mx + c * 17;
+          const ay = my + s * 17;
           t.daire(ax, ay, 3, 0, ATES);
           t.vurgu(ax, ay, AKKOR);
           t.vurgu(ax + c * 3, ay + s * 3, ATES);
@@ -1119,9 +1155,16 @@ export class Sahne {
   // ---- Askerler ----
 
   /** İki parçalı uzuv: kök → eklem → uç. */
-  private uzuv(x0: number, y0: number, x1: number, y1: number, bukX: number, bukY: number): void {
+  private uzuv(x0: number, y0: number, x1: number, y1: number, bukX: number, bukY: number, kalin = false): void {
     const mx = (x0 + x1) / 2 + bukX;
     const my = (y0 + y1) / 2 + bukY;
+    if (kalin) {
+      // Bacak: üst parça kalın (baldır), alt parça ince; siluet dolgunlaşır
+      this.t.kalin(x0, y0, mx, my, 0);
+      this.t.cizgi(mx, my, x1, y1, 0);
+      this.t.cizgi(mx + 1, my, x1 + 1, y1, 0);
+      return;
+    }
     this.t.cizgi(x0, y0, mx, my, 0);
     this.t.cizgi(mx, my, x1, y1, 0);
   }
@@ -1134,13 +1177,26 @@ export class Sahne {
     const t = this.t;
     t.daire(hx + 0.5, hy, 3.2, 0);
     if (dost) {
-      t.daire(hx + 0.5, hy - 0.5, 2, 250);
-      t.cizgi(hx - 4, hy, hx + 5, hy, 0);
       if (tur === 4) {
+        // Subay kasketi: açık tabla, koyu bant, öne uzanan siperlik
+        t.kutu(hx - 3, hy - 6, 7, 1, 0);
         t.kutu(hx - 4, hy - 5, 9, 2, 0);
-        t.kutu(hx - 3, hy - 5, 7, 1, 250);
-        t.nokta(hx + yon * 5, hy - 3, 0);
+        t.kutu(hx - 3, hy - 5, 7, 1, 254);
+        t.kutu(hx - 3, hy - 3, 7, 1, 0);
+        t.nokta(hx + yon * 4, hy - 2, 0);
+        t.nokta(hx + yon * 5, hy - 2, 0);
+        return;
       }
+      // Miğfer: başın üst yarısını örten açık renkli kubbe, koyu kenar, önde kısa
+      // siperlik; altında yalnız yüz görünür (eskisi geniş kenarlıydı, mantar gibiydi)
+      t.kutu(hx - 1, hy - 4, 3, 1, 0);
+      t.kutu(hx - 2, hy - 3, 5, 1, 0);
+      t.kutu(hx - 1, hy - 3, 3, 1, 254);
+      t.kutu(hx - 3, hy - 2, 7, 3, 0);
+      t.kutu(hx - 2, hy - 2, 5, 2, 254);
+      t.nokta(hx - yon, hy - 2, 170);
+      t.nokta(hx - yon * 2, hy - 1, 170);
+      t.nokta(hx + yon * 4, hy, 0);
       return;
     }
     if (tur === 0 || tur === 1) {
@@ -1318,15 +1374,17 @@ export class Sahne {
     } else if (dizde) {
       kalca = y - 6;
       boyun = y - 14;
-      this.uzuv(x, kalca, x + yon * 4, y, yon * 2, -3);
-      this.uzuv(x, kalca, x - yon * 6, y, -yon * 1, 2);
+      this.uzuv(x, kalca, x + yon * 4, y, yon * 2, -3, s.dost);
+      this.uzuv(x, kalca, x - yon * 6, y, -yon * 1, 2, s.dost);
       t.nokta(x + yon * 5, y, 0);
     } else {
       const zip = sevinc ? Math.abs(Math.sin(d.zaman * 9 + s.x)) * 3 : 0;
       kalca -= zip;
       boyun -= zip;
-      this.uzuv(x, kalca, x - 3, y, -0.5, 0);
-      this.uzuv(x, kalca, x + 2, y, 0.5, 0);
+      // Dostların bacağı kalın (seyrek dururlar); düşman kalabalığında ince bacak
+      // okunur, kalını yumak oluyor (denendi)
+      this.uzuv(x, kalca, x - 3, y, -0.5, 0, s.dost);
+      this.uzuv(x, kalca, x + 2, y, 0.5, 0, s.dost);
       t.nokta(x - 4, y, 0);
       t.nokta(x + 3, y, 0);
     }
@@ -1334,6 +1392,16 @@ export class Sahne {
     const by = boyun + 2;
     // Gövde (2 piksel), çanta
     t.kalin(x, kalca, nx, boyun, 0);
+    if (s.dost) {
+      // Dostlar: açık renkli yelek (ince siyah düşmandan ayrılsın), kemer, sırt çantası
+      const ust = Math.round(boyun) + 2;
+      const alt = Math.round(kalca) - 1;
+      t.kutu(nx - 2, ust - 1, 5, alt - ust + 3, 0);
+      t.kutu(nx - 1, ust, 3, alt - ust + 1, 254);
+      t.kutu(nx - 1, alt - 1, 3, 1, 128);
+      t.nokta(nx, ust + 1, 170);
+      t.kutu(yon > 0 ? nx - 4 : nx + 3, ust, 2, 5, 0);
+    }
     if (dusman && s.durum !== YANIYOR) {
       const canta = tip === T_ROKET ? 4 : tip === T_MAKINELI ? 5 : tip === T_SUBAY ? 0 : tip === T_NISANCI ? 1 : (kl >> 2) & 3;
       this.canta(nx, by, yon, canta);
@@ -1376,28 +1444,28 @@ export class Sahne {
       if (s.rol === 3) {
         // Subay: dürbünle bakar, arada eliyle ileriyi gösterir
         if (Math.sin(s.t * 0.9) > -0.2) {
-          this.uzuv(nx, by, hx + 3, hy, 2, 2);
-          this.uzuv(nx + 1, by, hx + 5, hy + 1, 3, 3);
-          t.kutu(hx + 4, hy - 1, 4, 3, 0);
-          t.nokta(hx + 7, hy, 200);
+          this.uzuv(nx, by, hx + yon * 3, hy, yon * 2, 2);
+          this.uzuv(nx + yon, by, hx + yon * 5, hy + 1, yon * 3, 3);
+          t.kutu(yon > 0 ? hx + 4 : hx - 7, hy - 1, 4, 3, 0);
+          t.nokta(hx + yon * 7, hy, 200);
         } else {
-          this.uzuv(nx, by, nx + 9, by - 2, 0, 2);
-          this.uzuv(nx, by, nx - 3, by + 6, -2, 0);
+          this.uzuv(nx, by, nx + yon * 9, by - 2, 0, 2);
+          this.uzuv(nx, by, nx - yon * 3, by + 6, -yon * 2, 0);
         }
       } else if (s.rol === 1) {
         // Ağır makineli: üç ayak, soğutma gömlekli namlu, kalkan, mermi şeridi
-        const px = x + 13;
+        const px = x + yon * 13;
         const py = y - 15;
-        t.cizgi(px, py, px - 5, y, 0);
-        t.cizgi(px, py, px + 6, y, 0);
-        t.cizgi(px, py, px + 1, y - 2, 0);
+        t.cizgi(px, py, px - yon * 5, y, 0);
+        t.cizgi(px, py, px + yon * 6, y, 0);
+        t.cizgi(px, py, px + yon, y - 2, 0);
         t.kalin(px - c * 6, py - 1 - sn * 6, px + c * 8, py - 1 + sn * 8, 0);
         t.kutu(px - c * 2 - 2, py - 3 - sn * 2, 4, 5, 0);
         t.cizgi(px + c * 8, py - 1 + sn * 8, px + c * 21, py - 1 + sn * 21, 0);
         t.cizgi(px + c * 8, py + sn * 8, px + c * 16, py + sn * 16, 0);
         t.kutu(px + c * 4 - 1, py - 6 + sn * 4, 2, 9, 0); // kalkan
-        t.kutu(px - 5, py + 2, 5, 4, 0); // mermi kutusu
-        t.nokta(px - 4, py + 3, 150);
+        t.kutu(yon > 0 ? px - 5 : px + 1, py + 2, 5, 4, 0); // mermi kutusu
+        t.nokta(px - yon * 4, py + 3, 150);
         this.uzuv(nx, by, px - c * 6, py - 1 - sn * 6, 0, 2);
         this.uzuv(nx, by + 1, px - c * 5, py + 1 - sn * 5, 0, 3);
         if (s.atis > 0) {

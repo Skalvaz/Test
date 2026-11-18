@@ -23,8 +23,8 @@ const KAM_SOL = 44;
 const KAM_SAG = DUNYA_G - G - 44;
 /** Kenara bundan yakın düşman henüz sahneye girmemiştir: hedef alınmaz, vurulmaz. */
 const GIRIS = 62;
-/** Helikopter doğum noktalarına bu kadar yaklaşabilir. */
-const HELI_KENAR = 215;
+/** Helikopter kenarlara bu kadar yaklaşabilir (kullanıcı: "sağa sola daha çok gidilebilsin"; eskiden 215). */
+const HELI_KENAR = 96;
 
 /** Birliğin geldiği yan: +1 sağ, −1 sol. */
 export const yanOf = (x: number): 1 | -1 => (x > SIPER_X ? 1 : -1);
@@ -179,7 +179,10 @@ export interface Bina {
   /** Düşmekte olan hücrenin yerine varana kadarki yüksekliği. */
   dy: Float32Array;
   vy: Float32Array;
+  /** İçerideki asker sayısı. Bina boş kurulur; sahadan gelen askerler kapıdan girer. */
   asker: number;
+  /** Kapının bina soluna uzaklığı (dünya birimi). */
+  kapi: number;
   sayac: number;
   ilk: number;
   /** Son atış yapılan pencere ve namlu alevi süresi. */
@@ -445,15 +448,15 @@ export class Dunya {
     for (let i = 0; i < 10; i++) this.gomEkle(G_MAYIN);
     for (let i = 0; i < 8; i++) this.gomEkle(G_SANDIK);
     // Sol cephe: ev, dükkân. Sağ cephe: ev, atölye.
-    this.binaKur(150, 0, 2);
-    this.binaKur(286, 1, 1);
-    this.binaKur(620, 0, 2);
-    this.binaKur(770, 2, 2);
+    this.binaKur(150, 0);
+    this.binaKur(286, 1);
+    this.binaKur(620, 0);
+    this.binaKur(770, 2);
     for (const x of PARK_X) this.duzlestir(x - 16, x + 16);
     // Siperdeki dostlar: [x farkı, görev, yükseklik, baktığı yan]. Her duvarda iki
     // tüfekçi ve bir makineli; kuledeki nöbetçi iki yana da ateş eder.
     const kadro: [number, number, number, 1 | -1][] = [
-      [44, 0, 0, 1], [52, 0, 0, 1], [27, 1, 0, 1], [-44, 0, 0, -1], [-52, 0, 0, -1], [-27, 1, 0, -1], [0, 2, 44, 1], [12, 3, 0, 1],
+      [42, 0, 6, 1], [54, 0, 6, 1], [27, 1, 0, 1], [-42, 0, 6, -1], [-54, 0, 6, -1], [-27, 1, 0, -1], [0, 2, 44, 1], [13, 3, 0, 1],
     ];
     for (const [dx, rol, yukseklik, yon] of kadro) {
       this.askerler.push({
@@ -548,22 +551,51 @@ export class Dunya {
    * derilerle aynı olmalı (hücre başına 6 piksel): ev 72×60, dükkân 72×42,
    * atölye 84×48. Temelin altı düzlenir ki cephe dilim dilim kaymasın.
    */
-  private binaKur(x: number, tur: number, asker: number): void {
-    const SABLON: [number, number, [number, number][], [number, number][]][] = [
-      [12, 10, [[0, 9], [11, 9]], [[2, 5], [8, 5], [8, 2]]],
-      [12, 7, [], [[2, 2], [8, 2]]],
-      [14, 8, [[0, 7], [1, 7], [12, 7], [13, 7]], [[9, 4], [12, 4]]],
+  private binaKur(x: number, tur: number): void {
+    // [sütun, satır, boş hücreler, atış pencereleri, kapının x'i]
+    const SABLON: [number, number, [number, number][], [number, number][], number][] = [
+      [12, 10, [[0, 9], [11, 9]], [[2, 5], [8, 5], [8, 2]], 16],
+      [12, 7, [], [[2, 2], [8, 2]], 33],
+      [14, 8, [[0, 7], [1, 7], [12, 7], [13, 7]], [[9, 4], [12, 4]], 39],
     ];
-    const [sutun, satir, bos, pencere] = SABLON[tur];
+    const [sutun, satir, bos, pencere, kapi] = SABLON[tur];
     const h = new Uint8Array(sutun * satir).fill(B_DUVAR);
     for (const [c, r] of bos) h[r * sutun + c] = 0;
     for (const [c, r] of pencere) h[r * sutun + c] = B_PENCERE;
     this.duzlestir(x, x + sutun * HUCRE);
     this.binalar.push({
       x, tur, sutun, satir, h, dy: new Float32Array(sutun * satir), vy: new Float32Array(sutun * satir),
-      asker, sayac: 2 + this.rng() * 2, ilk: h.reduce((n, v) => n + (v ? 1 : 0), 0), atisHucre: -1, atisT: 0,
+      asker: 0, kapi, sayac: 2 + this.rng() * 2, ilk: h.reduce((n, v) => n + (v ? 1 : 0), 0), atisHucre: -1, atisT: 0,
       kot: Float32Array.from({ length: sutun }, (_, c) => this.yerY(x + (c + 0.5) * HUCRE)),
     });
+  }
+
+  /**
+   * Koşan asker bir binanın kapısındaysa ve bina uygunsa içeri girer (en çok
+   * 3 kişi; bina yarıdan çok ayaktaysa ve atış penceresi kaldıysa). Her
+   * asker her bina için bir kez karar verir (kılığından): %45'i girer.
+   * Kullanıcı isteği: "binalarda ilk başta asker olmasın, sahadan gelenler
+   * girsin de öyle yıkılsın."
+   */
+  private binayaGir(s: Asker): boolean {
+    if (s.tip !== T_TUFEK && s.tip !== T_MAKINELI) return false;
+    for (let n = 0; n < this.binalar.length; n++) {
+      const b = this.binalar[n];
+      if (b.asker >= 3 || Math.abs(s.x - (b.x + b.kapi)) > 1.2) continue;
+      if ((s.kilik * 7 + n * 13) % 20 >= 9) continue;
+      let ayakta = 0;
+      let pencere = 0;
+      for (const v of b.h) {
+        if (v && v !== B_MOLOZ) ayakta++;
+        if (v === B_PENCERE) pencere++;
+      }
+      if (pencere === 0 || ayakta < b.ilk * 0.6) continue;
+      b.asker++;
+      b.sayac = Math.min(b.sayac, 1.2);
+      this.parca(P_TOZ, s.x, s.y - 4, 0, -6, 0.5, 3);
+      return true;
+    }
+    return false;
   }
 
   /** (x, y) bir binanın ayakta duran hücresinin içinde mi? */
@@ -746,6 +778,7 @@ export class Dunya {
 
   dusmanSayisi(): number {
     let n = this.araclar.length;
+    for (const b of this.binalar) n += b.asker; // binaya girenler de düşman
     for (const s of this.askerler) if (!s.dost) n++;
     for (const h of this.havalar) if (h.tip !== T_NAKLIYE) n++;
     return n;
@@ -1421,6 +1454,7 @@ export class Dunya {
 
       if (s.dost) {
         // Siperdekiler: subay yalnız gözetler; ötekiler menzildeki en yakın düşmana ateş eder
+        if (s.rol === 3) s.yon = h.x > s.x ? 1 : -1; // subay helikopteri izler
         if (s.rol === 3 || s.sayac > 0 || !this.oyunda || this.bitisNeden) continue;
         const menzil = s.rol === 2 ? 170 : s.rol === 1 ? 150 : 135;
         let en = -1;
@@ -1476,6 +1510,10 @@ export class Dunya {
       if (s.durum === KOS) {
         // Derin çukurun ya da dik duvarın başında durur, köprü bekler
         // (kılığa göre kenardan 0–28 birim geride: hepsi aynı noktaya yığılmasın)
+        if (this.binayaGir(s)) {
+          this.askerler.splice(i, 1);
+          continue;
+        }
         const geri = (s.kilik % 8) * 4;
         const engelli = mesafe > s.menzil && this.engel(s.x + gid * geri, gid);
         if (engelli && !s.engelli && r() < 0.25) this.sozler.push({ metin: 'GEÇİT YOK!', x: s.x, y: s.y - 26, t: 0, vurgu: false });
