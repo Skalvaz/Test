@@ -124,6 +124,42 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
 - Kenar itme 230/sn (cepheler arası ~500 birim; parmak kenardayken geçiş
   ≈ 2 sn).
 
+## Hangar ve ilerleme (Kasım 2026, kullanıcı fikri)
+
+"Dandik helikopterle başlayalım (7,62'lik minigun), roketleri, tanksavar ve
+hava füzelerini açarız, ek zırh takarız, sonra bir sonraki helikoptere
+geçeriz; en sonda dikey kalkışlı jet. İlerleme tablosu için War Thunder'ı
+kullanabilirsin." Yapı araştırma ağacından esinli; adlar, sayılar ve ekran
+bize ait (o oyunun arayüzü, adları, varlıkları kopyalanmaz).
+
+- `src/hangar.ts`: `HELILER` (hat), geliştirmeler (`ModTanim.uygula`), kayıt
+  (`localStorage` `barut.hangar.v1`: `ap`, `sahip`, `secili`, `mod`; bozuk
+  kayıt ayıklanır), `donanimKur(kayit)` → `Donanim`. `src/hangarEkran.ts`:
+  ekran; çizerken dokunma bölgelerini döndürür (çizim ve dokunma aynı sayılar).
+- Simülasyon yalnız `Donanim`ı bilir (`Dunya` kurucusunun 3. değişkeni):
+  `tur` (görünüş), `can`, `hiz`, `zirh` (kurşun hasarını azaltır), `topAra`,
+  `topArac`, `topTank`, `roket` (0: yok), `atgm`, `aam`, `bomba`.
+  `VARSAYILAN_DONANIM` = geliştirmesiz ağır saldırı = ESKİ DENGE; testler ve
+  botlar bunu kullanır, sayıları değiştirme.
+- AP = skor / 8, oyun bitince eklenir. Hat: KEŞİF (Alouette III çizgisinde;
+  minigun piyadeyi biçer, tanka işlemez; roketi yok; 65 can, 2 bomba) →
+  [SALDIRI: yakında] → AĞIR SALDIRI (AH-64 çizgisinde, 3500 AP) → [DİKEY
+  KALKIŞLI JET: yakında]. Keşif geliştirmeleri: roket yuvası 250, çift şerit
+  300, motor 350, bomba askısı 400, ek zırh 450. Ağır saldırı: tanksavar füze
+  900 (`M_ATGM`: yalnız araca, tankı tek atar, 4,5 sn), hava füzesi 900
+  (`M_AAM`: 240 menzil, 5 sn), zırh delici 700, motor 600, ek zırh 800.
+- Bot ölçümü (6 tohum, ort.): çıplak keşif hep 3. dalgada düşer, 170 AP/oyun;
+  tam keşif 3.–7. dalga, 640 AP; çıplak ağır 4.–7., 900 AP; tam ağır 5.–10.,
+  2200 AP. Ağır saldırıya ≈ 10–15 oyun. Yeni helikopter ya da geliştirme
+  ekleyince bu tabloyu yeniden ölç.
+- Yeni helikopter eklemek: `sprite.ts`'te sprite + `*_N` + hurda,
+  `sahne.ts` `HELI_CIZIM`e satır (sıra = `Donanim.tur`), `hangarEkran.ts`
+  `SPR`, `hangar.ts` `HELILER`de `yakinda`yı kaldır. Sprite için kullanıcıdan
+  örnek iste: gözle çizilenler iki kez beğenilmedi.
+- Akış: başlıkta ve sonuç ekranında HANGAR düğmesi (`hangarDugme`); başlığın
+  başka yerine dokunmak oyunu başlatır. Deneme: `scripts` yok, geçici
+  Playwright betiğiyle `localStorage`a kayıt yazıp dokunarak denendi.
+
 ## Kurallar ve tuzaklar
 
 - Dünya genişliği `G = 240` birim; çizim `K = 1,5` ile 360 piksel
@@ -324,11 +360,15 @@ Paketler birer oturumluk; kullanım sınırı yüzünden teker teker.
    binalar; köprücü zırhlı ve köprü; derin zemin; makineli, nişancı, subay.
    ✅ İki cephe ve makineli cip. Kalan: arka plan binalarının
    pencerelerinden nişancılar, hasar alan araçtan sağ atlayan askerler.
+   ✅ Ustalar, cephe geçiş düğmesi.
 3. **Saçmalık başlasın:** üst üste binip dev çöp adam olan askerler (her
    parçası ayrı bez bebek; vuruldukça dökülür; oyunun imzası), lazerli
    asker, helikopteri lazerle vuran UFO.
-4. **Gelişim:** birkaç dalgada bir üç seçenekten biri, destek helikopteri,
-   paraşütle inen DOST takviye, 10–20 dalgada bir mutasyon patronu.
+4. **Gelişim:** ✅ hangar (AP, helikopter hattı, geliştirmeler; keşif ve
+   ağır saldırı). Kalan: ara basamak saldırı helikopteri (AH-1 çizgisi) ve
+   dikey kalkışlı jet (sprite için örnek iste), ısı fişeği / duman gibi
+   savunma geliştirmeleri, destek helikopteri, paraşütle inen DOST takviye,
+   10–20 dalgada bir mutasyon patronu.
 5. Android paketi (Capacitor), kansız mod düğmesi.
 
 Yorum kararları: "silahsız kaçışanlar" hedef değil moral bozukluğu (silahını

@@ -4,13 +4,13 @@
  * Arka plan katmanları ve toprak dokusu açılışta bir kez üretilir.
  */
 import {
-  BAGLAR, B_MOLOZ, B_PENCERE, DUNYA_G, Dunya, G, G_MAYIN, HUCRE, KOS, P_TUGLA, T_KOPRUCU, M_BOMBA, M_DKURSUN, M_DRPG, M_HAVAN, M_KURSUN, M_OBOMBA, M_ROKET, M_TOP,
+  BAGLAR, B_MOLOZ, B_PENCERE, DUNYA_G, Dunya, G, G_MAYIN, HUCRE, KOS, P_TUGLA, T_KOPRUCU, M_BOMBA, M_DKURSUN, M_DRPG, M_HAVAN, M_KURSUN, M_OBOMBA, M_ROKET, M_TOP, M_AAM, M_ATGM,
   M_NISANCI, O_CIFT, O_HIZ, O_TAMIR, PANIK, T_MAKINELI, T_NISANCI, T_SUBAY, P_ATES, P_DUMAN, P_ENKAZ, P_KAN, P_KASK, P_KIVILCIM, P_KOVAN, P_KULE, P_TOPRAK,
   P_TOZ, SIPER_X, SIPER_YARI, onMesafe, yanOf, T_HELI, T_JEEP, T_JET, T_KAMYON, T_ROKET, T_TANK, T_TUFEK, T_UCAKSAVAR, YANIYOR,
   type Asker,
 } from './dunya';
 import {
-  DHELI_N, HELI_N, JEEP_N, JET_N, KAMYON_N, SPR_H_JEEP, SPR_JEEP, KULE_N, NAKLIYE_N, SPR_AGAC, SPR_ARABA, SPR_BARIYER, SPR_DUVAR, SPR_LAMBA,
+  ALOUETTE_N, SPR_ALOUETTE, SPR_H_ALOUETTE, DHELI_N, HELI_N, JEEP_N, JET_N, KAMYON_N, SPR_H_JEEP, SPR_JEEP, KULE_N, NAKLIYE_N, SPR_AGAC, SPR_ARABA, SPR_BARIYER, SPR_DUVAR, SPR_LAMBA,
   SPR_LEVHA, SPR_VARIL, SPR_DHELI, SPR_H_DHELI, SPR_H_HELI, SPR_H_JET, SPR_H_KAMYON, SPR_H_TANK, SPR_H_UCAKSAVAR, SPR_GOMU, SPR_HELI, SPR_JET, SPR_KAMYON,
   SPR_KASK, SPR_KIRPI, SPR_KULE, SPR_MAYIN, SPR_NAKLIYE, SPR_SANDIK, SPR_SIMGE_HELI, SPR_SIMGE_SIPER, SPR_TANK,
   SPR_UCAKSAVAR, SPR_UKULE, TANK_N, UCAKSAVAR_N, UKULE_N,
@@ -23,8 +23,22 @@ export const K = 1.5;
 /** Ekran genişliği (piksel). */
 export const EK = Math.round(G * K);
 
+/** Oyuncu helikopterlerinin çizim bilgisi (`Donanim.tur` sırasıyla): sprite, bağlantı noktaları, rotor yarıçapı. */
+const HELI_CIZIM = [
+  { spr: SPR_ALOUETTE, hurda: SPR_H_ALOUETTE, N: ALOUETTE_N, rotor: 37, kuyruk: 5 },
+  { spr: SPR_HELI, hurda: SPR_H_HELI, N: HELI_N, rotor: 46, kuyruk: 6 },
+];
+
+/** Başlık ve sonuç ekranındaki HANGAR düğmesi (çizim ve dokunma aynı yeri kullanır). */
+export function hangarDugme(ey: number, sonuc: boolean): { x: number; y: number; w: number; h: number } {
+  return sonuc ? { x: EK / 2 - 90, y: Math.round(ey * 0.5) + 186, w: 180, h: 34 } : { x: EK / 2 - 90, y: Math.round(ey * 0.47) + 46, w: 180, h: 34 };
+}
+
 export interface Arayuz {
-  durum: 'baslik' | 'oyun' | 'sonuc';
+  durum: 'baslik' | 'oyun' | 'sonuc' | 'hangar';
+  /** Araştırma puanı ve son oyunun kazandırdığı. */
+  ap: number;
+  kazanc: number;
   rekor: number;
   yeniRekor: boolean;
   sesAcik: boolean;
@@ -515,7 +529,10 @@ export class Sahne {
       else if (e.tip === T_JEEP) t.cizDon(SPR_H_JEEP, x, y - (SPR_H_JEEP.h - 1 - JEEP_N.oy) + 1 + bat, e.aci - 0.12, sola, JEEP_N.ox, JEEP_N.oy);
       else if (e.tip === T_HELI) t.cizDon(SPR_H_DHELI, x, y - 9 + bat, e.aci + 0.4, sola, DHELI_N.ox, DHELI_N.oy);
       else if (e.tip === T_JET) t.cizDon(SPR_H_JET, x, y - 6 + bat, e.aci + 0.5, sola, JET_N.ox, JET_N.oy);
-      else t.cizDon(SPR_H_HELI, x, y - 14 + bat, e.aci + 0.5, false, HELI_N.ox, HELI_N.oy);
+      else {
+        const cz = HELI_CIZIM[d.heli.tur];
+        t.cizDon(cz.hurda, x, y - 14 + bat, e.aci + 0.5, false, cz.N.ox, cz.N.oy);
+      }
     }
   }
 
@@ -1757,7 +1774,7 @@ export class Sahne {
         t.cizgi(x - ux * 11, y - uy * 11, x, y, 0, ATES);
         t.vurgu(x, y, AKKOR);
         t.vurgu(x - ux, y - uy, AKKOR);
-      } else if (m.tip === M_ROKET || m.tip === M_DRPG) {
+      } else if (m.tip === M_ROKET || m.tip === M_DRPG || m.tip === M_ATGM || m.tip === M_AAM) {
         t.kalin(x - ux * 8, y - uy * 8, x, y, 0);
         t.nokta(x + ux * 2, y + uy * 2, 0);
         // Kanatçık ve alev
@@ -1874,15 +1891,17 @@ export class Sahne {
       }
     }
     const vurulmus = h.darbe > 0 && Math.floor(d.zaman * 30) % 2 === 0;
-    const N = HELI_N;
-    t.cizDon(SPR_HELI, x, y, h.egim, h.yon < 0, N.ox, N.oy, vurulmus ? 255 : 0);
+    const cz = HELI_CIZIM[h.tur];
+    const N = cz.N;
+    t.cizDon(cz.spr, x, y, h.egim, h.yon < 0, N.ox, N.oy, vurulmus ? 255 : 0);
     const [mx, my] = this.yerel(x, y, h.egim, h.yon, N.direk[0] - N.ox, N.direk[1] - N.oy);
-    this.pervane(mx, my, h.egim, 46);
+    this.pervane(mx, my, h.egim, cz.rotor);
     // Kuyruk pervanesi
     const [kx, ky] = this.yerel(x, y, h.egim, h.yon, N.kuyruk[0] - N.ox, N.kuyruk[1] - N.oy);
     const ka = d.zaman * 40;
-    t.cizgi(kx - Math.cos(ka) * 6, ky - Math.sin(ka) * 6, kx + Math.cos(ka) * 6, ky + Math.sin(ka) * 6, 0);
-    t.cizgi(kx - Math.cos(ka + 1.57) * 6, ky - Math.sin(ka + 1.57) * 6, kx + Math.cos(ka + 1.57) * 6, ky + Math.sin(ka + 1.57) * 6, 150);
+    const kr = cz.kuyruk;
+    t.cizgi(kx - Math.cos(ka) * kr, ky - Math.sin(ka) * kr, kx + Math.cos(ka) * kr, ky + Math.sin(ka) * kr, 0);
+    t.cizgi(kx - Math.cos(ka + 1.57) * kr, ky - Math.sin(ka + 1.57) * kr, kx + Math.cos(ka + 1.57) * kr, ky + Math.sin(ka + 1.57) * kr, 150);
     // Namlu alevi: yıldız biçimli parlama
     if (h.top > 0.07 && d.oyunda && !h.olu) {
       const [ax, ay] = this.yerel(x, y, h.egim, h.yon, N.namlu[0] - N.ox, N.namlu[1] - N.oy);
@@ -2129,7 +2148,7 @@ export class Sahne {
   private hud(a: Arayuz): void {
     const { t, d } = this;
     t.ciz(SPR_SIMGE_HELI, 10, 14);
-    this.cubuk(36, 14, d.heli.can / 100);
+    this.cubuk(36, 14, d.heli.can / d.heli.enCan);
     t.ciz(SPR_SIMGE_SIPER, 10, 33);
     this.cubuk(36, 33, d.siperCan / 100);
     t.yazi(String(d.skor), EK - 10, 12, { hiza: 1, olcek: 4, kenar: 255 });
@@ -2207,6 +2226,7 @@ export class Sahne {
     this.logo(y);
     t.yazi('SİPERİ KORU', EK / 2, y + 92, { hiza: 0, olcek: 3, kenar: 255 });
     if (Math.floor(d.zaman * 1.6) % 2 === 0) t.yazi('DOKUN VE BAŞLA', EK / 2, Math.round(t.h * 0.47), { hiza: 0, olcek: 4, kenar: 255 });
+    this.hangarDugmeCiz(hangarDugme(t.h, false), a.ap);
     const y2 = t.h - 96;
     this.sigdir('SÜRÜKLE: HELİKOPTER UÇAR', EK / 2, y2, { hiza: 0, ton: 240, kenar: 0 });
     this.sigdir('BOMBA: SAĞ ALTTAKİ DÜĞME', EK / 2, y2 + 22, { hiza: 0, ton: 240, kenar: 0 });
@@ -2248,6 +2268,20 @@ export class Sahne {
       t.yazi(a.yeniRekor ? 'YENİ REKOR!' : `REKOR ${a.rekor}`, EK / 2, cy + 72, { hiza: 0, olcek: 3 });
     }
     if (a.sonucT > 1.6 && Math.floor(d.zaman * 1.6) % 2 === 0) t.yazi('DOKUN: YENİDEN', EK / 2, y + h - 36, { hiza: 0, olcek: 3 });
+    if (a.sonucT > 1.2) {
+      // Kazanılan araştırma puanı ve hangar düğmesi (panelin altında)
+      t.yazi(`+${a.kazanc} AP`, EK / 2, y + h - 62, { hiza: 0, olcek: 3, vurgu: KAN });
+      this.hangarDugmeCiz(hangarDugme(t.h, true), a.ap);
+    }
+  }
+
+  private hangarDugmeCiz(r: { x: number; y: number; w: number; h: number }, ap: number): void {
+    const t = this.t;
+    t.kutu(r.x + 2, r.y + 2, r.w, r.h, 0);
+    t.kutu(r.x, r.y, r.w, r.h, 0);
+    t.kutu(r.x + 2, r.y + 2, r.w - 4, r.h - 4, 254);
+    t.yazi('HANGAR', r.x + 10, r.y + 10, { olcek: 3 });
+    t.yazi(`AP ${ap}`, r.x + r.w - 10, r.y + 12, { olcek: 2, hiza: 1, ton: 85 });
   }
 }
 

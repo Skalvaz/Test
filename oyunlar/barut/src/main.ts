@@ -3,7 +3,9 @@
  * çizim her karede bir kez. `window.__barut` deneme/kayıt kancasıdır.
  */
 import { Dunya, G } from './dunya';
-import { EK, K, Sahne, bombaDugme, cepheDugme, sesDugme, type Arayuz } from './sahne';
+import { donanimKur, heliAc, heliSec, kayitOku, kayitYaz, kazanc, modAl } from './hangar';
+import { hangarCiz, type Bolge } from './hangarEkran';
+import { EK, K, Sahne, bombaDugme, cepheDugme, hangarDugme, sesDugme, type Arayuz } from './sahne';
 import { Ses } from './ses';
 import { Tuval } from './tuval';
 
@@ -50,13 +52,16 @@ let goruntu!: ImageData;
 let pikseller!: Uint32Array;
 
 const ses = new Ses();
-const arayuz: Arayuz = { durum: 'baslik', rekor: rekorOku(), yeniRekor: false, sesAcik: true, duyuru: '', duyuruT: 9, sonucT: 0, ipucuT: 0 };
+/** Hangar: araştırma puanı, açılan helikopterler, alınan geliştirmeler (cihazda saklanır). */
+const kayit = kayitOku();
+let hangarBolgeleri: Bolge[] = [];
+const arayuz: Arayuz = { durum: 'baslik', ap: kayit.ap, kazanc: 0, rekor: rekorOku(), yeniRekor: false, sesAcik: true, duyuru: '', duyuruT: 9, sonucT: 0, ipucuT: 0 };
 /** `id`: helikopteri süren parmak. `t0`/`yol`: kısa dokunuşu sürüklemeden ayırmak için. */
 const parmak = { basili: false, x: 0, y: 0, id: -1, t0: 0, yol: 0, sonT: 0 };
 const tus = { sol: false, sag: false, asagi: false, yukari: false };
 
 function yeniDunya(): void {
-  dunya = new Dunya(yuk, (Math.random() * 1e9) | 0);
+  dunya = new Dunya(yuk, (Math.random() * 1e9) | 0, donanimKur(kayit));
   sahne = new Sahne(tuval, dunya);
 }
 
@@ -101,6 +106,29 @@ function basla(): void {
   ses.dokun();
 }
 
+/** Hangardaki bir düğmeye basıldı. */
+function hangarDokun(eylem: string): void {
+  if (!eylem) return;
+  const [ne, id] = eylem.split(':');
+  let degisti = false;
+  if (ne === 'sec') degisti = heliSec(kayit, id);
+  else if (ne === 'ac') degisti = heliAc(kayit, id);
+  else if (ne === 'mod') degisti = modAl(kayit, id);
+  else if (ne === 'geri') arayuz.durum = 'baslik';
+  else if (ne === 'oyna') {
+    arayuz.durum = 'baslik';
+    basla();
+    return;
+  }
+  if (degisti) {
+    kayitYaz(kayit);
+    arayuz.ap = kayit.ap;
+    yeniDunya(); // yeni donanımla
+    if (ne === 'sec') ses.dokun();
+    else ses.sandik();
+  } else ses.dokun();
+}
+
 function sesDegistir(): void {
   arayuz.sesAcik = !arayuz.sesAcik;
   ses.sesAc(arayuz.sesAcik);
@@ -115,10 +143,24 @@ kanvas.addEventListener('pointerdown', (e) => {
     sesDegistir();
     return;
   }
+  const icinde = (r: { x: number; y: number; w: number; h: number }): boolean => p.x >= r.x - 4 && p.x <= r.x + r.w + 4 && p.y >= r.y - 4 && p.y <= r.y + r.h + 4;
+  if (arayuz.durum === 'hangar') {
+    hangarDokun(hangarBolgeleri.find(icinde)?.eylem ?? '');
+    return;
+  }
   if (arayuz.durum === 'baslik') {
+    if (icinde(hangarDugme(ey, false))) {
+      arayuz.durum = 'hangar';
+      ses.dokun();
+      return;
+    }
     basla();
   } else if (arayuz.durum === 'sonuc') {
-    if (arayuz.sonucT > 1.6) basla();
+    if (arayuz.sonucT > 1.2 && icinde(hangarDugme(ey, true))) {
+      yeniDunya();
+      arayuz.durum = 'hangar';
+      ses.dokun();
+    } else if (arayuz.sonucT > 1.6) basla();
     return;
   } else {
     // Bomba YALNIZ sağ alttaki düğmeyle (kullanıcı isteği: ekrana dokununca
@@ -267,6 +309,10 @@ function olaylar(): void {
         arayuz.sonucT = 0;
         parmak.basili = false;
         parmak.id = -1;
+        arayuz.kazanc = kazanc(dunya.skor);
+        kayit.ap += arayuz.kazanc;
+        arayuz.ap = kayit.ap;
+        kayitYaz(kayit);
         if (dunya.skor > arayuz.rekor) {
           arayuz.rekor = dunya.skor;
           arayuz.yeniRekor = true;
@@ -299,7 +345,8 @@ function adimAt(dt: number): void {
 }
 
 function ciz(): void {
-  sahne.ciz(arayuz);
+  if (arayuz.durum === 'hangar') hangarBolgeleri = hangarCiz(tuval, kayit, dunya.zaman);
+  else sahne.ciz(arayuz);
   tuval.sun(pikseller, dunya.parla * 0.5);
   ctx.putImageData(goruntu, 0, 0);
 }

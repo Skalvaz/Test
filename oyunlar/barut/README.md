@@ -14,7 +14,9 @@ zamanla zemine karışıp araziyi yükseltir.
 
 ![Ustalar yıkılan evi onarıyor](docs/ustalar.png)
 
-![Oyuncu helikopteri ve makineli cip](docs/apache-humvee.png)
+![Keşif helikopteri, ağır saldırı helikopteri ve makineli cip](docs/apache-humvee.png)
+
+![Hangar](docs/hangar.png)
 
 ![Piyade çeşitleri](docs/piyade.png)
 
@@ -23,6 +25,9 @@ zamanla zemine karışıp araziyi yükseltir.
 - **İki cephe:** siper ortada, düşman iki yandan gelir. Ekran kenarındaki ok
   ve sayı öbür cepheden gelenleri gösterir; kırmızı yanıp sönüyorsa sipere
   dayanmışlardır. Oka dokun: helikopter o cepheye kendisi uçar.
+- **Hangar:** hafif bir keşif helikopteriyle başlarsın. Oynadıkça araştırma
+  puanı (AP) birikir; roket yuvası, zırh, füzeler ve daha güçlü helikopter
+  AP ile açılır.
 - **Sürükle:** helikopter parmağını izler (göreli; parmağın altında kalmaz).
 - **Silahlar kendi ateş eder:** top en yakın hedefe, roketler araçlara ve
   kalabalık piyadeye. Yaklaştıkça top daha isabetli.

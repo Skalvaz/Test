@@ -71,6 +71,35 @@ export const M_BOMBA = 6;
 export const M_OBOMBA = 7;
 /** Keskin nişancı mermisi: hızlı, kaçması zor; önceden lazer çizgisiyle haber verir. */
 export const M_NISANCI = 8;
+/** Oyuncunun güdümlü tanksavar füzesi: yalnız araca atılır, sıkı döner, tankı tek atar. */
+export const M_ATGM = 9;
+/** Oyuncunun hava füzesi: düşman helikopterine ve uçağına. */
+export const M_AAM = 10;
+
+/**
+ * Helikopterin donanımı: hangardaki seçime ve alınan geliştirmelere göre
+ * kurulur (`hangar.ts`). Simülasyon yalnız bu sayıları bilir.
+ */
+export interface Donanim {
+  /** Görünüş: 0 keşif helikopteri, 1 ağır saldırı helikopteri. */
+  tur: number;
+  can: number;
+  /** Hız ve çeviklik çarpanı. */
+  hiz: number;
+  /** Kurşun hasarını azaltma oranı (0–1). */
+  zirh: number;
+  /** Top: atış aralığı (sn), araca ve tanka mermi başı hasar. */
+  topAra: number;
+  topArac: number;
+  topTank: number;
+  /** Güdümsüz roket dolum süresi; 0 ise roket yok. */
+  roket: number;
+  atgm: boolean;
+  aam: boolean;
+  bomba: number;
+}
+/** Testlerin ve eski dengenin donanımı (ağır saldırı helikopteri, geliştirmesiz). */
+export const VARSAYILAN_DONANIM: Donanim = { tur: 1, can: 100, hiz: 1, zirh: 0, topAra: 0.13, topArac: 0.5, topTank: 0.12, roket: 1.15, atgm: false, aam: false, bomba: 3 };
 
 // Sandık (ödül) tipleri
 export const O_TAMIR = 0;
@@ -391,6 +420,7 @@ export class Dunya {
   heli = {
     x: SIPER_X, y: 0, vx: 0, vy: 0, hx: SIPER_X, hy: 0, egim: 0, yon: 1 as 1 | -1, can: 100,
     top: 0, roket: 0, roketYan: 1, olu: false, patladi: false, donus: 0, darbe: 0, namlu: 0,
+    enCan: 100, tur: 1, atgm: 2, aam: 2,
     /** Cephe geçişi: 0 yok, ±1 o yana kendiliğinden uçuyor; `gecisX` hedef, `gecisT` başlayalı geçen süre. */
     gecis: 0 as -1 | 0 | 1, gecisX: 0, gecisT: 0,
   };
@@ -449,8 +479,13 @@ export class Dunya {
   constructor(
     public readonly yuk: number,
     tohum = 1,
+    /** Helikopterin donanımı (hangardan). */
+    public readonly dn: Donanim = VARSAYILAN_DONANIM,
   ) {
     this.rng = rng32(tohum);
+    this.heli.can = this.heli.enCan = dn.can;
+    this.heli.tur = dn.tur;
+    this.bomba.adet = this.bomba.enCok = dn.bomba;
     // Toprak kesiti ekranın alt %30'u: derin kazılabilir
     this.zemin = Math.round(yuk * 0.7);
     const n = DUNYA_G + 1;
@@ -1280,7 +1315,7 @@ export class Dunya {
       if (g.hiz > 0) g.hiz -= dt;
       if (g.bomba > 0) g.bomba -= dt;
       const b = this.bomba;
-      b.enCok = g.bomba > 0 ? 6 : 3;
+      b.enCok = g.bomba > 0 ? 6 : this.dn.bomba;
       if (b.adet < b.enCok) {
         b.dolum += dt / (g.bomba > 0 ? 0.9 : 2.6);
         if (b.dolum >= 1) {
@@ -1349,7 +1384,7 @@ export class Dunya {
       this.olaylar.push({ tip: 'dalgaBitti' });
       this.sozler.push({ metin: 'SAĞ OL PİLOT!', x: SIPER_X, y: this.zemin - 44, t: 0, vurgu: false });
       // İkmal: hasar varsa dost uçak sandık atar
-      if (this.heli.can < 80 || this.siperCan < 80) {
+      if (this.heli.can < this.heli.enCan * 0.8 || this.siperCan < 80) {
         this.havalar.push({
           tip: T_NAKLIYE, x: -70, y: 52, vx: 135, vy: 0, can: 99, dusuyor: false, t: 0, yon: 1, aci: 0, sayac: 0, seri: 0,
           birakX: sinirla(this.heli.x - 30, 120, DUNYA_G - 140), yuk: 1,
@@ -1492,8 +1527,8 @@ export class Dunya {
       h.hy += (Math.min(h.hy, this.zemin - 96) - h.hy) * Math.min(1, dt * 4);
       if (Math.abs(h.x - h.gecisX) < 16 || h.gecisT > 4) h.gecis = 0;
     }
-    const yay = this.guc.hiz > 0 || h.gecis !== 0 ? 50 : 34;
-    const enHiz = h.gecis !== 0 ? 480 : this.guc.hiz > 0 ? 330 : 240;
+    const yay = (this.guc.hiz > 0 || h.gecis !== 0 ? 50 : 34) * this.dn.hiz;
+    const enHiz = h.gecis !== 0 ? 480 : (this.guc.hiz > 0 ? 330 : 240) * this.dn.hiz;
     h.vx += ((h.hx - h.x) * yay - h.vx * 10) * dt;
     h.vy += ((h.hy - h.y) * yay - h.vy * 10) * dt;
     const hiz = Math.hypot(h.vx, h.vy);
@@ -1510,7 +1545,7 @@ export class Dunya {
     }
     h.egim += (sinirla(h.vx / 210, -1, 1) * 0.28 - h.egim) * Math.min(1, dt * 8);
     // Hasarlıyken duman
-    if (h.can < 40 && r() < (h.can < 20 ? 0.5 : 0.2)) this.parca(P_DUMAN, h.x - h.yon * 12, h.y - 2, -h.yon * 14, -8, 1.1, 3.5);
+    if (h.can < h.enCan * 0.4 && r() < (h.can < h.enCan * 0.2 ? 0.5 : 0.2)) this.parca(P_DUMAN, h.x - h.yon * 12, h.y - 2, -h.yon * 14, -8, 1.1, 3.5);
 
     if (!this.oyunda || this.bitti || this.bitisNeden) return;
     h.top -= dt;
@@ -1562,7 +1597,7 @@ export class Dunya {
       const aci = Math.atan2(ey - my, ex + evx * tt - mx);
       h.namlu = aci;
       if (h.top <= 0) {
-        h.top = 0.13;
+        h.top = this.dn.topAra;
         const a2 = aci + (r() - 0.5) * 0.2;
         this.mermiler.push({ tip: M_KURSUN, x: mx, y: my, vx: Math.cos(a2) * 440 + h.vx * 0.3, vy: Math.sin(a2) * 440, omur: 0.5, yas: 0, hedef: null });
         if (this.guc.cift > 0) {
@@ -1576,8 +1611,49 @@ export class Dunya {
       h.yon = h.vx > 0 ? 1 : -1;
     }
 
+    // Güdümlü füzeler (geliştirmeyle gelir): tanksavar araca, hava füzesi uçan hedefe
+    h.atgm -= dt;
+    h.aam -= dt;
+    if (this.dn.atgm && h.atgm <= 0) {
+      let hedef: Arac | null = null;
+      let en = 1e9;
+      for (const a of this.araclar) {
+        if (!sahnede(a.x)) continue;
+        const d = Math.hypot(a.x - h.x, a.y - 9 - h.y);
+        const p = d + (a.tip === T_TANK ? 0 : a.tip === T_UCAKSAVAR ? 30 : 80);
+        if (d < 200 && p < en) {
+          en = p;
+          hedef = a;
+        }
+      }
+      if (hedef) {
+        h.atgm = 4.5;
+        const aci = Math.atan2(hedef.y - 9 - h.y, hedef.x - h.x);
+        this.mermiler.push({ tip: M_ATGM, x: h.x, y: h.y + 9, vx: Math.cos(aci) * 110 + h.vx * 0.5, vy: Math.sin(aci) * 110 + 30, omur: 2.6, yas: 0, hedef });
+        this.olaylar.push({ tip: 'roket' });
+      }
+    }
+    if (this.dn.aam && h.aam <= 0) {
+      let hedef: Hava | null = null;
+      let en = 240;
+      for (const o of this.havalar) {
+        if (o.tip === T_NAKLIYE || o.dusuyor) continue;
+        const d = Math.hypot(o.x - h.x, o.y - h.y);
+        if (d < en) {
+          en = d;
+          hedef = o;
+        }
+      }
+      if (hedef) {
+        h.aam = 5;
+        const aci = Math.atan2(hedef.y - h.y, hedef.x - h.x);
+        this.mermiler.push({ tip: M_AAM, x: h.x, y: h.y + 7, vx: Math.cos(aci) * 160 + h.vx * 0.5, vy: Math.sin(aci) * 160, omur: 2.2, yas: 0, hedef });
+        this.olaylar.push({ tip: 'roket' });
+      }
+    }
+
     // Roket: araçlar ve hava hedefleri, yoksa piyade kümesi
-    if (h.roket <= 0) {
+    if (this.dn.roket > 0 && h.roket <= 0) {
       let hedef: Arac | Hava | null = null;
       let hx = 0;
       let hy = 0;
@@ -1634,7 +1710,7 @@ export class Dunya {
         }
       }
       if (enR < 1e8) {
-        h.roket = 1.15;
+        h.roket = this.dn.roket;
         h.roketYan = -h.roketYan;
         const ox = h.x - h.yon * 2;
         const oy = h.y + 8;
@@ -2095,9 +2171,10 @@ export class Dunya {
       m.yas += dt;
       m.omur -= dt;
       let bitti = m.omur <= 0;
-      let patla = bitti && (m.tip === M_ROKET || m.tip === M_DRPG || m.tip === M_TOP);
+      const fuze = m.tip === M_ROKET || m.tip === M_ATGM || m.tip === M_AAM;
+      let patla = bitti && (fuze || m.tip === M_DRPG || m.tip === M_TOP);
 
-      if (m.tip === M_ROKET) {
+      if (fuze) {
         // Hızlanır, hedefe hafifçe döner
         let aci = Math.atan2(m.vy, m.vx);
         const t = m.hedef;
@@ -2106,9 +2183,11 @@ export class Dunya {
           let fark = Math.atan2(ty - m.y, t.x - m.x) - aci;
           while (fark > Math.PI) fark -= Math.PI * 2;
           while (fark < -Math.PI) fark += Math.PI * 2;
-          aci += sinirla(fark, -3.2 * dt, 3.2 * dt);
+          // Güdümlü füzeler hedefi bırakmaz; güdümsüz roket yalnız hafifçe döner
+          const don = m.tip === M_ROKET ? 3.2 : 8;
+          aci += sinirla(fark, -don * dt, don * dt);
         }
-        const hiz = Math.min(400, Math.hypot(m.vx, m.vy) + 520 * dt);
+        const hiz = Math.min(m.tip === M_AAM ? 520 : 400, Math.hypot(m.vx, m.vy) + 520 * dt);
         m.vx = Math.cos(aci) * hiz;
         m.vy = Math.sin(aci) * hiz;
         this.parca(P_DUMAN, m.x, m.y, (r() - 0.5) * 8, (r() - 0.5) * 8, 0.5, 1.8);
@@ -2127,7 +2206,7 @@ export class Dunya {
         m.x += m.vx * dt * 0.5;
         m.y += m.vy * dt * 0.5;
         const gy = this.yerY(m.x);
-        const patlar = m.tip === M_ROKET || m.tip === M_OBOMBA;
+        const patlar = fuze || m.tip === M_OBOMBA;
         const dostMermi = m.tip === M_KURSUN || patlar;
 
         if (dostMermi) {
@@ -2147,7 +2226,7 @@ export class Dunya {
               if (patlar) patla = true;
               else {
                 this.parca(P_KIVILCIM, m.x, m.y, -m.vx * 0.2 + (r() - 0.5) * 60, -60 - r() * 60, 0.3);
-                this.aracHasar(k, a.tip === T_TANK ? 0.12 : 0.5);
+                this.aracHasar(k, a.tip === T_TANK ? this.dn.topTank : this.dn.topArac);
               }
             }
           }
@@ -2156,7 +2235,7 @@ export class Dunya {
             if (Math.abs(m.x - o.x) < 21 && Math.abs(m.y - o.y) < 8) {
               bitti = true;
               if (patlar) patla = true;
-              else this.havaHasar(o, 0.5);
+              else this.havaHasar(o, Math.max(0.25, this.dn.topArac));
             }
           }
           if (!bitti && patlar && this.binaCarp(m.x, m.y)) {
@@ -2167,8 +2246,8 @@ export class Dunya {
           const yakin = m.tip === M_BOMBA ? Math.hypot(m.x - h.x, m.y - h.y) < 13 : Math.abs(m.x - h.x) < 19 && Math.abs(m.y - (h.y + 1)) < 8;
           if (yakin) {
             bitti = true;
-            if (m.tip === M_DKURSUN) this.heliHasar(3.5);
-            else if (m.tip === M_NISANCI) this.heliHasar(9);
+            if (m.tip === M_DKURSUN) this.heliHasar(3.5 * (1 - this.dn.zirh));
+            else if (m.tip === M_NISANCI) this.heliHasar(9 * (1 - this.dn.zirh));
             else patla = true;
           }
         }
@@ -2183,6 +2262,8 @@ export class Dunya {
 
       if (patla) {
         if (m.tip === M_ROKET) this.patlat(m.x, m.y, 21, true, 4);
+        else if (m.tip === M_ATGM) this.patlat(m.x, m.y, 17, true, 13);
+        else if (m.tip === M_AAM) this.patlat(m.x, m.y, 14, true, 10);
         else if (m.tip === M_DRPG) this.patlat(m.x, m.y, 15, false, 4.2);
         else if (m.tip === M_TOP) this.patlat(m.x, m.y, 17, false, 5.5);
         else if (m.tip === M_HAVAN) this.patlat(m.x, m.y, 17, false, 3.2);
@@ -2394,7 +2475,7 @@ export class Dunya {
       if (!h.olu && Math.hypot(kx - s.x, ky - s.y) < 13) {
         let metin = 'TAMİR +35';
         if (s.tip === O_TAMIR) {
-          h.can = Math.min(100, h.can + 35);
+          h.can = Math.min(h.enCan, h.can + 35);
           this.siperCan = Math.min(100, this.siperCan + 15);
         } else if (s.tip === O_CIFT) {
           this.guc.cift = 22;
