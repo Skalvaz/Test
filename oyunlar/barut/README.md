@@ -12,6 +12,8 @@ zamanla zemine karışıp araziyi yükseltir.
 
 ![Sokak süsleri ve hurda](docs/susler.png)
 
+![Ustalar yıkılan evi onarıyor](docs/ustalar.png)
+
 ![Piyade çeşitleri](docs/piyade.png)
 
 ## Nasıl oynanır

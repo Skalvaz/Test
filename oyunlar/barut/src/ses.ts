@@ -9,6 +9,7 @@ export class Ses {
   private pervaneK: GainNode | null = null;
   private sonAtes = 0;
   private sonTufek = 0;
+  private sonTak = 0;
   private sonPatlama = 0;
   private sonOlum = 0;
   acik = true;
@@ -179,6 +180,18 @@ export class Ses {
 
   bitis(): void {
     [330, 262, 220, 165].forEach((f, i) => this.bip(f, f * 0.97, 0.34, 'triangle', 0.1, i * 0.22));
+  }
+
+  /** Usta çekici: kısa, tok tık (art arda gelince ritim olur). */
+  tak(): void {
+    if (this.simdi() - this.sonTak < 0.06) return;
+    this.sonTak = this.simdi();
+    this.patla(1900, 0.03, 0.05, 'bandpass', 0.6);
+    this.bip(520, 380, 0.03, 'square', 0.025);
+  }
+
+  onarildi(): void {
+    [392, 523, 659].forEach((f, i) => this.bip(f, f, 0.09, 'square', 0.06, i * 0.08));
   }
 
   dokun(): void {

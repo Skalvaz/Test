@@ -92,9 +92,13 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   yakını sipere 130'dan yakınsa kırmızı yanıp söner. Uçak uyarısı geldiği
   kenarda (`jetUyariYan`). Köprücü ve bekleme sayaçları cephe başına
   (`kopruSayac[2]`, `askerBekliyor[2]`); köprü `kok` ucundan açılır.
-- Cip HMMWV çizgisinde (kullanıcı: "Humvee'ye benzesin"): kutu gövde, uzun
-  düz kaput, dik ön cam, eğik arka, köşeli çamurluk boşlukları; nişancı
-  tavandaki taret halkasından belden yukarı görünür, namlunun önünde kalkan.
+- Cip HMMWV çizgisinde; oranlar kullanıcının gönderdiği yan görünüşten
+  (kopya değil, hatlar): tavandan kuyruğa UZUN eğik arka, düz tavanda kapak,
+  dik ön cam, alçalan uzun kaput, iki kapı (üstte koyu cam, altta çapraz
+  baskı), gövdenin altına taşan iri tırtıllı tekerler (teker merkezi eşik
+  hizasında), düz tavanlı çamurluk boşlukları, kuyrukta uzun kamçı anten,
+  önde turuncu arkada kırmızı lamba (vurgu katmanı), iri köşeli kamuflaj
+  lekeleri. Nişancı tavandaki kapaktan belden yukarı görünür.
 - Makineli cip (`T_JEEP`): hızlı (58), 3 can; sipere 50–90 birim sokulup
   5'lik seri atar (seri başı 2,5 hasar), helikopter 135 içindeyse ona döner.
   Oyuncu öbür cephedeyken geri dönmeye zorlar; 3. dalgadan sonra gelir.
@@ -124,10 +128,14 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   (`les[]` doku izi). Hurda 15 sn sonra aynı şekilde. Kullanıcı isteği:
   "cesetler birikse dağ olsa".
 - Modeller gerçek araç siluetlerinden esinli (kullanıcı isteği: "olabildiğince
-  yakın"): oyuncu helikopteri AH-64 çizgisinde (kullanıcı ayrıca istedi:
-  rotor üstünde radar kubbesi, iri motor kaportası, koyu düz panelli tandem
-  kabin, burun tareti, gövde altında zincirli top, kısa kanatta roket yuvası
-  ve füze rafı, geriye yatık dikme + alçak yatay denge), Mi-24, T-72,
+  yakın"): oyuncu helikopteri AH-64 çizgisinde; oranlar kullanıcının
+  gönderdiği piksel örnekten ("bire bir kopyalama, hatlar ve oranlar böyle"):
+  uzun ALÇAK gövde, uzunluğun üçte biri kadar ince ve hafif yükselen bom,
+  burna yakın DÜZ TAVANLI iki panelli koyu kabin, hemen arkasında ince direk
+  ve küçük iki kademeli kubbe, kabinle aynı yükseklikte motor kaportası,
+  düz karın, burun altında uzun namlulu top, önde ana teker, kuyruk ucunda
+  uzun dikmeli teker, geriye yatık dar dikme. İlk denemem kısa ve tombuldu
+  (kullanıcı beğenmedi). Mi-24, T-72,
   ZSU-23-4, Ural, HMMWV, MiG-21, C-130. İşaret, bayrak, ülke YOK. Bağlantı noktaları
   `*_N` sabitlerinde (`ox, oy`, `direk`, `namlu`, `kule`…); sprite'ı
   değiştirince onları da güncelle.
@@ -181,7 +189,9 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   Tek cephedeyken sınır pusuyu önlüyordu; iki cephede bir kenarda beklemek
   öbür cepheyi boş bırakır, sınır gevşetilebildi.
 - Dizi üstünde geriye doğru dönerken `patlat`/`siperHasar` başka elemanları
-  silebilir: döngü başında `if (!s) continue` koruması var, kaldırma.
+  silebilir: döngü başında `if (!s) continue` koruması var, kaldırma. Aynı
+  hata gömülerde de çıktı (mayın patlarken krater başka gömüleri çıkarıyor);
+  oynanış testi yakaladı, testi var.
 - Zemin `yuk * 0,70`'te: toprak kesiti ekranın alt %30'u (kullanıcı isteği:
   derinlik artsın). Krater derinliği `zemin + 11` ile sınırlı; yalnız `kazi`
   patlamaları (oyuncu bombası, mayın) `zemin + 88`'e kadar oyar. Gömüler
@@ -213,8 +223,20 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   karar); en çok 3 kişi, bina %60'tan çok ayaktaysa ve atış penceresi
   kaldıysa. İçeridekiler `dusmanSayisi()`na sayılır: dolu bina yıkılmadan
   dalga bitmez (70 sn sınırı hariç). Çatının üstünde kişi sayısı kadar
-  yanıp sönen kırmızı `!` çıkar. Dört bina da yıkılınca özellik biter
-  (AÇIK: dalga arasında onarım ya da yeni bina).
+  yanıp sönen kırmızı `!` çıkar.
+- USTALAR (kullanıcı fikri: "adamlar gelip binaları onarsa, tatlı
+  animasyonla"): dalga bitince `ustaGonder()` her cephede, içinde düşman
+  olmayan hasarlı bina varsa (sipere en yakını) üsten iki usta çıkarır ve
+  arayı 9 sn'ye uzatır. Ustalar `askerler` içinde dosttur: `rol` 4 duvarcı
+  (tuğla dolu el arabası iter), 5 merdivenli (merdiveni omzunda taşır);
+  `hedef` bina sırası, `seri` durum (0 gidiyor, 1 çalışıyor, 2 dönüyor,
+  3 kaçıyor). Çalışırken `onarimT` biriktirirler; `onar()` önce temelin
+  altındaki zemini `kot0`a getirir (çukur dolar), sonra `sablon`a göre
+  alttan üste hücre koyar (hücre yukarıdan düşüp oturur, toz + kıvılcım +
+  `tak` sesi). İki usta yıkık bir evi ≈ 6 sn'de bitirir. 80 birim içinde
+  düşman askeri (95'te araç) görünce elleri havada üsse kaçarlar; düşman
+  patlaması öldürür, oyuncunun bombası dokunmaz. Onarılan binaya düşman
+  yeniden girebilir. Çizim `usta()`, `elArabasi()`, `merdiven()`.
 - Bina = şablon + deri. `dunya.ts` `binaKur(x, tur, asker)` hücre ızgarasını
   (boş köşeler, atış pencereleri) kurar, `dekor.ts` aynı ölçüde cepheyi
   boyar (hücre başına 6 piksel); birini değiştirince ötekini de değiştir.

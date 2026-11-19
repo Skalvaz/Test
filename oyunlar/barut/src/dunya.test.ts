@@ -271,6 +271,46 @@ describe('BARUT simülasyonu', () => {
     expect(d.dusmanSayisi()).toBe(once); // içeridekiler de sayılır
   });
 
+  it('ustalar hasarlı binayı onarır; düşman yaklaşınca kaçar', () => {
+    const d = new Dunya(566, 51);
+    d.basla();
+    d.ara = 999;
+    d.heli.x = d.heli.hx = 300;
+    const b = d.binalar[2];
+    const mx = b.x + 24;
+    d.patlat(mx + 8, d.zemin - 22, 24, true, 3);
+    d.patlat(mx - 6, d.zemin - 6, 22, true, 3, true); // temelin altını da oyar
+    for (let i = 0; i < 2 / ADIM; i++) d.adim(ADIM);
+    expect(d.hasarli(b)).toBe(true);
+    const gonder = (): void => (d as unknown as { ustaGonder(): void }).ustaGonder();
+    gonder();
+    const ustalar = (): number => d.askerler.filter((s) => s.dost && s.rol >= 4).length;
+    expect(ustalar()).toBe(2);
+    gonder(); // aynı cepheye ikinci ekip çıkmaz
+    expect(ustalar()).toBe(2);
+    for (let i = 0; i < 25 / ADIM && (d.hasarli(b) || ustalar() > 0); i++) {
+      d.heli.can = 100;
+      d.adim(ADIM);
+    }
+    expect(d.hasarli(b)).toBe(false);
+    expect(Array.from(b.h)).toEqual(Array.from(b.sablon));
+    expect(ustalar()).toBe(0); // işi bitirip üsse döndüler
+    // Onarılan binaya yeniden girilebilir
+    d.askerler.push({ x: b.x + b.kapi + 3, y: d.zemin, tip: 0, dost: false, durum: 0, t: 0, faz: 0, sayac: 99, hiz: 30, menzil: 40, nisanAci: 0, hedef: 0, yon: -1, kilik: 0, yukseklik: 0, seri: 0, rol: 0, atis: 0, engelli: false });
+    for (let i = 0; i < 1 / ADIM; i++) d.adim(ADIM);
+    expect(b.asker).toBe(1);
+    // İçinde düşman olan binaya usta çıkmaz; hasarlı öteki binaya çıkar ama düşman görünce kaçar
+    const b2 = d.binalar[3];
+    d.patlat(b2.x + 20, d.zemin - 20, 24, true, 3);
+    for (let i = 0; i < 2 / ADIM; i++) d.adim(ADIM);
+    gonder();
+    expect(ustalar()).toBe(2);
+    // Düşman aracı (dostlar araca ateş etmez, yerinde kalır)
+    d.araclar.push({ tip: 3, x: 640, y: d.zemin, can: 12, enCan: 12, dur: 640, sayac: 99, nisanT: 0, namlu: 0.2, yuk: 0, t: 0, sars: 0, engelli: false });
+    for (let i = 0; i < 0.5 / ADIM; i++) d.adim(ADIM);
+    expect(d.askerler.filter((s) => s.dost && s.rol >= 4).every((s) => s.seri === 3)).toBe(true);
+  });
+
   it('bina patlamayla çöker, içindekiler ölür', () => {
     const d = new Dunya(566, 22);
     d.basla();
@@ -284,6 +324,24 @@ describe('BARUT simülasyonu', () => {
     expect(b.h.filter((v) => v > 0).length).toBeLessThan(ilk * 0.5);
     expect(b.asker).toBe(0);
     expect(d.olu.piyade).toBeGreaterThan(0);
+  });
+
+  it('zincirleme mayın ve sandık çıkışı diziyi bozmaz', () => {
+    // Oynanış testinde yakalandı: mayın patlarken krater başka gömüleri de
+    // çıkarıp diziyi kısaltıyor, döngü olmayan elemana bakıyordu.
+    for (const tohum of [1, 2, 3, 4]) {
+      const d = new Dunya(566, tohum);
+      d.basla();
+      d.ara = 999;
+      for (let tur = 0; tur < 6; tur++) {
+        for (const g of [...d.gomuler]) d.patlat(g.x, d.yerY(g.x) - 1, 25, true, 0, true);
+        for (let i = 0; i < 60; i++) {
+          d.heli.can = 100;
+          d.adim(ADIM);
+        }
+      }
+      expect(d.gomuler.length).toBeLessThan(6);
+    }
   });
 
   it('bomba sayısı sınırlıdır ve zamanla dolar', () => {

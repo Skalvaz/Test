@@ -228,6 +228,12 @@ function olaylar(): void {
       case 'mayin':
         ses.uyari();
         break;
+      case 'tak':
+        ses.tak();
+        break;
+      case 'onarildi':
+        ses.onarildi();
+        break;
       case 'dalga':
         arayuz.duyuru = `DALGA ${o.no}` + (o.yan > 0 ? ' SAĞDAN' : o.yan < 0 ? ' SOLDAN' : o.no === 3 ? ' İKİ YANDAN' : '');
         arayuz.duyuruT = 0;

@@ -505,10 +505,10 @@ export class Sahne {
       if (e.tip === T_TANK || e.tip === T_KOPRUCU) t.cizDon(SPR_H_TANK, x, y - 9 + bat, e.aci, sola, TANK_N.ox, TANK_N.oy);
       else if (e.tip === T_UCAKSAVAR) t.cizDon(SPR_H_UCAKSAVAR, x, y - 8 + bat, e.aci, sola, UCAKSAVAR_N.ox, UCAKSAVAR_N.oy);
       else if (e.tip === T_KAMYON) t.cizDon(SPR_H_KAMYON, x, y - 11 + bat, e.aci + 0.2, sola, KAMYON_N.ox, KAMYON_N.oy);
-      else if (e.tip === T_JEEP) t.cizDon(SPR_H_JEEP, x, y - 12 + bat, e.aci - 0.12, sola, JEEP_N.ox, JEEP_N.oy);
+      else if (e.tip === T_JEEP) t.cizDon(SPR_H_JEEP, x, y - 13 + bat, e.aci - 0.12, sola, JEEP_N.ox, JEEP_N.oy);
       else if (e.tip === T_HELI) t.cizDon(SPR_H_DHELI, x, y - 9 + bat, e.aci + 0.4, sola, DHELI_N.ox, DHELI_N.oy);
       else if (e.tip === T_JET) t.cizDon(SPR_H_JET, x, y - 6 + bat, e.aci + 0.5, sola, JET_N.ox, JET_N.oy);
-      else t.cizDon(SPR_H_HELI, x, y - 10 + bat, e.aci + 0.5, false, HELI_N.ox, HELI_N.oy);
+      else t.cizDon(SPR_H_HELI, x, y - 14 + bat, e.aci + 0.5, false, HELI_N.ox, HELI_N.oy);
     }
   }
 
@@ -1012,7 +1012,7 @@ export class Sahne {
     const { t, d } = this;
     for (const a of d.araclar) {
       const sars = a.sars > 0 ? (Math.floor(d.zaman * 60) % 2 ? 1 : -1) : 0;
-      const [x0, yb, e] = this.durus(a, a.tip === T_KAMYON ? 17 : a.tip === T_JEEP ? 13 : 16);
+      const [x0, yb, e] = this.durus(a, a.tip === T_KAMYON ? 17 : a.tip === T_JEEP ? 15 : 16);
       const x = x0 + sars;
       if (x < -70 || x > EK + 70) continue;
       // Sağ cepheden gelen sola bakar, sol cepheden gelen sağa (sprite'lar sağa bakar)
@@ -1331,12 +1331,159 @@ export class Sahne {
     this.silah(1, x + yon * 6, y - 5, cc, sn, s.atis > 0);
   }
 
+  /** Merdiven: iki ray ve basamaklar, (x0, y0) dipten (x1, y1) tepeye. */
+  private merdiven(x0: number, y0: number, x1: number, y1: number): void {
+    const t = this.t;
+    const uz = Math.hypot(x1 - x0, y1 - y0) || 1;
+    const px = (-(y1 - y0) / uz) * 4;
+    const py = ((x1 - x0) / uz) * 4;
+    t.cizgi(x0, y0, x1, y1, 0);
+    t.cizgi(x0 + px, y0 + py, x1 + px, y1 + py, 0);
+    for (let k = 3; k < uz - 1; k += 5) {
+      const u = k / uz;
+      t.cizgi(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, x0 + px + (x1 - x0) * u, y0 + py + (y1 - y0) * u, 0);
+    }
+  }
+
+  /** El arabası: tek teker, yamuk tekne, tutamak; içinde `tugla` kadar tuğla. `cx` teknenin ortası. */
+  private elArabasi(cx: number, yG: number, yon: number, tugla: number, zip = 0): void {
+    const t = this.t;
+    // Tekne: üstte geniş, altta dar
+    for (let k = 0; k < 5; k++) {
+      const yari = 7 - k;
+      t.kutu(cx - yari, yG - 11 + k - zip, yari * 2 + 1, 1, k === 0 ? 0 : 128);
+      t.nokta(cx - yari, yG - 11 + k - zip, 0);
+      t.nokta(cx + yari, yG - 11 + k - zip, 0);
+    }
+    t.kutu(cx - 3, yG - 6 - zip, 7, 1, 0);
+    // Teker önde, ayak arkada, tutamak ustaya uzanır
+    t.daire(cx + yon * 6, yG - 3, 3, 0);
+    t.nokta(cx + yon * 6, yG - 3, 213);
+    t.cizgi(cx + yon * 2, yG - 6 - zip, cx + yon * 6, yG - 3, 0);
+    t.cizgi(cx - yon * 3, yG - 6 - zip, cx - yon * 4, yG, 0);
+    t.cizgi(cx - yon * 7, yG - 10 - zip, cx - yon * 12, yG - 12 - zip, 0);
+    // Tuğlalar: şaşırtmalı istif
+    for (let k = 0; k < tugla; k++) {
+      const bx = cx - 5 + (k % 2) * 5 + (k > 1 ? 2 : 0);
+      const by = yG - 14 - zip - (k > 1 ? 3 : 0);
+      t.kutu(bx, by, 5, 3, 0);
+      t.kutu(bx + 1, by + 1, 3, 1, k % 2 ? 213 : 170);
+    }
+  }
+
+  /**
+   * Usta: baretli, tulumlu. Duvarcı (4) tuğla dolu el arabası iter, merdivenli (5)
+   * merdiveni omzunda taşır; binada biri yerden, öteki merdivenden çekiç sallar,
+   * her vuruşta kıvılcım çıkar. Düşman yaklaşınca elleri havada kaçarlar.
+   */
+  private usta(s: Asker, x: number, y: number): void {
+    const { t, d } = this;
+    const yon = s.yon;
+    const calisiyor = s.seri === 1;
+    const kaciyor = s.seri === 3;
+    const yG = this.Y(s.y);
+    if (s.rol === 5 && calisiyor) this.merdiven(x - yon * 6, yG, x + yon * 8, yG - 44);
+    if (s.rol === 4 && calisiyor) this.elArabasi(x - yon * 15, yG, yon, 1 + (Math.floor(d.zaman * 0.7 + s.x) % 3));
+    let kalca = y - 9;
+    let boyun = y - 17;
+    if (calisiyor) {
+      this.uzuv(x, kalca, x - 3, y, -0.5, 0, true);
+      this.uzuv(x, kalca, x + 2, y, 0.5, 0, true);
+      t.nokta(x - 4, y, 0);
+      t.nokta(x + 3, y, 0);
+    } else {
+      const zip = Math.abs(Math.sin(s.faz)) * 1.5;
+      kalca -= zip;
+      boyun -= zip;
+      for (const faz of [s.faz, s.faz + Math.PI]) {
+        const a = Math.sin(faz);
+        const kalk = Math.max(0, Math.cos(faz));
+        const fx = x + a * 5 * yon;
+        const fy = y - kalk * 4;
+        this.uzuv(x, kalca, fx, fy, yon * (1.5 + kalk * 1.5), -0.5, true);
+        t.nokta(fx + yon, fy, 0);
+      }
+    }
+    const nx = Math.round(x + (calisiyor ? 0 : yon * 2));
+    const by = boyun + 2;
+    // Tulum: gri önlük, askılar, alet kemeri
+    t.kalin(x, kalca, nx, boyun, 0);
+    const ust = Math.round(boyun) + 2;
+    const alt = Math.round(kalca) - 1;
+    t.kutu(nx - 2, ust - 1, 5, alt - ust + 3, 0);
+    t.kutu(nx - 1, ust, 3, alt - ust + 1, 170);
+    t.nokta(nx - 1, ust, 254);
+    t.nokta(nx + 1, ust, 254);
+    t.kutu(nx - 1, alt - 1, 3, 1, 85);
+    // Baş ve baret (çepeçevre siperlikli)
+    const hx = Math.round(x + (calisiyor ? 0 : yon * 2.8));
+    const hy = Math.round(boyun - 4);
+    t.daire(hx + 0.5, hy, 3.2, 0);
+    t.kutu(hx - 1, hy - 5, 3, 1, 0);
+    t.kutu(hx - 3, hy - 4, 7, 3, 0);
+    t.kutu(hx - 2, hy - 4, 5, 2, 254);
+    t.kutu(hx - 4, hy - 1, 9, 1, 0);
+    t.nokta(hx, hy - 5, 254);
+
+    if (kaciyor) {
+      // Eller havada, alnından ter damlar
+      const k = Math.sin(s.faz * 2) * 2;
+      this.uzuv(nx, by, nx - 5, by - 8 + k, -2, 1);
+      this.uzuv(nx + 1, by, nx + 6, by - 8 - k, 2, 1);
+      const ter = Math.floor(d.zaman * 8 + s.x) % 3;
+      t.nokta(hx - yon * 5, hy - 2 + ter * 2, 0);
+      t.nokta(hx - yon * 7, hy + ter * 2, 0);
+      return;
+    }
+    if (calisiyor) {
+      // Çekiç: yukarı kalkar, duvara iner; indiği anda kıvılcım
+      const a = Math.sin(d.zaman * 11 + s.x * 0.7);
+      const ex = nx + yon * (5 + a);
+      const ey = by - 2 - a * 5;
+      this.uzuv(nx, by, ex, ey, 0, -2);
+      const ac = 0.5 + (a + 1) * 0.55;
+      const cx = ex + yon * Math.cos(ac) * 5;
+      const cy = ey - Math.sin(ac) * 5;
+      t.cizgi(ex, ey, cx, cy, 0);
+      t.kutu(Math.round(cx) - 1, Math.round(cy) - 1, 3, 3, 0);
+      if (a < -0.75) {
+        const vx = Math.round(cx + yon * 3);
+        const vy = Math.round(cy + 1);
+        t.cizgi(vx - 2, vy, vx + 2, vy, 0, ATES);
+        t.cizgi(vx, vy - 2, vx, vy + 2, 0, ATES);
+        t.vurgu(vx, vy, AKKOR);
+      }
+      // Öteki elde tuğla (duvarcı) ya da merdivene tutunur
+      if (s.rol === 4) {
+        this.uzuv(nx, by + 1, nx + yon * 3, by + 5, 0, 1);
+        t.kutu(yon > 0 ? nx + 3 : nx - 7, by + 4, 5, 3, 0);
+        t.kutu(yon > 0 ? nx + 4 : nx - 6, by + 5, 3, 1, 213);
+      } else this.uzuv(nx, by + 1, nx + yon * 5, by + 3, 0, 1);
+      return;
+    }
+    if (s.rol === 4) {
+      // El arabasını iter: tuğlalar adımla zıplar
+      const zip = Math.round(Math.abs(Math.sin(s.faz * 2)));
+      this.elArabasi(x + yon * 16, yG, yon, s.seri === 0 ? 4 : 0, zip);
+      this.uzuv(nx, by, x + yon * 5, yG - 12 - zip, 0, 2);
+    } else {
+      // Merdiven omuzda, bir el yukarıda tutar
+      const sal = Math.round(Math.sin(s.faz) * 1);
+      this.merdiven(x - yon * 17, by + 2 + sal, x + yon * 16, by - 5 - sal);
+      this.uzuv(nx, by, nx + yon * 3, by - 4, yon, -1);
+    }
+  }
+
   private adam(s: Asker): void {
     const t = this.t;
     const d = this.d;
     const x = this.X(s.x);
     if (x < -30 || x > EK + 30) return;
     const y = this.Y(s.y) - Math.round(s.yukseklik * K);
+    if (s.dost && s.rol >= 4) {
+      this.usta(s, x, y);
+      return;
+    }
     const yon = s.yon;
     const kl = s.kilik;
     const tip = s.tip;
@@ -1714,7 +1861,7 @@ export class Sahne {
     const N = HELI_N;
     t.cizDon(SPR_HELI, x, y, h.egim, h.yon < 0, N.ox, N.oy, vurulmus ? 255 : 0);
     const [mx, my] = this.yerel(x, y, h.egim, h.yon, N.direk[0] - N.ox, N.direk[1] - N.oy);
-    this.pervane(mx, my, h.egim, 48);
+    this.pervane(mx, my, h.egim, 46);
     // Kuyruk pervanesi
     const [kx, ky] = this.yerel(x, y, h.egim, h.yon, N.kuyruk[0] - N.ox, N.kuyruk[1] - N.oy);
     const ka = d.zaman * 40;

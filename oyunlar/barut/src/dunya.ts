@@ -129,7 +129,11 @@ export interface Asker {
   seri: number;
   /** Önü derin çukur ya da duvar: yürüyemiyor, köprü bekliyor. */
   engelli: boolean;
-  /** Dostlarda görev: 0 tüfekçi, 1 makineli yuvası, 2 kule nöbetçisi, 3 subay. */
+  /**
+   * Dostlarda görev: 0 tüfekçi, 1 makineli yuvası, 2 kule nöbetçisi, 3 subay,
+   * 4 duvarcı usta (el arabalı), 5 merdivenli usta. Ustalarda `hedef` onarılan
+   * binanın sırası, `seri` durum: 0 gidiyor, 1 çalışıyor, 2 dönüyor, 3 kaçıyor.
+   */
   rol: number;
   /** > 0 iken namlu alevi görünür. */
   atis: number;
@@ -190,6 +194,11 @@ export interface Bina {
   atisT: number;
   /** Her sütunun kurulduğu andaki zemin kotu: zemin oynarsa sütun moloza döner. */
   kot: Float32Array;
+  /** Kurulduğu andaki hücreler ve temel kotu: ustalar binayı buna göre onarır. */
+  sablon: Uint8Array;
+  kot0: number;
+  /** Ustaların biriktirdiği emek; dolunca bir tuğla yerine konur. */
+  onarimT: number;
 }
 
 export interface Hava {
@@ -330,6 +339,8 @@ export type Olay =
   | { tip: 'bomba' }
   | { tip: 'mayin' }
   | { tip: 'cokus' }
+  | { tip: 'tak' }
+  | { tip: 'onarildi' }
   | { tip: 'bitti' };
 
 export function rng32(tohum: number): () => number {
@@ -563,11 +574,132 @@ export class Dunya {
     for (const [c, r] of bos) h[r * sutun + c] = 0;
     for (const [c, r] of pencere) h[r * sutun + c] = B_PENCERE;
     this.duzlestir(x, x + sutun * HUCRE);
+    const kot0 = this.yerY(x + (sutun * HUCRE) / 2);
     this.binalar.push({
       x, tur, sutun, satir, h, dy: new Float32Array(sutun * satir), vy: new Float32Array(sutun * satir),
       asker: 0, kapi, sayac: 2 + this.rng() * 2, ilk: h.reduce((n, v) => n + (v ? 1 : 0), 0), atisHucre: -1, atisT: 0,
       kot: Float32Array.from({ length: sutun }, (_, c) => this.yerY(x + (c + 0.5) * HUCRE)),
+      sablon: h.slice(), kot0, onarimT: 0,
     });
+  }
+
+  /** Bina şablonundan farklı mı (yıkık hücre ya da moloz var mı)? */
+  hasarli(b: Bina): boolean {
+    for (let i = 0; i < b.h.length; i++) if (b.sablon[i] && b.h[i] !== b.sablon[i]) return true;
+    return false;
+  }
+
+  /**
+   * Dalga bitince her cephede, içinde düşman olmayan hasarlı bir bina varsa
+   * üsten iki usta çıkar (kullanıcı fikri: "adamlar gelip binaları onarsa").
+   * Sipere en yakın bina önce. Usta varken ara uzar ki işe yetişsinler.
+   */
+  private ustaGonder(): void {
+    for (const yan of [-1, 1] as const) {
+      if (this.askerler.some((s) => s.dost && s.rol >= 4 && yanOf(s.x) === yan)) continue;
+      let hedef = -1;
+      for (let n = 0; n < this.binalar.length; n++) {
+        const b = this.binalar[n];
+        if (yanOf(b.x) !== yan || b.asker > 0 || !this.hasarli(b)) continue;
+        if (hedef < 0 || onMesafe(b.x) < onMesafe(this.binalar[hedef].x)) hedef = n;
+      }
+      if (hedef < 0) continue;
+      for (const rol of [4, 5]) {
+        this.askerler.push({
+          x: SIPER_X + yan * (SIPER_YARI + 3 + (rol - 4) * 9), y: this.zemin, tip: T_TUFEK, dost: true, durum: NISAN, t: 0, faz: this.rng() * 6,
+          sayac: 0, hiz: 46, menzil: 0, nisanAci: 0, hedef, yon: yan, kilik: (this.rng() * 4096) | 0, yukseklik: 0, seri: 0, rol, atis: 0, engelli: false,
+        });
+      }
+      this.ara = Math.max(this.ara, 9);
+      this.sozler.push({ metin: 'USTALAR YOLDA', x: SIPER_X + yan * 70, y: this.zemin - 34, t: 0, vurgu: false });
+    }
+  }
+
+  /** Bir ustanın adımı. Üsse dönüp içeri girdiyse true (diziden silinmeli). */
+  private ustaAdim(s: Asker, dt: number): boolean {
+    const b: Bina | undefined = this.binalar[s.hedef];
+    const yan = yanOf(s.x);
+    // Yakında düşman varsa işi bırakıp kaçar
+    if (s.seri < 3) {
+      let tehlike = false;
+      for (const o of this.askerler) if (!o.dost && sahnede(o.x) && Math.abs(o.x - s.x) < 80) tehlike = true;
+      for (const a of this.araclar) if (sahnede(a.x) && Math.abs(a.x - s.x) < 95) tehlike = true;
+      if (tehlike) {
+        s.seri = 3;
+        this.bagir(s.x, s.y - 26, s.rol === 4 ? 'KAÇ!' : 'BIRAK, KAÇ!');
+      }
+    }
+    if (s.seri === 0 && (!b || b.asker > 0 || !this.hasarli(b))) s.seri = 2;
+    const git = (hx: number, hiz: number): boolean => {
+      const dx = hx - s.x;
+      if (Math.abs(dx) < 1.2) return true;
+      s.yon = dx > 0 ? 1 : -1;
+      s.x += s.yon * hiz * dt;
+      s.faz += dt * hiz * 0.42;
+      return false;
+    };
+    if (s.seri === 0 && b) {
+      // Duvarcı binanın soluna, merdivenli sağına geçer
+      const hx = s.rol === 4 ? b.x - 6 : b.x + b.sutun * HUCRE + 6;
+      if (git(hx, s.hiz)) {
+        s.seri = 1;
+        s.t = 0;
+        s.yon = s.rol === 4 ? 1 : -1;
+      }
+    } else if (s.seri === 1 && b) {
+      if (b.asker > 0 || !this.hasarli(b)) s.seri = 2;
+      else {
+        b.onarimT += dt;
+        if (s.rol === 5) s.yukseklik += (9 - s.yukseklik) * Math.min(1, dt * 3); // merdivene çıkar
+      }
+    } else {
+      s.yukseklik += (0 - s.yukseklik) * Math.min(1, dt * 8);
+      if (git(SIPER_X + yan * (SIPER_YARI + 2), s.seri === 3 ? 72 : s.hiz)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Bir tuğla emeği: önce temelin altındaki zemin eski kotuna getirilir (çukur
+   * doldurulur, yığın kazınır), sonra alttan üste sıradaki hücre yerine konur
+   * (yukarıdan düşüp oturur). Bitince bina yeniden girilebilir olur.
+   */
+  private onar(b: Bina): void {
+    const r = this.rng;
+    const w = b.sutun * HUCRE;
+    let oynadi = false;
+    for (let xi = b.x - 4; xi <= b.x + w + 4; xi++) {
+      if (xi < 0 || xi > DUNYA_G) continue;
+      const fark = b.kot0 - this.yer[xi];
+      if (Math.abs(fark) < 0.3) continue;
+      this.yer[xi] += sinirla(fark, -2.4, 2.4);
+      this.is[xi] = Math.round(this.is[xi] * 0.8);
+      oynadi = true;
+    }
+    if (oynadi) {
+      const x = b.x + r() * w;
+      this.parca(P_TOPRAK, x, this.yerY(x) - 1, (r() - 0.5) * 30, -40 - r() * 30, 0.6);
+      if (r() < 0.4) this.parca(P_TOZ, x, this.yerY(x) - 2, 0, -5, 0.5, 3);
+      this.olaylar.push({ tip: 'tak' });
+      return;
+    }
+    for (let c = 0; c < b.sutun; c++) b.kot[c] = this.yerY(b.x + (c + 0.5) * HUCRE);
+    for (let i = 0; i < b.h.length; i++) {
+      if (!b.sablon[i] || b.h[i] === b.sablon[i] || b.dy[i] > 0) continue;
+      b.h[i] = b.sablon[i];
+      b.dy[i] = 5;
+      b.vy[i] = 0;
+      const cx = b.x + ((i % b.sutun) + 0.5) * HUCRE;
+      const cy = this.yerY(cx) - (Math.floor(i / b.sutun) + 0.5) * HUCRE;
+      this.parca(P_TOZ, cx, cy, (r() - 0.5) * 10, -4, 0.45, 2.5);
+      if (r() < 0.5) this.parca(P_KIVILCIM, cx, cy, (r() - 0.5) * 50, -30 - r() * 30, 0.25);
+      this.olaylar.push({ tip: 'tak' });
+      return;
+    }
+    if (!this.hasarli(b)) {
+      this.sozler.push({ metin: 'ONARILDI!', x: b.x + w / 2, y: this.yerY(b.x + w / 2) - b.satir * HUCRE - 10, t: 0, vurgu: false });
+      this.olaylar.push({ tip: 'onarildi' });
+    }
   }
 
   /**
@@ -674,6 +806,11 @@ export class Dunya {
     const h = this.heli;
     for (const b of this.binalar) {
       if (b.atisT > 0) b.atisT -= dt;
+      // İki usta çalışınca 0,05 sn'de bir tuğla (yıkık bir ev ≈ 6 sn)
+      if (b.onarimT > 0.1) {
+        b.onarimT = 0;
+        this.onar(b);
+      }
       // Altı oyulan (ya da leş yığınıyla kalkan) sütun bütün kalamaz: moloza döner.
       // Yoksa cephe dilim dilim kayar (tabela, vitrin birbirinden kopuk görünüyordu).
       for (let c = 0; c < b.sutun; c++) {
@@ -920,6 +1057,12 @@ export class Dunya {
       const h = this.heli;
       if (!h.olu && Math.hypot(h.x - x, h.y - y) < r + 13) this.heliHasar(guc * 4);
       if (onMesafe(x) < 16 && y > this.zemin - 44) this.siperHasar(guc * 2);
+      // Açıktaki ustalar düşman patlamasından korunamaz
+      for (let i = this.askerler.length - 1; i >= 0; i--) {
+        const s = this.askerler[i];
+        if (!s || !s.dost || s.rol < 4 || Math.hypot(s.x - x, s.y - 7 - y) > r + 3) continue;
+        this.oldur(i, (s.x - x) * 6 + (rr() - 0.5) * 60, -170 - rr() * 80, true);
+      }
     }
     this.binaHasar(x, y, r);
     for (let i = this.kopruler.length - 1; i >= 0; i--) {
@@ -1152,6 +1295,7 @@ export class Dunya {
       }
     } else if (this.dusmanSayisi() <= 1 || this.dalgaT > 70) {
       this.ara = 4.5;
+      this.ustaGonder();
       this.olaylar.push({ tip: 'dalgaBitti' });
       this.sozler.push({ metin: 'SAĞ OL PİLOT!', x: SIPER_X, y: this.zemin - 44, t: 0, vurgu: false });
       // İkmal: hasar varsa dost uçak sandık atar
@@ -1452,6 +1596,10 @@ export class Dunya {
       if (s.atis > 0) s.atis -= dt;
       s.y = s.dost ? this.yerY(s.x) : this.yolY(s.x);
 
+      if (s.dost && s.rol >= 4) {
+        if (this.ustaAdim(s, dt)) this.askerler.splice(i, 1);
+        continue;
+      }
       if (s.dost) {
         // Siperdekiler: subay yalnız gözetler; ötekiler menzildeki en yakın düşmana ateş eder
         if (s.rol === 3) s.yon = h.x > s.x ? 1 : -1; // subay helikopteri izler
@@ -2146,7 +2294,8 @@ export class Dunya {
     }
     for (let i = this.gomuler.length - 1; i >= 0; i--) {
       const g = this.gomuler[i];
-      if (g.fitil < 0) continue;
+      // Mayın patlayınca krater başka gömüleri de çıkarıp diziyi kısaltabilir
+      if (!g || g.fitil < 0) continue;
       g.fitil -= dt;
       if (g.fitil <= 0) {
         this.gomuler.splice(i, 1);
