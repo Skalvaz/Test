@@ -98,7 +98,12 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   baskı), gövdenin altına taşan iri tırtıllı tekerler (teker merkezi eşik
   hizasında), düz tavanlı çamurluk boşlukları, kuyrukta uzun kamçı anten,
   önde turuncu arkada kırmızı lamba (vurgu katmanı), iri köşeli kamuflaj
-  lekeleri. Nişancı tavandaki kapaktan belden yukarı görünür.
+  lekeleri. Nişancı tavandaki kapaktan belden yukarı görünür. Kabinin önü
+  DİK (yandan cam görünmez), hemen önünde uzun çerçeveli ayna; kaput kabine
+  cam alt hizasında bağlanır, yanında girintili koyu panel + kayış, üstünde
+  kaldırma halkası (kullanıcı: "ön cam kısmı olmamış": ayna öne yapışık koyu
+  bir bloktu, kaput alçaktı). Anten tavanı 17 piksel aşar: araç `JEEP_ANTEN`
+  satır aşağıda çizilir, bağlantı noktaları buna göre.
 - Makineli cip (`T_JEEP`): hızlı (58), 3 can; sipere 50–90 birim sokulup
   5'lik seri atar (seri başı 2,5 hasar), helikopter 135 içindeyse ona döner.
   Oyuncu öbür cephedeyken geri dönmeye zorlar; 3. dalgadan sonra gelir.
@@ -134,8 +139,13 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   burna yakın DÜZ TAVANLI iki panelli koyu kabin, hemen arkasında ince direk
   ve küçük iki kademeli kubbe, kabinle aynı yükseklikte motor kaportası,
   düz karın, burun altında uzun namlulu top, önde ana teker, kuyruk ucunda
-  uzun dikmeli teker, geriye yatık dar dikme. İlk denemem kısa ve tombuldu
-  (kullanıcı beğenmedi). Mi-24, T-72,
+  uzun dikmeli teker, geriye yatık dar dikme. İlk denemem kısa ve tombuldu;
+  ikincide bom gövdenin ÜSTÜNDEN çıkıyordu ve karın basamakla bitiyordu
+  (kullanıcı: "alt arka kısmı olmamış"). Doğrusu: motorun arkasında sırt
+  alçalır, karın yükselir, ikisi orta-alt hizadaki boma kavuşur; kuyruk
+  tekeri bom ucundan inen dolu bir dikmededir, yatay denge alçaktadır.
+  ÖLÇEREK ÇİZ: örnekteki noktaların (x, y) değerlerini sprite ölçeğine çevir,
+  8 kat büyütüp örnekle yan yana bak; göz kararı iki kez tutmadı. Mi-24, T-72,
   ZSU-23-4, Ural, HMMWV, MiG-21, C-130. İşaret, bayrak, ülke YOK. Bağlantı noktaları
   `*_N` sabitlerinde (`ox, oy`, `direk`, `namlu`, `kule`…); sprite'ı
   değiştirince onları da güncelle.

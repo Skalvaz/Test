@@ -505,7 +505,7 @@ export class Sahne {
       if (e.tip === T_TANK || e.tip === T_KOPRUCU) t.cizDon(SPR_H_TANK, x, y - 9 + bat, e.aci, sola, TANK_N.ox, TANK_N.oy);
       else if (e.tip === T_UCAKSAVAR) t.cizDon(SPR_H_UCAKSAVAR, x, y - 8 + bat, e.aci, sola, UCAKSAVAR_N.ox, UCAKSAVAR_N.oy);
       else if (e.tip === T_KAMYON) t.cizDon(SPR_H_KAMYON, x, y - 11 + bat, e.aci + 0.2, sola, KAMYON_N.ox, KAMYON_N.oy);
-      else if (e.tip === T_JEEP) t.cizDon(SPR_H_JEEP, x, y - 13 + bat, e.aci - 0.12, sola, JEEP_N.ox, JEEP_N.oy);
+      else if (e.tip === T_JEEP) t.cizDon(SPR_H_JEEP, x, y - (SPR_H_JEEP.h - 1 - JEEP_N.oy) + 1 + bat, e.aci - 0.12, sola, JEEP_N.ox, JEEP_N.oy);
       else if (e.tip === T_HELI) t.cizDon(SPR_H_DHELI, x, y - 9 + bat, e.aci + 0.4, sola, DHELI_N.ox, DHELI_N.oy);
       else if (e.tip === T_JET) t.cizDon(SPR_H_JET, x, y - 6 + bat, e.aci + 0.5, sola, JET_N.ox, JET_N.oy);
       else t.cizDon(SPR_H_HELI, x, y - 14 + bat, e.aci + 0.5, false, HELI_N.ox, HELI_N.oy);

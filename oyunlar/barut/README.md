@@ -14,6 +14,8 @@ zamanla zemine karışıp araziyi yükseltir.
 
 ![Ustalar yıkılan evi onarıyor](docs/ustalar.png)
 
+![Oyuncu helikopteri ve makineli cip](docs/apache-humvee.png)
+
 ![Piyade çeşitleri](docs/piyade.png)
 
 ## Nasıl oynanır

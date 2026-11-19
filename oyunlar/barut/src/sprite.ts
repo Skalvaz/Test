@@ -159,25 +159,30 @@ export class Boya {
 
 /**
  * Oyuncunun saldırı helikopteri, AH-64 çizgisinde. Oranlar kullanıcının
- * gönderdiği örnekten (kopya değil, hatlar): uzun ve alçak gövde, uzunluğun
- * üçte biri kadar ince ve hafif yükselen kuyruk bomu, burna yakın düz tavanlı
- * iki panelli koyu kabin, hemen arkasında direk ve küçük radar kubbesi,
- * kabinle aynı yükseklikte motor kaportası, altta düz karın çizgisi, kısa
- * kanat altında silah yuvaları, burun altında uzun namlulu top, önde ana
- * teker, kuyruk ucunda teker; geriye yatık dikmenin tepesinde kuyruk rotoru.
+ * gönderdiği örnekten ölçüldü (kopya değil, hatlar): uzun ve alçak gövde;
+ * motorun arkasında gövde ÜSTTEN ve ALTTAN incelerek orta-alt hizadaki ince
+ * boma kavuşur (bom üstten çıkmaz), bom kuyruğa doğru hafifçe yükselir;
+ * dar, geriye yatık dikme; bomun ucundan aşağı inen dikmede kuyruk tekeri;
+ * burna yakın düz tavanlı iki panelli koyu kabin, arkasında ince direk ve
+ * küçük kubbe; düz karın, kanat altında silah yuvaları, burun altında uzun
+ * namlulu top, önde ana teker.
  */
-export const HELI_N = { ox: 62, oy: 20, direk: [64, 6], kuyruk: [6, 5], namlu: [93, 32] } as const;
+export const HELI_N = { ox: 62, oy: 20, direk: [64, 6], kuyruk: [6, 10], namlu: [93, 32] } as const;
 export const SPR_HELI = (() => {
-  const b = new Boya(104, 38);
-  // Kuyruk bomu: gövdeden uca incelir ve hafifçe yükselir
-  b.p([7, 12, 42, 15, 42, 22, 32, 25, 7, 17], B);
-  // Dikme (geriye yatık) ve yatay denge
-  b.p([6, 17, 13, 13, 9, 2, 5, 1, 3, 3], B);
-  b.p([1, 18, 13, 17, 13, 19, 1, 20], T2);
-  // Gövde: motor üstü, düz kabin tavanı, buruna inen ön cam, küt burun, düz karın
-  b.p([40, 14, 43, 12, 67, 12, 82, 13, 90, 19, 96, 21, 100, 24, 98, 27, 91, 29, 34, 29, 31, 25], B);
-  // Motor kaportası
+  const W = 104;
+  const b = new Boya(W, 38);
+  // Gövde + bom tek parça: motor üstü, düz kabin tavanı, buruna inen ön cam, küt
+  // burun, düz karın; arkada karın yükselir, sırt alçalır, ikisi boma kavuşur
+  b.p([43, 12, 67, 12, 82, 13, 90, 19, 96, 21, 100, 24, 98, 27, 91, 30, 46, 30, 33, 27, 11, 23, 9, 18, 34, 21, 41, 18, 41, 13], B);
+  // Dikme: dar, geriye yatık; bomun ucundan yükselir
+  b.p([14, 20, 8, 5, 5, 5, 3, 8, 8, 23, 12, 23], B);
+  // Kuyruk tekeri dikmesi: bom ucundan geriye-aşağı iner
+  b.p([10, 23, 13, 23, 9, 31, 6, 31], B);
+  // Yatay denge: kuyruk dibinde, alçakta
+  b.p([1, 25, 9, 24, 9, 26, 1, 27], T2);
+  // Motor kaportası ve arkasındaki egzoz kutusu
   b.p([43, 13, 62, 13, 64, 15, 64, 19, 44, 19, 42, 17], T5);
+  b.k(38, 14, 4, 4, T3);
   // Direk, rotor başı, küçük iki kademeli radar kubbesi
   b.k(63, 7, 2, 5, T2);
   b.k(62, 5, 4, 2, T2);
@@ -185,53 +190,51 @@ export const SPR_HELI = (() => {
   b.k(61, 1, 6, 2, T2);
   // Yan kaporta (kabinin altından geriye)
   b.p([50, 21, 86, 21, 90, 23, 90, 27, 50, 27], T5);
-  // Kısa kanat ve altındaki yuvalar
+  // Kısa kanat ve altındaki yuvalar (karnın biraz altına sarkar)
   b.p([49, 22, 66, 22, 65, 24, 50, 24], T2);
-  b.k(48, 27, 13, 5, T2);
-  b.k(62, 28, 7, 3, T2);
+  b.k(48, 26, 14, 6, T2);
+  b.k(63, 27, 7, 4, T2);
   // Burun nişangâhı (küt, koyu)
   b.o(98, 25.5, 2.7, T1);
   // Top yuvası, ana teker, kuyruk tekeri
-  b.k(72, 29, 5, 5, T2);
+  b.k(72, 30, 5, 4, T2);
   b.o(70, 34, 3, T1);
-  b.o(8, 29, 2.2, T1);
+  b.o(7, 32.5, 2.2, T1);
   b.kenar();
-  // Karın gölgede: gövde düz beyaz bir kütle gibi durmasın
-  for (let y = 26; y < 30; y++) for (let x = 30; x < 100; x++) if (b.d[y * 104 + x] === B + 1) b.n(x, y, T5);
-  for (let x = 8; x < 42; x++) for (let y = 16; y < 26; y++) if (b.d[y * 104 + x] === B + 1 && b.d[(y + 2) * 104 + x] === M + 1) b.n(x, y, T5);
-  // Uzun top namlusu, takım dikmeleri
+  // Karın ve bomun altı gölgede
+  for (let y = 27; y < 31; y++) for (let x = 33; x < 100; x++) if (b.d[y * W + x] === B + 1) b.n(x, y, T5);
+  for (let x = 10; x < 46; x++) for (let y = 19; y < 30; y++) if (b.d[y * W + x] === B + 1 && b.d[(y + 1) * W + x] !== B + 1) b.n(x, y, T5);
+  // Uzun top namlusu, ana takım dikmesi
   b.c(77, 32, 93, 32, M).c(77, 31, 84, 31, M);
-  b.c(67, 29, 69, 32, M).c(69, 30, 71, 32, M).c(9, 17, 8, 26, M).c(10, 18, 9, 26, M);
+  b.c(67, 30, 69, 32, M).c(69, 31, 71, 32, M);
   // Kabin: iki koyu panel (arkadaki dik, öndeki buruna yatık), kalın çerçeve
   b.p([68, 13, 76, 13, 76, 19, 68, 19], T1);
   b.p([78, 13, 82, 14, 89, 19, 78, 19], T1);
   b.c(67, 12, 82, 13, M).c(82, 13, 90, 19, M).c(67, 12, 67, 19, M).c(67, 20, 90, 20, M).c(77, 13, 77, 19, M);
-  // Camda yansıma
   b.c(69, 17, 72, 14, T4).c(70, 18, 71, 17, T3).c(79, 17, 81, 15, T4).c(83, 18, 85, 17, T3);
-  // Motor: iki yuvarlak kapak, egzoz, panel çizgileri
-  for (const cx of [50, 57]) {
-    b.o(cx, 16, 2.2, T3).o(cx, 16, 1, T5);
-  }
-  b.k(41, 14, 3, 4, T1).n(42, 15, M);
+  // Motor: iki yuvarlak kapak, panel çizgileri; egzoz ağzı karanlık
+  for (const cx of [50, 57]) b.o(cx, 16, 2.2, T3).o(cx, 16, 1, T5);
   b.c(45, 14, 61, 14, T4).c(46, 18, 62, 18, T4).n(54, 14, T3).n(61, 16, T3);
-  // Rotor başı ve kubbe
+  b.k(38, 15, 2, 2, T1).c(41, 14, 41, 17, M);
+  // Kubbe
   b.c(62, 1, 65, 1, T4);
   // Yan kaporta: panel çizgileri ve perçinler
-  b.c(50, 21, 86, 21, M).c(58, 22, 58, 26, T4).c(68, 22, 68, 26, T4).c(78, 22, 78, 26, T4).c(51, 27, 90, 27, T4);
+  b.c(50, 21, 86, 21, M).c(58, 22, 58, 26, T4).c(68, 22, 68, 26, T4).c(78, 22, 78, 26, T4);
   b.n(54, 24, T3).n(63, 24, T3).n(73, 24, T3).n(84, 24, T3);
-  // Silah yuvaları: roket tüplerinin ağzı, füze burnu
-  b.c(60, 28, 60, 30, B).c(49, 29, 58, 29, T1).n(69, 29, M).n(69, 30, M);
-  b.c(53, 25, 53, 26, M).c(63, 25, 63, 27, M); // pilonlar
+  // Silah yuvaları: roket tüplerinin ağzı, füze burnu, pilonlar
+  b.c(61, 27, 61, 30, B).c(49, 28, 59, 28, T1).c(49, 30, 59, 30, T1).n(70, 28, M).n(70, 29, M);
+  b.c(53, 25, 53, 25, M).c(64, 25, 64, 26, M);
   // Burun: taret camı, burun paneli
   b.n(99, 25, B).n(98, 26, T4).c(91, 22, 96, 23, T5);
-  // Bom: panel çizgileri, uyarı şeritleri, perçinler
-  b.c(12, 14, 40, 17, T5).k(27, 15, 2, 8, M).k(31, 15, 1, 9, M);
-  b.n(16, 15, T4).n(21, 16, T4).n(36, 18, T4).c(35, 22, 41, 22, T5);
-  // Dikme: ön kenar çizgisi, kuyruk rotoru göbeği
-  b.c(12, 12, 9, 4, T5).k(5, 4, 3, 3, T1);
-  b.c(2, 19, 12, 18, T1);
+  // Arka gövde ve bom: incelme yerinde panel çizgisi, uyarı şeritleri, perçinler
+  b.c(41, 20, 37, 27, T4).c(45, 20, 45, 29, T4);
+  for (const x of [22, 23, 26]) for (let y = 16; y < 30; y++) if (b.d[y * W + x] > T1 + 1) b.n(x, y, M);
+  b.n(16, 20, T4).n(19, 21, T4).n(30, 23, T4).n(34, 24, T4);
+  // Dikme: ön kenar çizgisi, kuyruk rotoru göbeği; teker dikmesinde mafsal
+  b.c(12, 19, 8, 8, T5).k(5, 9, 3, 3, T1).n(6, 10, T4);
+  b.c(10, 25, 8, 30, T4).c(2, 26, 8, 25, T1);
   // Teker göbekleri
-  b.n(70, 34, T4).n(70, 33, T4).n(8, 29, T4);
+  b.n(70, 34, T4).n(70, 33, T4).n(7, 32, T4);
   return b.bitir();
 })();
 
@@ -735,54 +738,72 @@ export const SPR_DUVAR = (() => {
 })();
 
 /**
- * Makineli cip, HMMWV çizgisinde. Oranlar kullanıcının gönderdiği yan görünüş
- * çizimden: tavandan kuyruğa uzun eğik arka, düz tavanda kapak, dik ön cam,
- * hafifçe alçalan uzun kaput, iki kapı (üstte koyu cam, altta çapraz baskı),
- * gövdenin altına taşan iri tırtıllı tekerler, düz tavanlı çamurluk boşlukları,
- * arkada uzun kamçı anten, önde turuncu arkada kırmızı lamba.
- * Nişancı, kalkan ve namlu çizim anında eklenir (hurdada görünmesinler).
+ * Makineli cip, HMMWV çizgisinde. Ölçüler kullanıcının gönderdiği yan görünüş
+ * çizimden alındı (kopya değil, hatlar): tavandan kuyruğa uzun eğik arka; düz
+ * tavan levhası ve üstünde kapak; iki kapı (çerçeveli koyu cam, altta çapraz
+ * baskı, ön kenarda menteşeler); kabinin önü dik, hemen önünde uzun çerçeveli
+ * ayna; kaput kabine YÜKSEKTEN bağlanır, öne doğru alçalır, yanında girintili
+ * koyu panel ve kayış, üstünde kaldırma halkası; küt burunda turuncu lamba,
+ * altında tampon; gövdenin altına taşan iri tırtıllı tekerler (göbek eşik
+ * hizasında), düz tavanlı çamurluk boşlukları; kuyrukta kırmızı stop ve
+ * tavanı çok aşan kamçı anten. Nişancı, kalkan ve namlu çizimde eklenir.
  */
-export const JEEP_N = { ox: 33, oy: 19, namlu: [35, 5], nisanci: [31, 9], teker: [[12, 27], [56, 27]] } as const;
+const JEEP_ANTEN = 9; // antenin tavanı aştığı satır sayısı (araç bu kadar aşağıda çizilir)
+export const JEEP_N = { ox: 35, oy: 19 + JEEP_ANTEN, namlu: [37, 5 + JEEP_ANTEN], nisanci: [33, 9 + JEEP_ANTEN], teker: [[13, 27 + JEEP_ANTEN], [59, 27 + JEEP_ANTEN]] } as const;
 export const SPR_JEEP = (() => {
-  const W = 68;
-  const b = new Boya(W, 35);
-  // Gövde: kuyruk, eğik arka, tavan, ön cam, kaput, burun
-  b.p([3, 25, 3, 16, 19, 9, 43, 9, 44, 16, 59, 17, 63, 19, 63, 25], T3);
-  b.k(25, 7, 13, 2, T2); // tavan kapağı
-  b.k(63, 22, 3, 3, T2).k(1, 23, 3, 3, T2); // tamponlar
-  b.kenar(M);
-  // Kamuflaj: iri köşeli lekeler (iki ton)
-  for (const [x, y, w, h] of [[8, 16, 5, 3], [14, 12, 4, 3], [21, 20, 4, 3], [36, 10, 4, 2], [46, 18, 5, 3], [54, 20, 4, 3], [5, 21, 4, 2], [39, 21, 3, 3]]) {
-    for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (b.d[yy * W + xx] === T3 + 1) b.n(xx, yy, T2);
+  const W = 69;
+  const H = 35;
+  const g = new Boya(W, H);
+  // Gövde: kuyruk, eğik arka, tavan levhası, dik kabin önü, yüksek kaput, küt burun
+  g.p([3, 22, 3, 16, 21, 9, 45, 9, 46, 10, 46, 16, 56, 16, 61, 17, 65, 18, 65, 22, 64, 26, 7, 26, 6, 23], T3);
+  g.k(27, 8, 15, 1, T2); // tavan kapağı
+  g.k(65, 22, 3, 4, T2); // ön tampon
+  g.k(3, 23, 3, 3, T2); // arka tampon
+  g.kenar(M);
+  // Kamuflaj: birkaç iri köşeli leke (ayrıntıların olmadığı yerlerde)
+  for (const [x, y, w, h] of [[9, 15, 4, 3], [15, 12, 4, 2], [47, 22, 4, 3], [58, 17, 4, 1], [29, 9, 5, 1], [39, 9, 4, 1], [4, 19, 2, 3]]) {
+    for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (g.d[yy * W + xx] === T3 + 1) g.n(xx, yy, T2);
   }
-  // Üst yüzeylerde ışık
-  b.c(20, 10, 42, 10, T4).c(45, 17, 58, 18, T4).c(5, 16, 18, 10, T4).c(26, 7, 37, 7, T4);
+  // Tavan levhası: üstte ışık, altında gölge çizgisi; eğik arkada ışık
+  g.c(22, 9, 44, 9, T4).c(22, 11, 45, 11, T2).c(5, 16, 20, 10, T4).c(28, 8, 40, 8, T4);
   // Düz tavanlı çamurluk boşlukları
-  for (const cx of [12, 56]) b.p([cx - 9, 25, cx - 7, 19, cx + 7, 19, cx + 9, 25], T1);
-  // Tekerler: gövdenin altına taşar; tırtıllı lastik, jantta bijonlar
-  for (const cx of [12, 56]) {
-    for (let a = 0; a < 12; a++) b.n(cx + Math.cos(a * 0.5236) * 7.3, 27 + Math.sin(a * 0.5236) * 7.3, M);
-    b.o(cx, 27, 6.6, M).o(cx, 27, 3.6, T3).o(cx, 27, 2.2, T2);
-    b.n(cx - 3, 27, T5).n(cx + 3, 27, T5).n(cx, 24, T5).n(cx, 30, T5).n(cx, 27, M);
+  g.p([7, 26, 7, 24, 9, 20, 18, 20, 20, 24, 20, 26], T1);
+  g.p([52, 26, 53, 22, 54, 20, 63, 20, 65, 22, 64, 26], T1);
+  // Tekerler: gövdenin altına taşar; tırtıllı lastik, çift halkalı jant, bijonlar
+  for (const cx of [13, 59]) {
+    for (let a = 0; a < 12; a++) g.n(cx + Math.cos(a * 0.5236 + 0.26) * 7.3, 27 + Math.sin(a * 0.5236 + 0.26) * 7.3, M);
+    g.o(cx, 27, 6.6, M).o(cx, 27, 3.6, T3).o(cx, 27, 2.4, T2);
+    g.n(cx - 3, 27, T5).n(cx + 3, 27, T5).n(cx, 24, T5).n(cx, 30, T5).n(cx, 27, M).n(cx - 1, 27, T4).n(cx + 1, 27, T4);
   }
-  // Kapılar: çerçeve, üstte koyu cam, altta çapraz baskı, menteşe ve kol
-  for (const x0 of [21, 32]) {
-    b.c(x0, 10, x0, 24, M).c(x0, 24, x0 + 10, 24, T2);
-    b.k(x0 + 2, 11, 8, 5, T1).c(x0 + 3, 14, x0 + 5, 12, T4).n(x0 + 8, 12, T2);
-    b.c(x0 + 2, 18, x0 + 8, 23, T2).c(x0 + 8, 18, x0 + 2, 23, T2);
-    b.n(x0 + 10, 18, M).n(x0 + 10, 22, M).n(x0 + 1, 19, T5);
+  // Kapılar: derzler, çerçeveli koyu cam, çapraz baskı, ön kenarda menteşeler
+  g.c(22, 12, 22, 25, M).c(34, 12, 34, 25, M).c(45, 12, 45, 25, M).c(23, 25, 44, 25, T2);
+  for (const x0 of [23, 35]) {
+    g.k(x0, 12, 10, 6, M).k(x0 + 1, 13, 8, 4, T1);
+    g.c(x0 + 2, 15, x0 + 4, 13, T4).n(x0 + 7, 14, T2);
+    g.c(x0 + 1, 19, x0 + 8, 24, T2).c(x0 + 8, 19, x0 + 1, 24, T2);
+    g.k(x0 + 9, 19, 2, 1, M).k(x0 + 9, 23, 2, 1, M).n(x0, 21, T5);
   }
-  b.c(43, 10, 43, 24, M);
-  for (const x of [24, 27, 35, 38]) b.n(x, 25, T1); // eşik delikleri
-  // Ayna, kaput kayışı, kaldırma halkası
-  b.k(45, 11, 2, 4, T2).c(45, 11, 46, 11, M).c(46, 11, 46, 14, M).n(44, 13, M);
-  b.c(47, 17, 49, 20, M).n(53, 15, M).n(54, 14, M).n(55, 15, M);
-  // Burun: turuncu sinyal, ızgara, çeki kancası
-  b.n(62, 20, M, ATES).n(61, 20, M, ATES).c(60, 22, 60, 24, M).c(58, 22, 58, 24, T2).n(66, 23, T5);
-  // Kuyruk: kırmızı stop, panel, çeki demiri
-  b.n(4, 21, M, KAN).n(4, 22, M, KAN).k(6, 18, 4, 3, T2).c(6, 18, 9, 18, M).n(1, 24, T5);
-  // Kamçı anten: kuyrukta yaylı kaide, tavanı aşar
-  b.k(1, 15, 2, 2, M).c(1, 15, 1, 0, M);
+  for (const x of [25, 28, 37, 40, 43]) g.n(x, 26, T1); // eşik delikleri
+  // Ayna: kabinin hemen önünde uzun çerçeve
+  g.c(49, 10, 49, 15, M).n(48, 10, M).n(48, 15, M).c(48, 11, 48, 14, T5);
+  // Kaput: üstte ışık, yanında girintili koyu panel ve kayış, üstünde kaldırma halkası
+  g.c(47, 17, 56, 17, T5).c(57, 18, 63, 19, T4);
+  g.p([48, 18, 52, 18, 51, 20, 48, 20], T2).c(48, 18, 52, 18, M);
+  g.c(54, 17, 52, 20, M).n(55, 14, M).n(56, 13, M).n(57, 14, M);
+  // Burun: turuncu lamba, ızgara dilimleri; tamponda çeki halkası
+  g.n(64, 19, M, ATES).n(63, 19, M, ATES).c(64, 20, 64, 21, M).n(67, 24, T5);
+  // Kuyruk: kırmızı stop, girintili paneller
+  g.n(4, 20, M, KAN).n(4, 21, M, KAN).k(6, 18, 3, 2, T2).k(17, 17, 3, 2, T2).c(6, 18, 8, 18, M).c(17, 17, 19, 17, M);
+  // Kamçı anten için sprite yukarı doğru uzatılır
+  const b = new Boya(W, H + JEEP_ANTEN);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      b.d[(y + JEEP_ANTEN) * W + x] = g.d[y * W + x];
+      b.v[(y + JEEP_ANTEN) * W + x] = g.v[y * W + x];
+    }
+  }
+  b.k(1, 13 + JEEP_ANTEN, 2, 3, M); // yaylı kaide
+  b.c(2, 12 + JEEP_ANTEN, 2, 0, M);
   return b.bitir();
 })();
 
@@ -837,7 +858,7 @@ export const SPR_H_UCAKSAVAR = hurda(SPR_UCAKSAVAR, 5, [[34, 3, 7, 1], [56, 10, 
 export const SPR_H_KAMYON = hurda(SPR_KAMYON, 7, [[24, 5, 8, 1], [63, 11, 3, 0], [40, 14, 2, 0]]);
 export const SPR_H_DHELI = hurda(SPR_DHELI, 9, [[52, 13, 5, 0], [84, 19, 5, 1], [18, 13, 2, 0]]);
 export const SPR_H_JET = hurda(SPR_JET, 11, [[42, 10, 4, 0], [88, 11, 6, 1]]);
-export const SPR_H_HELI = hurda(SPR_HELI, 13, [[58, 21, 5, 0], [8, 8, 5, 1], [78, 16, 3, 0]]);
-export const SPR_H_JEEP = hurda(SPR_JEEP, 15, [[51, 15, 5, 1], [30, 17, 3, 0], [9, 12, 3, 1]]);
+export const SPR_H_HELI = hurda(SPR_HELI, 13, [[58, 22, 5, 0], [6, 10, 4, 1], [78, 16, 3, 0]]);
+export const SPR_H_JEEP = hurda(SPR_JEEP, 15, [[55, 15 + JEEP_ANTEN, 5, 1], [30, 17 + JEEP_ANTEN, 3, 0], [9, 13 + JEEP_ANTEN, 3, 1]]);
 
 void ATES;
