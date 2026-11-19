@@ -38,6 +38,13 @@ export interface Arayuz {
 export function bombaDugme(ey: number): { x: number; y: number; r: number } {
   return { x: EK - 44, y: ey - 54, r: 30 };
 }
+/**
+ * Cephe düğmesi: ekran dışındaki düşmanları gösteren ok. Dokununca helikopter
+ * o cepheye uçar. `zeminPx`: zeminin ekrandaki y'si (`dunya.zemin * K`).
+ */
+export function cepheDugme(zeminPx: number, yan: number): { x: number; y: number; w: number; h: number } {
+  return { x: yan > 0 ? EK - 50 : 2, y: Math.round(zeminPx) - 116, w: 48, h: 30 };
+}
 /** Ses düğmesi. */
 export function sesDugme(): { x: number; y: number; w: number; h: number } {
   return { x: EK - 36, y: 40, w: 28, h: 22 };
@@ -1857,6 +1864,15 @@ export class Sahne {
         t.leke(x + yan, gy - 3 - u * 6, 6 + u * 5, guc, 214);
       }
     }
+    // Cephe geçişi: arkasında hız çizgileri
+    if (h.gecis !== 0 && !h.olu) {
+      for (let k = 0; k < 6; k++) {
+        const u = kes(k, Math.floor(d.zaman * 20));
+        const lx = x - h.gecis * (40 + u * 46);
+        const ly = y - 14 + k * 6 + Math.round(u * 3);
+        t.cizgi(lx, ly, lx - h.gecis * (14 + u * 22), ly, k % 2 ? 128 : 0);
+      }
+    }
     const vurulmus = h.darbe > 0 && Math.floor(d.zaman * 30) % 2 === 0;
     const N = HELI_N;
     t.cizDon(SPR_HELI, x, y, h.egim, h.yon < 0, N.ox, N.oy, vurulmus ? 255 : 0);
@@ -2064,37 +2080,49 @@ export class Sahne {
     }
   }
 
+  /** O yanda ekranın dışında kalan düşman sayısı ve en yakınının sipere uzaklığı. */
+  cepheBilgi(yan: number): { sayi: number; yakin: number } {
+    const d = this.d;
+    let sayi = 0;
+    let yakin = 1e9;
+    const say = (wx: number): void => {
+      if (yanOf(wx) !== yan) return;
+      const x = this.X(wx);
+      if (x >= 0 && x <= EK) return;
+      sayi++;
+      yakin = Math.min(yakin, onMesafe(wx));
+    };
+    for (const s of d.askerler) if (!s.dost) say(s.x);
+    for (const a of d.araclar) say(a.x);
+    return { sayi, yakin };
+  }
+
   /**
-   * İki cephe göstergesi: ekranın dışında kalan düşmanlar için o kenarda ok
-   * ve sayı. Sipere yaklaşmışlarsa kırmızı ve yanıp söner; oyuncu öbür
-   * cephedeyken neyin geldiğini buradan görür.
+   * İki cephe düğmesi: ekranın dışında kalan düşmanlar için o kenarda ok ve
+   * sayı, düğme gibi çerçeveli (dokununca helikopter o cepheye uçar). Sipere
+   * yaklaşmışlarsa kırmızı ve yanıp söner.
    */
   private cepheHud(): void {
     const { t, d } = this;
     if (!d.oyunda || d.bitisNeden) return;
     for (const yan of [-1, 1]) {
-      let sayi = 0;
-      let yakin = 1e9;
-      const say = (wx: number): void => {
-        if (yanOf(wx) !== yan) return;
-        const x = this.X(wx);
-        if (x >= 0 && x <= EK) return;
-        sayi++;
-        yakin = Math.min(yakin, onMesafe(wx));
-      };
-      for (const s of d.askerler) if (!s.dost) say(s.x);
-      for (const a of d.araclar) say(a.x);
+      const { sayi, yakin } = this.cepheBilgi(yan);
       if (sayi === 0) continue;
       const tehlike = yakin < 130;
-      if (tehlike && Math.floor(d.zaman * 6) % 2 === 0) continue;
-      const y = Math.round(this.Y(d.zemin) - 96);
-      const x = yan > 0 ? EK - 8 : 8;
-      // Ok başı
-      for (let k = 0; k < 9; k++) {
-        const w = 9 - Math.abs(k - 4) * 2;
-        t.kutu(yan > 0 ? x - 9 : x + 9 - w, y + k, w, 1, 0, tehlike ? KAN : 0); // ucu kenara bakar
+      const yanik = tehlike && Math.floor(d.zaman * 6) % 2 === 0;
+      const r = cepheDugme(d.zemin * K, yan);
+      // Düğme gövdesi: açık zemin, mürekkep çerçeve, altında gölge
+      t.kutu(r.x + 2, r.y + 2, r.w, r.h, 0);
+      t.kutu(r.x, r.y, r.w, r.h, 0, tehlike ? KAN : 0);
+      t.kutu(r.x + 2, r.y + 2, r.w - 4, r.h - 4, yanik ? 213 : 254);
+      const oy = r.y + 10;
+      const ox = yan > 0 ? r.x + r.w - 7 : r.x + 7;
+      // Ok başı (ucu kenara bakar)
+      for (let k = 0; k < 11; k++) {
+        const w = 11 - Math.abs(k - 5) * 2;
+        t.kutu(yan > 0 ? ox - 11 : ox + 11 - w, oy + k, w, 1, 0, tehlike ? KAN : 0);
       }
-      t.yazi(String(sayi), yan > 0 ? x - 13 : x + 13, y - 2, { hiza: yan > 0 ? 1 : -1, olcek: 3, kenar: 255, vurgu: tehlike ? KAN : 0 });
+      t.yazi(String(sayi), yan > 0 ? ox - 16 : ox + 16, r.y + 8, { hiza: yan > 0 ? 1 : -1, olcek: 3, vurgu: tehlike ? KAN : 0 });
     }
   }
 
@@ -2131,8 +2159,9 @@ export class Sahne {
     }
     if (a.ipucuT < 7 && a.durum === 'oyun') {
       const y = t.h - 62;
-      t.yazi('SÜRÜKLE: UÇ', 12, y, { olcek: 3, ton: 240, kenar: 0 });
-      t.yazi('BOMBA: SAĞ ALT', 12, y + 24, { olcek: 3, ton: 240, kenar: 0 });
+      t.yazi('SÜRÜKLE: UÇ', 12, y - 24, { olcek: 3, ton: 240, kenar: 0 });
+      t.yazi('BOMBA: SAĞ ALT', 12, y, { olcek: 3, ton: 240, kenar: 0 });
+      t.yazi('OK: ÖBÜR CEPHE', 12, y + 24, { olcek: 3, ton: 240, kenar: 0 });
     }
     this.bombaHud();
     this.gucHud();
@@ -2181,7 +2210,7 @@ export class Sahne {
     const y2 = t.h - 96;
     this.sigdir('SÜRÜKLE: HELİKOPTER UÇAR', EK / 2, y2, { hiza: 0, ton: 240, kenar: 0 });
     this.sigdir('BOMBA: SAĞ ALTTAKİ DÜĞME', EK / 2, y2 + 22, { hiza: 0, ton: 240, kenar: 0 });
-    this.sigdir('TOPRAĞI KAZ, SANDIK BUL', EK / 2, y2 + 44, { hiza: 0, ton: 240, kenar: 0 });
+    this.sigdir('OKA DOKUN: ÖBÜR CEPHEYE UÇ', EK / 2, y2 + 44, { hiza: 0, ton: 240, kenar: 0 });
     if (a.rekor > 0) t.yazi(`REKOR ${a.rekor}`, EK / 2, y2 + 70, { hiza: 0, olcek: 3, ton: 254, kenar: 0 });
     this.sesSimge(a);
   }

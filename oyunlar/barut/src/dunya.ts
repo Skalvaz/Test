@@ -332,6 +332,8 @@ export type Olay =
   | { tip: 'tufek' }
   | { tip: 'top' }
   | { tip: 'dalga'; no: number; yan: -1 | 0 | 1 }
+  | { tip: 'cephe'; yan: -1 | 1 }
+  | { tip: 'gecis' }
   | { tip: 'dalgaBitti' }
   | { tip: 'uyari' }
   | { tip: 'jet' }
@@ -389,6 +391,8 @@ export class Dunya {
   heli = {
     x: SIPER_X, y: 0, vx: 0, vy: 0, hx: SIPER_X, hy: 0, egim: 0, yon: 1 as 1 | -1, can: 100,
     top: 0, roket: 0, roketYan: 1, olu: false, patladi: false, donus: 0, darbe: 0, namlu: 0,
+    /** Cephe geçişi: 0 yok, ±1 o yana kendiliğinden uçuyor; `gecisX` hedef, `gecisT` başlayalı geçen süre. */
+    gecis: 0 as -1 | 0 | 1, gecisX: 0, gecisT: 0,
   };
   siperCan = 100;
   /** `oran`: helikopterin ekrandaki yeri (0 sol … 1 sağ); bulunduğu cepheye göre yavaşça kayar. */
@@ -425,6 +429,9 @@ export class Dunya {
   private kuyruk: { tip: number; yan: 1 | -1 }[] = [];
   private dogumSayac = 0;
   private dogumAra = 1;
+  /** Son doğan birliğin yanı (0: bu dalgada henüz doğan yok) ve cephe değişimi beklemesi. */
+  private sonYan: -1 | 0 | 1 = 0;
+  private cepheBekle = false;
   /** Dalgalar arası dinlenme; > 0 iken yeni dalga beklenir. */
   ara = 2.2;
   private dalgaT = 0;
@@ -906,9 +913,40 @@ export class Dunya {
     this.oyunda = true;
   }
 
+  /**
+   * Cephe geçişi: kenardaki oka dokununca helikopter o cephedeki en ilerideki
+   * düşmanın siper tarafına kendiliğinden, hızla uçar. Kullanıcı: "iki cephe
+   * olunca ikisine de yetişmek zor, bi sağ bi sol yapmaya zorlandım" (500
+   * birimi parmakla sürüklemek yorucuydu). Sürükleyince iptal olur.
+   */
+  cepheyeGit(yan: 1 | -1): boolean {
+    const h = this.heli;
+    if (!this.oyunda || this.bitti || this.bitisNeden || h.olu) return false;
+    let en = 1e9;
+    let ex = 0;
+    const bak = (x: number): void => {
+      if (yanOf(x) !== yan || !sahnede(x) || onMesafe(x) >= en) return;
+      en = onMesafe(x);
+      ex = x;
+    };
+    for (const s of this.askerler) if (!s.dost) bak(s.x);
+    for (const a of this.araclar) bak(a.x);
+    // Düşmanın 45 birim gerisinde (siper tarafında) dur; kimse yoksa cephenin ortasına
+    const tx = en < 1e8 ? ex - yan * 45 : SIPER_X + yan * 190;
+    // Siperden 300 birimden öteye gitmez: düşman henüz uzaktaysa yolda karşılar
+    h.gecisX = yan > 0 ? sinirla(tx, SIPER_X + 50, SIPER_X + 300) : sinirla(tx, SIPER_X - 300, SIPER_X - 50);
+    h.gecis = yan;
+    h.gecisT = 0;
+    this.olaylar.push({ tip: 'gecis' });
+    return true;
+  }
+
   /** Parmak hareketi: helikopterin hedefini kaydırır (parmağın altında kalmasın diye göreli). */
   surukle(dx: number, dy: number): void {
     const h = this.heli;
+    // Geçiş sırasında sürüklemek denetimi geri alır (ilk anın titremesi sayılmaz)
+    if (h.gecis !== 0 && h.gecisT > 0.25 && Math.abs(dx) + Math.abs(dy) > 0.6) h.gecis = 0;
+    if (h.gecis !== 0) return;
     h.hx = sinirla(h.hx + dx, HELI_KENAR, DUNYA_G - HELI_KENAR);
     h.hy = sinirla(h.hy + dy, 36, this.zemin - 18);
   }
@@ -1227,11 +1265,13 @@ export class Dunya {
     // yönüne değil KONUMUNA bağlı ve yavaş (yöne göre öne atlama sürüklerken
     // helikopteri ekranda geri kaydırıp "takılıyor" hissi veriyordu).
     const hedefOran = 0.5 - 0.14 * sinirla((h.x - SIPER_X) / 70, -1, 1);
-    this.kam.oran += sinirla(hedefOran - this.kam.oran, -0.09 * dt, 0.09 * dt);
+    const oranHiz = h.gecis !== 0 ? 0.55 : 0.09; // geçişte kamera da çabuk döner (parmak sürüklemiyor)
+    this.kam.oran += sinirla(hedefOran - this.kam.oran, -oranHiz * dt, oranHiz * dt);
     const fark = h.x - G * this.kam.oran - this.kam.x;
     const BOSLUK = 16;
-    if (fark > BOSLUK) this.kam.x += (fark - BOSLUK) * Math.min(1, dt * 5);
-    else if (fark < -BOSLUK) this.kam.x += (fark + BOSLUK) * Math.min(1, dt * 5);
+    const izle = h.gecis !== 0 ? 14 : 5; // geçişte kamera helikopteri kaçırmasın
+    if (fark > BOSLUK) this.kam.x += (fark - BOSLUK) * Math.min(1, dt * izle);
+    else if (fark < -BOSLUK) this.kam.x += (fark + BOSLUK) * Math.min(1, dt * izle);
     this.kam.x = sinirla(this.kam.x, KAM_SOL, KAM_SAG);
 
     if (this.oyunda && !this.bitti) {
@@ -1284,6 +1324,16 @@ export class Dunya {
     if (this.kuyruk.length) {
       this.dogumSayac -= dt;
       if (this.dogumSayac <= 0) {
+        // Cephe değişiyorsa önce haber ver ve nefes payı bırak
+        const sira = this.kuyruk[0];
+        if (this.sonYan !== 0 && sira.yan !== this.sonYan && !this.cepheBekle) {
+          this.cepheBekle = true;
+          this.dogumSayac = this.dalga < 5 ? 5 : 3;
+          this.olaylar.push({ tip: 'cephe', yan: sira.yan });
+          return;
+        }
+        this.cepheBekle = false;
+        this.sonYan = sira.yan;
         // Piyade manga hâlinde gelir (art arda en çok 5)
         const ilk = this.kuyruk.shift()!;
         this.dogur(ilk.tip, 0, ilk.yan);
@@ -1341,24 +1391,30 @@ export class Dunya {
       const j = liste.indexOf(T_TUFEK, k);
       if (j > k) [liste[k], liste[j]] = [liste[j], liste[k]];
     }
-    // Cephe: 1. dalga sağdan, 2. dalga soldan (oyuncu iki yanı da öğrensin);
-    // sonrakiler iki yandan birden, 4–8'lik öbekler hâlinde yan değiştirerek.
-    let yan: 1 | -1 = n === 2 ? -1 : n === 1 ? 1 : this.rng() < 0.5 ? 1 : -1;
-    let kalan = 0;
-    this.kuyruk = liste.map((tip) => {
-      if (n >= 3 && kalan-- <= 0) {
+    // Cephe düzeni (kullanıcı ikinci dalgada bile iki yana yetişmekte zorlandı):
+    // 1. dalga sağdan, 2. soldan; 3. ve 4. dalgada önce bir yan, bitince öbürü
+    // (iki yarı); 5. dalgadan sonra 6–10'luk öbekler hâlinde yan değiştirerek.
+    // Her yan değişiminde doğum durur ve "ŞİMDİ SOLDAN!" diye haber verilir.
+    let yan: 1 | -1 = n === 2 ? -1 : n <= 3 ? 1 : n === 4 ? -1 : this.rng() < 0.5 ? 1 : -1;
+    const yari = Math.ceil(liste.length / 2);
+    let kalan = n >= 5 ? 5 + ((this.rng() * 5) | 0) : 1e9;
+    this.kuyruk = liste.map((tip, i) => {
+      if ((n === 3 || n === 4) && i === yari) yan = -yan as 1 | -1;
+      if (n >= 5 && kalan-- <= 0) {
         yan = -yan as 1 | -1;
-        kalan = 3 + ((this.rng() * 5) | 0);
+        kalan = 5 + ((this.rng() * 5) | 0);
       }
       return { tip, yan };
     });
+    this.sonYan = 0;
+    this.cepheBekle = false;
     this.dogumAra = sinirla(20 / liste.length, 0.32, 1.2);
     this.dogumSayac = 0.4;
     if (this.gomuler.length < 22) {
       this.gomEkle(G_MAYIN);
       if (n % 2 === 0) this.gomEkle(G_SANDIK);
     }
-    this.olaylar.push({ tip: 'dalga', no: n, yan: n === 1 ? 1 : n === 2 ? -1 : 0 });
+    this.olaylar.push({ tip: 'dalga', no: n, yan: this.kuyruk.length ? this.kuyruk[0].yan : 0 });
   }
 
   /** `yan`: +1 sağ kenardan, −1 sol kenardan girer. */
@@ -1429,8 +1485,15 @@ export class Dunya {
       h.hx = SIPER_X + 40 + Math.sin(this.zaman * 0.5) * 18;
       h.hy = this.zemin - 110 + Math.sin(this.zaman * 0.9) * 8;
     }
-    const yay = this.guc.hiz > 0 ? 50 : 34;
-    const enHiz = this.guc.hiz > 0 ? 330 : 240;
+    if (h.gecis !== 0) {
+      // Cephe geçişi: hedef hızla kayar, helikopter biraz yükselip peşinden gider
+      h.gecisT += dt;
+      h.hx += sinirla(h.gecisX - h.hx, -470 * dt, 470 * dt);
+      h.hy += (Math.min(h.hy, this.zemin - 96) - h.hy) * Math.min(1, dt * 4);
+      if (Math.abs(h.x - h.gecisX) < 16 || h.gecisT > 4) h.gecis = 0;
+    }
+    const yay = this.guc.hiz > 0 || h.gecis !== 0 ? 50 : 34;
+    const enHiz = h.gecis !== 0 ? 480 : this.guc.hiz > 0 ? 330 : 240;
     h.vx += ((h.hx - h.x) * yay - h.vx * 10) * dt;
     h.vy += ((h.hy - h.y) * yay - h.vy * 10) * dt;
     const hiz = Math.hypot(h.vx, h.vy);

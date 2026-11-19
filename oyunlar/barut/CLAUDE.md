@@ -77,9 +77,19 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   Siperi kimse geçemediği için yan değişmez; ayrı alan tutulmaz. Yeni yönlü
   kod yazarken `x -= …` YAZMA: `gid = -yanOf(x)` ile çarp. Aracın `dur`u
   mutlak x'tir (`on + yan * uzaklık`); "varmadı mı" = `(x - dur) * yan > 0`.
-- Dalgalar: 1. sağdan, 2. soldan (oyuncu iki yanı öğrensin), 3. ve sonrası
-  iki yandan, 4–8'lik öbekler hâlinde yan değiştirerek (`kuyruk: {tip, yan}`).
-  Duyuru "DALGA 1 SAĞDAN / 2 SOLDAN / 3 İKİ YANDAN".
+- Dalgalar (`kuyruk: {tip, yan}`): 1. sağdan, 2. soldan; 3. ve 4. dalga iki
+  YARI (önce bir yan, bitince öbürü); 5. dalgadan sonra 6–10'luk öbekler
+  hâlinde yan değiştirir. Her yan değişiminde doğum durur (5 sn, 5. dalgadan
+  sonra 3 sn) ve `cephe` olayıyla "ŞİMDİ SOLDAN!" duyurulur. Kullanıcı ilk
+  sürümde (3. dalgadan itibaren 4–8'lik öbeklerle sürekli yan değişimi)
+  "ikisine de yetişmek zor, 2. levelda bile zorlandım" dedi.
+- CEPHE GEÇİŞİ: kenardaki ok artık düğme (`cepheDugme`, çerçeveli; çizim ve
+  dokunma aynı yeri kullanır). Dokununca `cepheyeGit(yan)`: helikopter o
+  cephedeki en ilerideki düşmanın 45 birim gerisine (siperden en çok 300)
+  kendiliğinden uçar: hedef 470/sn kayar, en yüksek hız 480, biraz yükselir,
+  arkasında hız çizgileri; kamera ve `kam.oran` geçişte hızlanır. ~500
+  birim ≈ 1,5 sn. İlk 0,25 sn'den sonra sürüklemek iptal eder. Klavyede Q/E.
+  Asıl yorucu olan cepheler arası yolu parmakla sürüklemekti.
 - Üs simetrik: ortada kule (nöbetçi iki yana ateş eder), her duvarda iki
   tüfekçi + bir makineli yuvası (`kadro`: dx, rol, yükseklik, baktığı yan),
   subay ortada. Ön geçiş `P(px, w)` ile sol yana aynalanır. Siperin önündeki
@@ -88,8 +98,8 @@ Bot şimdi sürenin ~%50'sini her cephede geçiriyor.
   sağ %36'sında (`kam.oran`); geçiş helikopterin KONUMUNA bağlı ve yavaş
   (saniyede 0,09). Yöne bağlı öne atlama yine YOK. Roket menzili 172 → 150
   (ekranda kalsın). Kamera iki kenardaki doğum şeridini (44 birim) göstermez.
-- `cepheHud()`: ekran dışındaki düşmanlar için o kenarda ok + sayı; en
-  yakını sipere 130'dan yakınsa kırmızı yanıp söner. Uçak uyarısı geldiği
+- `cepheHud()` / `cepheBilgi(yan)`: ekran dışındaki düşmanlar için o kenarda
+  düğme (ok + sayı); en yakını sipere 130'dan yakınsa kırmızı yanıp söner. Uçak uyarısı geldiği
   kenarda (`jetUyariYan`). Köprücü ve bekleme sayaçları cephe başına
   (`kopruSayac[2]`, `askerBekliyor[2]`); köprü `kok` ucundan açılır.
 - Cip HMMWV çizgisinde; oranlar kullanıcının gönderdiği yan görünüşten

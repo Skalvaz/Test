@@ -344,6 +344,61 @@ describe('BARUT simülasyonu', () => {
     }
   });
 
+  it('cephe geçişi: helikopter öbür cephedeki düşmanın önüne 2 saniyede varır; sürüklemek iptal eder', () => {
+    const d = new Dunya(566, 61);
+    d.basla();
+    d.ara = 999;
+    d.heli.x = d.heli.hx = 250; // sol cephede
+    d.araclar.push({ tip: 3, x: 700, y: d.zemin, can: 12, enCan: 12, dur: 700, sayac: 99, nisanT: 0, namlu: 0.2, yuk: 0, t: 0, sars: 0, engelli: false });
+    expect(d.cepheyeGit(1)).toBe(true);
+    for (let i = 0; i < 2 / ADIM; i++) {
+      d.heli.can = 100;
+      d.adim(ADIM);
+    }
+    // Tankın siper tarafında, 45 birim geride
+    expect(Math.abs(d.heli.x - 655)).toBeLessThan(25);
+    expect(d.heli.gecis).toBe(0);
+    // Geçiş sırasında sürüklemek denetimi geri verir
+    expect(d.cepheyeGit(-1)).toBe(true);
+    for (let i = 0; i < 0.4 / ADIM; i++) d.adim(ADIM);
+    expect(d.heli.gecis).toBe(-1);
+    d.surukle(5, 0);
+    expect(d.heli.gecis).toBe(0);
+  });
+
+  it('3. dalga iki yarıdır: önce bir yan, haber verilir, sonra öbür yan', () => {
+    const d = new Dunya(566, 62);
+    d.basla();
+    const sira: number[] = [];
+    let haber = 0;
+    for (let i = 0; i < 140 / ADIM && d.dalga < 4; i++) {
+      d.heli.can = 100;
+      d.siperCan = 100;
+      const once = new Set(d.askerler);
+      d.adim(ADIM);
+      for (const o of d.olaylar) if (o.tip === 'cephe' && d.dalga === 3) haber++;
+      d.olaylar.length = 0;
+      if (d.dalga === 3) for (const s of d.askerler) if (!s.dost && !once.has(s) && s.rol < 4 && Math.abs(s.x - 480) > 400) sira.push(s.x > 480 ? 1 : -1);
+      // Önceki dalgaları çabuk bitir
+      if (d.dalga < 3 && i % 240 === 239) {
+        d.askerler = d.askerler.filter((s) => s.dost);
+        d.araclar.length = 0;
+        for (const b of d.binalar) b.asker = 0;
+      }
+      if (d.dalga === 3 && i % 600 === 599) {
+        d.askerler = d.askerler.filter((s) => s.dost);
+        d.araclar.length = 0;
+        for (const b of d.binalar) b.asker = 0;
+      }
+    }
+    expect(haber).toBe(1);
+    // Yan yalnız bir kez değişir
+    let degisim = 0;
+    for (let i = 1; i < sira.length; i++) if (sira[i] !== sira[i - 1]) degisim++;
+    expect(sira.length).toBeGreaterThan(8);
+    expect(degisim).toBe(1);
+  });
+
   it('bomba sayısı sınırlıdır ve zamanla dolar', () => {
     const d = new Dunya(566, 13);
     d.basla();

@@ -182,6 +182,12 @@ export class Ses {
     [330, 262, 220, 165].forEach((f, i) => this.bip(f, f * 0.97, 0.34, 'triangle', 0.1, i * 0.22));
   }
 
+  /** Cephe geçişi: kısa yükselen vınlama. */
+  gecis(): void {
+    this.bip(220, 760, 0.28, 'sawtooth', 0.05);
+    this.patla(900, 0.35, 0.08, 'bandpass', 3);
+  }
+
   /** Usta çekici: kısa, tok tık (art arda gelince ritim olur). */
   tak(): void {
     if (this.simdi() - this.sonTak < 0.06) return;

@@ -3,7 +3,7 @@
  * çizim her karede bir kez. `window.__barut` deneme/kayıt kancasıdır.
  */
 import { Dunya, G } from './dunya';
-import { EK, K, Sahne, bombaDugme, sesDugme, type Arayuz } from './sahne';
+import { EK, K, Sahne, bombaDugme, cepheDugme, sesDugme, type Arayuz } from './sahne';
 import { Ses } from './ses';
 import { Tuval } from './tuval';
 
@@ -128,6 +128,14 @@ kanvas.addEventListener('pointerdown', (e) => {
       dunya.bombaBirak();
       return;
     }
+    // Cephe düğmesi: kenardaki oka dokununca helikopter o cepheye uçar
+    for (const yan of [-1, 1] as const) {
+      const r = cepheDugme(dunya.zemin * K, yan);
+      if (p.x > r.x - 8 && p.x < r.x + r.w + 8 && p.y > r.y - 10 && p.y < r.y + r.h + 10 && sahne.cepheBilgi(yan).sayi > 0) {
+        dunya.cepheyeGit(yan);
+        return;
+      }
+    }
     if (parmak.basili) return; // ikinci parmak başka yere dokundu: yok say
   }
   try {
@@ -175,6 +183,8 @@ const tusla = (e: KeyboardEvent, bas: boolean): void => {
   else if (k === 'ArrowDown' || k === 's' || k === 'S') tus.asagi = bas;
   else if (k === 'ArrowUp' || k === 'w' || k === 'W') tus.yukari = bas;
   else if (bas && (k === 'm' || k === 'M')) sesDegistir();
+  else if (bas && (k === 'q' || k === 'Q')) dunya.cepheyeGit(-1);
+  else if (bas && (k === 'e' || k === 'E')) dunya.cepheyeGit(1);
   else if (bas && (k === ' ' || k === 'Enter' || k === 'b' || k === 'B')) {
     if (arayuz.durum === 'oyun' && !e.repeat) dunya.bombaBirak();
   } else return;
@@ -231,11 +241,19 @@ function olaylar(): void {
       case 'tak':
         ses.tak();
         break;
+      case 'cephe':
+        arayuz.duyuru = o.yan > 0 ? 'ŞİMDİ SAĞDAN!' : 'ŞİMDİ SOLDAN!';
+        arayuz.duyuruT = 0;
+        ses.uyari();
+        break;
+      case 'gecis':
+        ses.gecis();
+        break;
       case 'onarildi':
         ses.onarildi();
         break;
       case 'dalga':
-        arayuz.duyuru = `DALGA ${o.no}` + (o.yan > 0 ? ' SAĞDAN' : o.yan < 0 ? ' SOLDAN' : o.no === 3 ? ' İKİ YANDAN' : '');
+        arayuz.duyuru = `DALGA ${o.no}` + (o.yan > 0 ? ' SAĞDAN' : o.yan < 0 ? ' SOLDAN' : '');
         arayuz.duyuruT = 0;
         ses.dalga();
         break;
