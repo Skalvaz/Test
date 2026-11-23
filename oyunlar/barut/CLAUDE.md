@@ -156,6 +156,18 @@ bize ait (o oyunun arayüzü, adları, varlıkları kopyalanmaz).
   `sahne.ts` `HELI_CIZIM`e satır (sıra = `Donanim.tur`), `hangarEkran.ts`
   `SPR`, `hangar.ts` `HELILER`de `yakinda`yı kaldır. Sprite için kullanıcıdan
   örnek iste: gözle çizilenler iki kez beğenilmedi.
+- MENÜ OKUNABİLİRLİĞİ (kullanıcı: "menüyü daha okunabilir yapalım"): menü
+  ekranlarında yalnız DÜZ tonlar (0, 85, 170, 213, 255). Ara tonlar taranır;
+  taranmış gri yazı (ton 100/128) ve taranmış zemin (236) küçük yazıyı
+  bulandırıyordu. Hiyerarşi: siyah başlık şeridi + beyaz yazı → beyaz kartlar
+  → siyah bölüm şeridi → beyaz satırlar; ad ölçek 3–4, açıklama ölçek 2 ama
+  koyu gri (85), düğme yazısı ölçek 3, vurgulu düğme siyah zeminli (OYNA),
+  alınamayan düğme gri. Çubuklar 10 dilimli. Yazı tipinde parantez YOK
+  (boşluk basılır). Üç ekran boyunda (615 / 725 / 857 piksel) denendi.
+- Başlık: logonun altında yan yana OYNA (siyah) ve HANGAR; helikopter
+  düğmelerin altında alçakta süzülür; ipuçları altta düz siyah şeritte, aynı
+  boyda (ölçek 3, kısa cümleler). Sonuçta: skor, altında kırmızı `+AP`,
+  altında rekor; panelin altında HANGAR.
 - Akış: başlıkta ve sonuç ekranında HANGAR düğmesi (`hangarDugme`); başlığın
   başka yerine dokunmak oyunu başlatır. Deneme: `scripts` yok, geçici
   Playwright betiğiyle `localStorage`a kayıt yazıp dokunarak denendi.

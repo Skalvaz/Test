@@ -2,11 +2,17 @@
  * Hangar ekranı: helikopter hattı (kartlar), seçili helikopterin geliştirmeleri,
  * altta GERİ / OYNA. Çizerken dokunma bölgelerini de döndürür; `main.ts`
  * dokunuşu bu bölgelere göre işler (çizim ve dokunma aynı sayıları kullanır).
+ *
+ * OKUNABİLİRLİK (kullanıcı: "menüyü daha okunabilir yapalım"): yalnız DÜZ
+ * tonlar kullanılır (0, 85, 170, 213, 255). Ara tonlar taranır; taranmış gri
+ * yazı ve taranmış zemin küçük yazıyı bulandırıyordu. Sıra: koyu başlık
+ * şeridi → beyaz kartlar → koyu bölüm şeridi → satırlar. Adlar ölçek 3–4,
+ * açıklamalar ölçek 2 ama koyu gri (85); düğmeler ölçek 3.
  */
 import { HELILER, donanimKur, ozet, type Kayit } from './hangar';
 import { EK } from './sahne';
 import { SPR_ALOUETTE, SPR_HELI } from './sprite';
-import { KAN, type Tuval } from './tuval';
+import { KAN, type Tuval, yaziGenislik } from './tuval';
 
 export interface Bolge {
   x: number;
@@ -18,14 +24,29 @@ export interface Bolge {
 }
 
 const SPR = [SPR_ALOUETTE, SPR_HELI];
-const KAGIT = 236;
+const ZEMIN = 213;
+const KART = 255;
+const SOLUK = 85; // ikincil yazı: düz koyu gri
 
-function dugme(t: Tuval, b: Bolge[], x: number, y: number, w: number, h: number, metin: string, eylem: string, etkin = true, olcek = 3): void {
-  t.kutu(x + 2, y + 2, w, h, etkin ? 0 : 150);
-  t.kutu(x, y, w, h, etkin ? 0 : 128);
-  t.kutu(x + 2, y + 2, w - 4, h - 4, etkin ? 254 : 213);
-  t.yazi(metin, x + w / 2, y + Math.round((h - olcek * 5) / 2), { hiza: 0, olcek, ton: etkin ? 0 : 128 });
-  if (etkin) b.push({ x, y, w, h, eylem });
+/** Düğme. `tur`: 0 açık (beyaz), 1 vurgulu (siyah zemin, beyaz yazı), 2 pasif (alınamıyor). */
+function dugme(t: Tuval, b: Bolge[], x: number, y: number, w: number, h: number, metin: string, eylem: string, tur = 0, olcek = 3): void {
+  if (tur === 2) {
+    t.kutu(x, y, w, h, 170);
+    t.kutu(x + 2, y + 2, w - 4, h - 4, ZEMIN);
+    t.yazi(metin, x + w / 2, y + Math.round((h - olcek * 5) / 2), { hiza: 0, olcek, ton: SOLUK });
+    return;
+  }
+  t.kutu(x + 3, y + 3, w, h, SOLUK); // gölge
+  t.kutu(x, y, w, h, 0);
+  if (tur === 0) t.kutu(x + 2, y + 2, w - 4, h - 4, KART);
+  t.yazi(metin, x + w / 2, y + Math.round((h - olcek * 5) / 2), { hiza: 0, olcek, ton: tur === 1 ? 255 : 0 });
+  b.push({ x, y, w, h, eylem });
+}
+
+/** Sığmıyorsa bir ölçek küçülterek yazar. */
+function sigdir(t: Tuval, metin: string, x: number, y: number, olcek: number, enCok: number, ton = 0): void {
+  while (olcek > 2 && yaziGenislik(metin, olcek) > enCok) olcek--;
+  t.yazi(metin, x, y, { olcek, ton });
 }
 
 /** Sprite'ı tam sayı katıyla büyüterek basar (hangar kartında helikopter iri görünsün). */
@@ -38,116 +59,148 @@ function buyukCiz(t: Tuval, s: { w: number; h: number; d: Uint8Array; v: Uint8Ar
   }
 }
 
+/** Özellik çubuğu: 10 dilimli, dolu dilimler siyah (uzaktan sayılabilir). */
 function cubuk(t: Tuval, x: number, y: number, oran: number): void {
-  const W = 64;
-  t.kutu(x, y, W, 6, 0);
-  t.kutu(x + 1, y + 1, W - 2, 4, 213);
-  t.kutu(x + 1, y + 1, Math.max(1, Math.round((W - 2) * oran)), 4, 42);
+  const dolu = Math.max(1, Math.round(oran * 10));
+  for (let k = 0; k < 10; k++) {
+    t.kutu(x + k * 7, y, 6, 8, 0);
+    if (k >= dolu) t.kutu(x + k * 7 + 1, y + 1, 4, 6, KART);
+  }
 }
 
 export function hangarCiz(t: Tuval, k: Kayit, zaman: number): Bolge[] {
   const b: Bolge[] = [];
   const H = t.h;
-  const dar = H < 680;
-  t.kutu(0, 0, EK, H, KAGIT);
+  t.kutu(0, 0, EK, H, ZEMIN);
   for (let i = 0; i < t.v.length; i++) t.v[i] = 0;
 
-  // Başlık ve araştırma puanı
-  t.yazi('HANGAR', 12, 12, { olcek: 5 });
-  t.yazi(`AP ${k.ap}`, EK - 12, 16, { olcek: 4, hiza: 1 });
-  t.kutu(8, 44, EK - 16, 2, 0);
+  // Başlık şeridi: koyu zemin, beyaz yazı; sağda araştırma puanı rozeti
+  t.kutu(0, 0, EK, 46, 0);
+  t.yazi('HANGAR', 12, 11, { olcek: 5, ton: 255 });
+  const ap = `AP ${k.ap}`;
+  const aw = yaziGenislik(ap, 4) + 16;
+  t.kutu(EK - 10 - aw, 8, aw, 30, KART);
+  t.yazi(ap, EK - 18, 13, { olcek: 4, hiza: 1 });
 
   // Helikopter kartları. Yer varsa helikopter iki kat büyük çizilir: üstte ad,
   // solda helikopter, sağda çubuklar ve düğme.
-  const buyuk = H >= 700;
-  const KH = buyuk ? 122 : 76;
-  const YH = buyuk ? 26 : 22;
-  let y = 52;
+  const buyuk = H >= 760;
+  const KH = buyuk ? 126 : 80;
+  const YH = 24;
+  let y = 54;
   for (const h of HELILER) {
     if (h.yakinda) {
-      t.kutu(8, y, EK - 16, YH, 128);
-      t.kutu(9, y + 1, EK - 18, YH - 2, 213);
-      t.yazi(`? ${h.ad}: YAKINDA`, EK / 2, y + Math.round((YH - 10) / 2), { hiza: 0, olcek: 2, ton: 100 });
-      y += YH + 5;
+      t.kutu(8, y, EK - 16, YH, 170);
+      t.yazi(`KİLİTLİ: ${h.ad} - YAKINDA`, EK / 2, y + 7, { hiza: 0, olcek: 2, ton: 0 });
+      y += YH + 6;
       continue;
     }
     const sahip = k.sahip.includes(h.id);
     const secili = k.secili === h.id;
+    // Seçili kart kalın çerçeveli; kilitli kart gri zeminli
     t.kutu(8, y, EK - 16, KH, 0);
-    t.kutu(secili ? 11 : 9, y + (secili ? 3 : 1), EK - (secili ? 22 : 18), KH - (secili ? 6 : 2), sahip ? 254 : 213);
+    const c = secili ? 4 : 2;
+    t.kutu(8 + c, y + c, EK - 16 - c * 2, KH - c * 2, sahip ? KART : 170);
     const spr = SPR[h.taban.tur];
     const [can, hiz, ates] = ozet(donanimKur(k, h.id));
     let tx: number;
     let by: number;
     let ba: number;
     if (buyuk) {
-      t.yazi(h.ad, 18, y + 8, { olcek: 3 });
-      t.yazi(h.sinif, 18, y + 26, { olcek: 2, ton: 100 });
-      buyukCiz(t, spr, 16 + Math.round((208 - spr.w * 2) / 2), y + 40 + Math.round((76 - spr.h * 2) / 2), 2);
-      tx = 234;
+      sigdir(t, h.ad, 18, y + 10, 4, EK - 36);
+      t.yazi(h.sinif, 18, y + 34, { olcek: 2, ton: SOLUK });
+      buyukCiz(t, spr, 16 + Math.round((208 - spr.w * 2) / 2), y + 46 + Math.round((76 - spr.h * 2) / 2), 2);
+      tx = 232;
       by = y + 40;
-      ba = 13;
+      ba = 15;
     } else {
       t.ciz(spr, 14 + Math.round((106 - spr.w) / 2), y + Math.round((KH - spr.h) / 2), false);
-      tx = 128;
-      t.yazi(h.ad, tx, y + 6, { olcek: 3 });
-      t.yazi(h.sinif, tx, y + 25, { olcek: 2, ton: 100 });
-      by = y + 40;
+      tx = 126;
+      sigdir(t, h.ad, tx, y + 8, 3, EK - 22 - tx);
+      t.yazi(h.sinif, tx, y + 27, { olcek: 2, ton: SOLUK });
+      by = y + 44;
       ba = 11;
     }
     if (!sahip) {
       // Kilit: asma kilit simgesi
-      const kx = buyuk ? 196 : 18;
-      const ky = buyuk ? y + 44 : y + 8;
-      t.kutu(kx, ky + 5, 12, 9, 0);
-      t.cerceve(kx + 2, ky, 8, 8, 0);
-      t.nokta(kx + 6, ky + 9, 254);
+      const kx = buyuk ? EK - 36 : 18;
+      const ky = y + 10;
+      t.kutu(kx, ky + 6, 14, 11, 0);
+      t.cerceve(kx + 3, ky, 8, 8, 0);
+      t.cerceve(kx + 2, ky, 10, 9, 0);
+      t.kutu(kx + 6, ky + 10, 2, 4, KART);
     }
-    const cw = buyuk ? 0 : 0;
-    t.yazi('CAN', tx, by, { olcek: 2 });
-    cubuk(t, tx + 42 + cw, by + 2, can);
-    t.yazi('HIZ', tx, by + ba, { olcek: 2 });
-    cubuk(t, tx + 42 + cw, by + ba + 2, hiz);
-    t.yazi('ATEŞ', tx, by + ba * 2, { olcek: 2 });
-    cubuk(t, tx + 42 + cw, by + ba * 2 + 2, ates);
-    const dw = buyuk ? 112 : 98;
-    const dx = EK - 16 - dw;
-    const dy = y + KH - 34;
+    if (buyuk) {
+      t.yazi('CAN', tx, by + 1, { olcek: 2 });
+      cubuk(t, tx + 46, by, can);
+      t.yazi('HIZ', tx, by + ba + 1, { olcek: 2 });
+      cubuk(t, tx + 46, by + ba, hiz);
+      t.yazi('ATEŞ', tx, by + ba * 2 + 1, { olcek: 2 });
+      cubuk(t, tx + 46, by + ba * 2, ates);
+    } else {
+      t.yazi('CAN', tx, by, { olcek: 2 });
+      cubuk(t, tx + 46, by - 1, can);
+      t.yazi('HIZ', tx, by + ba, { olcek: 2 });
+      cubuk(t, tx + 46, by + ba - 1, hiz);
+      t.yazi('ATEŞ', tx, by + ba * 2, { olcek: 2 });
+      cubuk(t, tx + 46, by + ba * 2 - 1, ates);
+    }
+    // Düğme kartın sağ alt köşesinde (dar ekranda çubukların yanında)
+    const dw = buyuk ? 116 : 92;
+    const dh = buyuk ? 30 : 26;
+    const dx = EK - 18 - dw;
+    const dy = y + KH - dh - (buyuk ? 10 : 8);
     if (secili) {
-      t.kutu(dx, dy + 4, dw - 2, 20, 0);
-      t.yazi('SEÇİLİ', dx + (dw - 2) / 2, dy + 9, { hiza: 0, olcek: 2, ton: 254 });
-    } else if (sahip) dugme(t, b, dx, dy, dw - 2, 26, 'SEÇ', `sec:${h.id}`);
-    else dugme(t, b, dx, dy, dw - 2, 26, `AÇ ${h.bedel}`, `ac:${h.id}`, k.ap >= h.bedel, 2);
-    y += KH + 5;
+      t.kutu(dx, dy, dw, dh, 0);
+      t.yazi('SEÇİLİ', dx + dw / 2, dy + Math.round((dh - (buyuk ? 15 : 10)) / 2), { hiza: 0, olcek: buyuk ? 3 : 2, ton: 255 });
+    } else if (sahip) dugme(t, b, dx, dy, dw, dh, 'SEÇ', `sec:${h.id}`);
+    else dugme(t, b, dx, dy, dw, dh, `AÇ ${h.bedel}`, `ac:${h.id}`, k.ap >= h.bedel ? 0 : 2, buyuk ? 3 : 2);
+    y += KH + 6;
   }
 
-  // Seçili helikopterin geliştirmeleri
+  // Seçili helikopterin geliştirmeleri: koyu bölüm şeridi, sonra satırlar
   const sec = HELILER.find((h) => h.id === k.secili)!;
-  t.yazi('GELİŞTİRMELER', 12, y + 4, { olcek: 3 });
-  t.kutu(8, y + 23, EK - 16, 1, 0);
-  y += 28;
+  t.kutu(0, y, EK, 26, 0);
+  t.yazi('GELİŞTİRMELER', 12, y + 6, { olcek: 3, ton: 255 });
+  t.yazi(sec.ad, EK - 12, y + 8, { olcek: 2, ton: 255, hiza: 1 });
+  y += 30;
   const altY = H - 54;
-  const MH = Math.min(38, Math.floor((altY - 6 - y) / Math.max(1, sec.modlar.length)));
+  const MH = Math.max(30, Math.min(58, Math.floor((altY - 22 - y) / Math.max(1, sec.modlar.length))));
+  const iri = MH >= 44;
+  const dw = iri ? 104 : 88;
   for (const m of sec.modlar) {
     const alindi = k.mod[sec.id]?.includes(m.id) ?? false;
-    t.kutu(8, y + MH - 2, EK - 16, 1, 170);
-    t.yazi(m.ad, 12, y + 3, { olcek: 2 });
-    t.yazi(m.aciklama, 12, y + 16, { olcek: 2, ton: 100 });
+    t.kutu(8, y, EK - 16, MH - 3, KART);
+    const yaziEn = EK - 16 - dw - 22;
+    if (iri) {
+      const ust = y + Math.round((MH - 3 - 30) / 2);
+      sigdir(t, m.ad, 16, ust, 3, yaziEn);
+      t.yazi(m.aciklama, 16, ust + 20, { olcek: 2, ton: SOLUK });
+    } else {
+      t.yazi(m.ad, 14, y + 4, { olcek: 2 });
+      t.yazi(m.aciklama, 14, y + 16, { olcek: 2, ton: SOLUK });
+    }
+    const dh = Math.min(32, MH - 11);
+    const dx = EK - 14 - dw;
+    const dy = y + Math.round((MH - 3 - dh) / 2);
     if (alindi) {
-      // Takılı: onay işareti
-      t.yazi('TAKILI', EK - 30, y + 9, { hiza: 1, olcek: 2 });
-      t.cizgi(EK - 24, y + 14, EK - 21, y + 17, 0);
-      t.cizgi(EK - 21, y + 17, EK - 14, y + 8, 0);
-      t.cizgi(EK - 24, y + 15, EK - 21, y + 18, 0);
-      t.cizgi(EK - 21, y + 18, EK - 14, y + 9, 0);
-    } else dugme(t, b, EK - 12 - 84, y + 3, 84, Math.min(26, MH - 8), `AL ${m.bedel}`, `mod:${m.id}`, k.ap >= m.bedel, 2);
+      // Takılı: siyah etiket + onay işareti
+      t.kutu(dx, dy, dw, dh, 0);
+      t.yazi('TAKILI', dx + 10, dy + Math.round((dh - 10) / 2), { olcek: 2, ton: 255 });
+      const ox = dx + dw - 22;
+      const oy = dy + Math.round(dh / 2);
+      for (let q = 0; q < 2; q++) {
+        t.cizgi(ox, oy + q, ox + 4, oy + 4 + q, 255);
+        t.cizgi(ox + 4, oy + 4 + q, ox + 12, oy - 5 + q, 255);
+      }
+    } else dugme(t, b, dx, dy, dw, dh, `AL ${m.bedel}`, `mod:${m.id}`, k.ap >= m.bedel ? 0 : 2, iri ? 3 : 2);
     y += MH;
   }
 
-  if (altY - y > 22) t.yazi('AP OYNADIKÇA KAZANILIR: SKOR / 8', EK / 2, altY - 16, { hiza: 0, olcek: 2, ton: 128 });
-  // Alt düğmeler
+  // Alt: ipucu ve düğmeler (OYNA vurgulu)
+  if (altY - y > 18) t.yazi('AP OYNADIKÇA KAZANILIR: SKOR / 8', EK / 2, altY - 15, { hiza: 0, olcek: 2, ton: SOLUK });
   dugme(t, b, 10, altY, 104, 42, 'GERİ', 'geri');
-  dugme(t, b, 124, altY, EK - 134, 42, 'OYNA', 'oyna', true, 4);
-  if (Math.floor(zaman * 2) % 2 === 0) t.kutu(124, altY + 40, EK - 134, 2, 0, KAN);
+  dugme(t, b, 126, altY, EK - 139, 42, 'OYNA', 'oyna', 1, 4);
+  if (Math.floor(zaman * 2) % 2 === 0) t.kutu(126, altY + 38, EK - 139, 2, 255, KAN);
   return b;
 }

@@ -31,7 +31,8 @@ const HELI_CIZIM = [
 
 /** Başlık ve sonuç ekranındaki HANGAR düğmesi (çizim ve dokunma aynı yeri kullanır). */
 export function hangarDugme(ey: number, sonuc: boolean): { x: number; y: number; w: number; h: number } {
-  return sonuc ? { x: EK / 2 - 90, y: Math.round(ey * 0.5) + 186, w: 180, h: 34 } : { x: EK / 2 - 90, y: Math.round(ey * 0.47) + 46, w: 180, h: 34 };
+  // Başlıkta: logonun altında, OYNA düğmesinin sağında. Sonuçta: panelin altında.
+  return sonuc ? { x: EK / 2 - 90, y: Math.round(ey * 0.5) + 186, w: 180, h: 40 } : { x: 206, y: Math.round(ey * 0.2) + 124, w: 142, h: 44 };
 }
 
 export interface Arayuz {
@@ -2220,18 +2221,34 @@ export class Sahne {
     for (let k = 0; k < 10; k++) t.vurgu(kx + 19, y + 56 + k, KAN);
   }
 
+  /**
+   * Başlık. Okunabilirlik (kullanıcı isteği): logonun hemen altında yan yana
+   * iki net düğme (OYNA vurgulu, HANGAR), altta düz siyah şerit üstünde aynı
+   * boyda üç ipucu. Eskiden düğme helikopterin üstüne biniyor, ipuçları koyu
+   * toprağın üstünde farklı boylarda duruyordu.
+   */
   private baslik(a: Arayuz): void {
     const { t, d } = this;
     const y = Math.round(t.h * 0.2);
     this.logo(y);
     t.yazi('SİPERİ KORU', EK / 2, y + 92, { hiza: 0, olcek: 3, kenar: 255 });
-    if (Math.floor(d.zaman * 1.6) % 2 === 0) t.yazi('DOKUN VE BAŞLA', EK / 2, Math.round(t.h * 0.47), { hiza: 0, olcek: 4, kenar: 255 });
-    this.hangarDugmeCiz(hangarDugme(t.h, false), a.ap);
-    const y2 = t.h - 96;
-    this.sigdir('SÜRÜKLE: HELİKOPTER UÇAR', EK / 2, y2, { hiza: 0, ton: 240, kenar: 0 });
-    this.sigdir('BOMBA: SAĞ ALTTAKİ DÜĞME', EK / 2, y2 + 22, { hiza: 0, ton: 240, kenar: 0 });
-    this.sigdir('OKA DOKUN: ÖBÜR CEPHEYE UÇ', EK / 2, y2 + 44, { hiza: 0, ton: 240, kenar: 0 });
-    if (a.rekor > 0) t.yazi(`REKOR ${a.rekor}`, EK / 2, y2 + 70, { hiza: 0, olcek: 3, ton: 254, kenar: 0 });
+    // OYNA: siyah zemin, beyaz yazı; altında yanıp sönen çizgi
+    const h = hangarDugme(t.h, false);
+    const ox = 12;
+    const ow = h.x - 8 - ox;
+    t.kutu(ox + 3, h.y + 3, ow, h.h, 85);
+    t.kutu(ox, h.y, ow, h.h, 0);
+    t.yazi('OYNA', ox + ow / 2, h.y + 12, { hiza: 0, olcek: 4, ton: 255 });
+    if (Math.floor(d.zaman * 2) % 2 === 0) t.kutu(ox + 8, h.y + h.h - 6, ow - 16, 2, 255, KAN);
+    this.hangarDugmeCiz(h, a.ap);
+    // İpuçları: düz siyah şerit, hepsi aynı boyda ve iri (kısa cümleler)
+    const sy = t.h - 96;
+    t.kutu(0, sy, EK, 96, 0);
+    t.kutu(0, sy, EK, 2, 255);
+    t.yazi('SÜRÜKLE: UÇ', EK / 2, sy + 10, { hiza: 0, olcek: 3, ton: 255 });
+    t.yazi('BOMBA: SAĞ ALT DÜĞME', EK / 2, sy + 32, { hiza: 0, olcek: 3, ton: 255 });
+    t.yazi('OK: ÖBÜR CEPHEYE UÇ', EK / 2, sy + 54, { hiza: 0, olcek: 3, ton: 255 });
+    if (a.rekor > 0) t.yazi(`REKOR ${a.rekor}`, EK / 2, sy + 78, { hiza: 0, olcek: 2, ton: 170 });
     this.sesSimge(a);
   }
 
@@ -2265,23 +2282,28 @@ export class Sahne {
       cy = y + h - 140;
       for (let k = x + 36; k < x + w - 36; k += 4) t.kutu(k, cy, 2, 1, 0);
       t.yazi(String(d.skor), EK / 2, cy + 18, { hiza: 0, olcek: 7, vurgu: a.yeniRekor ? KAN : 0 });
-      t.yazi(a.yeniRekor ? 'YENİ REKOR!' : `REKOR ${a.rekor}`, EK / 2, cy + 72, { hiza: 0, olcek: 3 });
+      // Kazanılan araştırma puanı (kırmızı), altında rekor
+      t.yazi(`+${a.kazanc} AP`, EK / 2, cy + 62, { hiza: 0, olcek: 3, vurgu: KAN });
+      t.yazi(a.yeniRekor ? 'YENİ REKOR!' : `REKOR ${a.rekor}`, EK / 2, cy + 86, { hiza: 0, olcek: 2 });
     }
-    if (a.sonucT > 1.6 && Math.floor(d.zaman * 1.6) % 2 === 0) t.yazi('DOKUN: YENİDEN', EK / 2, y + h - 36, { hiza: 0, olcek: 3 });
-    if (a.sonucT > 1.2) {
-      // Kazanılan araştırma puanı ve hangar düğmesi (panelin altında)
-      t.yazi(`+${a.kazanc} AP`, EK / 2, y + h - 62, { hiza: 0, olcek: 3, vurgu: KAN });
-      this.hangarDugmeCiz(hangarDugme(t.h, true), a.ap);
-    }
+    if (a.sonucT > 1.6 && Math.floor(d.zaman * 1.6) % 2 === 0) t.yazi('DOKUN: YENİDEN', EK / 2, y + h - 32, { hiza: 0, olcek: 3 });
+    if (a.sonucT > 1.2) this.hangarDugmeCiz(hangarDugme(t.h, true), a.ap); // panelin altında
   }
 
   private hangarDugmeCiz(r: { x: number; y: number; w: number; h: number }, ap: number): void {
     const t = this.t;
-    t.kutu(r.x + 2, r.y + 2, r.w, r.h, 0);
+    t.kutu(r.x + 3, r.y + 3, r.w, r.h, 85);
     t.kutu(r.x, r.y, r.w, r.h, 0);
-    t.kutu(r.x + 2, r.y + 2, r.w - 4, r.h - 4, 254);
-    t.yazi('HANGAR', r.x + 10, r.y + 10, { olcek: 3 });
-    t.yazi(`AP ${ap}`, r.x + r.w - 10, r.y + 12, { olcek: 2, hiza: 1, ton: 85 });
+    t.kutu(r.x + 2, r.y + 2, r.w - 4, r.h - 4, 255);
+    if (r.w >= 170) {
+      // Geniş (sonuç ekranı): ad solda, puan sağda
+      t.yazi('HANGAR', r.x + 12, r.y + Math.round((r.h - 15) / 2), { olcek: 3 });
+      t.yazi(`AP ${ap}`, r.x + r.w - 12, r.y + Math.round((r.h - 10) / 2), { olcek: 2, hiza: 1, ton: 85 });
+    } else {
+      // Dar (başlık): ad üstte, puan altında
+      t.yazi('HANGAR', r.x + r.w / 2, r.y + 8, { hiza: 0, olcek: 3 });
+      t.yazi(`AP ${ap}`, r.x + r.w / 2, r.y + 28, { hiza: 0, olcek: 2, ton: 85 });
+    }
   }
 }
 

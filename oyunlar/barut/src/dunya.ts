@@ -1517,8 +1517,8 @@ export class Dunya {
     }
     if (!this.oyunda) {
       // Başlık ekranı: yerinde süzülür
-      h.hx = SIPER_X + 40 + Math.sin(this.zaman * 0.5) * 18;
-      h.hy = this.zemin - 110 + Math.sin(this.zaman * 0.9) * 8;
+      h.hx = SIPER_X + 70 + Math.sin(this.zaman * 0.5) * 16;
+      h.hy = this.zemin - 74 + Math.sin(this.zaman * 0.9) * 6; // alçakta: başlıktaki düğmelerin altında kalır
     }
     if (h.gecis !== 0) {
       // Cephe geçişi: hedef hızla kayar, helikopter biraz yükselip peşinden gider
