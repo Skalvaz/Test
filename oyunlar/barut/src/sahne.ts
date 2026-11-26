@@ -329,6 +329,27 @@ export class Sahne {
     }
     this.katman(this.uzak, UW, UH, this.kam * UZAK_K, ufuk - UH + 10);
     this.katman(this.orta, OW, OH, this.kam * ORTA_K, ufuk - OH + 13);
+    this.sis(ufuk);
+  }
+
+  /**
+   * Zemin sisi: ufka yakın arka plan açılır ki önündeki siyah siluetler
+   * (asker, araç) koyu pencerelerin içinde kaybolmasın. Tarama yapmaz:
+   * açılan ton en yakın düz kademeye oturtulur, böylece sis basamak basamak
+   * yükselen düz bantlar hâlinde görünür.
+   */
+  private sis(ufuk: number): void {
+    const { g, w: W, h: H } = this.t;
+    const BOY = 64;
+    for (let y = Math.max(0, ufuk - BOY); y < Math.min(H, ufuk + 6); y++) {
+      const a = Math.min(1, (y - (ufuk - BOY)) / BOY) * 0.72;
+      const dd = y * W;
+      for (let x = 0; x < W; x++) {
+        const c = g[dd + x];
+        if (c >= 213) continue;
+        g[dd + x] = Math.min(213, Math.round((c + (236 - c) * a) / 42.5) * 42.5);
+      }
+    }
   }
 
   /** Sprite içindeki bir noktanın (dönme merkezine göre lx, ly) ekrandaki yeri. */

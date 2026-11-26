@@ -24,6 +24,8 @@ zamanla zemine karışıp araziyi yükseltir.
 
 ![Patlama: önce (üstte) ve sonra](docs/efektler.png)
 
+![Zemin sisi: önce (üstte) ve sonra](docs/sis.png)
+
 ![Piyade çeşitleri](docs/piyade.png)
 
 ## Nasıl oynanır

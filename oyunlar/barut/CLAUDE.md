@@ -394,6 +394,12 @@ bize ait (o oyunun arayüzü, adları, varlıkları kopyalanmaz).
 - İNCE DUMAN (ekranda yarıçapı 5 pikselden küçük: roket izi, hasar dumanı)
   hatsız ve açık gri (en koyu 128). Koyu ve hatlı çizilince roketin arkasında
   kalın kara bir şerit oluyordu (3. turda, yeni helikopteri çekerken görüldü).
+- ZEMİN SİSİ (`sis()`, `gok()` sonunda): ufkun üstündeki 64 pikselde arka
+  plan katmanları açılır (ufukta %72), sonuç en yakın düz kademeye oturtulur
+  (tarama yok, basamaklı düz bantlar), 213'ten açığa çıkmaz. Siyah siluetler
+  (asker, araç) eskiden bina diplerindeki koyu pencerelerin içinde
+  kayboluyordu. Yeni arka plan katmanı eklenirse sisten ÖNCE çizilmeli; ön
+  plan (süsler, binalar, üs) sisten sonra çizilir ve keskin kalır.
 - Efekt denemesi: zaman serisi çek (0,02 … 1,2 sn), kareleri yan yana koy;
   tek kare yanıltır (0,4 sn'deki "ateş toplarından halka" tek karede
   görünmüyordu).
