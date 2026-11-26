@@ -61,7 +61,9 @@ const parmak = { basili: false, x: 0, y: 0, id: -1, t0: 0, yol: 0, sonT: 0 };
 const tus = { sol: false, sag: false, asagi: false, yukari: false };
 
 function yeniDunya(): void {
-  dunya = new Dunya(yuk, (Math.random() * 1e9) | 0, donanimKur(kayit));
+  const dn = donanimKur(kayit);
+  dunya = new Dunya(yuk, (Math.random() * 1e9) | 0, dn);
+  ses.motor(dn.tur === 2);
   sahne = new Sahne(tuval, dunya);
 }
 

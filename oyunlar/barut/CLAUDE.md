@@ -143,19 +143,39 @@ bize ait (o oyunun arayüzü, adları, varlıkları kopyalanmaz).
   botlar bunu kullanır, sayıları değiştirme.
 - AP = skor / 8, oyun bitince eklenir. Hat: KEŞİF (Alouette III çizgisinde;
   minigun piyadeyi biçer, tanka işlemez; roketi yok; 65 can, 2 bomba) →
-  [SALDIRI: yakında] → AĞIR SALDIRI (AH-64 çizgisinde, 3500 AP) → [DİKEY
-  KALKIŞLI JET: yakında]. Keşif geliştirmeleri: roket yuvası 250, çift şerit
+  [SALDIRI: yakında] → AĞIR SALDIRI (AH-64 çizgisinde, 3500 AP) → DİKEY
+  KALKIŞLI JET (AV-8B çizgisinde, 8000 AP). Keşif geliştirmeleri: roket yuvası 250, çift şerit
   300, motor 350, bomba askısı 400, ek zırh 450. Ağır saldırı: tanksavar füze
   900 (`M_ATGM`: yalnız araca, tankı tek atar, 4,5 sn), hava füzesi 900
   (`M_AAM`: 240 menzil, 5 sn), zırh delici 700, motor 600, ek zırh 800.
-- Bot ölçümü (6 tohum, ort.): çıplak keşif hep 3. dalgada düşer, 170 AP/oyun;
-  tam keşif 3.–7. dalga, 640 AP; çıplak ağır 4.–7., 900 AP; tam ağır 5.–10.,
-  2200 AP. Ağır saldırıya ≈ 10–15 oyun. Yeni helikopter ya da geliştirme
-  ekleyince bu tabloyu yeniden ölç.
+- DİKEY KALKIŞLI JET (`tur` 2, `SPR_HARRIER`): helikopterle aynı kumanda
+  (asılı durur), pervanesiz (`HELI_CIZIM.rotor = 0`); iki lüleden aşağı egzoz
+  konisi çıkar, hızlanınca geriye yatar (sprite'ın ÖNÜNDE çizilir), ses
+  kesintisiz gürleme (`ses.motor(true)`). 90 can, hız 1,3, zırhsız; top
+  0,09 sn aralık ve araca 0,7 (ağırdan sert), 6 bomba ve bomba 1,7 sn'de
+  dolar (`Donanim.bombaDolum`; ötekilerde 2,6). Geliştirmeler: SALKIM BOMBA
+  1400 (yalnız jette: `Donanim.salkim`, her bırakışta üç bomba yelpaze açılır),
+  güdümlü füze 1100, hava füzesi 900, art yakıcı 800, kabin zırhı 1000.
+  Bomba güçlendirmesi en çok sayıyı `max(6, dn.bomba)` yapar (6'dan çok
+  bombası olanı azaltmasın).
+- Bot ölçümü (8 tohum, ort.; `pilot()` ile, ölçüm testi geçici yazılır):
+  çıplak keşif 3.–4. dalga, 196 AP/oyun; tam keşif 4.–7., 819 AP; çıplak ağır
+  4.–8., 1099 AP; tam ağır 5.–9., 2352 AP; çıplak jet 3.–8., 719 AP; tam jet
+  5.–9., 1782 AP. BOT JETİ HAFİFE ALIR: hızı kaçmak için, bombayı da
+  neredeyse hiç kullanmaz (düşmanın 50 birim gerisinde durur, üstüne
+  gitmez). Jetin insan elinde ağırdan iyi olup olmadığı ÖLÇÜLMEDİ. Yeni araç
+  ya da geliştirme ekleyince bu tabloyu yeniden ölç.
 - Yeni helikopter eklemek: `sprite.ts`'te sprite + `*_N` + hurda,
   `sahne.ts` `HELI_CIZIM`e satır (sıra = `Donanim.tur`), `hangarEkran.ts`
-  `SPR`, `hangar.ts` `HELILER`de `yakinda`yı kaldır. Sprite için kullanıcıdan
-  örnek iste: gözle çizilenler iki kez beğenilmedi.
+  `SPR`, `hangar.ts` `HELILER`de `yakinda`yı kaldır. Sprite için örnek şart:
+  gözle çizilenler iki kez beğenilmedi. Örnek kaynağı: Wikimedia Commons'taki
+  "<araç> 3-view line drawing" dosyaları (kamu malı üç görünüş çizimleri;
+  `Special:FilePath/<ad>` ile iner, arama API'si ve indirme dakikada birkaç
+  istekten sonra 429 verir: aralıklı dene). Yan görünüşü kırp, 8 kat büyütüp
+  10 piksellik ızgara bas, noktaları oku, sprite ölçeğine böl (jette /3),
+  sonunda örneği aynalayıp aynı ölçekte sprite'ın üstüne koy. Örnek resim
+  depoya GİRMEZ (yalnız ölçü alınır). Hangar kartına sığması için sprite en
+  çok ~103 piksel geniş olmalı (2 katı 206; düğmeye taşıyordu).
 - MENÜ OKUNABİLİRLİĞİ (kullanıcı: "menüyü daha okunabilir yapalım"): menü
   ekranlarında yalnız DÜZ tonlar (0, 85, 170, 213, 255). Ara tonlar taranır;
   taranmış gri yazı (ton 100/128) ve taranmış zemin (236) küçük yazıyı

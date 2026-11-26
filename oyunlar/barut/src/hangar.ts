@@ -80,7 +80,28 @@ export const HELILER: HeliTanim[] = [
       },
     ],
   },
-  { id: 'jet', ad: 'DİKEY KALKIŞLI JET', sinif: 'YAKINDA', bedel: 0, yakinda: true, taban: { tur: 1, can: 0, hiz: 0, zirh: 0, topAra: 0, topArac: 0, topTank: 0, roket: 0, atgm: false, aam: false, bomba: 0 }, modlar: [] },
+  {
+    id: 'jet',
+    ad: 'DİKEY KALKIŞLI JET',
+    sinif: 'HIZLI BOMBACI',
+    bedel: 8000,
+    // Hızlı, ince zırhlı; karında beş namlulu top, kanat altında bol bomba.
+    // Helikopter gibi asılı durur (lüleler aşağı döner).
+    taban: { tur: 2, can: 90, hiz: 1.3, zirh: 0, topAra: 0.09, topArac: 0.7, topTank: 0.2, roket: 1.0, atgm: false, aam: false, bomba: 6, bombaDolum: 1.7 },
+    modlar: [
+      { id: 'salkim', ad: 'SALKIM BOMBA', aciklama: 'HER BOMBA ÜÇE AÇILIR', bedel: 1400, uygula: (d) => (d.salkim = true) },
+      { id: 'atgm', ad: 'GÜDÜMLÜ FÜZE', aciklama: 'TANKI TEK ATAR', bedel: 1100, uygula: (d) => (d.atgm = true) },
+      { id: 'aam', ad: 'HAVA FÜZESİ', aciklama: 'UÇAĞA VE HELİKOPTERE', bedel: 900, uygula: (d) => (d.aam = true) },
+      { id: 'yakici', ad: 'ART YAKICI', aciklama: 'HIZ +%12', bedel: 800, uygula: (d) => (d.hiz *= 1.12) },
+      {
+        id: 'zirh', ad: 'KABİN ZIRHI', aciklama: 'CAN +20, KURŞUN -%20', bedel: 1000,
+        uygula: (d) => {
+          d.can += 20;
+          d.zirh = 0.2;
+        },
+      },
+    ],
+  },
 ];
 
 export interface Kayit {
@@ -173,6 +194,6 @@ export function modAl(k: Kayit, modId: string): boolean {
 
 /** Hangardaki çubuklar için 0–1 arası kaba değerler: [dayanıklılık, hız, ateş gücü]. */
 export function ozet(d: Donanim): [number, number, number] {
-  const ates = (0.5 / d.topAra) * (0.3 + d.topArac) * 0.09 + (d.roket > 0 ? 0.25 : 0) + (d.atgm ? 0.2 : 0) + (d.aam ? 0.12 : 0);
-  return [Math.min(1, (d.can / (1 - d.zirh * 0.5)) / 160), Math.min(1, (d.hiz - 0.7) / 0.5), Math.min(1, ates)];
+  const ates = (0.5 / d.topAra) * (0.3 + d.topArac) * 0.09 + (d.roket > 0 ? 0.25 : 0) + (d.atgm ? 0.2 : 0) + (d.aam ? 0.12 : 0) + (d.bomba - 3) * 0.04 + (d.salkim ? 0.15 : 0);
+  return [Math.min(1, (d.can / (1 - d.zirh * 0.5)) / 160), Math.min(1, (d.hiz - 0.7) / 0.8), Math.min(1, ates)];
 }

@@ -7,6 +7,9 @@ export class Ses {
   private ana: GainNode | null = null;
   private gurultu: AudioBuffer | null = null;
   private pervaneK: GainNode | null = null;
+  private pervaneF: BiquadFilterNode | null = null;
+  private pervaneLfo: GainNode | null = null;
+  private jetMotor = false;
   private sonAtes = 0;
   private sonTufek = 0;
   private sonTak = 0;
@@ -47,6 +50,9 @@ export class Ses {
       const lfoK = ctx.createGain();
       lfoK.gain.value = 0.5;
       lfo.connect(lfoK).connect(kiyici.gain);
+      this.pervaneF = f;
+      this.pervaneLfo = lfoK;
+      this.motor(this.jetMotor);
       this.pervaneK = ctx.createGain();
       this.pervaneK.gain.value = 0;
       src.connect(f).connect(kiyici).connect(this.pervaneK).connect(this.ana);
@@ -60,6 +66,14 @@ export class Ses {
   sesAc(acik: boolean): void {
     this.acik = acik;
     if (this.ana && this.ctx) this.ana.gain.setTargetAtTime(acik ? 0.75 : 0, this.ctx.currentTime, 0.05);
+  }
+
+  /** Motor sesi: helikopterde kıyılmış uğultu, jette kesintisiz tiz gürleme. */
+  motor(jet: boolean): void {
+    this.jetMotor = jet;
+    if (!this.ctx || !this.pervaneF || !this.pervaneLfo) return;
+    this.pervaneF.frequency.setTargetAtTime(jet ? 1100 : 260, this.ctx.currentTime, 0.1);
+    this.pervaneLfo.gain.setTargetAtTime(jet ? 0.04 : 0.5, this.ctx.currentTime, 0.1);
   }
 
   /** Her karede: pervane sesi hıza göre. */

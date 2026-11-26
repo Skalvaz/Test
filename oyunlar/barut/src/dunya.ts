@@ -97,6 +97,10 @@ export interface Donanim {
   atgm: boolean;
   aam: boolean;
   bomba: number;
+  /** Salkım bomba: her bırakışta üç bomba yelpaze hâlinde düşer. */
+  salkim?: boolean;
+  /** Bir bombanın dolma süresi (sn); verilmezse 2,6. */
+  bombaDolum?: number;
 }
 /** Testlerin ve eski dengenin donanımı (ağır saldırı helikopteri, geliştirmesiz). */
 export const VARSAYILAN_DONANIM: Donanim = { tur: 1, can: 100, hiz: 1, zirh: 0, topAra: 0.13, topArac: 0.5, topTank: 0.12, roket: 1.15, atgm: false, aam: false, bomba: 3 };
@@ -934,7 +938,10 @@ export class Dunya {
     const h = this.heli;
     if (!this.oyunda || this.bitti || this.bitisNeden || h.olu || this.bomba.adet <= 0) return false;
     this.bomba.adet--;
-    this.mermiler.push({ tip: M_OBOMBA, x: h.x, y: h.y + 9, vx: h.vx * 0.55, vy: 40, omur: 6, yas: 0, hedef: null });
+    // Salkım: üç bomba öne, ortaya ve arkaya açılır
+    for (const sap of this.dn.salkim ? [-42, 0, 42] : [0]) {
+      this.mermiler.push({ tip: M_OBOMBA, x: h.x + sap * 0.1, y: h.y + 9, vx: h.vx * 0.55 + sap, vy: 40 - Math.abs(sap) * 0.2, omur: 6, yas: 0, hedef: null });
+    }
     this.olaylar.push({ tip: 'bomba' });
     return true;
   }
@@ -1315,9 +1322,9 @@ export class Dunya {
       if (g.hiz > 0) g.hiz -= dt;
       if (g.bomba > 0) g.bomba -= dt;
       const b = this.bomba;
-      b.enCok = g.bomba > 0 ? 6 : this.dn.bomba;
+      b.enCok = g.bomba > 0 ? Math.max(6, this.dn.bomba) : this.dn.bomba;
       if (b.adet < b.enCok) {
-        b.dolum += dt / (g.bomba > 0 ? 0.9 : 2.6);
+        b.dolum += dt / (g.bomba > 0 ? 0.9 : (this.dn.bombaDolum ?? 2.6));
         if (b.dolum >= 1) {
           b.dolum = 0;
           b.adet++;

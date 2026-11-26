@@ -11,7 +11,7 @@
  */
 import { HELILER, donanimKur, ozet, type Kayit } from './hangar';
 import { EK } from './sahne';
-import { SPR_ALOUETTE, SPR_HELI } from './sprite';
+import { SPR_ALOUETTE, SPR_HARRIER, SPR_HELI } from './sprite';
 import { KAN, type Tuval, yaziGenislik } from './tuval';
 
 export interface Bolge {
@@ -23,7 +23,7 @@ export interface Bolge {
   eylem: string;
 }
 
-const SPR = [SPR_ALOUETTE, SPR_HELI];
+const SPR = [SPR_ALOUETTE, SPR_HELI, SPR_HARRIER];
 const ZEMIN = 213;
 const KART = 255;
 const SOLUK = 85; // ikincil yazı: düz koyu gri
@@ -109,7 +109,7 @@ export function hangarCiz(t: Tuval, k: Kayit, zaman: number): Bolge[] {
     if (buyuk) {
       sigdir(t, h.ad, 18, y + 10, 4, EK - 36);
       t.yazi(h.sinif, 18, y + 34, { olcek: 2, ton: SOLUK });
-      buyukCiz(t, spr, 16 + Math.round((208 - spr.w * 2) / 2), y + 46 + Math.round((76 - spr.h * 2) / 2), 2);
+      buyukCiz(t, spr, Math.min(16 + Math.round((208 - spr.w * 2) / 2), 220 - spr.w * 2), y + 46 + Math.round((76 - spr.h * 2) / 2), 2);
       tx = 232;
       by = y + 40;
       ba = 15;
@@ -162,7 +162,8 @@ export function hangarCiz(t: Tuval, k: Kayit, zaman: number): Bolge[] {
   const sec = HELILER.find((h) => h.id === k.secili)!;
   t.kutu(0, y, EK, 26, 0);
   t.yazi('GELİŞTİRMELER', 12, y + 6, { olcek: 3, ton: 255 });
-  t.yazi(sec.ad, EK - 12, y + 8, { olcek: 2, ton: 255, hiza: 1 });
+  // Uzun ad başlığa binmesin: sığmıyorsa yazılmaz (kart zaten seçili görünür)
+  if (yaziGenislik(sec.ad, 2) < EK - 30 - yaziGenislik('GELİŞTİRMELER', 3)) t.yazi(sec.ad, EK - 12, y + 8, { olcek: 2, ton: 255, hiza: 1 });
   y += 30;
   const altY = H - 54;
   const MH = Math.max(30, Math.min(58, Math.floor((altY - 22 - y) / Math.max(1, sec.modlar.length))));

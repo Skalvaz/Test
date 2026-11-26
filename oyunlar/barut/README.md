@@ -18,6 +18,10 @@ zamanla zemine karışıp araziyi yükseltir.
 
 ![Hangar](docs/hangar.png)
 
+![Dikey kalkışlı jet ve hurdası](docs/jet.png)
+
+![Patlama: önce (üstte) ve sonra](docs/efektler.png)
+
 ![Piyade çeşitleri](docs/piyade.png)
 
 ## Nasıl oynanır
@@ -27,7 +31,8 @@ zamanla zemine karışıp araziyi yükseltir.
   dayanmışlardır. Oka dokun: helikopter o cepheye kendisi uçar.
 - **Hangar:** hafif bir keşif helikopteriyle başlarsın. Oynadıkça araştırma
   puanı (AP) birikir; roket yuvası, zırh, füzeler ve daha güçlü helikopter
-  AP ile açılır.
+  AP ile açılır. Hattın sonunda dikey kalkışlı jet var: hızlı, ince zırhlı,
+  bol bombalı; salkım bomba yalnız onda.
 - **Sürükle:** helikopter parmağını izler (göreli; parmağın altında kalmaz).
 - **Silahlar kendi ateş eder:** top en yakın hedefe, roketler araçlara ve
   kalabalık piyadeye. Yaklaştıkça top daha isabetli.

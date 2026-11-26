@@ -1,7 +1,8 @@
 /** Hangar: kayıt, açma, geliştirme ve donanımın simülasyondaki etkisi. */
 import { describe, expect, it } from 'vitest';
 import { Dunya, M_AAM, M_ATGM, M_ROKET, VARSAYILAN_DONANIM } from './dunya';
-import { HELILER, bosKayit, donanimKur, heliAc, heliSec, kazanc, modAl } from './hangar';
+import { HELILER, bosKayit, donanimKur, heliAc, heliSec, kazanc, kayitOku, modAl } from './hangar';
+import { M_OBOMBA } from './dunya';
 
 const ADIM = 1 / 60;
 
@@ -31,7 +32,8 @@ describe('hangar', () => {
     k.ap = 3400;
     expect(heliAc(k, 'agir')).toBe(false);
     k.ap = 4000;
-    expect(heliAc(k, 'jet')).toBe(false);
+    expect(heliAc(k, 'hafif')).toBe(false);
+    expect(heliAc(k, 'jet')).toBe(false); // AP yetmez
     expect(heliAc(k, 'agir')).toBe(true);
     expect(k.ap).toBe(500);
     expect(k.secili).toBe('agir');
@@ -94,5 +96,43 @@ describe('hangar', () => {
     expect(aam).toBeGreaterThan(0);
     expect(d.olu.arac).toBe(1);
     expect(d.olu.hava).toBe(1);
+  });
+
+  it('dikey kalkışlı jet: hızlı, ince zırhlı, bol bombalı; salkım üç bomba bırakır', () => {
+    const k = bosKayit();
+    k.ap = 99999;
+    expect(heliAc(k, 'jet')).toBe(true);
+    const cip = donanimKur(k);
+    expect(cip.tur).toBe(2);
+    expect(cip.hiz).toBeGreaterThan(VARSAYILAN_DONANIM.hiz);
+    expect(cip.can).toBeLessThan(VARSAYILAN_DONANIM.can);
+    expect(cip.bomba).toBeGreaterThan(VARSAYILAN_DONANIM.bomba);
+    for (const salkim of [false, true]) {
+      if (salkim) expect(modAl(k, 'salkim')).toBe(true);
+      const d = new Dunya(566, 73, donanimKur(k));
+      d.basla();
+      d.ara = 999;
+      expect(d.bombaBirak()).toBe(true);
+      expect(d.mermiler.filter((m) => m.tip === M_OBOMBA).length).toBe(salkim ? 3 : 1);
+      expect(d.bomba.adet).toBe(5);
+    }
+  });
+
+  it('eski kayıt (jet eklenmeden önce yazılmış) bozulmadan okunur', () => {
+    const depo = new Map<string, string>();
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: (a: string) => depo.get(a) ?? null,
+      setItem: (a: string, v: string) => void depo.set(a, v),
+    };
+    depo.set('barut.hangar.v1', JSON.stringify({ ap: 1234, sahip: ['kesif', 'agir'], secili: 'agir', mod: { agir: ['atgm', 'zirh'], kesif: ['roket'] } }));
+    const k = kayitOku();
+    expect(k.ap).toBe(1234);
+    expect(k.sahip).toEqual(['kesif', 'agir']);
+    expect(k.secili).toBe('agir');
+    expect(k.mod.agir).toEqual(['atgm', 'zirh']);
+    const dn = donanimKur(k);
+    expect(dn.atgm).toBe(true);
+    expect(dn.can).toBe(130);
+    delete (globalThis as { localStorage?: unknown }).localStorage;
   });
 });

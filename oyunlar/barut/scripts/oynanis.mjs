@@ -24,6 +24,8 @@ const page = await ctx.newPage();
 const hatalar = [];
 page.on('console', (m) => m.type() === 'error' && hatalar.push(m.text()));
 page.on('pageerror', (e) => hatalar.push(e.message));
+// BARUT_KAYIT ortam değişkeni: hangar kaydı (JSON); başka araçla oynatmak için
+if (process.env.BARUT_KAYIT) await page.addInitScript(`localStorage.setItem('barut.hangar.v1', ${JSON.stringify(process.env.BARUT_KAYIT)})`);
 await page.goto(url);
 await page.waitForTimeout(700);
 

@@ -306,6 +306,90 @@ export const SPR_ALOUETTE = (() => {
   return b.bitir();
 })();
 
+
+/**
+ * Dikey kalkışlı jet, AV-8B çizgisinde. Oranlar kamu malı üç görünüş
+ * çiziminin yan görünüşünden ölçüldü (örnek pikseli / 3; kopya değil, hatlar):
+ * burna doğru alçalan sivri burun, yüksekte kabarık tek kişilik kabin,
+ * hemen arkasında iri yarım ay hava alığı, düz sırt, omuzdan aşağı-geriye
+ * sarkan kanat (ucunda destek tekeri), gövdenin iki yanında dörder lüleden
+ * ikisi (önde soğuk, arkada sıcak), karında top yuvaları, geriye yatık dikme,
+ * aşağı sarkan yatay denge, karın yüzgeci ve gövdeden geriye uzanan ince
+ * kuyruk iğnesi. Havada asılı dururken iniş takımı açık çizilir.
+ */
+export const HARRIER_N = { ox: 52, oy: 19, direk: [52, 14], kuyruk: [3, 15], namlu: [70, 27], lule: [[62, 22], [32, 21]] } as const;
+export const SPR_HARRIER = (() => {
+  const W = 103;
+  const b = new Boya(W, 35);
+  // Gövde: burun ucundan kabin tepesine, düz sırt, küt arka uç; karın arkada yükselir
+  b.p([99, 23, 96, 21, 92, 19, 89, 18, 86, 16, 82, 14, 80, 12, 73, 12, 72, 14, 6, 14, 6, 19, 19, 21, 32, 23, 42, 25, 86, 25, 91, 25, 94, 24], B);
+  // Kuyruk iğnesi
+  b.p([7, 14, 2, 14, 1, 15, 2, 16, 7, 16], B);
+  // Dikme: geriye yatık ön kenar, dik arka kenar
+  b.p([20, 14, 12, 4, 9, 2, 6, 1, 5, 1, 5, 14], B);
+  // Sırt kabartısı (dikmenin önünde)
+  b.k(21, 13, 6, 1, B);
+  // Karın yüzgeci
+  b.p([17, 20, 17, 23, 10, 23, 8, 19], T5);
+  // Karındaki top yuvaları
+  b.p([66, 25, 62, 28, 45, 28, 42, 25], T4);
+  // İniş takımı: burun tekeri, ana teker, kanat ucunda destek tekeri
+  b.k(84, 25, 2, 5, T2);
+  b.o(84.5, 31, 2.2, T1);
+  b.k(49, 28, 3, 2, T2);
+  b.o(50.5, 31, 2.4, T1);
+  b.o(37.5, 31.5, 1.7, T1);
+  b.kenar();
+  // Işık yukarıdan: karın bir kademe koyu
+  for (let y = 22; y < 26; y++) for (let x = 6; x < 98; x++) if (b.d[y * W + x] === B + 1) b.n(x, y, T5);
+  for (let x = 6; x < 42; x++) for (let y = 16; y < 25; y++) if (b.d[y * W + x] === B + 1 && b.d[(y + 1) * W + x] !== B + 1) b.n(x, y, T5);
+  // Kanat: omuzdan aşağı-geriye sarkar (gövdenin önünde, bir kademe koyu)
+  b.p([57, 15, 39, 15, 35, 22, 40, 22], T4);
+  b.c(57, 15, 40, 22, M).c(39, 15, 35, 22, M).c(35, 22, 40, 22, M);
+  b.c(52, 16, 41, 21, T3).c(45, 16, 39, 20, T5);
+  // Destek tekeri dikmesi
+  b.c(38, 23, 37, 29, M);
+  // Yatay denge: aşağı sarkar, koyu
+  b.p([18, 15, 14, 15, 5, 18, 5, 19, 9, 19], T2);
+  b.c(18, 15, 5, 19, M);
+  // Dikme: dümen çizgisi, uçta anten kutusu, ön kenar ışığı
+  b.c(9, 4, 9, 13, T4).c(13, 6, 18, 13, T5).k(6, 2, 3, 2, T3).c(7, 8, 8, 8, T3);
+  // Hava alığı: kabinin hemen arkasında iri yarım ay, içi karanlık
+  b.p([73, 17, 71, 18, 70, 20, 70, 22, 71, 24, 73, 24, 72, 21], T1);
+  b.c(74, 17, 73, 20, M).c(73, 20, 74, 24, M);
+  b.c(69, 18, 68, 21, T4).c(68, 21, 69, 24, T4);
+  // Ön (soğuk) lüle: yuvarlak ağızlı kutu, içinde yönlendirme kanatçıkları
+  b.k(58, 18, 10, 4, T2);
+  b.c(58, 17, 67, 17, M).c(58, 22, 67, 22, M).c(68, 18, 68, 21, M).c(57, 18, 57, 21, M);
+  b.c(60, 18, 60, 21, T1).c(63, 18, 63, 21, T1).n(66, 20, T4);
+  // Arka (sıcak) lüle: koyu ağız, üstünde ısı kalkanı
+  b.k(29, 17, 7, 4, T2);
+  b.c(29, 16, 37, 16, M).c(29, 21, 35, 21, M).c(28, 17, 28, 20, M);
+  b.o(31, 19, 1.6, M);
+  b.c(24, 18, 27, 18, T3).c(23, 20, 27, 20, T4);
+  // Kabin: önde eğik cam, arkada kabarık cam; arası çerçeve
+  b.p([88, 18, 85, 16, 82, 14, 80, 12, 74, 12, 73, 14, 79, 18], T2);
+  b.c(89, 19, 79, 19, M).c(79, 19, 72, 14, M);
+  b.c(82, 13, 81, 18, M);
+  // Camda ışık: üstte açık şerit (ışık yukarıdan), önde küçük parlama
+  b.c(79, 13, 75, 13, T4).c(78, 14, 76, 14, T3).n(84, 16, T4).n(85, 17, T3);
+  // Burun: sonda, sensör penceresi, panel çizgisi
+  b.c(99, 23, 101, 23, M);
+  b.c(89, 19, 89, 24, T4).o(92.5, 22.5, 1, T2).n(96, 22, T4);
+  // Gövde panel çizgileri, perçinler, uyarı şeridi
+  b.c(66, 15, 66, 17, T4).c(52, 23, 44, 23, T4).c(27, 15, 27, 16, T4);
+  b.n(62, 16, T3).n(48, 17, T3).n(23, 16, T3).n(14, 16, T3).n(78, 22, T3).n(81, 21, T3);
+  for (let y = 15; y < 23; y++) if (b.d[y * W + 21] > T1 + 1) b.n(21, y, T2);
+  // Kanat altında bomba: sivri burun, arkada kanatçık
+  b.k(43, 23, 11, 2, T1).n(54, 23, T1).n(54, 24, T1).n(55, 24, T1).c(43, 22, 43, 25, M).n(42, 23, M);
+  b.c(48, 22, 48, 22, M);
+  // Top yuvası: namlu ağzı, panel
+  b.c(66, 27, 69, 27, M).c(46, 26, 60, 26, T5).n(62, 26, T2);
+  // Teker göbekleri
+  b.n(84, 31, T4).n(50, 31, T4).n(51, 31, T4);
+  return b.bitir();
+})();
+
 /** Düşmanın nakliye-saldırı helikopteri. */
 export const DHELI_N = { ox: 44, oy: 14, direk: [41, 0], kuyruk: [4, 5], namlu: [89, 25] } as const;
 export const SPR_DHELI = (() => {
@@ -928,6 +1012,7 @@ export const SPR_H_DHELI = hurda(SPR_DHELI, 9, [[52, 13, 5, 0], [84, 19, 5, 1], 
 export const SPR_H_JET = hurda(SPR_JET, 11, [[42, 10, 4, 0], [88, 11, 6, 1]]);
 export const SPR_H_HELI = hurda(SPR_HELI, 13, [[58, 22, 5, 0], [6, 10, 4, 1], [80, 16, 3, 0]]);
 export const SPR_H_ALOUETTE = hurda(SPR_ALOUETTE, 17, [[40, 18, 5, 0], [5, 10, 3, 1], [62, 15, 3, 0]]);
+export const SPR_H_HARRIER = hurda(SPR_HARRIER, 19, [[46, 19, 5, 0], [9, 7, 4, 1], [78, 16, 3, 0]]);
 export const SPR_H_JEEP = hurda(SPR_JEEP, 15, [[55, 15 + JEEP_ANTEN, 5, 1], [30, 17 + JEEP_ANTEN, 3, 0], [9, 13 + JEEP_ANTEN, 3, 1]]);
 
 void ATES;

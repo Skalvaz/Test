@@ -10,12 +10,12 @@ import {
   type Asker,
 } from './dunya';
 import {
-  ALOUETTE_N, SPR_ALOUETTE, SPR_H_ALOUETTE, DHELI_N, HELI_N, JEEP_N, JET_N, KAMYON_N, SPR_H_JEEP, SPR_JEEP, KULE_N, NAKLIYE_N, SPR_AGAC, SPR_ARABA, SPR_BARIYER, SPR_DUVAR, SPR_LAMBA,
+  ALOUETTE_N, SPR_ALOUETTE, SPR_H_ALOUETTE, HARRIER_N, SPR_HARRIER, SPR_H_HARRIER, DHELI_N, HELI_N, JEEP_N, JET_N, KAMYON_N, SPR_H_JEEP, SPR_JEEP, KULE_N, NAKLIYE_N, SPR_AGAC, SPR_ARABA, SPR_BARIYER, SPR_DUVAR, SPR_LAMBA,
   SPR_LEVHA, SPR_VARIL, SPR_DHELI, SPR_H_DHELI, SPR_H_HELI, SPR_H_JET, SPR_H_KAMYON, SPR_H_TANK, SPR_H_UCAKSAVAR, SPR_GOMU, SPR_HELI, SPR_JET, SPR_KAMYON,
   SPR_KASK, SPR_KIRPI, SPR_KULE, SPR_MAYIN, SPR_NAKLIYE, SPR_SANDIK, SPR_SIMGE_HELI, SPR_SIMGE_SIPER, SPR_TANK,
   SPR_UCAKSAVAR, SPR_UKULE, TANK_N, UCAKSAVAR_N, UKULE_N,
 } from './sprite';
-import { AKKOR, ATES, KAN, KURU_KAN, Tuval, yaziGenislik, type YaziSecenek } from './tuval';
+import { AKKOR, ATES, KAN, KURU_KAN, Tuval, yaziGenislik, type Sprite, type YaziSecenek } from './tuval';
 import { binaDerisi, ortaKatman, uzakKatman } from './dekor';
 
 /** Çizim ölçeği: 1 dünya birimi = K ekran pikseli. */
@@ -24,9 +24,20 @@ export const K = 1.5;
 export const EK = Math.round(G * K);
 
 /** Oyuncu helikopterlerinin çizim bilgisi (`Donanim.tur` sırasıyla): sprite, bağlantı noktaları, rotor yarıçapı. */
-const HELI_CIZIM = [
+interface HeliCizim {
+  spr: Sprite;
+  hurda: Sprite;
+  N: { ox: number; oy: number; direk: readonly [number, number]; kuyruk: readonly [number, number]; namlu: readonly [number, number] };
+  /** Rotor yarıçapı; 0: pervanesiz (jet). */
+  rotor: number;
+  kuyruk: number;
+  /** Jet: aşağı bakan lülelerin yeri. */
+  lule?: readonly (readonly [number, number])[];
+}
+const HELI_CIZIM: HeliCizim[] = [
   { spr: SPR_ALOUETTE, hurda: SPR_H_ALOUETTE, N: ALOUETTE_N, rotor: 37, kuyruk: 5 },
   { spr: SPR_HELI, hurda: SPR_H_HELI, N: HELI_N, rotor: 46, kuyruk: 6 },
+  { spr: SPR_HARRIER, hurda: SPR_H_HARRIER, N: HARRIER_N, rotor: 0, kuyruk: 0, lule: HARRIER_N.lule },
 ];
 
 /** Başlık ve sonuç ekranındaki HANGAR düğmesi (çizim ve dokunma aynı yeri kullanır). */
@@ -1914,14 +1925,39 @@ export class Sahne {
     const cz = HELI_CIZIM[h.tur];
     const N = cz.N;
     t.cizDon(cz.spr, x, y, h.egim, h.yon < 0, N.ox, N.oy, vurulmus ? 255 : 0);
-    const [mx, my] = this.yerel(x, y, h.egim, h.yon, N.direk[0] - N.ox, N.direk[1] - N.oy);
-    this.pervane(mx, my, h.egim, cz.rotor);
-    // Kuyruk pervanesi
-    const [kx, ky] = this.yerel(x, y, h.egim, h.yon, N.kuyruk[0] - N.ox, N.kuyruk[1] - N.oy);
-    const ka = d.zaman * 40;
-    const kr = cz.kuyruk;
-    t.cizgi(kx - Math.cos(ka) * kr, ky - Math.sin(ka) * kr, kx + Math.cos(ka) * kr, ky + Math.sin(ka) * kr, 0);
-    t.cizgi(kx - Math.cos(ka + 1.57) * kr, ky - Math.sin(ka + 1.57) * kr, kx + Math.cos(ka + 1.57) * kr, ky + Math.sin(ka + 1.57) * kr, 150);
+    if (cz.rotor > 0) {
+      const [mx, my] = this.yerel(x, y, h.egim, h.yon, N.direk[0] - N.ox, N.direk[1] - N.oy);
+      this.pervane(mx, my, h.egim, cz.rotor);
+      // Kuyruk pervanesi
+      const [kx, ky] = this.yerel(x, y, h.egim, h.yon, N.kuyruk[0] - N.ox, N.kuyruk[1] - N.oy);
+      const ka = d.zaman * 40;
+      const kr = cz.kuyruk;
+      t.cizgi(kx - Math.cos(ka) * kr, ky - Math.sin(ka) * kr, kx + Math.cos(ka) * kr, ky + Math.sin(ka) * kr, 0);
+      t.cizgi(kx - Math.cos(ka + 1.57) * kr, ky - Math.sin(ka + 1.57) * kr, kx + Math.cos(ka + 1.57) * kr, ky + Math.sin(ka + 1.57) * kr, 150);
+    }
+    // Jet: lülelerden çıkan egzoz. Lüleler gövdenin yanında olduğu için
+    // sprite'ın ÖNÜNDE çizilir (arkada kalınca yalnız iki turuncu kutu
+    // görünüyordu). Asılı dururken dik aşağı, hızlanınca geriye yatar; sivri
+    // koni, ortası beyaz-kor, kareden kareye boyu oynar.
+    if (cz.lule && !h.olu) {
+      const yat = Math.max(-1, Math.min(1, (-h.vx * h.yon) / 220)) * h.yon;
+      const kare = Math.floor(d.zaman * 30);
+      cz.lule.forEach((l, n) => {
+        const [lx, ly] = this.yerel(x, y, h.egim, h.yon, l[0] - N.ox, l[1] - N.oy);
+        const uz = (n ? 19 : 14) + (((kare + n * 2) % 3) - 1) * 2;
+        const dx = Math.sin(yat);
+        const dy = Math.cos(yat);
+        for (let k = 0; k < uz; k += 0.34) {
+          const u = k / uz;
+          const w = 2.4 * (1 - u) + 0.6;
+          const px = lx + dx * k;
+          const py = ly + dy * k;
+          t.cizgi(px - dy * w, py + dx * w, px + dy * w, py - dx * w, 0, ATES);
+          if (u < 0.55) t.cizgi(px - dy * w * 0.35, py + dx * w * 0.35, px + dy * w * 0.35, py - dx * w * 0.35, 0, AKKOR);
+        }
+        t.leke(lx + dx * (uz + 6), ly + dy * (uz + 6), 6, 0.3, 150);
+      });
+    }
     // Namlu alevi
     if (h.top > 0.07 && d.oyunda && !h.olu) {
       const [ax, ay] = this.yerel(x, y, h.egim, h.yon, N.namlu[0] - N.ox, N.namlu[1] - N.oy);
