@@ -336,6 +336,33 @@ bize ait (o oyunun arayüzü, adları, varlıkları kopyalanmaz).
 - vitest `console.log` göstermez; ayıklama için `scripts/*.tmp.test.ts`
   içinde dosyaya yaz, işin bitince sil.
 
+## Sanat kuralları (Kasım 2026, özerk oturum 1. tur)
+
+- IŞIK YUKARIDAN: her hacmin üstü bir kademe açık, altı bir kademe koyu.
+  Duman topağında üstte açık hilal (`ton + 43`), ateş topunda çekirdek
+  yukarı-sağa kaçık. Yeni sprite'larda da üst yüz açık, karın koyu.
+- EFEKT = KATMANLI DÜZ TON, tarama değil. Duman üç geçişte çizilir: bütün
+  topakların mürekkep hattı (`r + 1,2`), sonra düz gövde tonu (yaşa göre 42 →
+  85 → 128 → 170), sonra ışık hilali. Topaklar tek siluet olur (kenar
+  içeride görünmez). Yalnız ömrünün son %22'sinde `leke` ile dağılır.
+  Eski duman baştan sona `leke` idi: bulanık gri sis, biçimi yoktu.
+- Patlama üç evre: 0–0,07 sn parlama (beş topaklı beyaz-kor leke, ince
+  kehribar kenar, sekiz ışın, yere vuran ışık; HER ŞEYİN ÖNÜNDE çizilir),
+  0,07–0,42 sn ateş topu (9 topak, dört katman: mürekkep hat, kırmızı kenar,
+  kehribar gövde, beyaz-kor çekirdek; yükselip küçülür) ve şarapnel
+  çizgileri, sonra duman. 0,24 sn'den sonra ateş topu dumanın ARKASINDA
+  çizilir (duman onu yutar). Eski ince şok halkaları kaldırıldı (kopuk yay
+  parçaları gibi duruyordu).
+- Alev parçacığında kırmızı kenar yalnız sönerken (`k < 0,6`): taze alevde
+  kenar, ateş topunun içinde kırmızı halkalar yapıyordu.
+- Namlu alevi tek işlev: `namluAlevi(x, y, c, s, boy)`: sivri dil + iki yan
+  dil + beyaz çekirdek, kareden kareye boyu değişir. Boylar: tüfek 6, cip 9,
+  ağır makineli 10, helikopter 13, tank topu 20. Yeni silaha artı işareti
+  çizme, bunu çağır.
+- Efekt denemesi: zaman serisi çek (0,02 … 1,2 sn), kareleri yan yana koy;
+  tek kare yanıltır (0,4 sn'deki "ateş toplarından halka" tek karede
+  görünmüyordu).
+
 ## Playtest (Kasım 2026, `scripts/oynanis.mjs`, 3 el)
 
 Betik oyunu gerçek fare/dokunma olaylarıyla gerçek zamanda oynar, 2 sn'de

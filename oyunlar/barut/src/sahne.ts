@@ -1070,6 +1070,7 @@ export class Sahne {
         // Namlu gaz boşaltıcısı ve ağız
         for (let k = -2; k <= 2; k++) t.cizgi(bx + ux * uz * 0.5, by + k + uy * uz * 0.5, bx + ux * uz * 0.66, by + k + uy * uz * 0.66, 0);
         t.kutu(bx + ux * uz - 1, by + uy * uz - 2, 3, 5, 0);
+        if (a.sars > 0.15) this.namluAlevi(bx + ux * (uz + 2), by + uy * (uz + 2), ux, uy, 20);
         t.cizDon(SPR_KULE, tx - yon * tepki * 0.4, ty, e, yon < 0, KULE_N.ox, KULE_N.oy);
         // Anten
         const [ax, ay] = this.yerel(tx, ty, e, yon, -14, -9);
@@ -1163,9 +1164,7 @@ export class Sahne {
         if (a.sars > 0.03) {
           const ax = mx + c * 17;
           const ay = my + s * 17;
-          t.daire(ax, ay, 3, 0, ATES);
-          t.vurgu(ax, ay, AKKOR);
-          t.vurgu(ax + c * 3, ay + s * 3, ATES);
+          this.namluAlevi(ax, ay, c, s, 9);
         }
       } else {
         const N = KAMYON_N;
@@ -1260,6 +1259,31 @@ export class Sahne {
    * Silah: (ox, oy) omuz hizası, (c, sn) nişan yönü. 0 tüfek, 1 makineli,
    * 2 dürbünlü tüfek, 3 roketatar, 4 tabanca. Dönen değer: namlu ucu.
    */
+  /**
+   * Namlu alevi: namlu ucundan (c, s) yönünde uzayan sivri dil, iki yanda kısa
+   * diller (gaz çıkışı), ortada beyaz-kor çekirdek. Kareden kareye boyu
+   * değişir (titreme). `boy` piksel; 7'den kısa olanda yan dil yok.
+   */
+  private namluAlevi(x: number, y: number, c: number, s: number, boy: number): void {
+    const { t } = this;
+    const L = boy * (Math.floor(this.d.zaman * 30) % 2 ? 1 : 0.7);
+    const dil = (uz: number, gen: number, renk: number, cc: number, ss: number): void => {
+      for (let k = 0; k <= uz; k += 0.5) {
+        const u = k / uz;
+        const w = gen * (u < 0.3 ? u / 0.3 : (1 - u) / 0.7);
+        const px = x + cc * k;
+        const py = y + ss * k;
+        t.cizgi(px - ss * w, py + cc * w, px + ss * w, py - cc * w, 0, renk);
+      }
+    };
+    dil(L, boy * 0.26, ATES, c, s);
+    if (boy >= 7) {
+      dil(L * 0.55, boy * 0.12, ATES, c * 0.42 - s * 0.91, s * 0.42 + c * 0.91);
+      dil(L * 0.55, boy * 0.12, ATES, c * 0.42 + s * 0.91, s * 0.42 - c * 0.91);
+    }
+    dil(L * 0.6, boy * 0.13, AKKOR, c, s);
+  }
+
   private silah(tur: number, ox: number, oy: number, c: number, sn: number, atis: boolean): void {
     const t = this.t;
     // Aşağı bakan dik yön (şarjör, çatal)
@@ -1301,10 +1325,7 @@ export class Sahne {
     if (atis) {
       const mx = ox + c * (uz + 2);
       const my = oy + sn * (uz + 2);
-      t.cizgi(mx - 2, my, mx + 2, my, 0, ATES);
-      t.cizgi(mx, my - 2, mx, my + 2, 0, ATES);
-      t.vurgu(mx + c * 2, my + sn * 2, ATES);
-      t.vurgu(mx, my, AKKOR);
+      this.namluAlevi(mx - c, my - sn, c, sn, 6);
     }
   }
 
@@ -1643,9 +1664,7 @@ export class Sahne {
         if (s.atis > 0) {
           const mx = px + c * 24;
           const my = py - 1 + sn * 24;
-          t.cizgi(mx - 3, my, mx + 3, my, 0, ATES);
-          t.cizgi(mx, my - 3, mx, my + 3, 0, ATES);
-          t.daire(mx, my, 1.5, 0, AKKOR);
+          this.namluAlevi(mx - c * 2, my - sn * 2, c, sn, 10);
         }
       } else {
         this.uzuv(nx, by, nx + c * 6, by + sn * 6, 0, 2);
@@ -1903,16 +1922,12 @@ export class Sahne {
     const kr = cz.kuyruk;
     t.cizgi(kx - Math.cos(ka) * kr, ky - Math.sin(ka) * kr, kx + Math.cos(ka) * kr, ky + Math.sin(ka) * kr, 0);
     t.cizgi(kx - Math.cos(ka + 1.57) * kr, ky - Math.sin(ka + 1.57) * kr, kx + Math.cos(ka + 1.57) * kr, ky + Math.sin(ka + 1.57) * kr, 150);
-    // Namlu alevi: yıldız biçimli parlama
+    // Namlu alevi
     if (h.top > 0.07 && d.oyunda && !h.olu) {
       const [ax, ay] = this.yerel(x, y, h.egim, h.yon, N.namlu[0] - N.ox, N.namlu[1] - N.oy);
       const c = Math.cos(h.namlu);
       const s = Math.sin(h.namlu);
-      t.daire(ax + c * 3, ay + s * 3, 3, 0, ATES);
-      t.cizgi(ax, ay, ax + c * 9, ay + s * 9, 0, ATES);
-      t.cizgi(ax + c * 3 - s * 4, ay + s * 3 + c * 4, ax + c * 3 + s * 4, ay + s * 3 - c * 4, 0, ATES);
-      t.vurgu(ax + c * 3, ay + s * 3, AKKOR);
-      t.vurgu(ax + c * 4, ay + s * 4, AKKOR);
+      this.namluAlevi(ax, ay, c, s, 13);
     }
   }
 
@@ -1921,42 +1936,113 @@ export class Sahne {
   private efektler(): void {
     const { t, d } = this;
     const P = d.parcalar;
-    // Önce duman ve toz (arkada), sonra ateş ve katı parçalar
-    for (let i = 0; i < P.length; i++) {
-      const p = P[i];
-      if (p.tip !== P_DUMAN && p.tip !== P_TOZ) continue;
-      const x = this.X(p.x);
-      if (x < -40 || x > EK + 40) continue;
-      const k = p.omur / p.omur0;
-      if (p.tip === P_DUMAN) t.leke(x, this.Y(p.y), p.boy * K, Math.min(0.9, k * 1.3), 26);
-      else t.leke(x, this.Y(p.y), p.boy * K, Math.min(0.6, k * 0.8), 214);
-    }
-    for (const e of d.patlamalar) {
+    // Önce duman ve toz (arkada), sonra ateş ve katı parçalar.
+    // DUMAN: düz tonlu topaklar, üç geçişte çizilir: (1) bütün topakların
+    // mürekkep dış hattı, (2) gövdeleri, (3) üstten gelen ışığın parlak
+    // hilali. Gövdeler iç hatları örttüğü için hat yalnız bulutun dış
+    // siluetinde kalır. Yaşlandıkça ton açılır, sonunda taranarak dağılır.
+    // Eskiden yarı saydam bulanık lekeydi; bulut biçimi okunmuyordu.
+    const patlamaCiz = (e: (typeof d.patlamalar)[number]): void => {
       const x = this.X(e.x);
       const y = this.Y(e.y);
       const r = e.r * K;
-      const k = e.t / 0.55;
-      if (e.t < 0.05) t.daire(x, y, r * 0.8, 0, AKKOR);
-      else if (e.t < 0.3) {
-        // Ateş topu: üst üste binen topaklar, ortası akkor
-        const u = e.t / 0.3;
-        const tohum = e.x * 0.37 + e.y;
-        for (let n = 0; n < 9; n++) {
-          const a = n * 0.7 + tohum;
-          const uz = r * (0.15 + 0.5 * u) * (0.5 + kes(n, tohum));
-          t.daire(x + Math.cos(a) * uz, y + Math.sin(a) * uz * 0.8 - u * r * 0.25, r * (0.26 + 0.22 * kes(tohum, n)) * (1 - u * 0.4), 0, ATES);
+      const tohum = e.x * 0.37 + e.y;
+      const yerde = this.Y(d.yerY(e.x)) - y < r * 0.9;
+      if (e.t < 0.07) {
+        // Parlama: beyaz-kor çekirdek, kehribar hale, sekiz kollu yıldız
+        // Düz tepsi gibi durmasın: beş topaklı beyaz-kor leke, ince kehribar kenar
+        for (let gecis = 0; gecis < 2; gecis++) {
+          for (let n = 0; n < 5; n++) {
+            const a = n * 1.257 + tohum * 2;
+            const lx = x + Math.cos(a) * r * 0.3;
+            const ly = y + Math.sin(a) * r * 0.26;
+            const rr = r * (0.5 + 0.18 * kes(n, tohum));
+            if (gecis === 0) t.daire(lx, ly, rr + 2, 0, ATES);
+            else t.daire(lx, ly, rr, 0, AKKOR);
+          }
         }
-        for (let n = 0; n < 5; n++) {
-          const a = n * 1.3 + tohum;
-          const uz = r * 0.3 * u;
-          t.daire(x + Math.cos(a) * uz, y + Math.sin(a) * uz - u * r * 0.25, r * 0.24 * (1 - u), 0, AKKOR);
+        for (let n = 0; n < 8; n++) {
+          const a = n * 0.785 + tohum;
+          const uz = r * (1.25 + 0.5 * kes(n, tohum));
+          if (yerde && Math.sin(a) > 0.25) continue; // yerin altına kol çıkmaz
+          t.cizgi(x + Math.cos(a) * r * 0.5, y + Math.sin(a) * r * 0.5, x + Math.cos(a) * uz, y + Math.sin(a) * uz, 0, AKKOR);
+          t.cizgi(x + Math.cos(a) * r * 0.5 + 1, y + Math.sin(a) * r * 0.5, x + Math.cos(a) * uz * 0.8 + 1, y + Math.sin(a) * uz * 0.8, 0, ATES);
+        }
+        if (yerde) t.kutu(x - r * 1.5, this.Y(d.yerY(e.x)) - 2, r * 3, 2, 0, AKKOR); // yere vuran ışık
+      } else if (e.t < 0.42) {
+        // Ateş topu: topaklar dört katman hâlinde (mürekkep hat, kırmızı kenar,
+        // kehribar gövde, beyaz-kor çekirdek); büyür, yükselir, sonra küçülerek
+        // dumana karışır
+        const u = (e.t - 0.07) / 0.35;
+        const N = 9;
+        const lob = (n: number): [number, number, number] => {
+          const a = n * 0.7 + tohum;
+          const uz = r * (0.12 + 0.52 * Math.sqrt(u)) * (0.45 + kes(n, tohum));
+          const rr = r * (0.3 + 0.22 * kes(tohum, n)) * (1 - u * u * 0.75);
+          return [x + Math.cos(a) * uz, y + Math.sin(a) * uz * 0.75 - u * r * 0.42, rr];
+        };
+        for (let n = 0; n < N; n++) {
+          const [lx, ly, rr] = lob(n);
+          t.daire(lx, ly, rr + 1.4, 0);
+        }
+        for (let n = 0; n < N; n++) {
+          const [lx, ly, rr] = lob(n);
+          t.daire(lx, ly, rr, 0, KAN);
+        }
+        for (let n = 0; n < N; n++) {
+          const [lx, ly, rr] = lob(n);
+          t.daire(lx + rr * 0.1, ly - rr * 0.12, rr * 0.78, 0, ATES);
+        }
+        for (let n = 0; n < N; n += 2) {
+          const [lx, ly, rr] = lob(n);
+          const cr = rr * 0.5 * (1 - u * 1.25);
+          if (cr > 0.7) t.daire(lx + rr * 0.15, ly - rr * 0.2, cr, 0, AKKOR);
+        }
+        // Saçılan şarapnel çizgileri (ilk anlarda)
+        if (u < 0.4) {
+          for (let n = 0; n < 9; n++) {
+            const a = n * 0.71 + tohum * 1.7;
+            if (yerde && Math.sin(a) > 0.1) continue;
+            const r0 = r * (1.0 + u * 2.6 + kes(n, 9) * 0.3);
+            const r1 = r0 + r * (0.25 + kes(n, 4) * 0.35);
+            t.cizgi(x + Math.cos(a) * r0, y + Math.sin(a) * r0, x + Math.cos(a) * r1, y + Math.sin(a) * r1, 0);
+          }
         }
       }
-      if (e.t < 0.36) {
-        t.halka(x, y, r * (0.9 + k * 3), 0, 2);
-        t.halka(x, y, r * (0.9 + k * 3) - 1, 0, 3);
+    };
+    // Sönmekte olan ateş topu dumanın arkasında kalır (duman onu yutar);
+    // taze olan dumanın önünde parlar
+    for (const e of d.patlamalar) if (e.t >= 0.24) patlamaCiz(e);
+    const dumanTon = (k: number): number => (k > 0.6 ? 42 : k > 0.4 ? 85 : k > 0.27 ? 128 : 170);
+    for (let gecis = 0; gecis < 3; gecis++) {
+      for (let i = 0; i < P.length; i++) {
+        const p = P[i];
+        if (p.tip !== P_DUMAN) continue;
+        const x = this.X(p.x);
+        if (x < -40 || x > EK + 40) continue;
+        const y = this.Y(p.y);
+        const k = p.omur / p.omur0;
+        const r = p.boy * K;
+        if (k < 0.22 || r < 2.2) {
+          // Dağılma: taranmış leke (yalnız gövde geçişinde)
+          if (gecis === 1) t.leke(x, y, r, Math.min(0.75, k * 3.4), k < 0.22 ? 170 : dumanTon(k));
+          continue;
+        }
+        const ton = dumanTon(k);
+        if (gecis === 0) {
+          if (k > 0.32) t.daire(x, y, r + 1.2, 0);
+        } else if (gecis === 1) t.daire(x, y, r, ton);
+        else if (r > 3.2) t.daire(x + r * 0.18, y - r * 0.38, r * 0.5, ton + 43);
       }
     }
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i];
+      if (p.tip !== P_TOZ) continue;
+      const x = this.X(p.x);
+      if (x < -40 || x > EK + 40) continue;
+      t.leke(x, this.Y(p.y), p.boy * K, Math.min(0.6, (p.omur / p.omur0) * 0.8), 214);
+    }
+    for (const e of d.patlamalar) if (e.t >= 0.07 && e.t < 0.24) patlamaCiz(e);
     for (let i = 0; i < P.length; i++) {
       const p = P[i];
       const tip = p.tip;
@@ -1969,9 +2055,15 @@ export class Sahne {
         t.vurgu(x + 1, y, KAN);
         t.vurgu(x - p.vx * 0.02, y - p.vy * 0.02, KAN);
       } else if (tip === P_ATES) {
+        // Alev dili: kırmızı kenar, kehribar gövde, taze olanın ortası beyaz-kor
         const k = p.omur / p.omur0;
-        t.daire(x, y, p.boy * K * k, 0, ATES);
-        if (k > 0.55) t.daire(x, y, p.boy * K * k * 0.45, 0, AKKOR);
+        const r = p.boy * K * k;
+        // Kırmızı kenar yalnız sönmeye yüz tutmuş alevde (taze alev ateş topunun
+        // içinde kalır; kenarlı olunca içeride kırmızı halkalar oluşuyordu)
+        const kenarli = r > 1.6 && k < 0.6;
+        if (kenarli) t.daire(x, y, r, 0, KAN);
+        t.daire(x, y - (kenarli ? r * 0.15 : 0), kenarli ? r * 0.72 : r, 0, ATES);
+        if (k > 0.55) t.daire(x, y - r * 0.2, r * 0.38, 0, AKKOR);
       } else if (tip === P_KIVILCIM) {
         const renk = p.omur > p.omur0 * 0.5 ? AKKOR : ATES;
         t.vurgu(x, y, renk);
@@ -2003,6 +2095,8 @@ export class Sahne {
         t.cizDon(SPR_KASK, x, y - 3, p.aci, false);
       }
     }
+    // İlk parlama her şeyin önünde (alev parçacıkları ortasında leke bırakmasın)
+    for (const e of d.patlamalar) if (e.t < 0.07) patlamaCiz(e);
   }
 
   /** Genişliğe sığana kadar ölçeği küçülterek yazar. */
