@@ -32,11 +32,15 @@ describe('hangar', () => {
     k.ap = 3400;
     expect(heliAc(k, 'agir')).toBe(false);
     k.ap = 4000;
-    expect(heliAc(k, 'hafif')).toBe(false);
+    expect(heliAc(k, 'yok')).toBe(false);
     expect(heliAc(k, 'jet')).toBe(false); // AP yetmez
     expect(heliAc(k, 'agir')).toBe(true);
     expect(k.ap).toBe(500);
     expect(k.secili).toBe('agir');
+    k.ap = 1200;
+    expect(heliAc(k, 'hafif')).toBe(true);
+    expect(donanimKur(k).tur).toBe(3);
+    expect(heliSec(k, 'agir')).toBe(true);
     expect(donanimKur(k)).toEqual(VARSAYILAN_DONANIM); // geliştirmesiz ağır saldırı = eski denge
     expect(heliSec(k, 'kesif')).toBe(true);
     expect(donanimKur(k).tur).toBe(0);
@@ -115,6 +119,33 @@ describe('hangar', () => {
       expect(d.bombaBirak()).toBe(true);
       expect(d.mermiler.filter((m) => m.tip === M_OBOMBA).length).toBe(salkim ? 3 : 1);
       expect(d.bomba.adet).toBe(5);
+    }
+  });
+
+  it('roket salvosu: saldırı helikopteri roketleri ikişer atar', () => {
+    for (const salvo of [false, true]) {
+      const k = bosKayit();
+      k.ap = 99999;
+      heliAc(k, 'hafif');
+      if (salvo) modAl(k, 'salvo');
+      const d = new Dunya(566, 74, donanimKur(k));
+      d.basla();
+      d.ara = 999;
+      d.binalar.length = 0;
+      d.heli.x = d.heli.hx = 640;
+      d.araclar.push({ tip: 3, x: 730, y: d.zemin, can: 999, enCan: 999, dur: 730, sayac: 99, nisanT: 0, namlu: 0.2, yuk: 0, t: 0, sars: 0, engelli: false });
+      let atilan = 0;
+      let onceki = 0;
+      for (let i = 0; i < 6 / ADIM; i++) {
+        d.heli.can = 80;
+        d.adim(ADIM);
+        const simdi = d.mermiler.filter((m) => m.tip === M_ROKET && m.yas < ADIM * 1.5).length;
+        if (simdi > 0 && onceki === 0) atilan++;
+        onceki = simdi;
+      }
+      // 6 saniyede dolum 1,5 sn: tekli ≈ 4 roket, salvolu ≈ 8
+      if (salvo) expect(atilan).toBeGreaterThanOrEqual(7);
+      else expect(atilan).toBeLessThanOrEqual(5);
     }
   });
 

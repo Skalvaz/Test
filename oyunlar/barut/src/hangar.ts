@@ -52,7 +52,27 @@ export const HELILER: HeliTanim[] = [
       },
     ],
   },
-  { id: 'hafif', ad: 'SALDIRI', sinif: 'YAKINDA', bedel: 0, yakinda: true, taban: { tur: 0, can: 0, hiz: 0, zirh: 0, topAra: 0, topArac: 0, topTank: 0, roket: 0, atgm: false, aam: false, bomba: 0 }, modlar: [] },
+  {
+    id: 'hafif',
+    ad: 'SALDIRI',
+    sinif: 'DAR GÖVDELİ HELİKOPTER',
+    bedel: 1200,
+    // Çene altında üç namlulu 20 mm top, kısa kanatta roket; çevik, ince zırhlı
+    taban: { tur: 3, can: 80, hiz: 1.08, zirh: 0, topAra: 0.11, topArac: 0.35, topTank: 0.06, roket: 1.5, atgm: false, aam: false, bomba: 2 },
+    modlar: [
+      { id: 'salvo', ad: 'ROKET SALVOSU', aciklama: 'ROKETLER İKİŞER ATILIR', bedel: 500, uygula: (d) => (d.roketSalvo = 2) },
+      { id: 'atgm', ad: 'TANKSAVAR FÜZE', aciklama: 'GÜDÜMLÜ, TANKI TEK ATAR', bedel: 800, uygula: (d) => (d.atgm = true) },
+      { id: 'motor', ad: 'GÜÇLÜ MOTOR', aciklama: 'HIZ +%10', bedel: 400, uygula: (d) => (d.hiz *= 1.1) },
+      { id: 'bomba', ad: 'BOMBA ASKISI', aciklama: 'BOMBA +1', bedel: 450, uygula: (d) => (d.bomba += 1) },
+      {
+        id: 'zirh', ad: 'EK ZIRH', aciklama: 'CAN +20, KURŞUN -%25', bedel: 600,
+        uygula: (d) => {
+          d.can += 20;
+          d.zirh = 0.25;
+        },
+      },
+    ],
+  },
   {
     id: 'agir',
     ad: 'AĞIR SALDIRI',
@@ -194,6 +214,6 @@ export function modAl(k: Kayit, modId: string): boolean {
 
 /** Hangardaki çubuklar için 0–1 arası kaba değerler: [dayanıklılık, hız, ateş gücü]. */
 export function ozet(d: Donanim): [number, number, number] {
-  const ates = (0.5 / d.topAra) * (0.3 + d.topArac) * 0.09 + (d.roket > 0 ? 0.25 : 0) + (d.atgm ? 0.2 : 0) + (d.aam ? 0.12 : 0) + (d.bomba - 3) * 0.04 + (d.salkim ? 0.15 : 0);
+  const ates = (0.5 / d.topAra) * (0.3 + d.topArac) * 0.09 + (d.roket > 0 ? 0.25 : 0) + (d.atgm ? 0.2 : 0) + (d.aam ? 0.12 : 0) + (d.bomba - 3) * 0.04 + (d.salkim ? 0.15 : 0) + ((d.roketSalvo ?? 1) > 1 ? 0.12 : 0);
   return [Math.min(1, (d.can / (1 - d.zirh * 0.5)) / 160), Math.min(1, (d.hiz - 0.7) / 0.8), Math.min(1, ates)];
 }

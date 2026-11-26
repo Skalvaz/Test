@@ -143,7 +143,7 @@ bize ait (o oyunun arayüzü, adları, varlıkları kopyalanmaz).
   botlar bunu kullanır, sayıları değiştirme.
 - AP = skor / 8, oyun bitince eklenir. Hat: KEŞİF (Alouette III çizgisinde;
   minigun piyadeyi biçer, tanka işlemez; roketi yok; 65 can, 2 bomba) →
-  [SALDIRI: yakında] → AĞIR SALDIRI (AH-64 çizgisinde, 3500 AP) → DİKEY
+  SALDIRI (AH-1 çizgisinde, 1200 AP) → AĞIR SALDIRI (AH-64 çizgisinde, 3500 AP) → DİKEY
   KALKIŞLI JET (AV-8B çizgisinde, 8000 AP). Keşif geliştirmeleri: roket yuvası 250, çift şerit
   300, motor 350, bomba askısı 400, ek zırh 450. Ağır saldırı: tanksavar füze
   900 (`M_ATGM`: yalnız araca, tankı tek atar, 4,5 sn), hava füzesi 900
@@ -158,7 +158,19 @@ bize ait (o oyunun arayüzü, adları, varlıkları kopyalanmaz).
   güdümlü füze 1100, hava füzesi 900, art yakıcı 800, kabin zırhı 1000.
   Bomba güçlendirmesi en çok sayıyı `max(6, dn.bomba)` yapar (6'dan çok
   bombası olanı azaltmasın).
+- SALDIRI (`tur` 3, `SPR_KOBRA`, kayıtta `hafif`): çevik (hız 1,08), 80 can,
+  üç namlulu top (0,11 sn; araca 0,35), roket 1,5 sn, 2 bomba. Geliştirmeler:
+  ROKET SALVOSU 500 (yalnız onda: `Donanim.roketSalvo = 2`, roketler 0,14 sn
+  arayla ikişer çıkar, dolum son roketten sonra işler), tanksavar füze 800,
+  motor 400, bomba askısı 450, ek zırh 600.
+- `Donanim.tur` çizim sırasıdır (0 keşif, 1 ağır, 2 jet, 3 saldırı), hangar
+  sırası değil; yeni araç SONA eklenir ki eski kayıtların anlamı değişmesin.
+- Hangar yerleşimi kart sayısına göre: iri kartlar yalnız `H ≥ 888`'de,
+  `H < 654`'te kartlar sıkışır (72 piksel, ara 4). 615 / 725 / 857'de dört
+  kart + beş geliştirme sığıyor; beşinci kart eklenirse 615'te sığmaz
+  (kaydırma ya da sekme gerekir).
 - Bot ölçümü (8 tohum, ort.; `pilot()` ile, ölçüm testi geçici yazılır):
+  çıplak saldırı 3.–7. dalga, 576 AP; tam saldırı 4.–9., 1449 AP;
   çıplak keşif 3.–4. dalga, 196 AP/oyun; tam keşif 4.–7., 819 AP; çıplak ağır
   4.–8., 1099 AP; tam ağır 5.–9., 2352 AP; çıplak jet 3.–8., 719 AP; tam jet
   5.–9., 1782 AP. BOT JETİ HAFİFE ALIR: hızı kaçmak için, bombayı da
@@ -379,6 +391,9 @@ bize ait (o oyunun arayüzü, adları, varlıkları kopyalanmaz).
   dil + beyaz çekirdek, kareden kareye boyu değişir. Boylar: tüfek 6, cip 9,
   ağır makineli 10, helikopter 13, tank topu 20. Yeni silaha artı işareti
   çizme, bunu çağır.
+- İNCE DUMAN (ekranda yarıçapı 5 pikselden küçük: roket izi, hasar dumanı)
+  hatsız ve açık gri (en koyu 128). Koyu ve hatlı çizilince roketin arkasında
+  kalın kara bir şerit oluyordu (3. turda, yeni helikopteri çekerken görüldü).
 - Efekt denemesi: zaman serisi çek (0,02 … 1,2 sn), kareleri yan yana koy;
   tek kare yanıltır (0,4 sn'deki "ateş toplarından halka" tek karede
   görünmüyordu).

@@ -18,6 +18,8 @@ zamanla zemine karışıp araziyi yükseltir.
 
 ![Hangar](docs/hangar.png)
 
+![Saldırı helikopteri ve hurdası](docs/saldiri.png)
+
 ![Dikey kalkışlı jet ve hurdası](docs/jet.png)
 
 ![Patlama: önce (üstte) ve sonra](docs/efektler.png)

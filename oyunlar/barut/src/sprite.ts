@@ -390,6 +390,75 @@ export const SPR_HARRIER = (() => {
   return b.bitir();
 })();
 
+
+/**
+ * Ara basamak saldırı helikopteri, AH-1 çizgisinde. Oranlar kamu malı üç
+ * görünüş çiziminin yan görünüşünden ölçüldü (örnek pikseli / 11): çok DAR ve
+ * alçak gövde, basamaklı iki kişilik kabin (iki büyük cam, öne eğik burun),
+ * kabinin arkasında düz tavanlı şanzıman kaportası ve geriye eğimli motor,
+ * arkada egzoz; gövdeden hiç incelmeden çıkan uzun bom, geriye yatık dikme
+ * (kuyruk rotoru tepede), kuyruk kızağı; karında kızak takımı; çene altında
+ * üç namlulu top tareti; kısa kanatta ikiz füze tüpleri.
+ */
+export const KOBRA_N = { ox: 64, oy: 15, direk: [68, 2], kuyruk: [8, 7], namlu: [99, 22] } as const;
+export const SPR_KOBRA = (() => {
+  const W = 101;
+  const b = new Boya(W, 29);
+  // Gövde + bom: burun, kabin tavanı, şanzıman kaportası, motor, bom, karın
+  b.p([97, 18, 92, 16, 89, 13, 83, 10, 73, 10, 72, 8, 71, 7, 58, 7, 54, 11, 50, 11, 49, 16, 18, 16, 12, 19, 50, 24, 86, 24, 90, 22, 96, 21, 97, 19], B);
+  // Dikme: geriye yatık, tepesi düz
+  b.p([19, 16, 10, 8, 8, 6, 2, 6, 3, 8, 11, 19, 13, 19], B);
+  // Yatay denge
+  b.p([26, 18, 33, 18, 31, 19, 28, 19], T2);
+  // Egzoz
+  b.k(45, 12, 5, 4, T2);
+  // Direk, kubbe, kaporta üstündeki kutu
+  b.k(67, 3, 2, 4, T2);
+  b.k(62, 6, 2, 1, T2);
+  b.k(51, 10, 3, 1, T3);
+  // Çene tareti
+  b.k(86, 23, 4, 3, T2);
+  // Kısa kanat ve ikiz füze tüpleri
+  b.p([72, 18, 70, 16, 67, 16, 63, 18, 72, 19], T4);
+  b.k(60, 19, 14, 4, T3);
+  // Kızak takımı: iki dikme, öne kıvrık çubuk
+  b.p([75, 24, 77, 24, 76, 27, 74, 27], T2);
+  b.p([61, 24, 63, 24, 62, 27, 60, 27], T2);
+  b.k(57, 27, 26, 1, T1);
+  b.n(83, 26, T1).n(84, 26, T1);
+  b.kenar();
+  // Işık yukarıdan: karın ve bomun altı bir kademe koyu
+  for (let y = 21; y < 25; y++) for (let x = 49; x < 97; x++) if (b.d[y * W + x] === B + 1) b.n(x, y, T5);
+  for (let x = 12; x < 50; x++) for (let y = 17; y < 24; y++) if (b.d[y * W + x] === B + 1 && b.d[(y + 1) * W + x] !== B + 1) b.n(x, y, T5);
+  // Kabin: önde eğik cam, arkada geniş cam; arada dik çerçeve
+  b.p([91, 16, 89, 13, 84, 11, 83, 11, 83, 16, 90, 17], T1);
+  b.p([81, 11, 74, 11, 74, 13, 75, 14, 81, 15], T1);
+  b.c(80, 12, 77, 12, T3).c(88, 14, 86, 13, T3).n(85, 12, T3);
+  // Burun: nişangâh kutusu, gövde boyunca panel çizgisi
+  b.k(94, 18, 3, 2, T1).n(95, 18, T4);
+  b.c(72, 18, 90, 18, T4);
+  // Üç namlulu top
+  b.c(90, 24, 99, 22, M).c(90, 23, 96, 22, M).n(88, 24, T4);
+  // Şanzıman ve motor: yuvarlak kapak, panjur, panel eğrileri, küçük pencereler
+  b.o(71, 14, 1, T3);
+  b.c(65, 12, 65, 15, T4).c(64, 12, 64, 15, T5);
+  b.c(55, 12, 67, 12, T4).c(52, 17, 68, 17, T4);
+  b.k(51, 13, 2, 2, T1).n(54, 14, T3);
+  b.c(57, 8, 71, 8, T5);
+  // Egzoz ağzı: panjurlu, içi karanlık
+  b.k(45, 13, 2, 2, M).c(47, 12, 47, 15, T1);
+  // Füze tüpleri: iki tüp arası çizgi, ağızlar
+  b.c(60, 21, 73, 21, M).n(74, 20, M).n(74, 22, M).c(66, 19, 66, 22, T1).c(70, 19, 70, 22, T1).c(60, 19, 61, 19, T5);
+  // Bom: sırt çizgisi, perçinler, uyarı şeridi
+  b.c(20, 17, 48, 17, T5);
+  b.n(40, 19, T3).n(30, 20, T3).n(57, 20, T3).n(57, 21, T3);
+  for (let y = 16; y < 22; y++) if (b.d[y * W + 22] > T1 + 1) b.n(22, y, M);
+  // Dikme: ön kenar ışığı, kuyruk rotoru göbeği; kuyruk kızağı
+  b.c(17, 15, 10, 9, T5).k(7, 7, 3, 2, T1).n(8, 7, T4);
+  b.c(12, 20, 8, 21, M);
+  return b.bitir();
+})();
+
 /** Düşmanın nakliye-saldırı helikopteri. */
 export const DHELI_N = { ox: 44, oy: 14, direk: [41, 0], kuyruk: [4, 5], namlu: [89, 25] } as const;
 export const SPR_DHELI = (() => {
@@ -1013,6 +1082,7 @@ export const SPR_H_JET = hurda(SPR_JET, 11, [[42, 10, 4, 0], [88, 11, 6, 1]]);
 export const SPR_H_HELI = hurda(SPR_HELI, 13, [[58, 22, 5, 0], [6, 10, 4, 1], [80, 16, 3, 0]]);
 export const SPR_H_ALOUETTE = hurda(SPR_ALOUETTE, 17, [[40, 18, 5, 0], [5, 10, 3, 1], [62, 15, 3, 0]]);
 export const SPR_H_HARRIER = hurda(SPR_HARRIER, 19, [[46, 19, 5, 0], [9, 7, 4, 1], [78, 16, 3, 0]]);
+export const SPR_H_KOBRA = hurda(SPR_KOBRA, 21, [[60, 15, 5, 0], [9, 9, 4, 1], [84, 14, 3, 0]]);
 export const SPR_H_JEEP = hurda(SPR_JEEP, 15, [[55, 15 + JEEP_ANTEN, 5, 1], [30, 17 + JEEP_ANTEN, 3, 0], [9, 13 + JEEP_ANTEN, 3, 1]]);
 
 void ATES;

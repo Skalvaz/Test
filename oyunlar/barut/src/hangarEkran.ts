@@ -11,7 +11,7 @@
  */
 import { HELILER, donanimKur, ozet, type Kayit } from './hangar';
 import { EK } from './sahne';
-import { SPR_ALOUETTE, SPR_HARRIER, SPR_HELI } from './sprite';
+import { SPR_ALOUETTE, SPR_HARRIER, SPR_HELI, SPR_KOBRA } from './sprite';
 import { KAN, type Tuval, yaziGenislik } from './tuval';
 
 export interface Bolge {
@@ -23,7 +23,7 @@ export interface Bolge {
   eylem: string;
 }
 
-const SPR = [SPR_ALOUETTE, SPR_HELI, SPR_HARRIER];
+const SPR = [SPR_ALOUETTE, SPR_HELI, SPR_HARRIER, SPR_KOBRA];
 const ZEMIN = 213;
 const KART = 255;
 const SOLUK = 85; // ikincil yazı: düz koyu gri
@@ -84,8 +84,13 @@ export function hangarCiz(t: Tuval, k: Kayit, zaman: number): Bolge[] {
 
   // Helikopter kartları. Yer varsa helikopter iki kat büyük çizilir: üstte ad,
   // solda helikopter, sağda çubuklar ve düğme.
-  const buyuk = H >= 760;
-  const KH = buyuk ? 126 : 80;
+  // Kart boyu ekrana göre: dört kart + beş geliştirme satırı sığmalı. İri
+  // kartlar yalnız çok uzun ekranda; kısa ekranda kartlar sıkışır.
+  const kartSayisi = HELILER.filter((h) => !h.yakinda).length;
+  const buyuk = H >= 54 + kartSayisi * 132 + 30 + 5 * 40 + 76;
+  const dar = !buyuk && H < 54 + kartSayisi * 86 + 30 + 5 * 34 + 76;
+  const KH = buyuk ? 126 : dar ? 72 : 80;
+  const ARA = dar ? 4 : 6;
   const YH = 24;
   let y = 54;
   for (const h of HELILER) {
@@ -118,8 +123,8 @@ export function hangarCiz(t: Tuval, k: Kayit, zaman: number): Bolge[] {
       tx = 126;
       sigdir(t, h.ad, tx, y + 8, 3, EK - 22 - tx);
       t.yazi(h.sinif, tx, y + 27, { olcek: 2, ton: SOLUK });
-      by = y + 44;
-      ba = 11;
+      by = y + (dar ? 40 : 44);
+      ba = dar ? 10 : 11;
     }
     if (!sahip) {
       // Kilit: asma kilit simgesi
@@ -149,13 +154,13 @@ export function hangarCiz(t: Tuval, k: Kayit, zaman: number): Bolge[] {
     const dw = buyuk ? 116 : 92;
     const dh = buyuk ? 30 : 26;
     const dx = EK - 18 - dw;
-    const dy = y + KH - dh - (buyuk ? 10 : 8);
+    const dy = y + KH - dh - (buyuk ? 10 : dar ? 6 : 8);
     if (secili) {
       t.kutu(dx, dy, dw, dh, 0);
       t.yazi('SEÇİLİ', dx + dw / 2, dy + Math.round((dh - (buyuk ? 15 : 10)) / 2), { hiza: 0, olcek: buyuk ? 3 : 2, ton: 255 });
     } else if (sahip) dugme(t, b, dx, dy, dw, dh, 'SEÇ', `sec:${h.id}`);
     else dugme(t, b, dx, dy, dw, dh, `AÇ ${h.bedel}`, `ac:${h.id}`, k.ap >= h.bedel ? 0 : 2, buyuk ? 3 : 2);
-    y += KH + 6;
+    y += KH + ARA;
   }
 
   // Seçili helikopterin geliştirmeleri: koyu bölüm şeridi, sonra satırlar

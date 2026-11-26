@@ -10,7 +10,7 @@ import {
   type Asker,
 } from './dunya';
 import {
-  ALOUETTE_N, SPR_ALOUETTE, SPR_H_ALOUETTE, HARRIER_N, SPR_HARRIER, SPR_H_HARRIER, DHELI_N, HELI_N, JEEP_N, JET_N, KAMYON_N, SPR_H_JEEP, SPR_JEEP, KULE_N, NAKLIYE_N, SPR_AGAC, SPR_ARABA, SPR_BARIYER, SPR_DUVAR, SPR_LAMBA,
+  ALOUETTE_N, SPR_ALOUETTE, SPR_H_ALOUETTE, HARRIER_N, SPR_HARRIER, SPR_H_HARRIER, KOBRA_N, SPR_KOBRA, SPR_H_KOBRA, DHELI_N, HELI_N, JEEP_N, JET_N, KAMYON_N, SPR_H_JEEP, SPR_JEEP, KULE_N, NAKLIYE_N, SPR_AGAC, SPR_ARABA, SPR_BARIYER, SPR_DUVAR, SPR_LAMBA,
   SPR_LEVHA, SPR_VARIL, SPR_DHELI, SPR_H_DHELI, SPR_H_HELI, SPR_H_JET, SPR_H_KAMYON, SPR_H_TANK, SPR_H_UCAKSAVAR, SPR_GOMU, SPR_HELI, SPR_JET, SPR_KAMYON,
   SPR_KASK, SPR_KIRPI, SPR_KULE, SPR_MAYIN, SPR_NAKLIYE, SPR_SANDIK, SPR_SIMGE_HELI, SPR_SIMGE_SIPER, SPR_TANK,
   SPR_UCAKSAVAR, SPR_UKULE, TANK_N, UCAKSAVAR_N, UKULE_N,
@@ -38,6 +38,7 @@ const HELI_CIZIM: HeliCizim[] = [
   { spr: SPR_ALOUETTE, hurda: SPR_H_ALOUETTE, N: ALOUETTE_N, rotor: 37, kuyruk: 5 },
   { spr: SPR_HELI, hurda: SPR_H_HELI, N: HELI_N, rotor: 46, kuyruk: 6 },
   { spr: SPR_HARRIER, hurda: SPR_H_HARRIER, N: HARRIER_N, rotor: 0, kuyruk: 0, lule: HARRIER_N.lule },
+  { spr: SPR_KOBRA, hurda: SPR_H_KOBRA, N: KOBRA_N, rotor: 46, kuyruk: 8 },
 ];
 
 /** Başlık ve sonuç ekranındaki HANGAR düğmesi (çizim ve dokunma aynı yeri kullanır). */
@@ -2064,9 +2065,12 @@ export class Sahne {
           if (gecis === 1) t.leke(x, y, r, Math.min(0.75, k * 3.4), k < 0.22 ? 170 : dumanTon(k));
           continue;
         }
-        const ton = dumanTon(k);
+        // İnce duman (roket izi, hasar dumanı): hatsız ve açık gri. Koyu, hatlı
+        // çizilince roketin arkasında kalın kara bir şerit oluşuyordu.
+        const ince = r < 5;
+        const ton = ince ? Math.max(128, dumanTon(k) + 43) : dumanTon(k);
         if (gecis === 0) {
-          if (k > 0.32) t.daire(x, y, r + 1.2, 0);
+          if (k > 0.32 && !ince) t.daire(x, y, r + 1.2, 0);
         } else if (gecis === 1) t.daire(x, y, r, ton);
         else if (r > 3.2) t.daire(x + r * 0.18, y - r * 0.38, r * 0.5, ton + 43);
       }

@@ -101,6 +101,8 @@ export interface Donanim {
   salkim?: boolean;
   /** Bir bombanın dolma süresi (sn); verilmezse 2,6. */
   bombaDolum?: number;
+  /** Roket salvosu: her dolumda art arda atılan roket sayısı (verilmezse 1). */
+  roketSalvo?: number;
 }
 /** Testlerin ve eski dengenin donanımı (ağır saldırı helikopteri, geliştirmesiz). */
 export const VARSAYILAN_DONANIM: Donanim = { tur: 1, can: 100, hiz: 1, zirh: 0, topAra: 0.13, topArac: 0.5, topTank: 0.12, roket: 1.15, atgm: false, aam: false, bomba: 3 };
@@ -423,7 +425,7 @@ export class Dunya {
 
   heli = {
     x: SIPER_X, y: 0, vx: 0, vy: 0, hx: SIPER_X, hy: 0, egim: 0, yon: 1 as 1 | -1, can: 100,
-    top: 0, roket: 0, roketYan: 1, olu: false, patladi: false, donus: 0, darbe: 0, namlu: 0,
+    top: 0, roket: 0, roketYan: 1, salvo: 0, olu: false, patladi: false, donus: 0, darbe: 0, namlu: 0,
     enCan: 100, tur: 1, atgm: 2, aam: 2,
     /** Cephe geçişi: 0 yok, ±1 o yana kendiliğinden uçuyor; `gecisX` hedef, `gecisT` başlayalı geçen süre. */
     gecis: 0 as -1 | 0 | 1, gecisX: 0, gecisT: 0,
@@ -1717,7 +1719,9 @@ export class Dunya {
         }
       }
       if (enR < 1e8) {
-        h.roket = this.dn.roket;
+        // Salvo: dolum süresi yalnız son roketten sonra işler
+        h.salvo = h.salvo > 0 ? h.salvo - 1 : (this.dn.roketSalvo ?? 1) - 1;
+        h.roket = h.salvo > 0 ? 0.14 : this.dn.roket;
         h.roketYan = -h.roketYan;
         const ox = h.x - h.yon * 2;
         const oy = h.y + 8;
