@@ -24,7 +24,7 @@ export const K = 1.5;
 export const EK = Math.round(G * K);
 
 /** Oyuncu helikopterlerinin çizim bilgisi (`Donanim.tur` sırasıyla): sprite, bağlantı noktaları, rotor yarıçapı. */
-interface HeliCizim {
+export interface HeliCizim {
   spr: Sprite;
   hurda: Sprite;
   N: { ox: number; oy: number; direk: readonly [number, number]; kuyruk: readonly [number, number]; namlu: readonly [number, number] };
@@ -34,7 +34,7 @@ interface HeliCizim {
   /** Jet: aşağı bakan lülelerin yeri. */
   lule?: readonly (readonly [number, number])[];
 }
-const HELI_CIZIM: HeliCizim[] = [
+export const HELI_CIZIM: HeliCizim[] = [
   { spr: SPR_ALOUETTE, hurda: SPR_H_ALOUETTE, N: ALOUETTE_N, rotor: 37, kuyruk: 5 },
   { spr: SPR_HELI, hurda: SPR_H_HELI, N: HELI_N, rotor: 46, kuyruk: 6 },
   { spr: SPR_HARRIER, hurda: SPR_H_HARRIER, N: HARRIER_N, rotor: 0, kuyruk: 0, lule: HARRIER_N.lule },
@@ -547,6 +547,22 @@ export class Sahne {
     }
   }
 
+  /**
+   * Hurdadaki kırık pervane: direkte iki kısa pal kökü, uzunu ucundan aşağı
+   * bükülmüş. Pervane sprite'ta olmadığı için hurdada da ayrıca çizilir.
+   */
+  private kirikPervane(mx: number, my: number, aci: number, yari: number): void {
+    const t = this.t;
+    const c = Math.cos(aci);
+    const s = Math.sin(aci);
+    const u1 = yari * 0.42;
+    const u2 = yari * 0.3;
+    t.kalin(mx, my, mx + c * u1, my + s * u1, 42);
+    t.cizgi(mx + c * u1, my + s * u1, mx + c * u1 + 5, my + s * u1 + 7, 42);
+    t.kalin(mx, my, mx - c * u2, my - s * u2 - 2, 42);
+    t.kutu(mx - 1, my - 1, 3, 2, 0);
+  }
+
   private enkazlar(): void {
     const { t, d } = this;
     for (const e of d.enkazlar) {
@@ -561,11 +577,20 @@ export class Sahne {
       else if (e.tip === T_UCAKSAVAR) t.cizDon(SPR_H_UCAKSAVAR, x, y - 8 + bat, e.aci, sola, UCAKSAVAR_N.ox, UCAKSAVAR_N.oy);
       else if (e.tip === T_KAMYON) t.cizDon(SPR_H_KAMYON, x, y - 11 + bat, e.aci + 0.2, sola, KAMYON_N.ox, KAMYON_N.oy);
       else if (e.tip === T_JEEP) t.cizDon(SPR_H_JEEP, x, y - (SPR_H_JEEP.h - 1 - JEEP_N.oy) + 1 + bat, e.aci - 0.12, sola, JEEP_N.ox, JEEP_N.oy);
-      else if (e.tip === T_HELI) t.cizDon(SPR_H_DHELI, x, y - 9 + bat, e.aci + 0.4, sola, DHELI_N.ox, DHELI_N.oy);
+      else if (e.tip === T_HELI) {
+        t.cizDon(SPR_H_DHELI, x, y - 9 + bat, e.aci + 0.4, sola, DHELI_N.ox, DHELI_N.oy);
+        const [mx, my] = this.yerel(x, y - 9 + bat, e.aci + 0.4, sola ? -1 : 1, DHELI_N.direk[0] - DHELI_N.ox, DHELI_N.direk[1] - DHELI_N.oy);
+        this.kirikPervane(mx, my, e.aci + 0.4, 44);
+      }
       else if (e.tip === T_JET) t.cizDon(SPR_H_JET, x, y - 6 + bat, e.aci + 0.5, sola, JET_N.ox, JET_N.oy);
       else {
         const cz = HELI_CIZIM[d.heli.tur];
-        t.cizDon(cz.hurda, x, y - 14 + bat, e.aci + 0.5, false, cz.N.ox, cz.N.oy);
+        const ha = e.aci + 0.5;
+        t.cizDon(cz.hurda, x, y - 14 + bat, ha, false, cz.N.ox, cz.N.oy);
+        if (cz.rotor > 0) {
+          const [mx, my] = this.yerel(x, y - 14 + bat, ha, 1, cz.N.direk[0] - cz.N.ox, cz.N.direk[1] - cz.N.oy);
+          this.kirikPervane(mx, my, ha, cz.rotor);
+        }
       }
     }
   }

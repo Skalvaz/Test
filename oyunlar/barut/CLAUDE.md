@@ -400,6 +400,16 @@ bize ait (o oyunun arayüzü, adları, varlıkları kopyalanmaz).
   (asker, araç) eskiden bina diplerindeki koyu pencerelerin içinde
   kayboluyordu. Yeni arka plan katmanı eklenirse sisten ÖNCE çizilmeli; ön
   plan (süsler, binalar, üs) sisten sonra çizilir ve keskin kalır.
+- PERVANE SPRITE'TA YOK (kullanıcı, hangar ekranı için: "helikopterlerin
+  pervanesi neden gözükmüyor? bunun gibi ufak detaylara dikkat edelim").
+  Oyunda `pervane()` dönerken çizer; sprite'ı tek başına basan HER yer
+  kendisi eklemeli: hangar kartı `parkPervane()` (durgun, uçları sarkık pal +
+  arkada kısa gri pal + kuyrukta çapraz iki pal), hurda `kirikPervane()`
+  (iki kısa pal kökü, biri bükük). README görselleri de çıplak sprite
+  sayfasından değil oyun içi kareden alınır. Aynı tuzak başka parçalarda da
+  var: cipin nişancısı ve namlusu, tank namlusu, jetin egzozu çizimde
+  eklenir. Yeni bir ekran ya da görsel yaparken "bu araçta sprite dışında ne
+  çiziliyor?" diye sor ve yan yana oyun karesiyle karşılaştır.
 - Efekt denemesi: zaman serisi çek (0,02 … 1,2 sn), kareleri yan yana koy;
   tek kare yanıltır (0,4 sn'deki "ateş toplarından halka" tek karede
   görünmüyordu).

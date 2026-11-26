@@ -14,11 +14,9 @@ zamanla zemine karışıp araziyi yükseltir.
 
 ![Ustalar yıkılan evi onarıyor](docs/ustalar.png)
 
-![Keşif helikopteri, ağır saldırı helikopteri ve makineli cip](docs/apache-humvee.png)
+![Keşif, ağır saldırı ve saldırı helikopterleri; makineli cip ve hurdalar](docs/helikopterler.png)
 
 ![Hangar](docs/hangar.png)
-
-![Saldırı helikopteri ve hurdası](docs/saldiri.png)
 
 ![Dikey kalkışlı jet ve hurdası](docs/jet.png)
 

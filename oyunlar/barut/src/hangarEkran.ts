@@ -10,7 +10,7 @@
  * açıklamalar ölçek 2 ama koyu gri (85); düğmeler ölçek 3.
  */
 import { HELILER, donanimKur, ozet, type Kayit } from './hangar';
-import { EK } from './sahne';
+import { EK, HELI_CIZIM, type HeliCizim } from './sahne';
 import { SPR_ALOUETTE, SPR_HARRIER, SPR_HELI, SPR_KOBRA } from './sprite';
 import { KAN, type Tuval, yaziGenislik } from './tuval';
 
@@ -57,6 +57,34 @@ function buyukCiz(t: Tuval, s: { w: number; h: number; d: Uint8Array; v: Uint8Ar
       if (c) t.kutu(x + sx * kat, y + sy * kat, kat, kat, c - 1, s.v[sy * s.w + sx]);
     }
   }
+}
+
+/**
+ * Park hâlindeki pervane (kullanıcı: "helikopterlerin pervanesi neden
+ * gözükmüyor?"). Oyunda pervane dönerken ayrıca çizilir; sprite'ta yoktur,
+ * bu yüzden sprite'ı tek başına basan her yer onu da çizmelidir. Hangarda
+ * durgun: uçları hafif sarkmış uzun pal, arkasında kısa gri pal, göbek;
+ * kuyrukta çapraz iki pal. (x, y) sprite'ın sol üst köşesi.
+ */
+function parkPervane(t: Tuval, cz: HeliCizim, x: number, y: number, kat: number): void {
+  if (cz.rotor <= 0) return;
+  const mx = x + cz.N.direk[0] * kat;
+  const my = y + cz.N.direk[1] * kat;
+  const R = Math.round(cz.rotor * 0.8);
+  const kisa = Math.round(R * 0.42);
+  for (let dx = -kisa; dx <= kisa; dx++) t.kutu(mx + dx * kat, my - kat, kat, kat, 85);
+  for (let dx = -R; dx <= R; dx++) {
+    const sark = Math.round((Math.abs(dx) / R) ** 2 * 1.6);
+    t.kutu(mx + dx * kat, my + sark * kat, kat, kat, 0);
+  }
+  t.kutu(mx - kat, my - kat, kat * 3, kat * 2, 0);
+  // Kuyruk pervanesi: çapraz duran iki pal, ortada göbek
+  const kx = x + cz.N.kuyruk[0] * kat;
+  const ky = y + cz.N.kuyruk[1] * kat;
+  for (let i = -cz.kuyruk; i <= cz.kuyruk; i += 0.5) {
+    t.kutu(kx + Math.round(i * 0.45) * kat, ky + Math.round(i * 0.9) * kat, kat, kat, 0);
+  }
+  t.kutu(kx, ky, kat, kat, 170);
 }
 
 /** Özellik çubuğu: 10 dilimli, dolu dilimler siyah (uzaktan sayılabilir). */
@@ -114,22 +142,30 @@ export function hangarCiz(t: Tuval, k: Kayit, zaman: number): Bolge[] {
     if (buyuk) {
       sigdir(t, h.ad, 18, y + 10, 4, EK - 36);
       t.yazi(h.sinif, 18, y + 34, { olcek: 2, ton: SOLUK });
-      buyukCiz(t, spr, Math.min(16 + Math.round((208 - spr.w * 2) / 2), 220 - spr.w * 2), y + 46 + Math.round((76 - spr.h * 2) / 2), 2);
+      const sx = Math.min(16 + Math.round((208 - spr.w * 2) / 2), 220 - spr.w * 2);
+      const sy = y + 46 + Math.round((76 - spr.h * 2) / 2);
+      buyukCiz(t, spr, sx, sy, 2);
+      parkPervane(t, HELI_CIZIM[h.taban.tur], sx, sy, 2);
       tx = 232;
       by = y + 40;
       ba = 15;
     } else {
-      t.ciz(spr, 14 + Math.round((106 - spr.w) / 2), y + Math.round((KH - spr.h) / 2), false);
+      const sx = 14 + Math.round((106 - spr.w) / 2);
+      const sy = y + Math.round((KH - spr.h) / 2);
+      t.ciz(spr, sx, sy, false);
+      parkPervane(t, HELI_CIZIM[h.taban.tur], sx, sy, 1);
       tx = 126;
-      sigdir(t, h.ad, tx, y + 8, 3, EK - 22 - tx);
+      // Kilitliyse adın sağında kilit simgesine yer kalır
+      sigdir(t, h.ad, tx, y + 8, 3, EK - 22 - tx - (sahip ? 0 : 22));
       t.yazi(h.sinif, tx, y + 27, { olcek: 2, ton: SOLUK });
       by = y + (dar ? 40 : 44);
       ba = dar ? 10 : 11;
     }
     if (!sahip) {
       // Kilit: asma kilit simgesi
-      const kx = buyuk ? EK - 36 : 18;
-      const ky = y + 10;
+      // Sağ üst köşede (solda helikopterin kuyruğuna biniyordu)
+      const kx = EK - 36;
+      const ky = y + (buyuk ? 10 : 6);
       t.kutu(kx, ky + 6, 14, 11, 0);
       t.cerceve(kx + 3, ky, 8, 8, 0);
       t.cerceve(kx + 2, ky, 10, 9, 0);
