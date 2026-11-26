@@ -158,7 +158,8 @@ export function hangarCiz(t: Tuval, k: Kayit, zaman: number): Bolge[] {
       // Kilitliyse adın sağında kilit simgesine yer kalır
       sigdir(t, h.ad, tx, y + 8, 3, EK - 22 - tx - (sahip ? 0 : 22));
       t.yazi(h.sinif, tx, y + 27, { olcek: 2, ton: SOLUK });
-      by = y + (dar ? 40 : 44);
+      // ATEŞ'in çengeli kartın alt kenarına değmesin diye iki piksel yukarıda
+      by = y + (dar ? 37 : 42);
       ba = dar ? 10 : 11;
     }
     if (!sahip) {

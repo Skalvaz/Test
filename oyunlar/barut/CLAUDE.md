@@ -410,6 +410,14 @@ bize ait (o oyunun arayüzü, adları, varlıkları kopyalanmaz).
   var: cipin nişancısı ve namlusu, tank namlusu, jetin egzozu çizimde
   eklenir. Yeni bir ekran ya da görsel yaparken "bu araçta sprite dışında ne
   çiziliyor?" diye sor ve yan yana oyun karesiyle karşılaştır.
+- ÖLÇEK: oyuncu araçları ~7 piksel/metre (AH-64 96, AH-1 95, AV-8B 99,
+  Alouette III 70 piksel gövde). Keşif helikopteri bu yüzden ötekilerden
+  belirgin KÜÇÜK ve alçak (80×24); eski göz kararı çizim 78×33'tü, direk
+  ortadaydı. Örnek ortografik değilse (çapraz fotoğraf): toplam boy ve
+  yüksekliği yayımlanmış ölçülerden al, fotoğraftan yalnız parçaların
+  yerlerini oku ve boyuna ölçüleri yayımlanmış boya göre düzelt (Alouette'te
+  fotoğrafın boyu 0,68 kat kısaydı). Helikopterin isabet kutusu 57×24 piksel
+  (`|dx| < 19`, `|dy| < 8` birim); yeni sprite'lar buna yakın kalmalı.
 - Efekt denemesi: zaman serisi çek (0,02 … 1,2 sn), kareleri yan yana koy;
   tek kare yanıltır (0,4 sn'deki "ateş toplarından halka" tek karede
   görünmüyordu).
